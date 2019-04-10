@@ -4,7 +4,6 @@
 #
 use strict;
 use warnings;
-#use diagnostics;
 use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
@@ -12,19 +11,24 @@ use Bio::Easel::SqFile;
 
 require "dnaorg.pm"; 
 require "epn-options.pm";
+require "epn-ofile.pm";
+require "epn-seq.pm";
+require "epn-seqfile.pm";
+require "epn-utils.pm";
 
 #######################################################################################
 # What this script does: 
 #
-# Given a set of homology models built for a reference accession
-# created by a previous run of dnaorg_build.pl, this script uses those
-# homology models to annotate the features (CDS and mature peptides)
-# in other accessions, provided as a list as the lone command line
-# argument. This script outputs tabular annotations and a list of
-# errors found. 
+# Given a single full length homology model (CM) built for a reference
+# accession created by a previous run of dnaorg_build.pl, this script
+# aligns each input sequence to that homologoy model and uses that
+# alignment to annotate the features (CDS and mature peptides) in
+# those incoming sequences. This script outputs a tabular file and d
+# feature table summarizing the annotations, as well as information on
+# alerts found.
 #
 # A list of subroutines can be found after the main script before
-# the subroutines, on or about line 1000.
+# the subroutines.
 # 
 # Immediately below are a list of the steps performed by this
 # script. Each has a corresponding code block in the main script.
@@ -37,163 +41,74 @@ require "epn-options.pm";
 #
 # Step 1.  Gather and process information on reference genome using Edirect.
 # Step 2.  Fetch and process the reference genome sequence.
-# Step 3.  Verify we have the model file that we need to do homology searches.
+# Step 3.  Verify we have the model file that we need to run cmalign.
 #
 #    Steps 1-2 are very similar to those done in dnaorg_build.pl, but
 #    dnaorg_build.pl and dnaorg_annotate,pl are run separately, perhaps
 #    with a big time lag. Therefore, this script, in step 3, verifies 
 #    that the models built by dnaorg_build.pl are still up-to-date with 
 #    respect to the reference used in running this script.
-#    The reference sequence is required to be the first accession 
-#    listed in the accession list file.
 #
-# Step 4.  (OPTIONAL) Search for origin sequences, if --origin used.
-#          The term "origin sequences" refers to the sequence around the position
-#          numbered 1 in circular genomes. 
-# Step 5.  Perform homology searches.
-# Step 6.  Parse homology search results into usable data structures.
-# Step 7.  Define names of all per-model and per-feature output files 
-#          we're about to create.
-# Step 8.  Fetch predicted matches into fasta files.
-# Step 9.  For features modeled by multiple models (e.g. multi-exon CDS),
-#          combine all relevant matches into predicted feature sequences.
-# Step 10. For features modeled by multiple other features (e.g. CDS comprised
-#          of multiple mature peptides), cocatenate the individual predicted feature
-#          sequences into single sequences.
-# Step 11. Examine each predicted feature to see if:
-#          - start codon is valid
-#          - where first in-frame stop exists (for all features with valid start codon)
-#          Store the relevant information in @err_ftr_instances_AHH to either output later
-#          or examine more later.
-# Step 12. For all features that have a valid start but no in-frame
-#          stop codon, look for an in-frame stop later in the sequence (downstream).
-# Step 13. For all features with either a 'trc' or 'ext'
-#          error, add a new stop position to the results_AAH
-#          data structure, the 'corrected' stop. We utilize
-#          the 'cumlen' values in the @mdl_results_AAH to 
-#          simplify this for multi-exon features. 
-# Step 14. Identify overlap and adjacency errors.
-# Step 15. Finalize the mdl_results, and fill ftr_results and check
-#          for incompatible error combinations.
-# Step 16. Refetch corrected matches into new files.
-# Step 17. For features modeled by multiple models (e.g. multi-exon CDS),
-#          combine all relevant matches into corrected feature sequences.
-# Step 18. For features modelled by multiple other features (e.g. CDS
-#          comprised of multiple mature peptides) concatenate the
-#          individual corrected feature sequences into single
-#          sequences.
-# Step 19. Run BLASTX: all full length sequences and all corrected nucleotide 
-#          features versus all proteins
-# Step 20. Add zft errors for sequences with zero annotated features
-# Step 21. Translate corrected feature sequences into proteins
-# Step 22. (OPTIONAL) Create multiple alignments of DNA sequences, if --doalign.
-# Step 23. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign.
-# Step 24. Output annotations and errors.
+# Step 4.  Align sequences to the homology model (CM).
+# Step 5.  Parse cmalign alignments.
+# Step 6.  Fetch features and detect most nucleotide-annotation based alerts.
+# Step 7.  Run BLASTX: all full length sequences and all fetched CDS features 
+#          versus all proteins
+# Step 8.  Add b_zft alerts for sequences with zero annotated features
+# Step 9.  Output annotations and alerts.
 #
 #######################################################################################
 #
-# Error identification:
+# Alert identification:
 #
-# This script identifies and outputs a list of all errors in each of
-# the accessions it annotates. Each type of error has an associated
-# three letter error 'code'. The list of error codes is in the
+# This script identifies and outputs a list of all alerts in each of
+# the sequences it annotates. Each type of alert has an associated
+# five letter alert 'code'. The list of alert codes is in the
 # dnaorg.pm perl module file. It can also be found here:
 #
-#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v5d.documentation.txt
+#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v6a.documentation.txt
 #
-# The most complicated code in this script is related to identifying
-# and storing these errors. Ideally, there would be one or a small set
-# of functions that identified the errors. However, the current
-# implementation has the identification of errors spread across 7
-# functions. This is partly due to a imperfect design of the code, but
-# also due to the requirement of identifying different types of errors
-# at different stages of the analysis.
+# List of subroutines in which errors are detected and added:
+# 1. add_classification_alerts()
+#    c_noa, c_vls, c_los, c_vld, c_lod, c_ugr, c_usg, c_mst, c_loc, c_hbi (10)
 #
-# For example, it is necessary to identify in-frame stops in the
-# predicted hits (potential trc errors) before we can finalize our
-# annotations (since the homology search software (Infernal) is not
-# looking for start and stop codons). This means we need to identify
-# potential trc errors early, and the identification of these errors
-# will affect later errors, for example 'nm3' errors rely on the final
-# annotation lengths and so cannot be computed until after all the
-# 'trc' errors have been found.
+# 2. alert_add_n_div()
+#    n_div (1)
 #
-# Another example is that CDS features that are comprised of mature
-# peptides (type: cds-mp) cannot be examined for errors until all of
-# the mature peptide annotations that comprise them are finalized.
+# 3. cmalign_parse_stk_and_add_alignment_alerts()
+#    n_gp5, n_lp5, n_gp3, n_lp3 (4)
+#
+# 4. fetch_features_and_add_cds_and_mp_alerts()
+#    n_str, n_nm3, n_stp, n_ext, n_nst, n_trc, b_per* (7)
+#
+# 5. add_blastx_alerts()
+#    b_nop, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non, b_per* (11)
+#
+# 6. alert_add_b_zft()
+#    b_zft (1)
 # 
-# The following table shows which errors are identified in which
-# functions. There are two annotation types (annot_type) of features,
-# which is why there are two columns under 'annot_type', namely the
-# 'model' features which are annotated based on homology model
-# predictions (type: 'mp' and 'cds-notmp') and 'multifeature' features
-# which are based on the annotations of multiple other features (type:
-# 'cds-mp'). The identification of errors for these two feature
-# annotation types is done differently, and is often done in different
-# functions.
-# 
-# The sequence column is only relevant for errors that are
-# per-sequence, instead of per-feature. Currently the only
-# per-sequence error is the ori error.
+# * b_per errors can be added in two places, and are only added in add_blastx_alerts for
+#   features for which they weren't already added in fetch_features_and_add_cds_and_mp_alerts()
 #
-# List of functions in which errors may be detected: 
-# 1. parse_esl_epn_translate_startstop_outfile()
-# 2. results_calculate_corrected_stops()
-# 3. results_calculate_overlaps_and_adjacencies() 
-# 4. mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
-# 5. ftr_results_calculate()
-# 6. find_origin_sequences()
-# 7. MAIN (not a function but rather the main body of the script):
-# 8. mdl_results_add_b5e_b5u_errors()
-# 9. ftr_results_add_b5e_errors()
-#
-#              annot_type
-#          -------------------
-# errcode  model  multifeature sequence
-# -------  -----  ------------ --------
-# nop      4      N/A          N/A
-# nm3      5      5            N/A
-# b5e      8,9    N/A          N/A
-# b5u      8      N/A          N/A
-# b3e      4      N/A          N/A
-# b3u      4      N/A          N/A
-# olp      3      N/A          N/A
-# str      1,4    1,5          N/A
-# stp      1,2    1,5          N/A
-# ajb      3      N/A          N/A
-# aja      3      N/A          N/A                           
-# trc      1,2    1,2          N/A
-# ext      1,7,2  1,7,2        N/A
-# ntr      5      N/A          N/A
-# nst      1,7    1,7          N/A
-# ost      4      N/A          N/A
-# aji      N/A    5            N/A
-# int      N/A    5            N/A
-# inp      N/A    5            N/A
-# ori      N/A    N/A          6
-# 
 #######################################################################################
+# make sure required environment variables are set
+my $env_dnaorg_scripts_dir  = utl_DirEnvVarValid("DNAORGSCRIPTSDIR");
+my $env_dnaorg_model_dir    = utl_DirEnvVarValid("DNAORGMODELDIR");
+my $env_dnaorg_blast_dir    = utl_DirEnvVarValid("DNAORGBLASTDIR");
+my $env_dnaorg_infernal_dir = utl_DirEnvVarValid("DNAORGINFERNALDIR");
+my $env_dnaorg_easel_dir    = utl_DirEnvVarValid("DNAORGEASELDIR");
+my $env_dnaorg_bioeasel_dir = utl_DirEnvVarValid("DNAORGBIOEASELDIR");
 
-# first, determine the paths to all modules, scripts and executables that we'll need
-# make sure the DNAORGDIR environment variable is set
-my $dnaorgdir = $ENV{'DNAORGDIR'};
-if(! exists($ENV{'DNAORGDIR'})) { 
-    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
-    exit(1); 
-}
-if(! (-d $dnaorgdir)) { 
-    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n"); 
-    exit(1); 
-}    
- 
-# determine other required paths to executables relative to $dnaorgdir
-my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src/";
-my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
-my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
-my $esl_epn_translate = $dnaorgdir . "/esl-epn-translate/esl-epn-translate.pl";
-my $esl_ssplit        = $dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
-my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
+my %execs_H = (); # hash with paths to all required executables
+$execs_H{"cmalign"}           = $env_dnaorg_infernal_dir . "/cmalign";
+$execs_H{"cmfetch"}           = $env_dnaorg_infernal_dir . "/cmfetch";
+$execs_H{"cmscan"}            = $env_dnaorg_infernal_dir . "/cmscan";
+$execs_H{"cmsearch"}          = $env_dnaorg_infernal_dir . "/cmsearch";
+$execs_H{"esl-seqstat"}       = $env_dnaorg_easel_dir    . "/esl-seqstat";
+$execs_H{"esl-ssplit"}        = $env_dnaorg_bioeasel_dir . "/scripts/esl-ssplit.pl";
+$execs_H{"blastx"}            = $env_dnaorg_blast_dir    . "/blastx";
+$execs_H{"parse_blastx"}      = $env_dnaorg_scripts_dir  . "/parse_blastx.pl";
+utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -203,15 +118,15 @@ my $blast_exec_dir    = "/usr/bin/"; # HARD-CODED FOR NOW
 #         2D key: string denoting type of information 
 #                 (one of "type", "default", "group", "requires", "incompatible", "preamble", "help")
 #         value:  string explaining 2D key:
-#                 "type":          "boolean", "string", "integer" or "real"
-#                 "default":       default value for option
-#                 "group":         integer denoting group number this option belongs to
-#                 "requires":      string of 0 or more other options this option requires to work, each separated by a ','
-#                 "incompatiable": string of 0 or more other options this option is incompatible with, each separated by a ','
-#                 "preamble":      string describing option for preamble section (beginning of output from script)
-#                 "help":          string describing option for help section (printed if -h used)
-#                 "setby":         '1' if option set by user, else 'undef'
-#                 "value":         value for option, can be undef if default is undef
+#                 "type":         "boolean", "string", "integer" or "real"
+#                 "default":      default value for option
+#                 "group":        integer denoting group number this option belongs to
+#                 "requires":     string of 0 or more other options this option requires to work, each separated by a ','
+#                 "incompatible": string of 0 or more other options this option is incompatible with, each separated by a ','
+#                 "preamble":     string describing option for preamble section (beginning of output from script)
+#                 "help":         string describing option for help section (printed if -h used)
+#                 "setby":        '1' if option set by user, else 'undef'
+#                 "value":        value for option, can be undef if default is undef
 #
 # opt_order_A: array of options in the order they should be processed
 # 
@@ -223,159 +138,153 @@ my $g = 0; # option group
 
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
-$opt_group_desc_H{++$g} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                                                help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                                         "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-c",           "boolean", 0,                       $g,    undef, undef,      "genome is closed (a.k.a. circular)",                          "genome is closed (a.k.a circular)",                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                       $g,"--dirout",undef,      "forcing directory overwrite (with --dirout)",                 "force; if dir from --dirout exists, overwrite it",   \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--dirout",     "string",  undef,                   $g,    undef, undef,   "output directory specified as",                                  "specify output directory as <s>, not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--dirbuild",   "string",  undef,                   $g,"--dirout",   undef,   "output directory used for dnaorg_build.pl",                   "specify output directory used for dnaorg_build.pl as <s> (created with dnaorg_build.pl --dirout <s>), not <ref accession>", \%opt_HH, \@opt_order_A);
-opt_Add("--origin",     "string",  undef,                   $g,     "-c", undef,      "identify origin seq <s> in genomes",                          "identify origin seq <s> in genomes, put \"|\" at site of origin (\"|\" must be escaped, i.e. \"\\|\"", \%opt_HH, \@opt_order_A);
-opt_Add("--matpept",    "string",  undef,                   $g,    undef, undef,      "using pre-specified mat_peptide info",                        "read mat_peptide info in addition to CDS info, file <s> explains CDS:mat_peptide relationships", \%opt_HH, \@opt_order_A);
-opt_Add("--nomatpept",  "boolean", 0,                       $g,    undef,"--matpept", "ignore mat_peptide annotation",                               "ignore mat_peptide information in reference annotation", \%opt_HH, \@opt_order_A);
-opt_Add("--xfeat",      "string",  undef,                   $g,    undef, undef,      "use models of additional qualifiers",                         "use models of additional qualifiers in string <s>", \%opt_HH, \@opt_order_A);  
-opt_Add("--dfeat",      "string",  undef,                   $g,    undef, undef,      "annotate additional qualifiers as duplicates", "annotate qualifiers in <s> from duplicates (e.g. gene from CDS)",  \%opt_HH, \@opt_order_A);  
-opt_Add("--specstart",  "string",  undef,                   $g,    undef, undef,      "using pre-specified alternate start codons",                  "read specified alternate start codons per CDS from file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",                          "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                                   help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for alternative modes";
-#        option               type   default                group  requires incompat                        preamble-output                                                      help-output    
-opt_Add("--infasta",     "boolean", 0,                      $g,"--refaccn", "--skipedirect,--skipfetch",   "single cmdline argument is a fasta file of sequences, not a list of accessions", "single cmdline argument is a fasta file of sequences, not a list of accessions", \%opt_HH, \@opt_order_A);
-opt_Add("--refaccn",     "string",  undef,                  $g,"--infasta", "--skipedirect,--skipfetch",   "specify reference accession is <s>",                                "specify reference accession is <s> (must be used in combination with --infasta)", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "basic options";
+opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options related to expected classification";
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--group",         "string",  undef,                  $g,     undef, undef,     "set expected classification of all seqs to group <s>",             "set expected classification of all seqs to group <s>",            \%opt_HH, \@opt_order_A);
+opt_Add("--subgroup",      "string",  undef,                  $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
+opt_Add("--cthresh",         "real",  "0.3",                  $g,     undef, undef,     "expected classification must be within <x> bits/nt of top match",  "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
+opt_Add("--ctoponly",     "boolean",  0,                      $g,     undef, undef,     "top match must be expected classification",                        "top match must be expected classification",                       \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO     cause FAILure",             "specify that alert codes in comma-separated <s> DO NOT cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO NOT cause FAILure",             "specify that alert codes in comma-separated <s> DO     cause FAILure", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for tuning classification alerts";
+#     option                type         default            group   requires incompat     preamble-output                                                   help-output    
+opt_Add("--lowcovthresh",   "real",    0.9,                  $g,   undef,   undef,        "fractional coverage threshold for 'low coverage' is <x>",        "fractional coverage threshold for 'low coverage' alert is <x>",       \%opt_HH, \@opt_order_A);
+opt_Add("--lowscthresh",    "real",    0.3,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'low score' is <x>",           "bits per nucleotide threshold for 'low score' alert is <x>",          \%opt_HH, \@opt_order_A);
+opt_Add("--vlowscthresh",   "real",    0.2,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'very low score' is <x>",      "bits per nucleotide threshold for 'very low score' alert is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--lowdiffthresh",  "real",    0.06,                 $g,   undef,   undef,        "bits per nucleotide diff threshold for 'low diff' is <x>",       "bits per nucleotide diff threshold for 'low diff' alert is <x>",      \%opt_HH, \@opt_order_A);
+opt_Add("--vlowdiffthresh", "real",    0.006,                $g,   undef,   undef,        "bits per nucleotide diff threshold for 'very low diff' is <x>",  "bits per nucleotide diff threshold for 'very low diff' alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--biasfract",      "real",    0.25,                 $g,   undef,   undef,        "fractional threshold for 'high bias' is <x>",                    "fractional threshold for 'high bias' alert is <x>",                   \%opt_HH, \@opt_order_A);
+opt_Add("--dupregmin",   "integer",    20,                   $g,   undef,   undef,        "minimum model overlap for 'duplicate region' alert is <n>",      "minimum model overlap for 'duplicate region' alert is <n>",            \%opt_HH, \@opt_order_A);
+opt_Add("--ostrscthresh",   "real",    20,                   $g,   undef,   undef,        "minimum weaker strand bit score for 'indefinite strand' is <x>", "minimum weaker strand bit score for 'indefinite strand' is <x>",         \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for tuning nucleotide-based annotation errors:";
+#        option               type   default                group  requires incompat   preamble-output                                                             help-output    
+opt_Add("--ppmin",          "real",  0.8,                    $g,     undef, undef,     "set minimum allowed posterior probability at feature segment ends to <x>", "set minimum allowed posterior probability at feature segment ends to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>", "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xindeltol",   "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion and deletion length in blastx validation is <n>",             "max allowed nucleotide insertion and deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",           "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,     "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>",  "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxins",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                           "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxdel",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide deletion length in blastx validation is <n>",                            "max allowed nucleotide deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",            "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for modifying which errors are reported";
-#       option               type   default                group  requires incompat preamble-output                                     help-output    
-opt_Add("--classerrors","string",  0,                      $g,    undef,   undef,   "read per-sequence classification errors from <s>", "read per-sequence classification errors from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--allolp",     "boolean", 0,                      $g,    undef,   undef,   "report all olp errors, do not skip due to nop",    "report all olp errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
-opt_Add("--alladj",     "boolean", 0,                      $g,    undef,   undef,   "report all adj errors, do not skip due to nop",    "report all aja/ajb errors, even when other feature is not predicted (nop error)", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for changing search sensitivity modes";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--midthresh",  "integer", 65,                      $g,    undef, undef,      "set max model length for using mid sensitivity mode to <n>",  "set max model length for using mid sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--smallthresh","integer", 30,                      $g,    undef, undef,      "set max model length for using max sensitivity mode to <n>",  "set max model length for using max sensitivity mode to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hmmonly",    "integer", 0,                       $g,    undef, undef,      "run in HMM-only mode for models with len >= <n>",             "run in HMM-only mode for models with >= <n> positions", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for modifying cmalign runs";
+#        option               type   default                group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",        "real",    1E-3,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "fix the tau value when running cmalign, allow it to increase if nec",          "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--local",      "boolean", 0,                       $g,    undef, undef,      "run cmscan locally instead of on farm",                       "run cmscan locally instead of on farm", \%opt_HH, \@opt_order_A);
-opt_Add("--errcheck",   "boolean", 0,                       $g,    undef,"--local",   "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 50,                      $g,    undef,"--local",   "number of KB of sequence for each cmscan farm job",           "set target number of KB of sequences for each cmscan farm job to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,                    $g,    undef,"--local",   "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                     $g,    undef,"--local",   "allow <n> minutes for cmscan jobs on farm",                   "allow <n> wall-clock minutes for cmscan jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for skipping/adding optional stages";
-#       option               type   default                group  requires incompat preamble-output                             help-output    
-opt_Add("--doalign",    "boolean", 0,                      $g,    undef,   undef,   "create nucleotide and protein alignments", "create nucleotide and protein alignments", \%opt_HH, \@opt_order_A);
-opt_Add("--mxsize",     "integer", 2048,                   $g, "--doalign",undef,   "with --doalign, set --mxsize <n> to <n>",                     "with --doalign, set --mxsize <n> for cmalign to <n>", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options that modify the tabular output file";
-#       option               type   default                group  requires incompat preamble-output                                               help-output    
-opt_Add("--tblfirst",    "boolean", 0,                     $g,    undef,   undef,   "put first accession first on each .tbl page",               "include annotation for first accession on each page of .tbl output file", \%opt_HH, \@opt_order_A);
-opt_Add("--tblnocomp",   "boolean", 0,                     $g,    undef,   undef,   "do not compare annotations to existing GenBank annotation", "do not include information comparing predicted annotations to existing GenBank annotations", \%opt_HH, \@opt_order_A);
+#     option            type       default                group   requires incompat    preamble-output                                                help-output    
+opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("-q",           "string",  undef,                   $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 10,                      $g,     "-p",  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
-#       option       type       default                  group  requires incompat  preamble-output                          help-output    
-opt_Add("--mdlinfo",    "boolean", 0,                       $g,    undef, undef, "output internal model information",     "create file with internal model information",   \%opt_HH, \@opt_order_A);
+#       option       type       default                  group  requires incompat  preamble-output                         help-output    
 opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--seqinfo",    "boolean", 0,                       $g,    undef, undef, "output internal sequence information",  "create file with internal sequence information", \%opt_HH, \@opt_order_A);
-opt_Add("--errinfo",    "boolean", 0,                       $g,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
+opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
+opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
 #     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipedirect",   "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the edirect steps, use existing results",           "skip the edirect steps, use data from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipfetch",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the sequence fetching steps, use existing results", "skip the sequence fetching steps, use files from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipscan",      "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--local,--wait", "skip the cmscan step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skiptranslate", "boolean", 0,                    $g,"--skipscan",  undef,                      "skip the translation steps, use existing results",       "skip the translation steps, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "TEMPORARY options for the alternative method of identifying origin sequences";
-#     option               type       default            group   requires                                   incompat     preamble-output                                                         help-output    
-opt_Add("--aorgmodel",     "string",  undef,                $g,   "-c,--aorgstart,--aorgoffset,--aorglen",   "--origin",  "use alternative origin method with model <s>",                         "use alternative origin method with origin model in <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgstart",     "integer", 0,                    $g,   "-c,--aorgmodel,--aorgoffset,--aorglen",   "--origin",  "origin begins at position <n> in --aorgmodel model",                   "origin begins at position <n> in --aorgmodel model",     \%opt_HH, \@opt_order_A);
-opt_Add("--aorgoffset",    "integer", 0,                    $g,   "-c,--aorgmodel,--aorgstart,--aorglen",    "--origin",  "first position of genome sequence is position <n> in origin sequence", "first position of genome sequence is position <n> in origin sequence", \%opt_HH, \@opt_order_A);
-opt_Add("--aorglen",       "integer", 0,                    $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "length of origin sequence is <n>",                                     "length of origin sequence is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgethresh",   "real",    1.0,                  $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "E-value threshold for origin detection is <x>",                        "E-value threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--aorgppthresh",  "real",    0.6,                  $g,   "-c,--aorgmodel,--aorgstart,--aorgoffset", "--origin",  "average PP threshold for origin detection is <x>",                     "average PP threshold for origin detection is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmscan step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_annotate.pl [-options] <file with list of accessions to annotate>\n";
+my $usage    = "Usage: dnaorg_annotate.pl [-options] <fasta file to annotate> <output directory to create>\n";
 $usage      .= "\n";
-$usage      .= "       OR\n";
-$usage      .= "\n";
-$usage      .= "       dnaorg_annotate.pl [-options] --refaccn <reference accession> --infasta <fasta sequence file with sequences to annotate>\n";
-my $synopsis = "dnaorg_annotate.pl :: annotate sequences based on a reference annotation";
+my $synopsis = "dnaorg_annotate.pl :: classify and annotate sequences using a CM library";
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
-                'c'            => \$GetOptions_H{"-c"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
-                'dirout=s'     => \$GetOptions_H{"--dirout"},
-                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
-                'origin=s'     => \$GetOptions_H{"--origin"},
-                'matpept=s'    => \$GetOptions_H{"--matpept"},
-                'nomatpept'    => \$GetOptions_H{"--nomatpept"},
-                'xfeat=s'      => \$GetOptions_H{"--xfeat"},
-                'dfeat=s'      => \$GetOptions_H{"--dfeat"},
-                'specstart=s'  => \$GetOptions_H{"--specstart"},
+                's'            => \$GetOptions_H{"-s"}, 
+                'm=s'          => \$GetOptions_H{"-m"}, 
+                'i=s'          => \$GetOptions_H{"-i"}, 
+                'b=s'          => \$GetOptions_H{"-b"}, 
+                'n=s'          => \$GetOptions_H{"-n"}, 
                 'keep'         => \$GetOptions_H{"--keep"},
-# options for alternative modes
-                'infasta'      => \$GetOptions_H{"--infasta"},
-                'refaccn=s'    => \$GetOptions_H{"--refaccn"},
+# options related to expected classification
+                'group=s'     => \$GetOptions_H{"--group"},
+                'subgroup=s'  => \$GetOptions_H{"--subgroup"},
+                'cthresh=s'   => \$GetOptions_H{"--cthresh"},
+                'ctoponly'    => \$GetOptions_H{"--ctoponly"},
+# options for controlling which alerts cause failure
+                "alt_list"    => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"  => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"  => \$GetOptions_H{"--alt_fail"},
+# options for tuning classification alerts
+                "lowcovthresh=s"   => \$GetOptions_H{"--lowcovthresh"},
+                "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
+                "vlowscthresh=s"   => \$GetOptions_H{"--vlowscthresh"},
+                "lowdiffthresh=s"  => \$GetOptions_H{"--lowdiffthresh"},
+                "vlowdiffthresh=s" => \$GetOptions_H{"--vlowdiffthresh"},
+                'biasfract=s'      => \$GetOptions_H{"--biasfract"},  
+                'dupregmin=s'      => \$GetOptions_H{"--dupregmin"},  
+                'ostrscthresh=s'   => \$GetOptions_H{"--ostrscthresh"},  
+# options for tuning nucleotide-based annotation errors
+                'ppmin=s'      => \$GetOptions_H{"--ppmin"},
 # options for tuning protein validation with blastx
+                'xminntlen=s'  => \$GetOptions_H{"--xminntlen"},
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
-                'xindeltol=s'  => \$GetOptions_H{"--xindeltol"},
+                'xmaxins=s'    => \$GetOptions_H{"--xmaxins"},
+                'xmaxdel=s'    => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
-# options for modifying which errors are reported
-                'classerrors=s' => \$GetOptions_H{"--classerrors"},
-                'allolp'        => \$GetOptions_H{"--allolp"},
-                'alladj'        => \$GetOptions_H{"--alladj"},
 # options for changing search sensitivity modes
-                'midthresh=s'  => \$GetOptions_H{"--midthresh"},
-                'smallthresh=s'=> \$GetOptions_H{"--smallthresh"},
-                'hmmonly=s'    => \$GetOptions_H{"--hmmonly"},
-# options related to parallelization
-                'local'        => \$GetOptions_H{"--local"}, 
-                'errcheck'     => \$GetOptions_H{"--errcheck"},  
-                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
-                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"}, 
-                'wait=s'       => \$GetOptions_H{"--wait"},
-# options for skipping/adding optional stages
-                'doalign'      => \$GetOptions_H{"--doalign"},
                 'mxsize=s'     => \$GetOptions_H{"--mxsize"},
-# options that affect tabular output file
-                'tblfirst'     => \$GetOptions_H{"--tblfirst"},
-                'tblnocomp'    => \$GetOptions_H{"--tblnocomp"},
+                'tau=s'        => \$GetOptions_H{"--tau"},
+                'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
+                'nosub'        => \$GetOptions_H{"--nosub"},
+                'noglocal'     => \$GetOptions_H{"--noglocal"},
+# options related to parallelization
+                'p'            => \$GetOptions_H{"-p"},
+                'q=s'          => \$GetOptions_H{"-q"},
+                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
+                'wait=s'       => \$GetOptions_H{"--wait"},
+                'errcheck'     => \$GetOptions_H{"--errcheck"},
+                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"},
 # optional output files
-                'mdlinfo'      => \$GetOptions_H{"--mdlinfo"},
                 'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
+                'sgminfo'      => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'      => \$GetOptions_H{"--seqinfo"}, 
-                'errinfo'      => \$GetOptions_H{"--errinfo"},
+                'altinfo'      => \$GetOptions_H{"--altinfo"},
 # options for skipping stages, using earlier results
-                'skipedirect'   => \$GetOptions_H{"--skipedirect"},
-                'skipfetch'     => \$GetOptions_H{"--skipfetch"},
-                'skipscan'      => \$GetOptions_H{"--skipscan"},
-                'skiptranslate' => \$GetOptions_H{"--skiptranslate"}, 
-# options for alternative origin detection method
-                'aorgmodel=s'   => \$GetOptions_H{"--aorgmodel"},
-                'aorgstart=s'   => \$GetOptions_H{"--aorgstart"},
-                'aorglen=s'     => \$GetOptions_H{"--aorglen"},
-                'aorgoffset=s'  => \$GetOptions_H{"--aorgoffset"}, 
-                'aorgethresh=s' => \$GetOptions_H{"--aorgethresh"}, 
-                'aorgppthresh=s'=> \$GetOptions_H{"--aorgppthresh"});
+                'skipalign'     => \$GetOptions_H{"--skipalign"});
 
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
-my $executable    = $0;
-my $date          = scalar localtime();
-my $version       = "0.45";
-my $releasedate   = "Feb 2019";
+my $total_seconds     = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $executable        = $0;
+my $date              = scalar localtime();
+my $version           = "0.9";
+my $model_version_str = "0p9"; 
+my $qsub_version_str  = "0p9"; 
+my $releasedate       = "Apr 2019";
+my $pkgname           = "dnaorg";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -384,20 +293,11 @@ $| = 1;
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+  ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
 }
-
-# check that number of command line args is correct
-if(scalar(@ARGV) != 1) {   
-  print "Incorrect number of command line arguments.\n";
-  print $usage;
-  print "\nTo see more help on available options, do dnaorg_annotate.pl -h\n\n";
-  exit(1);
-}
-my ($listfile) = (@ARGV);
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -405,216 +305,91 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-# validate origin sequence if necessary
-my $origin_offset = undef;
-my $origin_seq = undef;
-if(opt_IsUsed("--origin", \%opt_HH)) { 
-  $origin_seq = opt_Get("--origin", \%opt_HH);
-  $origin_seq =~ tr/a-z/A-Z/; # capitalize origin seq
-  $origin_offset = validate_origin_seq($origin_seq);
-  $origin_seq =~ s/\|//; # remove the single "|"
+#######################################
+# deal with --alt_list option, if used
+#######################################
+# initialize error related data structures, we have to do this early, so we can deal with --alt_list opition
+my %alt_info_HH = (); 
+dng_AlertInfoInitialize(\%alt_info_HH, undef);
+if(opt_IsUsed("--alt_list",\%opt_HH)) { 
+  alert_list_option(\%alt_info_HH);
+  exit 0;
 }
 
-# validate alternative origin detection options if necessary
-if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
-  my $aorg_model  = opt_Get("--aorgmodel", \%opt_HH);
-  if(! -s $aorg_model) { 
-    die "ERROR with --aorgmodel <s>, $aorg_model does not exist or is empty"; 
-  }    
-  my $aorg_offset = opt_Get("--aorgoffset", \%opt_HH);
-  my $aorg_len    = opt_Get("--aorglen",  \%opt_HH);
-  if(($aorg_offset <= 0) || ($aorg_offset > $aorg_len)) { 
-    die "ERROR with --aorgoffset <n>, <n> must be greater than 0 and less than or equal to <n> from --aorglen";
-  }
+# check that number of command line args is correct
+if(scalar(@ARGV) != 2) {   
+  print "Incorrect number of command line arguments.\n";
+  print $usage;
+  print "\nTo see more help on available options, do dnaorg_annotate.pl -h\n\n";
+  exit(1);
 }
 
-my $dir_build  = opt_Get("--dirbuild", \%opt_HH);  # this will be undefined unless --dirbuild set on cmdline
-my $dir_out    = opt_Get("--dirout",   \%opt_HH);  # this will be undefined unless --dirout set on cmdline
-my $do_matpept = opt_IsOn("--matpept", \%opt_HH);  # this will be '0' unless --matpept set on cmdline 
+my ($fa_file, $dir) = (@ARGV);
 
-if(defined $dir_out) { 
-  $dir_out =~ s/\/$//; # remove final '/' if there is one
-}
-if(defined $dir_build) { 
-  $dir_build =~ s/\/$//; # remove final '/' if there is one
-}
-
-# if --infasta used, $listfile is actually a fasta file
-my $infasta_file = undef;
-my $do_infasta = 0;
-if(opt_Get("--infasta", \%opt_HH)) { 
-  $infasta_file = $listfile;
-  $listfile = undef;
-  $do_infasta = 1;
-}
-
-# if --smallthresh or --midthresh or --hmmonly used, validate that the thresholds make sense:
-# small < mid < df < hmmonly
-if(opt_IsUsed("--smallthresh", \%opt_HH)) { 
-  if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-    if(opt_Get("--smallthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
-      die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                  opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-    }
+############################################################
+# option checks that are too sophisticated for epn-options
+############################################################
+# enforce that lowscthresh >= vlowscthresh
+if(opt_IsUsed("--lowscthresh",\%opt_HH) || opt_IsUsed("--vlowscthresh",\%opt_HH)) { 
+  if(opt_Get("--lowscthresh",\%opt_HH) < opt_Get("--vlowscthresh",\%opt_HH)) { 
+    die sprintf("ERROR, with --lowscthresh <x> and --vlowscthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
+                opt_Get("--lowscthresh",\%opt_HH), opt_Get("--vlowscthresh",\%opt_HH)); 
   }
 }
-if(opt_IsUsed("--midthresh", \%opt_HH)) { 
-  if(opt_Get("--midthresh", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --midthresh <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--midthresh", \%opt_HH));
-  }
-  if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-    if(opt_Get("--midthresh", \%opt_HH) >= opt_Get("--hmmonly", \%opt_HH)) { 
-      die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                  opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-    }
-  }
-}
-if(opt_IsUsed("--hmmonly", \%opt_HH)) { 
-  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--smallthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --smallthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--smallthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
-  }
-  if(opt_Get("--hmmonly", \%opt_HH) < opt_Get("--midthresh", \%opt_HH)) { 
-    die sprintf("ERROR, with --midthresh <x> and --hmmonly <y>, <x> must be < <y>, got <x> = %d and <y> = %d\n", 
-                opt_Get("--midthresh", \%opt_HH), opt_Get("--hmmonly", \%opt_HH));
+# enforce that lowdiffthresh >= vlowdiffthresh
+if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt_HH)) { 
+  if(opt_Get("--lowdiffthresh",\%opt_HH) < opt_Get("--vlowdiffthresh",\%opt_HH)) { 
+    die sprintf("ERROR, with --lowdiffthresh <x> and --vlowdiffthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
+                opt_Get("--lowdiffthresh",\%opt_HH), opt_Get("--vlowdiffthresh",\%opt_HH)); 
   }
 }
 
-###############
-# Preliminaries
-###############
-# first, parse the list file, we need to do this first because we need
-# to know what the reference accession <refaccn> is to check if the
-# directory <refaccn> exists
-my $cmd;               # a command to run with runCommand()
+# enforce that --alt_pass and --alt_fail options are valid
+if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
+  alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
+}
+
+#############################
+# create the output directory
+#############################
+my $cmd;               # a command to run with utl_RunCommand()
 my @early_cmd_A = ();  # array of commands we run before our log file is opened
-my %seq_info_HA = ();  # hash of arrays, values are arrays with index range [0..$nseq-1];
-                       # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
-                       # $seq_info_HA{"accn_name"}[0] is our reference accession
-@{$seq_info_HA{"accn_name"}} = ();
 
-my %infasta_ref_seq_info_HA = ();  # hash of arrays, for reference sequence information. 
-                                   # only used if --infasta used. Actually only stores information
-                                   # on 1 sequence, so could be just a hash, but it is a hash of 
-                                   # single element arrays so that it is the same type of data
-                                   # structure as %seq_info_HA so we can pass it into 
-                                   # functions (namely wrapperGetInfoUsingEdirect) in place
-                                   # of %seq_info_HA.
-                                   # 1st dim keys are "seq_name", "accn_name", "seq_len", "accn_len".
-                                   # $infasta_ref_seq_info_HA{"accn_name"}[0] is our reference accession
-
-my $nseq = 0;
-my $ref_accn = undef;
-if(! defined $infasta_file) { # default mode
-  parseListFile($listfile, 1, $seq_info_HA{"accn_name"}, undef); # 1 
-  $nseq = scalar(@{$seq_info_HA{"accn_name"}});
-  $ref_accn = $seq_info_HA{"accn_name"}[0];
+if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if(-d $dir) { 
+  $cmd = "rm -rf $dir";
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
-else { # --infasta used
-  if(! (opt_Get("--refaccn", \%opt_HH))) { 
-    # we should never get here, because epn-options.pm should have enforced that
-    # --refaccn and --infasta were both used if one was, but we do a second check
-    # here just to make sure
-    DNAORG_FAIL("ERROR, --infasta requires --refaccn", 1, undef);
-  }
-  else { 
-    $ref_accn = opt_Get("--refaccn", \%opt_HH);
-    stripVersion(\$ref_accn);
-    # initialize the sequence info hash of arrays
-  }
+if(-e $dir) { 
+  $cmd = "rm $dir";
+ if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
-# determine the directory in which dnaorg_build files are in ($dir_build)
-# it will already be defined if --dirbuild was used
-if(! defined $dir_build) { 
-  $dir_build = $ref_accn;
-  if(! -d $dir_build) {
-    DNAORG_FAIL(sprintf("ERROR, directory $dir_build (%s) does not exist.\nDid you run \"dnaorg_build.pl $dir_build\" yet? If not, you need to do that first.", opt_IsUsed("--refaccn", \%opt_HH) ? "specified with --refaccn" : "first accession from in $listfile"), 1, undef);
-  }
-}
-else { # --dirbuild was used on the command line
-  # currently --dirbuild requires --dirout (enforced by epn-options.pm) but we double
-  # check that if --dirbuild is on, then --dirout must be too here (just to be safe)
-  if(! defined $dir_out) { 
-    DNAORG_FAIL("ERROR the --dirbuild option requires the --dirout option be used also", 1, undef);
-  }
-  if(! -d $dir_build) {
-    DNAORG_FAIL("ERROR, directory $dir_build (specified with --dirbuild) does not exist.\nDid you run \"dnaorg_build.pl --dirout $dir_build\" yet? If not, you need to do that first.", 1, undef);
-  }
-}
+# create the dir
+$cmd = "mkdir $dir";
+utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+push(@early_cmd_A, $cmd);
 
-# determine the directory we'll put output files in,
-# it will already be defined if --dirout was used
-if(! defined $dir_out) { 
-  $dir_out = $ref_accn;
-}
-else { 
-  # --dirout was used to specify $dir_out
-  # if it already exists (and it's not $ref_accn and it's not $dir_build) 
-  # check if one of the skip options was used (begin with --skip) 
-  # if so, try to use it. Else tell user to either rerun with -f
-  # or delete it.
-  if(($dir_out ne $ref_accn) && ($dir_out ne $dir_build)) { 
-    if(-d $dir_out) { 
-      $cmd = "rm -rf $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-        runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); 
-      }
-      else { # dirout exists but -f not used
-        if(! ((opt_IsUsed("--skipedirect",   \%opt_HH)) || 
-              (opt_IsUsed("--skipfetch",     \%opt_HH)) || 
-              (opt_IsUsed("--skipscan",      \%opt_HH)) || 
-              (opt_IsUsed("--skiptranslate", \%opt_HH)))) { 
-          die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
-        }
-        # if a --skip option is used, we just press on
-      }
-    }
-    elsif(-e $dir_out) { 
-      $cmd = "rm $dir_out";
-      if(opt_Get("-f", \%opt_HH)) { runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd); }
-      else                        { die "ERROR a file named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; }
-    }
-  }
-}
-# if $dir_out does not exist, create it
-if(! -d $dir_out) {
-  $cmd = "mkdir $dir_out";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), undef); push(@early_cmd_A, $cmd);
-}
-
-my $dir_out_tail   = $dir_out;
-my $dir_build_tail = $dir_build;
-$dir_out_tail   =~ s/^.+\///; # remove all but last dir
-$dir_build_tail =~ s/^.+\///; # remove all but last dir
-my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_annotate";
-my $build_root = $dir_build . "/" . $dir_build_tail . ".dnaorg_build";
+my $dir_tail = $dir;
+$dir_tail =~ s/^.+\///; # remove all but last dir
+my $out_root = $dir . "/" . $dir_tail . ".dnaorg_annotate";
 
 #############################################
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ();
-my @arg_A      = ();
-
-if(defined $listfile) { 
-  push(@arg_desc_A, "file with list of accessions");
-  push(@arg_A, $listfile);
-}
-elsif(defined $infasta_file) { 
-  push(@arg_desc_A, "fasta file with sequences to annotate (--infasta)");
-  push(@arg_A, $infasta_file);
-}
-else { 
-  DNAORG_FAIL("ERROR, both listfile and infasta_file are undefined...", 1, undef);
-}
-
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+my @arg_desc_A = ("sequence file", "output directory");
+my @arg_A      = ($fa_file, $dir);
+my %extra_H    = ();
+$extra_H{"\$DNAORGSCRIPTSDIR"}  = $env_dnaorg_scripts_dir;
+$extra_H{"\$DNAORGMODELDIR"}    = $env_dnaorg_model_dir;
+$extra_H{"\$DNAORGINFERNALDIR"} = $env_dnaorg_infernal_dir;
+$extra_H{"\$DNAORGEASELDIR"}    = $env_dnaorg_easel_dir;
+$extra_H{"\$DNAORGBIOEASELDIR"} = $env_dnaorg_bioeasel_dir;
+$extra_H{"\$DNAORGBLASTDIR"}    = $env_dnaorg_blast_dir;
+ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -631,40 +406,28 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "list": file with list of all output files created
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log",  $out_root . ".log",  1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
+my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
-# open gap info files, if --doalign
-if(opt_Get("--doalign", \%opt_HH))  { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_perseq_all",     $out_root . ".gap.perseq-all.txt",     1, "Per sequence gap information (all gaps)");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_perseq_not3",    $out_root . ".gap.perseq-not3.txt",    1, "Per sequence gap information (gaps not a multiple of 3)");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_perseq_special", $out_root . ".gap.perseq-special.txt", 1, "Per sequence gap information (special gaps)");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_pergap_all",     $out_root . ".gap.pergap-all.txt",     1, "Per gap information (all gaps)");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_pergap_not3",    $out_root . ".gap.pergap-not3.txt",    1, "Per gap information (gaps not a multiple of 3)");
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "gap_pergap_special", $out_root . ".gap.pergap-special.txt", 1, "Per gap information (special gaps)");
-}
-
 # open optional output files
-if(opt_Get("--mdlinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "mdlinfo", $out_root . ".mdlinfo", 1, "Model information (created due to --mdlinfo)");
-}
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
 }
-if(opt_Get("--seqinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "seqinfo", $out_root . ".seqinfo", 1, "Sequence information (created due to --seqinfo)");
+if(opt_Get("--sgminfo", \%opt_HH)) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgminfo", $out_root . ".sgminfo", 1, "Segment information (created due to --sgminfo)");
 }
-if(opt_Get("--errinfo", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "errinfo", $out_root . ".errinfo", 1, "Error information (created due to --errinfo)");
+if(opt_Get("--altinfo", \%opt_HH)) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "altinfo", $out_root . ".altinfo", 1, "Alert information (created due to --altinfo)");
 }
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -672,762 +435,442 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-##############################################
-# parse the optional input files, if necessary
-##############################################
-# --matpept <f>
-my @cds2pmatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of primary matpept indices that comprise this CDS
-my @cds2amatpept_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of all     matpept indices that comprise this CDS
-if($do_matpept) { 
-  parseMatPeptSpecFile(opt_Get("--matpept", \%opt_HH), \@cds2pmatpept_AA, \@cds2amatpept_AA, $ofile_info_HH{"FH"});
+my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
+
+# make sure the sequence, CM, modelinfo, qsubinfo files exist
+utl_FileValidateExistsAndNonEmpty($fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+
+my $df_model_dir = $env_dnaorg_model_dir;
+
+my $df_cm_file   = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".cm";
+my $cm_file      = undef;
+if(! opt_IsUsed("-m", \%opt_HH)) { $cm_file = $df_cm_file; }
+else                             { $cm_file = opt_Get("-m", \%opt_HH); }
+if(! opt_IsUsed("-m", \%opt_HH)) {
+  utl_FileValidateExistsAndNonEmpty($cm_file, "default CM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
-# --specstart <f>
-my @specstart_AA = (); # 1st dim: cds index (-1, off-by-one), 2nd dim: value array of allowed start codons for this CDS
-if(opt_IsOn("--specstart", \%opt_HH)) { 
-  parseSpecStartFile(opt_Get("--specstart", \%opt_HH), \@specstart_AA, $ofile_info_HH{"FH"});
+else { # -m used on the command line
+  utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
+  utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
-# --classerrors <f>
-my $do_class_errors = (opt_IsUsed("--classerrors", \%opt_HH)) ? 1 : 0;
-my $class_errors_file      = undef;
-my %class_errors_per_seq_H = ();
-if($do_class_errors) { 
-  $class_errors_file = opt_Get("--classerrors", \%opt_HH);
-  if(! -s $class_errors_file) { 
-    die "ERROR file $class_errors_file specified with --classerrors does not exist or is empty"; 
+my $df_modelinfo_file = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".modelinfo";
+my $modelinfo_file = undef;
+if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
+else                             { $modelinfo_file = opt_Get("-i", \%opt_HH); }
+if(! opt_IsUsed("-i", \%opt_HH)) {
+  utl_FileValidateExistsAndNonEmpty($modelinfo_file, "default model info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+else { # -i used on the command line
+  utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+
+my $qsubinfo_file    = undef;
+my $df_qsubinfo_file = $env_dnaorg_scripts_dir . "/" . "dnaorg." . $qsub_version_str . ".qsubinfo";
+if(! opt_IsUsed("-q", \%opt_HH)) { $qsubinfo_file = $df_qsubinfo_file; }
+else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
+
+if(opt_IsUsed("-p", \%opt_HH)) { 
+  # check for existence of qsub info file
+  if(! opt_IsUsed("-q", \%opt_HH)) {
+    utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "default qsub info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
-  parse_class_errors_list_file($class_errors_file, \%class_errors_per_seq_H, $ofile_info_HH{"FH"});
-}
-
-###################################################
-# make sure the required executables are executable
-###################################################
-my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmscan"}            = $inf_exec_dir   . "cmscan";
-$execs_H{"cmalign"}           = $inf_exec_dir   . "cmalign";
-$execs_H{"hmmbuild"}          = $hmmer_exec_dir . "hmmbuild";
-$execs_H{"hmmalign"}          = $hmmer_exec_dir . "hmmalign";
-$execs_H{"esl-reformat"}      = $esl_exec_dir   . "esl-reformat";
-$execs_H{"esl_fetch_cds"}     = $esl_fetch_cds;
-$execs_H{"esl-epn-translate"} = $esl_epn_translate;
-$execs_H{"esl-ssplit"}        = $esl_ssplit;
-$execs_H{"blastx"}            = $blast_exec_dir . "blastx";
-$execs_H{"parse_blastx"}      = $dnaorgdir . "/dnaorg_scripts/parse_blastx.pl";
-validateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
-
-###########################################################################
-# Step 0. Preliminaries:
-#         - Read the dnaorg_build.pl consopts file and make sure that it
-#           agrees with the options set here.
-#         - Initialize error-related data structures.
-#            
-###########################################################################
-my $progress_w = 85; # the width of the left hand column in our progress output, hard-coded
-my $start_secs = outputProgressPrior("Verifying options are consistent with options used for dnaorg_build.pl", $progress_w, $log_FH, *STDOUT);
-validate_options_are_consistent_with_dnaorg_build($build_root . ".consopts", \%opt_HH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-# initialize error related data structures
-my %err_info_HA = (); 
-initializeHardCodedErrorInfoHash(\%err_info_HA, $ofile_info_HH{"FH"});
-
-###########################################################################
-# Step 1. Gather and process information on reference genome using Edirect.
-###########################################################################
-my $progress_str = sprintf("Gathering information on %d sequences using edirect", $nseq);
-if(opt_Get("--skipedirect", \%opt_HH)) { 
-  $progress_str = sprintf("Processing information on %d sequences fetched earlier using edirect", $nseq);
-}
-elsif(opt_Get("--infasta", \%opt_HH)) { 
-  $progress_str = "Processing input fasta file";
-}
-$start_secs = outputProgressPrior($progress_str, $progress_w, $log_FH, *STDOUT);
-
-my %cds_tbl_HHA = ();   # CDS data from .cds.tbl file, hash of hashes of arrays, 
-                        # 1D: key: accession
-                        # 2D: key: column name in gene ftable file
-                        # 3D: per-row values for each column
-my %mp_tbl_HHA = ();    # mat_peptide data from .matpept.tbl file, hash of hashes of arrays, 
-                        # 1D: key: accession
-                        # 2D: key: column name in gene ftable file
-                        # 3D: per-row values for each column
-my %xfeat_tbl_HHHA = (); # xfeat (eXtra feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-my %dfeat_tbl_HHHA = (); # dfeat (Duplicate feature) data from feature table file, hash of hash of hashes of arrays
-                         # 1D: qualifier name, e.g. 'gene'
-                         # 2D: key: accession
-                         # 3D: key: column name in gene ftable file
-                         # 4D: per-row values for each column
-
-# parse --xfeat option if necessary and initiate hash of hash of arrays for each comma separated value
-my $do_xfeat = 0;
-if(opt_IsUsed("--xfeat", \%opt_HH)) { 
-  $do_xfeat = 1;
-  my $xfeat_str = opt_Get("--xfeat", \%opt_HH);
-  foreach my $xfeat (split(",", $xfeat_str)) { 
-    %{$xfeat_tbl_HHHA{$xfeat}} = ();
+  else { # -q used on the command line
+    utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, \%{$ofile_info_HH{"FH"}}); # 1 says: die if it doesn't exist or is empty
   }
 }
-# parse --dfeat option if necessary
-my $do_dfeat = 0;
-if(opt_IsUsed("--dfeat", \%opt_HH)) { 
-  $do_dfeat = 1;
-  my $dfeat_str = opt_Get("--dfeat", \%opt_HH);
-  foreach my $dfeat (split(",", $dfeat_str)) { 
-    %{$dfeat_tbl_HHHA{$dfeat}} = ();
-    if(exists $xfeat_tbl_HHHA{$dfeat}) {
-      DNAORG_FAIL("ERROR, with --xfeat <s1> and --dfeat <s2>, no qualifier names can be in common between <s1> and <s2>, found $dfeat", 1, $ofile_info_HH{"FH"});
+# make sure the blastdb directory exists
+my $blastdb_dir = (opt_IsUsed("-b", \%opt_HH)) ? opt_Get("-b", \%opt_HH) : $df_model_dir;
+$blastdb_dir =~ s/\/$//; # remove trailing '/'
+if(! -d $blastdb_dir) { 
+  ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
+                     opt_IsUsed("-b", \%opt_HH) ? "" : "default", 
+                     opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), "dnaorg", 1, $FH_HR);
+}
+# we check for existence of blast DB files after we parse the model info file
+
+###########################
+# Parse the model info file
+###########################
+my @mdl_info_AH  = (); # array of hashes with model info
+my %ftr_info_HAH = (); # hash of array of hashes with feature info 
+my %sgm_info_HAH = (); # hash of array of hashes with segment info 
+
+utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file", undef, 1, $FH_HR);
+dng_ModelInfoFileParse($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+
+# validate %mdl_info_AH
+my @mdl_reqd_keys_A = ("name", "cmfile", "length");
+my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $modelinfo_file", $FH_HR);
+my $mdl_idx;
+
+# if --group or --subgroup used, make sure at least one model has that group/subgroup
+my $exp_group    = opt_Get("--group", \%opt_HH);
+my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
+if(opt_IsUsed("--group", \%opt_HH)) { 
+  if(utl_AHCountKeyValue(\@mdl_info_AH, "group", $exp_group) == 0) { 
+    ofile_FAIL("ERROR with --group $exp_group, did not read any models with group defined as $exp_group in model info file:\n$modelinfo_file", "dnaorg", 1, $FH_HR);
+  }
+}
+if(opt_IsUsed("--subgroup", \%opt_HH)) { 
+  if(! defined $exp_group) {
+    # opt_ValidateSet() will have enforced --subgroup requires --group, but we check again 
+    ofile_FAIL("ERROR with --subgroup, the --group option must also be used", "dnaorg", 1, $FH_HR);
+  }
+  if(utl_AHCountKeyValue(\@mdl_info_AH, "subgroup", $exp_subgroup) == 0) { 
+    ofile_FAIL("ERROR with --group $exp_group and --subgroup $exp_subgroup,\ndid not read any models with group defined as $exp_group and subgroup defined as $exp_subgroup in model info file:\n$modelinfo_file", "dnaorg", 1, $FH_HR);
+  }
+}
+
+my @ftr_reqd_keys_A = ("type", "coords");
+for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
+  dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+  dng_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+}
+
+# if there are any CDS features, validate that the BLAST db files we need exist
+for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+  if($ncds > 0) { 
+    if(! defined $mdl_info_AH[$mdl_idx]{"blastdb"}) { 
+      ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$modelinfo_file\n", "dnaorg", 1, $FH_HR);
     }
-  }
-}
-
-# Call the wrapper function that does the following:
-#  1) creates the edirect .mat_peptide file, if necessary
-#  2) creates the edirect .ftable file
-#  3) creates the length file
-#  4) parses the edirect .mat_peptide file, if necessary
-#  5) parses the edirect .ftable file
-#  6) parses the length file
-
-my $orig_infasta_file = $infasta_file;
-my $outfasta_file     = (opt_Get("-c", \%opt_HH)) ? $out_root . ".fg.fa" : undef;
-if(defined $infasta_file) { 
-  # note that we pass in a reference to %ref_seq_info_HA to wrapperGetInfoUsingEdirect()
-  # and *not* a reference to %seq_info_HA. We will use %infasta_ref_seq_info_HA to 
-  # store information on the reference sequence only.
-  wrapperGetInfoUsingEdirect(undef, $ref_accn, $build_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%infasta_ref_seq_info_HA, \%ofile_info_HH,
-                             \%opt_HH, $ofile_info_HH{"FH"}); 
-  $nseq = process_input_fasta_file($infasta_file, $outfasta_file, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
-  if(defined $outfasta_file) { # this will be true if -c
-    $infasta_file = $outfasta_file; 
-  }
-}
-else { # --infasta not used (default)
-  wrapperGetInfoUsingEdirect($listfile, $ref_accn, $out_root, \%cds_tbl_HHA, \%mp_tbl_HHA, \%xfeat_tbl_HHHA, \%dfeat_tbl_HHHA, \%seq_info_HA, \%ofile_info_HH,
-                             \%opt_HH, $ofile_info_HH{"FH"}); 
-}
-
-if($do_matpept) {  
-  # validate the CDS:mat_peptide relationships that we read from the $matpept input file
-  matpeptValidateCdsRelationships(\@cds2pmatpept_AA, \%{$cds_tbl_HHA{$ref_accn}}, \%{$mp_tbl_HHA{$ref_accn}}, opt_Get("-c", \%opt_HH), $seq_info_HA{"accn_len"}[0], $ofile_info_HH{"FH"});
-}
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#########################################################
-# Step 2. Fetch and process the reference genome sequence
-##########################################################
-my $step_desc = opt_Get("--skipfetch", \%opt_HH) ? "Processing the reference genome from previously fetched sequence file" : "Fetching all sequences and processing the reference genome";
-$start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
-my %mdl_info_HA = ();  # hash of arrays, values are arrays [0..$nmdl-1];
-                       # see dnaorg.pm::validateModelInfoHashIsComplete() for list of all keys
-                       # filled in wrapperFetchAndProcessReferenceSequence()
-my %ftr_info_HA = ();  # hash of arrays, values are arrays [0..$nftr-1], 
-                       # see dnaorg.pm::validateFeatureInfoHashIsComplete() for list of all keys
-                       # filled in wrapperFetchAndProcessReferenceSequence()
-my $sqfile = undef;    # pointer to the Bio::Easel::SqFile object we'll open in wrapperFetchAllSequencesAndProcessReferenceSequence()
-
-# Call the wrapper function that does the following:
-#   1) fetches the sequences listed in @{$seq_info_HAR->{"accn_name"} into a fasta file 
-#      and indexes that fasta file, the reference sequence is $seq_info_HAR->{"accn_name"}[0].
-#   2) determines information for each feature (strand, length, coordinates, product) in the reference sequence
-#   3) determines type of each reference sequence feature ('cds-mp', 'cds-notmp', or 'mp')
-#   4) fetches the reference sequence feature and populates information on the models and features
-wrapperFetchAllSequencesAndProcessReferenceSequence(\%execs_H, \$sqfile, $out_root, $build_root, 
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_name"}[0] : undef,
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"accn_len"}[0]  : undef,
-                                                    ($do_infasta) ? $infasta_ref_seq_info_HA{"seq_len"}[0]   : undef,
-                                                    ($do_infasta) ? $infasta_file                            : undef,
-                                                    \%cds_tbl_HHA,
-                                                    ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                                    ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
-                                                    ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
-                                                    ($do_matpept) ? \@cds2pmatpept_AA : undef, 
-                                                    ($do_matpept) ? \@cds2amatpept_AA : undef, 
-                                                    \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, 
-                                                    \%opt_HH, \%ofile_info_HH);
-
-# verify our model, feature, and sequence info hashes are complete, 
-# if validateFeatureInfoHashIsComplete() fails then the program will exit with an error message
-my $nftr = validateFeatureInfoHashIsComplete  (\%ftr_info_HA, undef, $ofile_info_HH{"FH"}); # nftr: number of features
-my $nmdl = validateModelInfoHashIsComplete    (\%mdl_info_HA, undef, $ofile_info_HH{"FH"}); # nmdl: number of homology models
-if($nseq != validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"})) { 
-  if(defined $listfile) { 
-    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $listfile (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), $ofile_info_HH{"FH"});
-    # $seq_info_HA won't have any duplicate accessions because it was initially filled by parseListFile()
-    # which dies if any duplicates are found. However, if somehow there were duplicates in %seq_info_HA,
-    # validateSequenceInfoHashComplete() will die in error.
-  }
-  else { # --infasta enabled 
-    DNAORG_FAIL(sprintf("ERROR, number of stored sequences (%d) in seq_info_HA differs from number of accessions read from $orig_infasta_file (%d)", validateSequenceInfoHashIsComplete(\%seq_info_HA, undef, \%opt_HH, $ofile_info_HH{"FH"}), $nseq), 1, $ofile_info_HH{"FH"});
-  }
-}    
-# also verify that we have all the blastx db files that we need
-validateBlastDbExists($build_root . ".prot.fa", undef);
-for(my $tmp_f = 0; $tmp_f < $nftr; $tmp_f++) { 
-  if(($ftr_info_HA{"type"}[$tmp_f] eq "cds-mp") || 
-     ($ftr_info_HA{"type"}[$tmp_f] eq "cds-notmp")) { 
-    validateBlastDbExists(($build_root . ".f" . $tmp_f . ".prot.fa"), $ofile_info_HH{"FH"});
-  }
-}
-
-# now that we have the ftr_info_HA filled, we can initialize the error data structures
-my @err_ftr_instances_AHH = ();
-my %err_seq_instances_HH = ();
-error_instances_initialize_AHH(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-##############################################################################
-# Step 3. Verify we have the model files that we need to do homology searches
-##############################################################################
-my @model_file_A = (); # array of the model files we need
-for(my $i = 0; $i < $nmdl; $i++) { 
-  my $model_file = $build_root . ".$i.cm";
-  if(! -s $model_file) { 
-    DNAORG_FAIL("ERROR CM file $model_file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
-  }
-  for my $suffix ("i1m", "i1i", "i1f", "i1p") { 
-    my $file = $model_file . "." . $suffix;
-    if(! -s $file) { 
-      DNAORG_FAIL("ERROR CM index file $file should exist but it does not. Did you (successfully) run dnaorg_build.pl?", 1, $ofile_info_HH{"FH"});
+    my $blastdb = $blastdb_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
+    foreach my $sfx ("", ".phr", ".pin", ".psq") { 
+      if(! -s ($blastdb . $sfx)) { 
+        ofile_FAIL("ERROR, required blastdb file $blastdb.$sfx for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", "dnaorg", 1, $FH_HR);
+      }
     }
+    $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastdb;
   }
-  # set mdl_info_HAR->{"cmfile"}[$i]
-  $mdl_info_HA{"cmfile"}[$i] = $model_file;
 }
 
-# Validate the CMs we are about to use to annotate were actually created
-# for the current reference sequence and annotation (same accession
-# and features (CDS, etc.)).
-# 
-# One subtle case occurs when the accession name gets changed because
-# a non-RefSeq sequence got promoted to become a RefSeq; in that
-# RefSeq promotion case, the accession name will change and the script
-# has to be rerun.
-if(defined $infasta_file) { 
-  $start_secs = outputProgressPrior("Skipping verification that CMs created for current reference $ref_accn (--infasta)", $progress_w, $log_FH, *STDOUT);
-}
-else { 
-  $start_secs = outputProgressPrior("Verifying CMs were created for current reference $ref_accn", $progress_w, $log_FH, *STDOUT);
-  validate_cms_built_from_reference(\%mdl_info_HA, \%opt_HH, \%ofile_info_HH);
-}
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+##################################
+# Validate the input sequence file
+##################################
+my $seqstat_file = $out_root . ".seqstat";
+my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
+my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
+utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+if(-e $fa_file . ".ssi") { unlink $fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, undef, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for input fasta file");
+my $tot_len_nt = sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
+my $nseq = scalar(@seq_name_A);
+#my %seq_idx_H = ();  # key: sequence name <sqname>, value index [0..$nseq-1] of <sqname> in @seq_name_A
+#utl_IdxHFromA(\%seq_idx_H, \@seq_name_A, undef, $FH_HR);
 
-
-###################################################################
-# Step 4. (OPTIONAL) Search for origin sequences, if --origin used
-###################################################################
-if(opt_IsUsed("--origin", \%opt_HH)) { 
-  $start_secs = outputProgressPrior("Identifying origin sequences", $progress_w, $log_FH, *STDOUT);
-  find_origin_sequences($sqfile, $origin_seq, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"}); 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-#############
-# TEMPORARY alternative origin detection method
-#############
-if(opt_IsUsed("--aorgmodel", \%opt_HH)) { 
-  $start_secs = outputProgressPrior("Identifying origin sequences with profile HMM method", $progress_w, $log_FH, *STDOUT);
-  aorg_find_origin_sequences($ofile_info_HH{"fullpath"}{"fasta"}, $sqfile, \%execs_H, $out_root, \%seq_info_HA, \%err_seq_instances_HH, \%err_info_HA, \%opt_HH, \%ofile_info_HH); 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ####################################
-# Step 5. Perform homology searches
+# Classification: cmsearch round 1
 ####################################
-my $seq_file = $ofile_info_HH{"fullpath"}{"fasta"};
-validateFileExistsAndIsNonEmpty($seq_file, "dnaorg_annotate.pl:main", $ofile_info_HH{"FH"});
+my $r1_cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
+cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmscan_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
 
-my $tblout_file = $out_root . ".tblout"; # concatenated tblout file, created by concatenating all of the individual 
-                                         # tblout files in cmscanOrNhmmscanWrapper()
-if(! opt_Get("--skipscan", \%opt_HH)) { 
-  my $tot_len_nt = sumArray(\@{$seq_info_HA{"seq_len"}});
-  cmscanOrNhmmscanWrapper(\%execs_H, 1, $out_root, $seq_file, $tot_len_nt, $tblout_file, $progress_w, 
-                          $mdl_info_HA{"cmfile"}, $mdl_info_HA{"length"}, \%opt_HH, \%ofile_info_HH);
-} 
+# sort into a new file by score
+my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
+my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
+my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
+my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
+utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-####################################################################
-# Step 6. Parse homology search results into usable data structures
-####################################################################
-$start_secs = outputProgressPrior("Parsing cmscan results", $progress_w, $log_FH, *STDOUT);
+my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r1_sort_tblout_key, $r1_sort_tblout_file, 0, "sorted round 1 search tblout file");
 
-my @mdl_results_AAH = ();  # 1st dim: array, 0..$nmdl-1, one per model
-                           # 2nd dim: array, 0..$nseq-1, one per sequence
-                           # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "p_fid2ref"
-initialize_mdl_results(\@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
+# parse the round 1 sorted tblout file
+my %cls_results_HHH = (); # key 1: sequence name, 
+                          # key 2: ("r1.1","r1.2","r1.eg","r2.bs", "r2.os")
+                          # key 3: ("model", "coords", "bstrand", "score", "bias")
+cmsearch_or_cmscan_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
+                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
 
-# parse the cmscan results
-parse_cmscan_tblout($tblout_file, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+###########################################
+# Coverage determination: cmsearch round 2
+###########################################
+my $mdl_name;               # a model name
+my $seq_name;               # a sequence name
+my @r2_tblout_key_A  = ();  # array of round 2 search tblout keys in %ofile_info_HH
+my @r2_tblout_file_A = ();  # array of round 2 search tblout files 
+my $r2_cmsearch_opts = " --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+if(! opt_Get("-v", \%opt_HH)) { 
+  $r2_cmsearch_opts .= " --noali ";
+}
 
-# calculate the lengths of features
-$start_secs = outputProgressPrior("Calculating predicted feature lengths ", $progress_w, $log_FH, *STDOUT);
-results_calculate_predicted_lengths(\%mdl_info_HA, \%ftr_info_HA, $nseq, \@mdl_results_AAH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+# fill per-model data structures based on classification reesults
+my %mdl_cls_ct_H     = ();  # key is model name $mdl_name, value is number of sequences classified to this model
+my %mdl_seq_name_HA  = ();  # key is model name $mdl_name, array is of seq names that r1 search assigned to model $mdl_name 
+my %mdl_seq_len_H    = ();  # key is model name $mdl_name, value is summed length of all seqs in @{$mdl_seq_HA{$mdl_name}
+populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%seq_len_H, \%cls_results_HHH, undef, undef, undef, 
+                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_cls_ct_H, $FH_HR);
 
-###########################################################################################
-# Step 7. Define names of all per-model and per-feature output files we're about to create
-###########################################################################################
-define_model_and_feature_output_file_names($out_root, \%mdl_info_HA, \%ftr_info_HA, $ofile_info_HH{"FH"});
+# for each model, fetch the sequences classified to it and perform the round 2 search to get sequence coverage
+my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
+    $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
 
-################################################
-# Step 8. Fetch predicted hits into fasta files
-################################################
-$start_secs = outputProgressPrior("Fetching cmscan predicted hits into fasta files", $progress_w, $log_FH, *STDOUT);
-fetch_hits_given_results($sqfile, "predicted", \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    # now run cmsearch against this file
+    cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+                               $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
+    my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
+    push(@r2_tblout_key_A,  $r2_tblout_key);
+    push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
+  }
+}
 
-#########################################################################
-# Step 9. For features modeled by multiple models (e.g. multi-exon CDS)
-#         combine all relevant hits into predicted feature sequences
-#########################################################################
-$start_secs = outputProgressPrior("Combining predicted exons into CDS", $progress_w, $log_FH, *STDOUT);
-my $combined_model_seqname_maxlen = 
-    combine_model_hits("predicted", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-# we need to do this step even if there are no multi-exon CDS, because the function will update
-# an important part of %ftr_info_HA indicating which file subsequent steps should use 
-# (for models with 1 exon, this will be a file created prior to this (that is, we don't 
-# wastefully create a new version of that file for single exon cases.))
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+# sort the round 2 search results, we concatenate all model's tblout files and sort them
+my $r2_sort_tblout_key  = "search.r2.tblout.sort";
+my $r2_sort_tblout_file = $out_root . "." . $r2_sort_tblout_key;
+$sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
+utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "dnaorg", $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
 
-##################################################################################
-# Step 10. For features modeled by multiple other features (e.g. CDS comprised
-#          of multiple mature peptides) combine the individual predicted feature
-#          sequences into single sequences.
-##################################################################################
-$start_secs = outputProgressPrior("Combining predicted mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits("predicted", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+# parse cmsearch round 2 tblout data
+cmsearch_or_cmscan_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
+                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
 
-#########################################################
-# Step 10b. Identify b5e, b5u, b3e, and b3u errors that occur when
-#           alignment does not extend to the model boundary. 
-#           We need to do this before step 12 which sets trc
-#           errors because a sequence with a b5e error cannot
-#           also have a trc error (we purposefully avoid checking
-#           for early stops). 
-#########################################################
-$start_secs = outputProgressPrior("Identifying errors associated with incomplete alignment to the model", $progress_w, $log_FH, *STDOUT);
-mdl_results_add_b5e_b5u_errors(\%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                               \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-ftr_results_add_b5e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+############################
+# Add classification alerts
+############################
+# add classification errors based on cls_results_HHH
+# keep track of seqs to annotate per model
+my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
+                               # key1: sequence name, key2 alert code, value: alert message
+my %cls_output_HH = (); # 2D key with info to output derived from the classification stage
+                        # key1: sequence name, key2 one of: "score", "scpnt", "scdiff", "bstrand", "scov", "mcov", "model1", "model2"
+add_classification_alerts(\%alt_seq_instances_HH, \%seq_len_H, \@mdl_info_AH, \%alt_info_HH, \%cls_results_HHH, \%cls_output_HH, \%opt_HH, \%ofile_info_HH);
 
-#########################################################
-# Step 11. Examine each predicted feature to see if:
-#          - start codon is valid
-#          - where first in-frame stop exists (for all features with valid start codon)
-#          Store the relevant information in @err_ftr_instances_AHH either to output later
-#          or to examine more later.
-#########################################################
-$start_secs = outputProgressPrior("Identifying internal starts/stops in coding sequences", $progress_w, $log_FH, *STDOUT);
-# Translate predicted CDS/mat_peptide sequences using esl-epn-translate to identify 
-# in-frame stop codons.
-wrapper_esl_epn_translate_startstop($execs_H{"esl-epn-translate"}, "predicted", \%ftr_info_HA, (@specstart_AA ? \@specstart_AA : undef), \%err_info_HA, \@err_ftr_instances_AHH, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+##################
+# Align sequences
+##################
+# create per-model files again, because some classification alerts can cause sequences not to be annotated 
+# (e.g. c_mst (minus strand))
+# zero out %mdl_seq_name_HA and %mdl_seq_len_H, we'll refill them 
+%mdl_seq_name_HA = ();
+%mdl_seq_len_H = ();
+my %mdl_ant_ct_H = ();  # key is model name, value is number of sequences annotated with that model
 
-####################################################################
-# Step 12. For all features that have a valid start but no in-frame
-#          stop codon, look for a downstream in-frame stop
-####################################################################
-# TODO: make a function that performs this step
-my %seq_name_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in the @{$seq_name_AR}} array
-getIndexHashForArray($seq_info_HA{"seq_name"}, \%seq_name_index_H, $ofile_info_HH{"FH"});
+populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%seq_len_H, \%cls_results_HHH, \%cls_output_HH, \%alt_info_HH, \%alt_seq_instances_HH,
+                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, $FH_HR);
 
-my $ftr_idx;  # counter over features
-for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-  foreach my $seq_name (keys %{$err_ftr_instances_AHH[$ftr_idx]{"ext"}}) { 
-    my $seq_idx  = $seq_name_index_H{$seq_name};
-    my $seq_len  = $seq_info_HA{"seq_len"}[$seq_idx];   # differs from accn_len when the sequence is circular and dulicated
-    my $accn_len = $seq_info_HA{"accn_len"}[$seq_idx];  # original length of the sequence without any duplication
+# file names and data structures necessary for the alignment stage
+my %stk_file_HA       = ();     # hash of arrays of all stk output files created in cmalignOrNhmmscanWrapper()
+                                # 1D key is $mdl_name
+my @overflow_seq_A    = ();     # array of sequences that fail cmalign b/c required matrix was too big
+my @overflow_mxsize_A = ();     # array of required matrix sizes for each sequence in @overflow_seq_A
+my %ftr_results_HHAH  = ();     # 1st dim: hash, keys are model names
+                                # 2nd dim: hash, keys are sequence names
+                                # 3rd dim: array, 0..$nsgm-1, one per segment
+                                # 4th dim: hash of feature results, keys are:
+                                # keys include "n_start", "n_stop", "n_stop_c", "n_strand", "n_5trunc", "n_3trunc"
+                                # "p_start", "p_stop", "p_strand", "p_query", "p_ins", p_del", "p_trcstop", "p_score"
+my %sgm_results_HHAH  = ();     # 1st dim: hash, keys are model names
+                                # 2nd dim: hash, keys are sequence names
+                                # 3rd dim: array, 0..$nsgm-1, one per segment
+                                # 4th dim: hash, keys are "sstart", "sstop", "mstart", "mstop", "strand", "5seqflush", "3seqflush", "5trunc", "3trunc"
+my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
+                                # key1: sequence name, key2: feature index, key3: alert code, value: alert message
+my %mdl_n_div_H = ();           # key is model name, value is number of n_div alerts thrown for that model in alignment stage
 
-    # determine the model nearest to the end of the current feature, for which we have a prediction
-    my $mdl_idx = undef;  
-    if($ftr_info_HA{"annot_type"}[$ftr_idx] eq "model") { 
-      $mdl_idx = $ftr_info_HA{"final_mdl"}[$ftr_idx];
-      while(! exists $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"}) { 
-        $mdl_idx--;
-        if($mdl_idx < $ftr_info_HA{"first_mdl"}[$ftr_idx]) { 
-          DNAORG_FAIL(sprintf("ERROR ext error exists for $seq_name ftr: %s, but unable to find a model for this feature for which we have a prediction...", 
-                              $ftr_info_HA{"out_tiny"}[$ftr_idx]), 1, $ofile_info_HH{"FH"});
-        }
-      }
-    }
-    elsif($ftr_info_HA{"annot_type"}[$ftr_idx] eq "multifeature") { 
-      my @primary_children_idx_A = ();
-      getPrimaryOrAllChildrenFromFeatureInfo(\%ftr_info_HA, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HH{"FH"});
-      my $child_idx     = scalar(@primary_children_idx_A)-1;
-      my $child_ftr_idx = $primary_children_idx_A[$child_idx];
-      $mdl_idx = $ftr_info_HA{"final_mdl"}[$child_ftr_idx];
-      while(! exists $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"}) { 
-        $mdl_idx--;
-        if($mdl_idx < $ftr_info_HA{"first_mdl"}[$child_ftr_idx]) { 
-          # out of models for this child, decrement child_idx and redefine $child_ftr_idx and $mdl_idx
-          $child_idx--;
-          if($child_idx < 0) { 
-            DNAORG_FAIL(sprintf("ERROR ext error exists for $seq_name ftr: %s, but unable to find a model for this feature for which we have a prediction...", 
-                                $ftr_info_HA{"out_tiny"}[$ftr_idx]), 1, $ofile_info_HH{"FH"});
-          }
-          $child_ftr_idx = $primary_children_idx_A[$child_idx];
-          $mdl_idx = $ftr_info_HA{"final_mdl"}[$child_ftr_idx];
-        }
-      }
-    }
-    #printf("ext error for $seq_name ftr_idx: $ftr_idx %s mdl_idx: $mdl_idx\n", $ftr_info_HA{"out_tiny"}[$ftr_idx]);
+# for each model with seqs to align to, create the sequence file and run cmalign
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
 
-    my $cur_start     = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_start"};
-    my $cur_stop      = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_stop"};
-    my $cur_strand    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"p_strand"};
-    my $cur_cumlen    = $mdl_results_AAH[$mdl_idx][$seq_idx]{"cumlen"};
-    my $offset        = ($cur_cumlen % 3); 
-    my $posn_to_start = $cur_stop;
-    if($cur_strand eq "+") { 
-      $posn_to_start -= $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
-      $posn_to_start++; # one past 
-      # example: start=10 stop=20 length=11 offset=2 posn_to_start=(20-2+1)=19 because first possible downstream in-frame stop starts at posn 19 
-      # (10..12,13..15,16..18,19..21 etc. are in-frame codon positions)
-    }
-    else { # strand is "-";
-      $posn_to_start += $offset; # only want to look for downstream stops in-frame with respect to the START codon, not the predicted STOP
-      $posn_to_start--; # one past 
-      # example: start=20 stop=10 length=11 offset=2 posn_to_start=(10+2-1)=11 because first possible downstream in-frame stop starts at posn 11
-      # (20..18,17..15,14..12,11..9 etc. are in-frame codon positions)
-    }
+    # fetch seqs
+    my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+    my $mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
+    $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
 
-    # check for a special case, where we are not circularized
-    my $at_end_of_seq = 0; # set to 1 if we're at the end of the sequence
-    if($cur_strand eq "+") { 
-      if($posn_to_start > $accn_len) { 
-        if(opt_Get("-c", \%opt_HH)) { 
-          # genome is circularized, we've duplicated it, it's okay that our possible start is > $accn_len at this point, but we want to subtract $accn_len here
-          $posn_to_start -= $accn_len;
-        }
-        elsif(($posn_to_start-1) == $accn_len) { 
-          # a special case
-          $at_end_of_seq = 1;
-        }
-        else {
-          DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $accn_len", 1, $ofile_info_HH{"FH"}); 
-        }
-      }
-    }
-    else { # cur_strand eq "-" 
-      if($posn_to_start <= 0) { 
-        if(opt_Get("-c", \%opt_HH)) { 
-          # genome is circularized, we've duplicated it, it's okay that our possible start is < 0 at this point, but we want to add $accn_len here
-          $posn_to_start += $accn_len;
-        }
-        elsif(($posn_to_start+1) == 1) { 
-          # a special case
-          $at_end_of_seq = 1;
-        }
-        else { 
-          DNAORG_FAIL("ERROR when looking for inframe stop for sequence $seq_name, trying to start search at position $posn_to_start but length of sequence is $accn_len", 1, $ofile_info_HH{"FH"}); 
-        }
-      }
-    }
-    
-    my $ext_corr_stop  = undef; # third position of the next in-frame stop beyond where the stop was expected
-    my $ext_stop_codon = undef; # which stop codon is used as the next in-frame stop 
+    # run cmalign
+    @{$stk_file_HA{$mdl_name}} = ();
+    cmalign_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $out_root, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+                    $mdl_seq_len_H{$mdl_name}, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                    \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
-    if($at_end_of_seq) { 
-      $ext_corr_stop = 0;
-    }
-    else { 
-      ($ext_corr_stop, $ext_stop_codon) = check_for_downstream_stop($sqfile, $seq_name, $posn_to_start, $accn_len, $cur_strand, $ofile_info_HH{"FH"});
-    }
-
-    if($ext_corr_stop == 0) { 
-      # no stop found: nst error
-
-      my $updated_nst_errmsg = "";
-      if($at_end_of_seq) { 
-        my (undef, $out_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $ofile_info_HH{"FH"});
-        $updated_nst_errmsg = "inferred stop codon position (3 nt 3' of $out_stop on $cur_strand strand) is off the end of the sequence";
-      }
-      error_instances_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $updated_nst_errmsg, $ofile_info_HH{"FH"});
-
-      # remove ext error "maybe"
-      error_instances_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ofile_info_HH{"FH"});
-    }
-    else { 
-      # stop found: ext error
-      $ext_corr_stop -= $offset; # account for offset
-      $ext_corr_stop++; # ext_corr_stop is w.r.t to the next posn after the predicted stop (either +1 or -1 depending on strand), we want 
-                        # it to be w.r.t the actual predicted stop, so we have to add one.
-      error_instances_update(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "ext", $seq_name, $ext_corr_stop, $ofile_info_HH{"FH"});
-      # remove nst error "maybe"
-      error_instances_remove_maybe(\@err_ftr_instances_AHH, undef, \%err_info_HA, $ftr_idx, "nst", $seq_name, $ofile_info_HH{"FH"});
+    # add n_div errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
+    $mdl_n_div_H{$mdl_name} = scalar(@overflow_seq_A);
+    if($mdl_n_div_H{$mdl_name} > 0) { 
+      alert_add_n_div(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
     }
   }
 }
+
+###########################
+# Parse cmalign alignments
+###########################
+$start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+    initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
+    initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
+    my %seq_inserts_HH = ();
+    my $cmalign_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
+    my $cmalign_ifile_file  = $out_root . "." . $mdl_name . ".align.ifile";
+
+    # parse the cmalign --ifile file
+    if($mdl_nseq > $mdl_n_div_H{$mdl_name}) { # at least 1 sequence was aligned
+      cmalign_parse_ifile($cmalign_ifile_file, \%seq_inserts_HH, \%{$ofile_info_HH{"FH"}});
+    }
+
+    # parse the cmalign alignments
+    for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
+      if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which will exist for any r1 run that fails
+        cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
+                                                   \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$sgm_results_HHAH{$mdl_name}},
+                                                   \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+      }
+    }
+
+    # fetch the features and add alerts pertaining to CDS and mature peptides
+    fetch_features_and_add_cds_and_mp_alerts($sqfile, $mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                             \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                             \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                                             \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+  }
+}
+
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#########################################################################################
+# Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
+#########################################################################################
+$start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
+
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                    \%opt_HH, \%ofile_info_HH);
+
+    parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                         \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+
+    add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+  }                
+}
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##############################################################
-# Step 13. For all features with either a 'trc' or 'ext'
-#          error, add a new stop position to the results_AAH
-#          data structure the 'corrected' stop. We utilize
-#          the 'cumlen' values in the @mdl_results_AAH to 
-#          simplify this for multi-exon features. 
-#############################################################
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
-}
-if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
-}
-if(exists $ofile_info_HH{"FH"}{"seqinfo"}) { 
-  dumpInfoHashOfArrays("Sequence information (%seq_info_HA)", 0, \%seq_info_HA, $ofile_info_HH{"FH"}{"seqinfo"});
-}
-if(exists $ofile_info_HH{"FH"}{"errinfo"}) { 
-  dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
+# Add b_zft errors for sequences with zero annotated features
+##############################################################
+# add per-sequence 'b_zft' errors (zero annotated features)
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    alert_add_b_zft(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
+                    \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+  }
 }
 
-$start_secs = outputProgressPrior("Correcting homology search stop codon predictions to account for observed stop codons", $progress_w, $log_FH, *STDOUT);
-results_calculate_corrected_stops(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#################################################
-# Step 14. Identify overlap and adjacency errors
-#################################################
-
-$start_secs = outputProgressPrior("Identifying overlap and adjacency errors", $progress_w, $log_FH, *STDOUT);
-results_calculate_overlaps_and_adjacencies(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-####################################################################
-# Step 15. Finalize the mdl_results, and fill ftr_results and check
-#          for incompatible error combinations.
-####################################################################
-my @ftr_results_AAH = (); # 1st dim: array, 0..$ftr_idx..$nftr-1, one per model
-                          # only defined for $ftr_info_HA{"annot_type"}[$ftr_idx] == "multifeature"
-                          # if $ftr_info_HA{"annot_type"}[$ftr_idx] == "model", then $mdl_results_AAH
-                          # contains all the results we need.
-                          # 2nd dim: array, 0..$nseq-1, one per sequence
-                          # 3rd dim: hash, keys are "p_start", "p_stop", "p_strand", "p_5overhang", "p_3overhang", "p_5seqflush", "p_3seqflush", "p_evalue", "fid2ref"
-
-initialize_ftr_results(\@ftr_results_AAH, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-$start_secs = outputProgressPrior("Finalizing annotations and validating error combinations", $progress_w, $log_FH, *STDOUT);
-# report str, nop, b3e, b3u errors, we need to know these before we call ftr_results_calculate()
-mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors($sqfile, \%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                                   \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-# report b3e errors for cds-mp multifeature features
-ftr_results_add_b3e_errors(\%ftr_info_HA, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                           \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-# calculate out_start, out_stop and out_stop_codon values, we need to know some of these before we call ftr_results_calculate()
-mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
-
-# set most of the multi-feature (e.g. cds-mp) errors
-ftr_results_calculate($sqfile, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH,
-                      \%cds_tbl_HHA, \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-
-# recalculate out_start and out_stop and out_stop_codon values, they may have changed for final mature peptides in each CDS
-mdl_results_calculate_out_starts_and_stops($sqfile, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, $ofile_info_HH{"FH"});
-
-# compare our final annotations to GenBank
-mdl_results_compare_to_genbank_annotations(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, 
-                                           \%cds_tbl_HHA, 
-                                           ($do_matpept) ? \%mp_tbl_HHA      : undef, 
-                                           ($do_xfeat)   ? \%xfeat_tbl_HHHA  : undef,
-                                           ($do_dfeat)   ? \%dfeat_tbl_HHHA  : undef,
-                                           \%opt_HH, $ofile_info_HH{"FH"});
-
-# validate all of our error instances by checking for incompatibilities
-# and enforcing required combinations, this function dies if any problems are found
-error_instances_validate_all(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%err_info_HA, \%ftr_info_HA, \%seq_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-# dump results, if debugging
-# dump_results(*STDOUT, \@mdl_results_AAH, \%mdl_info_HA, \%seq_info_HA, \%opt_HH, \%ofile_info_HH);
-
-# dumpArrayOfHashesOfHashes("Error instances (%err_ftr_instances_AHH)", \@err_ftr_instances_AHH, *STDOUT);
-
-#################################################
-# Step 16. Refetch corrected hits into new files
-#################################################
-$start_secs = outputProgressPrior("Fetching corrected matches into fasta files", $progress_w, $log_FH, *STDOUT);
-fetch_hits_given_results($sqfile, "corrected", \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#############################################################################
-# Step 17. For features modeled by multiple models (e.g. multi-exon CDS)
-#          combine all relevant hits into corrected feature sequences.
-#############################################################################
-$start_secs = outputProgressPrior("Combining corrected exons into CDS", $progress_w, $log_FH, *STDOUT);
-combine_model_hits("corrected", $seq_info_HA{"seq_name"}, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#########################################################
-# Step 18. For features modeled by multiple other features (e.g. CDS
-#          comprised of multiple mature peptides), combine the
-#          individual corrected feature sequences into single
-#          sequences.
-#########################################################
-$start_secs = outputProgressPrior("Combining corrected mature peptides into CDS", $progress_w, $log_FH, *STDOUT);
-combine_feature_hits("corrected", $seq_info_HA{"seq_name"}, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-
-##########################################################################################################
-# Step 19. Run BLASTX: all full length sequences and all corrected nucleotide features versus all proteins
-##########################################################################################################
-$start_secs = outputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-my $seq_nodesc_file = $ofile_info_HH{"fullpath"}{"fastanodesc"};
-run_blastx_and_summarize_output(\%execs_H, $out_root, $seq_nodesc_file, $build_root, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-# calculate the blastx related information
-ftr_results_calculate_blastx($ofile_info_HH{"fullpath"}{"blastx-summary"}, \%ftr_info_HA, \%seq_info_HA, \%seq_name_index_H, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
-
-# add xi* and mxi errors
-openAndAddFileToOutputInfo(\%ofile_info_HH, "blasttbl", $out_root . ".blastx.tbl", 1, "information on blast and CM hits for CDS features in tabular format");
-ftr_results_add_blastx_errors($ofile_info_HH{"FH"}{"blasttbl"}, $combined_model_seqname_maxlen, 
-                              \%ftr_info_HA, \%seq_info_HA, \@ftr_results_AAH, \@mdl_results_AAH, 
-                              \@err_ftr_instances_AHH, \%err_info_HA, \%opt_HH, $ofile_info_HH{"FH"});
-
-####################################################################
-# Step 20. Add zft errors for sequences with zero annotated features
-####################################################################
-# add per-sequence 'zft' errors (zero annotated features)
-add_zft_errors(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
-
-###############################################################
-# Step 21. Translate corrected feature sequences into proteins
-###############################################################
-if(! opt_Get("--skiptranslate", \%opt_HH)) { 
-  $start_secs = outputProgressPrior("Translating corrected nucleotide features into protein sequences", $progress_w, $log_FH, *STDOUT);
-  translate_feature_sequences($execs_H{"esl-epn-translate"}, "corrected", "corrected.translated", (@specstart_AA ? \@specstart_AA : undef), \%ftr_info_HA, \%ofile_info_HH);
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-################################################################################
-# Step 22. (OPTIONAL) Create multiple alignments of DNA sequences, if --doalign
-################################################################################
-if(opt_Get("--doalign", \%opt_HH)) { 
-  $step_desc = "Aligning and parsing corrected nucleotide hits";
-  $start_secs = outputProgressPrior($step_desc, $progress_w, $log_FH, *STDOUT);
-  align_hits(\%execs_H, \%mdl_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH); 
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-####################################################################################
-# Step 23. (OPTIONAL) Create multiple alignments of protein sequences, if --doalign
-####################################################################################
-if(opt_Get("--doalign", \%opt_HH)) { 
-  $start_secs = outputProgressPrior("Aligning translated protein sequences", $progress_w, $log_FH, *STDOUT);
-  align_protein_sequences(\%execs_H, "corrected.translated", \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-  outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-#########################################
-# Step 24. Output annotations and errors
-#########################################
+################################
+# Output annotations and alerts
+################################
 # open files for writing
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tbl",            $out_root . ".tbl",               1, "All annotations in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "tblsum",         $out_root . ".tbl.summary",       1, "Summary of all annotations");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "failtbl",        $out_root . ".fail.tbl",          1, "Annotations for all sequences with >= 1 failure in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errtbl",         $out_root . ".error.tbl",         1, "Annotations for all sequences with >= 1 error in tabular format");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pererr",         $out_root . ".peraccn.errors",    1, "List of errors, one line per sequence");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "allerr",         $out_root . ".all.errors",        1, "List of errors, one line per error");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errsum",         $out_root . ".errors.summary",    1, "Summary of all errors");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences (minimal)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "long_ftbl",      $out_root . ".long.sqtable",      1, "Sequin feature table output for failing sequences (verbose)");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "errors_list",    $out_root . ".errlist",           1, "list of errors in the sequence tables");
-if(opt_IsUsed("--classerrors", \%opt_HH)) { 
-  openAndAddFileToOutputInfo(\%ofile_info_HH, "fail_co_list",   $out_root . ".af-co.seqlist",   1, "list of failing sequences that would have passed if not for a classification error");
-}
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ant_tbl",      $out_root . ".sqa.tbl", 1, "per-sequence tabular annotation summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cls_tbl",      $out_root . ".sqc.tbl", 1, "per-sequence tabular classification summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftr_tbl",      $out_root . ".ftr.tbl", 1, "per-feature tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgm_tbl",      $out_root . ".sgm.tbl", 1, "per-model-segment tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "mdl_tbl",      $out_root . ".mdl.tbl", 1, "per-model tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alc_tbl",      $out_root . ".alc.tbl", 1, "alert count tabular summary file");
 
-my @out_row_header_A  = (); # ref to array of output tokens for column or row headers
-my @out_header_exp_A  = (); # same size of 1st dim of @out_col_header_AA and only dim of @out_row_header_A
-                            # explanations of each header
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "alerts_list",    $out_root . ".altlist",           1, "list of errors in the sequence tables");
 
-###############
-# error files #
-###############
-$start_secs = outputProgressPrior("Generating error code output", $progress_w, $log_FH, *STDOUT);
+########################
+# tabular output files #
+########################
+my %class_alerts_per_seq_H = ();
 
-output_errors_header(\%ftr_info_HA, \%ofile_info_HH);
-output_errors_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \%opt_HH, \%ofile_info_HH);
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-############################
-# tabular annotation files #
-############################
-$start_secs = outputProgressPrior("Generating tabular annotation output", $progress_w, $log_FH, *STDOUT);
-
-# fill the data structures with the header information for the tabular annotation file
-output_tbl_get_headings(\@out_row_header_A, \@out_header_exp_A, \%mdl_info_HA, \%ftr_info_HA, \%opt_HH, \%ofile_info_HH);
-
-# for each sequence, output the tabular annotation
-output_tbl_all_sequences(\%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, \%opt_HH, \%ofile_info_HH);
-
-# output the explanatory text
-output_tbl_explanations(\@out_header_exp_A, \%ofile_info_HH);
-
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
+my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
+                                           \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
+                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ######################
 # feature table file #
 ######################
-$start_secs = outputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
-my $npass = output_feature_tbl_all_sequences(\@err_ftr_instances_AHH, \%err_seq_instances_HH, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, \@mdl_results_AAH, \@ftr_results_AAH, (($do_class_errors) ? \%class_errors_per_seq_H : undef), \%opt_HH, \%ofile_info_HH);
+my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
+                                 \%cls_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
+                                 \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
 
-outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-###########################################
-# brief summary of annotations and errors #
-###########################################
-# OLD WAY, where we cared about how many sequences had errors:
-#outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions, %d (%6.4f fraction) had at least one annotation 'failure', see %s for all details.\n", 
-#                                 $nseq, $nfail, ($nfail/$nseq), $ofile_info_HH{"nodirpath"}{"tbl"}));
-
-outputString($log_FH, 1, sprintf("#\n# Annotated %d accessions:\n# %6d PASS (%5.3f) listed in $out_root.ap.seqlist\n# %6d FAIL (%5.3f) listed in $out_root.af.seqlist\n", $nseq, $npass, $npass/$nseq, ($nseq-$npass), ($nseq-$npass)/$nseq));
-output_errors_summary($ofile_info_HH{"FH"}{"errsum"}, \@err_ftr_instances_AHH, \%err_seq_instances_HH, \%ftr_info_HA, \%seq_info_HA, \%err_info_HA, 0, \%opt_HH, \%ofile_info_HH); # 1: output to stdout
-
-##################
-# gap info files #
-##################
-if(opt_Get("--doalign", \%opt_HH)) { 
-  output_gap_info($ofile_info_HH{"FH"}{"gap_perseq_all"},     $ofile_info_HH{"FH"}{"gap_pergap_all"},     0, 1, 0, 0, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
-  output_gap_info($ofile_info_HH{"FH"}{"gap_perseq_not3"},    $ofile_info_HH{"FH"}{"gap_pergap_not3"},    0, 0, 1, 0, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
-  output_gap_info($ofile_info_HH{"FH"}{"gap_perseq_special"}, $ofile_info_HH{"FH"}{"gap_pergap_special"}, 0, 0, 0, 1, \%mdl_info_HA, \%ftr_info_HA, \%seq_info_HA, \@mdl_results_AAH, \%opt_HH, \%ofile_info_HH);
-}
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ################################
 # output optional output files #
 ################################
-if(exists $ofile_info_HH{"FH"}{"mdlinfo"}) { 
-  dumpInfoHashOfArrays("Model information (%mdl_info_HA)", 0, \%mdl_info_HA, $ofile_info_HH{"FH"}{"mdlinfo"});
-}
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  dumpInfoHashOfArrays("Feature information (%ftr_info_HA)", 0, \%ftr_info_HA, $ofile_info_HH{"FH"}{"ftrinfo"});
+  utl_HAHDump("Feature information", \%ftr_info_HAH, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
-if(exists $ofile_info_HH{"FH"}{"seqinfo"}) { 
-  dumpInfoHashOfArrays("Sequence information (%seq_info_HA)", 0, \%seq_info_HA, $ofile_info_HH{"FH"}{"seqinfo"});
+if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
+  utl_HAHDump("Segment information", \%sgm_info_HAH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
-if(exists $ofile_info_HH{"FH"}{"errinfo"}) { 
-  dumpInfoHashOfArrays("Error information (%err_info_HA)", 0, \%err_info_HA, $ofile_info_HH{"FH"}{"errinfo"});
+if(exists $ofile_info_HH{"FH"}{"altinfo"}) { 
+  dng_AlertInfoDump(\%alt_info_HH, $ofile_info_HH{"FH"}{"altinfo"});
+  dng_AlertInfoDump(\%alt_info_HH, *STDOUT);
 }
 
 ############
 # Conclude #
 ############
+# close the two files we may output to stdout and the log
+close($ofile_info_HH{"FH"}{"mdl_tbl"}); 
+close($ofile_info_HH{"FH"}{"alc_tbl"}); 
 
-$total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
+my @conclude_A = ();
+push(@conclude_A, "#");
+if($zero_cls) { 
+  push(@conclude_A, "# Zero sequences were classified.");
+}
+else { 
+  push(@conclude_A, "# Summary of classified sequences:");
+  push(@conclude_A, "#");
+  my @file_A = ();
+  utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"mdl_tbl"}, 1, \@file_A, $FH_HR);
+  push(@conclude_A, @file_A);
+}
+push(@conclude_A, "#");
+if($zero_alt) { 
+  push(@conclude_A, "# Zero alerts were reported.");
+}
+else { 
+  push(@conclude_A, "# Summary of reported alerts:");
+  push(@conclude_A, "#");
+  my @file_A = ();
+  utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"alc_tbl"}, 1, \@file_A, $FH_HR);
+  push(@conclude_A, @file_A);
+}
+
+foreach my $line (@conclude_A) { 
+  ofile_OutputString($log_FH, 1, $line . "\n");
+}
+
+$total_seconds += ofile_SecondsSinceEpoch();
+ofile_OutputConclusionAndCloseFiles($total_seconds, "DNAORG", $dir, \%ofile_info_HH);
 
 ###############
 # SUBROUTINES #
@@ -1440,5819 +883,4131 @@ outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
 # opposed to a Perl module where they're named in camel caps
 # (e.g. getValueFromArray()).
 #
-# Subroutines which I consider overly-complicated that are
-# future targets for refactoring are labelled with "***":
-#
-#  Subroutines related to preparing CM files for searches:
-#    concatenate_individual_cm_files()
-#    validate_cms_built_from_reference()
-#
-#  Subroutines related to homology searches:
-#    run_cmscan()
-#    split_cm_file()
-#    parse_cmscan_tblout()
-#
-#  Subroutines related to creating fasta files of predicted hits/features: 
-#    fetch_hits_given_results()
-#    combine_model_hits()
-#    combine_feature_hits()
-#    combine_sequences()
-#
-#  Subroutines related to the esl-epn-translate.pl script:
-#    parse_esl_epn_translate_startstop_outfile()
-#    get_esl_epn_translate_altstart_opt()
-#    wrapper_esl_epn_translate_startstop()
-#
-#  Subroutines related to determining and storing annotations/results:
-#    initialize_mdl_results()
-#    initialize_ftr_results()
-#    results_calculate_predicted_lengths()
-#    store_hit()
-#    results_calculate_corrected_stops()
-#    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
-#    mdl_results_calculate_out_starts_and_stops()
-#    mdl_results_compare_to_genbank_annotations()
-#    ftr_results_calculate() ***
-#    dump_results()
-#
-#  Subroutines related to origin sequences:
-#    validate_origin_seq()
-#    find_origin_sequences()
-#    get_origin_output_for_sequence
-#
-#  Subroutines related to the error instance data structures:
-#    error_instances_initialize_AHH()
-#    error_instances_add()
-#    error_instances_update()
-#    error_instances_remove_maybe()
-#    error_instances_remove_not_maybe()
-#    error_instances_validate_all()
-#
-#  Subroutines related to output:
-#    output_tbl_explanations()
-#    output_tbl_get_headings()
-#    output_tbl_get_headings_helper()
-#    output_tbl_get_headings_explanation_helper()
-#    output_tbl_all_sequences()
-#    output_tbl_page_of_sequences()
-#    output_errors_header()
-#    output_errors_all_sequences()
-#    output_errors_summary()
-#    output_multifeature_relationships()
-#    output_gap_info()
-#
-#  Miscellaneous subroutines that don't fit in the above categories:
-#    find_inframe_stop()
-#    combine_ajb_and_aja_strings()
-#    compare_to_genbank_annotation
-#    count_genbank_annotations
-#    translate_feature_sequences
-#    align_hits()
-#    update_gap_array()
-#    find_special_gap()
-#    define_model_and_feature_output_file_names()
-#    get_mdl_or_ftr_ofile_info_key()
-#    align_protein_sequences
-#    check_for_downstream_stop()
-#    create_output_start_and_stop()
-#    seq_name_from_msa_seq_name()
-#    accn_name_from_seq_name()
-#
-#################################################################
-
-#################################################################
 #################################################################
 #
-#  Subroutines related to preparing CM files for searches:
-#    validate_cms_built_from_reference()
+#################################################################
+#
+# Subroutines related to cmsearch and classification:
+# cmsearch_or_cmscan_wrapper
+# cmsearch_or_cmscan_run
+# cmsearch_or_cmscan_parse_sorted_tblout
+# cmsearch_or_cmscan_store_hit
+# add_classification_errors
+# populate_per_model_data_structures_given_classification_results
+#
+# Subroutines related to cmalign and alignment:
+# cmalign_wrapper
+# cmalign_wrapper_helper
+# cmalign_run
+# cmalign_parse_ifile 
+# cmalign_parse_stk_and_add_alignment_alerts 
+# cmalign_store_overflow
+# fetch_features_and_add_cds_and_mp_alerts 
+# sqstring_check_start
+# sqstring_find_stops 
+#
+# Subroutines related to blastx:
+# add_blastx_alerts 
+# run_blastx_and_summarize_output
+# parse_blastx_results 
+# helper_blastx_breakdown_query
+# helper_blastx_breakdown_max_indel_str
+# helper_blastx_db_seqname_to_ftr_idx 
+#
+# Other subroutines related to alerts: 
+# alert_list_option
+# alert_pass_fail_options
+# alert_sequence_instance_add 
+# alert_feature_instance_add 
+# alert_sequence_instance_fetch
+# alert_feature_instance_fetch
+# alert_add_b_zft 
+# alert_add_n_div 
+# alert_instances_check_prevents_annot
+#
+# Subroutines for creating output:
+# output_tabular
+# helper_tabular_ftr_results_strand
+# helper_tabular_ftr_results_trunc_string
+# helper_tabular_sgm_results_trunc_string
+# helper_tabular_replace_spaces
+#
+# output_feature_table
+# output_parent_child_relationships 
+# helper_ftable_coords_from_nt_prediction 
+# helper_ftable_coords_prot_only_prediction 
+# helper_ftable_start_stop_arrays_to_coords 
+# helper_ftable_coords_to_out_str 
+# helper_ftable_add_qualifier_from_ftr_info
+# helper_ftable_add_qualifier_from_ftr_results
+# helper_ftable_class_model_for_sequence
+# helper_ftable_process_sequence_alerts
+# helper_ftable_process_feature_alerts
+#
+# helper_output_sequence_alert_strings
+# helper_output_feature_alert_strings
+#
+# Miscellaneous subroutines:
+# initialize_ftr_or_sgm_results()
+# convert_pp_char_to_pp_avg ()
+# group_subgroup_string_from_classification_results()
 #
 #################################################################
-# Subroutine : validate_cms_built_from_reference()
-# Incept:      EPN, Mon Feb 29 11:21:11 2016
+# Subroutine:  cmsearch_or_cmscan_wrapper()
+# Incept:      EPN, Mon Mar 18 14:44:46 2019
 #
-# Purpose:     Validate the CM files in an array were built from
-#              the current reference, using information in 
-#              $mdl_info_HAR->{"cksum"}.
+# Purpose:     Run one or more cmsearch jobs on the farm
+#              or locally, after possibly splitting up the input
+#              sequence file with dng_SplitFastaFile and 
+#              then calling dng_CmalignOrCmsearchWrapperHelper(). 
 #
 # Arguments: 
-#  $mdl_info_HAR:    REF to hash of arrays with information on the models, PRE-FILLED
+#  $execs_HR:        ref to executables with "esl-ssplit" and "cmsearch"
+#                    defined as keys
+#  $mdl_file:        name of model file to use
+#  $mdl_name:        name of model to fetch from $mdl_file (undef to not fetch)
+#  $seq_file:        name of sequence file with all sequences to run against
+#  $opt_str:         option string for cmsearch run
+#  $out_root:        string for naming output files
+#  $round:           round, 1 or 2 
+#  $nseq:            number of sequences in $seq_file
+#  $tot_len_nt:      total length of all nucleotides in $seq_file
+#  $progress_w:      width for outputProgressPrior output
 #  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information
-# 
-# Returns:     void
-# 
-# Dies: If at least one CM was not built from the current reference.
 #
+# Returns:     void, updates $$nfa_created_R with number of
+#              fasta files created.
+# 
+# Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
+#       command fails if we're running locally
 ################################################################# 
-sub validate_cms_built_from_reference { 
-  my $sub_name = "validate_cms_built_from_reference()";
-  my $nargs_expected = 3;
+sub cmsearch_or_cmscan_wrapper { 
+  my $sub_name = "cmsearch_or_cmscan_wrapper";
+  my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($mdl_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $opt_str, 
+      $out_root, $round, $nseq, $tot_len_nt, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
 
-  # we can only pass $FH_HR to DNAORG_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
+  my $do_parallel = opt_Get("-p", $opt_HHR);
 
-  # validate we have a complete model info hash
-  my $nmdl = validateModelInfoHashIsComplete($mdl_info_HAR, undef, $FH_HR);
+  # set up output file names
+  my @seq_file_A  = (); # [0..$nr-1]: name of sequence file for this run
+  my @out_file_AH = (); # array of hashes ([0..$nr-1]) of output files for cmsearch runs
+  my $nseq_files = 1; # number of sequence files/runs 
 
-  my $mismatch_errmsg = ""; # we'll fill this with error messages about any checksum mismatches we find
-  my $common_errmsg   = "This may mean that the GenBank annotation for the reference sequence changed since dnaorg_build.pl was run to create the CMs. Rerun dnaorg_build.pl.";
-
-  for(my $i = 0; $i < $nmdl; $i++) { 
-    my $model_file = $mdl_info_HAR->{"cmfile"}[$i];
-    validateFileExistsAndIsNonEmpty($model_file, $sub_name, $FH_HR); 
-    # get the checksum line from the CM file into a file
-    my $cksum = `grep ^CKSUM $model_file | awk '{ print \$2 '}`;
-    chomp $cksum;
-    if($cksum =~ m/\r$/) { chop $cksum; } # remove ^M if it exists
-    if($cksum != $mdl_info_HAR->{"checksum"}[$i]) { 
-      $mismatch_errmsg .= sprintf("CM #%d checksum %d != alignment checksum: %d\n", $i+1, $cksum, $mdl_info_HAR->{"checksum"}[$i]);
+  # split up sequence file, if -p and we're going to do more than one job
+  my $do_split = 0; # set to '1' if we run dng_SplitFastaFile
+  if($do_parallel) { 
+    # -p used: we need to split up the sequence file, and submit a separate 
+    # cmsearch job for each
+    my $targ_nseqfiles = dng_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
+    if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
+      $do_split = 1;
+      $nseq_files = dng_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+      # dng_SplitFastaFile will return the actual number of fasta files created, 
+      # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
+      for(my $i = 0; $i < $nseq_files; $i++) { 
+        $seq_file_A[$i] = $seq_file . "." . ($i+1);
+      }
+    }
+    else { # targ_nseqfiles is 1, no need to split
+      $seq_file_A[0] = $seq_file;
     }
   }
-  
-  if($mismatch_errmsg ne "") { 
-    DNAORG_FAIL("ERROR in $sub_name, checksum mismatch(es):\n$mismatch_errmsg\n$common_errmsg", 1, $FH_HR);
+  else { # -p not used
+    $seq_file_A[0] = $seq_file;
   }
-
-  return;
-}
-
-#################################################################
-#################################################################
-#
-#  Subroutines related to preparing CM files for searches:
-#    parse_cmscan_tblout()
-#
-
-
-
-#################################################################
-# Subroutine : parse_cmscan_tblout()
-# Incept:      EPN, Tue Mar  1 13:56:46 2016
-#
-# Purpose:    Parse Infernal 1.1 cmscan --tblout output and store
-#             results in $mdl_results_AAH.
-#
-# Arguments: 
-#  $tblout_file:      tblout file to parse
-#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
-#  $mdl_results_AAHR: REF to results AAH, FILLED HERE
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       if we find a hit to a model or sequence that we don't
-#             have stored in $mdl_info_HAR or $seq_name_AR
-#
-################################################################# 
-sub parse_cmscan_tblout { 
-  my $sub_name = "parse_cmscan_tblout()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($tblout_file, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
-  
-  # make an 'order hash' for the model names and sequence names,
-  my %mdlname_index_H = (); # mdlname_index_H{$model_name} = <n>, means that $model_name is the <n>th model in the @{$mdl_info_HAR{*}} arrays
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-  getIndexHashForArray($mdl_info_HAR->{"cmname"},   \%mdlname_index_H, $FH_HR);
-  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
-
-  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
-
-  my $did_field_check = 0; # set to '1' below after we check the fields of the file
-  my $line_ctr = 0;  # counts lines in tblout_file
-  while(my $line = <IN>) { 
-    $line_ctr++;
-    if(($line =~ m/^\#/) && (! $did_field_check)) { 
-      # sanity check, make sure the fields are what we expect
-      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
-      }
-      $did_field_check = 1;
-    }
-    elsif($line !~ m/^\#/) { 
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      # example line:
-      #Maize-streak_r23.NC_001346.ref.mft.4        -         NC_001346:genome-duplicated:NC_001346:1:2689:+:NC_001346:1:2689:+: -          cm        1      819     2527     1709      -    no    1 0.44   0.2  892.0         0 !   -
-      my @elA = split(/\s+/, $line);
-      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $from, $to, $strand, $score, $evalue) = 
-          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
-
-      if(! exists $mdlname_index_H{$mdlname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have information for model $mdlname read in $tblout_file on line $line_ctr", 1, $FH_HR);
-      }
-      if(! exists $seqname_index_H{$seqname}) { 
-        DNAORG_FAIL("ERROR in $sub_name, do not have information for sequence $seqname read in $tblout_file on line $line_ctr", 1, $FH_HR);
-      }
-
-      my $mdlidx = $mdlname_index_H{$mdlname}; # model    index for the hit in results_AAH (1st dim of results_AAH)
-      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-      my $mdllen = $mdl_info_HAR->{"length"}[$mdlidx]; # model length, used to determine how far hit is from boundary of the model
-      if((! exists $seq_info_HAR->{"accn_len"}[$seqidx]) || (! exists $seq_info_HAR->{"seq_len"}[$seqidx])) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, do not have length information for sequence $seqname, accession %s", $seq_info_HAR->{"accn_name"}[$seqidx]), 1, $FH_HR);
-      }
-      my $accn_len = $seq_info_HAR->{"accn_len"}[$seqidx]; # accession length, used to exclude storing of hits that start and stop after $seqlen, 
-                                                           # which can occur in circular genomes, where we've duplicated the sequence
-      my $seq_len  = $seq_info_HAR->{"seq_len"}[$seqidx]; # total length of sequence searched, could be $accn_len or two times $accn_len if -c used
-
-      store_hit($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $from, $to, $strand, $evalue, $score, $FH_HR);
-    }
-  }
-  close(IN);
-  
-  return;
-}
-
-#################################################################
-#################################################################
-#
-#  Subroutines related to creating fasta files of predicted hits/features: 
-#    fetch_hits_given_results()
-#    combine_model_hits()
-#    combine_feature_hits()
-#    combine_sequences()
-#
-#################################################################
-# Subroutine:  fetch_hits_given_results()
-# Incept:      EPN, Wed Mar  2 15:25:55 2016
-#
-# Purpose:    Given the results data structure, fetch all
-#             hits to fasta files.
-#             As an extra step, fetch any 'appended' sequence
-#             for models in which $mdl_info_HAR->{"append_num"}[$mdl_idx]
-#             is non-zero. This will go to a separate file,
-#             and we'll append it to sequence hits from other 
-#             models in combine_feature_hits().
-# Arguments: 
-#  $sqfile:            REF to Bio::Easel::SqFile object, open sequence file containing sequences,
-#                      usually $out_root . ".predicted", or $out_root . ".corrected"
-#  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
-#  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:      REF to hash of arrays with sequence information, PRE-FILLED
-#  $mdl_results_AAHR:  REF to results AAH, PRE-FILLED
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-# 
-# Dies: If something is wrong with data in $mdl_info_HAR.
-#################################################################
-sub fetch_hits_given_results { 
-  my $sub_name = "fetch_hits_given_results";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $out_key, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
     
-  my $nmdl = scalar(@{$mdl_results_AAHR});
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $ofile_info_HHR->{"FH"});
-
-  my $mdl_info_file_key        = $out_key . ".hits.fa";
-  my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
-
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my @fetch_AA        = ();
-    my @fetch_append_AA = ();
-    my $mdl_name = $mdl_info_HAR->{"cmname"}[$mdl_idx];
-    my $nseq2fetch        = 0; # number of sequences we'll fetch
-    my $nseq2fetch_append = 0; # number of sequences we'll fetch for append file
-    my $append_num = ($mdl_info_HAR->{"append_num"}[$mdl_idx]);
-
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      if($seq_idx == 0 && (! opt_Get("--infasta", $opt_HHR)) && (! %{$mdl_results_AAHR->[$mdl_idx][$seq_idx]})) { 
-        DNAORG_FAIL("ERROR in $sub_name(), no hit from model $mdl_name to the reference sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
-      }
-      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-        # hit exists
-        if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}) { 
-          DNAORG_FAIL("ERROR in $sub_name(), no stop value for hit of model $mdl_name to the sequence $seq_name", 1, $ofile_info_HHR->{"FH"}); 
-        }
-        my $start  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"};
-        # use corrected stop ("c_stop") if it exists
-        my $stop    = (exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"}) ? $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} : $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"};
-        my $strand  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_strand"};
-
-        # only enter following loop if "prv_trc_flag" is *NOT* set, 
-        # if it is then the sequence should not be fetched due to 
-        # an early stop (trc error) in a previous model for the same feature
-        if(! $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"prv_trc_flag"}) { 
-          my $new_name = $seq_name . "/" . $start . "-" . $stop;
-          # we always put $start first and $stop second so that we can (usually) tell strand from the name,
-          # "+" if start < stop, "-" if start > stop, ambiguous if start==stop
-          push(@fetch_AA, [$new_name, $start, $stop, $seq_name]);
-          $nseq2fetch++;
-
-          # append sequence, if nec
-          if($append_num > 0) { 
-            my $append_start;
-            my $append_stop;
-            if($strand eq "+") { 
-              $append_start = $stop + 1;
-              $append_stop  = $stop + $append_num;
-            }
-            else { 
-              $append_start = $stop - 1;
-              $append_stop  = $stop - $append_num;
-            }
-            # only do the appending if the full region $append_start..$append_stop 
-            # exists
-            if(($append_start <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
-               ($append_stop  <= $seq_info_HAR->{"seq_len"}[$seq_idx]) && 
-               ($append_start >= 1) && 
-               ($append_stop  >= 1)) { 
-              my $append_new_name = $seq_name . "/" . $append_start . "-" . $append_stop;
-              # we always put $start first and $stop second so that we can (usually) tell strand from the name,
-              # "+" if start < stop, "-" if start > stop, ambiguous if start==stop
-
-              # update mdl_results with 'append_start' and 'append_stop'
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"} = $append_start;
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}  = $append_stop;
-              # printf("added $append_new_name $append_start $append_stop $seq_name to fetch_append_AA\n");
-              push(@fetch_append_AA, [$append_new_name, $append_start, $append_stop, $seq_name]);
-              
-              $nseq2fetch_append++;
-            }
-            else { 
-              if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"}) { 
-                delete $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_start"};
-              }
-              if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"}) { 
-                delete $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"append_stop"};
-              }
-            }
-          }
-        }
-      }
-    } # end of for loop over $seq_idx
-
-    my $fa_file               = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-    my $fa_append_file        = $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx];
-    my $ofile_info_key        = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_info_file_key, $ofile_info_HHR->{"FH"});
-    my $ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
-
-    if($nseq2fetch > 0) { 
-      $sqfile->fetch_subseqs(\@fetch_AA, undef, $fa_file);
-      # save information on this to the output file info hash
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $fa_file, 0, "fasta file with $out_key hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-
-      if($nseq2fetch_append > 0) { 
-        $sqfile->fetch_subseqs(\@fetch_append_AA, undef, $fa_append_file);
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_append_key, $fa_append_file, 0, "fasta file with $out_key appended hits for model " . $mdl_info_HAR->{"out_tiny"}[$mdl_idx]);
-      }
-    }
-    else { 
-      # no sequences were fetched update the 
-      $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx]        = "/dev/null"; # indicates to downstream functions that this file does not exist
-      $mdl_info_HAR->{$mdl_info_append_file_key}[$mdl_idx] = "/dev/null"; # indicates to downstream functions that this file does not exist
-    }
-  } # end of for loop over model indices
-
-  return;
-}
-
-#################################################################
-# Subroutine:  combine_model_hits()
-# Incept:      EPN, Thu Mar  3 11:39:17 2016
-#
-# Purpose:    For all features annotated by models 
-#             ($ftr_info_HAR->{"annot_type"}[*] = "model")
-#             assign (for single model features) or create
-#             (for multiple model features) the hit fasta file
-#             for each. Calls 'combine_sequences()' which does
-#             much of the work.
-#
-# Arguments: 
-#  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
-#  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
-#  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    Length of longest sequence name in output file
-#
-# Dies:       If we have a problem reading the fasta files
-#
-################################################################# 
-sub combine_model_hits { 
-  my $sub_name = "combine_model_hits";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_key, $seq_name_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
-
-  my $mdl_info_file_key        = $out_key . ".hits.fa";
-  my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
-  my $ftr_info_file_key        = $mdl_info_file_key;
-  my $ftr_info_append_file_key = $mdl_info_append_file_key;
-
-  my $ret_seqname_maxlen = 0;
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # we only do this for features annotated by models
-      my @tmp_hit_fafile_A = (); # only relevant if this feature has multiple models
-      my $mdl_idx        = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-      my $mdl_hit_fafile = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-      my $at_least_one_fafile = 0; # set to '1' if at least one fa file exists (is not set to "/dev/null"
-      if($mdl_hit_fafile ne "/dev/null") { 
-        validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-        push(@tmp_hit_fafile_A, $mdl_hit_fafile);
-        $at_least_one_fafile = 1;
-      }
-      #######################################
-      # single model (e.g. exon) features
-      #######################################
-      if($ftr_info_HAR->{"nmodels"}[$ftr_idx] == 1) { 
-        # a single model (e.g. exon) gene, we should already have the sequence from fetch_hits
-        # this was initialized to something else, redefine it here:
-        $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = $mdl_hit_fafile;
-      }
-      #######################################
-      # multi model (e.g. exon) features
-      #######################################
-      else { 
-        # more than one model's hit files need to be combined to make this feature 
-        my $ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
-        for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          $mdl_hit_fafile = $mdl_info_HAR->{$mdl_info_file_key}[$mdl_idx];
-          if($mdl_hit_fafile ne "/dev/null") { 
-            validateFileExistsAndIsNonEmpty($mdl_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-            push(@tmp_hit_fafile_A, $mdl_hit_fafile);
-            $at_least_one_fafile = 1;
-          }
-        }
-        if($at_least_one_fafile) { 
-          # combine the sequences into 1 file
-
-          my $cur_seqname_maxlen = combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $ftr_hit_fafile, 
-                            0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
-                               # allow any contiguous subset of files
-                            $opt_HHR, $ofile_info_HHR->{"FH"});
-          
-          my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-          addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
-          if($cur_seqname_maxlen > $ret_seqname_maxlen) { $ret_seqname_maxlen = $cur_seqname_maxlen; }
-        }
-        else { 
-          # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
-          # /dev/null so downstream functions know that it should not exist
-          $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
-        }
-      }
-
-      # check if there's a file to append
-      my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-      my $mdl_ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $final_mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
-      if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) { 
-        # yes, there is
-        my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-        if($mdl_hit_append_fafile ne "/dev/null") { 
-          validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-        }
-        # this was initialized to something else, redefine it here:
-        $ftr_info_HAR->{$ftr_info_append_file_key}[$ftr_idx] = $mdl_hit_append_fafile;
-      }
-    } # end of 'if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model")'
-  }
-  
-  return $ret_seqname_maxlen;
-}
-
-#################################################################
-# Subroutine:  combine_feature_hits()
-# Incept:      EPN, Thu Mar  3 12:15:55 2016
-#
-# Purpose:    For all features that are annotated by combining
-#             multiple other features ($ftr_info_HAR->{"annot_type"}[*] 
-#             = "multifeature", e.g. CDS made up of mature peptides)
-#             create the feature fasta file for each. Calls 
-#             'combine_sequences()' which does much of the work.
-#
-# Arguments: 
-#  $out_key:           key for the output files we'll create here, usually "predicted" or "corrected"
-#  $seq_name_AR:       REF to array of sequence names, PRE-FILLED
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    Length of longest sequence name in output file
-#
-# Dies:       If we have a problem reading the fasta files
-#
-################################################################# 
-sub combine_feature_hits { 
-  my $sub_name = "combine_feature_hits";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_key, $seq_name_AR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-
-  my $ret_seqname_maxlen = 0;
-
-  my $ftr_info_file_key        = $out_key . ".hits.fa";
-  my $mdl_info_append_file_key = $out_key . ".hits.append.fa";
-
-  # printf("in $sub_name, out_key: $out_key, ftr_info_file_key: $ftr_info_file_key\n");
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features created by combining other features
-      # get the array of primary children feature indices for this feature
-      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
-      my @tmp_hit_fafile_A = ();
-      my $at_least_one_fafile = 0; # set to 1 once we add a fasta file to @tmp_hit_fafile_A
-      my $combined_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx];
-      foreach my $cur_ftr_idx (@primary_children_idx_A) { 
-        my $cur_ftr_hit_fafile = $ftr_info_HAR->{$ftr_info_file_key}[$cur_ftr_idx];
-        if($cur_ftr_hit_fafile ne "/dev/null") { 
-          validateFileExistsAndIsNonEmpty($cur_ftr_hit_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-          push(@tmp_hit_fafile_A, $cur_ftr_hit_fafile);
-          $at_least_one_fafile = 1;
-        }
-        # check if this feature has a mandatory file to append
-        my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$cur_ftr_idx];
-        my $mdl_ofile_info_append_key = get_mdl_or_ftr_ofile_info_key("mdl", $final_mdl_idx, $mdl_info_append_file_key, $ofile_info_HHR->{"FH"});
-        if(exists $ofile_info_HHR->{"fullpath"}{$mdl_ofile_info_append_key}) {
-          # it does, append it
-          my $mdl_hit_append_fafile = $ofile_info_HH{"fullpath"}{$mdl_ofile_info_append_key};
-          if($mdl_hit_append_fafile ne "/dev/null") { 
-            validateFileExistsAndIsNonEmpty($mdl_hit_append_fafile, $sub_name, $ofile_info_HHR->{"FH"});
-            push(@tmp_hit_fafile_A, $mdl_hit_append_fafile);
-            $at_least_one_fafile = 1;
-          } 
-        }
-      } # end of 'foreach $cur_ftr_idx'
-
-      if($at_least_one_fafile) { 
-        # combine the sequences into 1 file
-        my $cur_seqname_maxlen = combine_sequences(\@tmp_hit_fafile_A, $seq_name_AR, $combined_ftr_hit_fafile, 
-                                                   0, # do not require sequences be in a contiguous subset of files beginning with the first one to be combined, 
-                                                   # allow any contiguous subset of files
-                                                   $opt_HHR, $ofile_info_HHR->{"FH"}); 
-        my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_info_key, $combined_ftr_hit_fafile, 0, "fasta file with $out_key hits for feature " . $ftr_info_HAR->{"out_tiny"}[$ftr_idx] . " from " . $ftr_info_HAR->{"nmodels"}[$ftr_idx] . " combined model predictions");
-        if($cur_seqname_maxlen > $ret_seqname_maxlen) { $ret_seqname_maxlen = $cur_seqname_maxlen; }
-      } # end of 'if($at_least_one_fafile)'
-      else { 
-        # no fasta files exist, redefine $ftr_info_HAR->{"$ftr_info_file_key"}[$ftr_idx] to 
-        # /dev/null so downstream functions know that it should not exist
-        $ftr_info_HAR->{$ftr_info_file_key}[$ftr_idx] = "/dev/null";
-      }
-    }
-  } # end of 'for' loop over $ftr_idx
-
-  return $ret_seqname_maxlen;
-}
-
-
-#################################################################
-# Subroutine:  combine_sequences()
-# Incept:      EPN, Wed Mar  2 16:11:40 2016
-#
-# Purpose:    Helper function for combine_model_hits() and
-#             combine_feature_hits(). Given an array of fasta files,
-#             each with a different subsequence from the same parent
-#             sequences, create a single new fasta file that has the
-#             subsequences concatenated together.  An example is
-#             stitching together exons into a CDS.  Uses BioEasel's
-#             sqfile module.
-#
-# Arguments: 
-#  $indi_file_AR:  REF to array of fasta files to combine
-#  $seq_name_AR:   REF to array with order of sequence names
-#  $multi_file:    name of multi file to create
-#  $require_first: '1' to require each sequence to keep be in a contiguous set starting with file 1
-#                  '0' to require each sequence to keep be in a contiguous set starting with any file
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    Length of longest sequence name created
-#
-# Dies:       If we have a problem reading the fasta files
-#
-#################################################################
-sub combine_sequences {
-  my $sub_name = "combine_sequences";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($indi_file_AR, $seq_name_AR, $multi_file, $require_first, $opt_HHR, $FH_HR) = @_;
-  
-  my @sqfile_A                      = (); # array of open Bio::Easel::SqFile objects, one per indi_file_AR element
-  my @sqfile_sqname_AA              = (); # 2D array of SqFile sequence names, read from the indi files, [0..$nfiles-1][0..$nseq_in_file_f]
-  my $nfiles                        = scalar(@{$indi_file_AR}); # number of input fasta files
-  my @seq_name2sqfile_sqname_map_AA = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim 0..$file_idx..$nfiles, value: ssi index of $seq_idx subseq in file $f
-  my @seq_name_exists_AA            = (); # 2D array, 1st dim: 0..$seq_idx..$nseq-1, 2nd dim: 0..$file_idx..$nfiles-1; value '1' if $seq_idx exists in file $f
-  my @seq_name_coords_A             = (); # key: sequence name from @{$seq_name_AR}, value: concatenated set of coordinates of all subseqs in all $nfiles
-  my @seq_name_fetch_me_A           = (); # [0..$i..$nseq_name-1]: value is "0" if seq $i should be included in the $multi_file, '0' if not
-                                          # How we decide depends on value of $require_all input variable:
-                                          #
-                                          # IF $require_first is '1':
-                                          # we only include sequences that exist in a contiguous set of files in @sqfile_A starting with the first one
-                                          #
-                                          # IF $require_first is '0':
-                                          # we fetch each sequence that exists only in a contiguous set of files in @sqfile_A starting with any file
-                                          #
-                                          # To determine this we use @seq_name_exists_AA to create a string of 0s and 1s indicating which
-                                          # files it is in.
-                                          # example A: 01110: sequence exists in files 2, 3, and 4 but not 1 and 5
-                                          # example B: 11110: sequence exists in files 1, 2, 3, and 4 but not 5
-                                          # example C: 11010: sequence exists in files 1, 2, and 4 but not 3 and 5
-                                          # If $require_first is '1', only example B would be included
-                                          # If $require_first is '0', examples A and B would be included
-            
-  my @sqname_AA                     = (); # 2D array, 1st dim [0..$file_idx..$nfiles-1], 2nd dim: 0 to number of sequences in file $file_idx
-
-  my $ret_seqname_maxlen = 0;
-
-  my $seq_idx;  # counter over seq_name values
-  my $file_idx; # counter for files
-
-  # get index hash for @{$seq_name_AR}, this simplifies checking if
-  # a given sequence name exists in @{$seq_name_AR}, and getting the idx
-  # of that name
-  my $nseq_name = scalar(@{$seq_name_AR});
-  my %seq_name_idx_H = (); # key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}}
-  getIndexHashForArray($seq_name_AR, \%seq_name_idx_H, $FH_HR);
-  
-  # initialize arrays
-  for(my $seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    $seq_name_coords_A[$seq_idx]   = "";
-    $seq_name_fetch_me_A[$seq_idx] = 0;
-    @{$seq_name2sqfile_sqname_map_AA[$seq_idx]} = ();
-    for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
-      $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = -1; # updated in block below if $seq_idx exists in $file_idx
-      $seq_name_exists_AA[$seq_idx][$file_idx] = 0;
-    }
-  }
-
-  for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
-    if($indi_file_AR->[$file_idx] ne "/dev/null") { 
-      # only enter the loop if the file exists (is not "/dev/null")
-      # if the file does not exist it has zero sequences in it, so everything else after this
-      # loop works as intended, we just have zero sequences added from this file
-
-      validateFileExistsAndIsNonEmpty($seq_file, $indi_file_AR->[$file_idx], $FH_HR);
-      
-      # create the Bio::Easel object
-      # first remove any old .ssi files that may exist
-      my $ssi_file = $indi_file_AR->[$file_idx] . ".ssi";
-      if(-e $ssi_file) { 
-        removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $FH_HR);
-      }
-      @{$sqname_AA[$file_idx]} = ();
-      my $sqfile_nseq = 0;
-      if(-s $indi_file_AR->[$file_idx]) { 
-        $sqfile_A[$file_idx] = Bio::Easel::SqFile->new({ fileLocation => $indi_file_AR->[$file_idx] });
-        $sqfile_nseq = $sqfile_A[$file_idx]->nseq_ssi;
-      }
-      else { 
-        $sqfile_A[$file_idx] = undef;
-        $sqfile_nseq = 0;
-      }
-      
-      # get the names all of sequences in each file
-      for(my $sqfile_seq_idx = 0; $sqfile_seq_idx < $sqfile_nseq; $sqfile_seq_idx++) { 
-        $sqname_AA[$file_idx][$sqfile_seq_idx] = $sqfile_A[$file_idx]->fetch_seq_name_given_ssi_number($sqfile_seq_idx);
-        
-        # break down this name into the $seq_name and $coords
-        my ($is_nse, $seq_name, $start, $end, $str) = nseBreakdown($sqname_AA[$file_idx][$sqfile_seq_idx]);
-        my $coords = $start . "-" . $end;
-        if((! $is_nse) || $coords !~ m/\-/) { 
-          DNAORG_FAIL("ERROR in $sub_name, unable to parse sequence name $sqname_AA[$file_idx][$sqfile_seq_idx] into accession and coordinates", 1, $FH_HR);
-        }
-        if(! exists $seq_name_idx_H{$seq_name}) { 
-          DNAORG_FAIL("ERROR in $sub_name, parsed sequence name $seq_name from $sqname_AA[$file_idx][$sqfile_seq_idx] does not exist in our seq_name_A array", 1, $FH_HR);
-        }
-        
-        $seq_idx = $seq_name_idx_H{$seq_name};
-        $seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] = $sqfile_seq_idx;
-        if($seq_name_coords_A[$seq_idx] ne "") { 
-          $seq_name_coords_A[$seq_idx] .= ",";
-        }
-        $seq_name_coords_A[$seq_idx] .= $coords;
-        $seq_name_exists_AA[$seq_idx][$file_idx] = 1;
-      }
-    } # end of 'if($indi_file_AR->[$file_idx] ne "/dev/null")'
-  } # end of 'for' loop over file indexes
-
-  # update values in @seq_name_fetch_me_A based on values in @seq_name_exists_AA
-  for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    my $seq_name_exists_str = join("", @{$seq_name_exists_AA[$seq_idx]});
-    # remove trailing 0s
-    $seq_name_exists_str =~ s/0+$//;
-    # remove leading 0s (only if (! $require_first))
-    if(! $require_first) { $seq_name_exists_str =~ s/^0+//; }
-    # determine if we have a string of >=1 '1' left, with zero zeroes
-    if((length($seq_name_exists_str) > 0) && ($seq_name_exists_str !~ m/0/)) { 
-      # sequence exists in a contiguous subset of the sequence files
-      $seq_name_fetch_me_A[$seq_idx] = 1;
-    }
-    else { 
-      $seq_name_fetch_me_A[$seq_idx] = 0;
-    }
-  } 
-
-  # now for each seq_name that we want to fetch, fetch all subsequences for that 
-  # sequence from all the individual files into a new sequence in a new file ($multi_file)
-  open(OUT, ">", $multi_file) || die "ERROR unable to open $multi_file for writing";
-  for($seq_idx = 0; $seq_idx < $nseq_name; $seq_idx++) { 
-    # printf("HEYA in $sub_name creating $multi_file fetch me for sequence %s is %d\n", $seq_name_AR->[$seq_idx], $seq_name_fetch_me_A[$seq_idx]);
-    if($seq_name_fetch_me_A[$seq_idx]) { 
-      my $seq_name = $seq_name_AR->[$seq_idx];
-      print OUT ">" . $seq_name . "/" . $seq_name_coords_A[$seq_idx] . "\n";
-      my $cur_seqname_len = length($seq_name . "/" . $seq_name_coords_A[$seq_idx]);
-      if($cur_seqname_len > $ret_seqname_maxlen) { $ret_seqname_maxlen = $cur_seqname_len; }
-      for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
-        if($seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx] != -1) { 
-          my $sqname = $sqname_AA[$file_idx][$seq_name2sqfile_sqname_map_AA[$seq_idx][$file_idx]];
-          my $sqonly = $sqfile_A[$file_idx]->fetch_seq_to_fasta_string($sqname);
-          $sqonly =~ s/^\>.+\n//;
-          print OUT $sqonly;
-        }
-      }
-    }
-  }
-  close(OUT);
-
-  # clean up: remove all 'ssi' files we just created
-  for($file_idx = 0; $file_idx < $nfiles; $file_idx++) { 
-    if(-e $indi_file_AR->[$file_idx] . ".ssi") { 
-      removeFileUsingSystemRm($indi_file_AR->[$file_idx] . ".ssi", $sub_name, $opt_HHR, $FH_HR);
-    }
-  }
-
-  return $ret_seqname_maxlen;
-}
-
-#################################################################
-#################################################################
-#
-#  Subroutines related to the esl-epn-translate.pl script:
-#    parse_esl_epn_translate_startstop_outfile()
-#    get_esl_epn_translate_altstart_opt
-#    wrapper_esl_epn_translate_startstop()
-#
-#################################################################
-# Subroutine:  parse_esl_epn_translate_startstop_outfile()
-# Incept:      EPN, Fri Mar  4 13:56:56 2016
-#
-# Purpose:    Parse an output file from esl-epn-translate.pl run
-#             with the --startstop option and store the relevant 
-#             information we derive from it in @{$err_ftr_instances_AHHR}. 
-#
-#             Checks for and adds the following error codes for CDS features
-#             (type is "cds-mp" or "cds-notmp"):
-#
-#             "str": if predicted start is invalid (detected by esl-epn-translate)
-#
-#             "stp": "maybe" added for features for which predicted stop is not a 
-#                  valid in-frame stop (detected by esl-epn-translate), this is
-#                  either removed, or updated later (because an stp error occurs only
-#                  when the predicted stop position is not the end of a valid stop
-#                  codon -- valid, out-of-frame stop is okay (not an stp error))
-#
-#             "ext": "maybe" added for features with no in-frame stop, removed or
-#                  updated later (not in this function) when we look for an in-frame
-#                  stop downstream of the predicted stop (ext and ntr are exclusive)
-#
-#             "nst": "maybe" added for features with no in-frame stop, removed or
-#                  updated later (not in this function) when we look for an in-frame
-#                  stop downstream of the predicted stop (ext and ntr are exclusive)
-#
-#             "trc": added here for features with early in-frame stop (detected by 
-#                  esl-epn-translate) with temporary value, the -1 times the number 
-#                  of nucleotides the in-frame stop is upstream of the predicted stop.
-#                  This value is updated later (not in this function) to a more informative
-#                  message for outputting.
-#
-# Arguments: 
-#  $translate_outfile:      path to the file to parse
-#  $ftr_idx:                feature index the translate output is for
-#  $ftr_info_HAR:           REF to the feature info hash of arrays, PRE-FILLED
-#  $err_info_HAR:           REF to the error info HA, PRE-FILLED
-#  $err_ftr_instances_AHHR: REF to the error instances AAH, PRE-FILLED
-#  $FH_HR:                  REF to hash of file handles
-#
-#
-# Returns:    void
-#
-# Dies:       If we have trouble parsing $translate_outfile
-#
-#################################################################
-sub parse_esl_epn_translate_startstop_outfile { 
-  my $sub_name = "parse_esl_epn_translate_startstop_outfile";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $FH_HR) = @_;
-  
-  # is this a mature peptide?
-  my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-  my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-  my $append_num = 0; # the number of nucleotides that were appended to this features
-                      # sequence past the final predicted nucleotide, we need to 
-                      # account for these when we determine the correction
-  if((defined $ftr_info_HAR->{"append_num"}) && (defined $ftr_info_HAR->{"append_num"}[$ftr_idx])) { 
-    $append_num = $ftr_info_HAR->{"append_num"}[$ftr_idx];
-  }
-
-  open(IN, $translate_outfile) || fileOpenFailure($translate_outfile, "main", $!, "reading", $FH_HR);
-
-  while(my $line = <IN>) { 
-    # example line
-    #HQ693465/1-306 1 1 304
-    if($line =~ /^(\S+)\/(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
-      my ($seq_name, $coords, $start_is_valid, $stop_is_valid, $first_stop_posn1) = ($1, $2, $3, $4, $5);
-
-      # skip this sequence IFF we have a b5e error already for it, this means 
-      # that the alignment does not extend to the 5' boundary of the model but
-      # it does extend to the 5' boundary of the sequence (first seq posn of 
-      # alignment is 1 (on + strand) or L (on - strand)). In this case we 
-      # don't search for a trc error.
-      if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
-        # determine if we have an early stop
-        my $cds_len            = dashCoordsStringCommaDelimitedToLength($coords, $sub_name, $FH_HR);
-        my $final_codon_posn1  = $cds_len - 2; # final codon position 1 
-        my $early_inframe_stop;
-        my $corr_len           = 0; # number of nts to correct prediction by, changed if $early_inframe_stop
-        if($first_stop_posn1 == $final_codon_posn1) { # first stop is the final codon
-          $early_inframe_stop = 0;
-        }
-        elsif($first_stop_posn1 == 0) { # esl-epn-translate didn't find any in-frame stop
-          $early_inframe_stop = 0;
-        }
-        else { # there is an early stop
-          $early_inframe_stop = 1; 
-          $corr_len = (-1 * ($final_codon_posn1 - $first_stop_posn1)) + $append_num; # negative because early stop shortens length
-        }
-
-        # We now have all of the relevant data on the current
-        # CDS/mat_peptide sequence and we need to use to determine
-        # what errors each sequence should throw (at least for those
-        # that can tell should be thrown at this point in the
-        # processing) as well as any corrections to stop predictions
-        # that we should make prior to translation (trc errors are
-        # thrown when this happens).
-        # 
-        # There are 4 relevant variables that dictate which errors
-        # should be thrown/checked for later and whether a stop
-        # correction should be made. The table gives all possible
-        # combinations of values of those variables and lists the
-        # outcome of each possibility.
-        #
-        # Variables we know from earlier processing:
-        # $is_cds:     '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide, $xfeat, or $dfeat)
-        # $is_matpept: '1' if current feature is a CDS, '0' if it is not (e.g. mature peptide, $xfeat, or $dfeat)
-        #
-        # Variables derived from esl-epn-translate output we're currently parsing
-        # $start_is_valid:     '1' if current feature's first 3 nt encode a valid start codon
-        # $stop_is_valid:      '1' if current feature's final 3 nt encode a valid stop codon and total feature length is multiple of 3
-        # $early_inframe_stop: '1' if an inframe stop exists prior to predicted stop
-        #
-        # 7 possibilities, each with different outcome (P1-P7):
-        #                                                                                         | make correction to |
-        # idx | is_cds|is_mp | start_is_valid | stop_is_valid | early_inframe_stop ||   errors    | stop coordinate?   |
-        # ----|--------------|----------------|---------------|--------------------||-------------|--------------------|
-        #  P1 | true  |false |          false |          any  |                any ||         str |                 no |
-        #  P2 | true  |false |           true |        false  |              false ||     stp ext?|     maybe (if ext) |
-        #  P3 | true  |false |           true |        false  |               true ||     stp trc |                yes |
-        #  P4 | true  |false |           true |         true  |              false ||        none |                 no |
-        #  P5 | true  |false |           true |         true  |               true ||         trc |                yes |
-        # -----------------------------------------------------------------------||-------------------------------------
-        #  P6 | false | true |            any |          any  |              false ||        ntr? |                 no |
-        #  P7 | false | true |            any |          any  |               true ||    trc ntr? |                yes |
-        # --------------------------------------------------------------------------------------------------------------
-        # 
-        # in table above:
-        # '?' after error code means that error is possible, we have to check for it later           
-        # 'any' means that any value is possible, outcome is unaffected by value
-        #
-        if($is_cds) { 
-          if(! $start_is_valid) { # possibility 1 (P1)
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, "", $FH_HR);
-            # printf("in $sub_name, feature index $ftr_idx, seq $seq_name $c possibility 1 (str)\n");
-          }
-          else { 
-            # $start_is_valid is 1
-            if(! $stop_is_valid) { 
-              if(! $early_inframe_stop) { 
-                # possibility 2 (P2): stp error, need to check for ext error later
-
-                # add the 3 potential error codes, we'll check again later and possibly remove them
-                # the 'stp' error is only a "maybe" because (! $stop_is_valid) implies it's not an
-                # *IN-FRAME* valid stop codon, but we only throw 'stp' if the final 3 nt of the prediction
-                # are not a valid stop codon, regardless of frame
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_name, "maybe", $FH_HR);
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nst", $seq_name, "maybe", $FH_HR);
-                # printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 2 (stp, maybe ext)\n");
-              }
-              else { # $early_inframe_stop is 1
-                # possibility 3 (P3): stp and trc error
-
-                # add the 2 potential error codes, we'll check again later and possibly remove them
-                # the 'stp' error is only a "maybe" because of reason explained above similar case in possibility 2 above
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "maybe", $FH_HR);
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 3 (trc and stp)\n");
-              }
-            } # end of 'if(! $stop_is_valid)'
-            else { # $stop_is_valid is 1
-              if(! $early_inframe_stop) { 
-                ; 
-                # possibility 4 (P4): no errors, do nothing
-                #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 4 (no errors)\n");
-              }
-              else { 
-                # possibility 5 (P5): trc error
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-                # printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 5 (trc)\n");
-              }
-            }              
-          }
-        } # end of 'if($is_cds)'
-        elsif($is_matpept) { 
-          if(! $early_inframe_stop) { 
-            ; 
-            # possibility 6 (P6): maybe ntr error later, but can't check for it now, do nothing;
-            #printf("in $sub_name, feature index $ftr_idx, seq $seq_name, possibility 6 (no error)\n");
-          }
-          else { # $early_inframe_stop is '1'
-            # possibility 7 (P7): trc error, maybe ntr error later, but can't check for it now
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $corr_len, $FH_HR);
-          }
-        }
-      } # end of 'if(! exists b5e error)'
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse esl-epn-translate.pl output line:\n$line\n", 1, $FH_HR);
-    }
-  }
-  close(IN);
-  
-  return;
-}
-
-#################################################################
-# Subroutine:  get_esl_epn_translate_altstart_opt
-# Incept:      EPN, Thu Mar 10 11:23:48 2016
-#
-# Purpose:    Get the command line option string for esl-epn-translate
-#             for the -altstart option given the %{$ftr_info_HAR}
-#             the feature index $ftr_idx and the @{$specstart_AAR}.
-#             $specstart_AAR can (and often will be) undef, in which
-#             case we just return "", indicating the option isn't
-#             going to be used. Also if the type of the feature is not
-#             a CDS, then we will also return "".
-#
-# Arguments: 
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
-#  $ftr_idx:           index in %{$ftr_info_HAR} we are interested in
-#  $specstart_AAR:     REF to the 2D array with specified start codons
-#
-# Returns:    Return option string for esl-epn-translate -altstart,
-#             e.g. "-altstart GCC". If none, return "".
-#
-# Dies:       never
-# 
-################################################################# 
-sub get_esl_epn_translate_altstart_opt { 
-  my $sub_name = "get_esl_epn_translate_altstart_opt()";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $ftr_idx, $specstart_AAR) = @_;
-
-  if(! defined $specstart_AAR) { 
-    return ""; 
-  }
-  elsif(($ftr_info_HA{"type"}[$ftr_idx] ne "cds-mp") && ($ftr_info_HA{"type"}[$ftr_idx] ne "cds-notmp")) { 
-    return "";
+  # determine description of the runs we are about to do
+  my $desc = "";
+  if($round == 1) { 
+    $desc = ($do_parallel) ? 
+        "Submitting $nseq_files cmscan classification job(s) to the farm" : 
+        sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   else { 
-    my $codon_str = "";
-    # determine the CDS index of this feature
-    my $cds_idx = 0;
-    for(my $cur_ftr_idx = 0; $cur_ftr_idx <= $ftr_idx; $cur_ftr_idx++) { 
-      if(($ftr_info_HA{"type"}[$cur_ftr_idx] eq "cds-mp") || ($ftr_info_HA{"type"}[$cur_ftr_idx] eq "cds-notmp")) { 
-        $cds_idx++; 
-      }
-    }
-    foreach my $codon (@{$specstart_AAR->[($cds_idx-1)]}) { 
-      if($codon_str ne "") { 
-        $codon_str .= ",";
-      }
-      $codon_str .= $codon;
-    }
-    if($codon_str ne "") { 
-      return "-altstart $codon_str";
+    if($do_parallel) { 
+      $desc = sprintf("Submitting $nseq_files cmsearch coverage determination job(s) ($mdl_name: $nseq seq%s) to the farm", 
+                      ($nseq > 1) ? "s" : "");
     }
     else { 
-      return "";
+      $desc = sprintf("Determining sequence coverage ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
     }
   }
-}
+  my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
+  if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
+  # run cmsearch or cmscan
+  my $out_key;
+  my @out_keys_A = ("stdout", "err", "tblout");
+  my $round_str = ($round eq "1") ? "scan.r1" : "search.r2";
+  for(my $s = 0; $s < $nseq_files; $s++) { 
+    %{$out_file_AH[$s]} = (); 
+    foreach my $out_key (@out_keys_A) { 
+      $out_file_AH[$s]{$out_key} = $out_root . "." . $round_str . ".s" . $s . "." . $out_key;
+    }
+    cmsearch_or_cmscan_run($execs_HR, $mdl_file, $mdl_name, $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
+  }
 
-#################################################################
-# Subroutine:  wrapper_esl_epn_translate_startstop()
-# Incept:      EPN, Thu Mar 10 15:04:53 2016
-#
-# Purpose:    For each feature's predicted hits in a fasta file,
-#             call 'esl-epn-translate' using the -startstop option 
-#             to investigate where the in frame stop codons are.
-#
-# Arguments: 
-#  $esl_epn_translate:  path to esl-epn-translate.pl executable
-#  $out_key:            key for output files in %{$ftr_info_HAR}
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, ADDED TO HERE
-#  $specstart_AAR:      REF to the 2D array with specified start codons, can be undef
-#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:     REF to the 2D hash of output file information
-#
-# Returns: void
-#
-################################################################# 
-sub wrapper_esl_epn_translate_startstop { 
-  my $sub_name = "wrapper_esl_epn_translate_startstop()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  if($do_parallel) { 
+    # wait for the jobs to finish
+    $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
+                                            $progress_w, $log_FH, *STDOUT);
+    my $njobs_finished = dng_WaitForFarmJobsToFinish(0, # we're not running cmalign
+                                                     \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
+    if($njobs_finished != $nseq_files) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+    }
+    ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
+  }
 
-  my ($esl_epn_translate, $out_key, $ftr_info_HAR, $specstart_AAR, $err_info_HAR, $err_ftr_instances_AHHR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-
-  my $ftr_info_fa_file_key  = $out_key . ".hits.fa";
-  my $ftr_info_out_file_key = $out_key . ".hits.fa.esl-epn-translate";
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $ftr_hit_fafile            = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
-    my $esl_epn_translate_outfile = $ftr_info_HAR->{$ftr_info_out_file_key}[$ftr_idx];
-    
-    if($ftr_hit_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
-      
-      # deal with alternative starts here
-      my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
-      
-      if(! opt_Get("--skiptranslate", $opt_HHR)) { 
-        # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
-        $cmd = $esl_epn_translate . " $altstart_opt -startstop $ftr_hit_fafile > $esl_epn_translate_outfile";
-        runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-      }
-      else { # --skiptranslate, validate the output file exists
-        validateFileExistsAndIsNonEmpty($esl_epn_translate_outfile, $sub_name, $ofile_info_HHR->{"FH"});
-      }
-      
-      # parse the output
-      parse_esl_epn_translate_startstop_outfile($esl_epn_translate_outfile, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, $ofile_info_HHR->{"FH"});
-      if((! opt_Get("--keep", $opt_HHR)) && (! opt_Get("--skiptranslate", $opt_HHR))) { 
-        removeFileUsingSystemRm($esl_epn_translate_outfile, $sub_name, $opt_HHR, $ofile_info_HHR);
-      }
-      elsif(! opt_Get("--skiptranslate", $opt_HHR)) { 
-        my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_out_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $esl_epn_translate_outfile, 0, sprintf("esl-epn-translate.pl output file for feature %s", $ftr_info_HA{"out_tiny"}[$ftr_idx]));
-      }
+  # concatenate files into one
+  foreach $out_key (@out_keys_A) { 
+    if(($do_parallel) || ($out_key ne "err")) { # .err files don't exist if (! $do_parallel)
+      my $concat_key  = sprintf("%s.%s%s", $round_str, (defined $mdl_name) ? $mdl_name . "." : "", $out_key);                                
+      my $concat_file = $out_root . "." . $concat_key;
+      my @concat_A = ();
+      utl_ArrayOfHashesToArray(\@out_file_AH, \@concat_A, $out_key);
+      utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+      # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $concat_key, $concat_file, 0, sprintf("round $round scan/search $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
     }
   }
+
+  # remove sequence files if we created any
+  if(($do_split) && (! opt_Get("--keep", $opt_HHR))) { 
+    utl_FileRemoveList(\@seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+  }
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
   return;
 }
 
 #################################################################
-#################################################################
-#  Subroutines related to determining and storing annotations/results:
-#    initialize_mdl_results()
-#    initialize_ftr_results()
-#    results_calculate_predicted_lengths()
-#    store_hit()
-#    results_calculate_corrected_stops()
-#    results_calculate_overlaps_and_adjacencies()
-#    mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()
-#    mdl_results_calculate_out_starts_and_stops()
-#    mdl_results_compare_to_genbank_annotations()
-#    ftr_results_calculate
-#    dump_results()
+# Subroutine:  cmsearch_or_cmscan_run()
+# Incept:      EPN, Wed Feb  6 12:38:11 2019
 #
-#################################################################
-# Subroutine: initialize_mdl_results()
-# Incept:     EPN, Tue Mar 15 05:30:18 2016
+# Purpose:     Run Infernal's cmsearch or cmscan executable using $mdl_file
+#              as the model file on sequence file $seq_file, either
+#              locally or on the farm.
 #
-# Purpose:    Initialize the mdl_results_AAH data structure.
-#
-# Args:
-#  $mdl_results_AAHR: REF to the model results data structure
-#                     INITIALIZED HERE
-#  $mdl_info_HAR:     REF to hash of arrays with information 
-#                     on the models, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with information 
-#                     on the sequences, PRE-FILLED
+# Arguments: 
+#  $execs_HR:         hash with paths to cmsearch, cmscan and cmfetch
+#  $mdl_file:         path to the CM file
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch and run cmscan instead of cmsearch)
+#  $seq_file:         path to the sequence file
+#  $opt_str:          option string for cmsearch run
+#  $out_file_HR:      ref to hash of output files to create
+#                     required keys: "stdout", "tblout", "err"
 #  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns: void
-#
-# Dies: If mdl_info_HAR or seq_info_HAR is invalid or incomplete.
-#
-#################################################################
-sub initialize_mdl_results { 
-  my $sub_name = "initialize_mdl_results()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_results_AAHR, $mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR);           # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-
-  @{$mdl_results_AAHR} = ();
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    @{$mdl_results_AAHR->[$mdl_idx]} = ();
-    for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      %{$mdl_results_AAHR->[$mdl_idx][$seq_idx]} = ();
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: initialize_ftr_results()
-# Incept:     EPN, Tue Mar 15 06:01:32 2016
-#
-# Purpose:    Initialize the ftr_results_AAH data structure.
-#
-# Args:
-#  $ftr_results_AAHR: REF to the feature results data structure
-#                     INITIALIZED HERE
-#  $ftr_info_HAR:     REF to hash of arrays with information 
-#                     on the features, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with information 
-#                     on the sequences, PRE-FILLED
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns: void
-#
-# Dies: If ftr_info_HAR or seq_info_HAR is invalid or incomplete.
-#
-#################################################################
-sub initialize_ftr_results { 
-  my $sub_name = "initialize_ftr_results()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_results_AAHR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR);           # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-
-  @{$ftr_results_AAHR} = ();
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      # for any feature $ftr_idx with 'annot_type' eq 'model', 
-      # we will have all the results we need in @mdl_results_AAH,
-      # and $ftr_results_AAHR->[$ftr_idx] will remain undef
-      $ftr_results_AAHR->[$ftr_idx] = undef;
-    }
-    else { 
-      @{$ftr_results_AAHR->[$ftr_idx]} = ();
-      for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        %{$ftr_results_AAHR->[$ftr_idx][$seq_idx]} = ();
-      }
-    }
-  }
-  return;
-}
-
-#################################################################
-# Subroutine:  results_calculate_predicted_lengths()
-# Incept:      EPN, Tue Mar  8 16:12:44 2016
-#
-# Purpose:    For all results in @{$mdl_results_AAH}, determine the
-#             length ("len") and cumulative length ("cumlen") for 
-#             each prediction. For model M of feature F, the cumulative
-#             length" is the length in nucleotides in the
-#             predictions of all other models M' that also model
-#             feature F, and are 5' of M, plus the length of M.
-#             For example, if M is the third exon of a feature, and has
-#             length 201, and the lengths of the first two exons are 99 
-#             and 51 nucleotides respectively, the cumulative length of
-#             M is 351.
-# 
-#             This function should be called before results_calculate_corrected_stops(),
-#             which will update the length values as necessary for the corrected stops.
-#             If, here, any "c_stop" values exist (indicating that results_calculate_corrected_stops()
-#             was already called, then we die in error.
-#
-# Arguments: 
-#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:     REF to hash of arrays with information on the features, ADDED TO HERE
-#  $nseq:             number of sequences we have results for
-#  $mdl_results_AAHR: REF to results AAH, ADDED TO HERE
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-# Dies:       if any "c_stop" results values already exist,
-#             indicating that results_calculate_corrected_stops()
-#             was already called (which it should *not* have been)
-################################################################# 
-sub results_calculate_predicted_lengths {
-  my $sub_name = "results_calculate_predicted_lengths()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $ftr_info_HAR, $nseq, $mdl_results_AAHR, $opt_HHR, $FH_HR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-
-  my $start_key   = "p_start";
-  my $stop_key    = "p_stop";
-  my $strand_key  = "p_strand";
-  my $len_key     = "len";
-  my $cumlen_key  = "cumlen";
-  my $forbid_key  = "c_stop";       # this key should not be set, if it already is (indicating results_calculate_corrected_stops()
-                                    # was already called, then we die
-  
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        my $cumlen = 0;
-        for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key}) { 
-            if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$forbid_key}) { 
-              DNAORG_FAIL("ERROR in $sub_name(), results_AAHR->[$mdl_idx][$seq_idx]{$forbid_key} exists, but it shouldn't.", 1, $FH_HR);
-            }
-            my $len  = abs($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key}) + 1;
-            $cumlen += $len;
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $len;
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}  = $cumlen;
-          }        
-        }
-      }
-    }
-  }
-  
-  return;
-}
-
-#################################################################
-# Subroutine : store_hit()
-# Incept:      EPN, Tue Mar  1 14:33:38 2016
-#
-# Purpose:    Helper function for parse_cmscan_tblout().
-#             Given info on a hit and a ref to the results AAH, 
-#             store info on it. 
-#
-# Arguments: 
-#  $mdl_results_AAHR:  REF to results AAH, FILLED HERE
-#  $mdlidx:            model index, 1st dim index in results_AAH to store in
-#  $seqidx:            sequence index, 2nd dim index in results_AAH to store in
-#  $mdllen:            model length
-#  $accn_len:          sequence length (before duplicating, if relevant)
-#  $seq_len:           length of sequence actually searched (after duplicating, if relevant)
-#  $mdlfrom:           start position of hit
-#  $mdlto:             stop position of hit
-#  $seqfrom:           start position of hit
-#  $seqto:             stop position of hit
-#  $strand:            strand of hit
-#  $evalue:            E-value of hit
-#  $score:             bit score of hit
-#  $FH_HR:             REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       never
-#
-################################################################# 
-sub store_hit { 
-  my $sub_name = "store_hit()";
-  my $nargs_exp = 14;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_results_AAHR, $mdlidx, $seqidx, $mdllen, $accn_len, $seq_len, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $evalue, $score, $FH_HR) = @_;
-
-  # only consider hits where either the start or end are less than the total length
-  # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
-  # rule for deciding which of duplicate hits we'll store 
-  if(($seqfrom <= $accn_len) || ($seqto <= $accn_len)) { 
-
-    my $p_5seqflush = undef; # set to '1' if hit is flush with 5' end of sequence (1st nt in seq is 1st nt in hit), else 0
-    my $p_3seqflush = undef; # set to '1' if hit is flush with 3' end of sequence (final nt in seq is final nt in hit), else 0
-
-# Code block below is how we used to modify start/stop if hit spanned
-# stop..start boundary, now we just store it as it is, and then modify
-# the start and/or stop when we output its coordinates. This removes a
-# nasty off-by-one with negative indices that kept recurring in
-# various situations.
-# 
-# The commented out code is kept here for reference
-#
-#    # deal with case where one but not both of from to is > L:
-#    if($seqfrom > $L || $seqto > $L) { 
-#      $seqfrom -= $L; 
-#      $seqto   -= $L; 
-#      if($seqfrom < 0)  { $seqfrom--; }
-#      if($seqto   < 0)  { $seqto--; }
-#    }
-    
-    # we only store the first hit we see, this is safe because we know 
-    # that this will be the lowest E-value
-    if(%{$mdl_results_AAHR->[$mdlidx][$seqidx]}) { 
-      # a hit for this model:seq pair already exists, make sure it has a lower E-value than the current one
-      if($mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"} > $evalue) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, already have hit stored for model index $mdlidx seq index $seqidx with higher evalue (%g > %g), this implies hits were not sorted by E-value...", $mdl_results_AAHR->[$mdlidx][$seqidx]{"evalue"}, $evalue), 1, $FH_HR); 
-      }
-      if($score > 25.) { $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}++; } # yes, this is hard-coded
-    }
-    else { 
-      # no hit yet exists, make one
-      # determine if hit extends to very end of sequence on 5' and 3' end
-      if($strand eq "+") { 
-        $p_5seqflush = (($seqfrom == 1)         || ($seqfrom == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
-        $p_3seqflush = (($seqto   == $accn_len) || ($seqto   == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
-      }
-      else { # strand is -
-        $p_5seqflush = (($seqfrom == $accn_len) || ($seqfrom == $seq_len))      ? 1 : 0; # $accn_len == $seq_len if sequence is not duplicated
-        $p_3seqflush = (($seqto   == 1)         || ($seqto   == ($accn_len+1))) ? 1 : 0; # $accn_len+1 only possible if seq is duplicated
-      }
-      %{$mdl_results_AAHR->[$mdlidx][$seqidx]} = ();
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_start"}     = $seqfrom;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_stop"}      = $seqto;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_strand"}    = $strand;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5overhang"} = ($mdlfrom - 1);
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3overhang"} = ($mdllen - $mdlto);
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_5seqflush"} = $p_5seqflush;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_3seqflush"} = $p_3seqflush;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_evalue"}    = $evalue;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_score"}     = $score;
-      $mdl_results_AAHR->[$mdlidx][$seqidx]{"p_nhits"}     = 1;
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  results_calculate_corrected_stops()
-# Incept:      EPN, Tue Mar  8 20:23:29 2016
-#
-# Purpose:    For all results in @{$mdl_results_AAH} for which an 
-#             'trc' or 'ext' error exists in \@err_ftr_instances_AHH, 
-#             determine what the corrected stop position should be
-#             and set it as "c_stop".
-#
-#             Checks for and updates the following error codes for features
-#             for which "annot_type" eq "model":
-#
-#             "stp": either updates or removes existing error instances of stp
-#                  added in parse_esl_epn_translate_startstop_outfile().
-#                  Checks to see if predicted stop is a valid stop codon,
-#                  if it is, removes the error instance, else it updates it
-#                  by making the associated error message more informative.
-#
-#                  valid in-frame stop (detected by esl-epn-translate), this is
-#                  either removed, or updated later (because an stp error is only
-#                  when the predicted stop position is not the end of a valid stop
-#                  codon -- valid, out-of-frame stop is okay (not an stp error))
-#
-#             "trc": updates all 'trc' errors originally added in 
-#                  parse_esl_epn_translate_startstop_outfile() by making their 
-#                  error messages more informative to include information
-#                  on the corrected stop position which is calculated in this
-#                  function.
-#
-#             "ext": updates all 'ext' errors originally added in 
-#                  parse_esl_epn_translate_startstop_outfile() and then 
-#                  later updated in main() (step 11) by making their error
-#                  messages more informative to include information on
-#                  the corrected stop position which is calculated in this
-#                  function.
-#
-# Arguments: 
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $mdl_results_AAHR:       REF to results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-################################################################# 
-sub results_calculate_corrected_stops {
-  my $sub_name = "results_calculate_corrected_stops()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-
-  # keys in the 3rd dim of @{$mdl_results_AAHR}
-  my $start_key     = "p_start";
-  my $stop_key      = "p_stop";
-  my $strand_key    = "p_strand";
-  my $len_key       = "len";
-  my $cumlen_key    = "cumlen";
-  my $trc_err_key   = "trc_err_flag";
-  my $ext_err_key   = "ext_err_flag";
-  my $prv_trc_key   = "prv_trc_flag";
-  my $corr_stop_key = "c_stop";
-
-  # lengths
-  my $newlen;       # the new, corrected length of a prediction
-  my $cumlen;       # the stored, cumulative length of a prediction, filled in results_calculate_lengths()
-  my $remaininglen; # the current remaining len (<= $newlen) of the new length 
-  my $len_corr;     # correction to the length due to trc or ext error, will be negative for trc, positive for ext
-
-  # model indices
-  my $first_mdl_idx; # the first model index that models the current feature 
-  my $final_mdl_idx; # the final model index that models the current feature 
-
-  # loop through all features and sequences, and correct stop
-  # stop predictions for all trc and ext errors
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      # we only deal with features for which annot_type is "model" here, we
-      # deal with features with annot_type eq "multifeature" in ftr_results_calculate()
-      my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-      my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-      for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-
-        # only proceed past here if we have a stp, trc or ext error
-        if((exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) ||
-           (exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) ||
-           (exists $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name})) { 
-
-          # determine first and final model indices, we'll use these differently depending 
-          # on if we're a stp, trc or ext, but we need to know these for all three cases
-          $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-          $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-          # first_mdl_idx should be the first model for which we have a prediction
-          while(! exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"p_start"}) { 
-            $first_mdl_idx++; 
-            if($first_mdl_idx > $final_mdl_idx) { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine first model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
-            }
-          }
-          # final_mdl_idx should be the final model for which we have a prediction
-          while(! exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_start"}) { 
-            $final_mdl_idx--; 
-            if($final_mdl_idx < $first_mdl_idx) { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, can't determine final model for feature $ftr_idx (%s) for sequence $seq_name. stp or trc or ext error exists but no models have predictions for this feature.", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
-            }
-          }
-          ###########################################
-          # block that handles potential stp errors #
-          ###########################################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
-            if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, stp error with non-maybe value %s for ftr %s seq_name: $seq_name", 
-                                  $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}, $ftr_info_HAR->{"out_short"}[$ftr_idx]),
-                          1, $FH_HR);
-            }
-            my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, 
-                                                    $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, 
-                                                    $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}, $FH_HR);
-            if(validateStopCodon($stp_err_stop_codon)) { 
-              # it's a valid stop, remove the "maybe"
-              error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
-            }
-            else { 
-              # it is not a valid stop, the error stays and we update the error message
-              my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, 
-                                               $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_stop"}, $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"p_strand"}); 
-              error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
-            }
-          }        
-          # only one of trc or ext can exist, they're 'incompatible' in err_info_HAR
-          ###########################################
-          # block that handles potential trc errors #
-          ###########################################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-            $len_corr = $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name};
-            if($len_corr >= 0) { 
-              DNAORG_FAIL("ERROR in $sub_name, trc error with non-negative correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-            }
-            # determine the new length of the prediction, this is the old length plus the correction (which is negative)
-            $newlen = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key} + $len_corr;
-            # careful: the length correction is with respect to the full feature (potentially multiple models (e.g. exons))
-            # so it can be as high as the cumulative length of all model predictions, so we need to adjust the length 
-            # by subtracting the correction from the cumulative length, not from the model length
-            if($newlen <= 0) { 
-              DNAORG_FAIL(sprintf("ERROR in $sub_name, trc error has length correction ($len_corr) longer than predicted length (%d) for ftr: $ftr_idx seq_name: $seq_name", 
-                                  $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{$cumlen_key}), 1, $FH_HR);
-            }
-            # determine which model to set corrected stop position for, and set it
-            # again, this is only necessary because our correction is with respect to the 
-            # feature, and if this feature is multi-model it means we need to figure out
-            # which model the corrected stop is going to affect. 
-            # 
-            # For example: imagine feature 1 is comprised of models 1
-            # and 2. Model 1 prediction is 1..300 model 2 prediction is
-            # 601..1200.  If the length correction is 660, this means
-            # that model 2 is now irrelevant (truncation occurs before
-            # it's predicted start, and model 1's prediction should
-            # change to 1..240.
-            #
-            $remaininglen = $newlen;
-            for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++) { 
-              if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
-                DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
-              }
-              if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
-                DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
-              }
-              $cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
-              if($newlen <= $cumlen) { # this is the model to update
-                if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
-                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} + $remaininglen - 1;
-                }
-                else { # negative strand
-                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$start_key} - $remaininglen + 1;
-                }
-                # update "len" and "cumlen" and set $trc_err_key
-                my $exon_len_corr = ($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key} - $remaininglen);
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} -= $exon_len_corr;
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}     = $remaininglen;
-                $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$trc_err_key} = 1;
-                my $cur_cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key};
-
-                # update the errmsg in @{$err_ftr_instances_AHHR} based on 
-                # what just figured out about this truncated stop
-                my $updated_trc_errmsg = sprintf("homology search predicted %d..%d", 
-                                                 create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
-                                                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
-                if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
-                  $updated_trc_errmsg .= sprintf(" %s %d of %d", ($is_cds) ? "exon" : "segment", $mdl_idx - $first_mdl_idx + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
-                }
-                $updated_trc_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
-                                               create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
-                                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
-                                               $exon_len_corr);
-                error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_trc_errmsg, $FH_HR);
-                
-                # now for all remaining models for this feature, set $cumlen_key to $cur_cumlen, 
-                # and $prv_trc_key to '1' indicating that that model prediction 
-                # doesn't really exist due to an early stop in a previous model
-                $mdl_idx++;
-                while($mdl_idx <= $final_mdl_idx) { 
-                  if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
-                    DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
-                  }
-                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}  = $cur_cumlen;
-                  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$prv_trc_key} = 1;
-                  $mdl_idx++;
-                }
-                # after the above while($mdl_idx) loop, $mdl_idx == $final_mdl_idx+1, so this means 
-                # we will break out of the enclosing 'for(my $mdl_idx = $first_mdl_idx; $mdl_idx <= $final_mdl_idx; $mdl_idx++)' loop at 
-                # the beginning of the next iteration
-              } # end of 'if($newlen <= $cumlen)'
-              $remaininglen -= $cumlen; # update $remaininglen
-            } # end of 'for(my $mdl_idx' loop
-          } # end of 'if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}'
-          #################################
-          # block that handles ext errors #
-          #################################
-          elsif(exists $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name}) { 
-            $len_corr = $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name};
-            if($len_corr <= 0) { 
-              DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-            }
-            # ext are easier, always modify stop of final model
-            my $mdl_idx = $final_mdl_idx;
-            if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}) { 
-              DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$len_key} does not exist, but it should.", 1, $FH_HR); 
-            }
-            if(! exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key}) { 
-              DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} does not exist, but it should.", 1, $FH_HR); 
-            }
-            if($mdl_results_AAHR->[$mdl_idx][$seq_idx]{$strand_key} eq "+") { 
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} + $len_corr;
-            }
-            else { # negative strand
-              $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$corr_stop_key} = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$stop_key} - $len_corr;
-            }
-            # update "len" and "cumlen"
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$len_key}    += $len_corr;
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$cumlen_key} += $len_corr;
-            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{$ext_err_key} = 1;
-
-            # update the errmsg in @{$err_ftr_instances_AHHR} based on 
-            # what we just figured out about this extended stop
-            my $updated_ext_errmsg = sprintf("homology search predicted %d..%d", 
-                                             create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"},
-                                                                          $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
-            if($ftr_info_HAR->{"nmodels"}[$ftr_idx] != 1) { 
-              $updated_ext_errmsg .= sprintf(" %s %d of %d", ($is_cds) ? "exon" : "segment", $mdl_idx - $ftr_info_HAR->{"first_mdl"}[$ftr_idx] + 1, $ftr_info_HAR->{"nmodels"}[$ftr_idx]);
-            }
-            $updated_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
-                                           create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"},
-                                                                        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"},
-                                                                        $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
-                                           $len_corr);
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_ext_errmsg, $FH_HR);
-          } # end of ext block
-        } # end of if statement entered if stp, trc or ext
-      } # end of loop over $seq_idx
-    } # end of if $ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model"
-  } # end of loop over $ftr_idx
-  return;
-}
-
-
-#################################################################
-# Subroutine:  results_calculate_overlaps_and_adjacencies()
-# Incept:      EPN, Sat Mar 12 10:40:29 2016
-#
-# Purpose:    For all results in @{$mdl_results_AAH}, determine which
-#             predictions for the same sequence are adjacent to 
-#             and overlap with each other and save those strings
-#             in $mdl_results_AAHR. For those that are 
-#             inconsistent with the reference, create the 
-#             appropriate 'olp', 'aja', or 'ajb' error in 
-#             \@err_ftr_instances_AHH, 
-#
-#             Checks for and adds the following error codes for features
-#             with "annot_type" eq "model":
-#
-#             "olp": adds with error message depicting deviation from reference 
-#             "ajb": adds with error message depicting deviation from reference 
-#             "aja": adds with error message depicting deviation from reference 
-#
-# Arguments: 
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-################################################################# 
-sub results_calculate_overlaps_and_adjacencies { 
-  my $sub_name = "results_calculate_overlaps_and_adjacencies()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx; # counter over features
-  my $mdl_idx; # counter over models
-  my $seq_idx; # counter over sequences
-
-  my $do_all_olp = opt_Get("--allolp", $opt_HHR);
-  my $do_all_adj = opt_Get("--allolp", $opt_HHR);
-  
-  # for each sequence, fill a temporary array with starts, stops and strands
-  # then send it to overlapsAndAdjacenciesHelper() to get the adjacency and
-  # overlap strings
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my @start_A  = ();
-    my @stop_A   = ();
-    my @strand_A = ();
-    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-        push(@start_A,  $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"});
-        push(@stop_A,   (exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} ? 
-                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"c_stop"} : 
-                         $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}));
-        push(@strand_A, $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_strand"});
-      }
-      else { 
-        push(@start_A,  -1);
-        push(@stop_A,   -1);
-        push(@strand_A, "");
-      }
-    }
-    my @idx_ajb_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'before' adjacencies for each model
-    my @idx_aja_str_A = (); # [0..$nmdl-1] string of mdl indices describing 'after'  adjacencies for each model
-    my @idx_olp_str_A = (); # [0..$nmdl-1] string of mdl indices describing overlaps for each model
-    my @out_ajb_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'before' adjacencies for each model
-    my @out_aja_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing 'after'  adjacencies for each model
-    my @out_olp_str_A = (); # [0..$nmdl-1] string of mdl descriptions describing overlaps for each model
-    overlapsAndAdjacenciesHelper($mdl_info_HAR, \@start_A, \@stop_A, \@strand_A, 
-                                 $seq_info_HAR->{"seq_len"}[$seq_idx], $seq_info_HAR->{"accn_len"}[$seq_idx], 
-                                 \@idx_ajb_str_A, \@idx_aja_str_A, \@idx_olp_str_A, 
-                                 \@out_ajb_str_A, \@out_aja_str_A, \@out_olp_str_A, 
-                                 $opt_HHR, $FH_HR);
-    
-
-    # populate @mdl_results_AAHR, and keep track of per-feature error messages
-    my @ftr_olp_err_msg_A = ();
-    my @ftr_ajb_err_msg_A = ();
-    my @ftr_aja_err_msg_A = ();
-    # initialize
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      $ftr_olp_err_msg_A[$ftr_idx] = "";
-      $ftr_ajb_err_msg_A[$ftr_idx] = "";
-      $ftr_aja_err_msg_A[$ftr_idx] = "";
-    }
-    for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-      my $ftr_idx = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"idx_ajb_str"} = $idx_ajb_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"idx_aja_str"} = $idx_aja_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"idx_olp_str"} = $idx_olp_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_ajb_str"} = $out_ajb_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_aja_str"} = $out_aja_str_A[$mdl_idx];
-      $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_olp_str"} = $out_olp_str_A[$mdl_idx];
-
-      # construct ajb err message
-      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
-         ($do_all_adj)) {              # --alladj option used, report all aja/ajb errors for models without predictions (with 'nop')
-        if($idx_ajb_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx]) { 
-          my @diff_A = ();
-          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_ajb_str"}[$mdl_idx], 
-                                                   $idx_ajb_str_A[$mdl_idx], 
-                                                   $nmdl-1,
-                                                   \@diff_A, $FH_HR);
-          if(! $do_all_adj) { # --alladj option not used, so we ignore any aja/ajb errors with models without predictions (with 'nop' errors)
-            for(my $a = 0; $a < $nmdl; $a++) { 
-              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
-            }
-          }
-          for(my $i = 0; $i < $nmdl; $i++) { 
-            if($diff_A[$i] != 0) { 
-              $ftr_ajb_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                      ($ftr_ajb_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                      ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                      $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
-            }
-          }
-        }
-      }
-      # construct aja err message
-      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
-         ($do_all_adj)) {              # --alladj option used, report all aja/ajb errors for models without predictions (with 'nop')
-        if($idx_aja_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_aja_str"}[$mdl_idx]) { 
-          my @diff_A = ();
-          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_aja_str"}[$mdl_idx], 
-                                                 $idx_aja_str_A[$mdl_idx], 
-                                                 $nmdl-1,
-                                                 \@diff_A, $FH_HR);
-          if(! $do_all_adj) { # --alladj option not used, so we ignore any aja/ajb errors with models without predictions (with 'nop' errors)
-            for(my $a = 0; $a < $nmdl; $a++) { 
-              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
-            }
-          }
-          for(my $i = 0; $i < $nmdl; $i++) { 
-            if($diff_A[$i] != 0) { 
-              $ftr_aja_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                      ($ftr_aja_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                      ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                      $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
-            }
-          }
-        }
-      }
-
-      # construct olp err message
-      if(($start_A[$mdl_idx] != -1) || # this model has a prediction (does not have a 'nop' error)
-         ($do_all_olp)) {              # --allolp option used, report all olp errors for models without predictions (with 'nop')
-        if($idx_olp_str_A[$mdl_idx] ne $mdl_info_HAR->{"idx_olp_str"}[$mdl_idx]) { 
-          my @diff_A = ();
-          compareTwoOverlapOrAdjacencyIndexStrings($mdl_info_HAR->{"idx_olp_str"}[$mdl_idx], 
-                                                   $idx_olp_str_A[$mdl_idx], 
-                                                   $nmdl-1,
-                                                   \@diff_A, $FH_HR);
-          if(! $do_all_olp) { # --allolp option not used, so we ignore any olp errors with models without predictions (with 'nop' errors)
-            for(my $a = 0; $a < $nmdl; $a++) { 
-              if($start_A[$a] == -1) { $diff_A[$a] = 0; } # now, in next for($i) loop diff values for model $i where $i has no prediction won't be printed
-            }
-          }
-          for(my $i = 0; $i < $nmdl; $i++) { 
-            if($diff_A[$i] != 0) { 
-            $ftr_olp_err_msg_A[$ftr_idx] .= sprintf("%s%s(%s,%s)", 
-                                                    ($ftr_olp_err_msg_A[$ftr_idx] eq "") ? "" : ",", # need to add a comma only if we're appending
-                                                    ($diff_A[$i] eq "-1") ? "-" : "+",              # is it a lost or added adjacency?
-                                                    $mdl_info_HAR->{"out_idx"}[$mdl_idx], $mdl_info_HAR->{"out_idx"}[$i]);
-            }
-          }
-        }
-      }
-    } # end of 'for(mdl_idx'
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_olp_err_msg_A[$ftr_idx] ne "") { 
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "olp", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_olp_err_msg_A[$ftr_idx], $FH_HR);
-      }
-      if($ftr_ajb_err_msg_A[$ftr_idx] ne "") { 
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ajb", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_ajb_err_msg_A[$ftr_idx], $FH_HR);
-      }
-      if($ftr_aja_err_msg_A[$ftr_idx] ne "") { 
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aja", $seq_info_HAR->{"seq_name"}[$seq_idx], $ftr_aja_err_msg_A[$ftr_idx], $FH_HR);
-      }
-    }
-  } # end of 'for(my $seq_idx"
-  return;
-}
-
-#################################################################
-# Subroutine:  mdl_results_add_b5e_b5u_errors
-# Incept:      EPN, Fri Jan 13 13:26:49 2017
-#
-# Purpose:    Report 'b5e' and 'b5u'. The reporting of these
-#             is decoupled from 'b3e' and 'b3u' which are reported
-#             later, because we need to find 'b5e' errors before
-#             we look for 'trc' errors because a b5e precludes 
-#             a trc.
-#
-#             Checks for and adds or updates the following error 
-#             codes for features with "annot_type" eq "model":
-#             
-#             "b5e": adds this error, predicted hit not flush with 
-#                    model end but flush with sequence end on 5'
-#
-#             "b5u": adds this error, predicted hit not flush with 
-#                    model end and not flush with sequence end on 5'
-#
-# Arguments: 
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If we have predicted start and stop coordinates that don't make sense
-#       given the lengths of the accession and the sequence we searched.
-#
-################################################################# 
-sub mdl_results_add_b5e_b5u_errors { 
-  my $sub_name = "mdl_results_add_b5e_b5u_errors";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $mdl_idx; # counter over models
-  my $seq_idx; # counter over sequences
-
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
-    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(exists $mdl_results_HR->{"p_start"}) { 
-        if($mdl_results_HR->{"p_5overhang"} != 0) { 
-          # and add b5e or b5u error
-          if($mdl_results_HR->{"p_5seqflush"} == 1) { # b5e
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
-            # special case for which we will not allow a trc error later
-          }
-          else { # $mdl_results_HR->{"p_5seqflush"} == 0, b5u
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5u", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end", $FH_HR);
-          }
-        }
-      } # end of 'else' entered if we have a prediction
-    } # end of 'for($seq_idx' loop
-  } # end of 'for($mdl_idx' loop
-
-  return;
-}
-
-#################################################################
-# Subroutine:  ftr_results_add_b5e_errors
-# Incept:      EPN, Wed Feb 21 12:19:14 2018
-#
-# Purpose:    Report 'b5e' for features with 'annot_type' of 'multifeature'
-#             and type of 'cds-mp.
-#             Uses mdl_results to do this. If the first (5'-most) primary
-#             child of a multifeature feature should have a 'b5e' error
-#             (by looking at p_5overhang and p_5seqflush values in mdl_results)
-#             then the parent multifeature should too.
-#
-#             Checks for and adds or updates the following error 
-#             codes for features with "annot_type" eq "multifeature' and
-#             type 'cds-mp':
-#             
-#             "b5e": adds this error, predicted hit of 5'-most model 
-#                    not flush with model end but flush with sequence end on 5'
-#                    OR predicted hit of 5'-most model *is* flush with model end
-#                    but also flush with sequence end on 5' and *is not* the first
-#                    model of the first child of this multifeature parent feature.
-#
-#
-# Arguments: 
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-################################################################# 
-sub ftr_results_add_b5e_errors { 
-  my $sub_name = "ftr_results_add_b5e_errors";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx;   # counter over features
-  my $mdl_idx;   # counter over models
-  my $seq_idx;   # counter over sequences
-  my $seq_name;  # name of one sequence
-
-  # foreach annot_type:multifeature and type:'cds-mp' feature, 
-  # determine if the first primary child model with a prediction has a 'b5e' error, if so add a 'b5e' error to its parent cds-mp feature
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-
-      # get the primary children array
-      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
-      my $np_children = scalar(@primary_children_idx_A);
-
-      # get the all children array
-      my @all_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
-      my $na_children = scalar(@all_children_idx_A);
-
-      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        my $seen_hit = 0;      # set to '1' once we've seen the first model with an annotated hit
-        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        my $b5e_flag = 0;
-
-        # step through all primary children of this feature
-        for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
-          my $child_ftr_idx = $primary_children_idx_A[$child_idx];
-          for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
-            my $mdl_results_HR = \%{$mdl_results_AAHR->[$child_mdl_idx][$seq_idx]}; # for convenience
-            # two scenarios in which we can get a b5e error for the cds-mp parent
-            # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
-            # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
-            #    and is not the first model of the first child
-            if((! $seen_hit) && # haven't seen a hit yet
-               (exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) && # has a prediction (not 'nop')
-               ($mdl_results_HR->{"p_5seqflush"} == 1)) {  # prediction extends to 5' boundary of sequence
-              if($mdl_results_HR->{"p_5overhang"} != 0) {
-                # 1. first model with a prediction has p_5seqflush == 1 and p_5overhang != 0
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, $mdl_results_HR->{"p_5overhang"} . " nt from 5' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
-                $b5e_flag = 1;
-              }
-              elsif(($mdl_results_HR->{"p_5overhang"} == 0) && (($child_idx > 0) || ($child_mdl_idx > $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]))) { 
-                # 2. first model with a prediction has p_5seqflush == 1 and p_5overhang == 0 
-                #    and is not the first model of the first child
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b5e", $seq_name, "$child_idx expected mature peptides not observed on 5' end", $FH_HR);
-                $b5e_flag = 1;
-              }
-              $seen_hit  = 1;
-              $child_idx = $np_children; # breaks 'for(my $child_idx' loop;
-            }
-          }
-        }
-        # if we added a b5e, step through all (not just primary) children of this feature and add m3e
-        if($b5e_flag) { 
-          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m5e", $seq_name, "", $FH_HR);
-          }
-        }
-      } # end of 'for($seq_idx' loop
-    }
-  } # end of 'for($ftr_idx' loop
-
-  return;
-}      
-
-#################################################################
-# Subroutine:  ftr_results_add_b3e_errors
-# Incept:      EPN, Wed Feb 21 13:30:07 2018
-#
-# Purpose:    Report 'b3e' for features with 'annot_type' of 'multifeature'
-#             and type of 'cds-mp.
-#             Uses mdl_results to do this. If the final (3'-most) primary
-#             child of a multifeature feature should have a 'b3e' error
-#             (by looking at p_3overhang and p_3seqflush values in mdl_results)
-#             then the parent multifeature should too.
-#
-#             Checks for and adds or updates the following error 
-#             codes for features with "annot_type" eq "multifeature' and
-#             type 'cds-mp':
-#             
-#             "b3e": adds this error, predicted hit of 3'-most model 
-#                    not flush with model end but flush with sequence end on 3'
-#                    OR predicted hit of 3'-most model *is* flush with model end
-#                    but also flush with sequence end on 3' and *is not* the first
-#                    model of the first child of this multifeature parent feature.
-#
-#
-# Arguments: 
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-################################################################# 
-sub ftr_results_add_b3e_errors { 
-  my $sub_name = "ftr_results_add_b3e_errors";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx;   # counter over features
-  my $mdl_idx;   # counter over models
-  my $seq_idx;   # counter over sequences
-  my $seq_name;  # name of one sequence
-
-  # foreach annot_type:multifeature and type:'cds-mp' feature, 
-  # determine if the first primary child model with a prediction has a 'b5e' error, if so add a 'b5e' error to its parent cds-mp feature
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-
-      # get the primary children array
-      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
-      my $np_children = scalar(@primary_children_idx_A);
-
-      # get the all children array
-      my @all_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
-      my $na_children = scalar(@all_children_idx_A);
-
-      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        my $seen_hit = 0;      # set to '1' once we've seen the first model with an annotated hit
-        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        my $b3e_flag = 0;
-        # step through all primary children of this feature
-        for(my $child_idx = $np_children-1; $child_idx >= 0; $child_idx--) { 
-          my $child_ftr_idx = $primary_children_idx_A[$child_idx];
-          for(my $child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx >= $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx--) { 
-            my $mdl_results_HR = \%{$mdl_results_AAHR->[$child_mdl_idx][$seq_idx]}; # for convenience
-            # two scenarios in which we can get a b3e error for the cds-mp parent
-            # 1. 3'-most model with a prediction has p_3seqflush == 1 and p_3overhang != 0 (and no trc or ext error)
-            # 2. 3'-most model with a prediction has p_3seqflush == 1 and p_3overhang == 0 (and no trc or ext error)
-            #    and is not the final model of the final child
-            if((! $seen_hit) && # haven't seen a hit yet
-               (exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) && # has a prediction (not 'nop')
-               (! exists $mdl_results_HR->{"trc_err_flag"}) && # no trc error for this model
-               (! exists $mdl_results_HR->{"ext_err_flag"}) && # no ext error for this model
-               ($mdl_results_HR->{"p_3seqflush"} == 1)) {  # prediction extends to 3' boundary of sequence
-              if($mdl_results_HR->{"p_3overhang"} != 0) {
-                # 1. first model with a prediction has p_3seqflush == 1 and p_3overhang != 0
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end of mature peptide \#" . ($child_idx+1) . " of $np_children", $FH_HR);
-                $b3e_flag = 1;
-              }
-              elsif(($mdl_results_HR->{"p_3overhang"} == 0) && (($child_idx < ($np_children-1)) || ($child_mdl_idx < $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]))) { 
-                # 2. first model with a prediction has p_3seqflush == 1 and p_3overhang == 0 
-                #    and is not the final model of the final child
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, ($np_children-1)-$child_idx . " expected mature peptides not observed on 3' end", $FH_HR);
-                $b3e_flag = 1;
-              }
-              $seen_hit = 1;
-              $child_idx = -1; # breaks 'for(my $child_idx' loop;
-            }
-          }
-        }
-        # if we added a b3e, step through all (not just primary) children of this feature and add m3e
-        if($b3e_flag) { 
-          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "m3e", $seq_name, "", $FH_HR);
-          }
-        }
-      } # end of 'for($seq_idx' loop
-    }
-  } # end of 'for($ftr_idx' loop
-
-  return;
-}      
-
-#################################################################
-# Subroutine:  ftr_results_add_blastx_errors
-# Incept:      EPN, Tue Oct 23 15:54:50 2018
-#
-# Purpose:    Report 'x**' and 'mxi' errors for features of type 'cds-notmp' and 'cds-mp'
-#             Uses ftr_results to do this. Possible x** errors are:
-#
-#             "xnh": adds this error if blastx validation of a CDS prediction fails due to
-#                    no blastx hits
-#             "xos": adds this error if blastx validation of a CDS prediction fails due to
-#                    strand mismatch between CM and blastx prediction
-#             "x5l": adds this error if blastx validation of a CDS prediction fails due to
-#                    BLASTX alignment being too long on 5' end (extending past CM alignment by > 0 nt)
-#             "x5s": adds this error if blastx validation of a CDS prediction fails due to
-#                    BLASTX alignment being too short on 5' end (more than $xalntol shorter than CM)
-#             "x3l": adds this error if blastx validation of a CDS prediction fails due to
-#                    BLASTX alignment being too long on 3' end (extending past CM alignment by > 0 nt)
-#             "x3s": adds this error if blastx validation of a CDS prediction fails due to
-#                    BLASTX alignment being too short on 3' end (more than $xalntol shorter than CM)
-#             "xin": adds this error if blastx validation of a CDS prediction fails due to
-#                    too long of an insert
-#             "xde": adds this error if blastx validation of a CDS prediction fails due to
-#                    too long of a delete
-#             "xtr": adds this error if blastx validation of a CDS prediction fails due to
-#                    an in-frame stop codon in the blastx alignment
-#             "xnn": adds this error if blastx has a prediction of sufficient score 
-#                    for a feature for which there is no CM/nucleotide based prediction
-#
-# Arguments: 
-#  $out_FH:                 file handle to output blast table to 
-#  $query_width:            max length of any query name
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $ftr_results_AAHR:       REF to feature results AAH, PRE-FILLED
-#  $mdl_results_AAHR:       REF to model results AAH, PRE-FILLED
-#  $err_ftr_instances_AHHR: REF to error instances AHH, ADDED TO HERE
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: if we have a multi-segment cds-notmp feature and are unable to find a p
-################################################################# 
-sub ftr_results_add_blastx_errors { 
-  my $sub_name = "ftr_results_add_blastx_errors";
-  my $nargs_exp = 10;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_FH, $query_width, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx;   # counter over features
-  my $seq_idx;   # counter over sequences
-  my $seq_name;  # name of one sequence
-
-  my $aln_tol     = opt_Get("--xalntol",    $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
-  my $indel_tol   = opt_Get("--xindeltol",  $opt_HHR); # maximum allowed insertion and deletion length in blastx output
-  my $min_x_score = opt_Get("--xlonescore", $opt_HHR); # minimum score for a lone hit (no corresponding CM prediction) to be considered
-
-  my $seq_name_width    = maxLengthScalarValueInArray($seq_info_HAR->{"seq_name"});
-  my $ftr_product_width = maxLengthScalarValueInArray($ftr_info_HAR->{"out_product"});
-  if($seq_name_width    < length("#sequence")) { $seq_name_width    = length("#sequence"); }
-  if($ftr_product_width < length("product"))   { $ftr_product_width = length("product"); }
-  if($query_width       < length("bquery"))    { $query_width   = length("bquery"); }
-
-  my @out_per_seq_AA = (); # [0..$nseq-1]: per-cds feature output lines for each sequence, we output at end
-
-  # foreach type:'cds-mp' or 'cds-notmp' feature, 
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") ||
-       ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
-
-      my @all_children_idx_A = ();
-      my $na_children = 0;
-      if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
-        # get the all children array
-        @all_children_idx_A = (); # feature indices of the primary children of this feature
-        getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
-        $na_children = scalar(@all_children_idx_A);
-      }
-
-      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-
-        # determine if we have any CM predictions for any models related to this feature
-        my $xnn_err_possible = 1; 
-        if(check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR)) { 
-          $xnn_err_possible = 0; # we have at least one prediction for this feature, we can't have a xnn error
-        }
-
-        my %err_str_H = ();   # added to as we find errors below, possible keys are:
-                              # "xnn", "xnh", "xws", "xin", "xde", "xst", "xnn", "x5u", "x3u"
-
-        # initialize 
-        my $p_start        = undef; # predicted start  from CM 
-        my $p_stop         = undef; # predicted stop   from CM 
-        my $p_strand       = undef; # predicted strand from CM 
-        my $x_start        = undef; # predicted start  from blastx
-        my $x_stop         = undef; # predicted stop   from blastx
-        my $x_start2print  = undef; # predicted start from blastx, to output
-        my $x_stop2print   = undef; # predicted stop  from blastx, to output
-        my $x_strand       = undef; # predicted strand from blastx
-        my $x_maxins       = undef; # maximum insert from blastx
-        my $x_maxdel       = undef; # maximum delete from blastx
-        my $x_trcstop      = undef; # premature stop from blastx
-        my $x_score        = undef; # raw score from blastx
-        my $x_query        = undef; # query name from blastx hit
-        my $x_qlen         = undef; # length of query sequence, if $x_feature_flag == 1
-        my $x_feature_flag = 0; # set to '1' if $x_query is a fetched feature sequence, not a full length input sequence
-
-        my $start_diff = undef; # difference in start values between CM and blastx
-        my $stop_diff  = undef; # difference in start values between CM and blastx
-        my $p_has_stop = undef; # '1' if predicted CM stop ends with a stop codon, else '0'
-        
-        # first, determine predicted start/stop/strand from CM and blastx for this feature
-        # and get the p_start and p_stop values from "out_start", "out_stop"
-        # type == cds-mp
-        if($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") { 
-          if((defined $ftr_results_HR->{"out_start"})  && 
-             ($ftr_results_HR->{"out_start"} ne "?") && 
-             (defined $ftr_results_HR->{"out_stop"})  && 
-             ($ftr_results_HR->{"out_stop"} ne "?")) { 
-            $p_start    = $ftr_results_HR->{"out_start"};
-            $p_stop     = $ftr_results_HR->{"out_stop"};
-            $p_strand   = ($p_start <= $p_stop) ? "+" : "-";
-            $p_has_stop = ((defined $ftr_results_HR->{"out_stop_codon"}) && 
-                           (validateStopCodon($ftr_results_HR->{"out_stop_codon"}))) ? 1 : 0;
-          }
-        }
-        # type == cds-notmp
-        elsif($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp") { 
-          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx];
-          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$ftr_idx];
-          if($first_mdl_idx == $final_mdl_idx) { # single exon 
-            if((defined $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"out_start"}) && 
-               ($mdl_results_AAHR->[$first_mdl_idx][$seq_idx]{"out_start"} ne "?")  && 
-               (defined $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"}) && 
-               ($mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"} ne "?")) { 
-              $p_start = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_start"};
-              $p_stop  = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop"};
-              $p_strand = ($p_start <= $p_stop) ? "+" : "-";
-              $p_has_stop = ((defined $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop_codon"}) &&
-                             (validateStopCodon($mdl_results_AAHR->[$final_mdl_idx][$seq_idx]{"out_stop_codon"}))) ? 1 : 0;
-            }
-          }
-          else { 
-            for(my $cur_mdl_idx = $first_mdl_idx; $cur_mdl_idx <= $final_mdl_idx; $cur_mdl_idx++) { 
-              # looking for first valid p_start, and final valid p_stop
-              # these can (and probably will) be different segments, but if so we make sure they are on the same strand
-              if((! defined $p_start) && 
-                 (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}) && 
-                 ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"} ne "?") && 
-                 (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}) && 
-                 ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"} ne "?")) { 
-                $p_start = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"};
-                $p_stop  = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"};
-                $p_strand = ($p_start <= $p_stop) ? "+" : "-";
-                $p_has_stop = ((defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}) &&
-                               (validateStopCodon($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}))) ? 1 : 0;
-              }
-              elsif((defined $p_start) && 
-                    (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}) && 
-                    ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"} ne "?") && 
-                    (defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}) && 
-                    ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"} ne "?")) { 
-                if((($p_strand eq "+") && ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"} <= $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"})) ||
-                   (($p_strand eq "-") && ($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_start"}  > $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"}))) { 
-                  # same strand as current p_start, p_stop, p_strand
-                  $p_stop  = $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop"};
-                  $p_has_stop = ((defined $mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}) &&
-                                 (validateStopCodon($mdl_results_AAHR->[$cur_mdl_idx][$seq_idx]{"out_stop_codon"}))) ? 1 : 0;
-                }
-              }
-            } # end of 'for(my $cur_mdl_idx = $first_mdl_idx; $cur_mdl_idx <= $final_mdl_idx; $cur_mdl_idx++)'
-            if((! defined $p_start) && (! $xnn_err_possible)) { 
-              DNAORG_FAIL("ERROR, in $sub_name, feature with multiple segments, unable to find a valid start and stop to compare to blastx but xnn_err_possible was set to true", 1, $FH_HR);
-            }
-          }
-#         if((defined $p_start) &&
-#             (defined $p_stop)  && 
-#             (defined $p_has_stop)) { 
-#            printf("HEYA TEMP p_start: $p_start p_stop: $p_stop p_has_stop: $p_has_stop\n");
-#          }
-        }
-
-        if((defined $ftr_results_HR->{"x_start"}) && 
-           (defined $ftr_results_HR->{"x_stop"})) { 
-          $x_start   = $ftr_results_HR->{"x_start"};
-          $x_stop    = $ftr_results_HR->{"x_stop"};
-          $x_strand  = $ftr_results_HR->{"x_strand"};
-          $x_query   = $ftr_results_HR->{"x_query"};
-          if(defined $ftr_results_HR->{"x_maxins"}) { 
-            $x_maxins  = $ftr_results_HR->{"x_maxins"};
-          }
-          if(defined $ftr_results_HR->{"x_maxdel"}) { 
-            $x_maxdel  = $ftr_results_HR->{"x_maxdel"};
-          }
-          if(defined $ftr_results_HR->{"x_trcstop"}) { 
-            $x_trcstop = $ftr_results_HR->{"x_trcstop"};
-          }
-          if(defined $ftr_results_HR->{"x_score"}) { 
-            $x_score = $ftr_results_HR->{"x_score"};
-          }
-          # determine if the query is a full length sequence, or a fetched sequence feature:
-          (undef, undef, $x_qlen) = helper_blastx_breakdown_query($x_query, $seq_name, undef, $FH_HR); 
-          # helper_blastx_breakdown_query() will exit if $x_query is unparseable
-          # first two undefs: seqname after coords_str is removed, and coords_str
-          # $x_qlen will be undefined if $x_query is a full sequence name name
-          $x_feature_flag = (defined $x_qlen) ? 1 : 0; 
-          #printf("HEYA seq_name: $seq_name ftr: $ftr_idx x_query: $x_query x_feature_flag: $x_feature_flag x_start: $x_start x_stop: $x_stop x_score: $x_score\n");
-        }
-
-        if(($xnn_err_possible) && (! defined $p_start) && (defined $x_start))  { # no CM prediction but there is a blastx prediction
-          if((defined $x_score) && ($x_score >= $min_x_score)) { 
-            $err_str_H{"xnn"} = "blastx hit from $x_start to $x_stop with score $x_score, but no CM hit";
-          }
-        }
-
-        #if(defined $p_start) { 
-        #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx " . $ftr_info_HAR->{"type"}[$ftr_idx] . " p_start: $p_start p_stop: $p_stop p_strand: $p_strand\n");
-        #}
-        #else { 
-        #  printf("HEYAA seq $seq_idx ftr_idx $ftr_idx no p_start\n");
-        #}
-
-        # if we have a prediction from the CM, so we should check for xip errors
-        if(defined $p_start) { 
-          # check for xnh: lack of prediction failure
-          if(! defined $x_start) { 
-            $err_str_H{"xnh"} = "no blastx hit";
-          }
-          else { # $x_start is defined, we can compare CM and blastx predictions
-            # check for xos: strand mismatch failure, differently depending on $x_feature_flag
-            if(((  $x_feature_flag) && ($x_strand eq "-")) || 
-               ((! $x_feature_flag) && ($p_strand ne $x_strand))) { 
-              $err_str_H{"xos"} = "strand mismatch between nucleotide-based and blastx-based predictions";
-            }
-            else { 
-              # determine $start_diff and $stop_diff, differently depending on if hit
-              # was to the full sequence or a fetched features (true if $x_feature_flag == 1)
-              if($x_feature_flag) { 
-                $start_diff = $x_start - 1; 
-                $stop_diff  = $x_qlen - $x_stop;
-                $x_start2print = sprintf("$p_start %s $start_diff", ($p_strand eq "+") ? "+" : "-");
-                $x_stop2print  = sprintf("$p_stop %s $stop_diff",  ($p_strand eq "+") ? "-" : "+");
-              }
-              else { 
-                $start_diff = abs($p_start - $x_start);
-                $stop_diff  = abs($p_stop  - $x_stop);
-                $x_start2print = $x_start;
-                $x_stop2print  = $x_stop;
-              }
-              # check for 'x5l': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
-              if((! $x_feature_flag) && 
-                 ((($p_strand eq "+") && ($x_start < $p_start)) || 
-                  (($p_strand eq "-") && ($x_start > $p_start)))) { 
-                $err_str_H{"x5l"} = "blastx alignment extends outside CM alignment on 5' end (strand:$p_strand CM:$p_start blastx:$x_start2print)";
-              }
-
-              # check for 'x5s': blastx 5' end too short, not within $aln_tol nucleotides
-              if(! exists $err_str_H{"x5l"}) { # only add x5s if x5l does not exist
-                if($start_diff > $aln_tol) { 
-                  $err_str_H{"x5s"} = "start positions differ by $start_diff > $aln_tol (strand:$p_strand CM:$p_start blastx:$x_start2print)";
-                }                
-              }
-
-              # check for 'x3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
-              if((! $x_feature_flag) && 
-                 ((($p_strand eq "+") && ($x_stop  > $p_stop)) || 
-                  (($p_strand eq "-") && ($x_stop  < $p_stop)))) { 
-                $err_str_H{"x3l"} = "blastx alignment extends outside CM alignment on 3' end (strand:$p_strand CM:$p_stop blastx:$x_stop2print)";
-              }
-
-              # check for 'x3s': blastx 3' end too short, not within $aln_tol nucleotides
-              # for the stop coordinates, we do this differently if the CM prediction 
-              # includes the stop codon or not, if it does, we allow 3 more positions different
-              my $cur_aln_tol = undef;
-              my $cur_stop_str = undef;
-              if((defined $p_has_stop) && ($p_has_stop == 1)) { 
-                $cur_aln_tol  = $aln_tol + 3;
-                $cur_stop_str = "valid stop codon";
-              }
-              else { 
-                $cur_aln_tol  = $aln_tol;
-                $cur_stop_str = "no valid stop codon";
-              }
-              if(! exists $err_str_H{"x3l"}) { # only add x3s if x3l does not exist
-                if($stop_diff > $cur_aln_tol) { 
-                  $err_str_H{"x3s"} = "stop positions differ by $stop_diff > $cur_aln_tol (strand:$p_strand CM:$p_stop blastx:$x_stop2print, $cur_stop_str in CM prediction)";
-                }
-              }
-
-              # check for 'xin': too big of an insert
-              if((defined $x_maxins) && ($x_maxins > $indel_tol)) { 
-                $err_str_H{"xin"} = "longest blastx predicted insert of length $x_maxins > $indel_tol";
-              }
-
-              # check for 'xde': too big of a deletion
-              if((defined $x_maxdel) && ($x_maxdel > $indel_tol)) { 
-                $err_str_H{"xde"} = "longest blastx predicted delete of length $x_maxdel > $indel_tol";
-              }
-
-              # check for 'xtr': blast predicted truncation
-              if(defined $x_trcstop) { 
-                $err_str_H{"xtr"} = "blastx alignment includes stop codon ($x_trcstop)";
-              }
-            }
-          }
-        } # end of 'if(defined $p_start)'
-        my $err_flag = 0;
-        my $output_err_str = "";
-        foreach my $err_code (sort keys %err_str_H) { 
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, $err_code, $seq_name, sprintf("%s: %s", $ftr_info_HAR->{"out_product"}[$ftr_idx], $err_str_H{$err_code}), $FH_HR);
-          $err_flag = 1;
-          if($output_err_str ne "") { $output_err_str .= ","; }
-          $output_err_str .= $err_code;
-        }
-        if($output_err_str eq "") { $output_err_str = "-"; }
-        # if we added an error, step through all (not just primary) children of this feature and add mxi
-        if((defined $p_start) && ($err_flag) && ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp")) { 
-          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mxi", $seq_name, 
-                                sprintf("MP: %s, CDS %s", 
-                                        $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                        $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                $FH_HR);
-          }
-        }
-
-        # seqname out_product CM blast CM-start CM-stop blastx-start blastx-stop blastx-score startdiff stopdiff blastx-maxins blastx-maxdel blastx-trcstop xip xnn
-        if($ftr_idx == 0) { 
-          @{$out_per_seq_AA[$seq_idx]} = ();
-        }
-        push(@{$out_per_seq_AA[$seq_idx]}, sprintf("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n", 
-                                                   $seq_name_width,    $seq_name, 
-                                                   $ftr_product_width, $ftr_info_HAR->{"out_product"}[$ftr_idx],
-                                                   (defined $p_start)                               ? "yes"       : "no",   # CM prediction?
-                                                   (defined $x_start  && $x_score >= $min_x_score)  ? "yes"       : "no",   # blastx prediction? 
-                                                   $query_width,                                   
-                                                   (defined $x_query)                               ? $x_query    : "-",    # query name 
-                                                   (defined $x_query && $x_feature_flag)            ? "feature"   : "full", # hit to feature sequence or full sequence?
-                                                   (defined $p_start)                               ? $p_start    : "-",    # CM-start
-                                                   (defined $p_stop)                                ? $p_stop     : "-",    # CM-stop
-                                                   (defined $x_start  && $x_score >= $min_x_score)  ? $x_start    : "-",    # blastx-start
-                                                   (defined $x_stop   && $x_score >= $min_x_score)  ? $x_stop     : "-",    # blastx-stop
-                                                   (defined $x_score)                               ? $x_score    : "-",    # blastx-score
-                                                   (defined $start_diff)                            ? $start_diff : "-",    # start-diff
-                                                   (defined $stop_diff)                             ? $stop_diff  : "-",    # stop-diff
-                                                   (defined $x_maxins  && $x_score >= $min_x_score) ? $x_maxins   : "-",    # blastx-maxins
-                                                   (defined $x_maxdel  && $x_score >= $min_x_score) ? $x_maxdel   : "-",    # blastx-maxdel
-                                                   (defined $x_trcstop && $x_score >= $min_x_score) ? $x_trcstop  : "-",    # blastx-maxdel
-                                                   $output_err_str));
-            
-
-
-      } # end of 'for($seq_idx' loop
-    }
-  } # end of 'for($ftr_idx' loop
-
-  printf $out_FH ("#sequence: sequence name\n");
-  printf $out_FH ("#product:  CDS product name\n");
-  printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
-  printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
-  printf $out_FH ("#bquery:   name of blastx query name\n");
-  printf $out_FH ("#feature?: 'feature' if blastx query was a fetched feature, from CM prediction\n");
-  printf $out_FH ("#          'full'    if blastx query was a full input sequence\n");
-  printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
-  printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
-  printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
-  printf $out_FH ("#bxstop:   stop  position of blastx top HSP\n");
-  printf $out_FH ("#bxscore:  raw score of top blastx HSP (if one exists, even if it is below threshold)\n");
-  printf $out_FH ("#startdf:  difference between cmstart and bxstart\n");
-  printf $out_FH ("#stopdf:   difference between cmstop and bxstop\n");
-  printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
-  printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
-  printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
-  printf $out_FH ("#errors:   list of errors for this sequence, - if none\n");
-  printf $out_FH ("%-*s  %-*s  %6s  %6s  %-*s  %8s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %7s  %-s\n",
-                  $seq_name_width,    "#sequence", 
-                  $ftr_product_width, "product",
-                  "cm?", "blast?", 
-                  $query_width, "bquery", 
-                  "feature?", "cmstart", "cmstop", "bxstart", "bxstop", "bxscore", "startdf", "stopdf", "bxmaxin", "bxmaxde", "bxtrc", "errors");
-
-         
-
-  # now go back and output per seq
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    foreach my $out_line (@{$out_per_seq_AA[$seq_idx]}) { 
-      print $out_FH $out_line;
-    }
-  }
-
-  return;
-}    
-
-#################################################################
-# Subroutine:  mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors
-# Incept:      EPN, Thu Mar 31 13:43:58 2016
-#
-# Purpose:    Report 'str', 'nop', 'ost', 'lsc', 'dup', 'b3e', and 'b3u' errors
-#             and fill in the following keys in $mdl_results_AAHR:
-#             "out_5boundary" and "out_3boundary".
-#
-#             Checks for and adds or updates the following error 
-#             codes for features with "annot_type" eq "model":
-#             
-#             "nop": adds this error, no model prediction
-#             
-#             "str": updates this error, originally added in 
-#                  parse_esl_epn_translate_startstop_outfile()
-#                  by making the error message more informative
-#                  to include position and codon of predicted start
-#
-#             "ost": adds this error, model prediction is on incorrect strand
-#
-# Arguments: 
-#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing sequences
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $mdl_info_HAR:           REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:       REF to model results AAH, ADDED TO HERE
-#  $err_ftr_instances_AHHR: REF to error instances AHH, PRE-FILLED with at least trc and ext errors
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If we have predicted start and stop coordinates that don't make sense
-#       given the lengths of the accession and the sequence we searched.
-#
-################################################################# 
-sub mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors { 
-  my $sub_name = "mdl_results_add_str_nop_ost_lsc_dup_b3e_b3u_errors()";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $ftr_info_HAR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $mdl_idx; # counter over models
-  my $seq_idx; # counter over sequences
-
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-    my $is_first   = $mdl_info_HAR->{"is_first"}[$mdl_idx];
-    my $is_final   = $mdl_info_HAR->{"is_final"}[$mdl_idx];
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(! exists $mdl_results_HR->{"p_start"}) { 
-        ############################
-        # nop error (no prediction)
-        ############################
-        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nop", $seq_name, "", $FH_HR);
-      }        
-      else { # $mdl_results_HR->{"p_start"} exists, we have a prediction
-        ##########################
-        # update str err message #
-        ##########################
-        if($is_first && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name})) { 
-          my $out_start = undef;
-          ($out_start, undef) = create_output_start_and_stop($mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_stop"}, 
-                                                             $accn_len, $seq_len, $FH_HR);
-          my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", 
-                                           fetchStartCodon($sqfile, $seq_name, $mdl_results_HR->{"p_start"}, $mdl_results_HR->{"p_strand"}, $FH_HR), 
-                                           $out_start, $mdl_results_HR->{"p_strand"});
-          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
-          $mdl_results_HR->{"str_err_flag"} = 1;
-        }
-        #######################################
-        # set out_5boundary and out_3boundary #
-        #######################################
-        # update p_5overhang and p_3overhang
-        # at this point, $mdl_results_HR->{"p_5overhang"} and $results->{"p_3overhang"} are both integers >= 0
-        # 5' block
-        if($mdl_results_HR->{"p_5overhang"} == 0) { 
-          $mdl_results_HR->{"out_5boundary"} = ".";
-        }
-        else { 
-          if($mdl_results_HR->{"p_5overhang"} > 9) { 
-            $mdl_results_HR->{"out_5boundary"} = "+"; 
-          }
-          else { 
-            $mdl_results_HR->{"out_5boundary"} = $mdl_results_HR->{"p_5overhang"};
-          }
-        }
-        # 3' block
-        # check for 2 special cases, a trc or ext error, which invalidate the b3e or b3u values
-        if(exists $mdl_results_HR->{"trc_err_flag"}) { 
-          $mdl_results_HR->{"out_3boundary"} = "t";
-        }
-        elsif(exists $mdl_results_HR->{"ext_err_flag"}) { 
-          $mdl_results_HR->{"out_3boundary"} = "e";
-        }
-        elsif($mdl_results_HR->{"p_3overhang"} == 0) { 
-          $mdl_results_HR->{"out_3boundary"} = ".";
-        }
-        else { 
-          if($mdl_results_HR->{"p_3overhang"} > 9) { 
-            $mdl_results_HR->{"out_3boundary"} = "+"; 
-          }
-          else { 
-            $mdl_results_HR->{"out_3boundary"} = $mdl_results_HR->{"p_3overhang"};
-          }
-
-          # b3e or b3u error
-          if($mdl_results_HR->{"p_3seqflush"} == 1) { # b3e
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3e", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
-            # special case for which we will not allow a trc error later
-          }
-          else { # $mdl_results_HR->{"p_3seqflush"} == 0, b3u
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "b3u", $seq_name, $mdl_results_HR->{"p_3overhang"} . " nt from 3' end", $FH_HR);
-          }
-
-        }
-        if($mdl_results_HR->{"p_strand"} ne $mdl_info_HAR->{"ref_strand"}[$mdl_idx]) { 
-          ################################
-          # ost error (incorrect strand) #
-          ################################
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ost", $seq_name, "", $FH_HR);
-        }
-        if($mdl_results_HR->{"p_score"} < 0.) { 
-          #########################
-          # lsc error (low score) #
-          #########################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name}) { # lsc error already exists, update it
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"lsc"}{$seq_name} . ", " . $mdl_results_HR->{"p_score"} . " bits", $FH_HR);
-          }
-          else { # first lsc error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "lsc", $seq_name, sprintf("%s: %s bits", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_score"}), $FH_HR);
-          }
-        }
-        if($mdl_results_HR->{"p_nhits"} > 1) { 
-          ##############################
-          # dup error (duplicate hits) #
-          ##############################
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name}) { # dup error already exists, update it
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, $err_ftr_instances_AHHR->[$ftr_idx]{"dup"}{$seq_name} . ", " . $mdl_results_HR->{"p_nhits"} . " hits", $FH_HR);
-          }
-          else { # first dup error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "dup", $seq_name, sprintf("%s: %d regions", $ftr_info_HAR->{"out_product"}[$ftr_idx], $mdl_results_HR->{"p_nhits"}), $FH_HR);
-          }
-        }
-      } # end of 'else' entered if we have a prediction
-    } # end of 'for($seq_idx' loop
-  } # end of 'for($mdl_idx' loop
-  return;
-}      
-
-
-#################################################################
-# Subroutine:  mdl_results_calculate_out_starts_and_stops
-# Incept:      EPN, Thu Mar 31 13:43:51 2016
-#
-# Purpose:    Compute the 'out_start', 'out_stop', and 'out_stop_codon'
-#             values for all model results. These are the nucleotide
-#             positions that will be output as annotations.  They may
-#             differ from the predicted and corrected (p_start/p_stop
-#             or c_start/c_stop) model result values which are in
-#             internal coordinate space.  If -c is used, for example,
-#             the genome is circular, and the internal coordinate
-#             space ranges 1..seqlen*2 but our output coordinate space
-#             will be -seqlen..seqlen.
-#
-# Arguments: 
-#  $sqfile:             REF to Bio::Easel::SqFile object, open sequence file containing sequences
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to model results AAH, ADDED TO HERE
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If we have predicted start and stop coordinates that don't make sense
-#       given the lengths of the accession and the sequence we searched.
-#
-################################################################# 
-sub mdl_results_calculate_out_starts_and_stops { 
-  my $sub_name = "mdl_results_calculate_out_starts_and_stops";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $mdl_idx; # counter over models
-  my $seq_idx; # counter over sequences
-
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-      my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(exists $mdl_results_HR->{"p_start"}) { 
-        ($mdl_results_HR->{"out_start"}, $mdl_results_HR->{"out_stop"}) = 
-            create_output_start_and_stop($mdl_results_HR->{"p_start"},
-                                         exists($mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
-                                         $accn_len, $seq_len, $FH_HR);
-        $mdl_results_HR->{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name,
-                                                             (defined $mdl_results_HR->{"c_stop"}) ? $mdl_results_HR->{"c_stop"} : $mdl_results_HR->{"p_stop"}, 
-                                                             $mdl_results_HR->{"p_strand"}, $FH_HR);
-
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  mdl_results_compare_to_genbank_annotations
-# Incept:      EPN, Thu Mar 31 13:52:15 2016
-#
-# Purpose:    Compute the 'num_genbank_mdl_annot' values for 
-#             the %{$seq_info_HAR} and the 'genbank_mdl_annot_match' 
-#             for the %{$mdl_results_AAHR}. These are the number
-#             annotated features in Genbank, and whether or not
-#             one of our annotated features matches an annotation
-#             in GenBank, respectively.
-#
-# Arguments: 
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to model results AAH, ADDED TO HERE
-#  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
-#  $mp_tbl_HHAR:        REF to mature peptide hash of hash of arrays, can be undef, else PRE-FILLED
-#  $xfeat_tbl_HHAR:     REF to extra feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
-#  $dfeat_tbl_HHAR:     REF to duplicate feature hash of hash of hash of arrays, can be undef, else PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: never
-#
-################################################################# 
-sub mdl_results_compare_to_genbank_annotations { 
-  my $sub_name = "mdl_results_compare_to_genbank_annotations()";
-  my $nargs_exp = 10;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $cds_tbl_HHAR, $mp_tbl_HHAR, $xfeat_tbl_HHHAR, $dfeat_tbl_HHHAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $mdl_idx;
-  my $seq_idx;
-
-  # first, determine how many genbank annotations we have per sequence
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    # determine how many annotations CDS or mature peptide annotations there are in GenBank
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    ($seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx]) = 
-        count_genbank_annotations((opt_IsUsed("--matpept", $opt_HHR)) ? $mp_tbl_HHAR->{$accn_name} : $cds_tbl_HHAR->{$accn_name}, 
-                                  $accn_len, $opt_HHR, $FH_HR);
-  }
-
-  # now check each of our annotations against the GenBank annotations
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    my $ftr_idx    = $mdl_info_HAR->{"map_ftr"}[$mdl_idx];
-    my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_xfeat   = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_dfeat   = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
-    for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-      my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-      my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-      my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-      my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-
-      if(exists $mdl_results_HR->{"p_start"}) { 
-        # check our final annotation against existing annotation in GenBank 
-        my $start  = $mdl_results_HR->{"out_start"};
-        my $stop   = $mdl_results_HR->{"out_stop"};
-        my $strand = $mdl_results_HR->{"p_strand"};
-        my $tbl_HAR = undef;
-        if($is_matpept) { $tbl_HAR = $mp_tbl_HHAR->{$accn_name}; }
-        if($is_cds)     { $tbl_HAR = $cds_tbl_HHAR->{$accn_name}; }
-        if($is_xfeat)   { $tbl_HAR = $xfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
-        if($is_dfeat)   { $tbl_HAR = $dfeat_tbl_HHHAR->{$ftr_info_HAR->{"type_ftable"}[$ftr_idx]}{$accn_name}; }
-        # TODO: if we get into viruses with many features, will want to do the comparison 
-        # in sorted order by start to avoid quadratic time behavior
-        if(defined $tbl_HAR) { # if there was annotation for this sequence 
-          $mdl_results_HR->{"genbank_mdl_annot_match"} = compare_to_genbank_annotation($start, $stop, $strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR);
-        }
-        else { # annotation doesn't exist, so we don't have a match
-          $mdl_results_HR->{"genbank_mdl_annot_match"} = 0;
-        }
-      } # end of 'else' entered if we have a prediction
-    } # end of 'for($seq_idx' loop
-  } # end of 'for($mdl_idx' loop
-
-  return;
-}      
-
-#################################################################
-# Subroutine:  ftr_results_calculate
-# Incept:      EPN, Tue Mar 15 06:26:38 2016
-#
-# Purpose:    Fill the feature results in
-#             @{$ftr_results_AAHR}, by filling the following 3rd
-#             dim keys for 'cds-mp' feature types: 
-#             "out_start", "out_stop", "out_len", "out_start_codon", 
-#             "out_stop_codon".
-#
-#             Checks for and adds the following error codes:
-#             "nm3": for features with annot_type eq ("model" or "multifeature") & type eq "cds-notmp" OR "cds-mp" OR "mp"
-#             "stp": for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             "inp": for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             "int": for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             "aji": for features with annot_type eq "multifeature" & type eq "cds-mp"
-#             "ntr": for features that are children of a multifeature/cds-mp feature
-#
-# Arguments: 
-#  $sqfile:             REF to Bio::Easel::SqFile object, open sequence file containing sequences
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:       REF to hash of arrays with information on the sequences, ADDED TO HERE
-#  $ftr_results_AAHR:   REF to feature results AAH, ADDED TO HERE
-#  $mdl_results_AAHR:   REF to finalized model results AAH, PRE-FILLED
-#  $cds_tbl_HHAR:       REF to CDS hash of hash of arrays, PRE-FILLED
-#  $err_ftr_instances_AHHR: REF to error instances AHH, ADDED TO HERE (potentially)
-#  $err_info_HAR:       REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:              REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If something unexpected happens: 
-#       - an int errmsg exists before it should
-#       - an ext error exists with a non-maybe error message before it should
-#       - we have trouble dealing with an ext error 
-#
-################################################################# 
-sub ftr_results_calculate { 
-  my $sub_name = "ftr_results_calculate()";
-  my $nargs_exp = 11;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $ftr_results_AAHR, $mdl_results_AAHR, $cds_tbl_HHAR, $err_ftr_instances_AHHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  # total counts of things
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $ftr_idx;   # counter over features
-  my $mdl_idx;   # counter over models
-  my $seq_idx;   # counter over sequences
-  my $seq_name;  # name of one sequence
-  my $seq_len;   # length of the sequence, possibly including doubling
-  my $accn_name; # name of accession
-  my $accn_len;  # length of the accession, never includes doubling
-  my $append_len = 0; # length of appended region
-  my $ntr_errmsg = undef; # error message for an ntr error
-
-  # foreach annot_type:multifeature and type:'cds-mp' feature, 
-  # determine 'out_start', 'out_stop',
-  # 'out_len', 'out_start_codon' and 'out_stop_codon'.
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-
-      # get the primary children array
-      my @primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $FH_HR);
-      my $np_children = scalar(@primary_children_idx_A);
-
-      # get the all children array
-      my @all_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
-      my $na_children = scalar(@all_children_idx_A);
-
-      for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-        $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
-        $seq_len    = $seq_info_HAR->{"seq_len"}[$seq_idx];
-        $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
-        $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
-
-        ($seq_info_HAR->{"num_genbank_ftr_annot"}[$seq_idx], $seq_info_HAR->{"num_genbank_ftr_exon_annot"}[$seq_idx]) = 
-            count_genbank_annotations($cds_tbl_HHAR->{$accn_name}, $accn_len, $opt_HHR, $FH_HR);
-
-        # set the str_err_flag, if nec
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"str_err_flag"} = 1;
-        }
-
-        # initialize our error-related variables
-        my $aji_errmsg          = "";    # filled if we find two mature peptides that should be adjacent but are not
-        my $set_start           = 0;     # set to '1' once we've seen the first model with an annotated hit
-        my $inp_errmsg          = "";    # a list of model names ("out_tiny") for which we do not have annotations (nop errors), if any
-        my $int_errmsg          = "";    # a list of model names ("out_tiny") which are not translated due to trc (ntr errors), if any
-        my $cds_out_start       = undef; # start position to output for this CDS 
-        my $cds_out_stop        = undef; # stop  position to output for this CDS 
-        my $cds_fetch_start     = undef; # start position to *fetch* for this CDS' start codon
-        my $cds_fetch_stop      = undef; # stop  position to *fetch* for this CDS' stop codon
-        my $start_strand        = undef; # strand start codon is on
-        my $stop_strand         = undef; # strand stop codon is on
-        my $cds_len             = 0;     # length to output for this CDS
-        my $child_had_trc       = 0;     # if we find a child with a trc error, set this to 1
-        my $mn3_flag            = 0;     # set to '1' if we set a bad nm3 (no b5e or b3e) error for mother CDS
-        my $maj_flag            = 0;     # set to '1' if we set a aji error for mother CDS
-        my $mit_flag            = 0;     # set to '1' if we set a int error for mother CDS
-        my $mip_flag            = 0;     # set to '1' if we set a inp error for mother CDS
-
-        my $seen_prv_b3e        = 0;     # set to '1' if we see a b3e error for a MP for the mother CDS
-        # step through all primary children of this feature
-        for(my $child_idx = 0; $child_idx < $np_children; $child_idx++) { 
-          my $child_ftr_idx = $primary_children_idx_A[$child_idx];
-          if((exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"b3e"}{$seq_name}) || # we have a b3e for this mat_peptide
-             ($mdl_results_AAHR->[$ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]][$seq_idx]{"p_3seqflush"})) { # rare case: we don't have a b3e but final nt of prediction is final nt of sequence, so for our purposes here, we do have a b3e
-            $seen_prv_b3e = 1;
-          }
-
-          for(my $child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$child_ftr_idx]; $child_mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]; $child_mdl_idx++) { 
-            if(! $child_had_trc) { # if $child_had_trc is true, then we dealt with this feature completely below
-              # check to make sure we have a hit annotated for this model
-              # if not, we trigger an inp UNLESS we don't expect a hit due to a relevant b5e or relevant b3e
-              # we have a relevant b5e if: the CDS has a b5e AND $set_start has NOT yet been set
-              # we have a relevant b3e if: either this MP or a previous one has a b3e ($seen_prv_b3e == 1)
-              # we do not have a relevant b5e if: $set_start has been set
-              # we do not have a relevant b3e if: this MP does not have a b3e and no previous MP had a b3e
-              if(! exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"}) { 
-                # we might need to trigger an inp, check if we have a relevant b5e or b3e
-                my $have_relevant_b5e = ((! $set_start) && (exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name})) ? 1 : 0;
-                my $have_relevant_b3e = ($seen_prv_b3e) ? 1 : 0;
-                if((! $have_relevant_b5e) && (! $have_relevant_b3e)) { 
-                  if($inp_errmsg ne "") { 
-                    $inp_errmsg .= ", ";
-                  }
-                  $inp_errmsg .= $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx];
-                }
-              }
-              else { # we do have a hit for $child_mdl_idx in $seq_idx
-                $cds_len += $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"len"};
-                
-                if(! $set_start) { # first model, set cds_out_start
-                  $cds_out_start   = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"};
-                  $cds_fetch_start = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_start"};
-                  $start_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"};
-                  $set_start = 1;
-                }
-                # (as of v0.28: always update the stop, remove this to revert to pre-v0.28 behavior
-                #  in regards to stop output in tbl) 
-                $cds_out_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
-                $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
-                    $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
-                $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                
-                # check if we have a trc in this child model, and deal with it if we do
-                if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"trc_err_flag"}) { 
-                  $child_had_trc = 1;
-                  error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ctr", $seq_name, 
-                                      sprintf("mat_peptide %s includes trc error", $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]]), $FH_HR);
-                  ####################################################
-                  # We have a trc in this child model $child_mdl_idx 
-                  # 
-                  # Add the 'ctr' error for this CDS (Child has TRc)
-                  #
-                  # Determine the cds stop position to print ($cds_out_stop)
-                  # and position in the sequence to fetch the stop ($cds_fetch_stop).
-                  # 
-                  # If and only if we have all mature peptides up to this point and they 
-                  # are all adjacent (that is, we don't have a aji or inp error), 
-                  # then this CDS is truncated. We do the following:
-                  #
-                  # - update the trc errmsg for this CDS in @{$err_ftr_instances_AHHR} 
-                  #   based on what just figured out about this truncated stop
-                  #   (if we don't have a str error for this CDS)
-                  # - set ntr errors for all remaining children 
-                  # - set int error for this CDS
-                  # - break the loop over all children (we're done with this CDS)
-                  ####################################################
-                  
-                  $cds_out_stop      = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"};
-                  $cds_fetch_stop    = (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                      $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"c_stop"} :
-                      $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_stop"};
-                  $stop_strand    = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                  
-                  if($inp_errmsg eq "" && $aji_errmsg eq "") { 
-                    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
-                      # if we don't have a str error, update the trc error message
-                      # use the final childs stop prediction as the predicted stop, if it exists
-                      my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$primary_children_idx_A[$np_children-1]];
-                      my $updated_trc_errmsg  = "";
-                      if(exists $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"}) { 
-                        my $cds_pred_stop = $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
-                        $updated_trc_errmsg = sprintf("homology search predicted %d..%d revised to %d..%d (stop shifted %d nt due to early stop in %s)", 
-                                                      create_output_start_and_stop($cds_fetch_start, $cds_pred_stop, $accn_len, $seq_len, $FH_HR),
-                                                      create_output_start_and_stop($cds_fetch_start, $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
-                                                      abs($cds_fetch_stop - $cds_pred_stop), $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                      }
-                      else { 
-                        $updated_trc_errmsg = sprintf("homology search predicted %d..? revised to %d..%d (due to early stop in %s)", 
-                                                      $cds_out_start, 
-                                                      create_output_start_and_stop($cds_out_start,   $cds_out_stop,  $accn_len, $seq_len, $FH_HR),
-                                                      $mdl_info_HAR->{"out_tiny"}[$child_mdl_idx]);
-                      }
-                      
-                      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-                        # update it
-                        error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
-                        # set the trc_err_flag for this feature
-                        $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
-                      }
-                      else { 
-                        # it doesn't yet exist, so add the trc error IF 
-                        # we don't have a b5e for this guy. This
-                        # is rare, but we may have no trc error for this
-                        # CDS yet, if the predicted child mature peptide
-                        # sequences didn't all exist, then we won't have
-                        # combined those predictions into a predicted CDS,
-                        # and thus we didn't check that predicted CDS for
-                        # trc errors in
-                        # parse_esl_epn_translate_startstop_outfile().
-                        if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) { 
-                          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $updated_trc_errmsg, $FH_HR);
-                          # set the trc_err_flag for this feature
-                          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"trc_err_flag"} = 1;
-                        }
-                      }
-                    }
-                    # all remaining children get a 'ntr' error,
-                    # and the CDS gets an 'int' error, which we need
-                    # to build the error message for
-                    $ntr_errmsg = sprintf("early stop in mat_peptide %s ending at position %d", $ftr_info_HAR->{"out_product"}[$child_ftr_idx], $cds_out_stop);
-                    if($int_errmsg ne "") { 
-                      DNAORG_FAIL("ERROR in $sub_name, setting int errmsg for ftr_idx: $ftr_idx due to 'trc', but it is not blank", 1, $FH_HR);
-                    }
-                    $child_idx++;
-                    my $ntr_err_ct = 0;
-                    # for all remaining children: throw 'ntr' and append to 'int' err message
-                    while($child_idx < $np_children) {
-                      $child_ftr_idx = $primary_children_idx_A[$child_idx];
-                      if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { 
-                        error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
-                        $ntr_err_ct++;
-                        if($int_errmsg ne "") { 
-                          $int_errmsg .= ", ";
-                        }
-                        $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-                      }
-                      else { # nop for at least one mdl for this feature
-                        if($int_errmsg ne "") { 
-                          $int_errmsg .= ", ";
-                        }
-                        $int_errmsg .= $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx] . "(nop)";
-                      }
-                      $child_idx++;
-                    }
-                    if($ntr_err_ct > 0) { 
-                      # we set at least one ntr error for mature peptides, set int for this CDS
-                      error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "int", $seq_name, $int_errmsg, $FH_HR);
-                      $mit_flag = 1; # this causes 'mit' in children MPs
-                    }
-                    # now $child_idx is $np_children, so this breaks the 'for(child_idx' loop
-                  } # end of 'if($inp_errmsg eq "" && $aji_errmsg eq "")
-                  else { 
-                    # we had a trc in one of the children, but it didn't trigger
-                    # a trc in the CDS because we already have an adjacency error
-                    # and/or an inp error (one of the mature peptides was not predicted)
-                    # which means we cannot confidently say the CDS is truncated.
-                    # remove the CDS' trc error IF it exists (it may not if 
-                    # there wasn't an early stop due to a frameshift or something
-                    # before or after the trc in the child mature peptide).
-                    if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-                      error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
-                    }
-                  }
-                  # deal with a potential stp error, if we have one
-                } # end of 'if trc_err_flag'
-                else { 
-                  ###########################################################
-                  # we do not have a trc in this child model $child_mdl_idx #
-                  ###########################################################
-                  # check if we're adjacent to the next feature, we only need to 
-                  # do this if we're the final model for the current feature and
-                  # we're not the final child feature, and we haven't seen a b3e 
-                  # for this CDS yet
-                  if(($child_idx < ($np_children-1)) && 
-                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx]) && 
-                     (! $seen_prv_b3e)) { 
-                    my $nxt_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$primary_children_idx_A[($child_idx+1)]];
-                    # check if they are adjacent 
-                    if(! checkForIndexInOverlapOrAdjacencyIndexString($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"idx_aja_str"}, $nxt_child_mdl_idx, $FH_HR)) { 
-                      if($aji_errmsg ne "") { $aji_errmsg .= ", "; }
-                      $aji_errmsg .= sprintf("%s (%s..%s) not adjacent to %s (%s..%s)", 
-                                             $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$child_mdl_idx]], 
-                                             (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
-                                             (defined $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown", 
-                                             $ftr_info_HAR->{"out_product"}[$mdl_info_HAR->{"map_ftr"}[$nxt_child_mdl_idx]], 
-                                             (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"}) ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_start"} : "unknown", 
-                                             (defined $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"})  ? $mdl_results_AAHR->[$nxt_child_mdl_idx][$seq_idx]{"out_stop"}  : "unknown");
-                    }        
-                  } # end of 'if($child_idx < ($np_children-1))'
-
-                  # if we are the final model of the final child feature, determine the stop position/strand
-                  if(($child_idx == ($np_children-1)) && 
-                     ($child_mdl_idx == $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx])) { 
-                    # the final child, determine the stop position/strand, and deal with ext error if we have one
-                    $stop_strand = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"p_strand"}; 
-                    # we should have to append the stop codon
-                    # (GenBank annotation of final mature peptides doesn't include the stop codon,
-                    #  so it's not covered in our homology model and we have to take special care
-                    #  to annotate it.
-                    $append_len = 0; 
-                    if(exists $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"}) { 
-                      my ($out_append_start, $out_append_stop) = 
-                          create_output_start_and_stop($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}, 
-                                                       $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"},
-                                                       $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-                      $cds_out_stop = $out_append_stop;
-                      $cds_fetch_stop = $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"};
-                      # and update the cds_len (this is the final child, so this will only happen once)
-                      $append_len = abs($mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_stop"} - $mdl_results_AAHR->[$child_mdl_idx][$seq_idx]{"append_start"}) + 1; 
-                      $cds_len += $append_len;
-                    }
-                  }
-                }
-              } # end of 'else' entered if we don't have a trc error
-            } # end of 'if(! $child_had_trc'
-          } # end of 'for(my $child_mdl_idx..'
-        }  # end of 'for(my $child_idx..'
-
-        #######################################
-        # deal with a stp error, if we have one
-        #######################################
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name}) { 
-          # value should be "maybe" 
-          if($err_ftr_instances_AHHR->[$ftr_idx]{"stp"}{$seq_name} ne "maybe") { 
-            DNAORG_FAIL("ERROR in $sub_name, ext error with non-maybe value for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-          }
-          if((defined $cds_fetch_stop) && (defined $cds_out_stop)) { 
-            my $stp_err_stop_codon = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, $FH_HR);
-            if(validateStopCodon($stp_err_stop_codon)) { 
-              # it's a valid stop, remove the "maybe"
-              error_instances_remove_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $FH_HR);
-            }
-            else { 
-              # invalid stop, update the error message
-              my $updated_stp_errmsg = sprintf("%s ending at position %d on %s strand", $stp_err_stop_codon, $cds_out_stop, $stop_strand); 
-              error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, $updated_stp_errmsg, $FH_HR);
-            }
-          }
-          else { 
-            # we can't define the stop position, so this is also a stp error with only a "?" error message
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "stp", $seq_name, "?", $FH_HR);
-          }
-        }
-
-        ####################################################################################################
-        # deal with an ext error, if we have one and we don't have any adjacency or nop errors in children
-        # it's important we do this *after* handling (either validating or removing) a potential 'stp' error
-        # in the block again, because we redfine $cds_out_stop, $cds_fetch_stop and $cds_len here.
-        ####################################################################################################
-        if((exists $err_ftr_instances_AHHR->[$ftr_idx]{"ext"}{$seq_name}) && 
-           ($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_stop)) { 
-          my $len_corr = $err_ftr_instances_AHH[$ftr_idx]{"ext"}{$seq_name};
-          if($len_corr <= 0) { 
-            DNAORG_FAIL("ERROR in $sub_name, ext error with non-positive correction $len_corr exists for ftr: $ftr_idx seq_name: $seq_name", 1, $FH_HR);
-          }
-          my $final_child_ftr_idx       = $primary_children_idx_A[$np_children-1]; # first model for final MP that makes up this CDS
-          my $final_first_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$final_child_ftr_idx]; # first model for final MP that makes up this CDS
-          my $final_final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_child_ftr_idx]; # final model for final MP that makes up this CDS
-          # make sure everything we assume exists, actually does, if not, there's a coding error somewhere
-          if(! exists $mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{p_start} does not exist, but it should.", 1, $FH_HR); 
-          }
-          if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{len} does not exist, but it should.", 1, $FH_HR); 
-          }
-          if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{cumlen} does not exist, but it should.", 1, $FH_HR); 
-          }
-          if(! exists $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"append_stop"}) { 
-            DNAORG_FAIL("ERROR in $sub_name, results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{append_stop} does not exist, but it should.", 1, $FH_HR); 
-          }
-          if($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_strand"} eq "+") { 
-            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} + ($len_corr - $append_len);
-            $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} + $append_len;
-          }
-          else { # negative strand
-            $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"} - ($len_corr - $append_len);
-            $cds_fetch_stop = $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"} - $append_len;
-          }
-          ($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_start"}, $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_stop"}) = 
-              create_output_start_and_stop($mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_start"}, 
-                                           $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
-                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-          # only the final model is affected by an ext error
-          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"len"}    += ($len_corr - $append_len);
-          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"cumlen"} += ($len_corr - $append_len);
-          $cds_len += ($len_corr - $append_len);
-          
-          # get first part of cds error message using current $cds_out_stop, if it exists
-          my $updated_cds_ext_errmsg = sprintf("homology search predicted %d..%d", 
-                                               create_output_start_and_stop($cds_out_start, $cds_out_stop,
-                                                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
-          # get first part of mp error message 
-          my $mp_ext_errmsg = sprintf("homology search predicted %d..%d", 
-                                      create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"},
-                                                                   $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"p_stop"},
-                                                                   $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR));
-          # now recompute $cds_out_stop
-          (undef, $cds_out_stop) = 
-              create_output_start_and_stop($cds_fetch_start, # this is irrelevant due to first undef arg
-                                           $cds_fetch_stop,
-                                           $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-
-          # get second part of CDS error message
-          $updated_cds_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", $cds_out_start, $cds_out_stop, $len_corr-$append_len);
-          # get second part of MP error message
-          $mp_ext_errmsg .= sprintf(" revised to %d..%d (stop shifted %d nt)", 
-                                    create_output_start_and_stop($mdl_results_AAHR->[$final_first_child_mdl_idx][$seq_idx]{"p_start"}, 
-                                                                 $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"c_stop"}, 
-                                                                 $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR), 
-                                    $len_corr-$append_len);
-          error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $updated_cds_ext_errmsg, $FH_HR);
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $final_child_ftr_idx, "ext", $seq_info_HAR->{"seq_name"}[$seq_idx], $mp_ext_errmsg, $FH_HR);
-          # and finally, update the results out_3boundary value for this model
-          $mdl_results_AAHR->[$final_final_child_mdl_idx][$seq_idx]{"out_3boundary"} = "e";
-        }
-
-        # sanity check
-        if((defined $start_strand) && (defined $stop_strand) && ($start_strand ne $stop_strand)) { 
-          DNAORG_FAIL(sprintf("ERROR in $sub_name, feature $ftr_idx %s for sequence $seq_name has start and stop on different strands", $ftr_info_HAR->{"out_short"}[$ftr_idx]), 1, $FH_HR);
-        }
-
-        ###############################################################
-        # if we did not find a child with a trc, and we have 
-        # a trc error for this CDS, it must be invalid and caused
-        # by an aji, nm3, or b5e error or something like it,
-        # so we remove it
-        ###############################################################
-        if(! $child_had_trc) { 
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-            error_instances_remove_not_maybe($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "trc", $seq_name, $FH_HR);
-          }
-        }
-
-        # add the aji (adjacency) error if necessary
-        if($aji_errmsg ne "") { 
-          # adjacency error
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "aji", $seq_name, $aji_errmsg, $FH_HR);
-          $maj_flag = 1; # this causes 'maj' in children MPs
-        }
-
-        # add the inp (INterrupted due to no Prediction) if necessary
-        if($inp_errmsg ne "") { 
-          error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "inp", $seq_name, $inp_errmsg, $FH_HR);
-          $mip_flag = 1; # this causes 'mip' in children MPs
-        }
-
-        # set ftr_results, we can set start if $cds_out_start is defined, 
-        if(defined $cds_out_start) { 
-          my $start_codon = fetchStartCodon($sqfile, $seq_name, $cds_fetch_start, $start_strand, $FH_HR);
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start"}       = $cds_out_start;
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start_codon"} = $start_codon;
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"str"}{$seq_name}) { 
-            my $updated_str_errmsg = sprintf("%s starting at position %d on strand %s", $start_codon, 
-                                             $cds_out_start, $start_strand);
-            error_instances_update($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "str", $seq_name, $updated_str_errmsg, $FH_HR);
-          }
-        }
-        else { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start"}       = "?";
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_start_codon"} = "?";
-        }
-        
-        if((defined $cds_out_start) && (defined $cds_out_stop)) { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start"} = $cds_out_start;
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_stop"}  = $cds_out_stop;
-        }
-        else { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start"}       = "?";
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"ftbl_out_start_codon"} = "?";
-        }
-
-        # for the stop and length attributes to be anything but "?" 
-        # we require the following: 
-        # - no aji error
-        # - no inp error
-        # - $cds_out_start defined
-        # - $cds_out_stop defined
-        # 
-        if(($aji_errmsg eq "") && ($inp_errmsg eq "") && (defined $cds_out_start) && (defined $cds_out_stop)) { 
-          # an aji or inp error means we can't really say where the stop is
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = $cds_out_stop;
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = fetchStopCodon($sqfile, $seq_name, $cds_fetch_stop, $stop_strand, $FH_HR);
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}       = $cds_len;
-          if(($cds_len % 3) != 0) { 
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cds_len", $FH_HR);
-            # if this is a 'bad' nm3 (no b5e or b3e), then update $mn3_flag
-            if((! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b5e"}{$seq_name}) && 
-               (! exists $err_ftr_instances_AHHR->[$ftr_idx]{"b3e"}{$seq_name})) { 
-              $mn3_flag = 1;
-            }
-          }
-        }
-        else { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop"}       = "?";
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_stop_codon"} = "?";
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"out_len"}        = "?";
-        }
-      
-        # check if existing annotation for this CDS exists in %{$cds_tbl_HHAR}
-        if((defined $cds_out_start) && (defined $cds_out_stop)) { 
-          if(defined ($cds_tbl_HHAR->{$accn_name})) { # if there was annotation for this sequence 
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_ftr_annot_match"} = 
-                compare_to_genbank_annotation($cds_out_start, $cds_out_stop, $start_strand,
-                                              $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], 
-                                              $cds_tbl_HHAR->{$accn_name}, $opt_HHR, $FH_HR);
-          }
-          else { # annotation doesn't exist, so we don't have a match
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"genbank_ftr_annot_match"} = 0;
-          }
-        }
-        # one final step: if we have a 'trc' error for this CDS, check the 'all children' array, 
-        # and throw 'ntr' errors for any mature peptides encoded by this CDS that are not
-        # translated. We did this above for the primary peptides, but here we do it for any
-        # non-primary peptides.
-        if(exists $err_ftr_instances_AHHR->[$ftr_idx]{"trc"}{$seq_name}) { 
-          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            if(! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"nop"}{$seq_name}) { # there is a prediction for all models for this feature
-              my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$child_ftr_idx];
-              my $cur_stop = (defined $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"}) ? 
-                  $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"c_stop"} :
-                  $mdl_results_AAHR->[$final_child_mdl_idx][$seq_idx]{"p_stop"};
-              if(($stop_strand eq "+") && ($cds_fetch_stop < $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"ntr"}{$seq_name})) { 
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
-              }
-              if(($stop_strand eq "-") && ($cds_fetch_stop > $cur_stop) && (! exists $err_ftr_instances_AHHR->[$child_ftr_idx]{"ntr"}{$seq_name})) { 
-                error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "ntr", $seq_name, $ntr_errmsg, $FH_HR);
-              }
-            }
-          }
-        }
-        #######################################################################################
-        # add mn3, maj, mit, mip errors for all children if mother CDS had corresponding error
-        #######################################################################################
-        if($mn3_flag || $maj_flag || $mit_flag || $mip_flag) { 
-          for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-            my $child_ftr_idx = $all_children_idx_A[$child_idx];
-            if($mn3_flag) { 
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mn3", $seq_name, 
-                                  sprintf("MP: %s, CDS %s", 
-                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                  $FH_HR);
-            }
-            if($maj_flag) { 
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "maj", $seq_name, 
-                                  sprintf("MP: %s, CDS %s", 
-                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                  $FH_HR);
-            }
-            if($mit_flag) { 
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mit", $seq_name, 
-                                  sprintf("MP: %s, CDS %s", 
-                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                  $FH_HR);
-            }
-            if($mip_flag) { 
-              error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $child_ftr_idx, "mip", $seq_name, 
-                                  sprintf("MP: %s, CDS %s", 
-                                          $ftr_info_HAR->{"out_product"}[$child_ftr_idx],
-                                          $ftr_info_HAR->{"out_product"}[$ftr_idx]), 
-                                  $FH_HR);
-            }
-          }
-        }
-      } # end of 'for($seq_idx'
-    }
-  } # end of 'for($ftr_idx'
-
-  # foreach annot_type:'model' feature, look for 
-  # 'nm3' errors
-  # it's important we do this at the end of this function,
-  # after we've potentially redefined the length of the final
-  # child features of a multifeature feature, which we do 
-  # if we have an ext error.
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]); 
-      my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]); 
-      if($is_cds || $is_matpept) { 
-        for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-          $seq_name   = $seq_info_HAR->{"seq_name"}[$seq_idx];
-          $accn_name  = $seq_info_HAR->{"accn_name"}[$seq_idx];
-          $accn_len   = $seq_info_HAR->{"accn_len"}[$seq_idx];
-          my $cumlen = undef;
-          # go through all models instead of just using the final one in case the final one is not annotated
-          for($mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-            if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"cumlen"}) { 
-              $cumlen = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"cumlen"};
-            }
-          }
-          if(defined $cumlen && (($cumlen % 3) != 0)) { 
-            # an nm3 error
-            error_instances_add($err_ftr_instances_AHHR, undef, $err_info_HAR, $ftr_idx, "nm3", $seq_name, "$cumlen", $FH_HR);
-          }
-        }
-      }
-    }
-  }
-
-  return;
-}       
-#################################################################
-# Subroutine : dump_results()
-# Incept:      EPN, Tue Mar  1 14:54:27 2016
-#
-# Purpose:    Dump results data structure to $FH. Probably only
-#             useful for debugging.
-#
-# Arguments: 
-#  $FH:               file handle to output to
-#  $mdl_results_AAHR: REF to results AAH, PRE-FILLED
-#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with sequence information, PRE-FILLED
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       never
-#
-################################################################# 
-sub dump_results {
-  my $sub_name = "dump_results()";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($FH, $mdl_results_AAHR, $mdl_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  my $nmdl = scalar(@{$mdl_results_AAHR});
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR);
-  
-  for(my $m = 0; $m < $nmdl; $m++) { 
-    for(my $s = 0; $s < $nseq; $s++) { 
-      printf $FH ("model($m): %20s  seq($s): %20s  accn: %10s  len: %10d  ", 
-                  $mdl_info_HAR->{"cmname"}[$m],
-                  $seq_info_HAR->{"seq_name"}[$s],
-                  $seq_info_HAR->{"accn_name"}->[$s],
-                  $seq_info_HAR->{"accn_len"}[$s]);
-      foreach my $key (sort keys %{$mdl_results_AAHR->[$m][$s]}) { 
-        printf $FH ("%s: %s ", $key, $mdl_results_AAHR->[$m][$s]{$key});
-      }
-      printf $FH ("\n")
-    }
-  }
-  return;
-}
-
-#################################################################
-#################################################################
-#  Subroutines related to origin sequences:
-#    validate_origin_seq()
-#    find_origin_sequences()
-#    get_origin_output_for_sequence
-#
-#################################################################
-# Subroutine: validate_origin_seq
-# Incept:     EPN, Tue Mar 15 12:34:21 2016
-#
-# Synopsis:   Validate an origin sequence passed in
-#             as <s> with --origin <s>. It should have 
-#             a single '|' in it, which occurs 
-#             just before what should be the first nt
-#             of the genome. Return the origin offset:
-#             the number of nts before the "|".
-#
-#             For example: "TAATATT|AC"
-#             indicates that the final 7 nts of each
-#             genome should be "TAATAAT" and the first
-#             two should be "AC". In this case the origin
-#             offset is 7.
-#
-# Args:
-#   $origin_seq: the origin sequence
-#
-# Returns:  Origin offset, as explained in synopsis, above.
-#
-# Dies: if $origin_seq is incorrectly formatted. We die without
-#       outputting to any file handles, because this function is 
-#       called before the log and cmd files are set-up.
-#
-####################################
-sub validate_origin_seq { 
-  my $sub_name = "validate_origin_seq";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($origin_seq) = @_;
-
-  if($origin_seq =~ m/[^ACGT\|\\]/) { 
-    die "ERROR with -origin <s>, <s> can only contain characters A, C, G, T or \|";
-  }
-
-  my $origin_offset = index($origin_seq, "|");
-  if($origin_offset == -1) { 
-    die "ERROR with --origin <s>, <s> must contain a single | character immediately before the nucleotide that should be the first nt of the genome";
-  }
-  elsif($origin_offset < (length($origin_seq)-1)) { # if this isn't the final character of the string, look for another one
-    my $second_offset = index($origin_seq, "|", $origin_offset+1);
-    if($second_offset != -1) { 
-      die "ERROR with --origin <s>, <s> must contain a single | character, $origin_seq has more than one";
-    }
-  }
-
-  # printf("in $sub_name, $origin_seq returning $origin_offset\n");
-
-  return $origin_offset;
-}
-
-#################################################################
-# Subroutine: find_origin_sequences
-# Incept:     EPN, Tue Mar 15 12:34:30 2016
-# 
-# Purpose:    Identify all exact occurrences of a sequence in a file
-#             of sequences, and a string with the coordinates of the
-#             matches in @{$seq_info_HAR->{$key}}. Each sequence
-#             name is in @{$seq_info_HAR->{"seq_name"}}.
-#
-#             Checks for and adds the following error codes: "ori".
-#
-# Args:   
-#  $sqfile:                 Bio::Easel::SqFile object, the sequence file to search in
-#  $qseq:                   query sequence we're looking for
-#  $seq_info_HAR:           REF to hash of arrays with information 
-#                           on the sequences, PRE-FILLED
-#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, 
-#                           see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: if --origin option is not used according to %{$opt_HHR}
-#       if -c option is not used according to %{$opt_HHR}
-#
-#################################################################
-sub find_origin_sequences { 
-  my $sub_name = "find_origin_sequences";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $qseq, $seq_info_HAR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  if(! opt_IsUsed("--origin", $opt_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, --origin not used...."); 
-  }
-  if(! opt_IsOn("-c", $opt_HHR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, -c not used...."); 
-  }
-
-  # fetch each sequence and look for $qseq in it
-  # (could (and probably should) make this more efficient...)
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = "";
-    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-    my $fasta_seq = $sqfile->fetch_seq_to_fasta_string($seq_name, -1);
-    my ($header, $seq) = split(/\n/, $fasta_seq);
-    my $nfound = 0; # number of occurrences of origin sequence per sequence
-    chomp $seq;
-    if($seq =~ m/\r$/) { chop $seq; } # remove ^M if it exists
-
-    # now use Perl's index() function to find all occurrences of $qseq
-    my $qseq_posn = index($seq, $qseq);
-    # if $qseq_posn == -1, then no occurrences were found. In this case we don't store 
-    # any entry in coords_HAR for this $accn. The caller needs to know what to do
-    # if it sees no entry for an $accn
-
-    while($qseq_posn != -1) { 
-      $qseq_posn++;
-      if($qseq_posn <= $accn_len) { # note: we've just incremented qseq_posn by 1 in prv line so now it is in 1..length($seq) coords, not 0..length($seq)-1
-        my $qseq_start = $qseq_posn;
-        my $qseq_stop  = $qseq_posn + length($qseq) - 1;
-        # adjust coordinates so they're within 1..L
-        ($qseq_start, $qseq_stop) = 
-            create_output_start_and_stop($qseq_start, $qseq_stop, $accn_len, $seq_len, $FH_HR);
-        if($seq_info_HAR->{"origin_coords_str"}[$seq_idx] ne "") { 
-          $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= ",";
-        }
-        $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $qseq_start . ":" . $qseq_stop;
-        $nfound++;
-      }
-      if($qseq_posn > $accn_len) { 
-        $qseq_posn = -1; 
-        # this breaks the while loop because we're searching in a duplicated genome, 
-        # and we're into the second copy, no need to keep searching the same seq
-      }
-      else { 
-        $qseq_posn = index($seq, $qseq, $qseq_posn);
-      }
-    }
-    # printf("in $sub_name, $seq_name nfound: $nfound\n");
-    if($nfound != 1) { 
-      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, $nfound . " occurrences", $FH_HR);
-    }
-  }
-  
-  return;
-}
-
-
-#################################################################
-# Subroutine: get_origin_output_for_sequence
-# Incept:     EPN, Tue Mar 15 13:33:29 2016
-#
-# Synopsis:   For a given sequence index $seq_idx, determine 
-#             the output strings related to the origin sequence
-#
-# Args: 
-#  $seq_info_HAR:  REF to hash of arrays with information 
-#                  on the sequences (including origins), PRE-FILLED
-#  $seq_idx:       index of sequence we're working on
-#  $origin_offset: offset of origin, 1st genome position within origin sequence
-#  $FH_HR:         REF to hash of file handles
-#
-# Returns: 5 values:
-#          $oseq_ct:       number of occurrences of origin sequence found
-#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
-#
-# Dies: if $seq_info_HAR->{"origin_coords_str"}[$seq_idx] does not exist.
-# 
-#################################################################
-sub get_origin_output_for_sequence { 
-  my $sub_name = "get_origin_output_for_sequence";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR) = @_;
-
-  if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
-    DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
-  }
-  my $accn_len = $seq_info_HAR->{"accn_len"}[$seq_idx];
-
-  # initializereturn values
-  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
-  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
-  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
-  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
-
-  my @coords_A = split(",", $seq_info_HAR->{"origin_coords_str"}[$seq_idx]);
-  my $oseq_ct = scalar(@coords_A);
-
-  if($oseq_ct == 1) { 
-    ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
-    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_start: $oseq_start oseq_stop: $oseq_stop\n");
-    $oseq_offset = ($oseq_start < 0) ? ($oseq_start + $origin_offset) : ($oseq_start + $origin_offset - 1);
-    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
-    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
-    if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
-      $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
-    }
-    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-      $oseq_offset *= -1;
-    }
-    $oseq_passfail = "P";
-  }
-
-  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail);
-}
-
-
-
-#################################################################
-#################################################################
-#  Subroutines related to the error instance data structures:
-#    error_instances_initialize_AHH()
-#    error_instances_add()
-#    error_instances_update()
-#    error_instances_remove_maybe()
-#    error_instances_remove_not_maybe()
-#    error_instances_validate_all()
-#
-#################################################################
-# Subroutine:  error_instances_initialize_AHH()
-# Incept:      EPN, Fri Mar  4 12:26:42 2016
-#
-# Purpose:    Initialize the error instances array of arrays of 
-#             2 dimensional hashes. The array is [0..$f..$nftr-1] 
-#             where $f is a feature index in %{ftr_info_HA}. 
-#             The key in the 1st hash dimension is an error code, 
-#             the key in the 2nd hash dimension is a sequence 
-#             name (from array $seq_info_HAR{}).
-#
-# Arguments: 
-#  $err_ftr_instances_AHHR: REF to the array of 2D hashes of per-feature errors, initialized here
-#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_info_HAR:           REF to the feature info hash of arrays, PRE-FILLED
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       If err_info_HAR is not complete
-#
-#################################################################
-sub error_instances_initialize_AHH { 
-  my $sub_name = "error_instances_initialize_AHH";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_info_HAR, $FH_HR) = @_;
-  
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); 
-  my $nerr = validateErrorInfoHashIsComplete($err_info_HAR, undef, $FH_HR); 
-
-  # the per-feature errors
-  @{$err_ftr_instances_AHHR} = ();
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    %{$err_ftr_instances_AHHR->[$ftr_idx]} = (); 
-    for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-      if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
-        %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_info_HAR->{"code"}[$err_idx]}} = ();
-      }
-    }
-  }
-
-  # the per-sequence errors
-  %{$err_seq_instances_HHR} = ();
-  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
-      %{$err_seq_instances_HHR->{$err_info_HAR->{"code"}[$err_idx]}} = ();
-    }
-  }
-
-  return;
-}
-
-
-#################################################################
-# Subroutine:  error_instances_add()
-# Incept:      EPN, Tue Mar  8 11:06:18 2016
-#
-# Purpose:    Add an $err_code error to the @{$err_ftr_instances_AHHR} 
-#             for feature index $ftr_idx, sequence name $seq_name.
-#
-#             If $err_code is an error code for which $err_info_HAR->{"pertype"}[$err_idx]
-#             is "sequence", then $err_ftr_instances_AHHR can be undef,
-#             because we are updating only $err_seq_instances_HHR.
-#
-#             If $err_info_HAR->{"pertype"}[$err_idx] is "feature", then 
-#             $err_seq_instances_HHR can be undef, because we are updating
-#             only $err_ftr_instances_AHHR. 
-#
-#             $err_idx is derived from $err_code and %{$err_inf_HAR}
-#             as follows: $err_info_HAR->{"code"}[$err_idx] ==
-#             $err_code.
-#             
-# Arguments: 
-#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
-#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_idx:                feature index, -1 if $err_code pertype ($err_info_HAR->{"pertype"}[$err_idx]) is 'sequence'
-#  $err_code:               error code we're adding an error for, $err_idx is derived from this 
-#  $seq_name:               sequence name
-#  $value:                  value to add as $err_ftr_instances_AHHR->[$ftr_idx]{$code}{$seq_name}
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       - If we find an error instance incompatibility.
-#             - If value is "maybe" but maybes are not allowed for $err_code in %err_info_HAR
-#               or a value already exists for that instance
-#             - If we already have a value for this $seq_idx+$err_code pair
-#               (call error_instances_update() to update a value).
-#             - if pertype of $err_code is "feature"  and $err_ftr_instances_AHHR is undef
-#             - if pertype of $err_code is "sequence" and $err_seq_instances_HHR is undef
-#             - if pertype of $err_code is "sequence" and $ftr_idx is not -1
-#
-#################################################################
-sub error_instances_add { 
-  my $sub_name = "error_instances_add()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
-
-  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
-  
-  my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
-  if($err_idx == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
-  }
-  # printf("in $sub_name err_code: $err_code err_idx: $err_idx\n");
-  
-  # check if it's the special "maybe" value, which is only allowed for some error codes 
-  if($value eq "maybe") { 
-    # make sure it's allowed
-    if(! $err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
-      DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to set to maybe but maybes are not allowed for this error code.", 1, $FH_HR);
-    }
-  }
-
-  # determine if we're a per-feature or per-sequence error
-  my $pertype = $err_info_HAR->{"pertype"}[$err_idx];
-
-  if($pertype eq "feature") { 
-    if(! defined $err_ftr_instances_AHHR) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-feature error, but err_ftr_instances_AHHR is undefined", 1, $FH_HR);
-    }
-    # this error shouldn't already exist, unless it's already set to $value, in which case it's okay
-    if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne $value) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instances_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
-      }
-    }
-    # set the value
-    $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} = $value;
-  }
-  elsif($pertype eq "sequence") { 
-    if(! defined $err_seq_instances_HHR) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but err_seq_instances_HHR is undefined", 1, $FH_HR);
-    }
-    if($ftr_idx != -1) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
-    }
-    # this error shouldn't already exist, unless it's already set to $value, in which case it's okay
-    if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      if($err_seq_instances_HHR->{$err_code}{$seq_name} ne $value) { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error already exists as %s (maybe you want to use error_instances_update()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
-      }
-    }
-
-    # set the value
-    $err_seq_instances_HHR->{$err_code}{$seq_name} = $value; 
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for error $err_code", 1, $FH_HR);
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  error_instances_update()
-# Incept:      EPN, Tue Mar 15 14:26:58 2016
-#
-# Purpose:    Update the value for an already existing $err_code 
-#             error in @{$err_ftr_instances_AHHR} 
-#             for feature index $ftr_idx, sequence name $seq_name.
-#
-# Arguments: 
-#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
-#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_idx:                REF to the feature info hash of arrays, PRE-FILLED
-#  $err_code:               error code we're adding an error for
-#  $seq_name:               sequence name
-#  $value:                  value to add as $err_ftr_instances_AHHR->[$ftr_idx]{$code}{$seq_name}
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       - If we find an error instance incompatibility.
-#             - If value is "maybe" but maybes are not allowed for $err_code in %err_info_HAR
-#               or a value already exists for that instance
-#             - If we do not already have a value for this $seq_idx+$err_code pair
-#               (call error_instances_add() to add a new value).
-#################################################################
-sub error_instances_update { 
-  my $sub_name = "error_instances_update()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $value, $FH_HR) = @_;
-  
-  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name, value: $value\n");
-
-  my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
-  if($err_idx == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
-  }
-  
-  # check if it's the special "maybe" value, which we don't allow 
-  # an update to (must be added with error_instances_add())
-  if($value eq "maybe") { 
-    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to set to maybe (you may wnat to use error_instances_add()?).", 1, $FH_HR);
-  }
-
-  # determine if we're a per-feature or per-sequence error
-  my $pertype = $err_info_HAR->{"pertype"}[$err_idx];
-
-  if($pertype eq "feature") { 
-    if(! defined $err_ftr_instances_AHHR) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-feature error, but err_ftr_instances_AHHR is undefined", 1, $FH_HR);
-    }
-    # this error *should* already exist (we're updating it)
-    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error does not already exist (maybe you want to use error_instances_add()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
-    }
-
-    # update the value
-    $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} = $value;
-  }
-  elsif($pertype eq "sequence") { 
-    if(! defined $err_seq_instances_HHR) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but err_seq_instances_HHR is undefined", 1, $FH_HR);
-    }
-    if($ftr_idx != -1) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
-    }
-    # this error *should* already exist (we're updating it)
-    if(! exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, this error does not already exist (maybe you want to use error_instances_add()?).", $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR);
-    }
-
-    # set the value
-    $err_seq_instances_HHR->{$err_code}{$seq_name} = $value; 
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for error $err_code", 1, $FH_HR);
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  error_instances_remove_maybe()
-# Incept:      EPN, Tue Mar  8 13:50:22 2016
-#
-# Purpose:    Remove an error $err_code from @{$err_ftr_instances_AHHR} 
-#             for feature index $ftr_idx, sequence name $seq_name,
-#             where the current value is "maybe".
-#
-#             Use error_instances_remove_maybe to remove "maybe" values
-#             from error codes that allow maybes.
-#
-# Arguments: 
-#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
-#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_idx:                REF to the feature info hash of arrays, PRE-FILLED
-#  $err_code:               error code we're adding an error for
-#  $seq_name:               sequence name
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       - if current value does not exist or is not "maybe"
-#             - if $err_code does not allow maybe values
-#             - if pertype of $err_code is "feature"  and $err_ftr_instances_AHHR is undef
-#             - if pertype of $err_code is "sequence" and $err_seq_instances_HHR is undef
-#             - if pertype of $err_code is "sequence" and $ftr_idx is not -1
-#
-#################################################################
-sub error_instances_remove_maybe { 
-  my $sub_name = "error_instances_remove_maybe()";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $FH_HR) = @_;
-  
-  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name\n");
-
-  my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
-  if($err_idx == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
-  }
-  if(! $err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
-    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to remove maybe but maybes are not allowed for this error code.", 1, $FH_HR);
-  }
-
-  # make sure the current value is "maybe" 
-
-  # determine if we're a per-feature or per-sequence error
-  my $pertype = $err_info_HAR->{"pertype"}[$err_idx];
-  if($pertype eq "feature") { 
-    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
-    }
-    if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} ne "maybe") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s, you may want to use error_instances_remove_not_maybe()", 
-                          $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR); 
-    } 
-    # okay, it exists and is "maybe", remove it:
-    delete $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name};
-  }
-  elsif($pertype eq "sequence") { 
-    if(! exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
-    }
-    if($ftr_idx != -1) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
-    }
-    if($err_seq_instances_HHR->{$err_code}{$seq_name} ne "maybe") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, error code $err_code, seq_name $seq_name, value we are trying to remove is not \"maybe\" but rather %s, you may want to use error_instances_remove_not_maybe()", 
-                          $err_seq_instances_HHR->{$err_code}{$seq_name}), 1, $FH_HR); 
-    } 
-    # okay, it exists and is "maybe", remove it:
-    delete $err_seq_instances_HHR->{$err_code}{$seq_name};
-  }
-
-  return
-}
-
-#################################################################
-# Subroutine:  error_instances_remove_not_maybe()
-# Incept:      EPN, Thu Mar 17 09:25:53 2016
-#
-# Purpose:    Remove an error $err_code from @{$err_ftr_instances_AHHR} 
-#             for feature index $ftr_idx, sequence name $seq_name for
-#             which the value is not "maybe". 
-#
-#             Use a different function: error_instances_remove_maybe() 
-#             to remove "maybe" values from error codes that allow maybes.
-#
-# Arguments: 
-#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
-#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_idx:                REF to the feature info hash of arrays, PRE-FILLED
-#  $err_code:               error code we're adding an error for
-#  $seq_name:               sequence name
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       - if current value does not exist or is "maybe"
-#             - if $err_code allows maybe values
-#             - if pertype of $err_code is "feature"  and $err_ftr_instances_AHHR is undef
-#             - if pertype of $err_code is "sequence" and $err_seq_instances_HHR is undef
-#             - if pertype of $err_code is "sequence" and $ftr_idx is not -1
-#
-#################################################################
-sub error_instances_remove_not_maybe { 
-  my $sub_name = "error_instances_remove_not_maybe()";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_idx, $err_code, $seq_name, $FH_HR) = @_;
-  
-  # printf("in $sub_name, ftr_idx: $ftr_idx, err_code: $err_code, seq_name: $seq_name\n");
-
-  my $err_idx = findNonNumericValueInArray($err_info_HAR->{"code"}, $err_code, $FH_HR); 
-  if($err_idx == -1) { 
-    DNAORG_FAIL("ERROR in $sub_name, unrecognized error code $err_code", 1, $FH_HR);
-  }
-  if($err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
-    DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, trying to remove a value for an error code where maybes are allowed, you may want to use error_intance_remove_maybe.", 1, $FH_HR);
-  }
-
-  # determine if we're a per-feature or per-sequence error
-  my $pertype = $err_info_HAR->{"pertype"}[$err_idx];
-  if($pertype eq "feature") { 
-    if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
-    }
-
-    # just to be absolutely sure, check the value is not "maybe" (it shouldn't be since we checked that this err_idx does not
-    # allow maybes ($err_info_HAR->{"maybe_allowed"} = 0), but it's possible it is (e.g. a newly written function may have
-    # set it to maybe)
-    if($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "maybe") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name for ftr_idx $ftr_idx, error code $err_code, seq_name $seq_name, value we are trying to remove is \"maybe\", you may want to use error_instances_remove_maybe().", 
-                          $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}), 1, $FH_HR); 
-    } 
-    # okay, it exists and is not "maybe", remove it:
-    delete $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name};
-  }
-  elsif($pertype eq "sequence") { 
-    if(! exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-      DNAORG_FAIL("ERROR in $sub_name, error code $err_code, seq_name $seq_name, no value exists.", 1, $FH_HR);
-    }
-    if($ftr_idx != -1) { 
-      DNAORG_FAIL("ERROR in $sub_name error code $err_code is a per-sequence error, but passed in ftr_idx is not -1, but $ftr_idx", 1, $FH_HR);
-    }
-    if($err_seq_instances_HHR->{$err_code}{$seq_name} eq "maybe") { 
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, error code $err_code, seq_name $seq_name, value we are trying to remove is \"maybe\", you may want use error_instances_remove_maybe().", 
-                          $err_seq_instances_HHR->{$err_code}{$seq_name}), 1, $FH_HR); 
-    } 
-    # okay, it exists and is not "maybe" remove it:
-    delete $err_seq_instances_HHR->{$err_code}{$seq_name};
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, unexpected pertype of $pertype for error $err_code", 1, $FH_HR);
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  error_instances_validate_all()
-# Incept:      EPN, Thu Mar 17 09:59:00 2016
-#
-# Purpose:    Given all errors in @{$err_ftr_instances_AHHR} and 
-#             %{$err_seq_instances_HHR}, check for any combinations
-#             of incompatible errors and check for any unfulfilled
-#             required combinations of errors and die if any are
-#             found. Also check for any "maybe" error messages,
-#             and fail if any are found.
-#
-# Arguments: 
-#  $err_ftr_instances_AHHR: REF to per-feature error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "sequence".
-#  $err_seq_instances_HHR:  REF to per-sequence error instances to add to, ADDED TO HERE (maybe),
-#                           can be undef if $err_info_HAR->{"pertype"}[$err_idx] is "feature".
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_info_HAR:           REF to the feature info hash of arrays, PRE-FILLED
-#  $seq_info_HAR:           REF to the sequence info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       - if we find an incompatible combination of errors for the
-#               same sequence/feature pair
-#             - if any errors exist without their required other errors for
-#               the same sequence/feature pair
-#             - if any "maybe" error messages exist
-#
-#################################################################
-sub error_instances_validate_all { 
-  my $sub_name = "error_instances_validate_all()";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $err_info_HAR, $ftr_info_HAR, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
-  
-  my $dnaorg_fail_errmsg = ""; # filled as we find incompatibilities
-
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $nerr = validateErrorInfoHashIsComplete   ($err_info_HAR, undef, $FH_HR); # nerr: number of errors
-  
-  my $ftr_idx;
-  my $err_idx;
-  my $seq_idx;
-  my $seq_name;
-  my $err_code;
-
-  # validate that no "maybe" values exist
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-      $err_code = $err_info_HAR->{"code"}[$err_idx];
-      foreach $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
-        if((exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) && 
-           ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) eq "maybe") { 
-          if(! $err_info_HAR->{"maybe_allowed"}[$err_idx]) { 
-            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s error $err_code, but maybes not allowed for this error\n", 
-                                           $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
-          }
-          else { # maybes allowed for this error, but we shouldn't have any at this stage
-            $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, value maybe exists for ftr %s seq %s error $err_code (no maybes should be left at this stage)\n", 
-                                           $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
-          }
-        }
-      }
-    }
-  }
-
-  # validate that there are no incompatibilities
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-      $err_code = $err_info_HAR->{"code"}[$err_idx];
-      my @incompat_A = split(",", $err_info_HAR->{"incompat"}[$err_idx]);
-      foreach my $incompat_err_idx (@incompat_A) { 
-        my $incompat_err_code = $err_info_HAR->{"code"}[$incompat_err_idx];
-        foreach $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$incompat_err_code}{$seq_name}) { 
-            if($incompat_err_idx <= $err_idx) { 
-              # this way we only print an error once for each incompatibility b/t 'A and B' (not 'A and B' plus 'B and A')
-              $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, incompatible error combination $err_code and $incompat_err_code for ftr %s seq %s\n", 
-                                             $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
-              
-            }
-          }
-        }
-      }
-    }
-  }
-
-  # validate that all required combinations are met
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-      $err_code = $err_info_HAR->{"code"}[$err_idx];
-      my @requires_A = split(",", $err_info_HAR->{"requires"}[$err_idx]);
-      foreach my $requires_err_idx (@requires_A) { 
-        my $requires_err_code = $err_info_HAR->{"code"}[$requires_err_idx];
-        foreach $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
-          if(! exists $err_ftr_instances_AHHR->[$ftr_idx]{$requires_err_code}{$seq_name}) { 
-            if($requires_err_idx <= $err_idx) { 
-              # this way we only print an error once for each faield requirement b/t 'A and B' (not 'A and B' plus 'B and A')
-              $dnaorg_fail_errmsg .= sprintf("ERROR in $sub_name, error $err_code exists without the required code $requires_err_code for ftr %s seq %s\n", 
-                                             $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $seq_name);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if($dnaorg_fail_errmsg ne "") { 
-    DNAORG_FAIL($dnaorg_fail_errmsg, 1, $FH_HR);
-  }
-
-  return;
-}
-
-#################################################################
-#################################################################
-#
-#  Subroutines related to output:
-#    output_tbl_explanations()
-#    output_tbl_get_headings()
-#    output_tbl_get_headings_helper()
-#    output_tbl_get_headings_explanation_helper()
-#    output_tbl_all_sequences()
-#    output_tbl_page_of_sequences()
-#    output_errors_header()
-#    output_errors_all_sequences()
-#    output_errors_summary()
-#    output_multifeature_relationships()
-#    output_gap_info()
-#################################################################
-
-#################################################################
-# Subroutine:  output_tbl_explanations
-# Incept:      EPN, Wed Mar 16 11:19:29 2016
-#
-# Purpose:    Output the explanatory text for the tabular output
-#             files.
-#
-# Arguments: 
-#  $out_header_exp_AR: ref to array of output explanation lines
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-################################################################# 
-sub output_tbl_explanations { 
-  my $sub_name = "output_tbl_explanations()";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_header_exp_AR, $ofile_info_HHR) = @_;
-
-  my $tbl_FH     = $ofile_info_HHR->{"FH"}{"tbl"};
-  my $failtbl_FH = $ofile_info_HHR->{"FH"}{"failtbl"};
-  my $errtbl_FH  = $ofile_info_HHR->{"FH"}{"errtbl"};
-
-  foreach my $FH ($tbl_FH, $failtbl_FH, $errtbl_FH) { 
-    foreach my $line (@{$out_header_exp_AR}) { 
-      print $FH $line;
-    }
-    print $FH "#\n";
-    outputDividingLine(undef, $FH); # undef makes outputDividingLine() use its default length for the dividing line
-    print $FH "#\n";
-  }
-  return;
-}
-
-#################################################################
-# Subroutine : output_tbl_get_headings()
-# Incept:      EPN, Thu Mar 10 20:34:07 2016
-#
-# Purpose:     Fill header data structures with strings for headers
-#              in tabular annotation output.
-#
-#             IMPORTANT: This function must stay in sync with the long
-#             block of code in the main script entitled 'Pass through
-#             all accessions, and gather and output annotation for
-#             each'. Here we define the headers of the output, in the
-#             main script we add output for each of those headers, so
-#             they must stay in sync.
-# Arguments: 
-#  $out_row_header_AR:  ref to 1D array of row headers, FILLED HERE 
-#                       iff output format is seq-as-cols
-#  $out_header_exp_AR:  ref to 1D array of header explanations, each
-#                       element is a line to be printed in explanatory
-#                       section of the output; FILLED HERE
-#  $mdl_info_HAR:       REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:       REF to hash of arrays with information on the features, PRE-FILLED
-#  $opt_HHR:            REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:     REF to the 2D hash of output file information
+#  $ofile_info_HHR:   REF to 2D hash of output file information
 # 
 # Returns:     void
 # 
-# Dies: never
-#
 ################################################################# 
-sub output_tbl_get_headings { 
-  my $sub_name = "output_tbl_get_headings";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+sub cmsearch_or_cmscan_run {
+  my $sub_name = "cmsearch_or_cmscan_run()";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($out_row_header_AR, $out_header_exp_AR, $mdl_info_HAR, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $opt_str, $out_file_HR, $opt_HHR, $ofile_info_HHR) = @_;
   
-  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
+  my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
 
-  # determine optional modes
-  my $do_fid       = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
-  my $do_totfid    = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to do fid output
-  my $do_ss3       = 1; # '1' to do ss3 output, '0' to skip it
-  my $do_stop      = 1; # '1' to do stop output, '0' to skip it
-  my $do_mdlb      = 1; # '1' to do model boundary output, '0' to skip it
-  my $do_olap      = 1; # '1' to do overlap output, '0' to skip it
-  my $do_exist     = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
-  my $do_fullolap  = 0; # '1' to output full overlap strings
-  my $do_fulladj   = 0; # '1' to output full adjacency strings
-  my $do_matpept   = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
-  my $do_cds_notmp = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "cds-notmp", $FH_HR) > 0) ? 1 : 0;
-  my $do_xfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "xfeat", $FH_HR) > 0) ? 1 : 0;
-  my $do_dfeat     = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "dfeat", $FH_HR) > 0) ? 1 : 0;
-
-  # miscellaneous variables
-  my $width_result = 5 + $nmdl + 2; # an important width 
-  my $row_div_char = ":"; # divides rows
-  my $width;    # width of a field
-  my $pad;      # string of all spaces used for pretty formatting
-  my $tok1;     # first  level token (line 1 of column headers) 
-  my $tok2;     # second level token (line 2 of column headers) 
-  my $tok3;     # third  level token (line 3 of column headers) 
-  my $tok4;     # fourth level token (line 4 of column headers) 
-  my $tok5;     # fifth  level token (line 5 of column headers) 
-  my $exp_tok1; # first  level explanation token, only used if has to be different from $tok1
-  my $exp_tok4; # fourth level explanation token, only used if has to be different from $tok4
-  my @pf_text_A = (); # array of lines to print about pass/fail strings to explanation at the end
-  my $pf_idx = 1;     # pass/fail index
-  my %need_to_define_H = (); # hash of terms we need to define in explanatory text
-
-##  We store the row headers in a 1D array @{$out_row_header_AR}.
-##  We have the same values as in the column headers, but each
-##  level is concatenated together per row. Here's the row header
-##  information that pertains to the example column header example
-##  above.
-#
-#  idx
-#  accession
-#  totlen
-#  origin sequence:#
-#  origin sequence:start
-#  origin sequence:stop
-#  origin sequence:1stps
-#  origin sequence:offst
-#  origin sequence:PF
-#  CDS #1 [single exon; +]:movement protein:start1
-#  CDS #1 [single exon; +]:movement protein:stop1
-#  CDS #1 [single exon; +]:movement protein:fid1
-#  CDS #1 [single exon; +]:movement protein:md1
-#  CDS #1 [single exon; +]:movement protein:length
-#  CDS #1 [single exon; +]:movement protein:SS3
-#  CDS #1 [single exon; +]:movement protein:stp
-#  CDS #1 [single exon; +]:movement protein:PF
-#  CDS #2 [2 exons; -]:replication associated protein:start1
-#  CDS #2 [2 exons; -]:replication associated protein:stop1
-#  CDS #2 [2 exons; -]:replication associated protein:fid1
-#  CDS #2 [2 exons; -]:replication associated protein:md1
-#  CDS #2 [2 exons; -]:replication associated protein:start2
-#  CDS #2 [2 exons; -]:replication associated protein:stop2
-#  CDS #2 [2 exons; -]:replication associated protein:fid2
-#  CDS #2 [2 exons; -]:replication associated protein:md2
-#  CDS #2 [2 exons; -]:replication associated protein:length
-#  CDS #2 [2 exons; -]:replication associated protein:SS3
-#  CDS #2 [2 exons; -]:replication associated protein:stp
-#  CDS #2 [2 exons; -]:replication associated protein:PF
-#  GenBank annotation:cds
-#  GenBank annotation:exons
-#  GenBank annotation:match
-#  overlaps?
-#  result
-
-  # first, initialize the @{$out_header_exp_AR} with the first two lines:
-  push(@{$out_header_exp_AR}, "#\n");
-  push(@{$out_header_exp_AR}, "# Explanations of row headings on each page:\n");
-  push(@{$out_header_exp_AR}, "#\n");
-
-  # column/row #2: 'idx'
-  $tok1 = sprintf("%-4s  ", "");
-  $tok2 = $tok1;
-  $tok3 = $tok1;
-  $tok4 = sprintf("%-4s  ", " idx");
-  $tok5 = sprintf("%-4s  ", "----");
-  output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "index of genome in list", $FH_HR);
-
-  # column/row #2: 'accession'
-  $tok1 = sprintf("%-19s  ", "");
-  $tok2 = $tok1;
-  $tok3 = $tok1;
-  $tok4 = sprintf("%-19s  ", " accession");
-  $tok5 = sprintf("%-19s  ", "-------------------");
-  output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); 
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "GenBank accession for genomic sequence", $FH_HR);
-
-  # column/row #3: 'totlen'
-  $tok1 = sprintf("%-6s", "");
-  $tok2 = $tok1;
-  $tok3 = $tok1;
-  $tok4 = sprintf("%-6s", "totlen");
-  $tok5 = sprintf("%-6s", "------");
-  output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef); 
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession", $FH_HR);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
-
-  if((opt_IsUsed("--origin", $opt_HHR)) || 
-     (opt_IsUsed("--aorgstart", $opt_HHR))) { 
-    # column/row #4: 'origin sequence:#'
-    $tok1 = sprintf("  %22s", "");
-    $tok2 = sprintf("  %22s", "   origin sequence");
-    $tok3 = sprintf("  %22s", "----------------------");
-    $tok4 = sprintf(" %2s", " #");
-    $tok5 = sprintf(" %2s", "--");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "number of occurrences of origin sequence (input with -oseq) in genome", $FH_HR);
-
-    # column/row #5: 'origin sequence:start'
-    # tok1, tok2, tok3 do not change
-    $tok4 = sprintf(" %5s", "start");
-    $tok5 = sprintf(" %5s", "-----");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "start position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
-
-    # column/row #6: 'origin sequence:stop'
-    # tok1, tok2, tok3 do not change
-    $tok4 = sprintf(" %5s", "stop");
-    $tok5 = sprintf(" %5s", "-----");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of lone occurrence of origin sequence (if only 1 exists)", $FH_HR);
-
-    # column/row #7: 'origin sequence:1stpos'
-    # tok1, tok2, tok3 do not change
-    $tok4 = sprintf(" %5s", "1stps");
-    $tok5 = sprintf(" %5s", "-----");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "what should be first position of genome, based on origin prediction", $FH_HR);
-
-    # column/row #8: 'origin sequence:offst'
-    # tok1, tok2, tok3 do not change
-    $tok4 = sprintf(" %5s", "offst");
-    $tok5 = sprintf(" %5s", "-----");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "predicted offset of genome, number of nucleotides to shift start (>0: clockwise; <0: counterclockwise)", $FH_HR);
-
-    # column/row #9: 'origin sequence:PF'
-    # tok1, tok2, tok3 do not change
-    $tok4 = sprintf(" %2s", "PF");
-    $tok5 = sprintf(" %2s", "--");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "'P' (for PASS) if there is exactly 1 occurrence of the offset, else 'F' for FAIL", $FH_HR);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
-    push(@pf_text_A, "P/F character $pf_idx pertains to the origin sequence test");
-    $pf_idx++;
-  } # end of 'if(opt_IsUsed("--origin", $opt_HHR))'
-
-  # create columns for 5'UTR, if $do_matpept:
-  if($do_matpept) { 
-    $width = 6 + 1 + 6 + 1 + 6; #20
-    $tok1 = sprintf("  %*s", $width, "");
-    $tok2 = sprintf("         %*s", $width, "5' UTR");
-    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-", $FH_HR));
-    $tok4 = sprintf("  %6s", "start");
-    $tok5 = sprintf("  ------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)", $FH_HR);
-
-    $tok4 = sprintf(" %6s", "stop");
-    $tok5 = sprintf(" ------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)", $FH_HR);
-
-    $tok4 = sprintf(" %6s", "length");
-    $tok5 = sprintf(" ------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "length of 5' UTR (inferred from other predictions, \"?\" if first mat_peptide is not predicted)", $FH_HR);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR); # adds a blank line
-  }
-
-  # create rows for each feature 
-  $width = 0;
-  my $do_multi_explanation = 1;
-  my $do_model_explanation = 1;
-  my $nmultifeature = numNonNumericValueInArray($ftr_info_HAR->{"annot_type"}, "multifeature", $FH_HR);
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $ftr_out_short   = $ftr_info_HAR->{"out_short"}[$ftr_idx];
-    my $ftr_out_product = $ftr_info_HAR->{"out_product"}[$ftr_idx];
-    #####################################################################################
-    # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-    #####################################################################################
-    if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-       ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-      $width = 6 + 1 + 6 + 1 + 6; #20
-      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
-      $exp_tok1 = "CDS(MP) #<i>";
-      $tok2 = sprintf("  %s", $ftr_out_product); 
-      $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
-      $tok4 = sprintf("  %8s", sprintf("%s", "start"));
-      $tok5 = sprintf("  %8s", "--------");
-      
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_multi_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-      }
-      
-      $tok4 = sprintf(" %8s", "stop");
-      $tok5 = sprintf(" %8s", "------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_multi_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop  position of CDS(MP) #<i> (inferred from mat_peptides that comprise it,", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef, undef, "\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-      }
-      
-      $tok4 = sprintf(" %6s", "length");
-      $tok5 = sprintf(" %6s", "------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_multi_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "length of CDS(MP) #<i> (\"?\" if any of the mat_peptides that comprise this CDS are not predicted)", $FH_HR);
-      }
-      
-      $tok4 = sprintf(" %6s", "startc");
-      $tok5 = sprintf(" %6s", "------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_multi_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "start codon of CDS(MP) #<i> (\"?\" if first mat_peptide for this CDS is not predicted)", $FH_HR);
-      }
-      
-      $tok4 = sprintf(" %6s", "stopc");
-      $tok5 = sprintf(" %6s", "------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_multi_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "stop codon of CDS(MP) #<i> (\"?\" if final mat_peptide for this CDS is not predicted)", $FH_HR);
-      }
-      
-      if($do_ss3) { 
-        $tok4 = sprintf(" %3s", "ss3");
-        $tok5 = sprintf(" %3s", "---");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_multi_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, '!' if not,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  and '?' if first mat_peptide for this CDS is not predicted", $FH_HR);          
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, '!' if not,", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                      and '?' if final mat_peptide for this CDS is not predicted", $FH_HR);      
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, '!' if it is not a", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "                  multiple of 3, and '?' if any of the mat_peptides that comprise it are not predicted.", $FH_HR);
-        }
-      }
-      
-      $tok4 = sprintf(" %6s", "PF");
-      $tok5 = sprintf(" %6s", "---");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      if($do_multi_explanation) { 
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first mat_peptide", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after the end of its final mat_peptide", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of the mat_peptides that comprise it are adjacent", $FH_HR);
-        output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-        if($nmultifeature == 1) { 
-          push(@pf_text_A, sprintf("P/F character %d pertains to the lone CDS.", $pf_idx));
-        }
-        else {
-          push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nmultifeature-1, $nmultifeature));
-        }
-        $pf_idx += $nmultifeature;
-      }
-      $do_multi_explanation = 0;
-    } # end of 'if' entered if feature is a multifeature cds-mp feature
+  my $stdout_file = $out_file_HR->{"stdout"};
+  my $tblout_file = $out_file_HR->{"tblout"};
+  my $err_file    = $out_file_HR->{"err"};
+  if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $tblout_file) { ofile_FAIL("ERROR in $sub_name, tblout output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(-e $stdout_file) { unlink $stdout_file; }
+  if(-e $tblout_file) { unlink $tblout_file; }
+  if(-e $err_file)    { unlink $err_file; }
   
-    #############################################
-    # block that handles 'annot_type' eq "model"
-    # features, these are cds-notmp and mp types
-    #############################################
-    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-      for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-        $width += 18;
-        my $mdl_exon_idx = $mdl_info_HAR->{"map_exon"}[$mdl_idx];
-        my $is_matpept   = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-        my $is_cds       = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-        my $is_xfeat     = featureTypeIsExtraFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
-        my $is_dfeat     = featureTypeIsDuplicateFeature($ftr_info_HAR->{"type"}[$ftr_idx]);
-        if($do_fid)  { $width += 6;  }
-        if($do_mdlb) { $width += 4;  }
-        if($do_olap) { $width += 11; }
-        if($is_matpept)  { $width += 11; }
-        if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
-          $width += 9;
-          if($do_ss3)  { $width += 4; }
-          if($do_stop) { $width += 4; }
-          $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int(($width-length($ftr_out_short))/2), " ", $FH_HR));
-          $exp_tok1 = "";
-          if($do_matpept && $do_cds_notmp && ($do_xfeat || $do_dfeat)) { 
-            $exp_tok1 = "{MP,CDS,other} #<i>";
-          }
-          elsif($do_matpept && $do_cds_notmp) { 
-            $exp_tok1 = "{MP,CDS} #<i>";
-          }
-          elsif($do_matpept && (! $do_cds_notmp) && ($do_xfeat || $do_dfeat)) { 
-            $exp_tok1 = "{MP,other} #<i>";
-          }
-          elsif($do_matpept && (! $do_cds_notmp)) { 
-            $exp_tok1 = "MP #<i>";
-          }
-          elsif($do_cds_notmp && ($do_xfeat || $do_dfeat)) { 
-            $exp_tok1 = "{CDS,other} #<i>";
-          }
-          else { 
-            $exp_tok1 =  "CDS #<i>";
-          }
-          $tok2 = sprintf("  %s", $ftr_out_product); 
-          $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
-          $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
-          $exp_tok4 = "start<j>";
-          $tok5 = sprintf("  %8s", "--------");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          $width = 0; # reset width, this is impt
-        }
-        else { # not the final exon, still need start coordinate
-          $width += 1;
-          $tok1 = sprintf("    %s", $ftr_out_short);   # used only for output_tbl_get_headings_helper
-          $tok2 = sprintf("    %s", $ftr_out_product); # used only for output_tbl_get_headings_helper
-          $tok4 = sprintf("  %8s", sprintf("%s%s", "start", $mdl_exon_idx+1));
-          $exp_tok4 = "start<j>";
-          $tok5 = sprintf("  %8s", "--------");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        }
-        my $exp_substr = "";
-        if((! $do_xfeat) && (! $do_dfeat)) { 
-          if($do_matpept && $do_cds_notmp) { 
-            $exp_substr = "coding sequence part (or exon) <j> of mat_peptide (or CDS)";
-          }
-          elsif($do_matpept && (! $do_cds_notmp)) { 
-            $exp_substr = "coding sequence part <j> of mat_peptide";
-          }
-          else { # $do_matpept is false
-            $exp_substr = "exon <j> of CDS";
-          }
-        }
-        else { # $do_xfeat or $do_dfeat is TRUE
-          if($do_matpept && $do_cds_notmp) { 
-            $exp_substr = "coding sequence part (or exon or segment) <j> of mat_peptide (or CDS or other feature)";
-          }
-          elsif($do_matpept && (! $do_cds_notmp)) { 
-            $exp_substr = "coding sequence part (or segment) <j> of mat_peptide (or other feature)";
-          }
-          else { # $do_matpept is false
-            $exp_substr = "exon (or segment) <j> of CDS (or other feature)";
-          }
-        }
-        if($do_model_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "start position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
-        }
-        
-        # stop, fid, and md rows take place for all exons
-        # only token 4 changes
-        $tok4 = sprintf(" %8s", sprintf("%s%s", "stop", $mdl_exon_idx+1));
-        $exp_tok4 = "stop<j>";
-        $tok5 = sprintf(" %8s", "--------");
-        output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-        if($do_model_explanation) { 
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "stop  position of $exp_substr (\"NP\" if no prediction)", $FH_HR);
-          output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "enclosed in brackets \"\[e\]\" if start/stop different from all exon start/stops in existing GenBank annotation", $FH_HR);
-        }
-        
-        if($do_fid) { 
-          $tok4 = sprintf(" %5s", sprintf("%s%s", "fid", $mdl_exon_idx+1));
-          $exp_tok4 = "fid<j>";
-          $tok5 = sprintf(" %5s", "-----");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "fractional identity between $exp_substr and reference genome (\"NP\" if no prediction)", $FH_HR);
-          }
-        }
+  utl_FileValidateExistsAndNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
-        $exp_substr = "sequence";
-        if($is_matpept) { 
-          $exp_substr = "mat_peptide coding sequence";
-        }
-        if($is_cds) { 
-          $exp_substr = "exon coding sequence";
-        }
-        if($do_mdlb) { 
-          $tok4 = sprintf(" %3s", sprintf("%s%s", "md", $mdl_exon_idx+1));
-          $exp_tok4 = "md<j>";
-          $tok5 = sprintf(" %3s", "---");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "annotation indicating if alignment to reference extends to 5' and 3' end of reference $exp_substr.", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "first character pertains to 5' end and second character pertains to 3' end.", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "possible values for each of the two characters:", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \".\":   alignment extends to boundary of reference", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"<d>\": alignment truncates <d> nucleotides short of boundary of reference (1 <= <d> <= 9)", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"+\":   alignment truncates >= 10 nucleotides short of boundary of reference", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"t\":   position has been corrected based on predicted, truncated protein sequence", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (5' of predicted stop)", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"e\":   position has been corrected based on predicted, extended protein sequence", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "           3' position: stop coordinate has been adjusted to first in-frame stop (3' of predicted stop)", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"-\":   exon/segment is not predicted due to stop codon in earlier exon/segment", $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef,     undef,     undef, "  \"NP\":  (spanning both characters) no prediction", $FH_HR);
-          }
-        }
-        
-        my $expl_str = "sequence";
-        if($is_matpept) { $expl_str = "mat_peptide"; }
-        if($is_cds)     { $expl_str = "exon"; }
-        if($do_olap) { 
-          $tok4 = sprintf(" %10s", sprintf("%s%s", "overlaps", $mdl_exon_idx+1));
-          $exp_tok4 = "overlaps<j>";
-          $tok5 = sprintf(" %10s", "----------");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of features this feature overlaps with $expl_str"), $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
-            $need_to_define_H{"overlap"} = 1;
-          }
-        }
+  if(! (defined $opt_str)) { $opt_str = ""; }
+  $opt_str .= " --tblout $tblout_file"; 
 
-        if($is_matpept) { 
-          $tok4 = sprintf(" %10s", sprintf("%s%s", "adjcnces", $mdl_exon_idx+1));
-          $exp_tok4 = "adjcnces<j>";
-          $tok5 = sprintf(" %10s", "----------");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, sprintf("'P' or 'F' followed by list of mat_peptides this mat_peptide is adjacent with $expl_str"), $FH_HR);
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first letter is 'P' if agrees exactly with reference, else 'F'", $FH_HR); # adds a second line to explanation
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);      
-          }
-          $need_to_define_H{"adjacent"} = 1;
-        }
-
-        $exp_substr = "sequence";
-        if($is_matpept) { $exp_substr = "mat_peptide coding sequence"; }
-        if($is_cds)     { $exp_substr = "CDS"; }
-        if($mdl_info_HAR->{"is_final"}[$mdl_idx]) { 
-          $tok4 = sprintf(" %6s", "length");
-          $tok5 = sprintf(" %6s", "------");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4); 
-          if($do_model_explanation) { 
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, sprintf("length of $exp_substr #<i> (all %s summed)", $is_cds ? "exons" : "segments"), $FH_HR);
-          }      
-
-          if($is_cds && $do_ss3) { # skip this in matpept mode, we don't check start/stop of mat_peptides, only CDS, later
-            $tok4 = sprintf(" %3s", "ss3");
-            $tok5 = sprintf(" %3s", "---");
-            output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-            if($do_model_explanation) { 
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if predicted CDS has a valid start codon, stop codon and is a multiple of 3", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "first  character: '.' if predicted CDS has a valid start codon, else '!'", $FH_HR);          
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "second character: '.' if predicted CDS has a valid stop  codon, else '!'", $FH_HR);      
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "third  character: '.' if predicted CDS has a length which is a multiple of three, else '!'", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "\"NP\" if no prediction", $FH_HR);
-            }
-          }
-          if($is_cds && $do_stop) { # skip this in matpept mode, we only check stop of final mat_peptide, later
-            $tok4 = sprintf(" %3s", "stp");
-            $tok5 = sprintf(" %3s", "---");
-            output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-            if($do_model_explanation) { 
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $exp_tok4, undef, "the predicted stop codon for this CDS (\"NP\" if no prediction)", $FH_HR);
-            }
-          }
-          
-          $tok4 = sprintf(" %2s", "PF");
-          $tok5 = sprintf(" %2s", "--");
-          output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-          if($do_model_explanation) { 
-            if($is_matpept) { 
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this mat_peptide PASSED ('P') or FAILED ('F')", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a mat_peptide coding sequence PASSES ('P') if and only if", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon or homologous reference mat_peptide", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      does not", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon immediately after its predicted", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      end or reference mat_peptide does not", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) has a pairwise alignment to the homologous reference met_peptide that", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      extends to the 5' and 3' boundary of the reference annotation", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) overlaps with exact same set of other mat_peptides as the homologous", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference mat_peptide", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (6) is adjacent to the exact same set of other mat_peptides as the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference mat_peptide", $FH_HR);
-              push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d mature peptides, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
-              $pf_idx += $nftr;
-              $need_to_define_H{"adjacent"} = 1;
-            }
-            elsif($is_cds) { 
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this CDS PASSED ('P') or FAILED ('F')", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a CDS sequence PASSES ('P') if and only if all of the following", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) it has a valid start codon at beginning of its first exon", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (2) it has a valid stop  codon at end of its final exon", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (3) its length is a multiple of 3", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (4) all of its exons have a pairwise alignment to the homologous", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its exons overlap with exact same set of other exons as the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference CDS", $FH_HR);
-              push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d CDS, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
-              $pf_idx += $nftr;
-              $need_to_define_H{"overlap"} = 1;
-            }
-            else { 
-              my $cur_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, $exp_tok1, $tok4, undef, "annotation indicating if this $cur_type PASSED ('P') or FAILED ('F')", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  a $cur_type sequence PASSES ('P') if and only if all of the following", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  conditions are met (else it FAILS):", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (1) all of its segments have a pairwise alignment to the homologous", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference exon that extends to the 5' and 3' boundary of the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      reference annotation.", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "  (5) all of its segments overlap with exact same set of other segments as the", $FH_HR);
-              output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "      homologous reference $cur_type", $FH_HR);
-              push(@pf_text_A, sprintf("P/F characters %d to %d pertain to each of the %d $cur_type, in order.", $pf_idx, $pf_idx + $nftr-1, $nftr));
-              $pf_idx += $nftr;
-              $need_to_define_H{"overlap"} = 1;
-            }
-            output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-          }
-        } # end of 'if($mdl_is_final_AR->[$mdl_idx])'
-        $do_model_explanation = 0; # once we see the final exon of the first CDS, we don't need to print CDS explanations anymore
-      } # end of 'for(my $mdl_idx)'
-    } # end of 'else' entered if we're not a multifeature cds-mp feature but do have annot_type eq 'model'
-    ################################################
-    # block that handles 'annot_type' eq "duplicate"
-    ################################################
-    elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") { 
-      $width = 6 + 1 + 6 + 1 + 6; #20
-      $tok1     = sprintf("  %*s", $width, $ftr_out_short . getMonocharacterString(int($width-length($ftr_out_short)/2), " ", $FH_HR));
-      $exp_tok1 = $ftr_out_short;
-      $tok2 = sprintf("  %s", $ftr_out_product); 
-      $tok3 = sprintf("  %s", getMonocharacterString($width, "-", $FH_HR));
-      $tok4 = sprintf("  %8s", sprintf("%s", "start"));
-      $tok5 = sprintf("  %8s", "--------");
-      
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-      
-      $tok4 = sprintf(" %8s", "stop");
-      $tok5 = sprintf(" %8s", "------");
-      output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok1, $tok2, $tok4);
-    } # end of block that handles 'annot_type' eq 'duplicate'
-  } # end of 'for(my $ftr_idx)'
-  
-  # create columns for 3'UTR, if $do_matpept:
-  if($do_matpept) { 
-    $width = 6 + 1 + 6 + 1 + 6; #20
-    $tok1 = sprintf("  %*s", $width, "");
-    $tok2 = sprintf("         %*s", $width, "3' UTR");
-    $tok3 = sprintf("  %*s", $width, getMonocharacterString($width, "-", $FH_HR));
-    $tok4 = sprintf("  %6s", "start");
-    $tok5 = sprintf("  ------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef); 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "start position of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
-
-    $tok4 = sprintf(" %6s", "stop");
-    $tok5 = sprintf(" ------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "stop  position of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
-
-    $tok4 = sprintf(" %6s", "length");
-    $tok5 = sprintf(" ------");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "length of 3' UTR (inferred from other predictions, \"?\" if final mat_peptide is not predicted)", $FH_HR);
-
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-  }
-
-  # "totlen"
-  $tok1 = sprintf("  %6s", "");
-  $tok2 = sprintf("  %6s", "");
-  $tok3 = sprintf("  %6s", "");
-  $tok4 = sprintf("  %6s", "totlen");
-  $tok5 = sprintf("  %6s", "------");
-  output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "total length (nt) for accession (repeated for convenience)", $FH_HR);
-
-  if($do_totfid) { 
-    # "totfid"
-    $tok1 = sprintf("  %5s", "");
-    $tok2 = sprintf("  %5s", "");
-    $tok3 = sprintf("  %5s", "");
-    $tok4 = sprintf("  %5s", "totfid");
-    $tok5 = sprintf("  %5s", "-----");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "fractional identity of all concatenated pairwise nucleotide alignments for this accession", $FH_HR);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-  }
-
-  # existing GenBank annotation
-  if($do_exist) { 
-    $tok1 = sprintf("  %19s", "");
-    $tok2 = sprintf("  %19s", "GenBank annotation");
-    $tok3 = sprintf("  %19s", "-------------------");
-    $tok4 = sprintf("  %5s", ($do_matpept) ? "mp" : "cds");
-    $tok5 = sprintf("  %5s", "-----");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, sprintf("number of %s in the existing GenBank annotation for this accession", ($do_matpept) ? "mat_peptides" : "CDS"), $FH_HR);
-    
-    $tok4 = sprintf("  %5s", "exons");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "total number of exons in the existing GenBank annotation for this accession", $FH_HR);
-    
-    $tok4 = sprintf("  %5s", "match");
-    output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok2, $tok4, undef);
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok2, $tok4, undef, "number of exons in the existing GenBank annotation for which existing and predicted annotation agree exactly", $FH_HR);
-  }
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-
-  # result
-  $tok1 = sprintf("  %*s",  $width_result, "");
-  $tok2 = sprintf("  %*s",  $width_result, "");
-  $tok3 = sprintf("  %*s",  $width_result, "");
-  $tok4 = sprintf("  %-*s", $width_result, "result");
-  $tok5 = sprintf("  %-*s", $width_result, getMonocharacterString($width_result, "-", $FH_HR));
-  output_tbl_get_headings_helper($out_row_header_AR,  $row_div_char, $tok4, undef, undef);
-
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, $tok4, undef, undef, "\"PASS\" or \"FAIL\". \"PASS\" if and only if all tests for this accession PASSED ('P')", $FH_HR);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "as indicated in the \"PF\" rows.", $FH_HR);
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, sprintf("After that is a string of %d characters, these are the individual P/F results in order.", $pf_idx-1), $FH_HR);
-  foreach my $pf_text_str (@pf_text_A) { 
-    output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, $pf_text_str, $FH_HR);
-  }
-  output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, "See explanations of the individual P/F values above.", $FH_HR);
-
-  if((defined $need_to_define_H{"overlap"}) || (defined $need_to_define_H{"adjacent"})) {
-     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-     push(@{$out_header_exp_AR}, "# Definitions of non-obvious terms above:\n");
-     output_tbl_get_headings_explanation_helper($out_header_exp_AR, undef, undef, undef, undef, $FH_HR);
-     if(defined $need_to_define_H{"overlap"}) { 
-       push(@{$out_header_exp_AR}, "# overlap:  two features i and j overlap if they are on both on the same strand and overlap by >= 1 nt.\n");
-     }
-     if(defined $need_to_define_H{"adjacent"}) { 
-       push(@{$out_header_exp_AR}, "# adjacent: two features i and j are adjacent if they are on the same strand and\n");
-       push(@{$out_header_exp_AR}, "#           start_i < start_j and stop_i+1 == start_j.\n");
-       push(@{$out_header_exp_AR}, "#           (Note that on the positive strand start_i <= stop_i for all i,\n");
-       push(@{$out_header_exp_AR}, "#           (and that  on the negative strand start_i >= stop_i for all i)\n");
-     }
-  }
-  return;
-}
-
-#################################################################
-# Subroutine: output_tbl_get_headings_helper()
-# Incept:     EPN, Fri Mar 11 04:50:55 2016
-#
-# Purpose:   Helper function for output_tbl_get_headings() when
-#            used in sequences-as-columns modes. Given up to 3 tokens,
-#            add them to the appropriate place in @{$out_col_header_AAR}.
-#
-# Arguments:
-#   $out_col_header_AAR: ref to output column header 2D array
-#   $div_char:           divider character to put between tokens
-#   $tok1:               token 1, can be undef
-#   $tok2:               token 2, can be undef
-#   $tok3:               token 3, can be undef
-#             
-# Returns:  void
-# 
-# Dies:     Never.
-#
-#################################################################
-sub output_tbl_get_headings_helper { 
-  my $sub_name = "output_tbl_get_headings_helper";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_row_header_AR, $div_char, $tok1, $tok2, $tok3) = @_;
-  
-  # remove whitespace at beginning and end of tokens
-  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
-  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
-  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
-
-  my $toadd = "";
-  if(defined $tok1) { 
-    $toadd = $tok1; 
-  }
-  if(defined $tok2) { 
-    if($toadd ne "") { $toadd .= $div_char; }
-    $toadd .= $tok2; 
-  }
-  if(defined $tok3) { 
-    if($toadd ne "") { $toadd .= $div_char; }
-    $toadd .= $tok3; 
-  }
-
-  push(@{$out_row_header_AR}, $toadd); 
-
-  return;
-}
-
-#################################################################
-# Subroutine: output_tbl_get_headings_explanation_helper()
-# Incept:     EPN, Thu Mar 10 21:05:36 2016
-#
-# Purpose:   Helper function for output_tbl_get_headings() for 
-#            adding explanatory text to the @{$out_header_exp_AR} array.
-#             Given up to 3 tokens that define the header, and one that is the 
-#             explanatory text. Can be used in 3 modes:
-#
-#             Mode 1: at least one of $tok1, $tok2, $tok3 is defined
-#                     and $desc is defined 
-#                     In this mode, determine header by concatenating all of
-#                     $tok1, $tok2, and $tok3 that are defined and use
-#                     $desc as the description.
-#
-#             Mode 2: none of $tok1, $tok2, $tok3 is defined and $desc is
-#                     defined.
-#                     In this mode, header is blank, and use $desc as 
-#                     the description.
-#
-#             Mode 3: none of $tok1, $tok2, $tok3 is defined and $desc is
-#                     not defined either
-#                     In this mode, add a blank line to @{$out_row_header_AR}.
-#
-# Arguments:
-#   $out_header_exp_AR:  ref to output column header 2D array
-#   $tok1:               token 1, can be undef
-#   $tok2:               token 2, can be undef
-#   $tok3:               token 3, can be undef
-#   $desc:               description text, can be undef
-#   $FH_HR:              REF to hash of file handles
-#             
-# Returns:  void
-# 
-# Dies:     if desc is not defined but a header token is
-#
-#################################################################
-sub output_tbl_get_headings_explanation_helper { 
-  my $sub_name = "output_tbl_get_headings_explanation_helper";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_header_exp_AR, $tok1, $tok2, $tok3, $desc, $FH_HR) = @_;
-
-  my $width = 35;
-  # remove whitespace at beginning and end of tokens
-  if(defined $tok1) { $tok1 =~ s/^\s+//; $tok1 =~ s/\s+$//; }
-  if(defined $tok2) { $tok2 =~ s/^\s+//; $tok2 =~ s/\s+$//; }
-  if(defined $tok3) { $tok3 =~ s/^\s+//; $tok3 =~ s/\s+$//; }
-
-  # we don't allow whitespace between headers, the idea is that 
-  # each header should be a single white-space delimited token, 
-  # so we can more easily manipulate the output file
-  my $header = "";
-  if(defined $tok1) { 
-    $header .= $tok1;
-  }
-  if(defined $tok2) { 
-    if($header ne "") { $header .= ":"; }
-    $header .= $tok2;
-  }
-  if(defined $tok3) { 
-    if($header ne "") { $header .= ":"; }
-    $header .= $tok3;
-  }
-  if($header ne "") { 
-    $header = "\"" . $header . "\":";
-  }
-
-  if(defined $desc) { 
-    push(@{$out_header_exp_AR}, sprintf("# %-*s %s\n", $width, $header, $desc)); 
+  my $cmd = undef;
+  if(defined $mdl_name) { 
+    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
   }
   else { 
-    if($header ne "") { 
-      DNAORG_FAIL("ERROR in $sub_name, desc is not defined but one of the header tokens is", 1, $FH_HR);
-    }
-    push(@{$out_header_exp_AR}, "#\n");
+    $cmd = $execs_HR->{"cmscan"} . " $opt_str $mdl_file $seq_file > $stdout_file";
   }
+  if($do_parallel) { 
+    my $job_name = "J" . utl_RemoveDirPath($seq_file);
+    my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
+    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
+    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
+    dng_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+  }
+  else { 
+    utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  }
+  return; 
+}
+
+#################################################################
+# Subroutine:  cmsearch_or_cmscan_parse_sorted_tblout()
+# Incept:      EPN, Wed Mar 20 13:30:16 2019
+#
+# Purpose:     Parse a sorted cmsearch tblout output file and 
+#              store results in %{$results_HHHR}. This is 
+#              done differently depending on if $round is 1 or 2.
+#
+# Arguments: 
+#  $tblout_file:   name of sorted tblout file to parse
+#  $round:         round, '1' or '2'
+#  $mdl_info_AHR:  ref to model info array of hashes
+#  $results_HHHR:  ref to results 3D hash
+#  $opt_HHR:       ref to options 2D hash
+#  $FH_HR:         ref to file handle hash
+# 
+# Returns: void
+# 
+# Dies: if there's a problem parsing the tblout file
+#      
+################################################################# 
+sub cmsearch_or_cmscan_parse_sorted_tblout {
+  my $sub_name = "cmsearch_or_cmscan_parse_sorted_tblout()";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($tblout_file, $round, $mdl_info_AHR, $results_HHHR, $opt_HHR, $FH_HR) = @_;
+
+  if((! defined $round) || (($round != 1) && ($round != 2))) { 
+    ofile_FAIL("ERROR in $sub_name, round is not 1 or 2", 1, $FH_HR);
+  }
+
+  # determine if we have an expected group and subgroup
+  # (--subgroup requires --group)
+  # and if so, fill hashes of model groups and subgroups, 
+  # (this data is in @{$mdl_info_HAR} already, we fill 
+  # these hashes only for convenience)
+  my $exp_group    = opt_Get("--group", \%opt_HH);
+  my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
+  # fill hashes of model groups and subgroups, for convenience
+  my %mdl_group_H    = ();
+  my %mdl_subgroup_H = ();
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  if($round == 1) { 
+    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+      my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+      if(defined $mdl_info_AHR->[$mdl_idx]{"group"}) { 
+        $mdl_group_H{$mdl_name} = $mdl_info_AHR->[$mdl_idx]{"group"}; 
+      }
+      if(defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) { 
+        $mdl_subgroup_H{$mdl_name} = $mdl_info_AHR->[$mdl_idx]{"subgroup"}; 
+      }
+    }
+  }
+
+  my $seq;      # sequence name
+  my $model;    # model name
+  my $score;    # bit score
+  my $m_from;   # model from position
+  my $m_to;     # model to position
+  my $s_from;   # sequence from position
+  my $s_to;     # sequence to position
+  my $strand;   # strand of hit
+  my $bias;     # bias score
+  my $key2;     # key in 2nd dim of %results
+  my $group;    # group for current sequence, can be undef
+  my $subgroup; # subgroup for current sequence, can be undef
+  open(IN, $tblout_file) || ofile_FileOpenFailure($tblout_file, "dnaorg", $sub_name, 1, "reading", $FH_HR);
+
+  while(my $line = <IN>) { 
+    my $HR = undef; # ref to 3rd dimension hash in %results_HHH we will update for this hit
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      $seq    = undef;
+      $model  = undef;
+      $score  = undef;
+      $m_from = undef;
+      $m_to   = undef;
+      $s_from = undef;
+      $s_to   = undef;
+      $strand = undef;
+      my @el_A = split(/\s+/, $line);
+      if($round == 1) { # round 1 cmscan --trmF3 tblout 
+        #modelname sequence                      score  start    end strand bounds ovp      seqlen
+        ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
+        #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
+        if(scalar(@el_A) != 9) { 
+          ofile_FAIL("ERROR parsing $tblout_file for round 1, unexpected number of space-delimited tokens on line $line", "dnaorg", 1, $FH_HR); 
+        }
+        ($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        if(! defined $results_HHHR->{$seq}) { 
+          %{$results_HHHR->{$seq}} = ();
+        }
+        $group    = (defined $mdl_group_H{$model})    ? $mdl_group_H{$model}    : undef;
+        $subgroup = (defined $mdl_subgroup_H{$model}) ? $mdl_subgroup_H{$model} : undef;
+
+        # determine if we are going to store this hit, and to what 2D keys 
+        # (the following code only works because we know we are sorted by score)
+        my $is_1   = 0; # should we store this in $results_HHHR->{$seq}{"r1.1"} ? 
+        my $is_2   = 0; # should we store this in $results_HHHR->{$seq}{"r1.2"} ? 
+        my $is_eg  = 0; # should we store this in $results_HHHR->{$seq}{"r1.eg"} ? 
+        my $is_esg = 0; # should we store this in $results_HHHR->{$seq}{"r1.esg"} ? 
+
+        # store hit as r1.1 only if it's the first hit seen to any model, or it's an additional hit to the r1.1 model
+        # SHOULD WE ONLY BE STORING TOP HIT IN ROUND 1?
+        if((! defined $results_HHHR->{$seq}{"r1.1"}) || # first (best) hit for this sequence 
+           (($results_HHHR->{$seq}{"r1.1"}{"model"} eq $model) && 
+            ($results_HHHR->{$seq}{"r1.1"}{"bstrand"} eq $strand))) { # additional hit for r1.1 sequence/model/strand trio
+          $is_1 = 1; 
+        }
+        # store hit as r1.2 only if it's an additional hit to the r1.2 model
+        # or there is no r1.2 hit yet, and r1.1 model and r1.2 model are not in the same subgroup
+        # (if either r1.1 or r1.2 models do not have a subgroup, they are considered to NOT be in the same subgroup)
+        elsif((defined $results_HHHR->{$seq}{"r1.2"}) && 
+              (($results_HHHR->{$seq}{"r1.2"}{"model"} eq $model) && 
+               ($results_HHHR->{$seq}{"r1.2"}{"bstrand"} eq $strand))) { # additional hit for r1.2 sequence/model/strand trio
+          $is_2 = 1;
+        }
+        elsif((! defined $results_HHHR->{$seq}{"r1.2"}) && # no r1.2 hit yet exists AND
+              ((! defined $results_HHHR->{$seq}{"r1.1"}{"subgroup"}) ||       # (r1.1 hit has no subgroup OR
+               (! defined $subgroup) ||                                       #  this hit has no subgroup OR
+               ($results_HHHR->{$seq}{"r1.1"}{"subgroup"} ne $subgroup))) {   #  both have subgroups but they differ)
+          $is_2 = 1;
+        }               
+
+        # determine if we are going to store this hit as best in 'group' and/or 'subgroup'
+        # to the expected group and/or expected subgroup
+        if((defined $exp_group) && (defined $group) && ($exp_group eq $group)) { 
+          if((! defined $results_HHHR->{$seq}{"r1.eg"}) || # first (top) hit for this sequence to this group
+             (($results_HHHR->{$seq}{"r1.eg"}{"model"} eq $model) && 
+              ($results_HHHR->{$seq}{"r1.eg"}{"bstrand"} eq $strand))) { # additional hit for r1.eg sequence/model/strand trio
+            $is_eg = 1; 
+          }
+          if((defined $exp_subgroup) && (defined $subgroup) && ($exp_subgroup eq $subgroup)) { 
+            if((! defined $results_HHHR->{$seq}{"r1.esg"}) || # first (top) hit for this sequence to this subgroup
+               (($results_HHHR->{$seq}{"r1.esg"}{"model"} eq $model) && 
+                ($results_HHHR->{$seq}{"r1.esg"}{"bstrand"} eq $strand))) { # additional hit for r1.esg sequence/model/strand trio
+              $is_esg = 1; 
+            }
+          }
+        }
+        if($is_1)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_2)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_eg)  { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_esg) { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r1.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+      }
+      else { # round 2 cmsearch --tblout output
+        ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+        ##--------------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
+        #gi|1215708385|gb|KY594653.1| -         NC_039477            -         hmm     5089     5389        1      301      +     -    6 0.52   0.0  268.1   3.4e-85 !   Norovirus GII.4 isolate Hu/GII/CR7410/CHN/2014 VP1 gene, partial cds
+        if(scalar(@el_A) < 18) { 
+          ofile_FAIL("ERROR parsing $tblout_file for round 2, unexpected number of space-delimited tokens on line $line", "dnaorg", 1, $FH_HR); 
+        }
+        ($seq, $model, $m_from, $m_to, $s_from, $s_to, $strand, $bias, $score) = ($el_A[0], $el_A[2], $el_A[5], $el_A[6], $el_A[7], $el_A[8], $el_A[9], $el_A[13], $el_A[14]);
+        # determine if we are going to store this hit
+        if((! defined $results_HHHR->{$seq}{"r2.bs"}) || # first (top) hit for this sequence, 
+           (($results_HHHR->{$seq}{"r2.bs"}{"model"}   eq $model) && 
+            ($results_HHHR->{$seq}{"r2.bs"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
+          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r2.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
+        }
+        elsif((! defined $results_HHHR->{$seq}{"r2.os"}) || # first (top) hit on OTHER strand for this sequence, 
+              (($results_HHHR->{$seq}{"r2.os"}{"model"}   eq $model) && 
+               ($results_HHHR->{$seq}{"r2.os"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
+          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"r2.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in round 2
+        }
+      }
+    }
+  }
+
+  return; 
+}
+
+#################################################################
+# Subroutine:  cmsearch_or_cmscan_store_hit()
+# Incept:      EPN, Thu Mar 21 14:55:25 2019
+#
+# Purpose:     Store information on a hit in %{$HR}. 
+#              Initialize %{$HR} if this is the first hit.
+#
+# Arguments: 
+#  $HR:            hash to store hit info in
+#  $model:         model name
+#  $score:         score of hit
+#  $strand:        strand of hit
+#  $bias:          bias score
+#  $s_from:        start position on sequence
+#  $s_to:          end position on sequence
+#  $m_from:        start position on model
+#  $m_to:          end position on model
+#  $group:         group for $model, can be undef
+#  $subgroup:      subgroup for $model, can be undef
+#  $FH_HR:         ref to file handle hash
+# 
+# Returns: void
+# 
+# Dies: if not the first hit, but $HR->{"model"} ne $model
+#      
+################################################################# 
+sub cmsearch_or_cmscan_store_hit { 
+  my $sub_name = "cmsearch_or_cmscan_store_hit()";
+  my $nargs_expected = 12;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($HR, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR) = @_;
+
+  if(scalar(keys(%{$HR})) == 0) { # initialize
+    $HR->{"model"}    = $model; # all hits stored in this hash will be to $model
+    $HR->{"bstrand"}  = $strand; # strand of 'best hit' (first hit)
+    $HR->{"s_coords"} = "";
+    $HR->{"score"}    = "";
+    if(defined $m_from) { $HR->{"m_coords"} = ""; }
+    if(defined $bias)   { $HR->{"bias"}     = ""; }
+  }
+  else { 
+    if($HR->{"model"} ne $model) { 
+      ofile_FAIL("ERROR in $sub_name, trying to add additional hit to a different model", 1, $FH_HR);
+    }
+    $HR->{"s_coords"} .= ",";
+    $HR->{"score"}    .= ",";
+    if(defined $m_from) { $HR->{"m_coords"} .= ","; }
+    if(defined $bias)   { $HR->{"bias"}     .= ","; }
+  }
+  $HR->{"s_coords"} .= $s_from . ".." . $s_to . ":" . $strand;
+  $HR->{"score"}    .= sprintf("%.1f", $score);
+  if(defined $m_from)   { $HR->{"m_coords"} .= $m_from . ".." . $m_to . ":+"; }
+  if(defined $bias)     { $HR->{"bias"}     .= sprintf("%.1f", $bias); }
+  if(defined $group)    { $HR->{"group"}     = $group; }
+  if(defined $subgroup) { $HR->{"subgroup"}  = $subgroup; }
 
   return;
 }
 
 #################################################################
-# Subroutine: output_tbl_all_sequences()
-# Incept:     EPN, Sun Mar 13 21:13:58 2016
+# Subroutine: add_classification_alerts()
+# Incept:     EPN, Thu Mar 21 05:59:00 2019
+# Purpose:    Adds c_* alerts for sequences based on classification
+#             results in %{$cls_results_HHHR}.
 #
-# Purpose:   Output the tabular annotation for all sequences.
-#
+# Types of 
 # Arguments:
-#  $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:     REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:     REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $mdl_results_AAHR: REF to model results AAH, PRE-FILLED
-#  $ftr_results_AAHR: REF to feature results AAH, PRE-FILLED
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:   REF to the 2D hash of output file information
+#  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, added to here
+#  $seq_len_HR:              REF to hash of sequence lengths
+#  $mdl_info_AHR:            REF to array of hashes with information on the sequences, PRE-FILLED
+#  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
+#  $cls_results_HHHR:        REF to 3D hash with classification search results, PRE-FILLED
+#  $cls_output_HHR:          REF to 2D hash of classification output info, FILLED HERE 
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
-# Returns:  Number of accessions with >= 1 failure.
+# Returns:  void
 # 
 # Dies:     never
 #
 #################################################################
-sub output_tbl_all_sequences { 
-  my $sub_name = "output_tbl_all_sequences";
-  my $nargs_exp = 7;
+sub add_classification_alerts { 
+  my $sub_name = "add_classification_alerts";
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($alt_seq_instances_HHR, $seq_len_HR, $mdl_info_AHR, $alt_info_HHR, $cls_results_HHHR, $cls_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $tblsum_FH = $FH_HR->{"tblsum"};
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  my $nseq = scalar(keys (%{$seq_len_HR}));
 
-  # data structures necessary for storing output prior to actually printing
-  my @ref_out_A   = (); # array of output fields for the reference accession
-  my @page_accn_A = (); # [0..$cur_pagesize]2D array, each element is an array of output tokens for one accession
-  my @page_out_AA = (); # 2D array, [0..$a..$cur_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
-                        # each element is an array of output tokens for accession $page_accn_A[$a]
-  my $cur_pagesize = 0; # current number of accessions we have info for in page_out_AA (size of first dimension in page_out_AA)
-                        # when this hits $nseqcol, we dump the output
-  my $npages = 0;       # number of pages output
-  # analagous data structures for 'failure-only' version of the file
-  my @fail_page_accn_A = (); # [0..$cur_fail_pagesize]2D array, each element is an array of output tokens for one accession
-  my @fail_page_out_AA = (); # 2D array, [0..$a..$cur_fail_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
-                             # each element is an array of output tokens for accession $fail_page_accn_A[$a]
-  my $cur_fail_pagesize = 0; # current number of accessions we have info for in fail_page_out_AA (size of first dimension in fail_page_out_AA)
-                             # when this hits $nseqcol, we dump the output
-  my $nfail_pages = 0;       # number of fail pages output
-  # analagous data structures for 'error-only' version of the file
-  my @err_page_accn_A = (); # [0..$cur_err_pagesize]2D array, each element is an array of output tokens for one accession
-  my @err_page_out_AA = (); # 2D array, [0..$a..$cur_err_pagesize-1][0..(ntoks-1)] first dimension is of size $cur_pagesize, 
-                            # each element is an array of output tokens for accession $err_page_accn_A[$a]
-  my $cur_err_pagesize = 0; # current number of accessions we have info for in err_page_out_AA (size of first dimension in err_page_out_AA)
-                            # when this hits $nseqcol, we dump the output
-  my $nerr_pages = 0;       # number of error pages output
+  # create the model index hash which gives index in $mdl_info_AHR[] 
+  # for a given model name, this allows us to find model length given model name
+  my %mdl_idx_H = ();
+  utl_IdxHFromAH(\%mdl_idx_H, $mdl_info_AHR, "name", $sub_name, $FH_HR);
+   
+  # determine if we have an expected group and subgroup
+  # (--subgroup requires --group)
+  # and if so, fill hashes of model groups and subgroups, 
+  # (this data is in @{$mdl_info_AHR} already, we fill 
+  # these hashes onlyfor convenience)
+  my $exp_group    = opt_Get("--group",    \%opt_HH);
+  my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
 
-  # variables related to optional output 
-  my $do_fid      = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
-  my $do_totfid   = (opt_Get("--doalign", $opt_HHR)) ? 1 : 0; # '1' to skip fid output
-  my $do_ss3      = 1; # '1' to do ss3 output, '0' to skip it
-  my $do_stop     = 1; # '1' to do stop output, '0' to skip it
-  my $do_mdlb     = 1; # '1' to do model boundary output, '0' to skip it
-  my $do_olap     = 1; # '1' to do overlap output, '0' to skip it 
-  my $do_exist    = (opt_Get("--infasta", $opt_HHR) || opt_Get("--tblnocomp", $opt_HHR)) ? 0 : 1; # '1' to do comparison to existing GenBank annotation, '0' to skip it
-  my $do_matpept  = (numNonNumericValueInArray($ftr_info_HAR->{"type"}, "mp", $FH_HR) > 0) ? 1 : 0;
-
-  my $nseqcol     = 5; # number of sequences we print per page
-  my $do_tblfirst = (opt_Get("--tblfirst", $opt_HHR)) ? 1 : 0; 
-  my $act_nseqcol = $do_tblfirst ? $nseqcol-1 : $nseqcol;
-
-  # the possible values for the ss3 output (start/stop/multiple-of-3)
-  my $ss3_yes_char    = "."; 
-  my $ss3_unsure_char = "?";
-  my $ss3_no_char     = "!";
-
-  # miscellaneous variables
-  my $at_least_one_fail = undef; # set to 1 if we see a failure, separately for each sequence
-  my $pass_fail_char    = undef; # for each possible pass/fail, the 'P' or 'F'
-  my $pass_fail_str     = undef; # string of pass/fail characters
-  my $tot_nfail         = 0;     # total number of accessions with at least 1 failure
-
-  my $origin_offset = undef;
-  if(opt_IsUsed("--origin", $opt_HHR)) { 
-    $origin_offset = validate_origin_seq(opt_Get("--origin", $opt_HHR));
+  # get thresholds
+  my $small_value        = 0.00000001; # for handling precision issues
+  my $lowcovthresh_opt   = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
+  my $vlowscthresh_opt   = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
+  my $lowscthresh_opt    = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
+  my $ostrscthresh_opt   = opt_Get("--ostrscthresh",   $opt_HHR) + $small_value;
+  my $vlowdiffthresh_opt = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
+  my $lowdiffthresh_opt  = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
+  my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR) + $small_value;
+  my $cthresh_opt        = opt_Get("--cthresh",        $opt_HHR) + $small_value;
+  my $dupreg_opt         = opt_Get("--dupregmin",      $opt_HHR);
+  my $ctoponly_opt_used  = 0;
+  if(opt_IsUsed("--ctoponly", $opt_HHR)) { 
+    $cthresh_opt = $small_value;
+    $ctoponly_opt_used = 1;
   }
 
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
-    my @cur_out_A = (); # array of current tokens to print
-    my $ngenbank_match = 0; # number of matches with existing annotation
-    my $pass_fail_str  = ""; 
+  my $lowcovthresh_opt2print   = sprintf("%.3f", opt_Get("--lowcovthresh",   $opt_HHR));
+  my $lowdiffthresh_opt2print  = sprintf("%.3f", opt_Get("--lowdiffthresh",  $opt_HHR));
+  my $vlowdiffthresh_opt2print = sprintf("%.3f", opt_Get("--vlowdiffthresh", $opt_HHR));
+  my $lowscthresh_opt2print    = sprintf("%.3f", opt_Get("--lowscthresh",    $opt_HHR));
+  my $vlowscthresh_opt2print   = sprintf("%.3f", opt_Get("--vlowscthresh",   $opt_HHR));
+  my $ostrscthresh_opt2print   = sprintf("%.1f", opt_Get("--ostrscthresh",   $opt_HHR));
+  my $biasfract_opt2print      = sprintf("%.3f", opt_Get("--biasfract",      $opt_HHR));
+  my $cthresh_opt2print        = sprintf("%.3f", opt_Get("--cthresh",        $opt_HHR));
 
-    # Create the initial portion of the output line, the accession and length
-    push(@cur_out_A, sprintf("%-5d  ", ($seq_idx+1)));
-    push(@cur_out_A, sprintf("%-19s  ", $accn_name)); 
-    push(@cur_out_A, sprintf("%6d ", $accn_len));
+  %{$cls_output_HHR} = ();
+  foreach $seq_name (sort keys(%{$seq_len_HR})) { 
+    my $seq_len  = $seq_len_HR->{$seq_name};
+    my $mdl_name = undef;
+    my $mdl_len  = undef;
+    my %score_H  = (); # key is $cls_results_HHHR 2D key (search category), value is summed score
+    my %scpnt_H  = (); # key is $cls_results_HHHR 2D key (search category), value is summed length
+    my $alt_str = "";
+    %{$cls_output_HHR->{$seq_name}} = ();
 
-    my ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
-    if((opt_IsUsed("--origin",    $opt_HHR)) || 
-       (opt_IsUsed("--aorgmodel", $opt_HHR))) { 
-
-      if(opt_IsUsed("--origin",    $opt_HHR)) { 
-        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_offset, $oseq_passfail) = get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $origin_offset, $FH_HR);
-        $oseq_firstpos = "?";
-      }
-      if(opt_IsUsed("--aorgmodel", $opt_HHR)) { 
-        ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail) = aorg_get_origin_output_for_sequence($seq_info_HAR, $seq_idx, $FH_HR);
-      }
-
-      push(@cur_out_A, sprintf("%2d ", $oseq_ct));
-      push(@cur_out_A, sprintf("%5s ", $oseq_start));
-      push(@cur_out_A, sprintf("%5s ", $oseq_stop));
-      push(@cur_out_A, sprintf("%5s ", $oseq_firstpos));
-      push(@cur_out_A, sprintf("%5s ", $oseq_offset));
-      push(@cur_out_A, sprintf(" %s", $oseq_passfail));
-      $pass_fail_str .= $oseq_passfail;
+    # check for c_noa alert: no hits in round 1 search
+    # or >=1 hits in round 1 search but 0 hits in round 2 search (should be rare)
+    if((! defined $cls_results_HHHR->{$seq_name}) || 
+       ((defined $cls_results_HHHR->{$seq_name}) &&
+        (defined $cls_results_HHHR->{$seq_name}{"r1.1"}) &&
+        (! defined $cls_results_HHHR->{$seq_name}{"r2.bs"}))) { 
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_noa", $seq_name, "-", $FH_HR);
     }
-
-    # we will eventually output the total fractional identity, the fractional identity we would
-    # get if we concatenated all features aligned to the reference. 
-    my $tot_nid        = 0.; # number of identical positions between this feature and the reference
-    my $tot_id_min_len = 0.; # total number of possible identities, this is the sum for all features of the minimum 
-                             # of the reference length for the feature and the annotated length for the feature
-
-    # 5' UTR, if nec
-    if($do_matpept) { 
-      if(! exists $mdl_results_AAHR->[0][$seq_idx]{"p_start"}) { 
-        push(@cur_out_A, sprintf("  %6s", "?")); # start
-        push(@cur_out_A, sprintf(" %6s", "?"));  # stop
-        push(@cur_out_A, sprintf(" %6s", "?"));  # length
-      }
-      else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
-        # determine output start and output stop
-        my ($cur_start, undef) = create_output_start_and_stop($mdl_results_AAHR->[0][$seq_idx]{"p_start"},
-                                                              $mdl_results_AAHR->[0][$seq_idx]{"p_stop"},
-                                                              $accn_len, $seq_len, $FH_HR);
-        if($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "+") { 
-          # positive strand, easy case
-          if($cur_start == 1) { 
-            push(@cur_out_A, sprintf("  %6d", 0)); # start 
-            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-            push(@cur_out_A, sprintf("  %6d", 0)); # length
-          }
-          else { # 1st matpept does not start at nt 1 (normal case)
-            push(@cur_out_A, sprintf("  %6d", 1)); # start 
-            push(@cur_out_A, sprintf("  %6d", $cur_start - 1)); # stop
-            push(@cur_out_A, sprintf("  %6d", $cur_start - 1)); # length
-          }
-        }
-        elsif($mdl_results_AAHR->[0][$seq_idx]{"p_strand"} eq "-") { 
-          # negative strand, more complicated, slightly
-          if($cur_start == $accn_len) { 
-            push(@cur_out_A, sprintf("  %6d", 0)); # start 
-            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-            push(@cur_out_A, sprintf("  %6d", 0)); # length
-          }
-          else { # 1st feature does not start at nt $accn_len on negative strand
-            push(@cur_out_A, sprintf("  %6d", $accn_len)); # start 
-            push(@cur_out_A, sprintf("  %6d", $cur_start + 1)); # stop
-            push(@cur_out_A, sprintf("  %6d", $accn_len - $cur_start)); # length
-          }
-        }
-        else { # not + or - strand, weird...
-          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
-        }
-      }
-    }
-
-    # go through each feature and collect output tokens and add to @cur_out_A
-    my $start_codon_char   = ""; # set below if for models if $is_first
-    my $stop_codon_char    = ""; # set below if for models if $is_final
-    my $multiple_of_3_char = ""; # set below if for models if $is_final
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      #####################################################################################
-      # block that handles multi-mat_peptide CDS (cds-mp, multifeature) feature annotations
-      #####################################################################################
-      if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-         ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-        # start, stop, length, start_codon, start_codon character
-        my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
-        push(@cur_out_A, sprintf("  %8s", $ftr_results_HR->{"out_start"}));
-        push(@cur_out_A, sprintf("  %8s", $ftr_results_HR->{"out_stop"})); 
-        push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_len"}));  
-        push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_start_codon"}));
-        push(@cur_out_A, sprintf("  %6s", $ftr_results_HR->{"out_stop_codon"}));
-        
-        my $start_codon_char   = undef;
-        if(($ftr_results_HR->{"out_start"}) eq "?") { 
-          $start_codon_char = "?";
-        }
-        elsif((exists $ftr_results_HR->{"str_err_flag"})) { 
-          $start_codon_char = $ss3_no_char;
-        }
-        else { 
-          $start_codon_char = $ss3_yes_char;
-        }
-
-        my $stop_codon_char    = undef;
-        if(($ftr_results_HR->{"out_stop"}) eq "?") { 
-          $stop_codon_char = "?";
-        }
-        elsif(! validateStopCodon($ftr_results_HR->{"out_stop_codon"})) { 
-          $stop_codon_char = $ss3_no_char;
-        }
-        else { 
-          $stop_codon_char = $ss3_yes_char;
-        }
-
-        my $multiple_of_3_char = undef;
-        if(($ftr_results_HR->{"out_len"}) eq "?") { 
-          $multiple_of_3_char = "?";
-        }
-        elsif(($ftr_results_HR->{"out_len"} % 3) != 0) { 
-          $multiple_of_3_char = $ss3_no_char;
-        }
-        else { 
-          $multiple_of_3_char = $ss3_yes_char;
-        }
-        # determine if this CDS passed or failed
-        my $cds_pass_fail = "P";
-        if(($start_codon_char ne $ss3_yes_char || $stop_codon_char ne $ss3_yes_char || $multiple_of_3_char ne $ss3_yes_char) ||
-           (exists $ftr_results_HR->{"trc_err_flag"})) { 
-          $cds_pass_fail = "F";
-        }
-        push(@cur_out_A, sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char)); #start,stop,mult_of_3
-        push(@cur_out_A, sprintf("  %3s", $cds_pass_fail)); # cds_pass_fail
-        $pass_fail_str .= $cds_pass_fail;
-      }         
-
-      #############################################
-      # block that handles 'annot_type' eq "model"
-      # features, these are cds-notmp and mp types
-      #############################################
-      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-        for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-          my $is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx]; # is this the first model for feature $ftr_idx?
-          my $is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx]; # is this the final model for feature $ftr_idx?
-          my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-          my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-          my $mdl_results_HR = \%{$mdl_results_AAHR->[$mdl_idx][$seq_idx]}; # for convenience
-          my $ref_olp_str = $mdl_info_HAR->{"out_olp_str"}[$mdl_idx];
-          my $ref_adj_str = combine_ajb_and_aja_strings($mdl_info_HAR->{"out_ajb_str"}[$mdl_idx], $mdl_info_HAR->{"out_aja_str"}[$mdl_idx]);
-          
-          if($is_first) { # reset variables
-            $at_least_one_fail  = 0; 
-            $start_codon_char   = "";
-            $stop_codon_char    = "";
-            $multiple_of_3_char = "";
-          }
-
-          if(exists $mdl_results_HR->{"p_start"}) { 
-            # hit exists
-            # check for special case when we had a trc in a previous segment for the same feature
-            if((exists $mdl_results_HR->{"prv_trc_flag"}) && ($mdl_results_HR->{"prv_trc_flag"} == 1)) { # flag for a trc error in previous exon
-              if($is_first) { 
-                DNAORG_FAIL(sprintf("ERROR in $sub_name, found flag for trc error in earlier segment/exon but this is the first segment, $accn_name model: %s", $mdl_info_HAR->{"out_tiny"}[$mdl_idx]), 1, $FH_HR);
-              }
-              push(@cur_out_A, sprintf("  %8s ", "-"));                      # start 
-              push(@cur_out_A, sprintf("%8s", "-"));                         # stop
-              if($do_fid)      { push(@cur_out_A, sprintf(" %5s", "-")); }   # fid
-              if($do_mdlb)     { push(@cur_out_A, "  " . "--"); }            # mdlb
-              if($do_olap)     { push(@cur_out_A, sprintf(" %10s", "-")); }  # olap
-              if($is_matpept)  { push(@cur_out_A, sprintf(" %10s", "-")); }  # adj
-            }
-            else { 
-              # not special case in which a trc error exists in earlier segment,
-              # set annotation we do for all models (regardless of $is_first or $is_final values)
-              my $genbank_match = $mdl_results_HR->{"genbank_mdl_annot_match"}; # 1 if existing GenBank annotation matches our annotation
-              if($genbank_match) { $ngenbank_match++; }
-              push(@cur_out_A, sprintf("  %8s ", (($genbank_match || (! $do_exist)) ? " " . $mdl_results_HR->{"out_start"} . " " : "[" . $mdl_results_HR->{"out_start"} . "]")));
-              push(@cur_out_A, sprintf("%8s",    (($genbank_match || (! $do_exist)) ? " " . $mdl_results_HR->{"out_stop"}  . " " : "[" . $mdl_results_HR->{"out_stop"}  . "]")));
-              if($do_fid) { push(@cur_out_A, sprintf(" %5.3f", $mdl_results_HR->{"fid2ref"})); } 
-              if($do_totfid) { 
-                # mdl_results_HR->{"fid2ref"} was computed as the
-                # number of identities in the alignment of the
-                # annotated feature to the reference feature divided
-                # by the minimum of the length of the reference
-                # feature and the length of the annotated feature, so
-                # to determine total fid (fid we'd have for
-                # concatenation of all aligned features to the
-                # reference) we need to determine what the minimum
-                # length is, as well as infer how many identities we
-                # had.
-                my $min_len = ($mdl_results_HR->{"len"} < $mdl_info_HAR->{"length"}[$mdl_idx]) ? $mdl_results_HR->{"len"} : $mdl_info_HAR->{"length"}[$mdl_idx];
-                $tot_nid += ($mdl_results_HR->{"fid2ref"} * $min_len);
-                $tot_id_min_len += $min_len;
-              }
-              if($do_mdlb) { 
-                push(@cur_out_A, "  " . $mdl_results_HR->{"out_5boundary"} . $mdl_results_HR->{"out_3boundary"}); 
-                if(($mdl_results_HR->{"out_5boundary"} ne ".") || 
-                   (($mdl_results_HR->{"out_3boundary"} ne ".") && 
-                    ($mdl_results_HR->{"out_3boundary"} ne "t") && 
-                    ($mdl_results_HR->{"out_3boundary"} ne "e"))) { 
-                  $at_least_one_fail = 1;
-                }
-              }
-              if($do_olap) { 
-                my $out_olp_str = ($mdl_results_HR->{"out_olp_str"} eq "") ? "NONE" : $mdl_results_HR->{"out_olp_str"};
-                if($mdl_results_HR->{"out_olp_str"} ne $ref_olp_str) { 
-                  $at_least_one_fail = 1; 
-                  push(@cur_out_A, sprintf(" %10s", "F:" . $out_olp_str));
-                }
-                else { 
-                  push(@cur_out_A, sprintf(" %10s", "P:" . $out_olp_str));
-                }
-              }
-              
-              if($is_matpept) { 
-                my $adj_str = combine_ajb_and_aja_strings($mdl_results_HR->{"out_ajb_str"}, $mdl_results_HR->{"out_aja_str"});
-                my $out_adj_str = ($adj_str eq "") ? "NONE" : $adj_str;
-                if($adj_str ne $ref_adj_str) { 
-                  $at_least_one_fail = 1; 
-                  push(@cur_out_A, sprintf(" %10s", "F:" . $out_adj_str));
-                }
-                else { 
-                  push(@cur_out_A, sprintf(" %10s", "P:" . $out_adj_str));
-                }
-              }
-              if($is_first) { 
-                if($mdl_results_HR->{"str_err_flag"}) { 
-                  $at_least_one_fail = 1; 
-                }
-                $start_codon_char = $mdl_results_HR->{"str_err_flag"} ? $ss3_no_char : $ss3_yes_char;
-              }
-            } # end of 'else' entered if prv_trc_flag is *not* raised
-            
-            # now add annotation we only do for the final model of each feature, we do this
-            # even if prv_trc_flag is raised
-            if($is_final) { 
-              if($is_cds) { 
-                if(validateStopCodon($mdl_results_HR->{"out_stop_codon"})) { 
-                  $stop_codon_char = $ss3_yes_char;
-                }
-                else { 
-                  $stop_codon_char   = $ss3_no_char;
-                  $at_least_one_fail = 1;
-                }
-              } # end of 'if($is_cds)'
-              if(($mdl_results_HR->{"cumlen"} % 3) == 0) { 
-                $multiple_of_3_char = $ss3_yes_char;
-              }
-              else { 
-                $multiple_of_3_char = $ss3_yes_char;
-                $at_least_one_fail = 1;
-              }
-              push(@cur_out_A, sprintf(" %6d", $mdl_results_HR->{"cumlen"})); 
-              
-              # add the ss3 (start/stop/multiple of 3 info) if we're not a mature peptide
-              if($is_cds) { 
-                if($start_codon_char eq "") { die "ERROR $seq_idx ($seq_name) $mdl_idx start_codon_char is blank\n"; }
-                if($stop_codon_char  eq "") { die "ERROR $seq_idx ($seq_name) $mdl_idx stop_codon_char is blank\n"; }
-                if($multiple_of_3_char  eq "") { die "ERROR $seq_idx $mdl_idx multiple_of_3_char is blank\n"; }
-                push(@cur_out_A,  sprintf(" %s%s%s", $start_codon_char, $stop_codon_char, $multiple_of_3_char));
-                if($do_stop) { 
-                  push(@cur_out_A, sprintf(" %3s", $mdl_results_HR->{"out_stop_codon"}));
-                }
-              }
-              $pass_fail_char = ($at_least_one_fail) ? "F" : "P";
-              push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
-              $pass_fail_str .= $pass_fail_char;
-            } # end of 'if($is_final)'
-          } # end of 'if(exists $mdl_results_HR->{"p_start"}'
-          else { 
-            # no prediction exists
-            $at_least_one_fail = 1;
-            push(@cur_out_A, sprintf("  %8s ", "NP")); # start position
-            push(@cur_out_A, sprintf("%8s",  "NP"));   # stop position
-            if($do_fid)  { push(@cur_out_A, sprintf(" %5s", "NP")); } # fid 
-            if($do_mdlb) { push(@cur_out_A, "  NP"); } # model boundaries
-            if($do_olap) { push(@cur_out_A, "  NP"); } # overlaps
-            if($is_matpept)  { push(@cur_out_A, "  NP"); } # adjacencies
-            if($is_final) { 
-              push(@cur_out_A, sprintf(" %6s", "NP")); # length
-              if($is_cds && $do_ss3)  { push(@cur_out_A, "  NP"); } # ss3
-              if($is_cds && $do_stop) { push(@cur_out_A, sprintf(" %3s", "NP")); } # stop
-              $pass_fail_char = "F";
-              push(@cur_out_A, sprintf(" %2s", $pass_fail_char));
-              $pass_fail_str .= $pass_fail_char;
-            }
-            if($is_first) { # important to do this so final model has a valid start_codon_char
-              $start_codon_char = "NP";
-            }
-          }
-        } # end of 'for(my $mdl_idx'
-      } # end of 'elsif($ftr_info_HAR->{"annot_type"} eq "model") {' entered if feature is not a multifeature cds-mp but has annot_type == "model"
-      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") {
-        my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
-        if($src_idx == -1) {
-          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $ofile_info_HHR->{"FH"});
-        }
-        my $start_pos = "-";
-        my $stop_pos  = "-";
-        if(($ftr_info_HAR->{"annot_type"}[$src_idx] eq "multifeature") && 
-           ($ftr_info_HAR->{"type"}[$src_idx]       eq "cds-mp")) {
-          $start_pos = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_start"};
-          $stop_pos  = $ftr_results_AAHR->[$src_idx][$seq_idx]->{"out_stop"};
-        }
-        elsif($ftr_info_HAR->{"annot_type"}[$src_idx] eq "model") {
-          my $first_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$src_idx];
-          my $final_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$src_idx];
-          if(exists $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]->{"out_start"}) { 
-            $start_pos = $mdl_results_AAHR->[$first_mdl_idx][$seq_idx]->{"out_start"};
-          }
-          if(exists $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]->{"out_stop"}) { 
-            $stop_pos = $mdl_results_AAHR->[$final_mdl_idx][$seq_idx]->{"out_stop"};
-          }
-        }
-        push(@cur_out_A, sprintf("  %8s ", $start_pos)); # start position
-        push(@cur_out_A, sprintf("%8s",    $stop_pos));  # stop position
-      }        
-    } # end of 'for(my $ftr_idx'      
-
-    # 3' UTR, if nec
-    if($do_matpept) { 
-      if(! exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}) { 
-        push(@cur_out_A, sprintf("  %6s", "?")); # start
-        push(@cur_out_A, sprintf(" %6s", "?"));  # stop
-        push(@cur_out_A, sprintf(" %6s", "?"));  # length
-      }
-      else { # we know that $mdl_results_AAHR->[0][$seq_idx]{"p_start"} exists) { 
-        # determine output start and output stop
-        my $cur_stop = undef; # final stop position
-        if(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"}) { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_start"}, 
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"append_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        elsif(exists $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"}) { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"},  # irrelevant due to the first undef arg
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"c_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        else { 
-          (undef, $cur_stop) = create_output_start_and_stop($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
-                                                            $mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_stop"}, 
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        if($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "+") { 
-          # positive strand, easy case
-          if($cur_stop == $accn_len) { # final model prediction stops at final nt
-            push(@cur_out_A, sprintf("  %6d", 0)); # start 
-            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-            push(@cur_out_A, sprintf("  %6d", 0)); # length
-          }            
-          else { 
-            push(@cur_out_A, sprintf("  %6d", $cur_stop + 1));           # start
-            push(@cur_out_A, sprintf("  %6d", $accn_len));               # stop 
-            push(@cur_out_A, sprintf("  %6d", ($accn_len - $cur_stop))); # length
-          }
-        }
-        elsif($mdl_results_AAHR->[($nmdl-1)][$seq_idx]{"p_strand"} eq "-") { 
-          # negative strand, more complicated, slightly
-          if($cur_stop == 1) { # final model prediction stops at first nt
-            push(@cur_out_A, sprintf("  %6d", 0)); # start 
-            push(@cur_out_A, sprintf("  %6d", 0)); # stop 
-            push(@cur_out_A, sprintf("  %6d", 0)); # length
-          }            
-          else { # final feature does not stop at nt 1 on negative strand
-            push(@cur_out_A, sprintf("  %6d", 1)); # start 
-            push(@cur_out_A, sprintf("  %6d", $cur_stop - 1)); # stop 
-            push(@cur_out_A, sprintf("  %6d", $cur_stop - 1)); # length
-          }
-        }
-        else { # not + or - strand, weird...
-          DNAORG_FAIL("ERROR in $sub_name, trying to compute 5' UTR for prediction that exists but is not + or - strand", 1, $FH_HR);
-        }
-      }
-    }
-
-    # total length
-    push(@cur_out_A, sprintf("  %6d", $accn_len));
-    # average fid
-    if($do_totfid) { 
-      push(@cur_out_A, sprintf("  %5.3f", ($tot_id_min_len > 0) ? ($tot_nid / $tot_id_min_len) : 0.));
-    }
-    if($do_exist) { 
-      # output stats on GenBank annotations and comparison
-      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_mdl_annot"}[$seq_idx]));      # number of GenBank annotated features
-      push(@cur_out_A, sprintf("  %5d", $seq_info_HAR->{"num_genbank_mdl_exon_annot"}[$seq_idx])); # number of exons in those annotate features
-      push(@cur_out_A, sprintf("  %5d", $ngenbank_match)); # number of exons for which our annotation matches start..stop of at least 1 GenBank exon
-    }
-
-    my $accn_failed = ($pass_fail_str =~ m/F/) ? 1 : 0;
-    my $result_str = ($accn_failed) ? "FAIL" : "PASS";
-    $result_str .= " " . $pass_fail_str;
-    push(@cur_out_A, sprintf("  %s", $result_str));
-
-    # make a version of $pass_fail_str with spaces for the $tblsum_FH file
-    my @pass_fail_A = split("", $pass_fail_str);
-    my $pass_fail_str_with_spaces = ($accn_failed) ? "FAIL" : "PASS";
-    $pass_fail_str_with_spaces .= " " . $pass_fail_A[0];
-    for(my $pf = 1; $pf < scalar(@pass_fail_A); $pf++) { 
-      $pass_fail_str_with_spaces .= " " . $pass_fail_A[$pf];
-    }    
-    print $tblsum_FH ("$accn_name $pass_fail_str_with_spaces\n");
-
-    # actually output the information to the relevant file handles
-    if(($seq_idx == 0) && $do_tblfirst) { 
-      # copy reference info if this is the reference
-      @ref_out_A = @cur_out_A; 
-    } 
     else { 
-      push(@page_out_AA, [@cur_out_A]);
-      $cur_pagesize++;
-      if(($accn_failed) || (($seq_idx == 0) && (! opt_IsUsed("--infasta", $opt_HHR)))) { # print ref if --infasta not used
-        push(@fail_page_out_AA, [@cur_out_A]);
-        $cur_fail_pagesize++;
-        $tot_nfail++;
-      }        
-      if(($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) || (($seq_idx == 0) && (! opt_IsUsed("--infasta", $opt_HHR)))) { # print ref if --infasta not used { 
-        push(@err_page_out_AA, [@cur_out_A]);
-        $cur_err_pagesize++;
-      }        
-    }
-    if($cur_pagesize == $act_nseqcol) { 
-      $npages++;
-      output_tbl_page_of_sequences($FH_HR->{"tbl"}, \@out_row_header_A, \@page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $npages, $FH_HR);
-      @page_out_AA = ();
-      $cur_pagesize = 0;
-    }
-    if($accn_failed && 
-       ($cur_fail_pagesize == $act_nseqcol)) { 
-      $nfail_pages++;
-      output_tbl_page_of_sequences($FH_HR->{"failtbl"}, \@out_row_header_A, \@fail_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nfail_pages, $FH_HR);
-      @fail_page_out_AA = ();
-      $cur_fail_pagesize = 0;
-    }
-    if(($seq_info_HAR->{"nerrors"}[$seq_idx] > 0) && 
-       ($cur_err_pagesize == $act_nseqcol)) { 
-      $nerr_pages++;
-      output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nerr_pages, $FH_HR);
-      @err_page_out_AA = ();
-      $cur_err_pagesize = 0;
-    }
-  } # end of 'for($seq_idx'
-  # print final page (if non-empty)
-  if($cur_pagesize > 0) { 
-    $npages++;
-    output_tbl_page_of_sequences($FH_HR->{"tbl"}, \@out_row_header_A, \@page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $npages, $FH_HR);
-  }
-  if($cur_fail_pagesize > 0) { 
-    $nfail_pages++;
-    output_tbl_page_of_sequences($FH_HR->{"failtbl"}, \@out_row_header_A, \@fail_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nfail_pages, $FH_HR);
-  }
-  if($cur_err_pagesize > 0) { 
-    $nerr_pages++;
-    output_tbl_page_of_sequences($FH_HR->{"errtbl"}, \@out_row_header_A, \@err_page_out_AA, ($do_tblfirst ? \@ref_out_A : undef), $nerr_pages, $FH_HR);
-  }
-
-  return $tot_nfail;
-}
-
-#################################################################
-# Subroutine: output_tbl_page_of_sequences()
-# Incept:     EPN, Mon Mar 14 14:53:30 2016
-#
-# Purpose:    Output a 'page' of annotation information. 
-#
-# Args:
-#  $FH:            file handle to print to
-#  $header_AR:     reference to array of row headers
-#  $out_AAR:       reference to the 2D array of output tokens for
-#                  current sequences for the page
-#  $ref_out_AR:    reference to array of output tokens for 1st column 
-#                  (e.g. the reference), undef to skip
-#  $page_idx:      page number
-#  $FH_HR:         REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: If we don't have the appropriate number of tokens in an output array.
-#
-#################################################################
-sub output_tbl_page_of_sequences { 
-  my $sub_name = "output_tbl_page_of_sequences";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($FH, $header_AR, $out_AAR, $ref_out_AR, $page_idx, $FH_HR) = @_;
-
-  my $nseq = scalar(@{$out_AAR});
-  if(defined $ref_out_AR) { $nseq++; }
-  my $AR; # reference to current array we are printing
-
-  my @cwidth_A = (); # max width of each column (max width of all tokens for each sequence) 
-  my ($ntok, $el); # number of tokens, and element of an array
-  my $nrow = scalar(@{$header_AR});
-
-  # first, make sure all sequences have same number of output tokens as we have row headers,
-  # and determine maximum width of all tokens for each sequence
-  for(my $i = 0; $i < $nseq; $i++) { 
-    # if $ref_out_AR is defined: first column is reference, then come the other seqs
-    my $ip = (defined $ref_out_AR) ? $i-1 : $i;
-    $AR = ((defined $ref_out_AR) && ($i == 0)) ? $ref_out_AR : \@{$out_AAR->[$ip]}; 
-    $cwidth_A[$i] = 0;
-    $ntok = scalar(@{$AR});
-    if($ntok != $nrow) { 
-      # if you ever get the error in the following line, comment it out and rerun
-      # the output will be shifted by some number of tokens and it should be helpful
-      # for figuring out what tokens are missing
-      DNAORG_FAIL(sprintf("ERROR in $sub_name, we have $nrow headers, but sequence %s has $ntok tokens", $i+1, $ntok), 1, $FH_HR); 
-    }
-    foreach $el (@{$AR}) { 
-      $el =~ s/^\s+//; # remove leading whitespace
-      $el =~ s/\s+$//; # remove trailing whitespace
-      if(length($el) > $cwidth_A[$i]) { 
-        $cwidth_A[$i] = length($el);
+      if(! defined $cls_results_HHHR->{$seq_name}{"r1.1"}) { 
+        ofile_FAIL("ERROR in $sub_name, seq $seq_name should have but does not have any r1.1 hits", 1, $FH_HR);
       }
-    }
-  }
-  for(my $i = 0; $i < $nseq; $i++) { 
-    $cwidth_A[$i] += 2; # add 2 spaces for in-between sequence columns (the two spaces to the right of each column)
-  }
+      # determine model name and length
+      $mdl_name = $cls_results_HHHR->{$seq_name}{"r2.bs"}{"model"};
+      $mdl_len  = $mdl_info_AHR->[$mdl_idx_H{$mdl_name}]{"length"};
+      foreach my $rkey (keys (%{$cls_results_HHHR->{$seq_name}})) { 
+        my @score_A = split(",", $cls_results_HHHR->{$seq_name}{$rkey}{"score"});
+        $score_H{$rkey} = utl_ASum(\@score_A);
+        $scpnt_H{$rkey} = $score_H{$rkey} / dng_CoordsLength($cls_results_HHHR->{$seq_name}{$rkey}{"s_coords"}, $FH_HR);
+      }
+      my $have_r2bs = (defined $cls_results_HHHR->{$seq_name}{"r2.bs"}) ? 1 : 0;
 
-  # determine max width of all row headers:
-  my $hwidth = 0;
-  for(my $r = 0; $r < $nrow; $r++) { 
-    if(length($header_AR->[$r]) > $hwidth) { 
-      $hwidth = length($header_AR->[$r]);
-    }
-  }
-  $hwidth += 2;
+      my $scpnt2print = sprintf("%.3f", $scpnt_H{"r1.1"});
+      $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
+      $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"r1.1"});
 
-  for(my $r = 0; $r < $nrow; $r++) { 
-    printf $FH ("%-*s", $hwidth, $header_AR->[$r]);
-    for(my $i = 0; $i < $nseq; $i++) { 
-      # if $ref_out_AR is defined: first column is reference, then come the other seqs
-      my $ip = (defined $ref_out_AR) ? $i-1 : $i;
-      $AR = ((defined $ref_out_AR) && ($i == 0)) ? $ref_out_AR : \@{$out_AAR->[$ip]}; 
-      $el = $AR->[$r];
-      $el =~ s/\s+//g;
-      printf $FH ("%*s", $cwidth_A[$i], $AR->[$r]);
-    }
-    printf $FH ("\n");
-  }
-  print $FH "#\n";
-  printf $FH ("# end of page %d\n", $page_idx);
-  print $FH "#\n";
+      # low score (c_los) and very low score (c_vls) 
+      if($scpnt_H{"r1.1"} < $vlowscthresh_opt) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_vls", $seq_name, $scpnt2print . "<" . $vlowscthresh_opt2print . " bits/nt", $FH_HR);
+      }
+      elsif($scpnt_H{"r1.1"} < $lowscthresh_opt) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "c_los", $seq_name, $scpnt2print . "<" . $lowscthresh_opt2print . " bits/nt", $FH_HR);
+      }
+
+      # low difference (c_lod) and very low difference (c_vld)
+      if(defined $scpnt_H{"r1.2"}) { 
+        my $diffpnt = $scpnt_H{"r1.1"} - $scpnt_H{"r1.2"};
+        my $diffpnt2print = sprintf("%.3f", $diffpnt);
+        $cls_output_HHR->{$seq_name}{"scdiff"}  = sprintf("%.1f", $score_H{"r1.1"} - $score_H{"r1.2"});
+        $cls_output_HHR->{$seq_name}{"diffpnt"} = $diffpnt2print;
+        my $group_str = "best group/subgroup: " . 
+            group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}) . 
+            ", second group/subgroup: " . 
+            group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.2"});
+
+        if($diffpnt < $vlowdiffthresh_opt) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_vld", $seq_name, $diffpnt2print . "<" . $vlowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
+        }
+        elsif($diffpnt < $lowdiffthresh_opt) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lod", $seq_name, $diffpnt2print . "<" . $lowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
+        }
+      }
+
+      # unexpected group (c_ugr) 
+      # $exp_group must be defined 
+      # - no hits in r1.eg (no hits to group)
+      # OR 
+      # - hit(s) in r1.eg but scpernt diff between
+      #   r1.eg and r1.1 exceeds cthresh_opt
+      #
+      my $ugr_flag = 0;
+      if(defined $exp_group) { 
+        if(! defined $scpnt_H{"r1.eg"}) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_ugr", $seq_name, 
+                                      "no hits to expected group $exp_group, best model group/subgroup: " . 
+                                      group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}), $FH_HR);
+          $ugr_flag = 1;
+        }
+        else { 
+          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.eg"};
+          my $diff2print = sprintf("%.3f", $diff);
+          if($diff > $cthresh_opt) { 
+            $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
+                " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_ugr", $seq_name, $alt_str, $FH_HR);
+            $ugr_flag = 1;
+          }
+        }
+      }
+
+      # unexpected subgroup (c_usg) 
+      # - c_ugr not already detected
+      # - no hits in r1.esg (no hits to subgroup)
+      # OR 
+      # - hit(s) in r1.esg but scpernt diff between
+      #   r1.esg and r1.1 exceeds cthresh_opt
+      if((! $ugr_flag) && (defined $exp_subgroup)) { 
+        if(! defined $scpnt_H{"r1.esg"}) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_usg", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
+        }
+        else { 
+          my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.esg"};
+          my $diff2print = sprintf("%.3f", $diff);
+          if($diff > $cthresh_opt) { 
+            $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
+                " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_usg", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+      }
+
+      # classification alerts that depend on round 2 results
+      if($have_r2bs) { 
+        my @bias_A   = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bias"});
+        my $bias_sum = utl_ASum(\@bias_A);
+        my $bias_fract = $bias_sum / ($score_H{"r2.bs"} + $bias_sum);
+        my $nhits = scalar(@bias_A);
+        $cls_output_HHR->{$seq_name}{"nhits"}   = $nhits;
+        $cls_output_HHR->{$seq_name}{"bias"}    = $bias_sum;
+        $cls_output_HHR->{$seq_name}{"bstrand"} = $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"};
+        my $s_len = dng_CoordsLength($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
+        my $m_len = dng_CoordsLength($cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"}, $FH_HR);
+        my $scov = $s_len / $seq_len;
+        my $scov2print = sprintf("%.3f", $scov);
+        my $mcov2print = sprintf("%.3f", $m_len / $mdl_len);
+        $cls_output_HHR->{$seq_name}{"scov"} = $scov2print;
+        $cls_output_HHR->{$seq_name}{"mcov"} = $mcov2print;
+      
+        # minus strand (c_mst)
+        if($cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"} eq "-") { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_mst", $seq_name, "", $FH_HR);
+        }
+
+        # low coverage (c_loc)
+        if($scov < $lowcovthresh_opt) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_loc", $seq_name, $scov2print . "<" . $lowcovthresh_opt2print, $FH_HR);
+        }
+
+        # high bias (c_hbi) 
+        if($bias_fract > $biasfract_opt) { 
+          my $bias_fract2print = sprintf("%.3f", $bias_fract);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_hbi", $seq_name, $bias_fract2print . "<" . $biasfract_opt2print, $FH_HR);
+        }
+
+        # inconsistent hits: multiple strands (c_bst) 
+        if(defined $cls_results_HHHR->{$seq_name}{"r2.os"}) { 
+          my @ostrand_score_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.os"}{"score"});
+          my $top_ostrand_score = $ostrand_score_A[0];
+          if($top_ostrand_score > $ostrscthresh_opt) { 
+            my @ostrand_start_A = ();
+            my @ostrand_stop_A  = ();
+            dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.os"}{"s_coords"}, \@ostrand_start_A, \@ostrand_stop_A, undef, $FH_HR);
+            $alt_str = sprintf("best hit is on %s strand, but hit on %s strand from %d to %d has score %.1f > %s", 
+                               $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"}, 
+                               $cls_results_HHHR->{$seq_name}{"r2.os"}{"bstrand"}, 
+                               $ostrand_start_A[0], $ostrand_stop_A[0], $top_ostrand_score, 
+                               $ostrscthresh_opt2print);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_bst", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+
+        # inconsistent hits: duplicate regions (c_dpr) 
+        $alt_str = "";
+        if($nhits > 1) { 
+          my @m_start_A = ();
+          my @m_stop_A  = ();
+          my @s_start_A = ();
+          my @s_stop_A  = ();
+          dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, undef, $FH_HR);
+          for(my $i = 0; $i < $nhits; $i++) { 
+            for(my $j = $i+1; $j < $nhits; $j++) { 
+              my ($noverlap, $overlap_str) = seq_Overlap($m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], $FH_HR);
+              if($noverlap >= $dupreg_opt) { 
+                if(scalar(@s_start_A) == 0) { # first overlap above threshold, fill seq start/stop arrays:
+                  dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, undef, $FH_HR);
+                }
+                $alt_str .= sprintf("%s%s (len %d >= %d) hits %d and %d (model:%d..%d,%d..%d seq:%d..%d,%d..%d)", 
+                                    ($alt_str eq "") ? "" : ", ",
+                                    $overlap_str, $noverlap, $dupreg_opt, ($i+1), ($j+1), 
+                                    $m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], 
+                                    $s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j]);
+              }
+            }
+          }
+          if($alt_str ne "") { 
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_dpr", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+      
+        # inconsistent hits: wrong hit order (c_who)
+        if($nhits > 1) { 
+          my $i;
+          my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
+          my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
+          my @seq_hit_coords_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"});
+          my @mdl_hit_coords_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"});
+          my $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+          my $mdl_hit_order_str = helper_sort_hit_array(\@mdl_hit_coords_A, \@mdl_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are allowed
+          # check if the hits are out of order we don't just check for equality of the
+          # two strings because it's possible (but rare) that there could be duplicates in the model
+          # order array (but not in the sequence array), so we need to allow for that.
+          my $out_of_order_flag = 0;
+          for($i = 0; $i < $nhits; $i++) { 
+            my $x = $mdl_hit_order_A[$i];
+            my $y = $seq_hit_order_A[$i];
+            # check to see if hit $i is same order in both mdl and seq coords
+            # or if it is not, it's okay if it is identical to the one that is
+            # example: 
+            # hit 1 seq 1..10,+   model  90..99,+
+            # hit 2 seq 11..20,+  model 100..110,+
+            # hit 3 seq 21..30,+  model 100..110,+
+            # seq order: 1,2,3
+            # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
+            if(($x ne $y) && # hits are not the same order
+               ($mdl_hit_coords_A[($x-1)] ne
+                $mdl_hit_coords_A[($y-1)])) { # hit is not identical to hit in correct order
+              $out_of_order_flag = 1;
+              $i = $nhits; # breaks 'for i' loop, slight optimization
+            }
+          }
+          if($out_of_order_flag) { 
+            $alt_str = "seq order: " . $seq_hit_order_str . "(" . $cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"} . ")";
+            $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"} . ")";
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_who", $seq_name, $alt_str, $FH_HR);
+          }
+        }
+      }
+      
+      # finally fill $cls_output_HHR->{$seq_name} info related to models and groups
+      if(defined $cls_results_HHHR->{$seq_name}{"r1.1"}) { 
+        $cls_output_HHR->{$seq_name}{"model1"}    = $cls_results_HHHR->{$seq_name}{"r1.1"}{"model"};
+        $cls_output_HHR->{$seq_name}{"group1"}    = $cls_results_HHHR->{$seq_name}{"r1.1"}{"group"};    # can be undef
+        $cls_output_HHR->{$seq_name}{"subgroup1"} = $cls_results_HHHR->{$seq_name}{"r1.1"}{"subgroup"}; # can be undef
+      }
+      if(defined $cls_results_HHHR->{$seq_name}{"r1.2"}) { 
+        $cls_output_HHR->{$seq_name}{"model2"}    = $cls_results_HHHR->{$seq_name}{"r1.2"}{"model"};
+        $cls_output_HHR->{$seq_name}{"group2"}    = $cls_results_HHHR->{$seq_name}{"r1.2"}{"group"};    # can be undef
+        $cls_output_HHR->{$seq_name}{"subgroup2"} = $cls_results_HHHR->{$seq_name}{"r1.2"}{"subgroup"}; # can be undef
+      }
+    } # else entered if we didn't report a c_noa alert
+  } # end of foreach seq loop
 
   return;
 }
 
 #################################################################
-# Subroutine: output_feature_tbl_all_sequences()
+# Subroutine:  populate_per_model_data_structures_given_classification_results
+# Incept:      EPN, Tue Apr  2 11:33:29 2019
+#
+# Purpose:    Given classification results, fill several 'per-model'
+#             data structures with sequences that match best to that
+#             model. 
+# 
+#             This subroutine is called twice, once following round
+#             1 classification and once following round 2 classification
+#             and does extra work following round 2. We determine
+#             which round of classification was just performed
+#             based on if $alt_seq_instances_HHR is defined or not.
+#             If it is defined we just performed round 2, else round 1.
+#
+# Arguments: 
+#  $seq_name_AR:           ref to sequence names
+#  $seq_len_HR:            ref to hash of sequence lengths
+#  $cls_results_HHHR:      ref to 3D hash of classification results, PRE-FILLED
+#  $cls_output_HHR:        ref to 2D hash of classification results to output, PRE-FILLED
+#                          can be undef if $alt_seq_instances_HHR is undef
+#  $alt_info_HHR:          ref to 2d hash of alert info, PRE-FILLED
+#                          can be undef if $alt_seq_instances_HHR is undef
+#  $alt_seq_instances_HHR: ref to hash of per-seq alert instances, PRE-FILLED
+#                          undef to use cls_results_HHHR->{}{"r1.1"} # round 1 search
+#  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
+#  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
+#  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE
+#  $FH_HR:                 ref to hash of file handles
+#
+# Returns:   void
+#
+#
+################################################################# 
+sub populate_per_model_data_structures_given_classification_results {
+  my $sub_name = "populate_per_model_data_structures_given_classification_results";
+  my $nargs_exp = 10;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name_AR, $seq_len_HR, $cls_results_HHHR, $cls_output_HHR, $alt_info_HHR, $alt_seq_instances_HHR, $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $FH_HR) = @_;
+
+  # determine what round results we are using
+  my $cls_2d_key = (defined $alt_seq_instances_HHR) ? "r2.bs" : "r1.1";
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    $seq_name = $seq_name_AR->[$seq_idx];
+    $mdl_name = ((defined $cls_results_HHH{$seq_name}) && 
+                 (defined $cls_results_HHH{$seq_name}{$cls_2d_key}) && 
+                 (defined $cls_results_HHH{$seq_name}{$cls_2d_key}{"model"})) ? 
+                 $cls_results_HHH{$seq_name}{$cls_2d_key}{"model"} : undef;
+    if(defined $mdl_name) { 
+      # determine if we are going to add this sequence to our per-model hashes, depending on what round
+      my $add_seq = 0;
+      if($cls_2d_key eq "r1.1") { 
+        $add_seq = 1; # always add seq after round 1
+      }
+      else { 
+        # if "r2.bs", check if this sequence has any alerts that prevent annotation
+        $add_seq = (alert_instances_check_prevents_annot($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $FH_HR)) ? 0 : 1;
+        # update "annot" key
+        $cls_output_HHR->{$seq_name}{"annot"} = ($add_seq) ? 1 : 0;
+      }
+      if($add_seq) { 
+        if(! defined $mdl_seq_name_HAR->{$mdl_name}) { 
+          @{$mdl_seq_name_HAR->{$mdl_name}} = ();
+          $mdl_seq_len_HR->{$mdl_name} = 0;
+          $mdl_ct_HR->{$mdl_name} = 0;
+        }
+        push(@{$mdl_seq_name_HAR->{$mdl_name}}, $seq_name);
+        $mdl_seq_len_HR->{$mdl_name} += $seq_len_HR->{$seq_name};
+        $mdl_ct_HR->{$mdl_name}++;
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+#
+# Subroutines related to cmalign and alignment:
+# cmalign_wrapper
+# cmalign_wrapper_helper
+# cmalign_run
+# cmalign_parse_ifile 
+# cmalign_parse_stk_and_add_alignment_alerts 
+# cmalign_store_overflow
+# fetch_features_and_add_cds_and_mp_alerts 
+# sqstring_check_start
+# sqstring_find_stops 
+#
+#################################################################
+# Subroutine:  cmalign_wrapper()
+# Incept:      EPN, Mon Mar 18 14:20:56 2019
+#
+# Purpose:     Run one or more cmalign jobs on the farm
+#              or locally, after possibly splitting up the input
+#              sequence file with dng_SplitFastaFile and 
+#              then calling dng_CmalignOrCmsearchWrapperHelper(). 
+#
+#              We may have to do two rounds of sequence file splitting
+#              and job running/submission because there is an error
+#              case in cmalign that we want to be able to detect. That
+#              error case is when the sequence requires too much
+#              memory to align. In order to catch those error cases we
+#              need to run each offending sequence individually, so
+#              our strategy for cmalign is:
+#
+#              Split full fasta file up using default method and run
+#              >= 1 cmalign jobs. If any of those runs R fail, then 
+#              split up run R's sequence file into >= 1 files with
+#              exactly 1 sequence in them. One or more of those should
+#              fail and that reveals which specific sequences are
+#              causing the memory overflow.
+# 
+# Arguments: 
+#  $execs_HR:              ref to executables with "esl-ssplit" and "cmalign"
+#                          defined as keys
+#  $mdl_file:              name of model file to use
+#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
+#  $seq_file:              name of sequence file with all sequences to run against
+#  $out_root:              string for naming output files
+#  $nseq:                  total number of all seqs in $seq_file
+#  $tot_len_nt:            total length of all nucleotides in $seq_file
+#  $progress_w:            width for outputProgressPrior output
+#  $stk_file_AR:           ref to array of stockholm files created here, FILLED HERE
+#  $overflow_seq_AR:       ref to array of sequences that failed due to matrix overflows, FILLED HERE
+#  $overflow_mxsize_AR:    ref to array of required matrix sizes for each sequence that failed due to matrix overflows, FILLED HERE
+#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information
+#
+# Returns:     void, updates $$nfa_created_R with number of
+#              fasta files created.
+# 
+# Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
+#       command fails if we're running locally
+################################################################# 
+sub cmalign_wrapper { 
+  my $sub_name = "cmalign_wrapper";
+  my $nargs_expected = 13;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $out_root,
+      $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
+      $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nfasta_created = 0; # number of fasta files created by esl-ssplit
+  my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
+  my $start_secs; # timing start
+  my $do_parallel = opt_Get("-p", $opt_HHR);
+  @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
+                            # the matrix required to align them is too big
+
+  # set up output file names
+  my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
+  my %concat_HA = ();     # hash of arrays of all files to concatenate together
+  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
+  @concat_keys_A = ("stdout", "ifile", "tfile"); 
+  if($do_parallel) { push(@concat_keys_A, "err"); }
+  foreach $out_key (@concat_keys_A) { 
+    @{$concat_HA{$out_key}} = ();
+  }    
+
+  my $nr1 = 0; # number of runs in round 1 (one per sequence file we create)
+  my @r1_out_file_AH = (); # array of hashes ([0..$nr1-1]) of output files for cmalign round 1 runs
+  my @r1_success_A   = (); # [0..$nr1-1]: '1' if this run finishes successfully, '0' if not
+  my @r1_mxsize_A    = (); # [0..$nr1-1]: if $r1_success_A[$r1_i] is '0', required size for dp mx, else '0'
+  my @r1_seq_file_A  = (); # [0..$nr1-1]: name of sequence file for this run
+  my $r1_i;                # counter over round 1 runs
+  my $r1_do_split = 0;     # set to '1' if we split up fasta file
+  # we need to split up the sequence file, and submit a separate set of cmalign jobs for each
+  my $targ_nseqfiles = dng_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
+  if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
+    $r1_do_split = 1;
+    $nr1 = dng_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+    # dng_SplitFastaFile will return the actual number of fasta files created, 
+    # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
+    for($r1_i = 0; $r1_i < $nr1; $r1_i++) { # update sequence file names
+      $r1_seq_file_A[$r1_i] = $seq_file . "." . ($r1_i+1);
+    }
+  }
+  else { # not going to split up the sequence file
+    $nr1 = 1;
+    $r1_seq_file_A[0] = $seq_file;
+  }
+  
+  cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $nseq, $progress_w, 
+                         \@r1_seq_file_A, \@r1_out_file_AH, \@r1_success_A, \@r1_mxsize_A, 
+                         $opt_HHR, $ofile_info_HHR);
+
+  my $nr2            = 0;  # number of round 2 runs (sequence files)
+  my @r2_out_file_AH = (); # array of hashes ([0..$nr2-1]) of output files for cmalign round 2 runs
+  my @r2_success_A   = (); # [0..$nr2-1]: '1' if this run finishes successfully, '0' if not
+  my @r2_mxsize_A    = (); # [0..$nr2-1]: if $r2_success_A[$r2_i] is '0', required size for dp mx, else '0'
+  my @r2_seq_file_A  = (); # [0..$nr2-1]: name of sequence file for this run
+  my $r2_i;                # counter over round 2 runs
+
+  # go through each run:
+  # if it finished successfully record its output files to concatenate later
+  # if it did not finish successfully rerun all of its sequences (if $do_cmalign)
+  for($r1_i = 0; $r1_i < $nr1; $r1_i++) { 
+    if($r1_success_A[$r1_i]) { 
+      # run finished successfully
+      foreach $out_key (@concat_keys_A) { 
+        push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
+      }
+      push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"});
+    }
+    else { 
+      # run did not finish successfully
+      # split this sequence file up into multiple files with only 1 sequence each, 
+      my $cur_nr2 = dng_SplitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, $opt_HHR, $ofile_info_HHR);
+      if($cur_nr2 == 1) { 
+        # special case, r1 sequence file had only 1 sequence, so we know the culprit
+        # and don't need to rerun cmalign
+        cmalign_store_overflow($r1_seq_file_A[$r1_i], $r1_mxsize_A[$r1_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
+        unlink $r1_seq_file_A[$r1_i] . ".1"; # remove the file we just created 
+        $nr2 = 0;
+      }
+      else { 
+        # r1 sequence file had > 1 sequence, we need to run each sequence independently through cmalign
+        for($r2_i = 0; $r2_i < $cur_nr2; $r2_i++) { 
+          push(@r2_seq_file_A, $r1_seq_file_A[$r1_i] . "." . ($r2_i+1));
+        }
+        $nr2 += $cur_nr2;
+      }
+    }
+  }
+
+  # do all round 2 runs
+  if($nr2 > 0) { 
+    cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $nr2, $progress_w, 
+                           \@r2_seq_file_A, \@r2_out_file_AH, \@r2_success_A, \@r2_mxsize_A, 
+                           $opt_HHR, $ofile_info_HHR);
+    # go through all round 2 runs: 
+    # if it finished successfully record its output files to concatenate later
+    # if it did not finish successfully, record the name of the sequence and mxsize required
+    for($r2_i = 0; $r2_i < $nr2; $r2_i++) { 
+      if($r2_success_A[$r2_i]) { 
+        # run finished successfully
+        foreach my $out_key (@concat_keys_A) { 
+          push(@{$concat_HA{$out_key}}, $r2_out_file_AH[$r2_i]{$out_key});
+        }
+        push(@{$stk_file_AR}, $r2_out_file_AH[$r2_i]{"stk"});
+      }
+      else { 
+        # run did not finish successfully
+        cmalign_store_overflow($r2_seq_file_A[$r2_i], $r2_mxsize_A[$r2_i], $overflow_seq_AR, $overflow_mxsize_AR, $ofile_info_HHR->{"FH"}); 
+      }
+    }
+    # remove sequence files if --keep not used
+    if(! opt_Get("--keep", $opt_HHR)) { 
+      utl_FileRemoveList(\@r2_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+    }
+  }
+    
+  # concatenate files into one 
+  foreach $out_key (@concat_keys_A) { 
+    my $concat_file = sprintf($out_root . ".%salign.$out_key", (defined $mdl_name) ? $mdl_name . "." : "");                                
+    utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+    # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
+    my $out_root_key = sprintf(".concat.%salign.$out_key", (defined $mdl_name) ? $mdl_name . "." : "");
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $out_root_key, $concat_file, 0, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+  }
+  # remove sequence files 
+  if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
+    utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  cmalign_wrapper_helper()
+# Incept:      EPN, Wed Mar 20 06:20:51 2019
+#
+# Purpose:     Run one or more cmalign on the farm or locally.
+#
+#              Helper subroutine for cmalign_wrapper()
+#              see that sub's "Purpose" for more details.
+#
+# Arguments: 
+#  $execs_HR:              ref to hash with paths to cmalign, cmsearch and cmfetch
+#  $mdl_file:              name of model file to use
+#  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
+#  $out_root:              string for naming output files
+#  $round:                 round we are on, "1" or "2"
+#  $nseq:                  total number of sequences in all seq files in @{$seq_file_AR}
+#  $progress_w:            width for ofile_OutputProgress* subroutines
+#  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
+#  $out_file_AHR:          ref to array of hashes of output file names, FILLED HERE 
+#  $success_AR:            ref to array of success values, can be undef if $executable is "cmsearch"
+#                          $success_AR->[$j] set to '1' if job finishes successfully
+#                                            set to '0' if job fails due to mx overflow (must be cmalign)
+#  $mxsize_AR:             ref to array of required matrix sizes, can be undef if $executable is "cmsearch"
+#                          $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
+#                                           else set to '0'
+#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information
+#
+# Returns:     void
+# 
+# Dies: If an executable doesn't exist, or command fails (and its not a cmalign allowed failure)
+#
+################################################################# 
+sub cmalign_wrapper_helper { 
+  my $sub_name = "cmalign_wrapper_helper";
+  my $nargs_expected = 13;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $mdl_file, $mdl_name, $out_root, $round, $nseq, $progress_w, $seq_file_AR, $out_file_AHR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
+  my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
+  my $nseq_files     = scalar(@{$seq_file_AR});
+
+  # determine description of the runs we are about to do, 
+  # depends on $do_parallel, $round, and ($progress_w < 0), and 
+  my $desc = "";
+  if($do_parallel) { 
+    $desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq seq%s) to the farm%s", 
+                    ($nseq > 1) ? "s" : "",
+                    ($round == 1) ? "" : " to find seqs too divergent to annotate");
+  }
+  else { 
+    $desc = sprintf("Aligning sequences ($mdl_name: $nseq seq%s)%s", 
+                    ($nseq > 1) ? "s" : "",
+                    ($round == 1) ? "" : " to find seqs too divergent to annotate");
+  }
+  my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
+  if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
+
+  my $key; # a file key
+  my $s;   # counter over sequence files
+  my @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
+  @{$out_file_AHR} = ();
+  for(my $s = 0; $s < $nseq_files; $s++) { 
+    %{$out_file_AHR->[$s]} = (); 
+    foreach $key (@out_keys_A) { 
+      $out_file_AHR->[$s]{$key} = $out_root . "." . $mdl_name . ".align.r" . $round . ".s" . $s . "." . $key;
+    }
+    $success_AR->[$s] = cmalign_run($execs_HR, $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
+                                    (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
+                                    $opt_HHR, $ofile_info_HHR);   
+    # if we are running parallel, ignore the return values from the run{Cmalign,Cmsearch} subroutines
+    # dng_WaitForFarmJobsToFinish() will fill these later
+    if($do_parallel) { $success_AR->[$s] = 0; }
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  if($do_parallel) { 
+    if((opt_Exists("--skipalign", $opt_HHR)) && (opt_Get("--skipalign", $opt_HHR))) { 
+      for($s = 0; $s < $nseq_files; $s++) { 
+        $success_AR->[$s] = 1; 
+      }
+    }
+    else { 
+      # --skipalign not enabled
+      # wait for the jobs to finish
+      $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
+                                              $progress_w, $log_FH, *STDOUT);
+      my $njobs_finished = dng_WaitForFarmJobsToFinish(1, # we are doing cmalign
+                                                       $out_file_AHR,
+                                                       $success_AR, 
+                                                       $mxsize_AR,  
+                                                       "", # value is irrelevant for cmalign
+                                                       $opt_HHR, $ofile_info_HHR->{"FH"});
+      if($njobs_finished != $nseq_files) { 
+        ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
+      }
+      ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
+    }
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  cmalign_run()
+# Incept:      EPN, Wed Feb  6 12:30:08 2019
+#
+# Purpose:     Run Infernal's cmalign executable using $mdl_file
+#              as the model file on sequence file $seq_file, either
+#              locally or on the farm.
+#              
+#              If job does not finish successfully, we need to 
+#              parse the stderr output (which we redirect to stdout)
+#              and see if it failed because of a specific type of
+#              error, because the required DP matrix exceeded the
+#              size limit. That error looks like this:
+#        
+#              Error: HMM banded truncated alignment mxes need 60.75 Mb > 2.00 Mb limit.
+#              Use --mxsize, --maxtau or --tau.
+#              
+# Arguments: 
+#  $execs_HR:         ref to hash with paths to cmalign and cmfetch
+#  $mdl_file:         path to the CM file
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
+#  $seq_file:         path to the sequence file
+#  $out_file_HR:      ref to hash of output files to create
+#                     required keys: "stdout", "ifile", "tfile", "stk", "err"
+#  $ret_mxsize_R:     REF to required matrix size, only filled if return value is '0'
+#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:   REF to 2D hash of output file information
+# 
+# Returns:     '1' upon success, which occurs if
+#                  job run on farm and submission went ok
+#                  job run locally and finished without error
+#              '0' upon allowed failure, which occurs if
+#                  job run locally and fails because of too big a required matrix
+#
+# Dies: upon unallowed failure, which occurs if
+#                  job run on farm and submission failed
+#                  job run locally and finished with unallowed failure
+# 
+################################################################# 
+sub cmalign_run { 
+  my $sub_name = "cmalign_run()";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $out_file_HR, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
+
+  if(defined $ret_mxsize_R) { 
+    $$ret_mxsize_R = 0; # overwritten below if nec
+  }
+
+  my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
+
+  my $stdout_file = $out_file_HR->{"stdout"};
+  my $ifile_file  = $out_file_HR->{"ifile"};
+  my $tfile_file  = $out_file_HR->{"tfile"};
+  my $stk_file    = $out_file_HR->{"stk"};
+  my $err_file    = $out_file_HR->{"err"};
+  if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $tfile_file)  { ofile_FAIL("ERROR in $sub_name, tfile  output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", "dnaorg", 1, $FH_HR); }
+  if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+    if(-e $stdout_file) { unlink $stdout_file; }
+    if(-e $ifile_file)  { unlink $ifile_file; }
+    if(-e $tfile_file)  { unlink $tfile_file; }
+    if(-e $stk_file)    { unlink $stk_file; }
+    if(-e $err_file)    { unlink $err_file; }
+  }
+  utl_FileValidateExistsAndNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
+
+  # determine cmalign options based on command line options
+  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  # add --sub and --notrunc unless --nosub used
+  if(! opt_Get("--nosub", $opt_HHR)) { 
+    $opts .= " --sub --notrunc"; 
+  }
+  # add -g unless --noglocal used
+  if(! opt_Get("--noglocal", $opt_HHR)) { 
+    $opts .= " -g"; 
+  }
+  if(! opt_Get("--nofixedtau", $opt_HHR)) { 
+    $opts .= " --fixedtau"; 
+  }
+
+  my $cmd = undef;
+  if(defined $mdl_name) { 
+    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
+  }
+  else { 
+    $cmd = $execs_HR->{"cmalign"} . " $opts $mdl_file $seq_file > $stdout_file 2>&1";
+  }
+
+  my $success = 1;
+  if($do_parallel) { 
+    my $job_name = "J" . utl_RemoveDirPath($seq_file);
+    my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
+    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
+    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
+    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+      dng_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+    }
+  }
+  else { 
+    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+      utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
+    }
+    # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
+    $success = dng_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+    if($success == -1) { # indicates job did not finish properly, this shouldn't happen because utl_RunCommand() didn't die
+      ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
+    }
+  }
+  
+  return $success; 
+}
+
+#################################################################
+# Subroutine : cmalign_parse_ifile()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
+#             results in %{$seq_inserts_HR}.
+#
+# Arguments: 
+#  $ifile_file:       ifile file to parse
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if unable to parse the ifile
+#
+################################################################# 
+sub cmalign_parse_ifile { 
+  my $sub_name = "cmalign_parse_ifile()";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ifile_file, $seq_inserts_HHR, $FH_HR) = @_;
+  
+  open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, "dnaorg", $sub_name, $!, "reading", $FH_HR);
+
+  my $line_ctr = 0;  # counts lines in ifile_file
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
+      #norovirus.NC_039477 7567
+      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+      my @el_A = split(/\s+/, $line);
+      if   (scalar(@el_A) == 2) { ; } # ignore these lines
+      elsif(scalar(@el_A) >= 4) { 
+        my $nel = scalar(@el_A); 
+        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
+          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", "dnaorg", 1, $FH_HR);
+        }          
+        my ($seqname, $seqlen, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
+        if(! defined $seq_inserts_HHR->{$seqname}) { 
+          # initialize
+          %{$seq_inserts_HHR->{$seqname}} = ();
+        }
+        # create the insert string
+        my $insert_str = "";
+        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
+          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
+        }
+        $seq_inserts_HHR->{$seqname}{"spos"} = $spos;
+        $seq_inserts_HHR->{$seqname}{"epos"} = $epos;
+        $seq_inserts_HHR->{$seqname}{"ins"}  = $insert_str;
+      }
+    }
+  }
+  close(IN);
+  
+  return;
+}
+
+#################################################################
+# Subroutine : cmalign_parse_stk_and_add_alignment_alerts()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign stockholm alignment file
+#             and store results in @{$mdl_results_AAHR}. 
+#             
+#             Detects and adds the following alerts to 
+#             @{$alt_ftr_instances_AAHR}:
+#             n_gp5: gap at 5' boundary of model span for a feature segment
+#             n_gp3: gap at 5' boundary of model span for a feature segment
+#             n_lp5: low posterior prob at 5' boundary of model span for a feature segment
+#             n_lp3: low posterior prob at 5' boundary of model span for a feature segment
+#
+# Arguments: 
+#  $stk_file:               stockholm alignment file to parse
+#  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $seq_inserts_HHR:        REF to hash of hashes with sequence insert information, PRE-FILLED
+#  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
+#  $sgm_results_HAHR:       REF to results AAH, FILLED HERE
+#  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
+#  $opt_HHR:                REF to 2D hash of option values
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:
+#
+################################################################# 
+sub cmalign_parse_stk_and_add_alignment_alerts { 
+  my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
+  my $nargs_exp = 10;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+
+  my $pp_thresh = opt_Get("--ppmin", $opt_HHR);
+  my $small_value = 0.000001; # for checking if PPs are below threshold
+  my $nsgm = scalar(@{$sgm_info_AHR});
+
+  # create an ESL_MSA object from the alignment
+  # open and validate file
+  my $msa = Bio::Easel::MSA->new({
+    fileLocation => $stk_file,
+    isDna => 1});  
+
+  # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
+  my $alen = $msa->alen;
+  my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
+  $rf2a_A[0] = -1; 
+  my $rf_str = $msa->get_rf;
+  my @rf_A = split("", $rf_str);
+  if(scalar(@rf_A) != $alen) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, unexpected alignment length mismatch $alen != %d\n", scalar(@rf_A)), "dnaorg", 1, $FH_HR);
+  }
+  my $rfpos = 0; # nongap RF (model) position [1..$rflen]
+  my $apos  = 0; # alignment position [1..$alen]
+  for($apos = 1; $apos <= $alen; $apos++) { 
+    if($rf_A[($apos-1)] ne ".") { 
+      # nongap RF (model position)
+      $rfpos++;
+      $rf2a_A[$rfpos] = $apos;
+    }
+  }
+  my $rflen = $rfpos;
+
+  # move through each sequence in the alignment and determine its boundaries for each model region
+  my $nseq = $msa->nseq; 
+  # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
+  for(my $i = 0; $i < $nseq; $i++) { 
+    my $seq_name = $msa->get_sqname($i);
+    if(! exists $seq_len_HR->{$seq_name}) { 
+      ofile_FAIL("ERROR in $sub_name, do not have length information for sequence $seq_name from alignment in $stk_file", "dnaorg", 1, $FH_HR);
+    }
+    my $seq_len = $seq_len_HR->{$seq_name};
+    if(! defined $seq_inserts_HHR->{$seq_name}{"ins"}) { 
+      ofile_FAIL("ERROR in $sub_name, do not have insert information for sequence $seq_name from alignment in $stk_file", "dnaorg", 1, $FH_HR);
+    }
+    my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
+
+    # fill sequence-specific arrays
+    # insert info from seq_info_HAR (read previously from cmalign --ifile output)
+    my @rf2ipos_A = (); # [0..$rfpos..$rflen] = $uapos; rf position $rfpos has an insert immediately after it start at unaligned position $uapos [1..$seq_len], 0 for none
+    my @rf2ilen_A = (); # [0..$rfpos..$rflen] = $ilen;  rf position $rfpos has an insert immediately after it of length $ilen, 0 for none
+    # fill insert arrays, need to do this once per sequence
+    # initialize insert arrays
+    for($rfpos = 0; $rfpos <= $rflen; $rfpos++) { 
+      $rf2ipos_A[$rfpos] = -1;
+      $rf2ilen_A[$rfpos] = -1;
+    }
+    
+    if($seq_ins ne "") { 
+      my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
+      foreach my $ins_tok (@ins_A) { 
+        #printf("ins_tok: $ins_tok\n");
+        if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
+          my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
+          $rf2ipos_A[$i_rfpos] = $i_uapos;
+          $rf2ilen_A[$i_rfpos] = $i_len;
+          #printf("rf2ipos_A[%5d]: %5d rf2ilen_A[%5d]: %5d\n", $i_rfpos, $i_uapos, $i_rfpos, $i_len);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name, failed to parse insert information read from ifile for $seq_name:\n" . $seq_inserts_HHR->{$seq_name}{"ifile_ins"}, "dnaorg", 1, $FH_HR);
+        }
+      }
+    }    
+
+    # alignment info, filled once per sequence then used for all model spans
+    my @min_rfpos_after_A  = (); # [0..$rfpos..rflen+1]: $rfpos2 is minimum rfpos >= $rfpos that is not a gap 
+                                 #                       OR is a gap but has an insert *after* it (before $rfpos2+1)
+                                 #                       possible values are [-1,1..rflen] (-1 if none) with two *exceptions*:
+                                 #                       element [0]       is special: can be 0 if inserts exist after position 0 (before position 1)
+                                 #                       element [rflen+1] is special: always -1
+    my @max_rfpos_before_A = (); # [0..$rfpos..rflen+1]: $rfpos2 is maximum rfpos >= $rfpos that is not a gap 
+                                 #                       OR is a gap but has an insert *before* it (after $rfpos2-1)
+                                 #                       possible values are [-1,1..rflen] (-1 if none) with two *exceptions*
+                                 #                       element [0]       is special: always -1
+                                 #                       element [rflen+1] is special: can be rfpos+1 if inserts exist after rflen (before position rflen+1)
+
+    my @min_uapos_after_A  = (); # [0..$rfpos..rflen+1]: minimum unaligned position for current sequence 
+                                 #                       that aligns at or inserts *after*  $min_rfpos_after_A[$rfpos]
+                                 #                       -1 if $min_rfpos_after_A[$rfpos]  == -1
+    my @max_uapos_before_A = (); # [0..$rfpos..rflen+1]: maximum unaligned position for current sequence 
+                                 #                       that aligns at or inserts *before* $max_rfpos_before_A[$rfpos]
+                                 #                       -1 if $max_rfpos_before_A[$rfpos] == -1
+
+    my @rfpos_pp_A = ();         # [0..$rfpos..rflen+1]: posterior probability character for current sequence at RF position $rfpos
+                                 #                       '.' if sequence is a gap at that RF position $rfpos
+                                 #                       special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
+
+    $rfpos = 0;    # model positions (nongap RF position)
+    my $uapos = 0; # unaligned sequence position (position in actual sequence)
+    # initialize
+    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+      $min_rfpos_after_A[$rfpos]  = -1;
+      $max_rfpos_before_A[$rfpos] = -1;
+      $min_uapos_after_A[$rfpos]  = -1;
+      $max_uapos_before_A[$rfpos] = -1;
+      $rfpos_pp_A[$rfpos]         = ".";
+    }
+    # get aligned sequence, length will be alen
+    my $sqstring_aligned = $msa->get_sqstring_aligned($i);
+    my $ppstring_aligned = $msa->get_ppstring_aligned($i);
+    if(length($sqstring_aligned) != $alen) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), "dnaorg", 1, $FH_HR);
+    }
+    if(length($ppstring_aligned) != $alen) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), "dnaorg", 1, $FH_HR);
+    }
+    my @sq_A = split("", $sqstring_aligned);
+    my @pp_A = split("", $ppstring_aligned);
+    # printf("sq_A size: %d\n", scalar(@sq_A));
+    # printf("seq_len: $seq_len\n");
+
+    # first pass, from right to left to fill $min_**pos_after arrays, and rf
+    my $min_rfpos = -1;
+    my $min_uapos = $seq_len+1;
+    for($rfpos = $rflen; $rfpos >= 0; $rfpos--) { 
+      $apos = $rf2a_A[$rfpos];
+      my $nongap_rf    = (($rfpos > 0) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) ? 1 : 0;
+      my $insert_after = ($rf2ipos_A[$rfpos] != -1) ? 1 : 0;
+      if($nongap_rf || $insert_after) { 
+        $min_rfpos = $rfpos;
+      }
+      if($insert_after) { 
+        $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts between $rfpos and ($rfpos+1)
+      }
+      if($nongap_rf) { 
+        $min_uapos--;
+        $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
+      }
+      $min_rfpos_after_A[$rfpos] = $min_rfpos;
+      $min_uapos_after_A[$rfpos] = $min_uapos;
+      # printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
+    }
+    if($min_uapos != 1) { 
+      ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 1 (min_uapos should be 1 but it is $min_uapos)", "dnaorg", 1, $FH_HR);
+    }      
+
+    # second pass, from left to right to fill $max_**pos_before arrays:
+    my $max_rfpos = -1;
+    my $max_uapos = 0;
+    for($rfpos = 1; $rfpos <= ($rflen+1); $rfpos++) { 
+      $apos = $rf2a_A[$rfpos];
+      my $nongap_rf     = (($rfpos <= $rflen) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) ? 1 : 0;
+      my $insert_before = ($rf2ipos_A[($rfpos-1)] != -1) ? 1 : 0;
+      if($nongap_rf || $insert_before) { 
+        $max_rfpos = $rfpos;
+      }
+      if($insert_before) { 
+        $max_uapos += $rf2ilen_A[($rfpos-1)]; # subtract inserts between ($rfpos-1) and $rfpos
+      }
+      if($nongap_rf) { 
+        $max_uapos++;
+        $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
+      }
+      $max_rfpos_before_A[$rfpos] = $max_rfpos;
+      $max_uapos_before_A[$rfpos] = $max_uapos;
+ #     if($rfpos <= $rflen) { 
+ #       printf("rfpos: %5d  apos: %5d  max_rfpos: %5d  max_uapos: %5d\n", $rfpos, $apos, $max_rfpos, $max_uapos);
+ #     }
+    }
+    if($max_uapos != $seq_len) { 
+      ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", "dnaorg", 1, $FH_HR);
+    }      
+    
+    # Debugging print block
+#    printf("***************************************************\n");
+#    printf("DEBUG print $seq_name\n");
+#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
+#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#    }
+#    printf("***************************************************\n");
+
+    # given model span s..e
+    # if strand eq "+"
+    #   if C[rfpos] > D[rfpos] then no hit (A[rfpos] should be > B[rfpos])
+    #   else (C[rfpos] <= D[rfpos]) 
+    #        hit uaseq span is from C[rfpos] to D[rfpos]
+    #        hit rf span is from A[rfpos] to B[rfpos]
+
+    # now we have all the info we need for this sequence to determine sequence boundaries for each model segment
+    for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
+      my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
+      my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
+      my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
+
+# Debugging print block
+#      printf("segment $sgm_idx $sgm_start_rfpos..$sgm_stop_rfpos\n");
+#      $rfpos = $sgm_start_rfpos;
+#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+#      $rfpos = $sgm_stop_rfpos;
+#      printf("\trfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
+#             $rfpos, 
+#             $min_rfpos_after_A[$rfpos],
+#             $min_uapos_after_A[$rfpos],
+#             $max_rfpos_before_A[$rfpos],
+#             $max_uapos_before_A[$rfpos]);
+
+      my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
+      my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
+      my $start_uapos = -1; # unaligned position of start of this model region for this aligned sequence, stays at -1 if none
+      my $stop_uapos  = -1; # unaligned position of stop  of this model region for this aligned sequence, stays at -1 if none
+      my $p_5seqflush = undef;
+      my $p_3seqflush = undef;
+
+      # this should work regardless of strand
+      if(($min_rfpos_after_A[$sgm_start_rfpos] != -1) && 
+         ($max_rfpos_before_A[$sgm_stop_rfpos] != -1)) { 
+
+        $start_uapos = $min_uapos_after_A[$sgm_start_rfpos];
+        $stop_uapos  = $max_uapos_before_A[$sgm_stop_rfpos];
+
+        $start_rfpos = $min_rfpos_after_A[$sgm_start_rfpos];
+        $stop_rfpos  = $max_rfpos_before_A[$sgm_stop_rfpos];
+
+        if($sgm_strand eq "+") { 
+          $p_5seqflush = ($start_uapos == 1)        ? 1 : 0;
+          $p_3seqflush = ($stop_uapos  == $seq_len) ? 1 : 0;
+        }
+        else { 
+          $p_5seqflush = ($start_uapos == $seq_len) ? 1 : 0;
+          $p_3seqflush = ($stop_uapos  == 1)        ? 1 : 0;
+        }
+
+        %{$sgm_results_HAHR->{$seq_name}[$sgm_idx]} = ();
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}    = $start_uapos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}     = $stop_uapos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"mstart"}    = $start_rfpos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"mstop"}     = $stop_rfpos;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}    = $sgm_strand;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5seqflush"} = $p_5seqflush;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3seqflush"} = $p_3seqflush;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}    = ($p_5seqflush && ($start_rfpos != $sgm_start_rfpos)) ? 1 : 0;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $sgm_stop_rfpos))  ? 1 : 0;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}  = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? 1  : 0;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}   = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? 1  : 0;
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR);
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR);
+        
+        # add errors, if nec
+        if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
+          if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+                                       "RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
+                                       $FH_HR);
+          } 
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+                                       sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
+                                       $FH_HR);
+          }
+        }
+        if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
+          if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+                                       "RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
+                                       $FH_HR);
+          }
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+                                       sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
+                                       $FH_HR);
+          }
+        }
+
+        # Debugging print block
+        #printf("segment $sgm_idx: $sgm_start_rfpos to $sgm_stop_rfpos\n");
+        #foreach my $key ("sstart", "sstop", "mstart", "mstop", "strand", "5seqflush", "3seqflush", "5trunc", "3trunc", "startgap", "stopgap", "startpp", "stoppp") { 
+        #printf("\tstored $key $sgm_results_HAHR->{$seq_name}[$sgm_idx]{$key}\n");
+        #}
+      }
+    } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
+  } # end of 'for(my $i = 0; $m < $nseq; $m++)'
+  undef $msa;
+
+  return;
+}
+
+#################################################################
+# Subroutine:  cmalign_store_overflow()
+# Incept:      EPN, Wed Feb 13 16:04:53 2019
+#
+# Purpose:     Store information on a sequence that has caused
+#              a DP matrix memory overflow. 
+#              
+# Arguments: 
+#  $seq_file:           the sequence file with the single sequence that failed in it
+#  $mxsize:             matrix size to add to @{$overflow_mxsize_AR}
+#  $overflow_seq_AR:    ref to array of sequences that failed due to matrix overflows, to add to
+#  $overflow_mxsize_AR: ref to array of required matrix sizes for each sequence that failed due to matrix overflows, to add to
+#  $FH_HR:              ref to file handle hash
+# 
+# Returns:     void
+#
+# Dies: if there's some problem opening the sequence file
+#
+################################################################# 
+sub cmalign_store_overflow { 
+  my $sub_name = "cmalign_store_overflow";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($seq_file, $mxsize, $overflow_seq_AR, $overflow_mxsize_AR, $FH_HR) = @_;
+
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $seq_file }); # the sequence file object
+
+  my ($overflow_seq, undef) = $sqfile->fetch_next_seq_name_length();
+  push(@{$overflow_seq_AR},    $overflow_seq);
+  push(@{$overflow_mxsize_AR}, $mxsize);
+
+  $sqfile = undef;
+
+  return;
+}
+
+#################################################################
+# Subroutine: fetch_features_and_add_cds_and_mp_alerts()
+# Incept:     EPN, Fri Feb 22 14:25:49 2019
+#
+# Purpose:   For each sequence, fetch each feature sequence, and 
+#            detect n_str, n_trc, n_stp, n_nst, n_ext, and n_nm3 alerts 
+#            where appropriate. For n_trc alerts, correct the predictions
+#            and fetch the corrected feature.
+#
+# Arguments:
+#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $mdl_name:               name of model these sequences were assigned to
+#  $seq_name_AR:            REF to array of sequence names
+#  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
+#  $ftr_results_HAHR:       REF to feature results NAH, added to here
+#  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub fetch_features_and_add_cds_and_mp_alerts { 
+  my $sub_name = "fetch_features_and_add_cds_and_mp_alerts";
+  my $nargs_exp = 12;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqfile, $mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
+
+  # get children info for all features, we'll use this in the loop below
+  my @children_AA = ();
+  dng_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
+
+  my $ftr_idx;
+  my @ftr_fileroot_A = (); # for naming output files for each feature
+  my @ftr_outroot_A  = (); # for describing output files for each feature
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_fileroot_A[$ftr_idx] = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+    $ftr_outroot_A[$ftr_idx]  = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, "#");
+  }
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_name_AR->[$seq_idx];
+    my $seq_len  = $seq_len_HR->{$seq_name};
+    @{$ftr_results_HAHR->{$seq_name}} = ();
+
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
+        my $ftr_is_cds_or_mp = dng_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+        my $ftr_is_cds       = dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+        my $ftr_is_mp        = dng_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
+        my $ftr_type_idx     = $ftr_fileroot_A[$ftr_idx];
+        my $ftr_sqstring = "";
+        my $ftr_seq_name = undef;
+        my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
+        $ftr2org_pos_A[0] = -1; # invalid
+        my $ftr_len = 0;
+        my $ftr_strand = undef;
+        my $ftr_is_5trunc = undef;
+        my $ftr_is_3trunc = undef;
+        my $ftr_start  = undef; # predicted start for the feature
+        my $ftr_stop   = undef; # predicted stop  for the feature
+        my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
+        my $ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx;
+        %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
+        my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
+        my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+        # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
+
+        my %alt_str_H = ();   # added to as we find alerts below
+                              # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
+        my $alt_flag = 0; # set to '1' if we set an alert for this feature
+        
+        for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+          if((defined $sgm_results_HAHR->{$seq_name}) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+            my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
+            my ($start, $stop, $strand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
+              
+            # update truncated mode
+            if($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
+              $ftr_start = $start;
+              $ftr_is_5trunc = $sgm_results_HR->{"5trunc"};
+            }
+            if($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}) { 
+              $ftr_stop = $stop;
+              $ftr_is_3trunc = $sgm_results_HR->{"3trunc"};
+            }
+            
+            # check or update feature strand, but only if cds or mp (otherwise we don't care)
+            if(! defined $ftr_strand) { 
+              $ftr_strand = $strand; 
+            }
+            elsif($ftr_strand ne $strand) { 
+              # mixture of strands on different segments, this shouldn't happen if we're a CDS or mat_peptide
+              if($ftr_is_cds_or_mp) { 
+                # this 'shouldn't happen' for a CDS or mature peptide, all segments should be the sames strand
+                ofile_FAIL("ERROR, in $sub_name, different model sgements have different strands for a CDS or MP feature $ftr_idx", "dnaorg", 1, undef);
+              }
+              # mixture of strands, set to "!" 
+              $ftr_strand = "!";
+            }
+            
+            # update $ftr_sqstring, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
+            my $sgm_len = abs($stop - $start) + 1;
+            $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+            if(! defined $ftr_seq_name) { 
+              $ftr_seq_name = $seq_name . "/" . $ftr_type_idx . "/"; 
+            }
+            else { 
+              $ftr_seq_name .= ",";
+            }
+            $ftr_seq_name .= $start . ".." . $stop . ":" . $strand;
+            
+            if($ftr_is_cds_or_mp) { 
+              # update ftr2org_pos_A, if nec
+              my $sgm_offset = 0;
+              for(my $sgm_offset = 0; $sgm_offset < $sgm_len; $sgm_offset++) { 
+                $ftr2org_pos_A[$ftr_len + $sgm_offset + 1] = ($strand eq "-") ? $start - $sgm_offset : $start + $sgm_offset;
+                # slightly wasteful in certain cases, if $ftr_is_5trunc && $ftr_is_3trunc then we won't use this
+              }
+            }
+            $ftr_len += $sgm_len;
+          } # end of 'if(defined $sgm_results_HAHR->{$seq_name}...'
+        } # end of 'for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}...
+
+        # printf("in $sub_name seq_idx: $seq_idx ftr_idx: $ftr_idx ftr_len: $ftr_len ftr_start: $ftr_start ftr_stop: $ftr_stop\n");
+        if($ftr_len > 0) { 
+          # we had a prediction for at least one of the segments for this feature
+          
+          # output the sequence
+          if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
+            ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "dnaorg", $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".predicted.hits.fa", 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
+          }
+          print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
+              
+          if(! $ftr_is_5trunc) { 
+            # feature is not 5' truncated, look for a start codon if it's the proper feature
+            if($ftr_is_cds) { 
+              if(! sqstring_check_start($ftr_sqstring, $FH_HR)) { 
+                $alt_str_H{"n_str"} = "";
+              }
+            }
+          }
+          if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
+            if($ftr_is_cds_or_mp) { 
+              # feature is not truncated on either end, look for stop codons
+              if(($ftr_len % 3) != 0) { 
+                # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
+                # but which could cause weird downstream problems)
+                $alt_str_H{"n_nm3"} = "$ftr_len";
+              }
+              else { 
+                # feature length is a multiple of 3, look for all valid in-frame stops 
+                my @ftr_nxt_stp_A = ();
+                sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
+                
+                if($ftr_is_cds) { 
+                  # check that final add codon is a valid stop, and add 'n_stp' alert if not
+                  if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
+                    $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
+                                                  substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
+                  }
+                  if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                    # first stop codon 3' of $ftr_start is not $ftr_stop
+                    # We will need to add an alert, (exactly) one of:
+                    # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                    # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                    # 'n_trc': an early stop exists in $ftr_sqstring
+                    if($ftr_nxt_stp_A[1] == 0) { 
+                      # there are no valid in-frame stops in $ftr_sqstring
+                      # we have a 'n_nst' or 'n_ext' alert, to find out which 
+                      # we need to fetch the sequence ending at $fstop to the end of the sequence 
+                      if($ftr_stop < $seq_len) { 
+                        # we have some sequence left 3' of ftr_stop
+                        my $ext_sqstring = undef;
+                        if($ftr_strand eq "+") { 
+                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
+                        }
+                        else { # negative strand
+                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                        }
+                        my @ext_nxt_stp_A = ();
+                        sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
+                        if($ext_nxt_stp_A[1] != 0) { 
+                          # there is an in-frame stop codon, n_ext alert
+                          # determine what position it is
+                          $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                          $alt_str_H{"n_ext"} = $ftr_stop_c;
+                        }
+                      } # end of 'if($ftr_stop < $seq_len)'
+                      if(! defined $ftr_stop_c) { 
+                        # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                        # or we checked the sequence but didn't find any
+                        # either way, we have a n_nst alert:
+                        $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
+                        $alt_str_H{"n_nst"} = "";
+                      }
+                    } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
+                    else { 
+                      # there is an early stop (n_trc) in $ftr_sqstring
+                      if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                        # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                        ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", "dnaorg", 1, undef);
+                      }
+                      $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+                      $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                    }
+                  } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+                } # end of 'if($ftr_is_cds) {' 
+              } # end of 'else' entered if feature is a multiple of 3
+              # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
+              my $alt_flag = 0;
+              foreach my $alt_code (sort keys %alt_str_H) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
+                $alt_flag = 1;
+              }
+              if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
+                for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+                  my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                }
+              }
+            } # end of 'if($ftr_is_cds_or_mp)'
+          } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
+
+          # if we are a mature peptide, make sure we are adjacent to the next one, if there is one
+          if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1)) { 
+            my $ftr_3pa_idx = $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"};
+            my $sgm_5p_idx  = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};     
+            # yes, the 3'-most segment of $ftr_idx is the 5'-most mature peptide we are interested in
+            my $sgm_3p_idx  = $ftr_info_AHR->[$ftr_3pa_idx]{"5p_sgm_idx"}; 
+            # and, yes, the 5'-most segment of the 3' adjacent $ftr_idx is the 3'-most mature peptide we're interested in
+            
+            my $sgm_5p_valid = ((defined $sgm_results_HAHR->{$seq_name}) && 
+                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]) && 
+                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstart"})) ? 1 : 0;
+            my $sgm_3p_valid = ((defined $sgm_results_HAHR->{$seq_name}) && 
+                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]) && 
+                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"})) ? 1 : 0;
+            my $sgm_5p_3flush = ($sgm_5p_valid && $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"3seqflush"}) ? 1 : 0;
+            my $sgm_3p_5flush = ($sgm_3p_valid && $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"5seqflush"}) ? 1 : 0;
+            
+            my $stop_5p  = ($sgm_5p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstop"}  : undef;
+            my $start_3p = ($sgm_3p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"} : undef;
+            
+            # Three ways we can get a 'n_adj' alert: 
+            if($sgm_5p_valid && $sgm_3p_valid) { # both are valid 
+              if((abs($stop_5p - $start_3p)) != 1) { # they're not adjacent
+                # 1) both mature peptides are annotated but not adjacent, alert on $ftr_idx
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_idx, 
+                                           sprintf("abs($stop_5p - $start_3p) != 1 (strand:%s)", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}), 
+                                           $FH_HR);
+              }
+            }
+            elsif(($sgm_5p_valid) && (! $sgm_3p_valid) && (! $sgm_5p_3flush)) { 
+              # 2) 5' mature peptide is annotated and ends before end of sequence, but 3' mature peptide is not annotated, alert for $ftr_idx
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_idx, 
+                                         sprintf("feature stops at seq position $stop_5p on %s strand which is not terminal but expected 3'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}),
+                                         $FH_HR);
+            }
+            elsif(($sgm_3p_valid) && (! $sgm_5p_valid) && (! $sgm_3p_5flush)) { 
+              # 3) 3' mature peptide is annotated and starts after start of sequence, but 5' mature peptide is not annotated, alert for $ftr_3pa_idx (NOT $ftr_idx)
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_3pa_idx, 
+                                         sprintf("feature starts at seq position $start_3p on %s strand which is not terminal but expected 5'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"strand"}),
+                                         $FH_HR);
+            }
+          } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
+
+          # update %ftr_results_HR
+          $ftr_results_HR->{"n_strand"} = $ftr_strand;
+          $ftr_results_HR->{"n_start"}  = $ftr_start;
+          $ftr_results_HR->{"n_stop"}   = $ftr_stop;
+          $ftr_results_HR->{"n_stop_c"} = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+          $ftr_results_HR->{"n_5trunc"} = $ftr_is_5trunc;
+          $ftr_results_HR->{"n_3trunc"} = $ftr_is_3trunc;
+          $ftr_results_HR->{"n_len"}    = $ftr_len;
+          #printf("set ftr_results_HR->{n_start} to " . $ftr_results_HR->{"n_start"} . "\n");
+          #printf("set ftr_results_HR->{n_stop}  to " . $ftr_results_HR->{"n_stop"} . "\n");
+        } # end of 'if($ftr_len > 0)'
+      } # end of 'if(! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) {' 
+    } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
+  } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
+  
+  return;
+}  
+
+#################################################################
+# Subroutine: sqstring_check_start()
+# Incept:     EPN, Sat Feb 23 10:18:22 2019
+#
+# Arguments:
+#  $sqstring: the sequence string
+#  $FH_HR:    REF to hash of file handles
+#  
+# Returns: '1' if $sqstring starts with a valid
+#           start codon on the positive strand
+#           '0' if not
+# 
+#################################################################
+sub sqstring_check_start {
+  my $sub_name = "sqstring_check_start";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $FH_HR) = @_;
+
+  my $sqlen = length($sqstring);
+  if($sqlen < 3) { return 0; } 
+
+  my $start_codon = substr($sqstring, 0, 3);
+  $start_codon =~ tr/a-z/A-Z/; # convert to uppercase
+  $start_codon =~ tr/U/T/;     # convert to DNA
+
+  return seq_CodonValidateStartCapDna($start_codon);
+
+}
+
+#################################################################
+# Subroutine: sqstring_find_stops()
+# Incept:     EPN, Fri Feb 22 14:52:53 2019
+#
+# Purpose:   Find all occurences of stop codons in an 
+#            input sqstring (on the positive strand only),
+#            and update the input array.
+#           
+#            This subroutine could be easily modified to 
+#            find the nearest stop codon in each frame, 
+#            but currently it is only concerned with 
+#            frame 1.           
+#
+# Arguments:
+#  $sqstring:       the sequence string
+#  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
+#                   $i in frame 1 on positive strand *ends* at position $x; 
+#                   '0' if there are none.
+#                   special values: 
+#                   $nxt_stp_AR->[0] = -1
+#  $FH_HR:          REF to hash of file handles
+#             
+# Returns:  void, updates arrays that are not undef
+# 
+# Dies:     If one but not both pos*AAR are undef
+#           If one but not both neg*AAR are undef
+#
+#################################################################
+sub sqstring_find_stops { 
+  my $sub_name = "sqstring_find_stops";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $nxt_stp_AR, $FH_HR) = @_;
+  
+  @{$nxt_stp_AR} = ();
+  $nxt_stp_AR->[0] = -1;
+
+  # create the @sqstring_A we'll use to find the stops
+  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+  $sqstring =~ tr/U/T/;     # convert to DNA
+  my $sqlen = length($sqstring);
+  # add a " " as first character of $sqstart so we get nts in elements 1..$sqlen 
+  my @sqstring_A = split("", " " . $sqstring);
+
+  my $i       = undef; # [1..$i..$sqlen]: sequence position
+  my $frame   = undef; # 1, 2, or 3
+  my $cstart  = undef; # [1..$sqlen] start position of current codon
+  my $codon   = undef; # the codon
+  my $cur_stp = 0;     # closest stop codon at or 3' of current position
+                       # in frame 1 *ends* at position $cur_stp;
+
+  # pass over sequence from right to left, filling @{$nxt_stp_AR}
+  $cur_stp = 0;
+  for($i = ($sqlen-2); $i >= 1; $i--) { 
+    $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
+    $cstart = $i;
+    $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
+    if($frame == 1) { 
+      if(seq_CodonValidateStopCapDna($codon)) { 
+        $cur_stp = $i+2;
+      }
+    }
+    $nxt_stp_AR->[$i] = $cur_stp;
+  }
+  $nxt_stp_AR->[($sqlen-1)] = 0;
+  $nxt_stp_AR->[$sqlen]     = 0;
+
+#  for($i = 1; $i <= $sqlen; $i++) { 
+#    printf("HEYA position $i: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
+#  }
+
+  return;
+}
+
+#################################################################
+#
+# Subroutines related to blastx:
+# add_blastx_alerts 
+# run_blastx_and_summarize_output
+# parse_blastx_results 
+# helper_blastx_breakdown_query
+# helper_blastx_breakdown_max_indel_str
+# helper_blastx_db_seqname_to_ftr_idx 
+#
+#################################################################
+#################################################################
+# Subroutine:  add_blastx_alerts
+# Incept:      EPN, Tue Oct 23 15:54:50 2018
+#
+# Purpose:    Report blastx related errors for features of type 'cds'
+#             using data stored in earlier parsing of blast results 
+#             in @{$ftr_results_AAH} (filled in parse_blastx_results()).
+#
+#             Types of alerts added are:
+#             "b_non": adds this alert if blastx has a prediction 
+#                      for a feature for which there is no CM/nucleotide based prediction
+#             "b_nop": adds this alert if blastx validation of a CDS prediction fails due to
+#                      no blastx hits
+#             "b_cst": adds this alert if blastx validation of a CDS prediction fails due to
+#                      strand mismatch between CM and blastx prediction
+#             "b_p5l": adds this alert if blastx validation of a CDS prediction fails due to
+#                      BLASTX alignment being too long on 5' end (extending past CM alignment by > 0 nt)
+#             "b_p5s": adds this alert if blastx validation of a CDS prediction fails due to
+#                      BLASTX alignment being too short on 5' end (more than $xalntol shorter than CM)
+#             "b_p3l": adds this alert if blastx validation of a CDS prediction fails due to
+#                      BLASTX alignment being too long on 3' end (extending past CM alignment by > 0 nt)
+#             "b_p3s": adds this alert if blastx validation of a CDS prediction fails due to
+#                      BLASTX alignment being too short on 3' end (more than $xalntol shorter than CM)
+#             "p_lin": adds this alert if blastx validation of a CDS prediction fails due to
+#                      too long of an insert
+#             "p_lde": adds this alert if blastx validation of a CDS prediction fails due to
+#                      too long of a delete
+#             "p_trc": adds this alert if blastx validation of a CDS prediction fails due to
+#                      an in-frame stop codon in the blastx alignment
+#
+# Arguments: 
+#  $seq_name_AR:            REF to array of sequence names, PRE-FILLED
+#  $seq_len_HR:             REF to hash of of sequence lengths, PRE-FILLED
+#  $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
+#  $alt_info_HHR:           REF to array of hashes with information on the alerts, PRE-FILLED
+#  $ftr_results_HAHR:       REF to feature results HAH, PRE-FILLED
+#  $alt_ftr_instances_HHHR: REF to alert instances HAH, ADDED TO HERE
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+################################################################# 
+sub add_blastx_alerts { 
+  my $sub_name = "add_blastx_alerts";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+  
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $seq_idx;   # counter over sequences
+  my $seq_name;  # name of one sequence
+  my $ftr_idx;   # counter over features
+  
+  my $aln_tol   = opt_Get("--xalntol",   $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
+  my $xmaxins   = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
+  my $xmaxdel   = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
+  my $xminntlen = opt_Get("--xminntlen", $opt_HHR);
+  
+  # get children info for all features
+  my @children_AA = ();
+  my $ftr_nchildren = undef;
+  dng_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
+
+  # get info on position-specific insert and delete maximum exceptions if there are any
+  my @maxins_exc_AH = ();
+  my @maxdel_exc_AH = ();
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    %{$maxins_exc_AH[$ftr_idx]} = ();
+    %{$maxdel_exc_AH[$ftr_idx]} = ();
+    dng_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxins_exc", \%{$maxins_exc_AH[$ftr_idx]}, $FH_HR);
+    dng_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxdel_exc", \%{$maxdel_exc_AH[$ftr_idx]}, $FH_HR);
+  }
+
+  # for each sequence, for each feature, detect and report alerts
+  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    # for each feature
+    $seq_name = $seq_name_AR->[$seq_idx];
+    if($seq_len_HR->{$seq_name} >= $xminntlen) { 
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+          $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+          my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
+          # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
+          my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
+          # "b_non", "b_nop", "b_cst", "b_p5l", "b_p5s", "b_p3l", "b_p3s", "p_lin", "p_lde", "p_trc"
+          
+          # initialize 
+          my $n_start        = undef; # predicted start  from CM 
+          my $n_stop         = undef; # predicted stop   from CM 
+          my $n_strand       = undef; # predicted strand from CM 
+          my $n_len          = undef; # predicted length from CM (summed over all segments)
+          my $p_start        = undef; # predicted start  from blastx
+          my $p_stop         = undef; # predicted stop   from blastx
+          my $p_start2print  = undef; # predicted start  from blastx, to output
+          my $p_stop2print   = undef; # predicted stop   from blastx, to output
+          my $p_strand       = undef; # predicted strand from blastx
+          my $p_ins          = undef; # insert string from blastx
+          my $p_del          = undef; # delete string from blastx
+          my $p_trcstop      = undef; # premature stop from blastx
+          my $p_score        = undef; # raw score from blastx
+          my $p_query        = undef; # query name from blastx hit
+          my $p_qlen         = undef; # length of query sequence, if $p_feature_flag == 1
+          my $p_hlen         = undef; # length of blastx hit
+          my $p_feature_flag = 0; # set to '1' if $p_query is a fetched feature sequence, not a full length input sequence
+          my $p_qseq_name    = undef; # query seq name parsed out of blast query $p_query
+          my $p_qftr_idx     = undef; # feature idx a blast query pertains to, parsed out of blast query $p_query
+          
+          my $start_diff = undef; # difference in start values between CM and blastx
+          my $stop_diff  = undef; # difference in start values between CM and blastx
+          
+          if(defined $ftr_results_HR->{"n_start"}) { 
+            $n_start  = $ftr_results_HR->{"n_start"};
+            $n_stop   = $ftr_results_HR->{"n_stop"};
+            $n_strand = $ftr_results_HR->{"n_strand"};
+            $n_len    = $ftr_results_HR->{"n_len"};
+          }
+
+          # only proceed if we have a nucleotide prediction >= min length OR
+          # we have no nucleotide prediction
+          if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start)) { 
+            if((defined $ftr_results_HR->{"p_start"}) && 
+               (defined $ftr_results_HR->{"p_stop"})) { 
+              $p_start   = $ftr_results_HR->{"p_start"};
+              $p_stop    = $ftr_results_HR->{"p_stop"};
+              $p_strand  = $ftr_results_HR->{"p_strand"};
+              $p_query   = $ftr_results_HR->{"p_query"};
+              $p_hlen    = $ftr_results_HR->{"p_len"};
+              if(defined $ftr_results_HR->{"p_ins"})     { $p_ins     = $ftr_results_HR->{"p_ins"};  }
+              if(defined $ftr_results_HR->{"p_del"})     { $p_del     = $ftr_results_HR->{"p_del"};  }
+              if(defined $ftr_results_HR->{"p_trcstop"}) { $p_trcstop = $ftr_results_HR->{"p_trcstop"}; }
+              if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
+
+              # determine if the query is a full length sequence, or a fetched sequence feature:
+              ($p_qseq_name, $p_qftr_idx, $p_qlen) = helper_blastx_breakdown_query($p_query, $seq_len_HR, $FH_HR); 
+              if($p_qseq_name ne $seq_name) { 
+                ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", "dnaorg", 1, $FH_HR);
+              }
+              $p_feature_flag = ($p_qftr_idx ne "") ? 1 : 0;
+              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
+            }
+
+            # add alerts as needed:
+            # check for b_non
+            if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
+              # no nucleotide-based prediction but there is a protein-based blastx prediction
+              # only add this if length meets our minimum
+              if($p_hlen >= $xminntlen) { 
+                $alt_str_H{"b_non"} = "$p_start to $p_stop with score $p_score";
+              }
+            }
+            if(defined $n_start) { 
+              # check for b_nop
+              if(! defined $p_start) { 
+                $alt_str_H{"b_nop"} = "";
+              }
+              else { 
+                # we have both $n_start and $p_start, we can compare CM and blastx predictions
+
+                # check for b_cst: strand mismatch failure, differently depending on $p_feature_flag
+                if(((  $p_feature_flag) && ($p_strand eq "-")) || 
+                   ((! $p_feature_flag) && ($n_strand ne $p_strand))) { 
+                  $alt_str_H{"b_cst"} = "";
+                }
+                else { 
+                  # we have both $n_start and $p_start and predictions are on the same strand
+                  # determine if predictions are 'close enough' in terms of sequence positions
+                  # calcuate $start_diff and $stop_diff, differently depending on if hit
+                  # was to the full sequence or a fetched features (true if $p_feature_flag == 1)
+                  if($p_feature_flag) { 
+                    $start_diff = $p_start - 1; 
+                    $stop_diff  = $p_qlen - $p_stop;
+                    $p_start2print = sprintf("$n_start %s $start_diff", ($n_strand eq "+") ? "+" : "-");
+                    $p_stop2print  = sprintf("$n_stop %s $stop_diff",  ($n_strand eq "+") ? "-" : "+");
+                  }
+                  else { 
+                    $start_diff = abs($n_start - $p_start);
+                    $stop_diff  = abs($n_stop  - $p_stop);
+                    $p_start2print = $p_start;
+                    $p_stop2print  = $p_stop;
+                  }
+                  # check for 'b_p5l': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
+                  if((! $p_feature_flag) && 
+                     ((($n_strand eq "+") && ($p_start < $n_start)) || 
+                      (($n_strand eq "-") && ($p_start > $n_start)))) { 
+                    $alt_str_H{"b_p5l"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
+                  }
+                  # check for 'b_p5s': blastx 5' end too short, not within $aln_tol nucleotides
+                  if(! exists $alt_str_H{"b_p5l"}) { # only add b_p5s if b_p5l does not exist
+                    if($start_diff > $aln_tol) { 
+                      $alt_str_H{"b_p5s"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
+                    }                
+                  }
+                  # check for 'b_p3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
+                  if((! $p_feature_flag) && 
+                     ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
+                      (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
+                    $alt_str_H{"b_p3l"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
+                  }
+                  # check for 'b_p3s': blastx 3' end too short, not within $aln_tol nucleotides
+                  # for the stop coordinates, we do this differently if the nucleotide prediction 
+                  # includes the stop codon or not, if it does, we allow 3 more positions different
+                  my $cur_aln_tol = undef;
+                  my $cur_stop_str = undef;
+                  my $n_has_stop_codon = 1;
+                  if(($ftr_results_HR->{"n_3trunc"}) || 
+                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "n_stp")))) { 
+                    $n_has_stop_codon = 0; 
+                  }                    
+                  if($n_has_stop_codon) { 
+                    $cur_aln_tol  = $aln_tol + 3;
+                    $cur_stop_str = "valid stop codon";
+                  }
+                  else { 
+                    $cur_aln_tol  = $aln_tol;
+                    $cur_stop_str = "no valid stop codon";
+                  }
+                  if(! exists $alt_str_H{"b_p3l"}) { # only add b_p3s if b_p3l does not exist
+                    if($stop_diff > $cur_aln_tol) { 
+                      $alt_str_H{"b_p3s"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
+                    }
+                  }
+                  # check for 'p_lin': too long of an insert
+                  if(defined $p_ins) { 
+                    my @p_ins_qpos_A = ();
+                    my @p_ins_spos_A = ();
+                    my @p_ins_len_A  = ();
+                    my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
+                    for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
+                      my $local_xmaxins = defined ($maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
+                      if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
+                        if(defined $alt_str_H{"p_lin"}) { $alt_str_H{"p_lin"} .= ":DNAORGSEP:"; }
+                        $alt_str_H{"p_lin"} = "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                      }
+                    }
+                  }
+                  # check for 'p_lde': too long of a deletion
+                  if(defined $p_del) { 
+                    my @p_del_qpos_A = ();
+                    my @p_del_spos_A = ();
+                    my @p_del_len_A  = ();
+                    my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
+                    for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
+                      my $local_xmaxdel = defined ($maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
+                      if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
+                        if(defined $alt_str_H{"p_lde"}) { $alt_str_H{"p_lde"} .= ":DNAORGSEP:"; }
+                        $alt_str_H{"p_lde"} = "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
+                      }
+                    }
+                  }
+                  # check for 'p_trc': blast predicted truncation
+                  if(defined $p_trcstop) { 
+                    $alt_str_H{"p_trc"} = "$p_trcstop";
+                  }
+                }
+              }
+            } # end of 'if(defined $n_start)' entered to identify b_* alerts
+            my $alt_flag = 0;
+            foreach my $alt_code (sort keys %alt_str_H) { 
+              my @alt_str_A = split(":DNAORGSEP:", $alt_str_H{$alt_code});
+              foreach my $alt_str (@alt_str_A) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
+                $alt_flag = 1;
+              }
+            }
+            # if we added an alert, step through all children of this feature (if any) and add p_per
+            if(($alt_flag) && ($ftr_nchildren > 0)) { 
+              for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+                my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+                if(! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"}) { 
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                }
+              }
+            }
+          } # end of 'if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start))'
+        } # end of 'if(featureTypeIsCds($ftr_info_AHR, $ftr_idx))'
+      } # end of 'for($ftr_idx' loop
+    } # end of 'if($seq_len_HR->{$seq_name} >= $xminntlen)'
+  } # end of 'for($seq_idx' loop
+  return;
+}   
+
+#################################################################
+# Subroutine:  run_blastx_and_summarize_output()
+# Incept:      EPN, Thu Oct  4 15:25:00 2018
+#
+# Purpose:    For each fasta file of predicted hits, run them as
+#             blastx queries against the appropriate target blast DBs.
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#                      executable paths
+#  $out_root:          output root for the file names
+#  $mdl_info_HR:       REF to hash of model info
+#  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
+#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If blastx fails.
+#
+################################################################# 
+sub run_blastx_and_summarize_output {
+  my $sub_name = "run_blastx_and_summarize_output";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $mdl_name = $mdl_info_HR->{"name"};
+  my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
+  if(! defined $blastx_db_file) { 
+    ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", "dnaorg", 1, $FH_HR);
+  }
+
+  my $mdl_fa_file     = $out_root . "." . $mdl_name . ".a.fa";
+
+  # make a query fasta file for blastx, consisting of full length
+  # sequences (with sequence descriptions removed because they can
+  # affect the output and mess up our parsing if they are too long)
+  # AND all the predicted CDS sequences
+  my $blastx_query_file = $out_root . "." . $mdl_name . ".a.blastx.fa";
+  sqf_FastaFileRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
+  # now add the predicted CDS sequences
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
+      if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
+        utl_RunCommand("cat " . $ofile_info_HH{"fullpath"}{$ofile_info_key} . " >> $blastx_query_file", opt_Get("-v", \%opt_HH), 0, $ofile_info_HHR->{"FH"});
+      }
+    }
+  }
+
+  # run blastx 
+  my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file";
+  utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $mdl_name . ".blastx-out", $blastx_out_file, 0, "blastx output for model $mdl_name");
+
+  # now summarize its output
+  my $blastx_summary_file = $out_root . "." . $mdl_name . ".blastx.summary.txt";
+  my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
+  utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "dnaorg", $mdl_name . ".blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
+
+  return;
+}
+
+#################################################################
+# Subroutine:  parse_blastx_results()
+# Incept:      EPN, Thu Oct  4 15:25:00 2018
+#              [modified from subroutine of same name by Alejandro Schaffer, compare_predictions.pl]
+#
+# Purpose:    Parse blastx summary file and store results
+#             in ftr_results.
+#
+# Arguments: 
+#  $blastx_summary_file: path to blastx summary file to parse
+#  $seq_name_AR:         REF to array of sequence names
+#  $seq_len_HR:          REF to hash of sequence lengths
+#  $ftr_info_AHR:        REF to array of hashes with feature info 
+#  $ftr_results_HAHR:    REF to feature results HAH, ADDED TO HERE
+#  $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If blastx fails.
+#
+################################################################# 
+sub parse_blastx_results { 
+  my $sub_name = "parse_blastx_results";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastx_summary_file, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $ftr_results_HAHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  utl_FileValidateExistsAndNonEmpty($blastx_summary_file, "blastx summary file", $sub_name, 1, $FH_HR);
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  # create a hash mapping ftr_type_idx strings to ftr_idx:
+  my %ftr_type_idx2ftr_idx_H = ();
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $ftr_type_idx = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+    $ftr_type_idx2ftr_idx_H{$ftr_type_idx} = $ftr_idx;
+  }
+
+  open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, "dnaorg", $sub_name, $!, "reading", $FH_HR);
+  
+  my $line_idx   = 0;
+  my $xminntlen  = opt_Get("--xminntlen",  $opt_HHR);
+  my $xlonescore = opt_Get("--xlonescore", $opt_HHR);
+  my $seq_name   = undef; # sequence name this hit corresponds to 
+  my $q_len      = undef; # length of query sequence
+  my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
+  my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
+  my %cur_H = (); # values for current hit (HSP)
+
+  # Order of lines in <IN>:
+  # -----per-query/target-block---
+  # QACC
+  # QDEF   ignored
+  # MATCH  ignored
+  # HACC  
+  # HDEF   ignored
+  # SLEN   ignored
+  # ------per-HSP-block------
+  # HSP   
+  # SCORE 
+  # EVALUE ignored
+  # HLEN   ignored
+  # IDENT  ignored
+  # GAPS   ignored
+  # FRAME
+  # STOP   not always present
+  # DEL    not always present
+  # MAXDE  not always present
+  # INS    not always present
+  # MAXINS not always present
+  # QRANGE
+  # SRANGE ignored
+  # ------per-HSP-block------
+  # END_MATCH
+
+  while(my $line = <IN>) { 
+    chomp $line;
+    $line_idx++;
+    if($line ne "END_MATCH") { 
+      my @el_A = split(/\t/, $line);
+      if(scalar(@el_A) != 2) { 
+        ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, did not read exactly 2 tab-delimited tokens in line $line", "dnaorg", 1, $FH_HR);
+      }
+      my ($key, $value) = (@el_A);
+      if($key eq "QACC") { 
+        $cur_H{$key} = $value;
+        # determine what sequence it is
+        my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
+        ($seq_name, $q_ftr_type_idx, $q_len) = helper_blastx_breakdown_query($value, $seq_len_HR, $FH_HR); 
+        # helper_blastx_breakdown_query() will die if $query is unparseable
+        # determine what feature this query corresponds to
+        $q_ftr_idx = ($q_ftr_type_idx eq "") ? -1 : $ftr_type_idx2ftr_idx_H{$q_ftr_type_idx};
+        if(! defined $q_ftr_idx) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, problem parsing QACC line unable to determine feature index from query $value", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "HACC") { 
+        if(! defined $cur_H{"QACC"}) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+        # determine what feature it is
+        if($value =~ /(\S+)\/(\S+)/) { 
+          my ($accn, $coords) = ($1, $2);
+          # find it in @{$ftr_info_AHR}
+          $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+        }
+        else {
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse HACC line $line", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "HSP") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+        if($value !~ /^(\d+)$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "SCORE") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+        if($value !~ /^(\d+)$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary SCORE line $line", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "FRAME") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, HSP, or SCORE lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
+        }
+        if($value =~ /^[\+\-]([123])$/) { 
+          $cur_H{$key} = $1;
+          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_frame} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} . "\n");
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", "dnaorg", 1, $FH_HR);
+        }
+      }
+      elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
+        }
+        if($value ne "") { 
+          $cur_H{$key} = $value;
+        } 
+      }
+      elsif($key eq "QRANGE") { 
+        # we don't require all of QACC, HACC, HSP, SCORE and FRAME even though we should have them
+        # sometimes we don't (may be a bug in parse-blastx.pl), we only require QACC
+        if(! defined $cur_H{"QACC"}) { 
+
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before QACC line (seq: $seq_name, line: $line_idx)\n", "dnaorg", 1, $FH_HR);
+        }
+        if($value eq "..") { # special case, no hits, silently move on
+          ;
+        }
+        elsif(! defined $cur_H{"SCORE"}) { # special case, no SCORE lines yet seen (may be a bug in parse-blastx.pl?), silently move on
+          ;
+        }
+        else { 
+          # determine if we should store this hit
+          if($value =~ /^(\d+)..(\d+)$/) { 
+            my ($blast_start, $blast_stop) = ($1, $2);
+            my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
+            
+            # should we store this query/target/hit trio?
+            # we do if A, B, and C are all TRUE and one or both of D or E is TRUE
+            #  A. this query/target pair is compatible (query is full sequence or correct CDS feature) 
+            #  B. this is the highest scoring hit for this feature for this sequence (query/target pair)? 
+            #  C. query length (full length seq or predicted CDS) is at least <x> nt from --xminntlen
+            # 
+              #  D. hit score is above minimum (--xlonescore)
+            #  E. hit overlaps by at least 1 nt with a nucleotide prediction
+            my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
+            my $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest
+                          ($cur_H{"SCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+            my $c_true = ($q_len >= $xminntlen) ? 1 : 0; # length >= --xminntlen
+            if($a_true && $b_true && $c_true) { 
+              my $d_true = ($cur_H{"SCORE"} >= $xlonescore) ? 1 : 0;
+              my $e_true = 0; 
+              # only bother determining $e_true if $d_true is 0
+              if(! $d_true) { 
+                if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
+                   ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
+                  my $noverlap = 0;
+                  if($blast_strand eq "+") { 
+                    ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
+                                                     $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
+                                                     $blast_start, $blast_stop, $FH_HR);
+                  }
+                  elsif($blast_strand eq "-") { 
+                    ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
+                                                     $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
+                                                     $blast_stop, $blast_start, $FH_HR);
+                  }
+                  if($noverlap > 0) { $e_true = 1; }
+                }
+              }
+              if($d_true || $e_true) { 
+                # store the hit
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = abs($blast_start - $blast_stop) + 1;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"SCORE"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
+                if(defined $cur_H{"INS"}) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $cur_H{"INS"};
+                }
+                if(defined $cur_H{"DEL"}) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $cur_H{"DEL"};
+                }
+                if(defined $cur_H{"STOP"}) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
+                }
+              }
+            }
+          }
+          else { 
+            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", "dnaorg", 1, $FH_HR);
+          }
+        } # end of 'else' entered if QRANGE is NOT ".."
+        # reset variables
+        my $save_qacc = $cur_H{"QACC"}; 
+        my $save_hacc = $cur_H{"HACC"};
+        %cur_H = (); 
+        $cur_H{"QACC"} = $save_qacc; # save QACC
+        $cur_H{"HACC"} = $save_hacc; # save HACC
+      } # end of 'elsif $key eq "QRANGE"
+    } # end of 'if($line ne "END_MATCH")'
+    else { # $line eq "END_MATCH"
+      # reset variables
+      my $save_qacc = $cur_H{"QACC"};
+      %cur_H = (); 
+      $cur_H{"QACC"} = $save_qacc; # save QACC
+      $t_ftr_idx = undef;
+    }
+  } # end of 'while($my $line = <IN>)'
+  close(IN);
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: helper_blastx_breakdown_query()
+# Incept:     EPN, Wed Dec 19 12:05:02 2018
+#
+# Purpose: Given a query name from blastx output, determine if it is
+#          for an entire input sequence, or a feature sequence
+#          fetched from an input sequence.  The way we tell is by
+#          looking up $in_query in $seq_len_HR.  If it exists as a
+#          key, then the query is an entire input sequence. If it
+#          does not exist as a key, then it should be
+#          "<seq_name>/<ftr_type_idx>/<coords>", and <seq_name>
+#          should be a key in $seq_info_HAR.
+#
+# Arguments:
+#   $in_query:     query name from blastx output 
+#   $seq_len_HR:   ref to hash, keys are possible sequence names, values are sequence lengths
+#   $FH_HR:        ref to hash of file handles, including 'log'
+#             
+# Returns:  3 values:
+#           <seq_name>:     name of input sequence this query corresponds to
+#           <ftr_type_idx>: "" if $in_query eq <seq_name>, else a string 
+#                           of feature type and index separated by a '.'
+#                           e.g. 'CDS.4', derived from $in_query.
+#           <len>:          length of sequence ($seq_len_HR->{<seq_name>} if 
+#                           $in_query eq <seq_name> else length derived from
+#                           coordinate ranges listed in <coords_str>.
+#
+# Dies: If $in_query is either not a valid <seq_name> (key in %{$seq_len_HR})
+#       and $in_query cannot be broken down into a valid <seq_name><ftr_type_idx><coords_str>
+#       
+#
+#################################################################
+sub helper_blastx_breakdown_query {
+  my $sub_name  = "helper_blastx_breakdown_query";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_query, $seq_len_HR, $FH_HR) = (@_);
+
+  # check for simple case, $in_query is a sequence name key in %{$seq_len_HR}
+  if(defined $seq_len_HR->{$in_query}) { 
+    return($in_query, "", $seq_len_HR->{$in_query});
+  }
+
+  # else, break down $in_query into:
+  # <seq_name>/<ftr_type_idx>/<coords>
+  # example: NC_002549.1/CDS.4/6039..6923:+,6923..8068:+
+  # sequence is NC_002549.1 but we fetched feature CDS#4 as coordinates 6039..6293:+,6293..8068:+ from it
+  my $ret_seq_name     = undef;
+  my $ret_ftr_type_idx = undef;
+  my $ret_len          = undef;
+  my $coords_str       = undef;
+  if($in_query =~ /^(\S+)\/([^\/]+\.\d+)\/([^\/]+$)/) { 
+    ($ret_seq_name, $ret_ftr_type_idx, $coords_str) = ($1, $2, $3);
+    if(! defined $seq_len_HR->{$ret_seq_name}) { 
+      ofile_FAIL("ERROR in $sub_name, problem parsing query $in_query, unexpected sequence name $ret_seq_name (does not exist in input sequence length hash)", "dnaorg", 1, $FH_HR); 
+    }
+    $ret_len = dng_CoordsLength($coords_str, $FH_HR);
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse query $in_query", "dnaorg", 1, $FH_HR); 
+  }
+
+  return ($ret_seq_name, $ret_ftr_type_idx, $ret_len);
+}
+
+#################################################################
+# Subroutine: helper_blastx_breakdown_max_indel_str()
+# Incept:     EPN, Tue Apr  2 06:35:13 2019
+#
+# Purpose: Given a string of one or more indel strings in the format:
+#          "Q<d1>:S<d2>[+-]<d3>", separated by ";" if more than one.
+#          fill arrays with <d1>, <d2>, and <d3>.
+#
+# Arguments:
+#   $in_str:       input max indel string returned from parse_blastx.pl
+#   $qpos_AR:      ref to array of query positions to fill
+#   $spos_AR:      ref to array of subject positions to fill
+#   $len_AR:       ref to array of lengths to fill
+#   $FH_HR:        ref to hash of file handles, including 'log'
+#             
+# Returns:  number of indel strings parsed (number of elements added to @{$qpos_AR}, 
+#           @{$spos_AR} and @{$len_AR}.
+#
+# Dies: If $in_str is not parseable
+#
+#################################################################
+sub helper_blastx_breakdown_max_indel_str {
+  my $sub_name  = "helper_blastx_breakdown_max_indel_str";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($in_str, $qpos_AR, $spos_AR, $len_AR, $FH_HR) = (@_);
+
+  # printf("in $sub_name, in_str: $in_str\n");
+
+  my @str_A = split(";", $in_str); 
+  foreach my $str (@str_A) { 
+    if($str =~ /^Q(\d+)\:S(\d+)[\+\-](\d+)$/) { 
+      if(defined $qpos_AR) { push(@{$qpos_AR}, $1); }
+      if(defined $spos_AR) { push(@{$spos_AR}, $2); }
+      if(defined $len_AR)  { push(@{$len_AR},  $3); }
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse indel string $str parsed out of $in_str", "dnaorg", 1, $FH_HR);
+    }
+  }
+
+  return scalar(@str_A);
+}
+
+#################################################################
+# Subroutine: helper_blastx_db_seqname_to_ftr_idx()
+# Incept:     EPN, Tue Dec 18 13:27:50 2018
+#
+# Purpose:    Find the feature $ftr_idx that corresponds to the blastx
+#             db sequence that was named with the convention:
+#
+#             <protein-accession>/<coords-str>
+#
+#             Where <coords-str> is identical to $ftr_info_AHR->{"ref_coords"}[$ftr_idx].
+#
+# Arguments: 
+#  $blastx_seqname: sequence name
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $FH_HR:          ref to hash of file handles
+#
+# Returns:    <$ftr_idx>
+#
+# Dies:       If we find zero features that match to this sequence
+#             If we find more than 1 features that match to this sequence
+#
+################################################################# 
+sub helper_blastx_db_seqname_to_ftr_idx { 
+  my $sub_name = "helper_blastx_db_seqname_to_ftr_idx";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastx_seqname, $ftr_info_AHR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  my $ret_ftr_idx = undef;
+  if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
+    my ($accn, $coords) = ($1, $2);
+    # find it in @{$ftr_info_AHR->{"coords"}}
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
+        if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
+          if(defined $ret_ftr_idx) { # found more than 1 features that match
+            ofile_FAIL("ERROR in $sub_name, found blastx db sequence with coords that match two features, ftr_idx: $ftr_idx and $ret_ftr_idx", "dnaorg", 1, $FH_HR);
+          }                  
+          $ret_ftr_idx = $ftr_idx;
+        }
+      }
+    }
+    if(! defined $ret_ftr_idx) { # did not find match
+      ofile_FAIL("ERROR in $sub_name, did not find matching feature for blastx db sequence $blastx_seqname", "dnaorg", 1, $FH_HR);
+    }
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", "dnaorg", 1, $FH_HR); 
+  }
+
+  return $ret_ftr_idx;
+}
+
+#################################################################
+#
+# Other subroutines related to alerts: 
+# alert_list_option
+# alert_feature_instance_add 
+# alert_sequence_instance_add 
+# alert_add_b_zft 
+# alert_add_n_div 
+# alert_instances_check_prevents_annot
+#
+#################################################################
+# Subroutine:  alert_list_option()
+# Incept:      EPN, Wed Apr  3 11:11:26 2019
+#
+# Purpose:    Handle the --alt_list option by outputting a list 
+#             of all alerts and whether they cause failure or not
+#             by default to stdout.
+#
+# Arguments: 
+#  $alt_info_HHR:  REF to the alert info hash of arrays, PRE-FILLED
+#
+# Returns:    void
+#
+# Dies:       never
+#
+#################################################################
+sub alert_list_option { 
+  my $sub_name = "alert_list_option()"; 
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($alt_info_HHR) = @_;
+  
+  my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
+  
+  # determine order of codes to print
+  my @code_A = ();
+  alert_order_arrays($alt_info_HHR, \@code_A, undef, undef);
+  
+  my $idx = 0;
+  my $code = undef;
+
+  my @data_AA  = ();
+  my @head_AA  = ();
+  my @bcom_A   = ();
+
+  @{$head_AA[0]} = ("",    "alert",  "short",       "long");
+  @{$head_AA[1]} = ("idx", "code",   "description", "description");
+
+  push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
+  push(@bcom_A, "# listed in --alt_pass or --alt_fail option strings:\n#\n");
+  $idx = 0;
+  foreach $code (@code_A) { 
+    if($alt_info_HHR->{$code}{"always_fails"}) { 
+      $idx++;
+      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"}]);
+    }
+  }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
+
+  @bcom_A  = ();
+  @data_AA = ();
+  push(@bcom_A, "#\n");
+  push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# Alert codes that cause a sequence to FAIL by default, but can be set\n");
+  push(@bcom_A, "# to not FAIL a sequence by listing the code as part of a comma separated\n");
+  push(@bcom_A, "# string of codes in <s> with the --alt_pass <s> option:\n#\n");
+  $idx = 0;
+  foreach $code (@code_A) { 
+    if(($alt_info_HHR->{$code}{"causes_failure"}) && 
+       (! $alt_info_HHR->{$code}{"always_fails"})) { 
+      $idx++;
+      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"}]);
+    }
+  }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
+
+  @bcom_A  = ();
+  @data_AA = ();
+  push(@bcom_A, "#\n");
+  push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# Alert codes that do not cause a sequence to FAIL by default, but can be set\n");
+  push(@bcom_A, "# to FAIL a sequence by listing the code as part of a comma separated\n");
+  push(@bcom_A, "# string of codes in <s> with the --alt_fail <s> option:\n#\n");
+  $idx = 0;
+  foreach $code (@code_A) { 
+    if((! $alt_info_HHR->{$code}{"causes_failure"}) && 
+       (! $alt_info_HHR->{$code}{"always_fails"})) { 
+      $idx++;
+      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                      $alt_info_HHR->{$code}{"ldesc"}]);
+    }
+  }
+  ofile_TableHumanOutput(\@data_AA, \@head_AA, undef, \@bcom_A, undef, "  ", "-", "#", "", "", "-", *STDOUT, undef, undef);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_pass_fail_options()
+# Incept:      EPN, Wed Apr  3 12:51:25 2019
+#
+# Purpose:    Handle the --alt_pass and --alt_fail options by 
+#             parsing their strings, determining if they are valid
+#             and updating the "causes_failure" values in 
+#             %{$alt_info_HHR}.
+#
+# Arguments: 
+#  $alt_info_HHR:   REF to the alert info hash of arrays, PRE-FILLED
+#  $opt_HHR:        REF to 2D hash of option values
+#
+# Returns:    void
+#
+# Dies:       if --alt_pass or --alt_fail option strings are invalid
+#
+#################################################################
+sub alert_pass_fail_options { 
+  my $sub_name = "alert_pass_fail_options()"; 
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($alt_info_HHR, $opt_HHR) = @_;
+  
+  my @pass_A = ();
+  my @fail_A = ();
+  if(opt_IsUsed("--alt_pass", $opt_HHR)) { 
+    @pass_A = split(",", opt_Get("--alt_pass", $opt_HHR));
+  }
+  if(opt_IsUsed("--alt_fail", $opt_HHR)) { 
+    @fail_A = split(",", opt_Get("--alt_fail", $opt_HHR));
+  }
+
+  my $die_str = "";
+  my $alt_code = undef;
+
+  # --alt_pass codes
+  foreach my $alt_code (@pass_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    elsif($alt_info_HHR->{$alt_code}{"always_fails"}) { 
+      $die_str .= "alert code $alt_code always causes failure, it cannot be listed in --alt_pass string\n";
+    }
+    else { 
+      dng_AlertInfoSetCausesFailure($alt_info_HHR, $alt_code, 0, undef);
+    }
+  }
+
+  # --alt_fail codes
+  foreach my $alt_code (@fail_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    else { 
+      dng_AlertInfoSetCausesFailure($alt_info_HHR, $alt_code, 1, undef);
+    }
+  }
+
+  if($die_str ne "") { 
+    $die_str .= "Use the --alt_list to see a list possible alert codes\nto use with --alt_pass and --alt_fail.\n";
+    ofile_FAIL("ERROR processing --alt_fail and/or --alt_pass options:\n$die_str", "dnaorg", 1, undef);
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_order_arrays()
+# Incept:      EPN, Thu Apr  4 12:59:41 2019
+#
+# Purpose:    Fill arrays with the order of alerts for outputting.
+#             Alerts that DO NOT cause failure are listed first, 
+#             then alerts that DO cause failure. 
+#
+# Arguments: 
+#  $alt_info_HHR:  ref to the alert info hash of arrays, PRE-FILLED
+#  $all_order_AR:  ref to array of order of all alerts, FILLED HERE if defined
+#  $seq_order_AR:  ref to array of order of per-sequence alerts, FILLED HERE if defined
+#  $ftr_order_AR:  ref to array of order of per-feature alerts, FILLED HERE if defined
+#
+# Returns:    void
+#
+# Dies:       never
+#
+#################################################################
+sub alert_order_arrays { 
+  my $sub_name = "alert_order_arrays()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($alt_info_HHR, $all_order_AR, $seq_order_AR, $ftr_order_AR) = @_;
+  
+  my @all_A = ();
+  my @all_pass_A = ();
+  my @all_fail_A = ();
+  my @seq_pass_A = ();
+  my @seq_fail_A = ();
+  my @ftr_pass_A = ();
+  my @ftr_fail_A = ();
+  my $alt_code = undef;
+  # first get array using "order" key
+  foreach $alt_code (sort keys (%{$alt_info_HHR})) { 
+    $all_A[($alt_info_HHR->{$alt_code}{"order"})] = $alt_code;
+  }
+
+  foreach $alt_code (@all_A) { 
+    if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+      push(@all_fail_A, $alt_code); 
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
+        push(@seq_fail_A, $alt_code); 
+      }
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
+        push(@ftr_fail_A, $alt_code); 
+      }
+    }
+    else { # does not cause failure
+      push(@all_pass_A, $alt_code); 
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") { 
+        push(@seq_pass_A, $alt_code); 
+      }
+      if($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") { 
+        push(@ftr_pass_A, $alt_code); 
+      }
+    }
+  }
+
+  if(defined $all_order_AR) { @{$all_order_AR} = (@all_pass_A, @all_fail_A); }
+  if(defined $seq_order_AR) { @{$seq_order_AR} = (@seq_pass_A, @seq_fail_A); }
+  if(defined $ftr_order_AR) { @{$ftr_order_AR} = (@ftr_pass_A, @ftr_fail_A); }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_sequence_instance_add()
+# Incept:      EPN, Thu Apr  4 11:45:05 2019
+#
+# Purpose:    Add an $alt_code alert to the @{$alt_seq_instances_HHR} 
+#             for sequence name $seq_name.
+#
+# Arguments: 
+#  $alt_seq_instances_HHR:  REF to per-sequence alert instances to add to, ADDED TO HERE (maybe),
+#                           can be undef if $alt_info_HHR->{$alt_code}{"pertype"} is "feature".
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code:               alert code we're adding an alert for
+#  $seq_name:               sequence name
+#  $value:                  value to add as $alt_seq_instances_HHR->{$seq_name}{$code}
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       - If we find an alert instance incompatibility.
+#             - if pertype of $alt_code is not "sequence"
+#
+#################################################################
+sub alert_sequence_instance_add { 
+  my $sub_name = "alert_sequence_instance_add()";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_seq_instances_HHR, $alt_info_HHR, $alt_code, $seq_name, $value, $FH_HR) = @_;
+
+  # my $tmp_altmsg = "alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
+  # printf("in $sub_name $tmp_altmsg\n");
+  
+  if(! defined $alt_seq_instances_HHR) { 
+    ofile_FAIL("ERROR in $sub_name, alt_seq_instances_HHR is undefined", "dnaorg", 1, $FH_HR);
+  }
+  if(! defined $alt_info_HHR->{$alt_code}) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized alert code $alt_code", "dnaorg", 1, $FH_HR);
+  }
+  if($alt_info_HHR->{$alt_code}{"pertype"} ne "sequence") { 
+    ofile_FAIL("ERROR in $sub_name alert code $alt_code is not a per-sequence alert", "dnaorg", 1, $FH_HR);
+  }
+
+  if(! defined $alt_seq_instances_HHR->{$seq_name}) { 
+    %{$alt_seq_instances_HHR->{$seq_name}} = (); 
+  }
+
+  # if this alert already exists (rare case), add to it
+  if(defined $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
+    $alt_seq_instances_HHR->{$seq_name}{$alt_code} .= ":DNAORGSEP:" . $value; 
+  }
+  else { # if it doesn't already exist (normal case), create it
+    $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $value; 
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_feature_instance_add()
+# Incept:      EPN, Thu Apr  4 11:40:09 2019
+#
+# Purpose:    Add an $alt_code alert to the @{$alt_ftr_instances_HHHR} 
+#             for sequence name $seq_name and feature index $ftr_idx.
+#
+# Arguments: 
+#  $alt_ftr_instances_HHHR: REF to per-feature alert instances to add to, ADDED TO HERE
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code:               alert code we're adding an alert for
+#  $seq_name:               sequence name
+#  $ftr_idx:                feature index
+#  $value:                  value to add as $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$code}
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       - If we find an alert instance incompatibility.
+#             - if pertype of $alt_code is not "feature"
+#
+#################################################################
+sub alert_feature_instance_add { 
+  my $sub_name = "alert_feature_instance_add()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $value, $FH_HR) = @_;
+
+  # my $tmp_altmsg = "ftr_idx: $ftr_idx, alt_code: $alt_code, seq_name: $seq_name, value: $value\n";
+  # printf("in $sub_name $tmp_altmsg\n");
+  
+  if(! defined $alt_ftr_instances_HHHR) { 
+    ofile_FAIL("ERROR in $sub_name, but alt_ftr_instances_HHHR is undefined", "dnaorg", 1, $FH_HR);
+  }
+  if(! defined $alt_info_HHR->{$alt_code}) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized alert code $alt_code", "dnaorg", 1, $FH_HR);
+  }
+  if($alt_info_HHR->{$alt_code}{"pertype"} ne "feature") { 
+    ofile_FAIL("ERROR in $sub_name alert code $alt_code is not a per-feature alert", "dnaorg", 1, $FH_HR);
+  }
+
+  if(! defined $alt_ftr_instances_HHHR->{$seq_name}) { 
+    %{$alt_ftr_instances_HHHR->{$seq_name}} = (); 
+  }
+  if(! defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}) { 
+    %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}} = (); 
+  }
+
+  # if this alert already exists (rare case), add to it
+  if(defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}) { 
+    $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} .= ":DNAORGSEP:" . $value; 
+  }
+  else { # if it doesn't already exist (normal case), create it
+    $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} .= $value; 
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: alert_sequence_instance_fetch()
+# Incept:     EPN, Fri Apr  5 12:02:29 2019
+# Purpose:    Return $alt_seq_instance_HHR->{$seq_name}{$alt_code} 
+#             if it is defined, else returns undef.
+#
+# Arguments:
+#  $alt_seq_instances_HHHR: ref to 2D hash of sequence alert instances
+#  $seq_name:               the sequence name
+#  $alt_code:               the alert code.
+#
+# Returns:  $alt_seq_instance_HHHR->{$seq_name}{$alt_code} 
+#           undef if that is not defined
+#
+# Dies:     never
+#
+#################################################################
+sub alert_sequence_instance_fetch { 
+  my $sub_name = "alert_sequence_instance_fetch";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_seq_instances_HHHR, $seq_name, $alt_code) = (@_);
+
+  if((defined $alt_seq_instances_HHHR) && 
+     (defined $alt_seq_instances_HHHR->{$seq_name}) && 
+     (defined $alt_seq_instances_HHHR->{$seq_name}{$alt_code})) { 
+    return $alt_seq_instances_HHHR->{$seq_name}{$alt_code}; # defined
+  }
+
+  return undef; # not defined
+}
+
+#################################################################
+# Subroutine: alert_feature_instance_fetch()
+# Incept:     EPN, Fri Apr  5 11:59:00 2019
+# Purpose:    Return $alt_ftr_instance_HHHR->{$seq_name}{$ftr_idx}{$alt_code} 
+#             if it is defined, else returns undef.
+#
+# Arguments:
+#  $alt_ftr_instances_HHHR: ref to 3D hash of feature alert instances
+#  $seq_name:               the sequence name
+#  $ftr_idx:                the feature index
+#  $alt_code:               the alert code.
+#
+# Returns:  $alt_ftr_instance_HHHR->{$seq_name}{$ftr_idx}{$alt_code} 
+#           undef if that is not defined
+#
+# Dies:     never
+#
+#################################################################
+sub alert_feature_instance_fetch { 
+  my $sub_name = "alert_feature_instance_fetch";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code) = (@_);
+
+  if((defined $alt_ftr_instances_HHHR) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code})) { 
+    return $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}; # defined
+  }
+
+  return undef; # not defined
+}
+
+#################################################################
+# Subroutine: alert_add_b_zft()
+# Incept:     EPN, Thu Jan 24 12:31:16 2019
+# Purpose:    Adds b_zft alerts for sequences with 0 predicted features.
+#
+# Arguments:
+#  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
+#  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
+#  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
+#  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
+#  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, ADDED TO HERE
+#  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $FH_HR:                   REF to hash of file handles, including 'log'
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub alert_add_b_zft { 
+  my $sub_name = "alert_add_b_zft";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, 
+      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  my @ftr_min_len_A = (); 
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    $ftr_min_len_A[$ftr_idx] = (dng_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) ? 
+        opt_Get("--xminntlen", $opt_HHR) : 1;
+  }
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name  = $seq_name_AR->[$seq_idx];
+    my $seq_nftr = 0; # number of annotated features for this sequence
+
+    # loop over features
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_A[$ftr_idx])) { 
+        $seq_nftr++;
+        $ftr_idx = $nftr; # breaks for $ftr_idx loop
+      } 
+    }
+    if($seq_nftr == 0) { 
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "b_zft", $seq_name, "", $FH_HR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: alert_add_n_div()
+# Incept:     EPN, Thu Feb  7 11:54:56 2019
+# Purpose:    Adds n_div alerts for sequences listed in the array @overflow_seq_A, if any.
+#
+# Arguments:
+#  $overflow_seq_AR:         REF to array of sequences that failed due to matrix overflows, pre-filled
+#  $overflow_mxsize_AR:      REF to array of required matrix sizes for each sequence that failed due to matrix overflows, pre-filled
+#  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
+#  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub alert_add_n_div { 
+  my $sub_name = "alert_add_n_div";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($overflow_seq_AR, $overflow_mxsize_AR, $alt_seq_instances_HHR, $alt_info_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $noverflow = scalar(@{$overflow_seq_AR});
+  for(my $s = 0; $s < $noverflow; $s++) { 
+    alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "n_div", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_instances_check_prevents_annot()
+# Incept:      EPN, Fri Mar 22 11:57:32 2019
+#
+
+# Purpose:    Given a sequence name, determine if any alerts 
+#             stored in %{$alt_seq_instances_HHR} exist for it
+#             that prevent its annotation.
+#
+# Arguments: 
+#  $seq_name:              name of sequence
+#  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_seq_instances_HHR: REF to 2D hashes with per-sequence alerts, PRE-FILLED
+#  $FH_HR:                 REF to hash of file handles
+#
+# Returns:    A string with all per-sequence err codes for this sequence 
+#             concatenated and separated by commas.
+#
+################################################################# 
+sub alert_instances_check_prevents_annot { 
+  my $sub_name = "alert_instances_check_prevents_annot";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $FH_HR) = @_;
+
+  if(defined $alt_seq_instances_HHR->{$seq_name}) { 
+    foreach my $alt_code (keys (%{$alt_seq_instances_HHR->{$seq_name}})) { 
+      if(($alt_info_HHR->{$alt_code}{"pertype"} eq "sequence") && 
+         ($alt_info_HHR->{$alt_code}{"prevents_annot"} == 1)) { 
+        return 1;
+      }
+    }
+  }
+  
+  return 0;
+}
+
+#################################################################
+#
+# Subroutines for creating tabular output:
+# output_tabular
+# helper_tabular_ftr_results_strand
+# helper_tabular_ftr_results_trunc_string
+# helper_tabular_sgm_results_trunc_string
+# helper_tabular_get_ftr_alert_strings
+# helper_tabular_get_seq_alert_strings
+# helper_tabular_replace_spaces
+# 
+#################################################################
+# Subroutine: output_tabular()
+# Incept:     EPN, Mon Mar  4 21:02:12 2019
+# Purpose:    Output tabular files.
+#
+# Arguments:
+#  $mdl_info_AHR:            REF to array of hashes with model info
+#  $mdl_cls_ct_HR:           REF to hash with counts of seqs classified per model
+#  $mdl_ant_ct_HR:           REF to hash with counts of seqs annotated per model
+#  $seq_name_AR:             REF to array of sequence names
+#  $seq_len_HR:              REF to hash of sequence lengths
+#  $ftr_info_HAHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_HAHR:           REF to hash of arrays with information on the segments, PRE-FILLED
+#  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
+#  $cls_output_HHR:          REF to 2D hash of classification results to output, PRE-FILLED
+#  $ftr_results_HAHR:        REF to feature results AAH, PRE-FILLED
+#  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
+#  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
+#  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:          REF to the 2D hash of output file information
+#             
+# Returns:  Two values:
+#           $zero_classifications: '1' if no sequences were classified, else '0'
+#           $zero_alerts:          '1' if no alerts were reported, else '0'
+# 
+# Dies:     never
+#
+#################################################################
+sub output_tabular { 
+  my $sub_name = "output_tabular";
+  my $nargs_exp = 15;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
+      $seq_name_AR, $seq_len_HR, 
+      $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
+      $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
+      $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+
+  # validate input and determine maximum counts of things
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nalt = scalar(keys %{$alt_info_HHR});
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  my ($mdl_idx, $ftr_idx, $sgm_idx);
+  my $mdl_name;
+
+  # determine order of alert codes to print
+  my $alt_code;
+  my @alt_code_A     = (); # all alerts in output order
+  my @seq_alt_code_A = (); # per-sequence alerts in output order
+  my @ftr_alt_code_A = (); # per-feature  alerts in output order
+  alert_order_arrays($alt_info_HHR, \@alt_code_A, \@seq_alt_code_A, \@ftr_alt_code_A);
+
+  my $nalt_seq_possible = scalar(@seq_alt_code_A);
+  my %alt_ct_H     = (); # total number of alerts per alert code
+  my %alt_seq_ct_H = (); # number of seqs with at least one instance of each alert code
+  foreach $alt_code (@alt_code_A) { 
+    $alt_ct_H{$alt_code} = 0;
+    $alt_seq_ct_H{$alt_code} = 0;
+  }
+
+  # make hash of model names to indices in mdl_info_AHR, we'll 
+  # use this when creating the per-model table
+  my %mdl_idx_H = ();
+  utl_IdxHFromAH(\%mdl_idx_H, $mdl_info_AHR, "name", $sub_name, $FH_HR);
+  my %mdl_pass_ct_H = (); # number of seqs per model that pass
+  my %mdl_fail_ct_H = (); # number of seqs per model that fail
+
+  # define the header columns
+  my @head_ant_AA = ();
+  my @data_ant_AA = ();
+  @{$head_ant_AA[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
+  @{$head_ant_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
+  my @clj_ant_A      = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
+
+  my @head_cls_AA = ();
+  my @data_cls_AA = ();
+  @{$head_cls_AA[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "seq");
+  @{$head_cls_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
+  my @clj_cls_A      = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
+
+  my @head_ftr_AA = ();
+  my @data_ftr_AA = ();
+  @{$head_ftr_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "",    "",       "",     "",        "",    "",       "",     "",        "",     "dup", "",    "",    "seq",    "model",  "ftr");
+  @{$head_ftr_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "str", "n_from", "n_to", "n_instp", "trc", "p_from", "p_to", "p_instp", "p_sc", "idx", "nsa", "nsn", "coords", "coords", "alerts");
+  my @clj_ftr_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,        0,      0,         0,       0,    0,     0,     0,        0,        1);
+
+  my @head_sgm_AA = ();
+  my @data_sgm_AA = ();
+  @{$head_sgm_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "num", "sgm", "seq",  "seq", "mdl",  "mdl", "sgm", "",    "",    "5'", "3'", "5'",  "3'");
+  @{$head_sgm_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "idx", "sgm", "idx", "from", "to",  "from", "to",  "len", "str", "trc", "pp", "pp", "gap", "gap");
+  my @clj_sgm_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
+
+  my @head_alt_AA = ();
+  my @data_alt_AA = ();
+  @{$head_alt_AA[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "alert");
+  @{$head_alt_AA[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "detail");
+  my @clj_alt_A      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
+
+  my @head_alc_AA = ();
+  my @data_alc_AA = ();
+  @{$head_alc_AA[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
+  @{$head_alc_AA[1]} = ("idx", "code",   "failure", "description", "type", "cases", "seqs", "description");
+  my @clj_alc_A      = (1,     1,        1,          1,            0,      0,      0,        1);
+
+  my @head_mdl_AA = ();
+  my @data_mdl_AA = ();
+  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num",  "num");
+  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail", "notannot");
+  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0,      0);
+
+  #printf $out_FH ("#sequence: sequence name\n");
+  #printf $out_FH ("#product:  CDS product name\n");
+  #printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
+  #printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
+  #printf $out_FH ("#bquery:   name of blastx query name\n");
+  #printf $out_FH ("#feature?: 'feature' if blastx query was a fetched feature, from CM prediction\n");
+  #printf $out_FH ("#          'full'    if blastx query was a full input sequence\n");
+  #printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
+  #printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
+  #printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
+  #printf $out_FH ("#bxstop:   stop  position of blastx top HSP\n");
+  #printf $out_FH ("#bxscore:  raw score of top blastx HSP (if one exists, even if it is below threshold)\n");
+  #printf $out_FH ("#startdf:  difference between cmstart and bxstart\n");
+  #printf $out_FH ("#stopdf:   difference between cmstop and bxstop\n");
+  #printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
+  #printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
+  #printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
+  #printf $out_FH ("#alerts:   list of alerts for this sequence, - if none\n");
+
+  # main loop: for each sequence
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name  = $seq_name_AR->[$seq_idx];
+    my $seq_len   = $seq_len_HR->{$seq_name};
+    my $seq_nftr_alt    = 0;
+    my $seq_nseq_alt    = 0;
+    my $seq_nftr_annot  = 0;
+    my $seq_nftr_5trunc = 0;
+    my $seq_nftr_3trunc = 0;
+    my $nftr = 0;
+ 
+   # get per-sequence info from %{$cls_output_HHR->{$seq_name}}
+    my $cls_output_HR = (defined $cls_output_HHR->{$seq_name}) ? \%{$cls_output_HHR->{$seq_name}} : undef;
+    my $seq_score   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"score"}))     ? $cls_output_HR->{"score"}     : "-";
+    my $seq_scpnt   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"scpnt"}))     ? $cls_output_HR->{"scpnt"}     : "-";
+    my $seq_scov    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"scov"}))      ? $cls_output_HR->{"scov"}      : "-";
+    my $seq_mcov    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"mcov"}))      ? $cls_output_HR->{"mcov"}      : "-";
+    my $seq_bias    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"bias"}))      ? $cls_output_HR->{"bias"}      : "-";
+    my $seq_nhits   = ((defined $cls_output_HR) && (defined $cls_output_HR->{"nhits"}))     ? $cls_output_HR->{"nhits"}     : "-";
+    my $seq_strand  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"bstrand"}))   ? $cls_output_HR->{"bstrand"}   : "_";
+    my $seq_scdiff  = ((defined $cls_output_HR) && (defined $cls_output_HR->{"scdiff"}))    ? $cls_output_HR->{"scdiff"}    : "-";
+    my $seq_diffpnt = ((defined $cls_output_HR) && (defined $cls_output_HR->{"diffpnt"}))   ? $cls_output_HR->{"diffpnt"}   : "-";
+    my $seq_mdl1    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model1"}))    ? $cls_output_HR->{"model1"}    : "-";
+    my $seq_mdl2    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"model2"}))    ? $cls_output_HR->{"model2"}    : "-";
+    my $seq_grp1    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"group1"}))    ? $cls_output_HR->{"group1"}    : "-";
+    my $seq_grp2    = ((defined $cls_output_HR) && (defined $cls_output_HR->{"group2"}))    ? $cls_output_HR->{"group2"}    : "-";
+    my $seq_subgrp1 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup1"})) ? $cls_output_HR->{"subgroup1"} : "-";
+    my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
+
+    my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
+    my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
+
+    if($seq_mdl1 ne "-") { 
+      if(! defined $mdl_pass_ct_H{$seq_mdl1}) { $mdl_pass_ct_H{$seq_mdl1} = 0; }
+      if(! defined $mdl_fail_ct_H{$seq_mdl1}) { $mdl_fail_ct_H{$seq_mdl1} = 0; }
+      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$seq_mdl1}++; }
+      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$seq_mdl1}++; }
+    }
+
+    my $ftr_nprinted   = 0; # number of total features printed for this sequence 
+    my $sgm_nprinted   = 0; # number of total segments printed for this sequence
+    my $alt_nprinted   = 0; # number of total alerts printed for this sequence
+    my $alt_nftr       = 0; # number of features we've printed at least 1 alert for
+    my $alt_nseqftr    = 0; # number of features we've printed for this sequence/feature combo
+    my %alt_seqcode_H  = (); # key is alert code: '1' if we've printed >= 1 alerts for this sequence/code combo
+
+    # print per-sequence alerts, if any
+    if(defined $alt_seq_instances_HHR->{$seq_name}) { 
+      foreach $alt_code (@seq_alt_code_A) { 
+        my $alt_instance = alert_sequence_instance_fetch($alt_seq_instances_HHR, $seq_name, $alt_code);
+        if(defined $alt_instance) { 
+          if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
+            push(@data_alt_AA, []);  # push empty array --> blank line 
+          }
+          if(! defined $alt_seqcode_H{$alt_code}) { 
+            $alt_seq_ct_H{$alt_code}++; 
+            $alt_seqcode_H{$alt_code} = 1;
+          }
+          if($alt_nseqftr == 0) { 
+            $alt_nftr++;
+          }
+          my @instance_str_A = ($alt_instance eq "") ? ("") : (split(":DNAORGSEP:", $alt_instance));
+          foreach my $instance_str (@instance_str_A) { 
+            $alt_nseqftr++;
+            $alt_ct_H{$alt_code}++;
+            my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+            push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, 
+                                $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "") ? "" : " [" . $instance_str . "]")]);
+            $alt_nprinted++;
+          }
+        }
+      }
+    }
+
+    if($seq_mdl1 ne "-") { 
+      $nftr = scalar(@{$ftr_info_HAHR->{$seq_mdl1}});
+      my $ftr_info_AHR = \@{$ftr_info_HAHR->{$seq_mdl1}}; # for convenience
+      for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"};
+        my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$src_idx]; # for convenience
+        my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
+        if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+          $seq_nftr_annot++;
+          my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
+          my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
+          my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
+          my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $src_idx);
+          my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
+          my $ftr_n_start  = (defined $ftr_results_HR->{"n_start"})   ? $ftr_results_HR->{"n_start"}   : "-";
+          my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
+          my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
+          if(($ftr_n_stop_c ne "-") && ($ftr_n_stop_c ne "?") && ($ftr_n_stop_c == $ftr_n_stop)) { $ftr_n_stop_c = "-"; }
+          my $ftr_p_start  = (defined $ftr_results_HR->{"p_start"})   ? $ftr_results_HR->{"p_start"}   : "-";
+          my $ftr_p_stop   = (defined $ftr_results_HR->{"p_stop"})    ? $ftr_results_HR->{"p_stop"}    : "-";
+          my $ftr_p_stop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
+          if($ftr_p_stop_c ne "-") { 
+            $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
+          }
+          my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
+          my $ftr_dupidx  = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx) ? $ftr_info_AHR->[$ftr_idx]{"source_idx"} : "-";
+          if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
+            $seq_nftr_5trunc++; 
+          }
+          if((defined $ftr_results_HR->{"n_3trunc"}) && ($ftr_results_HR->{"n_3trunc"})) { 
+            $seq_nftr_3trunc++; 
+          }
+
+          my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 1, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
+          if($ftr_alt_str ne "") { 
+            $seq_nftr_alt++; 
+            $seq_nftr_alt += $ftr_alt_str =~ tr/,//; # plus 1 for each comma
+          }
+
+          my $s_coords_str   = ""; # sequence coordinate string for feature
+          my $m_coords_str   = ""; # model    coordinate string for feature
+          my $ftr_nsgm_annot = 0;
+          my $ftr_len_by_sgm = 0;
+          my $ftr_first_sgm  = $ftr_info_AHR->[$src_idx]{"5p_sgm_idx"};
+          my $ftr_final_sgm  = $ftr_info_AHR->[$src_idx]{"3p_sgm_idx"};
+          my $ftr_nsgm       = $ftr_final_sgm - $ftr_first_sgm + 1;
+          for(my $sgm_idx = $ftr_first_sgm; $sgm_idx <= $ftr_final_sgm; $sgm_idx++) { 
+            if((defined $sgm_results_HHAHR) && 
+               (defined $sgm_results_HHAHR->{$seq_mdl1}) && 
+               (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
+               (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]) && 
+               (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]{"sstart"})) { 
+              $ftr_nsgm_annot++;
+              my $sgm_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
+              my $sgm_results_HR = $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]; # for convenience
+              my $sgm_sstart = $sgm_results_HR->{"sstart"};
+              my $sgm_sstop  = $sgm_results_HR->{"sstop"};
+              my $sgm_mstart = $sgm_results_HR->{"mstart"};
+              my $sgm_mstop  = $sgm_results_HR->{"mstop"};
+              my $sgm_slen   = abs($sgm_sstart - $sgm_sstop) + 1;
+              my $sgm_mlen   = abs($sgm_mstart - $sgm_mstop) + 1;
+              my $sgm_strand = $sgm_results_HR->{"strand"};
+              my $sgm_trunc  = helper_tabular_sgm_results_trunc_string($sgm_results_HR);
+              my $sgm_pp5    = ($sgm_results_HR->{"startpp"} == -1) ? "-" : $sgm_results_HR->{"startpp"};
+              my $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  == -1) ? "-" : $sgm_results_HR->{"stoppp"};
+              my $sgm_gap5   = ($sgm_results_HR->{"startgap"}) ? "yes" : "no";
+              my $sgm_gap3   = ($sgm_results_HR->{"stopgap"})  ? "yes" : "no";
+              
+              if($s_coords_str ne "") { $s_coords_str .= ","; }
+              if($m_coords_str ne "") { $m_coords_str .= ","; }
+              $s_coords_str .= $sgm_sstart . ".." . $sgm_sstop . ":" . $sgm_strand;
+              $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
+              $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
+              
+              if(($sgm_nprinted == 0) && (scalar(@data_sgm_AA) > 0)) { 
+                push(@data_sgm_AA, []); # empty array -> blank line
+              }
+              push(@data_sgm_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
+                                  $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
+                                  $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
+              $sgm_nprinted++;
+            }
+          }
+          my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
+          if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
+          if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
+
+          if(($ftr_nprinted == 0) && (scalar(@data_ftr_AA) > 0)) { 
+            push(@data_ftr_AA, []); 
+          } # empty array -> blank line
+          push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
+                                  ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, 
+                                  $ftr_p_score, ($ftr_dupidx eq "-") ? "-" : ($ftr_dupidx+1), $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
+                                  $ftr_alt_str]);
+          $ftr_nprinted++;
+
+          # print per-feature alerts, if any
+          $alt_nseqftr = 0;
+          if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+             (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+            foreach my $alt_code (@ftr_alt_code_A) { 
+              my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
+              if(defined $alt_instance) { 
+                if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
+                  push(@data_alt_AA, []); # empty array -> blank line
+                }
+                if(! defined $alt_seqcode_H{$alt_code}) { 
+                  $alt_seq_ct_H{$alt_code}++; 
+                  $alt_seqcode_H{$alt_code} = 1;
+                }
+                if($alt_nseqftr == 0) { 
+                  $alt_nftr++;
+                }
+                my @instance_str_A = ($alt_instance eq "") ? ("") : (split(":DNAORGSEP:", $alt_instance));
+                foreach my $instance_str (@instance_str_A) { 
+                  $alt_nseqftr++;
+                  $alt_ct_H{$alt_code}++;
+                  my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                  push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
+                                      $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                      helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                      $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "") ? "" : " [" . $instance_str . "]")]);
+                  $alt_nprinted++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 1, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
+    if($seq_alt_str ne "") { 
+      $seq_nseq_alt = 1;
+      $seq_nseq_alt += $seq_alt_str =~ tr/,//; # plus 1 for each comma
+    }
+    my $seq_nftr_notannot = $nftr - $seq_nftr_annot;
+    if($seq_alt_str eq "")   { $seq_alt_str  = "-"; }
+    if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
+
+    push(@data_ant_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
+                            $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
+    
+    push(@data_cls_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+                            helper_tabular_replace_spaces($seq_grp1), 
+                            helper_tabular_replace_spaces($seq_subgrp1), 
+                            $seq_score, $seq_scpnt, $seq_scov, $seq_mcov, $seq_bias, $seq_nhits, $seq_strand, $seq_mdl2, 
+                            helper_tabular_replace_spaces($seq_grp2), 
+                            helper_tabular_replace_spaces($seq_subgrp2), 
+                            $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
+  }
+
+  # add data to the alert count table
+  my $alt_idx = 0;
+  my $zero_alerts = 1; # set to '0' below if we have >= 1 alerts
+  my $sum_alt_ct     = 0;
+  my $sum_alt_seq_ct = 0;
+  my $alc_sep_flag = 0;
+  foreach my $alt_code (@alt_code_A) { 
+    if($alt_ct_H{$alt_code} > 0) { 
+      if(! $alt_info_HH{$alt_code}{"causes_failure"}) { 
+        $alc_sep_flag = 1; 
+      }
+      if(($alt_info_HH{$alt_code}{"causes_failure"}) && $alc_sep_flag) { 
+        # print separation line between alerts that cause and do not cause failure
+        push(@data_alc_AA, []); # separator line
+        $alc_sep_flag = 0; 
+      }
+      $alt_idx++;
+      push(@data_alc_AA, [$alt_idx, $alt_code, 
+                          ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
+                          helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
+                          $alt_info_HH{$alt_code}{"pertype"}, 
+                          $alt_ct_H{$alt_code}, $alt_seq_ct_H{$alt_code},
+                          $alt_info_HHR->{$alt_code}{"ldesc"}]);
+      $sum_alt_ct     += $alt_ct_H{$alt_code};
+      $sum_alt_seq_ct += $alt_seq_ct_H{$alt_code};
+      $zero_alerts = 0;
+    }
+  }
+  if(! $zero_alerts) { 
+    push(@data_alc_AA, []); # separator line
+  }
+
+  # add data to the model table
+  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
+  my $mdl_tbl_idx = 0;
+  my $zero_classifications = 1; # set to '0' below if we have >=1 classifications
+  my $sum_mdl_cls_ct     = 0;
+  my $sum_mdl_pass_ct    = 0;
+  my $sum_mdl_fail_ct    = 0;
+  my $sum_mdl_noannot_ct = 0;
+  foreach $mdl_name (@mdl_tbl_order_A) { 
+    if($mdl_cls_ct_HR->{$mdl_name} > 0) { 
+      $mdl_tbl_idx++;
+      $mdl_idx = $mdl_idx_H{$mdl_name};
+      my $mdl_ant_ct = (defined $mdl_ant_ct_HR->{$mdl_name}) ? $mdl_ant_ct_HR->{$mdl_name} : 0;
+      push(@data_mdl_AA, [$mdl_tbl_idx, $mdl_name, 
+                          (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-", 
+                          (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
+                          $mdl_cls_ct_HR->{$mdl_name},
+                          $mdl_pass_ct_H{$mdl_name}, 
+                          $mdl_fail_ct_H{$mdl_name}, 
+                          ($mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct)]);
+      $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
+      $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
+      $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
+      $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct;
+      $zero_classifications = 0;
+    }
+  }
+  # add mdl summary line
+  if(! $zero_classifications) { 
+    push(@data_mdl_AA, []); # separator line
+    push(@data_mdl_AA, ["-", "*all*", "-", "-", 
+                        $sum_mdl_cls_ct, 
+                        $sum_mdl_pass_ct, 
+                        $sum_mdl_fail_ct, 
+                        $sum_mdl_noannot_ct]);
+    push(@data_mdl_AA, []); # separator line
+  }
+
+  # output the tables:
+  ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc_tbl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl_tbl"}, undef, $FH_HR);
+
+  return ($zero_classifications, $zero_alerts);
+}
+    
+#################################################################
+# Subroutine : helper_tabular_ftr_results_strand()
+# Incept:      EPN, Tue Mar  5 09:10:36 2019
+#
+# Purpose:    Return string describing feature strand based on 
+#             $ftr_results_HR->{"n_strand"} && $ftr_results_HR->{"p_strand"}
+#
+# Arguments: 
+#  $ftr_info_AHR:    REF to array of hashes with information on the features, PRE-FILLED
+#  $ftr_results_HR:  REF to hash of feature results for one sequence/feature pair
+#  $ftr_idx:         feature index
+# 
+# Returns:    "+", "-" or "?" (if n_strand && p_strand disagree or neither exists)
+#
+# Dies:       never
+#
+################################################################# 
+sub helper_tabular_ftr_results_strand { 
+  my $sub_name = "helper_tabular_ftr_results_strand()";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_results_HR, $ftr_idx) = (@_);
+
+  if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+    if((! defined $ftr_results_HR->{"n_strand"}) && 
+       (! defined $ftr_results_HR->{"p_strand"})) { 
+      # neither defined
+      return "?";
+    }
+    if((defined $ftr_results_HR->{"n_strand"}) && 
+       (defined $ftr_results_HR->{"p_strand"})) { 
+      if($ftr_results_HR->{"n_strand"} ne $ftr_results_HR->{"p_strand"}) { 
+        # both defined, but they disagree
+        return "?";
+      }
+      # both defined and both agree
+      return $ftr_results_HR->{"n_strand"}; 
+    }
+    if(defined $ftr_results_HR->{"n_strand"}) { 
+      # only n_strand defined
+      return $ftr_results_HR->{"n_strand"}; 
+    }
+    # only p_strand defined
+    return $ftr_results_HR->{"p_strand"}; 
+  } # end of 'if(dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
+  else { 
+    return (defined $ftr_results_HR->{"n_strand"}) ? $ftr_results_HR->{"n_strand"} : "?";
+  }
+}
+
+#################################################################
+# Subroutine : helper_tabular_ftr_results_trunc_string()
+# Incept:      EPN, Tue Mar  5 09:10:36 2019
+#
+# Purpose:    Return string describing truncation mode based on 
+#             $ftr_results_HR->{"n_5trunc"} && $ftr_results_HR->{"n_3trunc"}
+#
+# Arguments: 
+#  $ftr_results_HR:   REF to hash of feature results for one sequence/feature pair
+#
+# Returns:    "5'&3'", "5'", "3'", "no", or "?"
+#
+# Dies:       never
+#
+################################################################# 
+sub helper_tabular_ftr_results_trunc_string { 
+  my $sub_name = "helper_tabular_ftr_results_trunc_string()";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_results_HR) = (@_);
+
+  if((! defined $ftr_results_HR->{"n_5trunc"}) || 
+     (! defined $ftr_results_HR->{"n_3trunc"})) { 
+    return "?";
+  }
+  if(($ftr_results_HR->{"n_5trunc"}) && 
+     ($ftr_results_HR->{"n_3trunc"})) { 
+    return "5'&3'";
+  }
+  if($ftr_results_HR->{"n_5trunc"}) { 
+    return "5'";
+  }
+  if($ftr_results_HR->{"n_3trunc"}) { 
+    return "3'";
+  }
+  return "no";
+}
+
+#################################################################
+# Subroutine : helper_tabular_sgm_results_trunc_string()
+# Incept:      EPN, Tue Mar  5 15:02:34 2019
+#
+# Purpose:    Return string describing truncation mode based on 
+#             $sgm_results_HR->{"5trunc"} && $sgm_results_HR->{"3trunc"}
+#
+# Arguments: 
+#  $sgm_results_HR:   REF to hash of model results for one sequence/model pair
+#
+# Returns:    "5'&3'", "5'", "3'", "no", or "?"
+#
+# Dies:       never
+#
+################################################################# 
+sub helper_tabular_sgm_results_trunc_string { 
+  my $sub_name = "helper_tabular_sgm_results_trunc_string()";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sgm_results_HR) = (@_);
+
+  if((! defined $sgm_results_HR->{"5trunc"}) || 
+     (! defined $sgm_results_HR->{"3trunc"})) { 
+    return "?";
+  }
+  if(($sgm_results_HR->{"5trunc"}) && 
+     ($sgm_results_HR->{"3trunc"})) { 
+    return "5'&3'";
+  }
+  if($sgm_results_HR->{"5trunc"}) { 
+    return "5'";
+  }
+  if($sgm_results_HR->{"3trunc"}) { 
+    return "3'";
+  }
+  return "no";
+}
+
+#################################################################
+# Subroutine:  helper_tabular_replace_spaces
+# Incept:      EPN, Fri Mar 29 13:57:35 2019
+#
+# Purpose:    Given a string, replace any spaces in it with "_".
+#
+# Arguments: 
+#  $str:       string to remove spaces from
+#
+# Returns:    $str with spaces converted to "_"
+#
+################################################################# 
+sub helper_tabular_replace_spaces { 
+  my $sub_name = "helper_tabular_replace_spaces";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($str) = @_;
+
+  $str =~ s/\s/\_/g;  # replace each space with "_"
+
+  return $str;
+}
+
+#################################################################
+#
+# Subroutines for creating feature table output:
+# output_feature_table
+# output_parent_child_relationships 
+# helper_ftable_coords_from_nt_prediction 
+# helper_ftable_coords_prot_only_prediction 
+# helper_ftable_start_stop_arrays_to_coords 
+# helper_ftable_coords_to_out_str 
+# helper_ftable_add_qualifier_from_ftr_info
+# helper_ftable_add_qualifier_from_ftr_results
+# helper_ftable_class_model_for_sequence
+# helper_ftable_process_feature_alerts
+# helper_ftable_process_sequence_alerts
+#
+#################################################################
+
+#################################################################
+# Subroutine: output_feature_table()
 # Incept:     EPN, Tue Dec  5 13:49:17 2017 [rewritten Tue Oct 30 05:59:04 2018]
 # Purpose:    Output the feature table for all sequences.
 #
 # Arguments:
-#  $err_ftr_instances_AHHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
-#  $mdl_info_HAR:            REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:            REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:            REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
-#  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
-#  $ftr_results_AAHR:        REF to feature results AAH, PRE-FILLED
+#  $mdl_cls_ct_HR:           REF to hash with counts of seqs classified per model
+#  $seq_name_AR:             REF to hash of arrays with information on the sequences, PRE-FILLED
+#  $ftr_info_HAHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_HAHR:           REF to hash of arrays with information on the segments, PRE-FILLED
+#  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
+#  $cls_results_HHHR:        REF to 3D hash of classification results, PRE-FILLED
+#  $ftr_results_HAHR:        REF to feature results AAH, PRE-FILLED
+#  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
+#  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
+#  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7261,32 +5016,33 @@ sub output_tbl_page_of_sequences {
 # Dies:     never
 #
 #################################################################
-sub output_feature_tbl_all_sequences { 
-  my $sub_name = "output_feature_tbl_all_sequences";
-  my $nargs_exp = 11;
+sub output_feature_table { 
+  my $sub_name = "output_feature_table";
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, 
-      $err_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR,
-      $class_errors_per_seq_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
+      $cls_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
+      $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $pass_ftbl_FH    = $FH_HR->{"pass_ftbl"};   # feature table for PASSing sequences
-  my $fail_ftbl_FH    = $FH_HR->{"fail_ftbl"};   # feature table for FAILing sequences
-  my $long_ftbl_FH    = $FH_HR->{"long_ftbl"};   # long feature table for all sequences
-  my $pass_list_FH    = $FH_HR->{"pass_list"};   # list of PASSing seqs
-  my $fail_list_FH    = $FH_HR->{"fail_list"};    # list of FAILing seqs
-  my $fail_co_list_FH = $FH_HR->{"fail_co_list"}; # list of FAILing seqs, that would have passed if there were no class errors
-  my $errors_FH       = $FH_HR->{"errors_list"}; # list of errors 
-  print $errors_FH "#sequence\terror\tfeature\terror-description\n";
+  my $pass_ftbl_FH = $FH_HR->{"pass_ftbl"};    # feature table for PASSing sequences
+  my $fail_ftbl_FH = $FH_HR->{"fail_ftbl"};    # feature table for FAILing sequences
+  my $pass_list_FH = $FH_HR->{"pass_list"};    # list of PASSing seqs
+  my $fail_list_FH = $FH_HR->{"fail_list"};    # list of FAILing seqs
+  my $alerts_FH    = $FH_HR->{"alerts_list"};  # list of alerts
+  print $alerts_FH "#sequence\terror\tfeature\terror-description\n";
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
 
-  # validate input and get counts of things
-  my $nmdl = validateModelInfoHashIsComplete    ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); # nerr: number of different error codes
+  my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
+  my $nalt = scalar(keys %{$alt_info_HHR});
+
+  # determine order of alert codes to print
+  my $alt_code;
+  my @seq_alt_code_A = (); # per-sequence alerts in output order
+  my @ftr_alt_code_A = (); # per-feature  alerts in output order
+  alert_order_arrays($alt_info_HHR, undef, \@seq_alt_code_A, \@ftr_alt_code_A);
 
   # define the hard-coded type priority hash, which defines the order of types in the feature table output, lower is higher priority
   my %type_priority_H = ();
@@ -7298,244 +5054,226 @@ sub output_feature_tbl_all_sequences {
   # reference for the way we sort the information we collect for the feature table
   #https://stackoverflow.com/questions/10395383/sorting-an-array-of-hash-by-multiple-keys-perl      
 
-  my $qval_sep = ";;"; # value separating multiple qualifier values in a single element of $ftr_info_HAR->{$key}[$ftr_idx]
-  # NOTE: $qval_sep == ';;' is hard-coded value for separating multiple qualifier values for the same 
-  # qualifier (see dnaorg.pm::edirectFtableOrMatPept2SingleFeatureTableInfo
+  my $qval_sep = ":GPSEP:"; # value separating multiple qualifier values in a single element of $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{}
+  # NOTE: $qval_sep == ':GPSEP:' is hard-coded value for separating multiple qualifier values for the same 
+  # qualifier (see dnaorg.pm::dng_GenBankStoreQualifierValue)
+
+  my %ftr_min_len_HA = (); # hash of arrays with minimum valid length per model/feature, 1D keys are model names, 2D elements are feature indices
+  my $mdl_name = undef;
+  my $ftr_idx = undef;
+  foreach $mdl_name (sort keys (%{$mdl_cls_ct_HR})) { 
+    my $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
+    @{$ftr_min_len_HA{$mdl_name}} = ();
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      $ftr_min_len_HA{$mdl_name}[$ftr_idx] = (dng_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_HAHR->{$mdl_name}, $ftr_idx)) ?
+          opt_Get("--xminntlen", $opt_HHR) : 1;
+    }
+  }
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $seq_len   = $seq_info_HAR->{"seq_len"}[$seq_idx];
-    my $accn_name = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $accn_len  = $seq_info_HAR->{"accn_len"}[$seq_idx];
+    my $seq_name  = $seq_name_AR->[$seq_idx];
     
-    # class for this sequence, possible values:
-
     my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
     my $ftidx         = 0;  # index in @ftout_AH
     my $min_coord     = -1; # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
-    my %fidx2idx_H    = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
+    my %ftr_idx2ftout_idx_H = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
     my $i;
 
-    my @seq_error_A = (); # all errors for this sequence
+    my @seq_alert_A = (); # all alerts for this sequence
     my @seq_note_A  = (); # all notes for this sequence
 
     my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
 
-    # first check for per-sequence errors
-    my $seq_err_str = helper_ftable_get_seq_error_code_strings($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR);
-    processSequenceErrorsForFTable($seq_err_str, $seq_name, $err_info_HAR, $err_seq_instances_HHR, \@seq_error_A, $FH_HR);
+    # first check for per-sequence alerts
+    my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
+    helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
 
-    # loop over features
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $feature_type = $ftr_info_HAR->{"type_ftable"}[$ftr_idx];
-      my $orig_feature_type = $feature_type; 
-
-      # determine if this feature can be ignored or cannot be ignored (should be annotated), 
-      # it can be ignored if:
-      # - we do not have a defined "p_start" for any model associated with this feature
-      #   (this is equivalent to having a 'nop' error for all models associated with this feature)
-      # - we do not have a 'xnn' error for this feature
-      my $is_duplicate  = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? 1 : 0;
-      my $dup_src_ftidx = undef; # for duplicate features, set to index in $ftout_AH that corresponds to source for this feature
-
-      my $defined_pstart = 0;
-      my $xnn_flag       = 0;
-      my $do_ignore      = 1; 
-      if($is_duplicate) { 
-        if($ftr_info_HAR->{"source_idx"}[$ftr_idx] == -1) { 
-          DNAORG_FAIL("ERROR in $sub_name, feature index $ftr_idx has annot_type of duplicate, but has source_idx of -1", 1, $FH_HR);
-        }
-        my $src_idx = $ftr_info_HAR->{"source_idx"}[$ftr_idx];
-        if(exists $fidx2idx_H{$src_idx}) { 
-          $dup_src_ftidx = $fidx2idx_H{$src_idx}; 
-          $do_ignore = 0;
-        }
-      }
-      else { # not a duplicate feature
-        $defined_pstart = check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR);
-        $xnn_flag       = (exists $err_ftr_instances_AHHR->[$ftr_idx]{"xnn"}{$seq_name}) ? 1 : 0;
-        $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
-      }
-
-      if(! $do_ignore) { 
-        # per-feature values that are modified if we have an exception that covers all errors for this feature
-        my $do_misc_feature = 0;
-        my $do_start_carrot = 0;
-        my $do_stop_carrot  = 0;
-        my $do_pred_stop    = 0;
-
-        my $ftr_coords_str = ""; # string of coordinates for this feature
-        my $ftr_out_str    = ""; # output string for this feature
-        my $long_out_str   = ""; # long feature table output string for this feature
-        my @ftr_long_output_A = (); # array of strings with complete error messages, for long feature table
-        my @ftr_note_A    = ();  # notes for this feature/sequence combination
-        my $ftr_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
-
-        if(! $is_duplicate) { # only look up errors if we're not a duplicate feature
-          # fill an array and strings with all errors for this sequence/feature combo
-          my $ftr_err_str = helper_ftable_get_ftr_error_code_strings($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, \@ftr_long_output_A, $FH_HR);
-          $do_start_carrot = ($ftr_err_str =~ m/b5e/) ? 1 : 0;
-          $do_stop_carrot  = ($ftr_err_str =~ m/b3e/) ? 1 : 0;
-          $do_pred_stop = processFeatureErrorsForFTable($ftr_err_str, $seq_name, $ftr_idx, $ftr_info_HAR, $err_info_HAR, $err_ftr_instances_AHHR, 
-                                                        \@ftr_note_A, \@seq_error_A, $FH_HR);
-          if(scalar(@ftr_note_A) > 0) { 
-            $do_misc_feature = 1;
-            $feature_type = "misc_feature";
-            push(@seq_note_A, @ftr_note_A);
+    $mdl_name = helper_ftable_class_model_for_sequence($cls_results_HHHR, $seq_name);
+    if(defined $mdl_name) { 
+      my $ftr_info_AHR     = \@{$ftr_info_HAHR->{$mdl_name}};     # for convenience
+      my $ftr_results_HAHR = \%{$ftr_results_HHAHR->{$mdl_name}}; # for convenience
+      my $sgm_results_HAHR = \%{$sgm_results_HHAHR->{$mdl_name}}; # for convenience
+      my $nftr = scalar(@{$ftr_info_AHR});
+      
+      # Determine what features we will annotate, if any,
+      # and order them so that any duplicates occur after their 
+      # 'source' features from which their annotation will be copied.
+      # That way when we get to a duplicate, we already have the annotation
+      # of its source feature.
+      # Non-duplicate features are annotated if they have a nucleotide-based 
+      # or protein-based prediction and (are of a minimum length if they're CDS or mat_peptide)
+      # Duplicate features are annotated if their source features are annotated.
+      my @ftr_idx_to_annotate_A = ();
+      my @ftr_dup_idx_to_annotate_A = ();
+      my $is_duplicate; # is the current feature a duplicate?
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"}; # will be $ftr_idx unless this sequence is a duplicate
+        $is_duplicate = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx);
+        if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$src_idx]}, $ftr_min_len_HA{$mdl_name}[$src_idx])) { 
+          if($is_duplicate) { 
+            push(@ftr_dup_idx_to_annotate_A, $ftr_idx);
           }
           else { 
-            $do_misc_feature = 0; 
+            push(@ftr_idx_to_annotate_A, $ftr_idx);
           }
-        } # end of 'if(! $is_duplicate)'
+        }
+      }
+      # add the duplicates to the end of the non-duplicates
+      push(@ftr_idx_to_annotate_A, @ftr_dup_idx_to_annotate_A);
 
-        # determine coordinates for the feature differently depending on:
-        # if we are: 
-        # - a duplicate ($is_duplicate)
-        # - we have at least one prediction ($defined_pstart) 
-        # - not a duplicate and don't have at least one prediction (in this case, $xnn_flag will be up, or else we would have ignored this feature)
+      foreach $ftr_idx (@ftr_idx_to_annotate_A) { 
+        # initialize
+        my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
+        my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
+        my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
+        my $ftr_coords_str    = ""; # string of coordinates for this feature
+        my $ftr_out_str       = ""; # output string for this feature
+
+        my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
+        my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
+        my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
+        my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
+        $is_duplicate         = dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx); # is this feature a duplicate?
+          
+        # determine coordinates for the feature differently depending on
+        # if we are a duplicate or not: 
         if($is_duplicate) { 
-          $ftr_coords_str  = $ftout_AH[$dup_src_ftidx]{"coords"};
-          $min_coord       = $ftout_AH[$dup_src_ftidx]{"mincoord"};
-          $do_start_carrot = $ftout_AH[$dup_src_ftidx]{"carrot"};
-        }
-        elsif(! $defined_pstart) { 
-          # $xnn_flag must be TRUE
-          if(! $xnn_flag) { # sanity check
-            DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name feature $ftr_idx $ftr_tiny is not being ignored but defined_pstart and xnn_flag are both FALSE - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
+          # copy from previously determined source feature
+          if(! defined $ftr_idx2ftout_idx_H{$ftr_info_AHR->[$ftr_idx]{"source_idx"}}) { 
+            ofile_FAIL("ERROR, trying to output feature table info for a duplicate feature but source feature info is undefined", 1, $ofile_info_HHR->{"FH"});;
           }
-          $ftr_coords_str = helper_ftable_get_coords_xnn_flag($seq_idx, $ftr_idx, $do_start_carrot, $do_stop_carrot, \$min_coord, $seq_info_HAR, $ftr_results_AAHR, $FH_HR);
+          my $dup_src_ftidx = $ftr_idx2ftout_idx_H{$ftr_info_AHR->[$ftr_idx]{"source_idx"}};
+          $is_5trunc      = $ftout_AH[$dup_src_ftidx]{"5trunc"};
+          $is_3trunc      = $ftout_AH[$dup_src_ftidx]{"3trunc"};
+          $ftr_coords_str = $ftout_AH[$dup_src_ftidx]{"coords"};
+          $min_coord      = $ftout_AH[$dup_src_ftidx]{"mincoord"};
         }
-        else { # $is_duplicate is '0' and $defined_pstart is '1'
-          # this function will create coordinates differently depending on feature type, do_pred_stop, etc.
-          $ftr_coords_str = helper_ftable_get_coords_standard($seq_idx, $ftr_idx, $do_start_carrot, $do_stop_carrot, $do_pred_stop, \$min_coord, 
-                                                              $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $FH_HR);
-        }
+        else { # ! duplicate
+          $is_5trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}; 
+          $is_3trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}; 
+          if(! $defined_n_start) { 
+            # $defined_p_start must be TRUE
+            $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
+                                                                            $ftr_results_HAHR, $FH_HR);
+          }
+          else { # $is_duplicate is '0' and $defined_n_start is '1'
+            $ftr_coords_str = helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
+                                                                          $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
+          }
+
+          # only look up alerts if we're not a duplicate feature
+          # fill an array and strings with all alerts for this sequence/feature combo
+          my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
+          if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
+            $is_misc_feature = 1;
+            $feature_type = "misc_feature";
+          }
+        } # end of 'else' entered if ! $is_duplicate)'
+          
         # convert coordinate string to output string
         $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
         
         # add qualifiers: product, gene, exception and codon_start (if !duplicate)
-        if(! $do_misc_feature) { 
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_product",   $qval_sep, $ftr_info_HAR, $FH_HR);
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_gene",      $qval_sep, $ftr_info_HAR, $FH_HR);
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "out_exception", $qval_sep, $ftr_info_HAR, $FH_HR);
-          # check for existence of "x_frame" value for all CDS, but only actually output them if we have a start_carrot
-          if((! $is_duplicate) && 
-             (($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp"))) { 
-            my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_idx, $ftr_idx, "x_frame", "codon_start", $ftr_results_AAHR, $FH_HR);
+        if(! $is_misc_feature) { 
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product",   $qval_sep, $ftr_info_AHR, $FH_HR);
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene",      $qval_sep, $ftr_info_AHR, $FH_HR);
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
+          # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
+          if((! $is_duplicate) && (dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
+            my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
             if($tmp_str eq "") { 
-              # we didn't have an x_frame value for this CDS, so raise a flag
+              # we didn't have an p_frame value for this CDS, so raise a flag
               # we check later that if the sequence passes that this flag 
               # is *NOT* raised, if it is, something went wrong and we die
               $missing_codon_start_flag = 1; 
+              printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
             } 
-            if($do_start_carrot) { # only add the codon_start if we have a start_carrot
+            if($is_5trunc) { # only add the codon_start if we are 5' truncated (and if we're here we're not a duplicate)
               $ftr_out_str .= $tmp_str;
             }
           }
         }
-        # add notes and full error messages (if !duplicate)
-        if(! $is_duplicate) { 
-          foreach my $note_value (@ftr_note_A) { 
-            $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $note_value);
-          }
-          # add the full error messages as 'notes' to the long output string, which will be output to the long feature table
-          foreach my $long_line (@ftr_long_output_A) { 
-            $long_out_str .= sprintf("\t\t\t%s\t%s\n", "note", $long_line);
-          }
+        else { # we are a misc_feature, add the 'similar to X' note
+          $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", "similar to " . $ftr_info_AHR->[$ftr_idx]{"outname"});
         }
-
+        
         # push to the output hash
         %{$ftout_AH[$ftidx]} = ();
-        $ftout_AH[$ftidx]{"carrot"}          = $do_start_carrot;
+        $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc;
+        $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc;
         $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
         $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
         $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
         $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
-        $ftout_AH[$ftidx]{"long_output"}     = $ftr_out_str . $long_out_str;
-        $fidx2idx_H{$ftr_idx} = $ftidx;
+        $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
         $ftidx++;
-      } # end of 'if(! $do_ignore)'
-    } # end of 'for(my $ftr_idx...'
+      } # end of 'for(my $ftr_idx...'
+    } # end of 'if(defined $mdl_name)'
 
     #######################################
     # OUTPUT section 
     #######################################
     # done with this sequence, determine what type of output we will have 
-    my $has_class_errors = 0;
-    if((defined $class_errors_per_seq_HR) &&
-       (exists $class_errors_per_seq_HR->{$seq_name})) { 
-      $has_class_errors = 1; 
-    }
-
-    my $cur_noutftr  = scalar(@ftout_AH);
-    my $cur_nerror   = scalar(@seq_error_A);
-    my $cur_nnote    = scalar(@seq_note_A);
+    my $cur_noutftr = scalar(@ftout_AH);
+    my $cur_nalert  = scalar(@seq_alert_A);
 
     # sort output
     if($cur_noutftr > 0) { 
       @ftout_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
-                             $b->{"carrot"}        <=> $a->{"carrot"}   or
+                             $b->{"5trunc"}        <=> $a->{"5trunc"}   or
+                             $a->{"3trunc"}        <=> $b->{"3trunc"}   or
                              $a->{"type_priority"} <=> $b->{"type_priority"} 
       } @ftout_AH;
     }              
 
     # sequences only pass if:
     # - at least one feature is annotated ($cur_noutftr > 0)
-    # - zero notes and errors
-    my $do_pass = (($cur_noutftr > 0) && ($cur_nnote == 0) && ($cur_nerror == 0) && ($has_class_errors == 0)) ? 1 : 0;
+    # - zero notes and alerts
+    my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
-    # sanity check, if we have no notes, errors and didn't skip anything, we should also have set codon_start for all features
-    if($cur_noutftr > 0 && $cur_nnote == 0 && $cur_nerror == 0 && ($missing_codon_start_flag)) { 
-      DNAORG_FAIL("ERROR in $sub_name, sequence $accn_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
+    # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features
+    if($cur_noutftr > 0 && $cur_nalert == 0 && ($missing_codon_start_flag)) { 
+      ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
     }
+    # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
+    # based on alerts
+    # TEMPORARILY SKIPPED, example sequence where this test fails: KF201650.1
+    #if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
+    #ofile_FAIL("ERROR in $sub_name, sequence $seq_name, feature table do_pass: $do_pass disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", "dnaorg", 1, $ofile_info_HHR->{"FH"});
+    #}
               
     if($do_pass) { 
-      # print to both the passing feature table file and the long feature table file
+      # print to the passing feature table file
       $ret_npass++;
-      print $pass_list_FH $accn_name . "\n";
-      print $pass_ftbl_FH ">Feature $accn_name\n";
-      print $long_ftbl_FH ">Feature $accn_name\n";
+      print $pass_list_FH $seq_name . "\n";
+      print $pass_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
         # print 
         print $pass_ftbl_FH $ftout_AH[$i]{"output"};
-        print $long_ftbl_FH $ftout_AH[$i]{"long_output"};
       }
     }
     else { # $do_pass == 0
-      print $fail_list_FH $accn_name . "\n";
-      print $fail_ftbl_FH ">Feature $accn_name\n";
-      print $long_ftbl_FH ">Feature $accn_name\n";
+      print $fail_list_FH $seq_name . "\n";
+      print $fail_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
         # print 
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
-        print $long_ftbl_FH $ftout_AH[$i]{"long_output"};
       }
-      if(($cur_nerror > 0) || ($has_class_errors)) { 
+      if($cur_nalert > 0) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
-        print $long_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
-        for(my $e = 0; $e < scalar(@seq_error_A); $e++) { 
-          my $error_line = $seq_error_A[$e];
+        for(my $e = 0; $e < scalar(@seq_alert_A); $e++) { 
+          my $error_line = $seq_alert_A[$e];
           print $fail_ftbl_FH "ERROR: " . $error_line . "\n"; 
-          print $long_ftbl_FH "ERROR: " . $error_line . "\n"; 
           if($error_line =~ /([^\:]+)\:\s\(([^\)]+)\)\s*(.+)$/) {
-            print $errors_FH ($accn_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
+            print $alerts_FH ($seq_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
           }
           else {
-            DNAORG_FAIL("ERROR in $sub_name, unable to split error_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
+            ofile_FAIL("ERROR in $sub_name, unable to split alert_line for output: $error_line", "dnaorg", 1, $ofile_info_HHR->{"FH"});
           }
         }
-        if($has_class_errors) { 
-          print $errors_FH ($class_errors_per_seq_HR->{$seq_name});
-          if(($cur_nerror == 0) && (defined $fail_co_list_FH)) { 
-            print $fail_co_list_FH $accn_name . "\n";
-          }
-          my $ftable_error_str = error_list_output_to_ftable_errors($seq_name, $class_errors_per_seq_HR->{$seq_name}, $ofile_info_HHR->{"FH"});
-          print $fail_ftbl_FH $ftable_error_str;
-          print $long_ftbl_FH $ftable_error_str;
-        }
-      } # end of 'if($cur_nerror > 0) || $has_class_errors'
+      } # end of 'if($cur_nalert > 0)'
     }
   } # end of loop over sequences
 
@@ -7543,2812 +5281,7 @@ sub output_feature_tbl_all_sequences {
 }
 
 #################################################################
-# Subroutine:  output_errors_header
-# Incept:      EPN, Thu Mar 10 18:57:48 2016
-#
-# Purpose:    Output the header lines for the all errors and 
-#             per-accession error files.
-#
-# Arguments: 
-#  $ftr_info_HAR:   REF to hash of arrays with information on the features
-#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-################################################################# 
-sub output_errors_header { 
-  my $sub_name = "output_errors_header";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_HAR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-
-  my $allerr_FH = $ofile_info_HHR->{"FH"}{"allerr"};
-  my $pererr_FH = $ofile_info_HHR->{"FH"}{"pererr"};
-
-  # all errors file header
-  printf $allerr_FH ("# Each error encountered is printed below, one error per line.\n");
-  printf $allerr_FH ("# Each line has four columns with the following labels:\n");
-  printf $allerr_FH ("#   \"accn\"         : sequence accession\n");
-  printf $allerr_FH ("#   \"idx\"          : feature index, full feature names are listed below for each index\n");
-  printf $allerr_FH ("#   \"code\"         : 3 digit error code\n");
-  printf $allerr_FH ("#   \"error-message\": error message, possibly with additional information at end enclosed in \"[]\"\n");
-  printf $allerr_FH ("#\n");
-  printf $allerr_FH ("# List of features:\n");
-
-  # per accession errors file header
-  printf $pererr_FH ("# Each accession for which at least one error was found is printed below.\n");
-  printf $pererr_FH ("# One line per accession. Each line is formatted as follows:\n");
-  printf $pererr_FH ("#   <accession> <idxA>:<errorcodeA1>(,<errorcodeAM>) <idxN>:<errorcodeN1>(,<errorcodeNM>)\n");
-  printf $pererr_FH ("# For indices (<idx>) A to N, each with M error codes.\n");
-  printf $pererr_FH ("# Each index refers to a 'feature' in the reference accession as defined below.\n");
-  printf $pererr_FH ("# If no index exists, then the error pertains to the entire sequence.\n");
-
-  # print feature list
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $str = sprintf("# Feature \#%d: %s %s\n", $ftr_idx+1, $ftr_info_HAR->{"out_short"}[$ftr_idx], $ftr_info_HAR->{"out_product"}[$ftr_idx]);
-    print $allerr_FH $str;
-    print $pererr_FH $str;
-  }
-
-  # a few more all error lines
-  printf $allerr_FH ("# \"N/A\" in feature index and desc columns (idx and desc) indicates error pertains to the entire sequence\n");
-  printf $allerr_FH ("#       as opposed to a specific feature.\n");
-  printf $allerr_FH ("#\n");
-
-  # output multifeature relationships (e.g. CDS made up of mature peptides)
-  output_multifeature_relationships($pererr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
-  output_multifeature_relationships($allerr_FH, $ftr_info_HAR, $ofile_info_HH{"FH"});
-
-  printf $allerr_FH ("%-10s  %3s  %-9s  %4s  error-message\n", "#accn", "idx", "desc", "code");
-  printf $pererr_FH ("#\n");
-
-  return;
-}
-
-#################################################################
-# Subroutine: output_errors_all_sequences()
-# Incept:     EPN, Tue Mar 15 14:33:52 2016
-#
-# Purpose:   Output the errors for all sequences.
-#
-# Arguments:
-#  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#  $err_seq_instances_HHR:  REF to 2D hash with per-sequence errors, PRE-FILLED
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED, we add "nerrors" values here
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:         REF to the 2D hash of output file information
-#             
-# Returns:  void
-# 
-# Dies:     never
-#
-#################################################################
-sub output_errors_all_sequences { 
-  my $sub_name = "output_errors_all_sequences";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
-  my $all_FH = $FH_HR->{"allerr"}; # for convenience
-  my $per_FH = $FH_HR->{"pererr"}; # for convenience
-
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); 
-
-  my ($seq_idx, $ftr_idx, $err_idx); # counters
-  for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_nseqerr = 0; # number of per-sequence errors for this sequence
-    my $seq_nftrerr = 0; # number of per-feature errors for this sequence
-    my $seq_name    = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $accn_name   = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    my $per_line    = $accn_name . " "; # the line for this sequence to print to $per_FH
-    #######################
-    # per-sequence errors #
-    #######################
-    for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-      if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
-        my $err_code = $err_info_HAR->{"code"}[$err_idx];
-        if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-          # an error exists, output it
-          printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, "N/A", "N/A", $err_code, $err_info_HAR->{"desc"}[$err_idx], 
-                          " [" . $err_seq_instances_HHR->{$err_code}{$seq_name} . "]"); 
-          $seq_nseqerr++;
-          $per_line .= " " . $err_code;
-        }
-      }  
-    }
-    ######################
-    # per-feature errors #
-    ######################
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $out_tiny = $ftr_info_HAR->{"out_tiny"}[$ftr_idx];
-      my $ftr_seq_nftrerr = 0; # number of errors we've seen for this sequence and feature
-      for($err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-        if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
-          my $err_code = $err_info_HAR->{"code"}[$err_idx];
-          if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-            # an error exists, output it
-            printf $all_FH ("%-10s  %3s  %-9s  %4s  %s%s\n", $accn_name, ($ftr_idx+1), $out_tiny, $err_code, $err_info_HAR->{"desc"}[$err_idx], 
-                            ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]"); 
-            if($ftr_seq_nftrerr == 0) { 
-              $per_line .= (" " . ($ftr_idx+1) . ":" . $err_code);
-            }
-            else { 
-              $per_line .= "," . $err_code;
-            }
-            if($err_code eq "olp") { # special case, add the extra string
-              $per_line .= ":" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name};
-            }
-            $ftr_seq_nftrerr++;
-            $seq_nftrerr++;
-          }
-        }
-      }
-    }
-    if($seq_nseqerr + $seq_nftrerr > 0) { 
-      print $per_FH $per_line . "\n";
-    }
-    $seq_info_HAR->{"nerrors"}[$seq_idx] = $seq_nseqerr + $seq_nftrerr;
-  } # end of 'for($seq_idx = 0'...
-  return;
-}
-
-#################################################################
-# Subroutine: output_errors_summary()
-# Incept:     EPN, Thu Mar 17 12:55:55 2016
-#
-# Purpose:   Summarize the errors. Create this in a new file
-#            and also (optionally) to stdout, if $do_stdout.
-#
-# Arguments:
-#  $FH:                     file handle to print to
-#  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#  $err_seq_instances_HHR:  REF to 2D hash with per-sequence errors, PRE-FILLED
-#  $ftr_info_HAR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:           REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $do_stdout:              '1' to output to stdout as well as $FH file handle
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:         REF to the 2D hash of output file information
-#             
-# Returns:  void
-# 
-# Dies:     never
-#
-#################################################################
-sub output_errors_summary { 
-  my $sub_name = "output_errors_summary()";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($FH, $err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, $err_info_HAR, $do_stdout, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
-  my $nftr = validateFeatureInfoHashIsComplete ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-  my $nerr = getConsistentSizeOfInfoHashOfArrays($err_info_HAR, $FH_HR); 
-
-  # output header, with explanations
-  outputString($FH, $do_stdout, sprintf("# Table below includes counts of error codes\n"));
-  outputString($FH, $do_stdout, sprintf("#\n"));
-  outputString($FH, $do_stdout, sprintf("# Explanation of columns:\n"));
-  outputString($FH, $do_stdout, sprintf("# \"code\"       : the error code\n"));
-  outputString($FH, $do_stdout, sprintf("# \"#tot\"       : total number of occurences of code , possibly > 1 for some accessions\n"));
-  outputString($FH, $do_stdout, sprintf("# \"#accn\"      : number of accessions with at least 1 occurence of code\n"));
-  outputString($FH, $do_stdout, sprintf("# \"fraction...\": fraction of all $nseq accessions with at least 1 occurence of code\n"));
-  outputString($FH, $do_stdout, sprintf("#\n"));
-
-  outputString($FH, $do_stdout, sprintf("# Explanation of final two rows beginning with \"total\" and \"any\":\n"));
-  outputString($FH, $do_stdout, sprintf("#   \"total\":\"#tot\"   column is total number of error codes reported\n"));
-  outputString($FH, $do_stdout, sprintf("#   \"any\":\"#tot\"     column is number of accessions with >= 1 error code\n"));
-  outputString($FH, $do_stdout, sprintf("#   \"any\":\"fraction\" column is fraction of accessions with >= 1 error code\n"));
-  outputString($FH, $do_stdout, sprintf("#code   #tot  #accn  fraction-of-all-$nseq-accn\n"));
-  outputString($FH, $do_stdout, sprintf("#----  -----  -----  ------\n"));
-
-  # for each error code, gather counts
-  my $ntot_all  = 0; # total number of errors
-  my $naccn_all = 0; # number of accessions with >= 1 error 
-  my %seq_counted_all_err_H = (); # for all errors, we add each sequence to this hash if it has >= 1 error
-  
-  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    my $ntot_err  = 0;
-    my $naccn_err = 0;
-    my $err_code = $err_info_HAR->{"code"}[$err_idx];
-    my %seq_counted_this_err_H = (); # for per-feature errors, we add each sequence to this hash 
-                                     # as we see it, so we can more efficiently count the errors
-
-    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
-      foreach my $seq_name (keys %{$err_seq_instances_HHR->{$err_code}}) { 
-        $naccn_err++;
-        if(! exists $seq_counted_all_err_H{$seq_name}) { 
-          $naccn_all++;
-          $seq_counted_all_err_H{$seq_name} = 1;
-        }
-      }
-      $ntot_err  = $naccn_err; # only 1 error per sequence for these guys
-      $ntot_all += $naccn_err; # only 1 error per sequence for these guys
-    }
-    elsif($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
-      for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        foreach my $seq_name (keys %{$err_ftr_instances_AHHR->[$ftr_idx]{$err_code}}) { 
-          $ntot_err++;
-          $ntot_all++;
-          if(! exists $seq_counted_this_err_H{$seq_name}) { 
-            $naccn_err++;
-            $seq_counted_this_err_H{$seq_name} = 1;
-          }
-          if(! exists $seq_counted_all_err_H{$seq_name}) { 
-            $naccn_all++;
-            $seq_counted_all_err_H{$seq_name} = 1;
-          }
-        }
-      }
-    }
-
-    # output stats for this error 
-    outputString($FH, $do_stdout, sprintf("%5s  %5d  %5d  %6.4f\n", $err_code, $ntot_err, $naccn_err, ($naccn_err / $nseq)));
-  }
-
-  # the 'total' and 'any' lines
-  outputString($FH, $do_stdout, sprintf("#----  -----  -----  ------\n"));
-  outputString($FH, $do_stdout, sprintf("%5s  %5d  %5s  %6s\n",  "total", $ntot_all,  "-", "-"));
-  outputString($FH, $do_stdout, sprintf("%5s  %5d  %5s  %6.4f\n", "any",  $naccn_all, "-", ($naccn_all / $nseq)));
-
-  return;
-}
-
-#################################################################
-# Subroutine:  output_multifeature_relationships
-# Incept:      EPN, Thu Mar 10 19:15:38 2016
-#
-# Purpose:    Output the multi-feature relationships, e.g. CDS comprised of
-#             multiple features.
-#
-# Arguments: 
-#  $FH:             file handle to print to
-#  $ftr_info_HAR:   REF to hash of arrays with information on the features
-#  $FH_HR:          REF to hash of file handles
-#
-# Returns:    void
-#
-################################################################# 
-sub output_multifeature_relationships { 
-  my $sub_name = "output_multifeature_relationships";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($FH, $ftr_info_HAR, $FH_HR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-
-  my $nprinted = 0;
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { # we only do this for features annotated by models
-      if($nprinted == 0) { 
-        print $FH ("#\n");
-        print $FH ("# CDS:MAT_PEPTIDE relationships:\n");
-        print $FH ("#\n");
-      }
-      
-      if($ftr_info_HAR->{"type"}[$ftr_idx] ne "cds-mp") { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, unexpected type %s for multifeature, feature #%d %s, expected cds-mp", $ftr_info_HAR->{"type"}[$ftr_idx], $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]), 1, $FH_HR);
-      }
-      
-      # get the array of primary children feature indices for this feature
-      my @children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@children_idx_A, $FH_HR);
-      printf $FH ("# %s is comprised of the following primary features in order:\n#   ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
-      foreach my $child_ftr_idx (@children_idx_A) { 
-        printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-      }
-      print $FH "\n#\n";
-      
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@children_idx_A, $FH_HR);
-      printf $FH ("# %s encodes all of the following features in order:\n#   ", $ftr_info_HAR->{"out_tiny"}[$ftr_idx]);
-      foreach my $child_ftr_idx (@children_idx_A) { 
-        printf $FH "%s ", $ftr_info_HAR->{"out_tiny"}[$child_ftr_idx];
-      }
-      print $FH "\n#\n";
-      $nprinted++;
-    }
-  }
-  outputDividingLine(undef, $FH); # undef makes outputDividingLine() use its default length for the dividing line
-
-  return;
-}
-
-#################################################################
-# Subroutine: output_gap_info()
-# Incept:     EPN, Thu Mar 10 19:15:38 2016
-#
-# Purpose:    Output the multi-feature relationships, e.g. CDS comprised of
-#             multiple features.
-#
-# Arguments: 
-# $perseq_FH:        output file handle to print per-sequence gap info to, undef to not print perseq info
-# $pergap_FH:        output file handle to print per-gap info to
-# $do_perseq_tbl:    '1' to output per sequence gaps as a table, '0' to print a list
-# $do_gap_all:       '1' to output per gap info for all gaps
-# $do_gap_not3:      '1' to output per gap info for gaps that are not a multiple of 3, not for all gaps
-# $do_gap_special:   '1' to output per gap info for special gaps that are possibly causative of a frameshift
-#                    Only 1 of $pergap_all, $pergap_not3, and $pergap_special can be '1'.
-# $mdl_info_HAR:     REF to hash of arrays with information on the models, PRE-FILLED
-# $ftr_info_HAR:     REF to hash of arrays with information on the features, PRE-FILLED
-# $seq_info_HAR:     REF to hash of arrays with information on the sequences, PRE-FILLED
-# $mdl_results_AAHR: REF to results AAH, PRE-FILLED
-# $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-# $ofile_info_HHR:   REF to the 2D hash of output file information
-#
-# Returns:    void
-#
-#################################################################
-sub output_gap_info {
-  my $sub_name = "output_gap_info";
-  my $nargs_exp = 12;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
- 
-  my ($perseq_FH, $pergap_FH, $do_perseq_tbl, $do_gap_all, $do_gap_not3, $do_gap_special, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-
-  if($do_gap_all) {
-    if($do_gap_not3 || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
-  }
-  elsif($do_gap_not3) { 
-    if($do_gap_all || $do_gap_special) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
-  }
-  elsif($do_gap_special) { 
-    if($do_gap_all || $do_gap_not3) { die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; }
-  }
-  else { 
-    die "ERROR in $sub_name, exactly one of $do_gap_all, $do_gap_not3, and $do_gap_special must be true"; 
-  }
-
-  my @gapstr_AA = ();           # [0..$nseq-1][0..$nftr-1]: string describing all gaps for this sequence and this feature
-  my @w_gapstr_A = ();          # [0..$i..$nftr-1] max width of $gapstr_AA[$0..nseq-1][$i] for feature $i over all sequences
-
-  my @tot_gap_length_AA = ();   # [0..$nseq-1][0..$nftr-1]: total number of gap positions for this sequence and this feature
-  my @w_tot_gap_length_A = ();  # [0..$i..$nftr-1] max width of $tot_gap_length_AA[$0..nseq-1][$i] for feature $i over all sequences
-
-  my @net_gap_length_AA = ();   # [0..$nseq-1][0..$nftr-1]: net number of gap positions for this sequence and this feature
-  my @w_net_gap_length_A = ();  # [0..$i..$nftr-1] max width of $net_gap_length_AA[$0..nseq-1][$i] for feature $i over all sequences
-
-  my @ftr_gapstr_AH      = ();  # [0..$i..$nftr-1]: hash w/key: gapstring for a single position, value: number of times that gapstring occurs in any of @gapstr_AA for feature $i
-  
-  my $ch_gapstr         = "string";
-  my $ch_tot_gap_length = "tot";
-  my $ch_net_gap_length = "net";
-
-  my $width_seq = length("#accession");
-  my $ftr_idx = 0;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
-
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $w_gapstr_A[$ftr_idx]         = length($ch_gapstr);
-    $w_tot_gap_length_A[$ftr_idx] = length($ch_tot_gap_length);
-    $w_net_gap_length_A[$ftr_idx] = length($ch_net_gap_length);
-    %{$ftr_gapstr_AH[$ftr_idx]}   = ();
-  }
-
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    # initialize 
-
-    my $seq_accn = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    if(length($seq_accn) > $width_seq) { 
-      $width_seq = length($seq_accn);
-    }
-    @{$gapstr_AA[$seq_idx]} = ();
-    my $offset = 0;
-    my $ins_idx = 0;
-    my $del_idx = 0;
-    my $next_ins_str   = undef;
-    my $next_del_str   = undef;
-    my $next_ins_rfpos = undef;
-    my $next_del_rfpos = undef;
-    my $next_ins_count = undef;
-    my $next_del_count = undef;
-    my $gapstr = "";
-    my $substr;
-    my $tot_gap_length = 0;
-    my $net_gap_length = 0;
-    $ftr_idx = 0;
-
-    for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-      my @refdel_A = (); 
-      my @refins_A = (); 
-      if((exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"}) && $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} ne "") {
-        @refins_A = split(",", $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"});
-      }
-      if((exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"}) && $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} ne "") {
-        @refdel_A = split(",", $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"});
-      }
-      my $ndel = scalar(@refdel_A);
-      my $nins = scalar(@refins_A);
-      my $mdl_is_final = $mdl_info_HAR->{"is_final"}[$mdl_idx];
-      my $mdl_is_first = $mdl_info_HAR->{"is_first"}[$mdl_idx];
-      $ins_idx = 0;
-      $del_idx = 0;
-      $next_del_str = ($del_idx < $ndel) ? $refdel_A[$del_idx] : undef;
-      $next_ins_str = ($ins_idx < $nins) ? $refins_A[$ins_idx] : undef;
-      
-      while(defined $next_ins_str || defined $next_del_str) { 
-        # printf("next_ins_str: %s\n", (defined $next_ins_str) ? $next_ins_str : "undefined");
-        # printf("next_del_str: %s\n", (defined $next_del_str) ? $next_del_str : "undefined");
-        ($next_del_rfpos, $next_del_count) = (defined $next_del_str) ? split(":", $next_del_str) : (undef, undef);
-        ($next_ins_rfpos, $next_ins_count) = (defined $next_ins_str) ? split(":", $next_ins_str) : (undef, undef);
-        if(defined $next_del_rfpos) { $next_del_rfpos += $offset; }
-        if(defined $next_ins_rfpos) { $next_ins_rfpos += $offset; }
-        
-        if(defined $next_ins_str && defined $next_del_str) { 
-          if($next_del_rfpos <= $next_ins_rfpos) { # delete comes first, print it
-            $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
-            if($do_gap_all || (($next_del_count % 3) != 0)) { 
-              if($gapstr ne "") { $gapstr .= ","; }
-              $gapstr .= $substr;
-              $tot_gap_length += $next_del_count;
-              $net_gap_length -= $next_del_count;
-              if(! $do_gap_special) { 
-                $ftr_gapstr_AH[$ftr_idx]{$substr}++;
-              }
-            }
-            $del_idx++;
-            $next_del_str = ($del_idx < $ndel) ? $refdel_A[$del_idx] : undef;
-          }
-          elsif($next_ins_rfpos < $next_del_rfpos) { # insert comes first, print it
-            $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
-            if($do_gap_all || (($next_ins_count % 3) != 0)) { 
-              if($gapstr ne "") { $gapstr .= ","; }
-              $gapstr .= $substr;
-              $tot_gap_length += $next_ins_count;
-              $net_gap_length += $next_ins_count;
-              if(! $do_gap_special) { 
-                $ftr_gapstr_AH[$ftr_idx]{$substr}++;
-              }
-            }
-            $ins_idx++;
-            $next_ins_str = ($ins_idx < $nins) ? $refins_A[$ins_idx] : undef;
-          }
-        }
-        elsif(defined $next_del_str) { # $next_ins is undefined
-          $substr = "D" . $next_del_rfpos . ":" . $next_del_count;
-          if($do_gap_all || (($next_del_count % 3) != 0)) { 
-            if($gapstr ne "") { $gapstr .= ","; }
-            $gapstr .= $substr;
-            $tot_gap_length += $next_del_count;
-            $net_gap_length -= $next_del_count;
-            if(! $do_gap_special) {
-              $ftr_gapstr_AH[$ftr_idx]{$substr}++;
-            }
-          }
-          $del_idx++;
-          $next_del_str = ($del_idx < $ndel) ? $refdel_A[$del_idx] : undef;
-        }
-        elsif(defined $next_ins_str) { # $next_del is undefined
-          $substr = "I" . $next_ins_rfpos . ":" . $next_ins_count;
-          if($do_gap_all | (($next_ins_count % 3) != 0))  { 
-            if($gapstr ne "") { $gapstr .= ","; }
-            $gapstr .= $substr;
-            $tot_gap_length += $next_ins_count;
-            $net_gap_length += $next_ins_count;
-            if(! $do_gap_special) { 
-              $ftr_gapstr_AH[$ftr_idx]{$substr}++;
-            }
-          }
-          $ins_idx++;
-          $next_ins_str = ($ins_idx < $nins) ? $refins_A[$ins_idx] : undef;
-        }        
-      } # end of 'while(defined $next_ins_str || defined $next_del_str) { 
-      
-      $offset += $mdl_info_HAR->{"length"}[$mdl_idx];
-      
-      if($mdl_is_final) {
-        if($gapstr eq "") { $gapstr = "-"; }
-
-        # important to update $gapstr here, before we store it if $do_gap_special is true
-        if($do_gap_special) { 
-          # printf("calling find_special_gap with $gapstr\n");
-          $gapstr = find_special_gap($gapstr);
-          $net_gap_length = $tot_gap_length;
-          if($gapstr ne "?" && $gapstr ne "-") { 
-            my @el_A = split(",", $gapstr); 
-            foreach my $el (@el_A) { 
-              $ftr_gapstr_AH[$ftr_idx]{$el}++;
-            }
-          }
-        }
-
-        push(@{$gapstr_AA[$seq_idx]}, $gapstr);
-        if(length($gapstr) > $w_gapstr_A[$ftr_idx]) { $w_gapstr_A[$ftr_idx] = length($gapstr); }
-
-        push(@{$tot_gap_length_AA[$seq_idx]}, $tot_gap_length);
-        if(length($tot_gap_length) > $w_tot_gap_length_A[$ftr_idx]) { $w_tot_gap_length_A[$ftr_idx] = length($tot_gap_length); }
-        $tot_gap_length = 0;
-
-        push(@{$net_gap_length_AA[$seq_idx]}, $net_gap_length);
-        if(length($net_gap_length) > $w_net_gap_length_A[$ftr_idx]) { $w_net_gap_length_A[$ftr_idx] = length($net_gap_length); }
-        $net_gap_length = 0;
-
-        $gapstr = "";
-        $offset = 0;
-        $ftr_idx++;
-
-        if(scalar(@w_gapstr_A)         <= $ftr_idx) { $w_gapstr_A[$ftr_idx]         = length($ch_gapstr); }
-        if(scalar(@w_tot_gap_length_A) <= $ftr_idx) { $w_tot_gap_length_A[$ftr_idx] = length($ch_tot_gap_length); }
-        if(scalar(@w_net_gap_length_A) <= $ftr_idx) { $w_net_gap_length_A[$ftr_idx] = length($ch_net_gap_length); }
-        if(scalar(@ftr_gapstr_AH)      <= $ftr_idx) { %{$ftr_gapstr_AH[$ftr_idx]}   = (); }
-      }
-    }
-  }
-
-  #################################################################
-  # Output table of all gap info
-  # output line 1 of the column headers:
-  if($do_gap_all) { 
-    printf $perseq_FH ("# List of all gaps in alignment of each sequence:\n#\n");
-  }
-  elsif($do_gap_not3) { 
-    printf $perseq_FH ("# List of all gaps with length that is not a multiple of 3 in alignment of each sequence:\n#\n");
-  }
-  else { # $do_gap_special 
-    printf $perseq_FH ("# List of all gaps that may solely explain a feature's (CDS or mat_peptide) length not being a multiple of 3, for each sequence:\n#\n");
-  }
-
-  if(! $do_gap_special) { 
-    printf $perseq_FH  ("%-*s  ", $width_seq, "#");
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-      my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-      my $type_idx   = $ftr_info_HAR->{"type_idx"}[$ftr_idx];
-      my $w_cur = $w_tot_gap_length_A[$ftr_idx] + 2 + $w_net_gap_length_A[$ftr_idx] + 2 + $w_gapstr_A[$ftr_idx];
-      if($ftr_idx > 0) { print $perseq_FH "  "; }
-      printf $perseq_FH ("%-*s", $w_cur, $ftr_info_HAR->{"type_ftable"} . "#");
-    }
-    print $perseq_FH "\n";
-    
-    # output line 2 (dashes under line 1 of column headers)
-    printf $perseq_FH ("%-*s  ", $width_seq, "#");
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $w_cur = $w_tot_gap_length_A[$ftr_idx] + 2 + $w_net_gap_length_A[$ftr_idx] + 2 + $w_gapstr_A[$ftr_idx];
-      if($ftr_idx > 0) { print $perseq_FH "  "; }
-      printf $perseq_FH ("%-*s", $w_cur, getMonocharacterString($w_cur, "=", $FH_HR));
-    }    
-    print $perseq_FH "\n";
-  }
-
-  # output line 3 of the column headers:
-  printf $perseq_FH ("%-*s  ", $width_seq, "#accession");
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $type_idx   = $ftr_info_HAR->{"type_idx"}[$ftr_idx];
-    if($ftr_idx > 0) { print $perseq_FH "  "; }
-    if(! $do_gap_special) { 
-      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $ch_tot_gap_length);
-      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $ch_net_gap_length);
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $ch_gapstr);
-    }
-    else { 
-      printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $ftr_info_HAR->{"type_ftable"} . "#");
-    }
-  }
-  print $perseq_FH "\n";
-
-  # output line 4 (dashes under line 3 of column headers)
-  printf $perseq_FH ("%-*s  ", $width_seq, "#" . getMonocharacterString($width_seq-1, "-", $FH_HR));
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_idx > 0) { print $perseq_FH "  "; }
-    if(!  $do_gap_special) { 
-      printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], getMonocharacterString($w_tot_gap_length_A[$ftr_idx], "-", $FH_HR));
-      printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], getMonocharacterString($w_net_gap_length_A[$ftr_idx], "-", $FH_HR));
-    }
-    printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], getMonocharacterString($w_gapstr_A[$ftr_idx], "-", $FH_HR));
-  }
-  print $perseq_FH "\n";
-
-  # output actual data, for each sequence
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_accn = $seq_info_HAR->{"accn_name"}[$seq_idx];
-    printf $perseq_FH ("%-*s  ", $width_seq, $seq_accn);
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_idx > 0) { print $perseq_FH "  "; }
-      if($ftr_info_HAR->{"type"}[$ftr_idx] eq "model") { 
-        if(! $do_gap_special) { 
-          printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], $tot_gap_length_AA[$seq_idx][$ftr_idx]);
-          printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], $net_gap_length_AA[$seq_idx][$ftr_idx]);
-        }
-        printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], $gapstr_AA[$seq_idx][$ftr_idx]);
-      }
-      else { # feature is not type 'model', we have no gap info
-        if(! $do_gap_special) { 
-          printf $perseq_FH ("%-*s  ", $w_tot_gap_length_A[$ftr_idx], "0");
-          printf $perseq_FH ("%-*s  ", $w_net_gap_length_A[$ftr_idx], "0");
-        }
-        printf $perseq_FH ("%-*s", $w_gapstr_A[$ftr_idx], "-");
-      }
-    }
-    print $perseq_FH ("\n");
-  }
-
-  # output explanatory text
-  print $perseq_FH "#\n";
-  print $perseq_FH ("# Explanation of the above table:\n");
-  if($do_gap_all) { 
-    print  $perseq_FH ("# The table includes information on all gaps that exist between all pairwise alignments of\n");
-    printf $perseq_FH ("# the reference feature (mature peptide or CDS) and the predicted homologous feature for each sequence.\n");
-  }
-  elsif($do_gap_not3) { 
-    print  $perseq_FH ("# The table includes information on all gaps of lengths that are not multiples of 3 that exist\n");
-    printf $perseq_FH ("# between all pairwise alignments of the reference feature (mature peptide or CDS) and the predicted homologous feature for each sequence.\n");
-  }
-  else { 
-    print $perseq_FH ("# The table includes information on some gaps that can solely explain a feature (CDS or mat_peptide) not being a multiple of length 3.\n");
-    print $perseq_FH ("# This is (probably) not an exhaustive list of all such gaps.\n");
-    print $perseq_FH ("# Specifically it is only gaps X in a feature Y, such that the following criteria are met:\n");
-    print $perseq_FH ("#   - length of feature Y is not a multiple of 3\n");
-    print $perseq_FH ("#   - if you remove only X from list of all gaps, total feature length of Y becomes a multiple of 3\n");
-    print $perseq_FH ("#       with length difference of D with reference feature\n");
-    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
-    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
-  }
-  print $perseq_FH ("#\n");
-  if($do_gap_all || $do_gap_not3) { 
-    printf $perseq_FH ("# There are 3 columns under each header \"<%s>#<n> (%s)\" named \"tot\", \"net\",\n", ($do_matpept) ? "mat_peptide" : "CDS", ($do_gap_all) ? "all gaps" : "gaps %3 != 0");
-    print $perseq_FH ("# and \"string\".\n");
-    print $perseq_FH ("# The \"tot\" columns list the total number of gap positions in either sequence in the pairwise alignment.\n");
-    print $perseq_FH ("# The \"net\" columns list the net number of the listed gaps in the pairwise alignment; this is the number\n");
-    print $perseq_FH ("#   of gaps in the reference sequence minus the number of gaps in the current sequence (inserts minus deletes)\n");
-    print $perseq_FH ("# The \"string\" columns include a list of <n> tokens, each of which describes a gap of length >= 1 nucleotide.\n");
-  }
-  print  $perseq_FH ("#\n");
-  print  $perseq_FH ("# Tokens are in the form: <char><position><length>\n");
-  printf $perseq_FH ("#   <char>     is 'I' for an insertion relative to the reference feature (gap in reference sequence)\n");
-  printf $perseq_FH ("#              or 'D' for a  deletion  relative to the reference feature (gap in current sequence)\n");
-  print  $perseq_FH ("#   <position> is the nucleotide position of the gap in reference coordinates.\n");
-  print  $perseq_FH ("#              For insertions this is the reference position after which the insertion occurs.\n");
-  print  $perseq_FH ("#              For deletions  this is the first reference position for this deletion.\n");
-  print  $perseq_FH ("#   <length>   length of the gap in nucleotides.\n");
-  print  $perseq_FH ("#              For insertions this is the number of nucleotides inserted relative to the reference\n");
-  print  $perseq_FH ("#              For deletions  this is the number of reference positions deleted.\n");
-  print  $perseq_FH ("#\n");
-  if($do_gap_special) { 
-    print  $perseq_FH ("#\n");
-    printf $perseq_FH ("# \"-\" tokens indicate the feature is a multiple of length 3\n");
-    printf $perseq_FH ("# \"?\" tokens indicate the feature is not a multiple of length 3, but that no gaps that satisfy our criteria exist.\n");
-    print  $perseq_FH ("#\n");
-  }
-
-  # Now the per gap information
-  if($do_gap_all) { 
-    printf $pergap_FH ("# Counts of all gaps:\n#\n");
-  }
-  elsif($do_gap_not3) { 
-    printf $pergap_FH ("# Counts of gaps that have length that is not a multiple of 3:\n#\n");
-  }
-  else { # $do_gap_special == 1
-    printf $pergap_FH ("# Counts of gaps that are special (responsible for net gap length that is not a multiple of 3):\n#\n");
-    print $perseq_FH ("# Specifically, these are counts of gaps X in a feature Y (CDS or mat_peptide), such that the following criteria are met:\n");
-    print $perseq_FH ("#   - length of feature Y is not a multiple of 3\n");
-    print $perseq_FH ("#   - if you remove only X from list of all gaps, total feature length of Y becomes a multiple of 3\n");
-    print $perseq_FH ("#       with length difference of D with reference feature\n");
-    print $perseq_FH ("#    - there are no other gaps Z such that if you remove only Z then length of Y becomes a multiple\n");
-    print $perseq_FH ("#       of 3 with length difference D2 from reference where D2 < D.\n");
-    print $perseq_FH ("#\n");
-  }
-  my $nprinted = 0;
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $is_cds     = featureTypeIsCds($ftr_info_HAR->{"type"}[$ftr_idx]);
-    my $is_matpept = featureTypeIsMaturePeptide($ftr_info_HAR->{"type"}[$ftr_idx]);
-    if((scalar(keys %{$ftr_gapstr_AH[$ftr_idx]})) > 0) { 
-      foreach my $key (sort keys %{$ftr_gapstr_AH[$ftr_idx]}) { 
-        printf $pergap_FH ("%s#" . ($ftr_idx+1) . " " . $key . " " . $ftr_gapstr_AH[$ftr_idx]{$key} . "\n", $ftr_info_HAR->{"type_ftable"});
-        $nprinted++;
-      }
-      printf $pergap_FH ("#\n");
-    }
-  }
-  if($nprinted == 0) { 
-    printf $pergap_FH ("# NONE\n");
-  }
-
-  return;
-}
-#################################################################
-#
-#  Miscellaneous subroutines that don't fit in the above categories:
-#    find_inframe_stop()
-#    combine_ajb_and_aja_strings()
-#    compare_to_genbank_annotation()
-#    count_genbank_annotations()
-#    translate_feature_sequences()
-#    align_hits()
-#    update_gap_array()
-#    find_special_gap()
-#    define_model_and_feature_output_file_names()
-#    get_mdl_or_ftr_ofile_info_key()
-#    align_protein_sequences()
-#    check_for_downstream_stop()
-#    create_output_start_and_stop()
-#    seq_name_from_msa_seq_name()
-#    accn_name_from_seq_name()
-#
-#################################################################
-# Subroutine:  find_inframe_stop()
-# Incept:      EPN, Tue Mar  8 13:39:23 2016
-#
-# Purpose:    Given a subsequence, find the first inframe stop in it
-#             and return the final position of it. Return 0 if none exist
-#             in the subsequence.
-#
-# Arguments: 
-#  $sequence:     the actual sequence to search in as a string, no newlines
-#
-# Returns:    Two values:
-#             $ret_posn:   final (3rd) position of first in-frame stop in $sequence.
-#                          0 if no in-frame stop exists
-#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", "TGA", or "TAR" or undef if
-#                          none found
-#
-# Dies:       never
-#
-#################################################################
-sub find_inframe_stop {
-  my $sub_name = "find_inframe_stop()";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sequence) = @_;
-
-  # convert to uppercase and convert Us to Ts
-  $sequence =~ tr/a-z/A-Z/;
-  $sequence =~ tr/U/T/;
-
-  # use substr to get each codon and check if it's a stop
-  my $posn = 0;
-  my $len  = length($sequence);
-  my $ret_posn   = undef;
-  my $stop_codon = undef;
-  while((! defined $ret_posn) && 
-        ($posn+2) < $len) { 
-    my $codon = substr($sequence, $posn, 3);
-    if($codon eq "TAA") { 
-      $stop_codon = "TAA";
-      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
-    }
-    elsif($codon eq "TAG") { 
-      $stop_codon = "TAG";
-      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
-    }
-    elsif($codon eq "TGA") { 
-      $stop_codon = "TGA";
-      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
-    }
-    elsif($codon eq "TAR") { 
-      $stop_codon = "TAR";
-      $ret_posn   = $posn+3; # add 3 to get coords into 1..L, (adding 2 would keep us in 0..L-1 coord space)
-    }
-    $posn += 3;
-  }
-  
-  if(! defined $ret_posn) { 
-    $ret_posn = 0; 
-  }
-  
-  return ($ret_posn, $stop_codon);
-}
-
-#################################################################
-# Subroutine: combine_ajb_and_aja_strings()
-# Incept:     EPN, Mon Mar 14 15:10:25 2016
-#
-# Purpose:    Given a string describing adjacencies-before ($ajb_str)
-#             and another describing adjacencies-after ($aja_str),
-#             combine them into a single string.
-#
-# Args:
-#  $ajb_str:       adjacencies before string
-#  $aja_str:       adjacencies after string
-#
-# Returns: the combine string
-#
-#################################################################
-sub combine_ajb_and_aja_strings { 
-  my $sub_name = "combine_ajb_and_aja_strings";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ajb_str, $aja_str) = @_;
-
-  my $comma_or_not = "";
-  if(($ajb_str ne "") && ($aja_str ne "")) { 
-    $comma_or_not = ",";
-  }
-  return $ajb_str . $comma_or_not . $aja_str;
-}
-
-#################################################################
-# Subroutine:  compare_to_genbank_annotation
-# Incept:      EPN, Mon Mar 14 08:42:00 2016
-#
-# Purpose:    For a given sequence/model pair and start..stop boundaries
-#             check if any annotation in %{$tbl_HAR} matches start..stop.
-#             Return 1 if it does and 0 if it doesn't.
-#
-# Arguments: 
-#  $pred_start:   predicted start (from our annotation, in -accn_len..accn_len coord space)
-#  $pred_stop:    predicted stop (from our annotation, in -accn_len..accn_len coord space)
-#  $pred_strand:  predicted strand (from our annotation)
-#  $accn_len:     length of the accession's sequence we're interested in
-#  $seq_len:      length of the sequence in the file we searched in
-#  $tbl_HAR:      REF to hash of arrays for accession we're interested in, PRE-FILLED
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    '1' if we find a match to $pred_start..$pred_stop to existing (GenBank)
-#             annotation stored in %{$tbl_HAR}, else '0'
-#
-# Dies: If we have a problem getting information we need from $tbl_HAR
-#
-################################################################# 
-sub compare_to_genbank_annotation { 
-  my $sub_name = "compare_to_genbank_annotation()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($pred_start, $pred_stop, $pred_strand, $accn_len, $seq_len, $tbl_HAR, $opt_HHR, $FH_HR) = @_;
-
-  # printf("in $sub_name, pred: $pred_start..$pred_stop $pred_strand\n");
-
-  # get coordinates into the following format:
-  # start <= stop
-  # coordinate space: -accn_len..accn_len (should already be in this)
-  # check we're in -accn_len..accn_len space
-  if(($pred_start < ($accn_len * -1)) || ($pred_start > $accn_len)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, predicted start coordinate: $pred_start not in expected -accn_len..accn_len coordinate space (%d..%d)", (-1 * $accn_len), $accn_len), 1, $FH_HR); 
-  }
-  if(($pred_stop < ($accn_len * -1)) || ($pred_stop > $accn_len)) { 
-    DNAORG_FAIL(sprintf("ERROR in $sub_name, predicted stop coordinate: $pred_stop not in expected -accn_len..accn_len coordinate space (%d..%d)", (-1 * $accn_len), $accn_len), 1, $FH_HR); 
-  }
-  if($pred_start > $pred_stop) { 
-    my $tmp     = $pred_start;
-    $pred_start = $pred_stop;
-    $pred_stop  = $tmp;
-  }
-
-  my $found_match = 0; # set to '1' if we find a match
-  my @coords_A    = (); # coordinates of each annotated feature
-  my @len_A       = (); # lengths of each annotated feature (not used)
-  # fill @coords_A and len_A
-  getLengthsAndCoords($tbl_HAR, \@len_A, \@coords_A, $FH_HR);
-
-  # for each annotated feature, check if we have a match to $pred_start..$pred_stop
-  my $nannot = scalar(@len_A);
-  for(my $i = 0; $i < $nannot; $i++) { 
-    my @starts_A  = ();
-    my @stops_A   = ();
-    my @strands_A = ();
-    my $nsegments = 0;
-    startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
-    for(my $j = 0; $j < $nsegments; $j++) { 
-      # printf("\tcomparing against GB $starts_A[$j]..$stops_A[$j] $strands_A[$j]\n");
-      # get coordinates into the following format:
-      # start <= stop
-      # coordinate space: -accn_len..accn_len
-      my $cur_start = $starts_A[$j];
-      my $cur_stop  = $stops_A[$j];
-      if($cur_start > $cur_stop) { 
-        # swap them (GenBank doesn't follow same order convention that we do, so we always set start < stop)
-        my $tmp    = $cur_start;
-        $cur_start = $cur_stop;
-        $cur_stop  = $tmp;
-      }
-      ($cur_start, $cur_stop) = create_output_start_and_stop($cur_start, $cur_stop, $accn_len, $seq_len, $FH_HR);
-      if(($cur_start == $pred_start) && ($cur_stop == $pred_stop) && ($strands_A[$j] eq $pred_strand)) { 
-        $found_match = 1;
-        $j = $nsegments+1; # breaks j loop
-        $i = $nannot+1;    # breaks i loop
-      }
-    }
-  }
-
-  # printf("returning $found_match\n");
-  return $found_match;
-}
-
-#################################################################
-# Subroutine:  count_genbank_annotations
-# Incept:      EPN, Wed Mar 16 08:40:47 2016
-#
-# Purpose:    Return the number of feature (e.g. CDS) and segment (e.g. exon)
-#             annotations in tbl_HAR.
-#
-# Arguments: 
-#  $tbl_HAR:      REF to hash of arrays for accession we're interested in, PRE-FILLED
-#  $accn_len:     length of the accession's sequence we're interested in
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    Two values:
-#             1) number of total feature (e.g. CDS) annotations in $tbl_HAR
-#             2) number of total segment (e.g. exon) annotations in $tbl_HAR
-#
-# Dies: If we have a problem getting information we need from $tbl_HAR
-#
-################################################################# 
-sub count_genbank_annotations { 
-  my $sub_name = "count_genbank_annotations()";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($tbl_HAR, $accn_len, $opt_HHR, $FH_HR) = @_;
-
-  if(! defined $tbl_HAR) { 
-    # no annotations
-    return (0, 0);
-  }
-  
-  my @coords_A    = (); # coordinates of each annotated feature
-  my @len_A       = (); # lengths of each annotated feature (not used)
-
-  # fill @coords_A and len_A
-  getLengthsAndCoords($tbl_HAR, \@len_A, \@coords_A, $FH_HR);
-  
-  my $nannot = scalar(@len_A);
-  my $tot_nsegments = 0;
-  for(my $i = 0; $i < $nannot; $i++) { 
-    my @starts_A  = ();
-    my @stops_A   = ();
-    my @strands_A = ();
-    my $nsegments = 0;
-    startsStopsStrandsFromCoordsLength($coords_A[$i], $accn_len, $opt_HHR, \@starts_A, \@stops_A, \@strands_A, \$nsegments, $FH_HR);
-    $tot_nsegments += $nsegments;
-  }
-
-  return ($nannot, $tot_nsegments);
-}
-
-#################################################################
-# Subroutine:  translate_feature_sequences
-# Incept:      EPN, Thu Mar 10 11:13:25 2016
-#
-# Purpose:    For each file with corrected feature sequences, 
-#             translate them into proteins.
-#
-# Arguments: 
-#  $esl_epn_translate: executable for esl-epn-translate.pl
-#  $in_key:            key for the input files we'll translate here, usually "corrected"
-#  $out_key:           key for the output files we'll create here, usually "corrected.translated",
-#                      this key will be stored in $ftr_info_HAR
-#  $specstart_AAR:     REF to 2D array of specified, permissible start codons, can be undef
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features, ADDED TO HERE
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-################################################################# 
-sub translate_feature_sequences { 
-  my $sub_name = "translate_feature_sequences()";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($esl_epn_translate, $in_key, $out_key, $specstart_AAR, $ftr_info_HAR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-
-  my $in_ftr_info_file_key     = $in_key  . ".hits.fa";
-  my $out_ftr_info_file_key    = $out_key . ".hits.fa";
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $nucleotide_fafile = $ftr_info_HAR->{$in_ftr_info_file_key}[$ftr_idx];
-    my $protein_fafile    = $ftr_info_HAR->{$out_ftr_info_file_key}[$ftr_idx];
-
-    if($nucleotide_fafile ne "/dev/null") { # if this is set to /dev/null we know it's not supposed to exist, so we skip this feature
-      my $opts = "";
-      # require a proper start codon and stop codon if this is not a mature peptide
-      if($ftr_info_HA{"type"}[$ftr_idx] ne "mp") { 
-        $opts = " -reqstart -reqstop ";
-      }
-      my $altstart_opt = get_esl_epn_translate_altstart_opt($ftr_info_HAR, $ftr_idx, $specstart_AAR);
-      
-      # use esl-epn-translate.pl to examine the start and stop codons in each feature sequence
-      $cmd = $esl_epn_translate . " -endatstop -nostop $opts $altstart_opt $nucleotide_fafile > $protein_fafile";
-      runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HH{"FH"});
-      
-      # determine the number of >= 1 segments (exons or mature peptides) we put together to make this protein
-      my $nsegments = 0;
-      if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-        $nsegments = $ftr_info_HA{"final_mdl"}[$ftr_idx] - $ftr_info_HA{"first_mdl"}[$ftr_idx] + 1;
-      }
-      elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") { 
-        my @primary_children_idx_A = ();
-        getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@primary_children_idx_A, $ofile_info_HHR->{"FH"});
-        $nsegments = scalar(@primary_children_idx_A);
-      }
-      else { 
-        DNAORG_FAIL("ERROR in $sub_name, feature $ftr_idx with name %s is of unknown annot_type %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ftr_info_HAR->{"annot_type"}[$ftr_idx]);
-      } 
-      
-      my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $out_ftr_info_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo(\%ofile_info_HH, $ofile_info_key, $protein_fafile, 0, sprintf("fasta file with translations of corrected hits for feature " . $ftr_info_HA{"out_tiny"}[$ftr_idx] . " composed of %d segments", $nsegments));
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  align_hits()
-# Incept:      EPN, Thu Mar 10 13:12:26 2016
-#
-# Purpose:    For each model, align its corrected hits to the 
-#             model. Save information on where gaps are relative
-#             to the reference \%{$ref_del_HHA} and \%{$ref_ins_HHA}.
-#
-# Arguments: 
-#  $execs_HR:         REF to a hash with "cmalign" executable paths
-#  $mdl_info_HAR:     REF to the hash of arrays with model information
-#  $seq_info_HAR:     REF to the hash of arrays with sequence information
-#  $mdl_results_AAHR: REF to results AAH, ADDED TO HERE
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:   REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-################################################################# 
-sub align_hits {
-  my $sub_name = "align_hits";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $mdl_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nmdl = validateModelInfoHashIsComplete   ($mdl_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nmdl: number of homology models
-  my $nseq = validateSequenceInfoHashIsComplete($seq_info_HAR, undef, $opt_HHR, $ofile_info_HHR->{"FH"}); # nseq: number of sequences
-
-  # get index hash for @{$seq_info_HAR->{"seq_name"}} array
-  # this simplifies determining sequence index in @{%seq_info_HAR->{}}
-  # arrays for a given sequence name.
-  my %seq_name_idx_H = (); # key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}}
-  getIndexHashForArray(\@{$seq_info_HAR->{"seq_name"}}, \%seq_name_idx_H, $ofile_info_HHR->{"FH"});
-
-  my $mdl_fa_file_key   = "corrected.hits.fa";
-  my $mdl_stk_file_key  = "corrected.hits.stk";
-
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    # validate that we have the fasta file we need
-    my $fa_file  = $mdl_info_HAR->{$mdl_fa_file_key}[$mdl_idx];
-    validateFileExistsAndIsNonEmpty($fa_file, $sub_name, $ofile_info_HHR->{"FH"});
-    my $stk_file = $mdl_info_HAR->{$mdl_stk_file_key}[$mdl_idx];  # Stockholm alignment file model was built from
-    my $cmname   = $mdl_info_HAR->{"cmname"}[$mdl_idx];           # name of model 
-    my $cm_file  = $mdl_info_HAR->{"cmfile"}[$mdl_idx];           # file name
-    validateFileExistsAndIsNonEmpty($cm_file, $sub_name, $ofile_info_HHR->{"FH"});
-    
-    # create the alignment
-    my $mxsize_opt = sprintf("--mxsize %d", opt_Get("--mxsize", $opt_HHR));
-    my $cmd = $execs_HR->{"cmalign"} . " --cpu 0 $mxsize_opt $cm_file $fa_file > $stk_file";
-    runCommand($cmd, opt_Get("-v", \%opt_HH), $ofile_info_HHR->{"FH"});
-    # save this file to %{$ofile_info_HHR}
-    my $ofile_key = get_mdl_or_ftr_ofile_info_key("mdl", $mdl_idx, $mdl_stk_file_key, $ofile_info_HHR->{"FH"});
-    addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("Stockholm alignment of hits for model #%d: %s", $mdl_idx+1, $mdl_info_HAR->{"out_tiny"}[$mdl_idx]));
-
-    # use the alignment to determine:
-    # - fractional identity between prediction and reference 
-    #   and store in $mdl_results_AAH->[][]{"fid2ref"}
-    # - where deletions are relative to reference and 
-    #   store in %{$refdel_HHAR}
-    # - where insertions are relative to reference and 
-    #   store in %{$refins_HHAR}
-
-    # first we need to read in the MSA we just created 
-    my $msa = Bio::Easel::MSA->new({
-      fileLocation => $stk_file,
-      isDna => 1
-                                   });  
-
-    # Determine which positions are RF (reference) positions,
-    # these are the consensus (nongap) positions of the model.
-    # In our case these are positions in the reference sequence
-    # the model was built from (as opposed to gaps in the
-    # reference sequence, which are non-RF positions).
-    my $rfseq = $msa->get_rf();
-    my @rfseq_A = split("", $rfseq);
-    my $alen  = $msa->alen();    # alignment length
-    my @i_am_rfpos_A = (); # 0..$apos..$alen-1: '1' if RF is a nongap at position $apos+1, else '0'
-    for(my $apos = 0; $apos < $alen; $apos++) { 
-      $i_am_rfpos_A[$apos] = ($rfseq_A[$apos] eq "." || $rfseq_A[$apos] eq "~") ? 0 : 1;
-    }          
-    
-    my $ref_seq_idx = 0; # this will remain '0'
-    my $msa_nseq = $msa->nseq;
-    for(my $msa_seq_idx = 0; $msa_seq_idx < $msa_nseq; $msa_seq_idx++) { 
-      my $msa_seq_name = $msa->get_sqname($msa_seq_idx);
-      my $seq_name = seq_name_from_msa_seq_name($msa_seq_name, $ofile_info_HHR->{"FH"}); 
-      if(! exists $seq_name_idx_H{$seq_name}) { 
-        DNAORG_FAIL("ERROR in $sub_name, sequence $seq_name derived from MSA seq name: $msa_seq_name does not exist in seq_info_HAR", 1, $ofile_info_HHR->{"FH"});
-      }
-      my $seq_idx = $seq_name_idx_H{$seq_name};
-      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}) { 
-        $mdl_results_AAH[$mdl_idx][$seq_idx]{"fid2ref"} = $msa->pairwise_identity($ref_seq_idx, $msa_seq_idx);
-        # printf("storing percent id of $fid2ref_HHR->{$mdl}{$seq} for $mdl $seq\n"); 
-
-        # determine the RF positions that are gaps in this sequence
-        # and the positions of the inserted residues in this sequence
-        my @tmp_refdel_A = (); # array of deletions, temporary because we'll convert it to a string at end of function
-        my @tmp_refins_A = (); # array of deletions, temporary because we'll convert it to a string at end of function
-        my $aseqstring  = $msa->get_sqstring_aligned($msa_seq_idx);
-        my @aseq_A = split("", $aseqstring);
-        my $rfpos = 0;
-        for(my $apos = 0; $apos < $alen; $apos++) { 
-          if($i_am_rfpos_A[$apos]) { 
-            $rfpos++; 
-          }
-          if($aseq_A[$apos] =~ m/[\.\-]/) { # a gap in the sequence
-            if($i_am_rfpos_A[$apos]) { # not a gap in the RF sequence
-              # deletion (gap) relative to the reference sequence
-              update_gap_array(\@tmp_refdel_A, $rfpos, 1); # 1 informs the subroutine that this is a delete array
-            }
-          }
-          else { # nongap in the sequence
-            if(! $i_am_rfpos_A[$apos]) { # gap in the RF sequence
-              # insertion in sequence relative to the reference sequence
-              update_gap_array(\@tmp_refins_A, $rfpos, 0); # 0 informs the subroutine that this is an insert array
-            }
-          }
-        }
-        # printf("printing insert info for $mdl $seq\n");
-        # debugPrintGapArray(\@tmp_refins_A);
-        # printf("printing delete info for $mdl $seq\n");
-        # debugPrintGapArray(\@tmp_refdel_A);
-
-        # convert arrays of refdel and refins to strings, to be stored in results_AAHR
-        my $el; # one array element
-
-        # refdel
-        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} = "";
-        foreach $el (@tmp_refdel_A) { 
-          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} .= $el . ",";
-        }
-        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refdelstr"} =~ s/\,$//; # remove final comma
-
-        # refins
-        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} = "";
-        #printf("HEYA INIT'ED mdl_results_AAHR->[$mdl_idx][$seq_idx]{refinsstr} to empty string\n");
-        foreach $el (@tmp_refins_A) { 
-          $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} .= $el . ",";
-        }
-        $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"refinsstr"} =~ s/\,$//; # remove final comma
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  update_gap_array()
-# Incept:      EPN, Thu Mar 10 13:42:31 2016
-#
-# Purpose:    Given an rfpos that we have a gap in, update a 
-#             array that stores all the gap information for a given
-#             sequence. This can be called for an array that holds
-#             gaps in the reference (deletions, refdel* data 
-#             structures) or in the other sequence (insertions,
-#             refins* data structures).
-#
-#
-# Arguments: 
-#  $AR:         REF to the array to update
-#  $rfpos:      the reference position the gap occurs at or after
-#  $is_delete:  '1' if we're updating a delete array, else we're
-#               updating an insert array (we do the udpate slightly
-#               differently for each type).
-#
-# Returns:    void
-#
-################################################################# 
-sub update_gap_array {
-  my $sub_name = "update_gap_array";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($AR, $rfpos, $is_delete) = @_;
-
-  my $nel = scalar(@{$AR});  # number of elements
-  my $same_as_prv = 0;       # insertion or deletion occurs at a position detected previously
-  if($nel > 0) { 
-    # need to check latest element to see if it pertains to the same rfpos
-    my ($prv_rfpos, $prv_cnt) = split(":", $AR->[$nel-1]);
-    # printf("\tsplit %s into %s and %d\n", $AR->[$nel-1], $prv_rfpos, $prv_cnt);
-    if((  $is_delete) && (($prv_rfpos + $prv_cnt) == $rfpos) ||
-       (! $is_delete) && ($prv_rfpos == $rfpos)) { 
-      # this is not the first insert/delete at this position, update previous value
-      $same_as_prv = 1;
-      $AR->[($nel-1)] = $prv_rfpos . ":" . ($prv_cnt+1);
-    }
-  }
-  if(! $same_as_prv) { 
-    # either this is the first insert/delete or not the same as the previous one
-    push(@{$AR}, $rfpos . ":" . "1");
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: find_special_gap()
-#
-# Purpose: Given a gap string that lists all gaps of a feature in an
-#          alignment, determine if the gaps cause the predicted
-#          length of the feature to be non-modulo 3. If so,
-#          determine if there's exactly one gap that if we remove
-#          it, the remaining gaps will make the predicted length of
-#          the CDS to be modulo 3.
-#
-#          I think there can only be 0 or 1 such gap, but I'm not sure.
-# 
-#          Return two values: 
-#          - the length of the speical gap if there is one, or 0 if there is not
-#            (this value will be negative if it is a deletion relative to the 
-#            reference, and positive if it is an insertion relative to the reference)
-#          - the string that describes the special gap, 
-#            or '-' if the predicted length of the feature is modulo 3 if we include all gaps
-#            or '?' if the predicted length of the feature is not modulo 3 but there is no
-#            special gap that can explain the non-modulo-3ness.
-#
-#          If the net gap length is zero modulo 3, return (0, "-").
-#          If the net gap length is nonzero modulo 3, and there's exactly 1 gap that equals the net length modulo 3, return its length and the string..
-#          If the net gap length is nonzero modulo 3, and there's not exactly 1 gap that equals the net length modulo 3, return (0, "?");
-#            
-#          Examples: 
-#
-#            Input:    $gapstr = "D377:2,I388:2,I1066:1 net gap is 1
-#            Returns:  (1, "I1066:1")
-#
-#            Input:    $gapstr = "D377:2,I388:2", , net gap is 0;
-#            Returns:  (0, "-")
-#
-#            Input:    $gapstr = "D377:5,I388:2", net gap is -3;
-#            Returns:  (0, "-")
-#
-#            Input:    $gapstr = "D377:2,I388:5", net gap is 3;
-#            Returns:  (0, "-")
-#
-#            Input:    $gapstr = "D377:2,I388:3,I1066:1", net gap is 2;
-#            Returns:  (0, "?")
-#
-#            Input:    $gapstr = "D277:2,D377:2,I388:2", $net_gap = 2;
-#            Returns:  (0, "?")
-#
-# Arguments: 
-#  $gapstr:  string describing all gaps
-#
-# Returns:   Two values: as explained above in "Purpose"
-# 
-################################################################# 
-sub find_special_gap {
-  my $sub_name = "find_special_gap";
-  my $nargs_exp = 1;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($gapstr) = (@_);
-  # printf("in $sub_name gapstr: $gapstr\n");
-
-  if($gapstr eq "-") { # no gaps
-    return ("-"); 
-  }
-
-  # determine net number of gaps if we include them all
-  my @el_A = split(",", $gapstr);
-  my $ngaps = scalar(@el_A);
-  my @gapsize_A = (); # [0..$ngaps-1], length of each gap
-  my $tot_gaps = 0;
-
-  for(my $e = 0; $e < $ngaps; $e++) { 
-    my $el = $el_A[$e];
-    my ($type_loc, $len) = split(":", $el);
-
-    if(! defined $len) { printf("gapstr: $gapstr, el: $el\n"); }
-
-    if(($len % 3) == 0) { 
-      $gapsize_A[$e] = 0;
-    }
-    else { 
-      if($type_loc =~ /^I(\d+)/) { # insert
-        $gapsize_A[$e] = $len;
-        $tot_gaps += $len;
-      }
-      elsif($type_loc =~ /^D(\d+)/) { # delete
-        $gapsize_A[$e] = -1 * $len;
-        $tot_gaps -= $len;
-      }
-      else { 
-        die "ERROR: in $sub_name, unable to parse gap string: $gapstr element $el"; 
-      }
-    }
-    if(($tot_gaps % 3) == 0) { 
-      return ("-"); 
-    }
-  }
-
-  # find gap that gives minimal net gap length
-  
-  my $min_len = undef;
-  for(my $e = 0; $e < $ngaps; $e++) { 
-    my $net_gap_len = $tot_gaps - $gapsize_A[$e];
-    if(($net_gap_len % 3) == 0) { 
-      if(! defined $min_len || ($net_gap_len < $min_len)) { 
-        $min_len = $net_gap_len;
-      }
-    }
-  }
-
-  my $nspecial = 0;
-  my $special_str = "";
-  my $special_len = 0;
-
-  if(! defined $min_len) { # no gaps can be removed and give modulo 3
-    return ("?");
-  }
-  else { # at least 1 gap can be removed and give modulo 3
-    for(my $e = 0; $e < $ngaps; $e++) { 
-      my $net_gap_len = $tot_gaps - $gapsize_A[$e];
-      if(($net_gap_len % 3) == 0) { 
-        if($net_gap_len == $min_len) { 
-          if($special_str ne "") { $special_str .= ","; }
-          $special_str .= $el_A[$e];
-        }
-      }
-    }
-    # printf("returning special_str: $special_str\n");
-    return $special_str;
-  }
-}
-
-#################################################################
-# Subroutine:  define_model_and_feature_output_file_names()
-# Incept:      EPN, Thu Mar 10 13:47:15 2016
-#
-# Purpose:    Define the output file names for all per-model
-#             and per-feature files we will create later in the script.
-#
-# Arguments: 
-#  $out_root:     output root for the file names
-#  $mdl_info_HAR: REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR: REF to hash of arrays with information on the features, PRE-FILLED
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies: if something is wrong with $mdl_info_HAR
-#
-################################################################# 
-sub define_model_and_feature_output_file_names { 
-  my $sub_name = "define_model_and_feature_output_file_names";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($out_root, $mdl_info_HAR, $ftr_info_HAR, $FH_HR) = @_;
-
-  my $nmdl = validateModelInfoHashIsComplete  ($mdl_info_HAR, undef, $FH_HR); # nmdl: number of homology models
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-
-  my @both_file_types_A = ("predicted.hits.fa", "predicted.hits.append.fa", "corrected.hits.fa", "corrected.hits.append.fa");
-  my @mdl_only_file_types_A  = ("corrected.hits.stk");
-  my @ftr_only_file_types_A  = ("predicted.hits.fa.esl-epn-translate", "corrected.translated.hits.fa", 
-                                "corrected.translated.hits.stk", "corrected.translated.hmm", 
-                                "corrected.translated.hmmbuild", "corrected.translated.hmmstk");
-
-  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    foreach my $file_type (@both_file_types_A, @mdl_only_file_types_A) { 
-      $mdl_info_HAR->{$file_type}[$mdl_idx] = $out_root . "." . $mdl_info_HAR->{"filename_root"}[$mdl_idx] . "." . $file_type;
-    }
-  }
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if($ftr_info_HAR->{"annot_type"}[$ftr_idx] ne "duplicate") { 
-      foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
-        $ftr_info_HAR->{$file_type}[$ftr_idx] = $out_root . "." . $ftr_info_HAR->{"filename_root"}[$ftr_idx] . "." . $file_type;
-      }
-    }
-    else { 
-      foreach my $file_type (@both_file_types_A, @ftr_only_file_types_A) { 
-        $ftr_info_HAR->{$file_type}[$ftr_idx] = "/dev/null";
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  get_mdl_or_ftr_ofile_info_key()
-# Incept:      EPN, Thu Mar 10 13:58:48 2016
-#
-# Purpose:    Simple function for defining an ofile_info_HH
-#             key for a per-model of per-feature file given the
-#             index and key in %mdl_info_HA or %ftr_info_HA.
-#             Return the ofile_info_HH key.
-#
-# Arguments: 
-#  $mdl_or_ftr: output root for the file names
-#  $idx:        index, becomes part of returned string
-#  $key:        key in %{$mdl_info_HAR} or %{$ftr_info_HAR}
-#               becomes part of the key returned by this function
-#  $FH_HR:      REF to hash of file handles, used only if 
-#               we need to die (so that open file handles get
-#               closed before we exit and error gets printed to the
-#               log file)
-#
-# Returns:    the key for %ofile_info_HH
-#
-# Dies: if $mdl_or_ftr is not 'mdl' nor 'ftr'
-#       if $idx is not a positive integer
-################################################################# 
-sub get_mdl_or_ftr_ofile_info_key { 
-  my $sub_name = "get_mdl_or_ftr_ofile_info_key";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($mdl_or_ftr, $idx, $key, $FH_HR) = @_;
-
-  if(($mdl_or_ftr ne "mdl") && ($mdl_or_ftr ne "ftr")) { 
-    DNAORG_FAIL("ERROR in $sub_name, mdl_or_ftr should be mdl or ftr, got $mdl_or_ftr", 1, $FH_HR);
-  }
-  if((! verify_integer($idx)) || ($idx < 0)) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected non-negative integer for idx, got $idx", 1, $FH_HR);
-  }
-
-  return $mdl_or_ftr . "." . $idx . "." . $key;
-}
-
-
-#################################################################
-# Subroutine:  align_protein_sequences
-# Incept:      EPN, Thu Mar 10 15:52:44 2016
-#
-# Purpose:    For each protein sequence feature, fetch the reference
-#             sequence, build an HMM from it and align all other
-#             proteins to it.
-#
-# Arguments: 
-#  $execs_HR:       REF to a hash with "hmmbuild" and "hmmalign"
-#                   executable paths
-#  $out_key:        key for the output files we'll create here, usually "corrected.translated",
-#                   this key will be stored in $ftr_info_HAR
-#  $ftr_info_HAR:   REF to hash of arrays with information on the features, ADDED TO HERE
-#  $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-################################################################# 
-sub align_protein_sequences { 
-  my $sub_name = "align_protein_sequences()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $out_key, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-
-  # keys for $ftr_info_HAR, which holds the file names we will use here
-  # these were defined in define_model_and_feature_output_file_names()
-  my $ftr_info_fa_file_key       = $out_key . ".hits.fa";  # fasta file of all annotated protein sequences, one per feature, already created
-  my $ftr_info_hmmstk_file_key   = $out_key . ".hmmstk";   # single sequence alignment of just the reference sequence, one per feature, created here
-  my $ftr_info_hmm_file_key      = $out_key . ".hmm";      # HMM built from .hmmstk file, one per feature, created here
-  my $ftr_info_hmmbuild_file_key = $out_key . ".hmmbuild"; # hmmbuild output when HMM was built from .hmmstk file, created here
-  my $ftr_info_stk_file_key      = $out_key . ".hits.stk"; # all annotated protein sequences, aligned, one per feature, created here by 
-                                                           # aligning .hits.fa file with .hmm HMM file
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $fa_file       = $ftr_info_HAR->{$ftr_info_fa_file_key}[$ftr_idx];
-    my $stk_file      = $ftr_info_HAR->{$ftr_info_stk_file_key}[$ftr_idx];
-    my $hmm_file      = $ftr_info_HAR->{$ftr_info_hmm_file_key}[$ftr_idx];
-    my $hmmbuild_file = $ftr_info_HAR->{$ftr_info_hmmbuild_file_key}[$ftr_idx];
-    my $hmmstk_file   = $ftr_info_HAR->{$ftr_info_hmmstk_file_key}[$ftr_idx];
-
-    # fetch the reference sequence only 
-    # first remove any old .ssi files that may exist
-    my $ssi_file = $fa_file . ".ssi";
-    if(-e $ssi_file) { 
-      removeFileUsingSystemRm($ssi_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    }
-    if(! -e $fa_file) { 
-      DNAORG_FAIL("ERROR in $sub_name, input protein fasta file to align $fa_file does not exist", 1, $ofile_info_HHR->{"FH"});
-    }
-    # it's possible that the file exists, but is empty, if none of the predicted sequences are translatable
-    if(-s $fa_file) {  
-      my $prot_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
-      my $ref_prot_str = $prot_sqfile->fetch_consecutive_seqs(1, "", -1, undef); # the reference protein sequence string
-      my ($ref_prot_name, $ref_prot_seq) = split(/\n/, $ref_prot_str);
-      $ref_prot_name =~ s/^\>//; # remove fasta header line '>'
-      
-      # write it out to a new stockholm alignment file
-      open(OUT, ">", $hmmstk_file) || die "ERROR, unable to open $hmmstk_file for writing.";
-      print OUT ("# STOCKHOLM 1.0\n");
-      print OUT ("$ref_prot_name $ref_prot_seq\n");
-      print OUT ("//\n");
-      close OUT;
-      
-      # build an HMM from this single sequence alignment:
-      my $cmd = $execs_HR->{"hmmbuild"} . " $hmm_file $hmmstk_file > $hmmbuild_file";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"}); 
-      
-      # store the files we just created
-      my $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmm_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmm_file, 0, sprintf("HMM built from the reference protein sequence for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-      
-      # remove the hmmbuild and hmmbuild alignment files, unless --keep
-      if(! opt_Get("--keep", $opt_HHR)) { 
-        removeFileUsingSystemRm($hmmstk_file,   $sub_name, $opt_HHR, $ofile_info_HHR);
-        removeFileUsingSystemRm($hmmbuild_file, $sub_name, $opt_HHR, $ofile_info_HHR);
-      }
-      else { 
-        $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmstk_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmstk_file, 0, sprintf("Stockholm alignment of reference protein for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-        $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_hmmbuild_file_key, $ofile_info_HHR->{"FH"});
-        addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $hmmbuild_file, 0, sprintf("hmmbuild output file for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-      }
-      
-      # align all sequences to this HMM
-      $cmd = $execs_HR->{"hmmalign"} . " $hmm_file $fa_file > $stk_file";
-      runCommand($cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-      
-      # store the file in ofile_info_HH
-      $ofile_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, $ftr_info_stk_file_key, $ofile_info_HHR->{"FH"});
-      addClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $stk_file, 0, sprintf("alignment of all protein sequences to reference for feature #%d: %s", $ftr_idx+1, $ftr_info_HAR->{"out_tiny"}[$ftr_idx]));
-      
-      # remove the .ssi files, always
-      if(-e $fa_file . ".ssi") { 
-        removeFileUsingSystemRm($fa_file . ".ssi", $sub_name, $opt_HHR, $ofile_info_HHR);
-      }
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  check_for_downstream_stop()
-# Incept:      EPN, Tue Mar  8 13:15:47 2016
-#
-# Purpose:    Check for an in-frame stop codon in the subsequence
-#             starting at position $posn on strand $strand in sequence
-#             $seq_accn in open sequence file $sqfile.
-#
-# Arguments: 
-#  $sqfile:       open Bio::Easel::SqFile object to fetch sequences from
-#  $seq_name:     sequence name to look for stop in
-#  $posn:         position to start looking for stop in
-#  $maxdist:      total number of nucleotides to look for in-frame stop
-#                 $posn+$maxdist is the final nucleotide we will examine
-#                 when looking for a stop
-#  $strand:       strand on which to look for stop codon
-#  $FH_HR:        REF to hash of file handles
-#
-# Returns:    Two values:
-#             $ret_posn:   If we find an in-frame stop before the end of the sequence:
-#                            final (3rd) position of first in-frame stop in $sequence
-#                            *RELATIVE TO $posn*, e.g. if this value is '3' then the first
-#                            3 nt of the sequence starting at $posn is a stop codon.
-#                            This value will be <0 if strand is "-"
-#                          If we don't find an in-frame stop before the end of the sequence:
-#                            this value is 0
-#             $stop_codon: in-frame stop codon found, either "TAA", "TAG", "TGA" or "TAR" or undef if
-#                          none found
-#
-# Dies:       if unable to fetch sequence from $sqfile
-#
-#################################################################
-sub check_for_downstream_stop { 
-  my $sub_name = "check_for_downstream_stop()";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqfile, $seq_name, $posn, $maxdist, $strand, $FH_HR) = @_;
-
-  my $seqlen = $sqfile->fetch_seq_length_given_name($seq_name);
-
-  # determine final position we'll look at
-  my $final_posn = $posn + $maxdist;
-  if($final_posn > $seqlen) { 
-    $final_posn = $seqlen; 
-  }
-
-  my $begin_posn = $posn;
-  my $target_subseq_len = 600; # we'll look at this many nucleotides at a time
-  my $inframe_stop_posn = 0;
-  my $stop_codon = undef; # type of stop codon found, e.g. "TAA", "TAG", "TGA", or "TAR"
-  my $keep_going = 1; # set to 0 if we find a stop codon or we go past $final_posn
-  while($keep_going) { 
-    my @fetch_AA = (); # the 2D array we use to fetch sequence chunks
-    @{$fetch_AA[0]} = ();
-    my $end_posn;
-    if($strand eq "+") { 
-      $end_posn = $begin_posn + ($target_subseq_len - 1);
-      if($end_posn > $final_posn) { 
-        $end_posn = $final_posn; 
-        $keep_going = 0; # breaks loop
-      }
-    }
-    else { 
-      $end_posn = $begin_posn - ($target_subseq_len - 1);
-      if($end_posn < 1) { 
-        $end_posn = 1;
-        $keep_going = 0; # breaks loop
-      }
-    }
-    @{$fetch_AA[0]} = ($seq_name . "/" . $begin_posn . "-" . $end_posn, $begin_posn, $end_posn, $seq_name);
-    my (undef, $cur_subseq) = split(/\n/, $sqfile->fetch_subseqs(\@fetch_AA, -1, undef)); 
-    # look for in-frame stop in $cur_subseq sequence fragment
-    ($inframe_stop_posn, $stop_codon) = find_inframe_stop($cur_subseq);
-
-    if($inframe_stop_posn != 0) { 
-      $keep_going = 0; # breaks loop
-    }
-    else { # only update these if we didn't find an in-frame stop
-           # if we did find an in-frame stop, then we don't want to update
-           # these so we can infer the stop posn below
-      $begin_posn = $end_posn;
-      if($strand eq "+") { $begin_posn++; }
-      else               { $begin_posn--; }
-    }
-  } # end of while($keep_going)
-
-  if($inframe_stop_posn != 0) {
-    # we need to return the stop position relative to $posn that was passed in
-    if($strand eq "+") { 
-      $inframe_stop_posn += ($begin_posn - 1);
-      $inframe_stop_posn -= $posn;
-    }
-    else { # strand eq "-" 
-      $inframe_stop_posn = ($begin_posn - $inframe_stop_posn) + 1;
-      $inframe_stop_posn = $posn - $inframe_stop_posn;
-      # inframe_stop_posn will be negative
-    }
-  }
-
-  return($inframe_stop_posn, $stop_codon); # if $inframe_stop_posn is 0, we didn't find an in-frame stop codon, and stop codon will be undef
-}
-
-#################################################################
-# Subroutine:  create_output_start_and_stop
-# Incept:      EPN, Mon Mar 14 09:08:48 2016
-#
-# Purpose:    Convert predicted start and stop coordinates which are
-#             in coordinate space 1..seq_len to 'output' coordinates 
-#             in coordinate space 1..accn_len. If seq_len == accn_len,
-#             which will be the case if the -c option was not used (that is,
-#             if the genome is not circular and thus we did not duplicate it)
-#             we do nothing. If seq_len == accn_len * 2, then we have to 
-#             check if out_start and out_stop should be different from p_start
-#             and p_stop.
-#
-# Arguments: 
-#  $in_start:   predicted start (from our annotation)
-#  $in_stop:    predicted (possibly corrected) stop (from our annotation)
-#  $accn_len:   length of the GenBank accession's sequence
-#  $seq_len:    length of the sequence we searched, either ($accn_len) or (2 * $accn_len)
-#  $FH_HR:      REF to hash of file handles
-#
-# Returns:    Two values:
-#             $out_start: the start coordinate to output
-#             $out_stop:  the stop coordinate to output
-#
-# Dies: If (($seq_len != $accn_len) && ($seq_len != (2*$accn_len))
-#
-################################################################# 
-sub create_output_start_and_stop { 
-  my $sub_name = "create_output_start_and_stop()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($in_start, $in_stop, $accn_len, $seq_len, $FH_HR) = @_;
-  
-  # contract check
-  if((! verify_integer($in_start)) || ($in_start <= 0)) { 
-    DNAORG_FAIL("ERROR in $sub_name, input start coordinate is expected to be a positive integer, got $in_start", 1, $FH_HR);
-  }
-  if((! verify_integer($in_stop)) || ($in_stop <= 0)) { 
-    DNAORG_FAIL("ERROR in $sub_name, input stop coordinate is expected to be a positive integer, got $in_stop", 1, $FH_HR);
-  }
-
-  my ($out_start, $out_stop);
-  if($seq_len == $accn_len) { # easy case
-    $out_start = $in_start;
-    $out_stop  = $in_stop;
-  }
-  elsif($seq_len == (2 * $accn_len)) { # may need to update $in_start and/or $in_stop
-    # Three possible cases:
-    # case 1: both $in_start and $in_stop are <= $accn_len
-    #         action: do nothing in this case
-    # case 2: both $in_start and $in_stop are > $accn_len
-    #         action: subtract $seq_len from both
-    # case 3: one of $in_start is <= $accn_len and the other is > $accn_len
-    #         action: subtract $seq_len from both, subtract 1 more from either
-    #                 that are now < $seq_len, to account for fact that position '0'
-    #                 does not exist.
-    if(($in_start <= $accn_len) && ($in_stop <= $accn_len)) { 
-      # case 1
-      $out_start = $in_start;
-      $out_stop  = $in_stop;
-    }
-    elsif(($in_start > $accn_len) && ($in_stop > $accn_len)) { 
-      # case 2
-      $out_start = $in_start - $accn_len;
-      $out_stop  = $in_stop  - $accn_len;
-    }
-    elsif(($in_start > $accn_len) || ($in_stop > $accn_len)) { 
-      # case 3
-      $out_start = $in_start - $accn_len;
-      $out_stop  = $in_stop  - $accn_len;
-      if($out_start <= 0) { $out_start--; }
-      if($out_stop  <= 0) { $out_stop--; }
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, unforeseen case in_start: $in_start in_stop: $in_stop seq_len: $seq_len accn_len: $accn_len", 1, $FH_HR);
-    }
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, input sequence length ($seq_len) is neither accession length ($accn_len), nor 2 * accession length", 1, $FH_HR);
-  }
-  return ($out_start, $out_stop);
-}
-
-#################################################################
-# Subroutine: seq_name_from_msa_seq_name()
-# Incept:     EPN, Wed Mar 16 05:15:57 2016
-#
-# Purpose:   Convert a sequence name from an MSA created in this
-#            script to the sequence name it was derived from
-#            using the rule: 
-#            <msa_seq_name> = <seq_name>/(?:\d+\-\d+)(?:,\d+-\d+)*/
-#
-# Arguments:
-#  $msa_seq_name: the sequence name from the MSA
-#  $FH_HR:        REF to hash of file handles
-#             
-# Returns:  <seq_name> derived from <msa_seq_name>
-# 
-# Dies:     If <msa_seq_name> is not in the expected format.
-#
-#################################################################
-sub seq_name_from_msa_seq_name { 
-  my $sub_name = "seq_name_from_msa_seq_name";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($msa_seq_name, $FH_HR) = @_;
-
-  my $seq_name = undef;
-  if($msa_seq_name =~ /^(\S+)\/(?:\d+\-\d+)(?:,\d+-\d+)*$/) { # '?:' just tells Perl not to capture group
-    $seq_name = $1;
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, unexpected format of msa sequence name: $msa_seq_name", 1, $FH_HR);
-  }
-
-  return $seq_name;
-}
-
-#################################################################
-# Subroutine: accn_name_from_seq_name()
-# Incept:     EPN, Wed Mar 16 06:16:25 2016
-#
-# Purpose:   Convert a sequence name from a sequence file fetched
-#            in this script to the accessoin name it was derived
-#            from using the rule: 
-#            <seq_name> = <accn_name>\:genome.+$/
-#
-# Arguments:
-#  $seq_name: the sequence name
-#  $FH_HR:    REF to hash of file handles
-#             
-# Returns:  <accn_name> derived from <seq_name>
-# 
-# Dies:     If <seq_name> is not in the expected format.
-#
-#################################################################
-sub accn_name_from_seq_name { 
-  my $sub_name = "accn_name_from_seq_name";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_name, $FH_HR) = @_;
-
-  my $accn_name = undef;
-  if($seq_name =~ /^(\S+)\:dnaorg.+$/) { 
-    $accn_name = $1;
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, unexpected format of sequence file sequence name: $seq_name", 1, $FH_HR);
-  }
-
-  return $accn_name;
-}
-
-#################################################################
-# Subroutine: process_input_fasta_file()
-# Incept:     EPN, Wed May 18 10:01:02 2016
-#
-# Purpose:   Given the name of the input fasta file
-#            (specified with --infasta), open the 
-#            file, and determine the lengths of all
-#            the N sequences in it. Fill 
-#            $seq_info_HAR->{"accn_name"}[$i] and
-#            $seq_info_HAR->{"accn_len"}[$i]
-#            for sequences $i=1..N.
-#
-#            If -c is enabled, then we also create a 
-#            new fasta file, that includes all of the
-#            sequences in $infasta_file, duplicated.
-#            (That is, if a sequence is:
-#             >seq1
-#             AGC
-#             then it will become
-#             >seq1-duplicated
-#             AGCAGC
-#             in the new file).
-#
-# Arguments:
-#  $infasta_file:  name of the input fasta file
-#  $outfasta_file: name of the output fasta file to create with duplicates of seqs from $infasta_file,
-#                  undef if we don't want to do this (if -c *not* enabled)
-#  $out_root:      root for naming output files
-#  $seq_info_HAR:  REF to hash of arrays of sequence information, added to here
-#  $opt_HHR:       REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:         REF to hash of file handles
-#  
-# Returns:  Number of sequences read in $infasta_file.
-# 
-# Dies: If $seq_info_HAR->{"accn_len"} and $seq_info_HAR->{"accn_name"} 
-#       are not both arrays of exactly length 1 (with information on 
-#       *only* the reference accession.)
-#       
-#       If the same sequence exists more than once in the input sequence
-#       file.
-#
-#       If $outfasta_file is defined and -c is not enabled.
-#
-#       If -c is enabled and $outfasta_file is not defined.
-#
-#       If the names of any sequences in $infasta_file include the
-#       string 'dnaorg', this will cause problems later on because
-#       we add this to sequence names sometimes and then parse
-#       based on its location, if the original sequence name already
-#       has 'dnaorg', we can't guarantee that we'll be able to 
-#       parse the modified sequence name correctly.
-#
-#################################################################
-sub process_input_fasta_file { 
-  my $sub_name = "process_input_fasta_file";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($infasta_file, $outfasta_file, $seq_info_HAR, $opt_HHR, $FH_HR) = @_;
-
-  my %accn_exists_H = ();  # keeps track of which accessions have been read from the sequence file
-  my $err_flag = 0;        # changed to '1' if an accession exists more than once in the input fasta file
-
-  my $do_out = (defined $outfasta_file) ? 1 : 0;
-  if($do_out && (! opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR in $sub_name, outfasta_file is defined, but -c not enabled", 1, $FH_HR);
-  }
-  if((! $do_out) && (opt_Get("-c", $opt_HHR))) { 
-    DNAORG_FAIL("ERROR in $sub_name, outfasta_file is not defined, but -c is enabled", 1, $FH_HR);
-  }
-    
-  if($do_out) { 
-    open(OUT, ">", $outfasta_file) || fileOpenFailure($outfasta_file, $sub_name, $!, "writing", $FH_HR);
-  }
-
-  my $ssi_file = $infasta_file . ".ssi";
-  if(-e $ssi_file) { 
-    runCommand("rm $ssi_file", opt_Get("-v", $opt_HHR), $FH_HR);
-  }
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infasta_file }); # the sequence file object
-  my $nseq = $sqfile->nseq_ssi;
-
-  for(my $i = 0; $i < $nseq; $i++) { 
-    my $next_fasta_str = $sqfile->fetch_consecutive_seqs(1, "", -1);
-    # get name and length of the sequence
-    if($next_fasta_str =~ /^\>(\S+).*\n(\S+)\n+$/) { 
-      my ($accn, $seq) = ($1, $2);
-      my $len = length($seq);
-      if($accn =~ m/dnaorg/) { 
-        DNAORG_FAIL("ERROR in $sub_name, sequence $accn read from $infasta_file includes the string \"dnaorg\", this is not allowed", 1, $FH_HR);
-      }
-      push(@{$seq_info_HAR->{"accn_name"}}, $accn);
-      push(@{$seq_info_HAR->{"accn_len"}}, $len);
-
-      if($do_out) { 
-        # output the sequence if necessary
-        my $outaccn = $accn . ":dnaorg-duplicated:$accn:1:$len:+:$accn:1:$len:+"; 
-        # this mimics how dnaorg.pm:fetchSequencesUsingEslFetchCds names sequences, if that 
-        # changes, this should be changed to match
-        print OUT ">" . $outaccn . "\n";
-        # print out sequence in 100-nt-per-line chunks
-        print OUT $seq . "\n";
-        print OUT $seq . "\n";
-      }
-
-      if(exists $accn_exists_H{$accn}) {
-        $accn_exists_H{$accn}++;
-        $err_flag = 1;
-      }
-      else { 
-        $accn_exists_H{$accn} = 1;
-      }
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse fasta sequence string $next_fasta_str", 1, $FH_HR);
-    }
-  }
-
-  if($do_out) { 
-    close OUT;
-  }
-
-  # fail if we found an accession more than once in $infasta_file
-  my $errmsg = "";
-  if($err_flag) { 
-    $errmsg = "ERROR in $sub_name, the following accessions exist more than once in $infasta_file\nEach accession should exist only once.\n";
-    for(my $i = 0; $i < scalar(@{$seq_info_HAR->{"accn_name"}}); $i++) { 
-      my $accn = $seq_info_HAR->{"accn_name"}[$i];
-      if((exists $accn_exists_H{$accn}) && ($accn_exists_H{$accn} > 1)) { 
-        $errmsg .= "\t$accn ($accn_exists_H{$accn} occurrences)\n";
-        delete $accn_exists_H{$accn};
-      }
-    }
-    DNAORG_FAIL($errmsg, 1, $FH_HR);
-  }
-
-  return $nseq;
-}
-
-#################################################################
-# Subroutine: validate_options_are_consistent_with_dnaorg_build()
-# Incept:     EPN, Fri May 27 12:59:19 2016
-#
-# Purpose:   Given the name of the log file and checksum
-#            file created by dnaorg_build.pl, read it and check 
-#            that all options that need to be consistent 
-#            between dnaorg_build.pl and dnaorg_annotate.pl
-#            are consistent, and any files that need to have
-#            the same checksums actually do.
-#
-# Arguments:
-#  $consopts_file:     name of the dnaorg_build consopts file
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $FH_HR:             REF to hash of file handles
-# 
-# Returns:  void
-# 
-# Dies: If $consopts_file doesn't exist, or we can't parse it.
-#
-#       If an option enabled in dnaorg_build.pl that needs to 
-#       be consistently used in dnaorg_annotate.pl is not, or
-#       vice versa.
-#
-#       If an option enabled in dnaorg_build.pl that takes a file
-#       as input has a different checksum for that file than 
-#       
-#################################################################
-sub validate_options_are_consistent_with_dnaorg_build { 
-  my $sub_name = "validate_options_are_consistent_with_dnaorg_build";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($consopts_file, $opt_HHR, $FH_HR) = @_;
-
-
-  # parse the consopts file
-  my %consopts_used_H    = (); # key option used in dnaorg_buid.pl from consopts file, value argument used in dnaorg_build.pl
-  my %consopts_notused_H = (); # key option in consopts file, value argument used in dnaorg_build.pl
-  my %consmd5_H  = ();         # key option used in dnaorg_build.pl in consopts file, md5 checksum value of the file name argument used in dnaorg_build.pl
-  parseConsOptsFile($consopts_file, \%consopts_used_H, \%consopts_notused_H, \%consmd5_H, $FH_HR);
-
-  # make sure options are consistent with what we read in the consopts file
-  my $opt;
-  my $optfile;
-  my $optfile_md5;
-  my $optarg;
-  foreach $opt (sort keys (%consopts_used_H)) { 
-    if(! opt_IsUsed($opt, $opt_HHR)) { 
-      DNAORG_FAIL("ERROR, the $opt option was used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also use it with dnaorg_annotate.pl.", 1, $FH_HR);
-    }
-    # option was used in both dnaorg_build.pl and dnaorg_annotate.pl, 
-    # if it has a consmd5 value, check those are the same (in those 
-    # cases we don't require argument is identical (files can have different names
-    # as long as their md5s are identical)
-    if($consmd5_H{$opt} ne "") { 
-      my $optfile = opt_Get($opt, $opt_HHR);
-      if(! -s $optfile) { 
-        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not exist.", 1, $FH_HR);
-      }          
-      $optfile_md5 = md5ChecksumOfFile($optfile, $sub_name, $opt_HHR, $FH_HR);
-      if($consmd5_H{$opt} ne $optfile_md5) { 
-        DNAORG_FAIL("ERROR, the file $optfile specified with the $opt option does not appear to be identical to the file used\nwith dnaorg_build.pl. The md5 checksums of the two files differ: dnaorg_build.pl: " . $consmd5_H{$opt} . " dnaorg_annotate.pl: " . $optfile_md5, 1, $FH_HR);
-      }
-    }
-    else { 
-      # no md5 value, so we verify that option arguments are identical, if there is an argument
-      if($consopts_used_H{$opt} ne "") { 
-        $optarg = opt_Get($opt, $opt_HHR);
-        if($consopts_used_H{$opt} ne $optarg) { 
-          DNAORG_FAIL("ERROR, the option argument string $optarg specified with the $opt option does not appear to be identical to the argument string used\nwith the $opt option when dnaorg_build.pl was run, which was " . $consopts_used_H{$opt}, 1, $FH_HR);
-        }
-      }
-    }
-  }
-  # all options that were used by dnaorg_build were also used by dnaorg_annotate,
-  # now check that all options NOT used by dnaorg_build were also not used
-  # by dnaorg_annotate
-
-  foreach $opt (sort keys (%consopts_notused_H)) { 
-    if(opt_IsUsed($opt, $opt_HHR)) { 
-      DNAORG_FAIL("ERROR, the $opt option was not used when dnaorg_build.pl was run (according to file $consopts_file).\nYou must also not use it with dnaorg_annotate.pl, or you need to rerun dnaorg_build.pl with -c.", 1, $FH_HR);
-    }
-  }    
-
-  # if we get here, all options are consistent
-  return;
-}
-
-################################################
-## TEMPORARY SUBROUTINES for the --aorg* options
-################################################
-
-#################################################################
-# Subroutine: aorg_find_origin_sequences
-# Incept:     EPN, Thu Jul 28 14:46:31 2016
-# 
-# Purpose:    TEMPORARY function for identifying origin sequences 
-#             using 'alternative' method -- a profile HMM.
-#
-#             Checks for and adds the following error codes: "ori".
-#
-# Args:   
-#  $fasta_file:             the fasta file to look for origins in
-#                           should contain duplicated genome sequences
-#                           (so if --infasta <f> used, probably not <f>)
-#  $sqfile:                 Bio:Easel object for $fasta_file
-#  $execs_HR:               ref to hash with paths to executables
-#  $out_root:               root for naming output files
-#  $seq_info_HAR:           REF to hash of arrays with information 
-#                           on the sequences, PRE-FILLED
-#  $err_seq_instances_HHR:  REF to the 2D hash of per-sequence errors, initialized here
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, 
-#                           see top of epn-options.pm for description
-#  $ofile_info_HHR:         REF to the 2D hash of output file information
-#
-# Returns:    void
-#
-#################################################################
-sub aorg_find_origin_sequences { 
-  my $sub_name = "aorg_find_origin_sequences";
-  my $nargs_exp = 9;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($fasta_file, $sqfile, $execs_HR, $out_root, $seq_info_HAR, $err_seq_instances_HHR, $err_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $nseq = scalar(@{$seq_info_HAR->{"accn_name"}});
-
-  my $aorg_model  = opt_Get("--aorgmodel",  $opt_HHR);
-  my $aorg_start  = opt_Get("--aorgstart",  $opt_HHR);
-  my $aorg_len    = opt_Get("--aorglen",    $opt_HHR);
-  my $aorg_offset = opt_Get("--aorgoffset", $opt_HHR);
-  
-  # run cmscan locally
-  my $tblout_file = $out_root . ".aorg.tblout";
-  my $cmscan_file = $out_root . ".aorg.cmscan";
-  my $opts = " --cpu 0 --tblout $tblout_file --verbose ";
-#  $opts .= " --nohmmonly --F1 0.02 --F2 0.001 --F2b 0.001 --F3 0.00001 --F3b 0.00001 --F4 0.0002 --F4b 0.0002 --F5 0.0002 --F6 0.0001 "; 
-  $opts .= " --nohmmonly --FZ 30 ";
-
-  my $cmd = $execs_HR->{"cmscan"} . " $opts $aorg_model $fasta_file > $cmscan_file";
-
-  runCommand($cmd, opt_Get("-v", $opt_HHR), $FH_HR);
-
-  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgtblout",  "$tblout_file",     1, "tblout file from cmscan for origin identification");
-  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgcmscan",  "$cmscan_file",     1, "standard output file from cmscan for origin identification");
-
-  my %hit_HH  = (); # 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
-  aorg_parse_cmscan_tblout_s2($tblout_file, $seq_info_HAR, \%hit_HH, $opt_HHR, $FH_HR);
-
-  # Fetch all hits into a fasta file that we can align with cmalign
-  my @fetch_AA = ();
-  for(my $i = 0; $i < $nseq; $i++) { 
-    my $seqname = $seq_info_HAR->{"seq_name"}[$i];
-    if(exists $hit_HH{$seqname}) { 
-      my $newname = $seqname . "/" . $hit_HH{$seqname}{"start"} . "-" . $hit_HH{$seqname}{"stop"};
-      push(@fetch_AA, [ $newname, $hit_HH{$seqname}{"start"}, $hit_HH{$seqname}{"stop"}, $seqname ]);
-      #printf("pushed $newname\n");
-    }
-  }
-  my $out_fasta_file = $out_root . ".cmscan.fa";
-  $sqfile->fetch_subseqs(\@fetch_AA, undef, $out_fasta_file);
-  addClosedFileToOutputInfo(\%ofile_info_HH, "aorgoutfasta", "$out_fasta_file", 1, "cmscan hits in fasta format");
-
-  # Align all hits with cmalign
-  my $out_stk_file     = $out_root . ".cmalign.stk";
-  my $out_cmalign_file = $out_root . ".cmalign";
-  $cmd = $execs_HR->{"cmalign"} . " -o $out_stk_file $aorg_model $out_fasta_file > $out_cmalign_file";
-
-  runCommand($cmd, 0, $ofile_info_HH{"FH"});
-  addClosedFileToOutputInfo(\%ofile_info_HH, "outstk",     "$out_stk_file",     1, "alignment of cmscan hits");
-  addClosedFileToOutputInfo(\%ofile_info_HH, "outcmalign", "$out_cmalign_file", 1, "cmalign output");
-
-  # determine which positions the origin sequence is in each sequence
-  my $ori_msa = Bio::Easel::MSA->new   ({ 
-    fileLocation => $out_stk_file,
-    isDna => 1
-                                        });
-  my $ori_start_rfpos    = $aorg_start;
-  my $ori_stop_rfpos     = $aorg_start + $aorg_len - 1;
-  my $ori_offset_rfpos   = $aorg_start + $aorg_offset - 1;
-  my $ori_start_apos     = $ori_msa->rfpos_to_aligned_pos($ori_start_rfpos);
-  my $ori_stop_apos      = $ori_msa->rfpos_to_aligned_pos($ori_stop_rfpos);
-  my $ori_offset_apos    = $ori_msa->rfpos_to_aligned_pos($ori_offset_rfpos);
-
-  my $ori_ppthresh = opt_Get("--aorgppthresh", $opt_HHR);
-  #printf("ori_start_apos:  $ori_start_apos\n");
-  #printf("ori_stop_apos:   $ori_stop_apos\n");
-  #printf("ori_offset_apos: $ori_offset_apos\n");
-  
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $has_hit = (defined $hit_HH{$seq_name}) ? 1 : 0;
-    $seq_info_HAR->{"origin_coords_str"}[$seq_idx] = ""; # initialize
-    $seq_info_HAR->{"origin_offset"}[$seq_idx]     = ""; # initialize
-    my $found_origin = 0;
-    
-    if($has_hit) { 
-      my $start = $hit_HH{$seq_name}{"start"};
-      my $stop  = $hit_HH{$seq_name}{"stop"};
-      my $msa_seqname = $seq_name . "/" . $start . "-" . $stop;
-      my $msa_sqidx = $ori_msa->get_sqidx($msa_seqname);
-      if($msa_sqidx == -1) { 
-        DNAORG_FAIL("ERROR, unable to find $msa_seqname in $out_stk_file", 1, $ofile_info_HH{"FH"});
-      }
-      # determine average pp of aligned residues between $ori_start_apos and $ori_stop_apos (inclusive)
-      # and enforce our posterior probability threshold
-      my ($pp_avg, $pp_cnt) = $ori_msa->get_pp_avg($msa_sqidx, $ori_start_apos, $ori_stop_apos);
-      # if($pp_cnt == 0) { printf("no aligned residues for origin prediction for $seq_name\n"); }
-      # if($pp_avg < $ori_ppthresh) { printf("avg PP of aligned origin below threshold for $seq_name ($pp_avg < $ori_ppthresh)\n"); }
-      if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh)) { 
-
-        # determine the unaligned positions the origin spans in the alignment file $out_stk_file
-        my ($cur_ori_start_uapos, $cur_ori_start_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_start_apos, 1); # '1': if ori_start_apos is a gap, return position of 1st non-gap nucleotide after it 
-        my ($cur_ori_stop_uapos,  $cur_ori_stop_apos)  = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_stop_apos,  0); # '0': if ori_start_apos is a gap, return position of 1st non-gap nucleotide before it 
-        
-        # determine the unaligned position that maps to the special 'sequence start' position of the origin
-        # (this is --aorgoffset position of the origin), which will become position number 1 when we renumber
-        # sequences
-        my ($cur_ori_offset_uapos, $cur_ori_offset_apos) = $ori_msa->aligned_to_unaligned_pos($msa_sqidx, $ori_offset_apos, 1); # '1': if ori_offset_apos is a gap, return position of 1st non-gap nucleotide after it 
-        
-        # do we have at least 1 nucleotide predicted in the origin positions?
-        if(($cur_ori_start_apos < $ori_stop_apos) && ($cur_ori_stop_apos > $ori_start_apos))  { 
-          # yes, we do:
-          # determine strand 
-          if($start <= $stop) { 
-            # positive strand
-            $cur_ori_start_uapos  += $start - 1;
-            $cur_ori_stop_uapos   += $start - 1;
-            $cur_ori_offset_uapos += $start - 1;
-          }
-          else { 
-            # negative strand
-            $cur_ori_start_uapos   = $start - $cur_ori_start_uapos  + 1;
-            $cur_ori_stop_uapos    = $start - $cur_ori_stop_uapos   + 1;
-            $cur_ori_offset_uapos  = $start - $cur_ori_offset_uapos + 1;
-          }
-          # adjust coordinates so they're within 1..L
-          my ($out_ori_start_uapos, $out_ori_stop_uapos) = 
-              create_output_start_and_stop($cur_ori_start_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-          
-          my $out_ori_offset_uapos;
-          ($out_ori_offset_uapos, undef) = 
-              create_output_start_and_stop($cur_ori_offset_uapos, $cur_ori_stop_uapos, $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-          #printf("cur_ori_start_uapos:  $cur_ori_start_uapos\n");
-          #printf("cur_ori_offset_uapos: $cur_ori_offset_uapos\n");
-          #printf("cur_ori_stop_uapos:   $cur_ori_stop_uapos\n\n");
-          
-          #printf("out_ori_start_uapos:  $out_ori_start_uapos\n");
-          #printf("out_ori_offset_uapos: $out_ori_offset_uapos\n");
-          #printf("out_ori_stop_uapos:   $out_ori_stop_uapos\n\n");
-          
-          $seq_info_HAR->{"origin_coords_str"}[$seq_idx] .= $out_ori_start_uapos . ":" . $out_ori_stop_uapos;
-          $seq_info_HAR->{"origin_offset"}[$seq_idx]      = $out_ori_offset_uapos;
-          $found_origin = 1;
-        } 
-      } # end of 'if(($pp_cnt > 0) && ($pp_avg >= $ori_ppthresh))'
-    } # end of 'if($has_hit)'
-    if(! $found_origin) { 
-      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "ori", $seq_name, "0 occurrences", $FH_HR);
-    }
-  } # end of 'for' loop over $seq_idx
-
-
-  return;
-}
-
-#################################################################
-# Subroutine : aorg_parse_cmscan_tblout_s2()
-# Incept:      EPN, Tue Jul 12 08:54:07 2016
-#
-# Arguments: 
-#  $tblout_file:   tblout file to parse
-#  $seq_info_HAR:  REF to hash of arrays with information 
-#                  on the sequences, PRE-FILLED
-#  $hit_HHR:       REF to 2D hash of top hits, 1st dim key is sequence name, 2nd is attribute, e.g. "start"    
-#  $opt_HHR:       ref to 2D options hash
-#  $FH_HR:         REF to hash of file handles
-#
-# Returns:    void
-#
-#################################################################
-sub aorg_parse_cmscan_tblout_s2 { 
-  my $sub_name = "aorg_parse_cmscan_tblout_s2()";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($tblout_file, $seq_info_HAR, $hit_HHR, $opt_HHR, $FH_HR) = @_;
-  
-  my %seqname_index_H = (); # seqname_index_H{$seq_name} = <n>, means that $seq_name is the <n>th sequence name in @{$seq_info_HAR{*}} arrays
-  getIndexHashForArray($seq_info_HAR->{"seq_name"}, \%seqname_index_H, $FH_HR);
-
-  open(IN, $tblout_file) || fileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
-
-  my $ethresh = opt_Get("--aorgethresh", $opt_HHR);
-  my $did_field_check = 0; # set to '1' below after we check the fields of the file
-  my $line_ctr = 0;  # counts lines in tblout_file
-  while(my $line = <IN>) { 
-    $line_ctr++;
-    if(($line =~ m/^\#/) && (! $did_field_check)) { 
-      # sanity check, make sure the fields are what we expect
-      if($line !~ m/#target name\s+accession\s+query name\s+accession\s+mdl\s+mdl\s+from\s+mdl to\s+seq from\s+seq to\s+strand\s+trunc\s+pass\s+gc\s+bias\s+score\s+E-value inc description of target/) { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected field names in $tblout_file\n$line\n", 1, $FH_HR);
-      }
-      $did_field_check = 1;
-    }
-    elsif($line !~ m/^\#/) { 
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      # example line:
-      # NC_001346.dnaorg_build.origin.5p -         KJ699341             -         hmm        1       59     2484     2542      +     -    6 0.59   0.1   78.5     2e-24 !   -
-      my @elA = split(/\s+/, $line);
-      my ($mdlname, $seqname, $mod, $mdlfrom, $mdlto, $seqfrom, $seqto, $strand, $score, $evalue) = 
-          ($elA[0], $elA[2], $elA[4], $elA[5], $elA[6], $elA[7], $elA[8], $elA[9], $elA[14], $elA[15]);
-
-      my $seqidx = $seqname_index_H{$seqname}; # sequence index for the hit in results_AAH (2nd dim of results_AAH)
-      my $seqlen = $seq_info_HAR->{"accn_len"}[$seqidx];
-
-      # only consider hits where either the start or end are less than the total length
-      # of the genome. Since we sometimes duplicate all genomes, this gives a simple 
-      # rule for deciding which of duplicate hits we'll store 
-      if(($seqfrom <= $seqlen) || ($seqto <= $seqlen)) { 
-        if($evalue <= $ethresh) { # enforce E-value threshold
-          if(! exists $hit_HHR->{$seqname}) { # takes only the top hit
-            %{$hit_HHR->{$seqname}} = ();
-            $hit_HHR->{$seqname}{"start"}  = $seqfrom;
-            $hit_HHR->{$seqname}{"stop"}   = $seqto;
-            $hit_HHR->{$seqname}{"score"}  = $score;
-            $hit_HHR->{$seqname}{"evalue"} = $evalue;
-          } 
-        }
-      }
-    }
-  }
-}
-
-
-#################################################################
-# Subroutine: aorg_get_origin_output_for_sequence
-# Incept:     EPN, Fri Jul 29 14:45:43 2016
-#
-# Synopsis:   For a given sequence index $seq_idx, determine 
-#             the output strings related to the origin sequence
-#             using the new profile HMM based method.
-#
-# Args: 
-#  $seq_info_HAR:  REF to hash of arrays with information 
-#                  on the sequences (including origins), PRE-FILLED
-#  $seq_idx:       index of sequence we're working on
-#  $FH_HR:         REF to hash of file handles
-#
-# Returns: 5 values:
-#          $oseq_ct:       number of occurrences of origin sequence found
-#          $oseq_start:    start position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_stop:     stop  position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_firstpos: what should be the first position of the seq if $oseq_ct == 1, else '-'
-#          $oseq_offset:   offset position of origin seq if $oseq_ct == 1, else '-'
-#          $oseq_passfail: 'P' if $oseq_ct is 1, else 'F'
-#
-# Dies: if $seq_info_HAR->{"origin_coords_str"}[$seq_idx] does not exist.
-# 
-#################################################################
-sub aorg_get_origin_output_for_sequence { 
-  my $sub_name = "aorg_get_origin_output_for_sequence";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_info_HAR, $seq_idx, $FH_HR) = @_;
-
-  if(! exists $seq_info_HAR->{"origin_coords_str"}[$seq_idx]) { 
-    DNAORG_FAIL("ERROR in $sub_name, no origin_coords_str (not even empty str) exists in seq_info_HAR for $seq_idx", 1, $FH_HR);
-  }
-  my $accn_len = $seq_info_HAR->{"accn_len"}[$seq_idx];
-
-  # initializereturn values
-  my $oseq_start    = "-"; # changed below if $oseq_ct == 1
-  my $oseq_stop     = "-"; # changed below if $oseq_ct == 1
-  my $oseq_firstpos = "-"; # changed below if $oseq_ct == 1
-  my $oseq_offset   = "-"; # changed below if $oseq_ct == 1
-  my $oseq_passfail = "F"; # changed below if $oseq_ct == 1
-
-  my @coords_A = split(",", $seq_info_HAR->{"origin_coords_str"}[$seq_idx]);
-  my $oseq_ct = scalar(@coords_A);
-
-  if($oseq_ct == 1) { 
-    ($oseq_start, $oseq_stop) = split(":", $coords_A[0]);
-    $oseq_firstpos = $seq_info_HAR->{"origin_offset"}[$seq_idx];
-    if($oseq_firstpos < 0) { 
-      $oseq_firstpos = $accn_len + $oseq_firstpos + 1;
-    }
-    $oseq_offset = $oseq_firstpos; 
-
-    # $oseq_offset is now what should be the first position of the sequence, 
-    # if this is > 0, we subtract 1 because that's how many we need to shift counterclockwise 
-    # direction to put $oseq_offset as position 1 (imagine if $oseq_offset is 1, then we need to shift '0', not '1')
-    # if it's negative then it's already the correct shift (due to the off-by-one
-    # introduced because there is no position 0)
-    if($oseq_offset > 0) { $oseq_offset -= 1; }
-    # printf("HEYA in $sub_name, seq_idx: $seq_idx oseq_offset: $oseq_offset\n");
-    # $oseq_offset is now number of nts to shift origin in counterclockwise direction
-    if($oseq_offset > ($accn_len / 2)) { # simpler (shorter distance) to move origin clockwise
-      $oseq_offset = $accn_len - $oseq_offset; # note, we don't add 1 here
-    }
-    else { # simpler to shift origin in counterclockwise direction, we denote this as a negative offset
-      $oseq_offset *= -1;
-    }
-
-    $oseq_passfail = "P";
-  }
-
-  return ($oseq_ct, $oseq_start, $oseq_stop, $oseq_firstpos, $oseq_offset, $oseq_passfail);
-}
-
-#################################################################
-# Subroutine:  run_blastx_and_summarize_output()
-# Incept:      EPN, Thu Oct  4 15:25:00 2018
-#
-# Purpose:    For each fasta file of predicted hits, run them as
-#             blastx queries against the appropriate target blast DBs.
-#
-# Arguments: 
-#  $execs_HR:          REF to a hash with "hmmbuild" and "hmmalign"
-#                      executable paths
-#  $out_root:          output root for the file names
-#  $query_file:        query fasta file (input fasta file to script, same fasta file cmscan searches against)
-#  $build_root:        path to build dir
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features
-#  $compatibility_AHR: REF to array of hashes, 0..$f..$nftr-1, key: query sequence name in $blastx_query_file that 
-#                      is 'compatible' with feature $f; that query sequence is an allowed hit for feature $f, FILLED HERE
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If blastx fails.
-#
-################################################################# 
-sub run_blastx_and_summarize_output {
-  my $sub_name = "run_blastx_and_summarize_output";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $out_root, $query_file, $build_root, $ftr_info_HAR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $nftr = validateFeatureInfoHashIsComplete($ftr_info_HAR, undef, $ofile_info_HHR->{"FH"}); # nftr: number of features
-  my $ncds = 0; 
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-mp") || 
-       ($ftr_info_HAR->{"type"}[$ftr_idx] eq "cds-notmp")) { 
-      $ncds++;
-    }
-  }
-
-  # run blastx once on the full sequence file
-  my $cur_db_file = $build_root . ".prot.fa";
-  my $blastx_out_file = $out_root . ".blastx.out";
-#  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -num_descriptions $ncds -num_alignments $ncds -out $blastx_out_file";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $query_file -db $cur_db_file -seg no -out $blastx_out_file";
-  runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $ofile_info_key = get_mdl_or_ftr_ofile_info_key("ftr", $ftr_idx, "predicted.hits.fa", $ofile_info_HHR->{"FH"});
-    if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
-      # printf("ftr_idx: $ftr_idx, out_tiny: %s ofile_info_key: $ofile_info_key %s\n", $ftr_info_HAR->{"out_tiny"}[$ftr_idx], $ofile_info_HHR->{"fullpath"}{$ofile_info_key});
-      my $cur_query_file      = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-      my $cur_db_file         = $build_root . ".f" . $ftr_idx . ".prot.fa";
-      my $cur_blastx_out_file = $out_root . ".f" . $ftr_idx . ".blastx.out";
-
-      # run blast for this feature
-      #$blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -num_descriptions 1 -num_alignments 1 -out $cur_blastx_out_file";
-      $blastx_cmd = $execs_HR->{"blastx"} . " -query $cur_query_file -db $cur_db_file -seg no -out $cur_blastx_out_file";
-      runCommand($blastx_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-
-      # concatenate the blastx output for this feature to the growing blastx output for all blastx runs
-      my $concat_cmd = "cat $cur_blastx_out_file >> $blastx_out_file";
-      runCommand($concat_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-      #if(! opt_Get("--keep", $opt_HHR)) { 
-      if(0) { 
-        removeFileUsingSystemRm($cur_blastx_out_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"}); 
-      }
-    }
-  }
-  addClosedFileToOutputInfo($ofile_info_HHR, "blastx-out", $blastx_out_file, 0, "blastx output");
-
-  # now summarize its output
-  my $blastx_summary_file = $out_root . ".blastx.summary.txt";
-  my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
-  runCommand($parse_cmd, opt_Get("-v", $opt_HHR), $ofile_info_HHR->{"FH"});
-  addClosedFileToOutputInfo($ofile_info_HHR, "blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
-
-  return;
-}
-
-#################################################################
-# Subroutine:  ftr_results_calculate_blastx()
-# Incept:      EPN, Thu Oct  4 15:25:00 2018
-#              [modified from subroutine of same name by Alejandro Schaffer, compare_predictions.pl]
-#
-# Purpose:    Parse blastx summary file and store results
-#             in ftr_results.
-#
-# Arguments: 
-#  $blastx_summary_file: path to blastx summary file to parse
-#  $ftr_info_HAR:        REF to hash of arrays with information on the features
-#  $seq_info_HAR:        REF to hash of sequence information
-#  $seq_name_idx_HR;     REF to hash, key: $seq_name, value: idx of $seq_name in @{$seq_info_HAR->{"seq_name"}} and $ftr_info_HAR
-#  $ftr_results_AAHR:    REF to feature results AAH, ADDED TO HERE
-#  $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If blastx fails.
-#
-################################################################# 
-sub ftr_results_calculate_blastx { 
-  my $sub_name = "ftr_results_calculate_blastx";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($blastx_summary_file, $ftr_info_HAR, $seq_info_HAR, $seq_name_idx_HR, $ftr_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  validateFileExistsAndIsNonEmpty($blastx_summary_file, $sub_name, $FH_HR);
-  my $nftr = validateAndGetSizeOfInfoHashOfArrays($ftr_info_HAR, undef, $FH_HR);
-
-  open(IN, $blastx_summary_file) || fileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
-  # first step, determine which sequence each hit corresponds to
-  my $query      = undef;
-  my $target     = undef;
-  my $hsp_idx    = undef;
-  my $seq_idx    = undef; 
-  my $ftr_idx    = undef;
-  my $no_coords_query = undef; # name of query without coords, if query sequence is a predicted feature, e.g. "NC_002549.1/6039-8068" for query "NC_002549.1/6039-8068/10-885,885-2030"
-  my $coords_str = undef; # string of coordinates if this is a predicted feature, e.g. "10-885,885-2030" for "NC_002549.1/6039-8068/10-885,885-2030"
-  my $top_score_flag = 0;   # set to '1' if current hit is top scoring one for this sequence/feature pair
-
-  while(my $line = <IN>) { 
-    chomp $line;
-    if($line ne "END_MATCH") { 
-      my @el_A = split(/\t/, $line);
-      if(scalar(@el_A) != 2) { 
-        DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, did not read exactly 2 tab-delimited tokens in line $line", 1, $FH_HR);
-      }
-      my ($key, $value) = (@el_A);
-      if($key eq "QACC") { 
-        $query = $value;
-        # determine what sequence it is
-        my $matching_query = undef;
-        ($matching_query, undef, undef) = helper_blastx_breakdown_query($query, undef, $seq_name_idx_HR, $FH_HR); 
-        # helper_blastx_breakdown_query() will exit if $query is unparseable
-        # two undefs: coords_str and query length, both irrelevant here
-        $seq_idx = $seq_name_idx_HR->{$matching_query};
-      }
-      elsif($key eq "HACC") { 
-        if(! defined $query) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line\n", 1, $FH_HR);
-        }
-        $target = $value;
-        # determine what feature it is
-        if($target =~ /(\S+)\/(\S+)/) { 
-          my ($accn, $coords) = ($1, $2);
-          # find it in @{$ftr_info_HAR->{"ref_coords"}}
-          $ftr_idx = blastxDbSeqNameToFtrIdx($target, $ftr_info_HAR, $FH_HR); # will die if problem parsing $target, or can't find $ftr_idx
-        }
-      }
-      elsif($key eq "HSP") { 
-        if((! defined $query) || (! defined $ftr_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines\n", 1, $FH_HR);
-        }
-        # printf("HEYA BLASTX HSP $key $value\n");
-        if($value =~ /^(\d+)$/) { 
-          $hsp_idx = $value;
-          #printf("HEYA BLASTX set hsp_idx to $hsp_idx\n");
-        }
-        else { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
-        }
-      }
-      elsif($key eq "QRANGE") { 
-        if($value eq "..") { # special case, no hits, silently move on
-          ;
-        }
-        elsif((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read QRANGE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
-        }
-        elsif($top_score_flag) { 
-          if($value =~ /^(\d+)..(\d+)$/) { 
-            my ($blast_start, $blast_stop) = ($1, $2);
-            my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
-            my ($out_start, $out_stop) = create_output_start_and_stop($blast_start, $blast_stop,
-                                                                      $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-            # unless -c was used: $xstart will equal $blast_start and $xstop will equal $blast_stop
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}  = $out_start;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"}   = $out_stop;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} = $blast_strand;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_query"}  = $query;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start}  to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"} . "\n");
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_stop}   to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"} . "\n");
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_strand} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_strand"} . "\n");
-          }
-          else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
-          }
-        }
-      }
-      elsif($key eq "MAXIN") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXIN line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
-        }
-        if($top_score_flag) { 
-          if($value =~ /^(\d+)$/) { 
-            my $maxins = $1;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} = $maxins;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxins} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxins"} . "\n");
-          }
-          else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXIN line $line", 1, $FH_HR);
-          }
-        }
-      }
-      elsif($key eq "MAXDE") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read MAXDE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
-        }
-        if($top_score_flag) {
-          if($value =~ /^(\d+)$/) { 
-            my $maxdel = $1;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} = $maxdel;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_maxdel} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_maxdel"} . "\n");
-          }
-          else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary MAXDE line $line", 1, $FH_HR);
-          }
-        }
-      }
-      elsif($key eq "FRAME") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
-        }
-        if($top_score_flag) { 
-          if($value =~ /^[\+\-]([123])$/) { 
-            my $frame = $1;
-            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} = $frame;
-            #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_frame} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_frame"} . "\n");
-          }
-          else { 
-            DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
-          }
-        }
-      }
-      elsif($key eq "STOP") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read STOP line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
-        }
-        if($top_score_flag) { 
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} = $value;
-          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_trcstop} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_trcstop"} . "\n");
-        }
-      }
-      elsif($key eq "SCORE") { 
-        if((! defined $query) || (! defined $ftr_idx) || (! defined $hsp_idx)) { 
-          DNAORG_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines\n", 1, $FH_HR);
-        }
-        # is this sequence compatible and the highest scoring hit for this feature for this sequence? 
-        if((! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"}) || # first hit, so must be highest
-           ($value > $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"})) { # highest scoring hit
-          $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} = $value;
-          $top_score_flag = 1;
-          #printf("HEYA BLASTX set ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_score} to " . $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_score"} . "\n");
-        }
-        else { 
-          $top_score_flag = 0;
-        }
-      }
-      # Add elsif($key eq "") blocks here to store more values from the blastx.summary file
-    }
-  }
-  close(IN);
-
-  return 0;
-}
-
-#################################################################
-# Subroutine:  check_for_defined_pstart_in_mdl_results()
-# Incept:      EPN, Mon Oct 29 14:44:38 2018
-#
-# Purpose:    Given a feature and sequence index
-#             in ftr_results.
-#
-# Arguments: 
-#  $seq_idx:             sequence index
-#  $ftr_idx:             feature index
-#  $ftr_info_HAR:        REF to hash of arrays with information on the features
-#  $mdl_results_AAHR:    REF to model results AAH
-#  $FH_HR:               REF to hash of file handles
-#
-# Returns:    '1' if at least one model for this feature has a p_start value defined
-#
-# Dies:       If blastx fails.
-#
-################################################################# 
-sub check_for_defined_pstart_in_mdl_results { 
-  my $sub_name = "check_for_defined_pstart_in_mdl_results";
-  my $nargs_exp = 5;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR) = @_;
-
-  if($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { 
-    for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"p_start"}) { 
-        return 1; 
-      }
-    }
-  }
-  elsif(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-        ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-    my @all_children_idx_A = (); # feature indices of the all children of this feature
-    getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "all", \@all_children_idx_A, $FH_HR);
-    my $na_children = scalar(@all_children_idx_A);
-    for(my $child_idx = 0; $child_idx < $na_children; $child_idx++) { 
-      # call this subroutine recursively, but do a sanity check firs
-      if($ftr_info_HAR->{"annot_type"}[$child_idx] ne "model") { 
-        DNAORG_FAIL(sprintf("ERROR in $sub_name, about to make recursive call for feature idx $child_idx of annot_type %s != model", $ftr_info_HAR->{"annot_type"}[$child_idx]), 1, $FH_HR);
-      }
-      if(check_for_defined_pstart_in_mdl_results($seq_idx, $child_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR)) { 
-        return 1; 
-      }
-    }
-  }
-  return 0; # if we get here, we have 0 p_start values in any models for this feature
-}
-
-#################################################################
-# Subroutine:  helper_ftable_get_ftr_error_code_strings()
-# Incept:      EPN, Tue Oct 30 11:56:39 2018
-#
-# Purpose:    Given a sequence name and feature index, construct
-#             a string of all errors for that sequence/feature pair
-#             and return it. Also add newline-terminated strings,
-#             one per error, to @{$ftr_long_output_AR} for eventual
-#             output to the long feature table.
-#
-# Arguments: 
-#  $seq_name:               name of sequence
-#  $ftr_idx:                feature index
-#  $err_ftr_instances_AHHR: REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#  $err_info_HAR:           REF to the error info hash of arrays, PRE-FILLED
-#  $ftr_long_output_AR:     REF to array of long output strings, FILLED HERE
-#  $FH_HR:                  REF to hash of file handles
-#
-# Returns:    A string with all err codes for this sequence/feature combo concatenated and 
-#             separated by commas.
-#
-#
-################################################################# 
-sub helper_ftable_get_ftr_error_code_strings { 
-  my $sub_name = "helper_ftable_get_ftr_error_code_strings";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_name, $ftr_idx, $err_ftr_instances_AHHR, $err_info_HAR, $ftr_long_output_AR, $FH_HR) = @_;
-
-  my $nerr = scalar(@{$err_info_HAR->{"code"}});
-
-  my $ret_err_str = "";
-  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    if($err_info_HAR->{"pertype"}[$err_idx] eq "feature") { 
-      my $err_code = $err_info_HAR->{"code"}[$err_idx];
-      if(exists $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name}) { 
-        if($ret_err_str ne "") { $ret_err_str .= ","; }
-        $ret_err_str .= $err_code;
-        push(@{$ftr_long_output_AR}, sprintf("%3s error code: %s%s", 
-                                             $err_code, 
-                                             $err_info_HAR->{"desc"}[$err_idx], 
-                                             ($err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} eq "") ? "" : " [" . $err_ftr_instances_AHHR->[$ftr_idx]{$err_code}{$seq_name} . "]")); 
-      }
-    }
-  }
-  
-  return $ret_err_str;
-}
-
-#################################################################
-# Subroutine:  helper_ftable_get_seq_error_code_strings()
-# Incept:      EPN, Thu Jan 24 12:03:50 2019
-#
-
-# Purpose:    Given a sequence name, construct a string of all 
-#             per-sequence errors and return it.
-#
-# Arguments: 
-#  $seq_name:              name of sequence
-#  $err_seq_instances_HHR: REF to 2D hashes with per-sequence errors, PRE-FILLED
-#  $err_info_HAR:          REF to the error info hash of arrays, PRE-FILLED
-#  $FH_HR:                 REF to hash of file handles
-#
-# Returns:    A string with all per-sequence err codes for this sequence 
-#             concatenated and separated by commas.
-#
-################################################################# 
-sub helper_ftable_get_seq_error_code_strings { 
-  my $sub_name = "helper_ftable_get_seq_error_code_strings";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_name, $err_seq_instances_HHR, $err_info_HAR, $FH_HR) = @_;
-
-  my $nerr = scalar(@{$err_info_HAR->{"code"}});
-
-  my $ret_err_str = "";
-  for(my $err_idx = 0; $err_idx < $nerr; $err_idx++) { 
-    if($err_info_HAR->{"pertype"}[$err_idx] eq "sequence") { 
-      my $err_code = $err_info_HAR->{"code"}[$err_idx];
-      if(exists $err_seq_instances_HHR->{$err_code}{$seq_name}) { 
-        if($ret_err_str ne "") { $ret_err_str .= ","; }
-        $ret_err_str .= $err_code;
-      }
-    }
-  }
-  
-  return $ret_err_str;
-}
-
-#################################################################
-# Subroutine:  helper_ftable_get_coords_standard
+# Subroutine:  helper_ftable_coords_from_nt_prediction
 # Incept:      EPN, Tue Oct 30 12:59:13 2018
 #
 # Purpose:    Given a sequence name and feature index, construct
@@ -10356,160 +5289,80 @@ sub helper_ftable_get_seq_error_code_strings {
 #             multiple lines, one per segment.
 #
 # Arguments: 
-#  $seq_idx:           sequence index
+#  $seq_name:          sequence name
 #  $ftr_idx:           feature index
-#  $do_start_carrot:   '1' to do carrot for first start
-#  $do_stop_carrot:    '1' to do carrot for final stop
-#  $do_pred_stop:      '1' to use predicted stop (p_stop) instead of corrected one
+#  $is_5trunc:         '1' if feature is 5' truncated, else '0'
+#  $is_3trunc:         '1' if feature is 3' truncated, else '0'
 #  $ret_min_coord:     REF to minimum coordinate, to fill
-#  $mdl_info_HAR:      REF to hash of arrays with information on the models, PRE-FILLED
-#  $ftr_info_HAR:      REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:      REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $mdl_results_AAHR:  REF to model results AAH, PRE-FILLED
-#  $ftr_results_AAHR:  REF to feature results AAH, PRE-FILLED
+#  $ftr_info_AHR:      REF to array of hashes with information on the features, PRE-FILLED
+#  $sgm_results_HAHR:  REF to segment results HAH, PRE-FILLED
 #  $FH_HR:             REF to hash of file handles
 #
 # Returns:    A string that gives the coordinates for the seq_idx/ftr_idx
-#             pair in feature table format.
+#             pair in feature table format, or "" if no predictions exist.
 #
-# Dies:       if x_start or x_stop does not exist in the ftr_results_AAHR->[$ftr_idx][$seq_idx] hash
+# Dies:       Never
 ################################################################# 
-sub helper_ftable_get_coords_standard { 
-  my $sub_name = "helper_ftable_get_coords_standard";
-  my $nargs_exp = 12;
+sub helper_ftable_coords_from_nt_prediction { 
+  my $sub_name = "helper_ftable_coords_from_nt_prediction";
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_idx, $ftr_idx, $do_start_carrot, $do_stop_carrot, $do_pred_stop, $ret_min_coord, $mdl_info_HAR, $ftr_info_HAR, $seq_info_HAR, $mdl_results_AAHR, $ftr_results_AAHR, $FH_HR) = @_;
-
-  my $ftr_results_HR = \%{$ftr_results_AAHR->[$ftr_idx][$seq_idx]}; # for convenience
+  my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_info_AHR, $sgm_results_HAHR, $FH_HR) = @_;
 
   my @start_A = ();
   my @stop_A  = ();
-
-  if(($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "multifeature") &&
-     ($ftr_info_HAR->{"type"}[$ftr_idx]       eq "cds-mp")) { 
-
-    my $ftbl_out_start = $ftr_results_HR->{"ftbl_out_start"};
-    my $ftbl_out_stop  = $ftr_results_HR->{"ftbl_out_stop"};
-
-    if($do_pred_stop) { # need to overwrite $ftbl_out_stop
-      my @cur_primary_children_idx_A = (); # feature indices of the primary children of this feature
-      getPrimaryOrAllChildrenFromFeatureInfo($ftr_info_HAR, $ftr_idx, "primary", \@cur_primary_children_idx_A, $FH_HR);
-      my $first_ftr_idx = $cur_primary_children_idx_A[0];
-      my $final_ftr_idx = $cur_primary_children_idx_A[(scalar(@cur_primary_children_idx_A)-1)];
-      my $first_child_mdl_idx = $ftr_info_HAR->{"first_mdl"}[$first_ftr_idx];
-      my $final_child_mdl_idx = $ftr_info_HAR->{"final_mdl"}[$final_ftr_idx];
-      # go through and determine final model between first_child_mdl_idx and final_child_mdl_idx that has a valid p_stop value, 
-      # there must be at least 1, then set ftbl_out_stop to that (p_start is actually irrelevant here)
-      my $pred_start = undef;
-      my $pred_stop  = undef;
-      for(my $m = $first_child_mdl_idx; $m <= $final_child_mdl_idx; $m++){ 
-        if((defined $mdl_results_AAHR->[$m][$seq_idx]{"p_start"}) && 
-           (defined $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"})  && 
-           ($mdl_results_AAHR->[$m][$seq_idx]{"p_start"} ne "?")  && 
-           ($mdl_results_AAHR->[$m][$seq_idx]{"p_stop"} ne "?")) { 
-          $pred_start = $mdl_results_AAHR->[$m][$seq_idx]{"p_start"};
-          $pred_stop  = $mdl_results_AAHR->[$m][$seq_idx]{"p_stop"};
-          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "+") && ($pred_stop > $seq_info_HAR->{"seq_len"})) { $pred_stop = $seq_info_HAR->{"seq_len"}; }
-          if(($mdl_results_AAHR->[$m][$seq_idx]{"p_strand"} eq "-") && ($pred_stop < 1))                          { $pred_stop = 1; }
-        }
-      }
-      if((! defined $pred_start) || (! defined $pred_stop)) { 
-        DNAORG_FAIL("ERROR in $sub_name, feature type is multifeature, do_pred_stop is 1 but unable to find start/stop - shouldn't happen", 1, $FH_HR);
-      }
-      (undef, $ftbl_out_stop) = create_output_start_and_stop($pred_start, # irrelevant due to the first undef arg
-                                                             $pred_stop, 
-                                                             $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+  
+  for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+    if(defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}) { 
+      push(@start_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
+      push(@stop_A,  $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
     }
-
-    if(($ftbl_out_start eq "?") || ($ftbl_out_stop eq "?")) { 
-      return ""; # indicating we don't have a full CDS prediction for this seq/feature pair
-    }
-    push(@start_A, $ftbl_out_start);
-    push(@stop_A,  $ftbl_out_stop);
-
-    return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR);
   }
-  elsif($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "model") { # not a multifeature cds-mp but annotated by models
-    if(! check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR)) { 
-      DNAORG_FAIL("ERROR in $sub_name, feature annot_type is model but no models have any predicitions - shouldn't happen", 1, $FH_HR);
-    }
-    for(my $mdl_idx = $ftr_info_HAR->{"first_mdl"}[$ftr_idx]; $mdl_idx <= $ftr_info_HAR->{"final_mdl"}[$ftr_idx]; $mdl_idx++) { 
-      if(exists $mdl_results_AAHR->[$mdl_idx][$seq_idx]->{"p_start"}) { 
-        my $out_start = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_start"};
-        my $out_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"out_stop"};
-        if((! defined $out_start) || ($out_start eq "?")) { 
-          DNAORG_FAIL("ERROR in $sub_name, feature annot_type is model but out_start is not defined or ? - shouldn't happen", 1, $FH_HR);
-        }
-        if((! defined $out_stop) || ($out_stop eq "?")) { 
-          DNAORG_FAIL("ERROR in $sub_name, feature annot_type is model but out_stop is not defined or ? - shouldn't happen", 1, $FH_HR);
-        }
-        if($do_pred_stop) { 
-          my $pred_start = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"};
-          my $pred_stop  = $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"} + $mdl_info_HAR->{"append_num"}[$mdl_idx];
-          (undef, $out_stop) = create_output_start_and_stop($mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_start"}, # irrelevant due to the first undef arg
-                                                            $mdl_results_AAHR->[$mdl_idx][$seq_idx]{"p_stop"}, 
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
-        }
-        push(@start_A, $out_start);
-        push(@stop_A,  $out_stop);
-      }
-    }
-    return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR);
-  }
-  else { 
-    DNAORG_FAIL("ERROR in $sub_name, seq idx $seq_idx, ftr_idx $ftr_idx feature is not cds-mp or annot_type model - shouldn't happen", 1, $FH_HR);
-  }
-
-  return ""; # never reached
+  return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR);
 }
+
 #################################################################
-# Subroutine:  helper_ftable_get_coords_xnn_flag
+# Subroutine:  helper_ftable_coords_prot_only_prediction
 # Incept:      EPN, Tue Oct 30 12:26:05 2018
 #
 # Purpose:    Given a sequence name and feature index, construct
 #             a feature table coordinate string, possibly of 
 #             multiple lines, one per segment, for the special
-#             case that this feature has a 'xnn' error: blastx 
+#             case that this feature has a 'b_non' alert: blastx 
 #             prediction but no CM prediction.
 #
 # Arguments: 
-#  $seq_idx:           sequence index
-#  $ftr_idx:           feature index
-#  $do_start_carrot:   '1' to do carrot for first start
-#  $do_stop_carrot:    '1' to do carrot for final stop
-#  $ret_min_coord:     REF to minimum coordinate, to fill
-#  $seq_info_HAR:      REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $ftr_results_AAHR:  REF to feature results AAH, PRE-FILLED
-#  $FH_HR:             REF to hash of file handles
+#  $seq_name:         sequence name
+#  $ftr_idx:          feature index
+#  $is_5trunc:        '1' if feature is 5' truncated, else '0'
+#  $is_3trunc:        '1' if feature is 3' truncated, else '0'
+#  $ret_min_coord:    REF to minimum coordinate, to fill
+#  $ftr_results_HAHR: REF to feature results AAH, PRE-FILLED
+#  $FH_HR:            REF to hash of file handles
 #
 # Returns:    A string that gives the coordinates for the seq_idx/ftr_idx
 #             pair in feature table format.
 #
-# Dies:       if x_start or x_stop does not exist in the ftr_results_AAHR->[$ftr_idx][$seq_idx] hash
+# Dies:       if p_start or p_stop does not exist in the ftr_results_HAHR->{$seq_name}[$ftr_idx] hash
 ################################################################# 
-sub helper_ftable_get_coords_xnn_flag { 
-  my $sub_name = "helper_ftable_get_coords_xnn_flag";
-  my $nargs_exp = 8;
+sub helper_ftable_coords_prot_only_prediction { 
+  my $sub_name = "helper_ftable_coords_prot_only_prediction";
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_idx, $ftr_idx, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $seq_info_HAR, $ftr_results_AAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_results_HAHR, $FH_HR) = @_;
 
-  # NOTE: for 'xnn' errors, the x_start and x_stop are always set at the feature level
-  if((! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"}) ||
-     (! exists $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"})) { 
-    DNAORG_FAIL("ERROR in $sub_name, ftr_results_AAHR->[$ftr_idx][$seq_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
+  # NOTE: for 'b_non' alerts, the x_start and x_stop are always set at the feature level
+  if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ||
+     (! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"})) { 
+    ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_start|x_stop} does not exists", "dnaorg", 1, $FH_HR);
   }
 
-  my ($out_start, $out_stop) = create_output_start_and_stop($ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_start"},
-                                                            $ftr_results_AAHR->[$ftr_idx][$seq_idx]{"x_stop"},
-                                                            $seq_info_HAR->{"accn_len"}[$seq_idx], $seq_info_HAR->{"seq_len"}[$seq_idx], $FH_HR);
+  my @start_A = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"});
+  my @stop_A  = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"});
 
-
-  my @start_A = ($out_start);
-  my @stop_A  = ($out_stop);
-
-  return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR);
+  return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR);
 }
 
 #################################################################
@@ -10520,12 +5373,12 @@ sub helper_ftable_get_coords_xnn_flag {
 #             construct coordinate strings in feature table format.
 #
 # Arguments: 
-#  $start_AR:        REF to array of start coordinates
-#  $stop_AR:         REF to array of stop coordinates
-#  $do_start_carrot: '1' to do carrot for first start
-#  $do_stop_carrot:  '1' to do carrot for final stop
-#  $ret_min_coord:   REF to minimum coordinate, to fill
-#  $FH_HR:           REF to hash of file handles
+#  $start_AR:      REF to array of start coordinates
+#  $stop_AR:       REF to array of stop coordinates
+#  $is_5trunc:     '1' to do carrot for first start
+#  $is_3trunc:     '1' to do carrot for final stop
+#  $ret_min_coord: REF to minimum coordinate, to fill
+#  $FH_HR:         REF to hash of file handles
 #
 # Returns:    A string that gives the coordinates in feature table format.
 #             Or "" if $start_AR->[0] and/or $stop_AR->[0] is "?" and size of those arrays is 1
@@ -10540,32 +5393,27 @@ sub helper_ftable_start_stop_arrays_to_coords {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($start_AR, $stop_AR, $do_start_carrot, $do_stop_carrot, $ret_min_coord, $FH_HR) = @_;
+  my ($start_AR, $stop_AR, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR) = @_;
 
   my $ret_coords_str = "";
   my $ncoord = scalar(@{$start_AR});
   my $min_coord = undef;
   if($ncoord == 0) { 
-    DNAORG_FAIL("ERROR in $sub_name, start_A array is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, start_A array is empty", "dnaorg", 1, $FH_HR);
   }
   if($ncoord != scalar(@{$stop_AR})) { # sanity check
-    DNAORG_FAIL("ERROR in $sub_name, start_A array and stop_A arrays are different sizes", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, start_A array and stop_A arrays are different sizes", "dnaorg", 1, $FH_HR);
   }
   for(my $c = 0; $c < $ncoord; $c++) { 
     my $is_first = ($c == 0)           ? 1 : 0;
     my $is_final = ($c == ($ncoord-1)) ? 1 : 0;
     my $start = $start_AR->[$c];
     my $stop  = $stop_AR->[$c];
-    if($start eq "?" || $stop eq "?") { # should only happen for cds-mp features
-      DNAORG_FAIL("ERROR in $sub_name, start ($start) and/or stop ($stop) are equal to ? - shouldn't happen", 1, $FH_HR);
-    }
-    else {
-      if((! defined $min_coord) || ($start < $min_coord)) { $min_coord = $start; }
-      if((! defined $min_coord) || ($stop  < $min_coord)) { $min_coord = $stop;  }
-      $ret_coords_str .= sprintf("%s%d\t%s%d\n", 
-                                 ($do_start_carrot && $is_first) ? "<" : "", $start, 
-                                 ($do_stop_carrot  && $is_final) ? ">" : "", $stop);
-    }
+    if((! defined $min_coord) || ($start < $min_coord)) { $min_coord = $start; }
+    if((! defined $min_coord) || ($stop  < $min_coord)) { $min_coord = $stop;  }
+    $ret_coords_str .= sprintf("%s%d\t%s%d\n", 
+                               ($is_5trunc && $is_first) ? "<" : "", $start, 
+                               ($is_3trunc && $is_final) ? ">" : "", $stop);
   }
 
   $$ret_min_coord = $min_coord;
@@ -10600,7 +5448,7 @@ sub helper_ftable_coords_to_out_str {
   my $ret_out_str = "";
 
   if($coords_str eq "") { 
-    DNAORG_FAIL("ERROR in $sub_name, coords_str is empty - shouldn't happen", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, coords_str is empty - shouldn't happen", "dnaorg", 1, $FH_HR);
   }
   my @coords_A = split("\n", $coords_str);
 
@@ -10622,9 +5470,9 @@ sub helper_ftable_coords_to_out_str {
 #
 # Arguments: 
 #  $ftr_idx:      feature index
-#  $key:          key in ftr_info_HAR
-#  $qval_sep:     characters that separate multiple qualifiers in $ftr_info_HAR->{$key}[$ftr_idx]
-#  $ftr_info_HAR: REF to hash of arrays with information on the features, PRE-FILLED
+#  $key:          key in ftr_info_AHR
+#  $qval_sep:     characters that separate multiple qualifiers in $ftr_info_AHR->[$ftr_idx]{$key}
+#  $ftr_info_AHR: REF to array of hashes with information on the features, PRE-FILLED
 #  $FH_HR:        REF to hash of file handles
 #
 # Returns:    Strings to append to the feature table.
@@ -10637,14 +5485,15 @@ sub helper_ftable_add_qualifier_from_ftr_info {
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($ftr_idx, $key, $qval_sep, $ftr_info_HAR, $FH_HR) = @_;
+  my ($ftr_idx, $key, $qval_sep, $ftr_info_AHR, $FH_HR) = @_;
   
   my $ret_str = "";
-  if((exists $ftr_info_HAR->{$key}[$ftr_idx]) && ($ftr_info_HAR->{$key}[$ftr_idx] ne "")) { 
-    my $qualifier_name = featureInfoKeyToFeatureTableQualifierName($key, $FH_HR);
-    my @qval_A = split($qval_sep, $ftr_info_HAR->{$key}[$ftr_idx]); 
+  if((defined $ftr_info_AHR) && 
+     (defined $ftr_info_AHR->[$ftr_idx]) && 
+     (defined $ftr_info_AHR->[$ftr_idx]{$key})) { 
+    my @qval_A = split($qval_sep, $ftr_info_AHR->[$ftr_idx]{$key});
     foreach my $qval (@qval_A) { 
-      $ret_str .= sprintf("\t\t\t%s\t%s\n", $qualifier_name, $qval);
+      $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
     }
   }
   return $ret_str;
@@ -10658,14 +5507,14 @@ sub helper_ftable_add_qualifier_from_ftr_info {
 #             part of a feature table output.
 #
 # Arguments: 
-#  $seq_idx:           sequence index
+#  $seq_name:          sequence name
 #  $ftr_idx:           feature index
-#  $results_key:       key in ftr_results_AAHR
+#  $results_key:       key in ftr_results_HAHR
 #  $qualifier:         name for the qualifier
-#  $ftr_results_AAHR:  REF to feature results AAH, PRE-FILLED
+#  $ftr_results_HAHR:  REF to feature results HAH, PRE-FILLED
 #  $FH_HR:             REF to hash of file handles
 #
-# Returns:    "" if $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key} does not exist
+# Returns:    "" if $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key} does not exist
 #             else a string for the feature table
 #
 # Dies: never
@@ -10676,262 +5525,628 @@ sub helper_ftable_add_qualifier_from_ftr_results {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_idx, $ftr_idx, $results_key, $qualifier, $ftr_results_AAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $results_key, $qualifier, $ftr_results_HAHR, $FH_HR) = @_;
 
   my $ret_str = "";
 
-  if(defined $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key}) { 
-    $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key});
+  if((defined $ftr_results_HAHR) && 
+     (defined $ftr_results_HAHR->{$seq_name}) && 
+     (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]) && 
+     (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key})) { 
+    $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key});
   }
   return $ret_str;
 }
 
 #################################################################
-# Subroutine:  parse_class_errors_list_file
-# Incept:      EPN, Wed Dec 12 13:44:21 2018
+# Subroutine:  helper_ftable_class_model_for_sequence()
+# Incept:      EPN, Tue Mar 26 14:47:53 2019
 #
-# Purpose:    Parse the --classerrors input file
+
+# Purpose:    Given a sequence name and a reference of the classification
+#             results 3D hash, determine what model the sequence was
+#             classified to.
 #
 # Arguments: 
-#  $in_file:       file to parse with per-sequence classification errors
-#  $errors_seq_HR: ref to hash of classification errors per sequence, filled here
-#                  with unmodified lines from $in_file
-#  $FH_HR:         ref to hash of file handles
+#  $cls_results_HHHR:      ref to classification results 3D hash
+#  $seq_name:              name of sequence
 #
-# Returns:    "" if $ftr_results_AAHR->[$ftr_idx][$seq_idx]{$results_key} does not exist
-#             else a string for the feature table
-#
-# Dies: never
+# Returns:    model name $seq_name is classified to, or undef 
+#             if none
 #
 ################################################################# 
-sub parse_class_errors_list_file { 
-  my $sub_name = "parse_class_errors_list_file";
-  my $nargs_exp = 3;
+sub helper_ftable_class_model_for_sequence {
+  my $sub_name = "helper_ftable_class_model_for_sequence";
+  my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($in_file, $errors_seq_HR, $FH_HR) = @_;
+  my ($cls_results_HHHR, $seq_name) = @_;
 
-  open(IN, $in_file) || fileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
-  my $line;
-  while($line = <IN>) { 
-    if($line !~ m/^\#/) { 
-      chomp $line;
-      my @el_A = split(/\t/, $line);
-      ##sequence	error	feature	error-description
-      #MG763368.1	Unexpected Classification	*sequence*	NC 001959,NC 029647 was specified, but NC 039476 is predicted
-      if(scalar(@el_A) != 4) { 
-        foreach my $tok (@el_A) { printf("tok: $tok\n"); }
-        DNAORG_FAIL("ERROR in $sub_name, did not find exactly 2 tokens in line $line", 1, $FH_HR);
+  return ((defined $cls_results_HHHR->{$seq_name}) && 
+          (defined $cls_results_HHHR->{$seq_name}{"r1.1"}) && 
+          (defined $cls_results_HHHR->{$seq_name}{"r1.1"}{"model"})) ? 
+          $cls_results_HHH{$seq_name}{"r1.1"}{"model"} : undef;
+}
+
+#################################################################
+# Subroutine: helper_ftable_process_sequence_alerts()
+# Incept:     EPN, Thu Jan 24 12:09:24 2019
+#
+# Purpose:    Given a string of per-sequence alerts that correspond
+#             to a specific sequence, use the %{$alt_info_HHR} and
+#             process that string to determine what (if any) 
+#             alerts should be added to the feature table
+#             for this sequence. Note that we do not add any 'notes'
+#             as we possibly could in processFeatureAlertsForFTable() 
+#             because we are dealing with the full sequence and not
+#             a feature for a sequence.
+#
+# Arguments:
+#   $alt_code_str:           string of alerts, comma separated, can be ""
+#   $seq_name:               name of sequence
+#   $alt_info_HHR:           REF to hash of hashes with information on the alerts, PRE-FILLED
+#   $alt_seq_instances_HHR:  REF to 2D hashes with per-sequence alerts, PRE-FILLED
+#   $ret_alert_AR:           REF to array of alerts, possibly added to here (not created)
+#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: number of alerts added to $ret_alert_AR
+#
+# Dies: Never
+#################################################################
+sub helper_ftable_process_sequence_alerts { 
+  my $sub_name = "helper_ftable_process_sequence_alerts";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($alt_code_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $ret_alert_AR, $FH_HR) = (@_);
+
+  if($alt_code_str eq "") { 
+    return 0; 
+  }
+
+  my $ret_nadded = 0;
+  # NOTE: there's some code duplication in this sub with
+  # processFeatureAlertsForFtable(), possibly a chance for additional
+  # subroutines
+
+  # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
+  my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
+  my $alt_code; 
+  foreach $alt_code (split(",", $alt_code_str)) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
+    }
+    $input_alt_code_H{$alt_code} = 1; 
+  }
+
+  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
+  foreach $alt_code (sort keys (%input_alt_code_H)) { 
+    $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
+    # check if this alert is invalidated by another we will also report
+    if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
+      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
+      foreach my $alt_code2 (@invalid_by_alt_code_A) {
+        if(($alt_info_HHR->{$alt_code2}{"causes_failure"}) && 
+           (exists $input_alt_code_H{$alt_code2})) { 
+          $do_report = 0; # $alt_code is invalidated by $alt_code2, $alt_code2 causes failure and is also present in $alt_code_str
+        }
       }
-      my $seq = $el_A[0];
-      $errors_seq_HR->{$seq} .= $line . "\n";
+    }
+    if($do_report) { 
+      # we could have more than one instance of this sequence/alert pair
+      my @instance_str_A = ();
+      if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
+        @instance_str_A = ("");
+      }
+      else {
+        @instance_str_A = split(":DNAORGSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
+      }
+      foreach my $instance_str (@instance_str_A) { 
+        my $alert_str = sprintf("%s: (*sequence*) %s%s", 
+                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
+                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
+        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
+        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
+        if($idx == -1) { 
+          push(@{$ret_alert_AR}, $alert_str); 
+          $ret_nadded++;
+        }
+      }
     }
   }
-  close(IN);
 
+  return $ret_nadded;
+}
+
+#################################################################
+# Subroutine: helper_ftable_process_feature_alerts()
+# Incept:     EPN, Thu Nov  1 12:10:34 2018
+#
+# Purpose:    Given a string of alerts that correspond to a specific
+#             sequence and feature, use the %{$alt_info_HHR} and
+#             process that string to determine what (if any) notes,
+#             and alerts should be added to the feature table
+#             for this seq/feature pair.
+#
+# Arguments:
+#   $alt_code_str:           string of errors, comma separated, can be ""
+#   $seq_name:               name of sequence
+#   $ftr_idx:                feature index
+#   $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
+#   $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
+#   $alt_ftr_instances_HHHR: REF to hash of array of hashes with per-feature errors, PRE-FILLED
+#   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
+#   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: number of alerts added to $ret_alert_AR
+#
+# Dies: Never
+#################################################################
+sub helper_ftable_process_feature_alerts { 
+  my $sub_name = "helper_ftable_process_feature_alerts";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, $ret_alert_AR, $FH_HR) = (@_);
+
+  if($alt_code_str eq "") { 
+    return 0; 
+  }
+
+  # printf("HEYA in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
+
+  # create a hash of all alerts in the input $alt_str
+  my %input_alt_code_H = (); # $input_slt_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
+  my $alt_code; 
+  foreach $alt_code (split(",", $alt_code_str)) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", "dnaorg", 1, $FH_HR);
+    }
+    $input_alt_code_H{$alt_code} = 1; 
+  }
+
+  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
+  my $ret_nadded = 0;
+  foreach $alt_code (sort keys (%input_alt_code_H)) { 
+    $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
+    # check if this alert is invalidated by another we will also report
+    if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
+      my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
+      foreach my $alt_code2 (@invalid_by_alt_code_A) {
+        if(($alt_info_HHR->{$alt_code2}{"causes_failure"}) && 
+           (exists $input_alt_code_H{$alt_code2})) { 
+          $do_report = 0; # $alt_code is invalidated by $alt_code2, $alt_code2 causes failure and is also present in $alt_code_str
+          # printf("\t\t\tinvalidated by $alt_code2\n");
+        }
+      }
+    }
+    if($do_report) { 
+      # we could have more than one instance of this sequence/feature/alert trio
+      my @instance_str_A = ();
+      if($alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} eq "") { 
+        @instance_str_A = ("");
+      }
+      else {
+        @instance_str_A = split(":DNAORGSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code});
+      }
+      foreach my $instance_str (@instance_str_A) { 
+        my $alert_str = sprintf("%s: (%s) %s%s", 
+                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
+                             $ftr_info_AHR->[$ftr_idx]{"outname"}, 
+                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
+        # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
+        my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
+        if($idx == -1) { 
+          push(@{$ret_alert_AR}, $alert_str); 
+          $ret_nadded++;
+        }
+      }
+    }
+  }
+
+  return $ret_nadded;
+}
+
+#################################################################
+# Subroutine:  helper_output_sequence_alert_strings()
+# Incept:      EPN, Thu Apr  4 12:37:59 2019
+#
+# Purpose:    Given a sequence name, construct a string of all
+#             per-sequence alerts for that sequence and return it. 
+#
+# Arguments: 
+#  $seq_name:              name of sequence
+#  $include_sdesc:         '1' to return a string with "sdesc", '0' not to
+#  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code_AR:           ref to alert codes in order to check
+#  $alt_seq_instances_HHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $FH_HR:                 REF to hash of file handles
+#
+# Returns:    A string with all per-sequence alt codes for this sequence 
+#             concatenated and separated by commas.
+#
+################################################################# 
+sub helper_output_sequence_alert_strings { 
+  my $sub_name = "helper_output_sequence_alert_strings";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $include_sdesc, $alt_info_HHR, $alt_code_AR, $alt_seq_instances_HHR, $FH_HR) = @_;
+
+  my $ret_alt_str = "";
+  if(defined $alt_seq_instances_HHR->{$seq_name}) { 
+    foreach my $alt_code (@{$alt_code_AR}) { 
+      if(defined $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
+        if($ret_alt_str ne "") { $ret_alt_str .= ","; }
+        $ret_alt_str .= ($include_sdesc) ? 
+            sprintf("%s(%s)", helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), $alt_code) : 
+            $alt_code;
+      }
+    }
+  }
+  
+  return $ret_alt_str;
+}
+
+#################################################################
+# Subroutine:  helper_output_feature_alert_strings()
+# Incept:      EPN, Thu Apr  4 12:31:51 2019
+#
+# Purpose:    Given a sequence name and feature index, construct
+#             a string of all per-feature alerts for that 
+#             sequence/feature pair and return it. 
+#
+# Arguments: 
+#  $seq_name:               name of sequence
+#  $ftr_idx:                feature index
+#  $include_sdesc:          '1' to return a string with "sdesc", '0' not to
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code_AR:            ref to alert codes in order to check
+#  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    A string with all per-feature alt codes for this 
+#             sequence/feature combo concatenated and 
+#             separated by commas.
+#
+################################################################# 
+sub helper_output_feature_alert_strings { 
+  my $sub_name = "helper_output_feature_alert_strings";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $ftr_idx, $include_sdesc, $alt_info_HHR, $alt_code_AR, $alt_ftr_instances_HHHR, $FH_HR) = @_;
+
+  my $ret_alt_str = "";
+  if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+     (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+    foreach my $alt_code (@{$alt_code_AR}) { 
+      if(defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}) { 
+        if($ret_alt_str ne "") { $ret_alt_str .= ","; }
+        $ret_alt_str .= ($include_sdesc) ? 
+            sprintf("%s(%s)", helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), $alt_code) : 
+            $alt_code;
+      }
+    }
+  }
+  
+  return $ret_alt_str;
+}
+
+#################################################################
+#
+# Miscellaneous subroutines:
+# initialize_ftr_or_sgm_results()
+# convert_pp_char_to_pp_avg()
+# group_subgroup_string_from_classification_results()
+#
+#################################################################
+
+#################################################################
+# Subroutine: initialize_ftr_or_sgm_results_for_model()
+# Incept:     EPN, Tue Mar 15 06:01:32 2016
+#
+# Purpose:    Initialize the {ftr,sgm}_results_HAH data structure.
+#             (for one model).
+#
+# Args:
+#  $seq_name_AR:      REF to hash of arrays with information 
+#                     on the sequences, PRE-FILLED
+#  $info_AHR:         REF to array of hashes with information 
+#                     on the features or segments, PRE-FILLED
+#  $results_HAHR:     REF to the feature or segments results data 
+#                     structure, INITIALIZED HERE
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns: void
+#
+#
+#################################################################
+sub initialize_ftr_or_sgm_results_for_model { 
+  my $sub_name = "initialize_ftr_or_sgm_results_for_model()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name_AR, $info_AHR, $results_HAHR, $FH_HR) = @_;
+
+  my $nseq        = scalar(@{$seq_name_AR});
+  my $nftr_or_sgm = scalar(@{$info_AHR});
+
+  %{$results_HAHR} = ();
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    @{$results_HAHR->{$seq_name}} = ();
+    for(my $ftr_or_sgm_idx = 0; $ftr_or_sgm_idx < $nftr_or_sgm; $ftr_or_sgm_idx++) { 
+      %{$results_HAHR->{$seq_name}[$ftr_or_sgm_idx]} = ();
+    }
+  }
   return;
 }
 
-
 #################################################################
-# Subroutine: error_list_output_to_ftable_errors()
-# Incept:     EPN, Wed Dec 12 14:02:24 2018
-#
-# Purpose:    Given output from a error list file, with 4 tab-delimited
-#             tokens per new-line delimited string, return a string
-#             that can be output to a feature table with the 
-#             same information.
-#
-#             The input will be new-line delimited strings, each of 
-#             which will have 4 tab-delimited tokens:
-#             <sequence-name>
-#             <error-name>
-#             <feature-name>
-#             <error-description>
+# Subroutine: convert_pp_char_to_pp_avg()
+# Incept:     EPN, Thu Feb  7 11:54:56 2019
+# Purpose:    Convert a cmalign alignment PP value to the average posterior 
+#             probability it represents.
 #
 # Arguments:
-#   $in_seqname: expected name of sequence
-#   $errliststr: error string to convert
-#   $FH_HR:      ref to hash of file handles, including 'log'
+#  $ppchar:  the PP character from the alignment, cannot be a gap
+#  $FH_HR:   ref to hash of file handles, including 'log'
 #             
-# Returns:    $err_ftbl_str: feature table strings in the format described above.
-#
-# Dies: If $errliststr is not in required format, or if it includes
-#       data for a sequence other than <$seqname>
-#
-#################################################################
-sub error_list_output_to_ftable_errors { 
-  my $sub_name  = "error_list_output_to_ftable_errors";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($in_seqname, $errliststr, $FH_HR) = (@_);
-
-  my @errliststr_A = split(/\n/, $errliststr);
-
-  my $retstr = "";
-  foreach my $errlistline (@errliststr_A) { 
-    my @el_A = split(/\t/, $errlistline); 
-    if(scalar(@el_A) != 4) { 
-      DNAORG_FAIL("ERROR in $sub_name, did not read exactly 4 tab-delimited tokens in line: $errlistline", 1, $FH_HR);
-    }
-    my ($seqname, $error_name, $feature_name, $error_desc) = (@el_A);
-    if($in_seqname ne $seqname) { 
-      DNAORG_FAIL("ERROR in $sub_name, read unexpected sequence name $seqname != $in_seqname in line: $errlistline", 1, $FH_HR);
-    }
-    $retstr .= sprintf("ERROR: $error_name: %s$error_desc\n", ($feature_name eq "*sequence*") ? "" : "($feature_name) ");
-  }
-
-  return $retstr;
-}
-
-#################################################################
-# Subroutine: helper_blastx_breakdown_query()
-# Incept:     EPN, Wed Dec 19 12:05:02 2018
-#
-# Purpose:    Given a query name from blastx output, determine if
-#             it is for an entire input sequence, or a feature
-#             sequence fetched from an input sequence. 
-#             The way we tell is by looking up $in_query in $seq_info_HAR.
-#             If it exists as a key, then the query is an entire input
-#             sequence. If it does not exist as a key, then it should
-#             be <seqname>/<coords_str>, and <seqname> should be 
-#             a key in $seq_info_HAR.
-#
-# Arguments:
-#   $in_query:     query name from blastx output 
-#   $exp_seqname:  expected sequence name, of undef if unknown
-#                  can only be undef if $seq_HR is undefined
-#   $seq_HR:       ref to hash, keys are possible sequence names, values are irrelevant
-#   $FH_HR:        ref to hash of file handles, including 'log'
-#             
-# Returns:  Three values:
-#           <seqname>:    name of input sequence this query corresponds to
-#           <coords_str>: undef if $in_query == <seqname>, else the coords
-#                         string for the fetched feature from <seqname>
-#           <len>:        undef if $in_query == <seqname>, total length of 
-#                         coordinate ranges listed in <coords_str>
-#
-# Dies: If $in_query is not a valid key in $seq_info_HAR, and we can't
-#       break it down into a valid <seqname> and <coords_str>.
-#
-#################################################################
-sub helper_blastx_breakdown_query {
-  my $sub_name  = "helper_blastx_breakdown_query";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($in_query, $exp_seqname, $seq_HR, $FH_HR) = (@_);
-
-  my $ret_len = 0;
-  my $ret_seqname = undef;
-  my $ret_coords_str = undef;
-
-  # contract check
-  if((! defined $exp_seqname) && (! defined $seq_HR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are undefined", 1, $FH_HR);
-  }
-  if((defined $exp_seqname) && (defined $seq_HR)) { 
-    DNAORG_FAIL("ERROR in $sub_name, contract failure: both <exp_seqname> and <seq_HR> are defined", 1, $FH_HR);
-  }
-
-  if((defined $exp_seqname) && ($in_query eq $exp_seqname)) {   
-    return($in_query, undef, undef);
-  }
-  elsif((! defined $exp_seqname) && (exists $seq_HR->{$in_query})) { 
-    return($in_query, undef, undef);
-  }
-  else { 
-    # sequence name does not exist, as is
-    # example: NC_002549.1/6039-8068/1-885,885-2030
-    # sequence is NC_002549.1/6039-8068 but we fetched the feature 1-885,885-2030 from it
-    if($in_query =~ /^(\S+)\/([\d\,\-]+$)/) { 
-      ($ret_seqname, $ret_coords_str) = ($1, $2);
-      if((defined $exp_seqname) && ($ret_seqname ne $exp_seqname)) { 
-        DNAORG_FAIL("ERROR in $sub_name, unexpected sequence name $ret_seqname != $exp_seqname, derived from $in_query", 1, $FH_HR); 
-      }
-      if((! defined $exp_seqname) && (! exists $seq_HR->{$ret_seqname})) { 
-        DNAORG_FAIL("ERROR in $sub_name, unable to find input sequence with name $in_query or $ret_seqname", 1, $FH_HR); 
-      }
-
-      # if we get here $ret_seqname is a valid sequence
-      my @range_A = split(",", $ret_coords_str);
-      foreach my $range (@range_A) { 
-        if($range =~ /^(\d+)\-(\d+)$/) { 
-          $ret_len += abs($1 - $2) + 1;
-        }
-        else { 
-          DNAORG_FAIL("ERROR in $sub_name, unable to parse coords string $ret_coords_str (element $range) in blastx query sequence $in_query", 1, $FH_HR); 
-        }
-      }
-    }
-    else { 
-      DNAORG_FAIL("ERROR in $sub_name, unable to parse blastx query sequence name $in_query", 1, $FH_HR); 
-    }
-  }
-  return ($ret_seqname, $ret_coords_str, $ret_len);
-}
-
-# Subroutine: add_zft_errors()
-# Incept:     EPN, Thu Jan 24 12:31:16 2019
-# Purpose:    Adds zft errors for sequences with 0 predicted features
-#
-# Arguments:
-#  $err_ftr_instances_AHHR:  REF to array of 2D hashes with per-feature errors, PRE-FILLED
-#  $err_seq_instances_HHR:   REF to 2D hash with per-sequence errors, PRE-FILLED
-#  $ftr_info_HAR:            REF to hash of arrays with information on the features, PRE-FILLED
-#  $seq_info_HAR:            REF to hash of arrays with information on the sequences, PRE-FILLED
-#  $err_info_HAR:            REF to the error info hash of arrays, PRE-FILLED
-#  $mdl_results_AAHR:        REF to model results AAH, PRE-FILLED
-#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
-#  $ofile_info_HHR:          REF to the 2D hash of output file information
-#             
-# Returns:  void
+# Returns:  average value for $ppchar
 # 
+# Dies:     if $ppchar is not ['0'-'9'] or '*'
+#
+#################################################################
+sub convert_pp_char_to_pp_avg { 
+  my $sub_name = "convert_pp_char_to_pp_avg";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ppchar, $FH_HR) = @_;
+
+  if($ppchar eq "*") { return 0.975; }
+  if($ppchar eq "9") { return 0.90; }
+  if($ppchar eq "8") { return 0.80; }
+  if($ppchar eq "7") { return 0.70; }
+  if($ppchar eq "6") { return 0.60; }
+  if($ppchar eq "5") { return 0.50; }
+  if($ppchar eq "4") { return 0.40; }
+  if($ppchar eq "3") { return 0.30; }
+  if($ppchar eq "2") { return 0.20; }
+  if($ppchar eq "1") { return 0.10; }
+  if($ppchar eq "0") { return 0.25; }
+
+  ofile_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", "dnaorg", 1, $FH_HR); 
+
+  return 0.; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: group_subgroup_string_from_classification_results()
+# Incept:     EPN, Wed Apr  3 10:25:32 2019
+# Purpose:    Return a string describing a model's group
+#             and subgroup 
+#             probability it represents.
+#
+# Arguments:
+#  $results_HR: hash potentially with keys "group" and "subgroup"
+#               (typically 3rd dim of cls_results_HHH,
+#                e.g. cls_results_HHHR->{$seq_name}{"r1.1"})
+#             
+# Returns:  "*NONE*" if "group" key not defined in %{$results_HR}
+#           $results_HR->{"group"}/*NONE* if "group" key defined but "subgroup" key undef
+#           $results_HR->{"group"}/$results_HR->{"subgroup"} if both "group" and "subgroup" keys defined
+#
 # Dies:     never
 #
 #################################################################
-sub add_zft_errors { 
-  my $sub_name = "add_zft_errors";
-  my $nargs_exp = 8;
+sub group_subgroup_string_from_classification_results { 
+  my $sub_name = "group_subgroup_string_from_classification_results";
+  my $nargs_exp = 1;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($err_ftr_instances_AHHR, $err_seq_instances_HHR, $ftr_info_HAR, $seq_info_HAR, 
-      $err_info_HAR, $mdl_results_AAHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($results_HR) = (@_);
 
-  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $nftr = validateFeatureInfoHashIsComplete  ($ftr_info_HAR, undef, $FH_HR); # nftr: number of features
-  my $nseq = validateSequenceInfoHashIsComplete ($seq_info_HAR, undef, $opt_HHR, $FH_HR); # nseq: number of sequences
+  if(! defined $results_HR->{"group"}) { 
+    return "*NONE*";
+  }
+  elsif(! defined $results_HR->{"subgroup"}) {
+    return $results_HR->{"group"} . "/*NONE*";
+  }
+  else { 
+    return $results_HR->{"group"} . "/" . $results_HR->{"subgroup"};
+  }
 
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name  = $seq_info_HAR->{"seq_name"}[$seq_idx];
-    my $seq_nftr = 0; # number of annotated features for this sequence
+  return; # NEVER REACHED
+}
 
-    # loop over features
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      # determine if this feature can be ignored or cannot be ignored (should be annotated), 
-      # it can be ignored if:
-      # - we do not have a defined "p_start" for any model associated with this feature
-      #   (this is equivalent to having a 'nop' error for all models associated with this feature)
-      # - we do not have a 'xnn' error for this feature
-      my $is_duplicate  = ($ftr_info_HAR->{"annot_type"}[$ftr_idx] eq "duplicate") ? 1 : 0;
-      my $defined_pstart = 0;
-      my $xnn_flag       = 0;
-      my $do_ignore      = 1; 
-      if(! $is_duplicate) { 
-        $defined_pstart = check_for_defined_pstart_in_mdl_results($seq_idx, $ftr_idx, $ftr_info_HAR, $mdl_results_AAHR, $FH_HR);
-        $xnn_flag       = (exists $err_ftr_instances_AHHR->[$ftr_idx]{"xnn"}{$seq_name}) ? 1 : 0;
-        $do_ignore      = ($defined_pstart || $xnn_flag) ? 0 : 1;
+#################################################################
+# Subroutine: check_for_valid_feature_prediction()
+# Incept:     EPN, Wed Apr  3 13:40:42 2019
+# Purpose:    Return '1' if we have a valid prediction for
+#             a feature, else return '0'.
+#
+# Arguments:
+#  $results_HR:     hash potentially with keys "n_start", "p_start", "n_len";
+#  $min_len:        minimum length for the feature, can be 0
+#             
+# Returns:  1 if a valid feature prediction exists, else 0
+#
+# Dies:     never
+#
+#################################################################
+sub check_for_valid_feature_prediction { 
+  my $sub_name = "check_for_valid_feature_prediction";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($results_HR, $min_len) = (@_);
+
+  if((defined $results_HR->{"n_start"} || 
+      defined $results_HR->{"p_start"}) && 
+     ((! defined $results_HR->{"n_len"}) || 
+      ($results_HR->{"n_len"} >= $min_len))) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: check_if_sequence_passes()
+# Incept:     EPN, Wed Apr  3 14:09:05 2019
+# Purpose:    Check if a sequence should PASS or not based
+#             on alert instances. 
+#
+# Arguments:
+#  $seq_name:               sequence name
+#  $alt_info_HHR:           ref to 2D hash of alert info
+#  $alt_seq_instances_HHR:  ref to 2D hash of sequence alert instances
+#  $alt_ftr_instances_HHHR: ref to 3D hash of feature alert instances
+#             
+# Returns:  '1' if the sequence should pass, else '0'
+#
+# Dies:     never
+#
+#################################################################
+sub check_if_sequence_passes { 
+  my $sub_name = "check_if_sequence_passes";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR) = (@_);
+
+  if((! defined $alt_seq_instances_HHR->{$seq_name}) && 
+     (! defined $alt_ftr_instances_HHHR->{$seq_name})) { 
+    return 1; # no alerts exist, sequence PASSes
+  }
+  
+  my $alt_code;
+  if(defined $alt_seq_instances_HHR->{$seq_name}) { 
+    foreach $alt_code (keys (%{$alt_seq_instances_HHR->{$seq_name}})) { 
+      if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+        return 0;  # a sequence alert that causes failure
       }
-      if(! $do_ignore) { 
-        $seq_nftr++;
-        $ftr_idx = $nftr; # breaks for $ftr_idx loop
-      } 
-    }
-    if($seq_nftr == 0) { 
-      error_instances_add(undef, $err_seq_instances_HHR, $err_info_HAR, -1, "zft", $seq_name, "-", $FH_HR);
     }
   }
 
-  return;
+  my $ftr_idx;
+  if(defined $alt_ftr_instances_HHHR->{$seq_name}) { 
+    foreach $ftr_idx (keys (%{$alt_ftr_instances_HHHR->{$seq_name}})) { 
+      foreach $alt_code (keys (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}})) { 
+        if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+          return 0;  # a feature alert that causes failure
+        }
+      }
+    }
+  }
+
+  return 1; # no alerts that cause failures, sequence passes
+
+}
+
+#################################################################
+# Subroutine: check_if_sequence_was_annotated()
+# Incept:     EPN, Wed Apr  3 14:41:58 2019
+# Purpose:    Check if a sequence was annotated or not.
+#
+# Arguments:
+#  $seq_name:           sequence name
+#  $cls_output_HHR:     ref to classification output
+#             
+# Returns:  '1' if the sequence was annotated, else '0'
+#
+# Dies:     never
+#
+#################################################################
+sub check_if_sequence_was_annotated { 
+  my $sub_name = "check_if_sequence_was_annotated";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $cls_output_HHR) = (@_);
+
+  if((defined $cls_output_HHR->{$seq_name}) && 
+     (defined $cls_output_HHR->{$seq_name}{"annot"}) && 
+     ($cls_output_HHR->{$seq_name}{"annot"})) { 
+    return 1; # yes, it was annotated
+  }
+
+  return 0; # no, it wasn't annotated
+}
+
+#################################################################
+# Subroutine: helper_sort_hit_array()
+# Incept:     EPN, Tue Apr 25 06:23:42 2017 [ribovore]
+#
+# Purpose:    Sort an array of regions of hits.
+#
+# Args:
+#  $tosort_AR:   ref of array to sort, PRE-FILLED
+#  $order_AR:    ref to array of original indices corresponding to @{$tosort_AR}, FILLED HERE
+#  $allow_dups:  '1' to allow duplicates in $tosort_AR, '0' to not and die if
+#                they're found
+#  $FH_HR:       ref to hash of file handles, including "cmd"
+#
+# Returns:  string indicating the order of the elements in $tosort_AR in the sorted
+#           array.
+#
+# Dies:     - if some of the regions in @{$tosort_AR} are on different strands
+#             or are in the wrong format
+#           - if there are duplicate values in $tosort_AR and $allow_dups is 0
+#
+#################################################################
+sub helper_sort_hit_array { 
+  my $sub_name = "helper_sort_hit_array";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($tosort_AR, $order_AR, $allow_dups, $FH_HR) = @_;
+
+  my ($i, $j); # counters
+
+  my $nel = scalar(@{$tosort_AR});
+
+  if($nel == 1) { ofile_FAIL("ERROR in $sub_name, nel is 1 (should be > 1)", "dnaorg", 1, $FH_HR); }
+
+  # make a temporary hash and sort it by value, and 
+  # die if we see a different strand along the way
+  my %hash = ();
+  my $bstrand;
+  for($i = 0; $i < $nel; $i++) { 
+    my($start, $stop, $strand) = dng_CoordsTokenParse($tosort_AR->[$i], $FH_HR);
+    $hash{($i+1)} = $start . "." . $stop;
+    if($i == 0) { 
+      $bstrand = $strand;
+    }
+    if(($i > 0) && ($strand ne $bstrand)) { 
+      ofile_FAIL("ERROR in $sub_name, not all regions are on same strand, region 1: $tosort_AR->[0] $bstrand, region " . $i+1 . ": $tosort_AR->[$i] $strand", "dnaorg", 1, $FH_HR);
+    }
+  }
+  # the <=> comparison function means sort numerically ascending
+  @{$order_AR} = (sort {$hash{$a} <=> $hash{$b}} (keys %hash));
+
+  # now that we have the sorted order, we can easily check for dups
+  if(! $allow_dups) { 
+    for($i = 1; $i < $nel; $i++) { 
+      if($hash{$order_AR->[($i-1)]} eq $hash{$order_AR->[$i]}) { 
+        ofile_FAIL("ERROR in $sub_name, duplicate values exist in the array: " . $hash{$order_AR->[$i]} . " appears twice", "dnaorg", 1, $FH_HR); 
+      }
+    }
+  }
+
+  # reverse array if strand is "-"
+  if($bstrand eq "-") { 
+    @{$order_AR} = reverse @{$order_AR};
+  }
+
+  # construct return string
+  my $ret_str = $order_AR->[0];
+  for($i = 1; $i < $nel; $i++) { 
+    $ret_str .= "," . $order_AR->[$i];
+  }
+
+  return $ret_str;
 }

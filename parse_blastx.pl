@@ -9,7 +9,7 @@
 
 # Usage: parse_blastx.pl --input <input file>
 
-# dnaorg_scripts 0.45 Feb 2019
+# dnaorg_scripts 0.9 Apr 2019
 
 use strict;
 use warnings;
@@ -84,10 +84,14 @@ my $overall_subject_gap_representation = "";    #representation of gaps in one r
 my $one_row_subject_gap_representation = "";    #representation of gaps in one row of subject alignment
 my $old_subject_gap_overhang;                   #how many gaps in the subject are at the end of the current line
 my $new_subject_gap_overhang;                   #how many gaps in the subject are at the end of the current line
-my $maximum_query_gap = 0;                          #largest gap in the query
-my $maximum_subject_gap = 0;                        #largest gap in the subject
-my $one_line_query_gap = 0;                         #largest gap in query in one alignment line
-my $one_line_subject_gap = 0;                         #largest gap in query in one alignment line
+my $maximum_query_gap       = 0;                #largest gap in the query
+my $maximum_subject_gap     = 0;                #largest gap in the subject
+my $maximum_query_gap_str   = "";               #string representing largest gap in the query, format Q<d1>:S<d2>:-<d3>
+my $maximum_subject_gap_str = "";               #string representing largest gap in the subject, format Q<d1>:S<d2>:+<d3>
+my $one_line_query_gap = 0;                     #largest gap in query in one alignment line
+my $one_line_subject_gap = 0;                   #largest gap in query in one alignment line
+my $one_line_query_gap_str = "";                #string representing largest gap in query in one alignment line, format Q<d1>:S<d2>:-<d3>
+my $one_line_subject_gap_str = "";              #string representing largest gap in subject in one alignment line, format Q<d1>:S<d2>:+<d3>
 my $DEBUG = 0;                                  #are we in debugging mode?
 
 
@@ -225,11 +229,11 @@ while($keep_going) {
         }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
-          print "MAXDE\t" .$maximum_query_gap ."\n";
+          print "MAXDE\t" .$maximum_query_gap_str ."\n";
         }
         if ($overall_subject_gap_representation) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
-          print "MAXIN\t" .$maximum_subject_gap ."\n"; 		
+          print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 		
         }	    	    
         print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
@@ -243,6 +247,8 @@ while($keep_going) {
         $one_row_subject_gap_representation = "";
         $maximum_subject_gap = 0;
         $maximum_query_gap = 0;	    
+        $maximum_subject_gap_str = "";
+        $maximum_query_gap_str = "";	    
       }	
     }
     if (($state == $State_SeenDefline) && ($Linetype_length == $linetype)) {
@@ -273,11 +279,11 @@ while($keep_going) {
         }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
-          print "MAXDE\t" .$maximum_query_gap ."\n"; 
+          print "MAXDE\t" .$maximum_query_gap_str ."\n"; 
         }
         if ($overall_subject_gap_representation) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
-          print "MAXIN\t" .$maximum_subject_gap ."\n"; 				
+          print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 				
         }	    
         print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
@@ -291,6 +297,8 @@ while($keep_going) {
         $one_row_subject_gap_representation = "";	    
         $maximum_query_gap = 0;
         $maximum_subject_gap = 0;
+        $maximum_query_gap_str = "";
+        $maximum_subject_gap_str = "";
       }
       print "HSP\t".$nhsp."\n";      #print HSP and the number of the hsp
       print "SCORE\t".$score."\n";   #print SCORE and the raw score
@@ -308,6 +316,7 @@ while($keep_going) {
       print "FRAME\t".$frame."\n";   #print FRAME and the frame of the nucleotide to protein alignment
       $new_query_gap_overhang = $old_query_gap_overhang = 0;
       $one_line_query_gap = $one_line_subject_gap = 0;
+      $one_line_query_gap_str = $one_line_subject_gap_str = "";
     }
     if ($linetype == $Linetype_query_aln) {
       if (! $processing_alignment) {
@@ -350,12 +359,13 @@ while($keep_going) {
         }
       }
       if ($gaps > 0) {
-        ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang);
+        ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap_str, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang);
         if ($DEBUG) {
           print "From findQueryGaps returned $one_row_query_gap_representation $new_query_gap_overhang\n";
         }
         if ($one_line_query_gap > $maximum_query_gap) {
-          $maximum_query_gap = $one_line_query_gap;
+          $maximum_query_gap     = $one_line_query_gap;
+          $maximum_query_gap_str = $one_line_query_gap_str;
         }
         if (($overall_query_gap_representation) && ($one_row_query_gap_representation)) {
           if ($subject_start < $subject_end) {
@@ -374,9 +384,10 @@ while($keep_going) {
           }
         }
         $old_query_gap_overhang = $new_query_gap_overhang;
-        ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang);
+        ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap_str, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang);
         if ($one_line_subject_gap > $maximum_subject_gap) {
-          $maximum_subject_gap = $one_line_subject_gap;
+          $maximum_subject_gap     = $one_line_subject_gap;
+          $maximum_subject_gap_str = $one_line_subject_gap_str;
         }
         if (($overall_subject_gap_representation) && ($one_row_subject_gap_representation)) {
           $overall_subject_gap_representation = $overall_subject_gap_representation . ";" . $one_row_subject_gap_representation;
@@ -427,11 +438,11 @@ while($keep_going) {
   }
   if ($overall_query_gap_representation) {
     print "DEL\t" .$overall_query_gap_representation . "\n";
-    print "MAXDE\t" .$maximum_query_gap ."\n";     
+    print "MAXDE\t" .$maximum_query_gap_str ."\n";     
   }
   if ($overall_subject_gap_representation) {
     print "INS\t" .$overall_subject_gap_representation . "\n";
-    print "MAXIN\t" .$maximum_subject_gap ."\n"; 		    
+    print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 		    
   }
   if(! defined $overall_query_start)   { $overall_query_start = ""; }
   if(! defined $overall_query_end)     { $overall_query_end   = ""; }
@@ -449,6 +460,8 @@ while($keep_going) {
   $one_row_subject_gap_representation = "";
   $maximum_subject_gap = 0;
   $maximum_query_gap = 0;	    
+  $maximum_subject_gap_str = "";
+  $maximum_query_gap_str = "";
 }
 ################################################
 # List of subroutines:
@@ -716,9 +729,14 @@ sub updateOverallPositions {
 #   $subject_start:              subject start position for current block we are processing
 #   $subject_end:                subject end  position for current block we are processing
 #   $old_gap_overhang:           number of gap positions overhanging from previous row
-
 #
-# Returns:    1) a string of gap-length pairs in query or null and 2) the number of gap characters at the end of the row and 3) largest gap on row
+# Returns:    Four values:
+#             1) the number of gap characters at the end of the row 
+#             2) a string of gap-length pairs in query or "" in >= 1 ';' delimited tokens
+#                each token in format format: "Q<d1>:S<d2>+<d3>" 
+#                <d1> is query position, <d2> is subject position, <d3> is length in nt
+#             3) string reporting largest gap on row in same format as 2, but only 1 token
+#             4) largest gap length in nt (integer)
 #
 # Dies:       Never
 #
@@ -739,12 +757,15 @@ sub findQueryGaps {
     my $local_StateInGap = 1;         #the other satet
     my $local_QueryPositionIndex;     #where are we in absolute query positions
     my $local_SubjectPositionIndex;   #where are we in absolute subject positions
-    my $local_QueryStartDeletion;     #absolute position starting a gap in the query
-    my $local_QueryEndDeletion;       #absolute position ending a gap in the query
+    my $local_QueryStartDeletion;     #absolute position in query starting a gap in the query
+    my $local_QueryEndDeletion;       #absolute position in query ending a gap in the query
+    my $local_SubjectStartDeletion;   #absolute position in subject starting a gap in the subject
+    my $local_SubjectEndDeletion;     #absolute position in subject ending a gap in the subject
     my $local_OneDeletionString;      #string to represent one gap
     my $local_AllDeletionString = ""; #string to represent all gaps        
     my $local_new_gap_overhang = $old_gap_overhang;  #number of gap characters at the end of this algnment row
     my $local_longest_gap = 0;
+    my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
     
     $local_QueryPositionIndex = $query_start;
     $local_SubjectPositionIndex = $subject_start;
@@ -754,6 +775,7 @@ sub findQueryGaps {
     if ($query_start < $query_end) {
 	if ($old_gap_overhang) {
 	    $local_QueryStartDeletion = $query_start - 1;
+            $local_SubjectStartDeletion = $subject_start - 1;
 	    $local_state = $local_StateInGap;
 	}
 	else {
@@ -766,9 +788,10 @@ sub findQueryGaps {
 		}
 		else {
 		    $local_QueryEndDeletion = $local_QueryPositionIndex;
-		    $local_OneDeletionString = $local_QueryStartDeletion . "-" . (3 * $local_new_gap_overhang);
+		    $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . (3 * $local_new_gap_overhang);
 		    if ((3 * $local_new_gap_overhang) > $local_longest_gap) {
 			$local_longest_gap = 3 * $local_new_gap_overhang;
+                        $local_longest_gap_str = $local_OneDeletionString;
 		    }
 		    if ($local_AllDeletionString) {
 			$local_AllDeletionString = $local_AllDeletionString . ";" . $local_OneDeletionString;
@@ -790,6 +813,7 @@ sub findQueryGaps {
 			}
 			$local_new_gap_overhang = 1;
 			$local_QueryStartDeletion = $local_QueryPositionIndex-1; 
+			$local_SubjectStartDeletion = $local_SubjectPositionIndex-1; 
 			$local_state = $local_StateInGap;
 		    }
 		    else {
@@ -803,8 +827,10 @@ sub findQueryGaps {
 			    ;
 			}
 			else {
-			    $local_QueryEndDeletion = $local_QueryPositionIndex - 1;
-			    $local_OneDeletionString = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
+			    $local_QueryEndDeletion   = $local_QueryPositionIndex - 1;
+			    $local_SubjectEndDeletion = $local_SubjectPositionIndex - 1;
+                            $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . (3 * $local_new_gap_overhang);
+			    # AAS: $local_OneDeletionString  = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
 			    if ($local_AllDeletionString) {
 				$local_AllDeletionString = $local_OneDeletionString . ";" . $local_AllDeletionString;
 			    }
@@ -819,11 +845,12 @@ sub findQueryGaps {
 		}
 	    }
 	}
-	return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap);
+	return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
     }
     else {
 	if ($old_gap_overhang) {
 	    $local_QueryStartDeletion = $query_start + 1;
+	    $local_SubjectStartDeletion = $subject_start - 1;
 	    $local_state = $local_StateInGap;
 	}
 	else {
@@ -836,9 +863,10 @@ sub findQueryGaps {
 		}
 		else {
 		    $local_QueryEndDeletion = $local_QueryPositionIndex;
-		    $local_OneDeletionString = $local_QueryEndDeletion . "-" . (3 * $local_new_gap_overhang);
+		    $local_OneDeletionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . (3 * $local_new_gap_overhang);
 		    if ((3 * $local_new_gap_overhang) > $local_longest_gap) {
 			$local_longest_gap = 3 * $local_new_gap_overhang;
+                        $local_longest_gap_str = $local_OneDeletionString;
 		    }
 		    if ($local_AllDeletionString) {
 			$local_AllDeletionString = $local_OneDeletionString . ";" . $local_AllDeletionString;
@@ -859,7 +887,8 @@ sub findQueryGaps {
 			    print "In findQueryGaps: start of a gap in the query at subject $local_SubjectPositionIndex\n";
 			}
 			$local_new_gap_overhang = 1;
-			$local_QueryStartDeletion = $local_QueryPositionIndex + 1; 
+			$local_QueryStartDeletion = $local_QueryPositionIndex+1; 
+			$local_SubjectStartDeletion = $local_SubjectPositionIndex-1; 
 			$local_state = $local_StateInGap;
 		    }
 		    else {
@@ -874,7 +903,8 @@ sub findQueryGaps {
 			}
 			else {
 			    $local_QueryEndDeletion = $local_QueryPositionIndex + 1;
-			    $local_OneDeletionString = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
+                            $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . (3 * $local_new_gap_overhang);
+			    # AAS: $local_OneDeletionString = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
 			    if ($local_AllDeletionString) {
 				$local_AllDeletionString = $local_AllDeletionString . ";" . $local_OneDeletionString;
 			    }
@@ -889,7 +919,7 @@ sub findQueryGaps {
 		}
 	    }
 	}
-	return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap);
+	return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
     }
 }
 
@@ -909,7 +939,13 @@ sub findQueryGaps {
 #   $old_gap_overhang:           number of gap positions overhanging from previous row
 #
 #
-# Returns:    1) a string of gap-length pairs in subject or null and 2) the number of gap characters at the end of the row and the longest gap
+#  Returns:   4 values:
+#             1) the number of gap characters at the end of the row 
+#             2) a string of gap-length pairs in subject or "" in >= 1 ';' delimited tokens
+#                each token in format format: "Q<d1>:S<d2>+<d3>" 
+#                <d1> is query position, <d2> is subject position, <d3> is length in nt
+#             3) string reporting largest gap on row in same format as 2, but only 1 token
+#             4) largest gap length in nt (integer)
 #
 # Dies:       Never
 #
@@ -932,17 +968,21 @@ sub findSubjectGaps {
     my $local_SubjectPositionIndex; #where are we in absolute subject positions
     my $local_QueryStartDeletion;   #absolute position in query starting a gap in the subject
     my $local_QueryEndDeletion;     #absolute position in query ending a gap in the subject
+    my $local_SubjectStartDeletion; #absolute position in subject starting a gap in the subject
+    my $local_SubjectEndDeletion;   #absolute position in subject ending a gap in the subject
     my $local_OneInsertionString;   #string to represent one gap
     my $local_AllInsertionString = ""; #string to represent all gaps        
     my $local_new_gap_overhang = $old_gap_overhang;   #number of gap characters at the end of the alignment row
-    my $local_longest_gap = 0;
+    my $local_longest_gap     = 0;
+    my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
     
     $local_QueryPositionIndex = $query_start;
     $local_SubjectPositionIndex = $subject_start;
     # It is always true that $query_start < $query_end
     if ($old_gap_overhang) {
 	$local_QueryStartDeletion = $query_start - 1;
-	    $local_state = $local_StateInGap;
+	$local_SubjectStartDeletion = $subject_start - 1;
+        $local_state = $local_StateInGap;
     }
     else {
 	$local_state = $local_StateNotGap;	    
@@ -954,17 +994,19 @@ sub findSubjectGaps {
 	    }
 	    else {
 		$local_QueryEndDeletion = $local_QueryPositionIndex;
+		$local_SubjectEndDeletion = $local_SubjectPositionIndex;
 		if ($DEBUG) {
 		    print "In findSubjectGaps: Setting local_QueryEndDeletion to $local_QueryEndDeletion, when local_QueryStartDeletion is $local_QueryStartDeletion\n";
 		}
 		if ($query_start < $query_end) {
-		    $local_OneInsertionString = $local_QueryStartDeletion . "+" . (3 * $local_new_gap_overhang);
+                  $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . (3 * $local_new_gap_overhang);
 		}
 		else {
-		    $local_OneInsertionString = $local_QueryEndDeletion . "+" . (3 * $local_new_gap_overhang);		    
+                  $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . (3 * $local_new_gap_overhang);		    
 		}
 		if ((3 * $local_new_gap_overhang) > $local_longest_gap) {
 		    $local_longest_gap = 3 * $local_new_gap_overhang;
+                    $local_longest_gap_str = $local_OneInsertionString;
 		}
 		if ($local_AllInsertionString) {
 		    if ($query_start < $query_end) {
@@ -992,6 +1034,7 @@ sub findSubjectGaps {
 	    if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
 		if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the query
 		    $local_new_gap_overhang = 1;
+                    $local_SubjectStartDeletion = $local_SubjectPositionIndex-1;
 		    if ($query_start < $query_end) {		    
 			$local_QueryStartDeletion = $local_QueryPositionIndex-1;
 		    }
@@ -1017,13 +1060,14 @@ sub findSubjectGaps {
 		    }
 		    else {
 			if ($query_start < $query_end) {
-			    $local_OneInsertionString = $local_QueryStartDeletion . "+" . (3 * $local_new_gap_overhang);
+                          $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . (3 * $local_new_gap_overhang);
 			}
 			else {
-			    $local_OneInsertionString = $local_QueryEndDeletion . "+" . (3 * $local_new_gap_overhang);		    
+                          $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . (3 * $local_new_gap_overhang);		    
 			}
 			if ((3 * $local_new_gap_overhang) > $local_longest_gap) {
-			    $local_longest_gap = 3 * $local_new_gap_overhang;
+			    $local_longest_gap     = 3 * $local_new_gap_overhang;
+			    $local_longest_gap_str = $local_OneInsertionString;
 			}
 			if ($local_AllInsertionString) {
 			    if ($query_start < $query_end) {
@@ -1047,7 +1091,7 @@ sub findSubjectGaps {
     if ($DEBUG) {
 	print "In findSubjectGaps: about to return $local_new_gap_overhang  $local_AllInsertionString\n";
     }    
-    return($local_new_gap_overhang,$local_AllInsertionString, $local_longest_gap);
+    return($local_new_gap_overhang,$local_AllInsertionString,$local_longest_gap_str, $local_longest_gap);
 }
 
 ##########################################################################################

@@ -1,0 +1,18 @@
+# ribo.0p20.qsubinfo
+# This file must have exactly 2 non-'#' prefixed
+# lines. 
+#
+# Line 1: a string that is the qsub command and flags for submitting
+# jobs to the compute farm *prior* to the actual cmsearch/cmalign command.
+#
+# This line may have up to two special values that will be
+# replaced: 
+# (a) "![errfile]!": will be replaced by an error file name
+#     automatically determined by the ribotyper script(s)
+# (b) "![jobname]!": will be replaced by a job name
+#     automatically determined by the ribotyper script(s)
+#
+# Line 2: the remainder of the qsub cmsearch/cmalign command 
+#
+qsub -N ![jobname]! -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e /dev/null -m n -l h_rt=288000,h_vmem=16G,mem_free=16G,reserve_mem=16G,m_mem_free=16G "
+"
