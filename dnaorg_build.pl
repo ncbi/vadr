@@ -49,7 +49,7 @@ $execs_H{"cmbuild"}       = $env_dnaorg_infernal_dir . "/cmbuild";
 $execs_H{"cmpress"}       = $env_dnaorg_infernal_dir . "/cmpress";
 $execs_H{"esl-reformat"}  = $env_dnaorg_easel_dir    . "/esl-reformat";
 $execs_H{"esl-translate"} = $env_dnaorg_easel_dir    . "/esl-translate";
-$execs_H{"makeblastdb"}   = $env_dnaorg_blast_dir    . "/esl-translate";
+$execs_H{"makeblastdb"}   = $env_dnaorg_blast_dir    . "/makeblastdb";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################

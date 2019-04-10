@@ -281,8 +281,8 @@ my $total_seconds     = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, 
 my $executable        = $0;
 my $date              = scalar localtime();
 my $version           = "0.45x";
-my $model_version_str = "1p0"; 
-my $qsub_version_str  = "1p0"; 
+my $model_version_str = "0p9"; 
+my $qsub_version_str  = "0p9"; 
 my $releasedate       = "Mar 2019";
 my $pkgname           = "dnaorg";
 
@@ -441,7 +441,7 @@ my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log
 # make sure the sequence, CM, modelinfo, qsubinfo files exist
 utl_FileValidateExistsAndNonEmpty($fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $df_model_dir = "/panfs/pan1/infernal/notebook/19_0307_virus_dnaorg_classify_annotate_merge/norovirus-testing-20190318/models";
+my $df_model_dir = $env_dnaorg_model_dir;
 
 my $df_cm_file   = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".cm";
 my $cm_file      = undef;
@@ -452,6 +452,9 @@ if(! opt_IsUsed("-m", \%opt_HH)) {
 }
 else { # -m used on the command line
   utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
+  utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 my $df_modelinfo_file = $df_model_dir . "/" . "dnaorg." . $model_version_str . ".modelinfo";
@@ -466,7 +469,7 @@ else { # -i used on the command line
 }
 
 my $qsubinfo_file    = undef;
-my $df_qsubinfo_file = $df_model_dir . "/" . "dnaorg." . $qsub_version_str . ".qsubinfo";
+my $df_qsubinfo_file = $env_dnaorg_scripts_dir . "/" . "dnaorg." . $qsub_version_str . ".qsubinfo";
 if(! opt_IsUsed("-q", \%opt_HH)) { $qsubinfo_file = $df_qsubinfo_file; }
 else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
 
