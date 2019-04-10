@@ -280,10 +280,10 @@ my $options_okay =
 my $total_seconds     = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable        = $0;
 my $date              = scalar localtime();
-my $version           = "0.45x";
+my $version           = "0.9";
 my $model_version_str = "0p9"; 
 my $qsub_version_str  = "0p9"; 
-my $releasedate       = "Mar 2019";
+my $releasedate       = "Apr 2019";
 my $pkgname           = "dnaorg";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
