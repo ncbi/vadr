@@ -13,6 +13,7 @@ use LWP::Simple;
 require "dnaorg.pm"; 
 require "epn-options.pm";
 require "epn-ofile.pm";
+require "epn-seq.pm";
 require "epn-seqfile.pm";
 require "epn-utils.pm";
 
@@ -37,13 +38,19 @@ require "epn-utils.pm";
 # - Writes optional output files
 # 
 #######################################################################################
-# make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
-my $env_dnaorgdir      = utl_DirEnvVarValid("DNAORGDIR");
-my $env_dnaorgblastdir = utl_DirEnvVarValid("DNAORGBLASTDIR");
+# make sure required environment variables are set
+my $env_dnaorg_scripts_dir  = utl_DirEnvVarValid("DNAORGSCRIPTSDIR");
+my $env_dnaorg_blast_dir    = utl_DirEnvVarValid("DNAORGBLASTDIR");
+my $env_dnaorg_infernal_dir = utl_DirEnvVarValid("DNAORGINFERNALDIR");
+my $env_dnaorg_easel_dir    = utl_DirEnvVarValid("DNAORGEASELDIR");
 
-my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
-my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
-my $blast_exec_dir    = $env_dnaorgblastdir;
+my %execs_H = (); # hash with paths to all required executables
+$execs_H{"cmbuild"}       = $env_dnaorg_infernal_dir . "/cmbuild";
+$execs_H{"cmpress"}       = $env_dnaorg_infernal_dir . "/cmpress";
+$execs_H{"esl-reformat"}  = $env_dnaorg_easel_dir    . "/esl-reformat";
+$execs_H{"esl-translate"} = $env_dnaorg_easel_dir    . "/esl-translate";
+$execs_H{"makeblastdb"}   = $env_dnaorg_blast_dir    . "/esl-translate";
+utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -225,8 +232,10 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 my @arg_desc_A = ("accession/model name", "output directory");
 my @arg_A      = ($mdl_name, $dir);
 my %extra_H    = ();
-$extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
-$extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
+$extra_H{"\$DNAORGSCRIPTSDIR"}  = $env_dnaorg_scripts_dir;
+$extra_H{"\$DNAORGINFERNALDIR"} = $env_dnaorg_infernal_dir;
+$extra_H{"\$DNAORGEASELDIR"}    = $env_dnaorg_easel_dir;
+$extra_H{"\$DNAORGBLASTDIR"}    = $env_dnaorg_blast_dir;
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -264,15 +273,6 @@ foreach $cmd (@early_cmd_A) {
 #############################################################
 # make sure the required executables exist and are executable
 #############################################################
-my %execs_H = (); # hash with paths to all required executables
-if(! opt_Get("--skipbuild", \%opt_HH)) { 
-  $execs_H{"cmbuild"}       = $inf_exec_dir . "/cmbuild";
-  $execs_H{"cmpress"}       = $inf_exec_dir . "/cmpress";
-}
-$execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
-$execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
-$execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
-utl_ExecHValidate(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################################
 # Fetch the genbank file (if --gb not used)

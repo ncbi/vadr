@@ -91,15 +91,25 @@ require "epn-utils.pm";
 #   features for which they weren't already added in fetch_features_and_add_cds_and_mp_alerts()
 #
 #######################################################################################
-# make sure DNAORGDIR and DNAORGBLASTDIR environment variable is set
-my $env_dnaorgdir      = utl_DirEnvVarValid("DNAORGDIR");
-my $env_dnaorgblastdir = utl_DirEnvVarValid("DNAORGBLASTDIR");
+# make sure required environment variables are set
+my $env_dnaorg_scripts_dir  = utl_DirEnvVarValid("DNAORGSCRIPTSDIR");
+my $env_dnaorg_model_dir    = utl_DirEnvVarValid("DNAORGMODELDIR");
+my $env_dnaorg_blast_dir    = utl_DirEnvVarValid("DNAORGBLASTDIR");
+my $env_dnaorg_infernal_dir = utl_DirEnvVarValid("DNAORGINFERNALDIR");
+my $env_dnaorg_easel_dir    = utl_DirEnvVarValid("DNAORGEASELDIR");
+my $env_dnaorg_bioeasel_dir = utl_DirEnvVarValid("DNAORGBIOEASELDIR");
 
-my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
-my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
-my $esl_ssplit        = $env_dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
-my $blast_exec_dir    = $env_dnaorgblastdir;
- 
+my %execs_H = (); # hash with paths to all required executables
+$execs_H{"cmalign"}           = $env_dnaorg_infernal_dir . "/cmalign";
+$execs_H{"cmfetch"}           = $env_dnaorg_infernal_dir . "/cmfetch";
+$execs_H{"cmscan"}            = $env_dnaorg_infernal_dir . "/cmscan";
+$execs_H{"cmsearch"}          = $env_dnaorg_infernal_dir . "/cmsearch";
+$execs_H{"esl-seqstat"}       = $env_dnaorg_easel_dir    . "/esl-seqstat";
+$execs_H{"esl-ssplit"}        = $env_dnaorg_bioeasel_dir . "/scripts/esl-ssplit.pl";
+$execs_H{"blastx"}            = $env_dnaorg_blast_dir    . "/blastx";
+$execs_H{"parse_blastx"}      = $env_dnaorg_scripts_dir  . "/parse_blastx.pl";
+utl_ExecHValidate(\%execs_H, undef);
+
 #########################################################
 # Command line and option processing using epn-options.pm
 #
@@ -373,8 +383,12 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_annotate";
 my @arg_desc_A = ("sequence file", "output directory");
 my @arg_A      = ($fa_file, $dir);
 my %extra_H    = ();
-$extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
-$extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
+$extra_H{"\$DNAORGSCRIPTSDIR"}  = $env_dnaorg_scripts_dir;
+$extra_H{"\$DNAORGMODELDIR"}    = $env_dnaorg_model_dir;
+$extra_H{"\$DNAORGINFERNALDIR"} = $env_dnaorg_infernal_dir;
+$extra_H{"\$DNAORGEASELDIR"}    = $env_dnaorg_easel_dir;
+$extra_H{"\$DNAORGBIOEASELDIR"} = $env_dnaorg_bioeasel_dir;
+$extra_H{"\$DNAORGBLASTDIR"}    = $env_dnaorg_blast_dir;
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -474,20 +488,6 @@ if(! -d $blastdb_dir) {
                      opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), "dnaorg", 1, $FH_HR);
 }
 # we check for existence of blast DB files after we parse the model info file
-
-###################################################
-# make sure the required executables are executable
-###################################################
-my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmalign"}           = $inf_exec_dir   . "/cmalign";
-$execs_H{"cmfetch"}           = $inf_exec_dir   . "/cmfetch";
-$execs_H{"cmscan"}            = $inf_exec_dir   . "/cmscan";
-$execs_H{"cmsearch"}          = $inf_exec_dir   . "/cmsearch";
-$execs_H{"esl-seqstat"}       = $esl_exec_dir   . "/esl-seqstat";
-$execs_H{"esl-ssplit"}        = $esl_ssplit;
-$execs_H{"blastx"}            = $blast_exec_dir . "/blastx";
-$execs_H{"parse_blastx"}      = $env_dnaorgdir  . "/dnaorg_scripts/parse_blastx.pl";
-utl_ExecHValidate(\%execs_H, \%{$ofile_info_HH{"FH"}});
 
 ###########################
 # Parse the model info file
