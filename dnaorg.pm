@@ -90,7 +90,9 @@ use Cwd;
 # dng_CoordsTokenParse()
 # dng_CoordsLength()
 # dng_CoordsFromLocation()
+# dng_CoordsFromLocationWithCarrots()
 # dng_CoordsComplement()
+# dng_CoordsComplementWithCarrots()
 #
 # Subroutines related to eutils:
 # dng_EutilsFetchToFile()
@@ -125,7 +127,7 @@ sub dng_FeatureInfoImputeCoords {
   my $sub_name = "dng_FeatureInfoImputeCoords";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
+
   my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "location"
@@ -1976,6 +1978,11 @@ sub dng_CoordsLength {
 #             a coords string in the format:
 #             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
 # 
+#             Any carrots before start/stop positions in the 
+#             location string are removed.
+#             See dng_CoordsFromLocationWithCarrots() for 
+#             a similar subroutine that keeps carrots.
+#
 #             This function has to call itself recursively in some
 #             cases.
 # 
@@ -1989,7 +1996,7 @@ sub dng_CoordsLength {
 #
 # Ref: GenBank release notes (release 230.0) as of this writing
 #      and
-#      https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
+#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
 #################################################################
 sub dng_CoordsFromLocation { 
   my $sub_name = "dng_CoordsFromLocation";
@@ -2003,8 +2010,8 @@ sub dng_CoordsFromLocation {
   # ---------------------------------  -----------------
   # 1..200                             1..200:+
   # <1..200                            1..200:+
-  # 100..200>                          100..200:+
-  # <1..200>                           1..200:+
+  # 100..>200                          100..200:+
+  # <1..>200                           1..200:+
   # complement(1..200)                 200..1:-
   # join(1..200,300..400)              1..200:+,300..400:+
   # complement(join(1..200,300..400))  400..300:-,200..1:-
@@ -2028,6 +2035,82 @@ sub dng_CoordsFromLocation {
       $ret_val .= dng_CoordsFromLocation($location_el, $FH_HR);
     }
   }
+  elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
+    $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", "dnaorg", 1, $FH_HR);
+  }
+
+  return $ret_val;
+}
+
+#################################################################
+# Subroutine: dng_CoordsFromLocationWithCarrots
+# Incept:     EPN, Fri Apr 12 11:51:16 2019
+# 
+# Purpose:    Convert a GenBank file 'location' value to 
+#             a coords string in the format:
+#             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
+#             
+#             <startN>: may begin with "<" carrot.
+#             <stopN>: may begin with ">" carrot.
+#
+#             dng_CoordsFromLocation() does the same thing but 
+#             removes carrots.
+#
+#             This function has to call itself recursively in some
+#             cases.
+# 
+# Arguments:
+#   $location: GenBank file location string
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if unable to parse $location
+#
+# Ref: GenBank release notes (release 230.0) as of this writing
+#      and
+#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
+#################################################################
+sub dng_CoordsFromLocationWithCarrots { 
+  my $sub_name = "dng_CoordsFromLocationWithCarrots";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($location, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $location                          return value
+  # ---------------------------------  -----------------
+  # 1..200                             1..200:+
+  # <1..200                            <1..200:+
+  # 100..>200                          100..>200:+
+  # <1..>200                           <1..>200:+
+  # complement(1..200)                 200..1:-
+  # join(1..200,300..400)              1..200:+,300..400:+
+  # complement(join(1..200,300..400))  400..300:-,200..1:-
+  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
+  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
+
+  my $ret_val = "";
+  if($location =~ /^join\((.+)\)$/) { 
+    my $location_to_join = $1;
+    $ret_val = dng_CoordsFromLocationWithCarrots($location_to_join, $FH_HR);
+  }
+  elsif($location =~ /^complement\((.+)\)$/) { 
+    my $location_to_complement = $1;
+    my $coords_to_complement = dng_CoordsFromLocationWithCarrots($location_to_complement, $FH_HR);
+    $ret_val = dng_CoordsComplementWithCarrots($coords_to_complement, $FH_HR);
+  }
+  elsif($location =~ /\,/) { 
+    # not wrapped in join() or complement(), but multiple segments
+    foreach my $location_el (split(",", $location)) { 
+      if($ret_val ne "") { $ret_val .= ","; }
+      $ret_val .= dng_CoordsFromLocationWithCarrots($location_el, $FH_HR);
+    }
+  }
   elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
     $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
   }
@@ -2043,7 +2126,10 @@ sub dng_CoordsFromLocation {
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
 # Purpose:    Complement a coords string by complementing all
-#             elements within it.
+#             elements within it. Removes carrots "<" and ">"
+#             before start and stop positions, if they exist.
+#             See dng_CoordsComplementWithCarrots() to keep
+#             carrots.
 # 
 # Arguments:
 #   $coords:   coords string to complement
@@ -2057,6 +2143,56 @@ sub dng_CoordsFromLocation {
 #################################################################
 sub dng_CoordsComplement { 
   my $sub_name = "dng_CoordsComplement";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($coords, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $coords                  return value
+  # -----------------------  -----------------
+  # 1-200:+                  200-1:-
+  # 1-200:+,300-400:+        400-300:-,200-1:-
+
+  my $ret_val = "";
+  my @el_A = split(",", $coords);
+  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
+    if($el_A[$i] =~ /^\<?(\d+)\.\.\>?(\d+)\:\+/) { 
+      my ($start, $stop) = ($1, $2, $3, $4);
+      if($ret_val ne "") { $ret_val .= ","; }
+      $ret_val .= $stop . ".." . $start . ":-";
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", "dnaorg", 1, $FH_HR);
+    }
+  }
+
+  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
+
+  return $ret_val;
+}
+
+#################################################################
+# Subroutine: dng_CoordsComplementWithCarrots
+# Incept:     EPN, Fri Apr 12 11:49:06 2019
+# 
+# Purpose:    Complement a coords string by complementing all
+#             elements within it, and reverse any carrots. 
+#             Just like dng_CoordsComplement() but keeps
+#             and complements carrots.
+# 
+# Arguments:
+#   $coords:   coords string to complement
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    complemented $coords
+# 
+# Dies:       if unable to parse $coords, or any segment in $coords
+#             is already on the negative strand.
+#
+#################################################################
+sub dng_CoordsComplementWithCarrots { 
+  my $sub_name = "dng_CoordsComplementWithCarrots";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  

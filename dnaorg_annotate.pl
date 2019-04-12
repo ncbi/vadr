@@ -19,43 +19,39 @@ require "epn-utils.pm";
 #######################################################################################
 # What this script does: 
 #
-# Given a single full length homology model (CM) built for a reference
-# accession created by a previous run of dnaorg_build.pl, this script
-# aligns each input sequence to that homologoy model and uses that
-# alignment to annotate the features (CDS and mature peptides) in
-# those incoming sequences. This script outputs a tabular file and d
-# feature table summarizing the annotations, as well as information on
-# alerts found.
+# Given an input sequence file, each sequence is compared against a
+# library of homology models (CMs) and classified and annotated and
+# determined to PASS or FAIL.  Certain types of unexpected results are
+# detected and reported in the output as 'alerts'. There are two
+# classes of alerts: those that cause a sequence to FAIL and those
+# that do not. 
 #
-# A list of subroutines can be found after the main script before
-# the subroutines.
-# 
-# Immediately below are a list of the steps performed by this
-# script. Each has a corresponding code block in the main script.
+# The script proceeds through four main stages:
 #
-# Preliminaries: 
-#   - process options
-#   - output program banner and open output files
-#   - parse the optional input files, if necessary
-#   - make sure the required executables are executable
+# (1) classification: each sequence is compared against the CM library
+#     using a relatively fast HMM scoring algorithm, and the highest
+#     scoring model in the library is defined as the winning CM for
+#     that sequence.
 #
-# Step 1.  Gather and process information on reference genome using Edirect.
-# Step 2.  Fetch and process the reference genome sequence.
-# Step 3.  Verify we have the model file that we need to run cmalign.
+# (2) coverage determination: each sequence is compared against its
+#    winning model (only) for a second time using a more expensive HMM
+#    scoring algorithm that is local with respect to the model and
+#    sequence. This stage allows statistics related to the coverage of
+#    the sequence and model to be determined, and some alerts can be
+#    reported based on those statisics.
 #
-#    Steps 1-2 are very similar to those done in dnaorg_build.pl, but
-#    dnaorg_build.pl and dnaorg_annotate,pl are run separately, perhaps
-#    with a big time lag. Therefore, this script, in step 3, verifies 
-#    that the models built by dnaorg_build.pl are still up-to-date with 
-#    respect to the reference used in running this script.
-#
-# Step 4.  Align sequences to the homology model (CM).
-# Step 5.  Parse cmalign alignments.
-# Step 6.  Fetch features and detect most nucleotide-annotation based alerts.
-# Step 7.  Run BLASTX: all full length sequences and all fetched CDS features 
-#          versus all proteins
-# Step 8.  Add b_zft alerts for sequences with zero annotated features
-# Step 9.  Output annotations and alerts.
+# (3) alignment/annotation: each sequence is aligned to its winning
+#    model using a still more expensive CM algorithm that takes into
+#    account secondary structure in the model (if any). This algorithm
+#    is aligns the full sequence either locally or globally with
+#    respect to the model. Features are then annotated based on the
+#    alignment coordinates and the known feature coordinates in the 
+#    model (supplied via the modelinfo file). 
+#   
+# (4) blastx CDS validation: CDS features are then validated via
+#     blastx by comparing predicted feature spans from (3) to pre-computed
+#     BLAST databases for the model. Alerts can be reported based on
+#     the blast results. 
 #
 #######################################################################################
 #
@@ -64,10 +60,11 @@ require "epn-utils.pm";
 # This script identifies and outputs a list of all alerts in each of
 # the sequences it annotates. Each type of alert has an associated
 # five letter alert 'code'. The list of alert codes is in the
-# dnaorg.pm perl module file. It can also be found here:
+# dnaorg.pm perl module file in the subroutine: dng_AlertInfoInitialize().
 #
-#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v6a.documentation.txt
-#
+# A table of alerts is output by dnaorg_annotate.pl when the --alt_list
+# option is used.
+# 
 # List of subroutines in which errors are detected and added:
 # 1. add_classification_alerts()
 #    c_noa, c_vls, c_los, c_vld, c_lod, c_ugr, c_usg, c_mst, c_loc, c_hbi (10)
