@@ -528,7 +528,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
   dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   dng_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -2860,7 +2860,11 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
                 for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
                   my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                  if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                     (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                     (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
+                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                  }
                 }
               }
             } # end of 'if($ftr_is_cds_or_mp)'
@@ -3315,7 +3319,9 @@ sub add_blastx_alerts {
             if(($alt_flag) && ($ftr_nchildren > 0)) { 
               for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
                 my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                if(! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"}) { 
+                if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                   (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                   (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
                 }
               }

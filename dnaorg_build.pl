@@ -425,7 +425,7 @@ $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progr
 dng_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+dng_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 dng_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 
 my @sgm_info_AH = (); # segment info, inferred from feature info

@@ -51,7 +51,7 @@ use Cwd;
 # dng_FeatureInfoImputeCoords
 # dng_FeatureInfoImputeLength
 # dng_FeatureInfoImputeSourceIdx
-# dng_FeatureInfoImputeParentIdx
+# dng_FeatureInfoImputeParentIndices
 # dng_FeatureInfoImputeOutname()
 # dng_FeatureInfoImpute3paFtrIdx
 # dng_FeatureInfoStartStopStrandArrays()
@@ -234,10 +234,10 @@ sub dng_FeatureInfoImputeSourceIdx {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoImputeParentIdx
+# Subroutine: dng_FeatureInfoImputeParentIndices
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Fill "parent_idx" values in @{$ftr_info_AHR}
+# Purpose:    Fill "parent_idx_str" values in @{$ftr_info_AHR}
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
@@ -248,8 +248,8 @@ sub dng_FeatureInfoImputeSourceIdx {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImputeParentIdx {
-  my $sub_name = "dng_FeatureInfoImputeParentIdx";
+sub dng_FeatureInfoImputeParentIndices {
+  my $sub_name = "dng_FeatureInfoImputeParentIndices";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -259,9 +259,10 @@ sub dng_FeatureInfoImputeParentIdx {
   my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
-  # go through all features and determine parents (set 'parent_idx')
+  # go through all features and determine parents (set 'parent_idx_str')
   # 
-  # $ftr_info_AHR->{"parent_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
+  #   a comma separated string of >= 1 $ftr_idx2 if:
   # - $ftr_idx type is mat_peptide
   # - $ftr_idx2 type is CDS
   # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
@@ -270,7 +271,9 @@ sub dng_FeatureInfoImputeParentIdx {
   # 
   # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
   #
-  # dies if more than one $ftr_idx2 satisfies above
+  # note: more than one $ftr_idx2 can satisfy above, in which
+  # case $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
+  # comma separated string of > 1 $ftr_idx2
   my ($ftr_idx, $ftr_idx2); # feature indices
   my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
   my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
@@ -280,7 +283,7 @@ sub dng_FeatureInfoImputeParentIdx {
   my $ftr_strand2; # strand for feature $ftr_idx2
   my $found_parent; # flag for if we found a parent or not
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
+    $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = ""; # initialize
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
       $ftr_5p_pos = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
@@ -304,17 +307,8 @@ sub dng_FeatureInfoImputeParentIdx {
             $found_parent = 1;
           }
           if($found_parent) { 
-            if($ftr_info_AHR->[$ftr_idx]{"parent_idx"} != -1) { 
-              printf("ftr_5p_pos:  $ftr_5p_pos\n");
-              printf("ftr_3p_pos:  $ftr_3p_pos\n");
-              printf("ftr_5p_pos2: $ftr_5p_pos2\n");
-              printf("ftr_3p_pos2: $ftr_3p_pos2\n");
-              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"},
-                                  $ftr_info_AHR->[($ftr_info_AHR->[$ftr_idx]{"parent_idx"})]{"coords"}, 
-                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), "dnaorg", 1, $FH_HR);
-            }
-            $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = $ftr_idx2;
+            if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "") { $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= ","; }
+            $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= "$ftr_idx2";
           }
         }
       }
@@ -593,10 +587,21 @@ sub dng_FeatureInfoChildrenArrayOfArrays {
   @{$AAR} = ();
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    dng_FeatureChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, \@{$AAR->[$ftr_idx]}, $FH_HR);
+  my ($parent_ftr_idx, $child_ftr_idx);
+
+  # initialize
+  for($parent_ftr_idx = 0; $parent_ftr_idx < $nftr; $parent_ftr_idx++) { 
+    @{$AAR->[$parent_ftr_idx]} = ();
   }
-  
+
+  # fill
+  for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
+    my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+    foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+      push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+    }
+  }
+
   return;
 }
 
@@ -706,7 +711,7 @@ sub dng_SegmentInfoPopulate {
 ################################################################# 
 sub dng_FeatureTypeAndTypeIndexString { 
   my $nargs_expected = 3;
-  my $sub_name = "dng_FeatureChildrenArray";
+  my $sub_name = "dng_FeatureTypeAndTypeIndexString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
 
@@ -849,42 +854,6 @@ sub dng_FeatureTypeIsCdsOrMatPeptideOrGene {
 }
 
 #################################################################
-# Subroutine:  dng_FeatureChildrenArray()
-# Incept:      EPN, Sun Mar 10 06:26:03 2019
-#
-# Purpose:     Fill @{$AAR} with array of children (feature indices)
-#              for feature $ftr_idx in %{$ftr_info_AHR}.
-# 
-# Arguments: 
-#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index we are interested in
-#   $nftr:           number of features in %{$ftr_info_AHR}
-#   $AR:             REF to array children feature indices, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-#
-################################################################# 
-sub dng_FeatureChildrenArray { 
-  my $nargs_expected = 5;
-  my $sub_name = "dng_FeatureChildrenArray";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
-
-  @{$AR} = ();
-
-  for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-    if(($ftr_idx2 != $ftr_idx) && 
-       ($ftr_info_AHR->[$ftr_idx2]{"parent_idx"} == $ftr_idx)) { 
-      push(@{$AR}, $ftr_idx2);
-    }
-  }
-  
-  return;
-}
-
-#################################################################
 # Subroutine: dng_FeatureNumSegments()
 # Incept:     EPN, Tue Mar  5 13:05:38 2019
 #
@@ -908,8 +877,6 @@ sub dng_FeatureNumSegments {
 
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
-
-
 
 #################################################################
 # Subroutine: dng_FeatureIsDuplicate()
@@ -1355,7 +1322,7 @@ sub dng_AlertInfoInitialize {
 
   dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "Peptide Translation Problem", # short description
-                   "mat_peptide may not be translated because its CDS has a problem", # long description
+                   "mat_peptide may not be translated because a CDS that spans it has a problem", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -2370,16 +2337,16 @@ sub dng_ModelInfoFileWrite {
 
     # define feature keys to ignore
     my %ftr_key_ignore_H = ();
-    $ftr_key_ignore_H{"type"}        = 1; # this automatically gets added to @key_order_A, so it goes first
-    $ftr_key_ignore_H{"coords"}      = 1; # this automatically gets added to @key_order_A, so it goes second
-    $ftr_key_ignore_H{"length"}      = 1; # will be inferred from coords
-    $ftr_key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"outname"}     = 1; # will be inferred from product and gene (or lack of)
-    $ftr_key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-    $ftr_key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-    $ftr_key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
+    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, so it goes first
+    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, so it goes second
+    $ftr_key_ignore_H{"length"}         = 1; # will be inferred from coords
+    $ftr_key_ignore_H{"source_idx"}     = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"parent_idx_str"} = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"3pa_ftr_idx"}    = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"outname"}        = 1; # will be inferred from product and gene (or lack of)
+    $ftr_key_ignore_H{"5p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"3p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"location"}       = 1; # *could* (but won't be) inferred from coords
 
     $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
     # determine order of keys for this feature
