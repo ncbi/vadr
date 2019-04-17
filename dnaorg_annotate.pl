@@ -5127,6 +5127,7 @@ sub output_feature_table {
         # initialize
         my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
         my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
+        my $is_mat_peptide    = dng_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
         my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
         my $ftr_coords_str    = ""; # string of coordinates for this feature
         my $ftr_out_str       = ""; # output string for this feature
@@ -5178,8 +5179,10 @@ sub output_feature_table {
         # add qualifiers: product, gene, exception and codon_start (if !duplicate)
         if(! $is_misc_feature) { 
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product",   $qval_sep, $ftr_info_AHR, $FH_HR);
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene",      $qval_sep, $ftr_info_AHR, $FH_HR);
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
+          if(! $is_mat_peptide) { 
+            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene",      $qval_sep, $ftr_info_AHR, $FH_HR);
+          }
           # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
           if((! $is_duplicate) && (dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
             my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
