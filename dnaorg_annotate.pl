@@ -2851,24 +2851,25 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                   } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
                 } # end of 'if($ftr_is_cds) {' 
               } # end of 'else' entered if feature is a multiple of 3
-              # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
-              my $alt_flag = 0;
-              foreach my $alt_code (sort keys %alt_str_H) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
-                $alt_flag = 1;
-              }
-              if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
-                for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-                  my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                  if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
-                     (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
-                     (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
-                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
-                  }
-                }
-              }
             } # end of 'if($ftr_is_cds_or_mp)'
           } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
+
+          # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
+          my $alt_flag = 0;
+          foreach my $alt_code (sort keys %alt_str_H) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
+            $alt_flag = 1;
+          }
+          if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
+            for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+              my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+              if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+              }
+            }
+          }
 
           # if we are a mature peptide, make sure we are adjacent to the next one, if there is one
           if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1)) { 
