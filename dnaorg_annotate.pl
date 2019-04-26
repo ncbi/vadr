@@ -2557,7 +2557,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           } 
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
                                        sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
                                        $FH_HR);
@@ -2569,7 +2569,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           }
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
                                        sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
                                        $FH_HR);
