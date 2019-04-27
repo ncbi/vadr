@@ -459,7 +459,7 @@ sub sqf_GenbankStoreQualifierValue {
   $value =~ s/^\"//;
   $value =~ s/\"$//;
 
-  printf("in $sub_name q: $qualifier v: $value\n");
+  # printf("in $sub_name q: $qualifier v: $value\n");
   if(! defined ($ftr_info_AHR->[$ftr_idx])) { 
     %{$ftr_info_AHR->[$ftr_idx]} = (); 
   }

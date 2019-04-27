@@ -83,7 +83,6 @@ my $g = 0; # option group
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default  group   requires incompat     preamble-output                                                help-output    
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
-opt_Add("-g",           "string", 0,           $g,    undef, undef,       "define model group for model info file as <s>",               "define model group for model info file as <s>", \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
@@ -101,6 +100,11 @@ $opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in
 opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",        "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",   "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>", "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for including additional model attributes";
+#     option           type       default    group   requires    incompat   preamble-output                       help-output    
+opt_Add("--group",     "string",  undef,        $g,  undef,         undef,  "specify model group is <s>",         "specify model group is <s>",    \%opt_HH, \@opt_order_A);
+opt_Add("--subgroup",  "string",  undef,        $g,  "--group",     undef,  "specify model subgroup is <s>",      "specify model subgroup is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling CDS translation step";
 #     option          type       default    group   requires    incompat   preamble-output                                             help-output    
@@ -132,7 +136,6 @@ my $synopsis = "dnaorg_build.pl :: build homology model of a single sequence for
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
-                'g=s'          => \$GetOptions_H{"-g"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
@@ -146,6 +149,9 @@ my $options_okay =
                 'qall'         => \$GetOptions_H{"--qall"},
                 'qadd=s'       => \$GetOptions_H{"--qadd"},
                 'qskip=s'      => \$GetOptions_H{"--qskip"},
+# options for including additional model attributes
+                'group=s'      => \$GetOptions_H{"--group"},
+                'subgroup=s'   => \$GetOptions_H{"--subgroup"},
 # options for controlling CDS translation step
                 'ttbl=s'       => \$GetOptions_H{"--ttbl"},
 # options for controlling cmbuild step
@@ -153,7 +159,7 @@ my $options_okay =
                 'cmp7ml'       => \$GetOptions_H{"--cmp7ml"},
                 'cmere=s'      => \$GetOptions_H{"--cmere"},
                 'cmeset=s'     => \$GetOptions_H{"--cmeset"},
-# optional for skipping stages
+# options for skipping stages
                 'skipbuild'    => \$GetOptions_H{"--skipbuild"},
                 'onlyurl'      => \$GetOptions_H{"--onlyurl"},
 # optional output files
@@ -536,8 +542,11 @@ if($ncds > 0) {
     $mdl_info_AH[0]{"transl_table"} = opt_Get("--ttbl", \%opt_HH);
   }
 }
-if(opt_IsUsed("-g", \%opt_HH)) { 
-  $mdl_info_AH[0]{"group"} = opt_Get("-g", \%opt_HH); 
+if(opt_IsUsed("--group", \%opt_HH)) { 
+  $mdl_info_AH[0]{"group"} = opt_Get("--group", \%opt_HH); 
+  if(opt_IsUsed("--subgroup", \%opt_HH)) { 
+    $mdl_info_AH[0]{"subgroup"} = opt_Get("--subgroup", \%opt_HH); 
+  }
 }
 my $modelinfo_file  = $out_root . ".modelinfo";
 dng_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
