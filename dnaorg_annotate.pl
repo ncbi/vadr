@@ -5500,7 +5500,12 @@ sub helper_ftable_add_qualifier_from_ftr_info {
      (defined $ftr_info_AHR->[$ftr_idx]{$key})) { 
     my @qval_A = split($qval_sep, $ftr_info_AHR->[$ftr_idx]{$key});
     foreach my $qval (@qval_A) { 
-      $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
+      if($qval ne "") { 
+        $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
+      }
+      else { 
+        $ret_str .= sprintf("\t\t\t%s\n", $key);
+      }
     }
   }
   return $ret_str;
