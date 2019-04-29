@@ -257,6 +257,8 @@ sub sqf_GenbankParse {
       #        example1:      gene            5..5104
       #        example2:      misc_feature    join(2682..2689,1..2)
       #        example3:      misc_feature    join(161990..162784,complement(88222..88806),complement(86666..87448))
+      # qualifier, no value, single line
+      #        example: /ribosomal_slippage
       # qualifier/value type A, single line of controlled vocab or enumerated value
       #        example: /codon_start=1
       # qualifier/value type B, single line of free text
@@ -320,11 +322,15 @@ sub sqf_GenbankParse {
             $line = <IN>; chomp $line; $line_idx++;
             while((defined $line) && ($line !~ /[^\"]\"$/)) { # ends with a non-'"' character followed by '"' character
               $line =~ s/^\s+//; # remove leading whitespace
+              # add a single white space if there is at least one white space character already exising in $save_value
+              if($save_value =~ m/\s/) { $save_value .= " "; }
               $save_value .= $line;
               $line = <IN>; chomp $line; $line_idx++;
             }
             # add final line we read
             $line =~ s/^\s+//; # remove leading whitespace
+            # add a single white space if there is at least one white space character already exising in $save_value
+            if($save_value =~ m/\s/) { $save_value .= " "; }
             $save_value .= $line;
           }
           else { 
@@ -333,6 +339,17 @@ sub sqf_GenbankParse {
           if(defined $value) { # we are finished with previous value
             sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
           }
+          ($qualifier, $value) = ($save_qualifier, $save_value);
+        }
+        elsif($line =~ /^\s+\/([^\s\=]+)$/) { # first token must start with '/'
+          my ($save_qualifier, $save_value) = ($1, "");
+          printf("HEYA save_qualifier: $save_qualifier, value: empty\n");
+          if(defined $value) { # we are finished with previous value
+            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            ($qualifier, $value) = (undef, undef);
+          }
+          # qualifier, no value, single line
+          #        example: /ribosomal_slippage
           ($qualifier, $value) = ($save_qualifier, $save_value);
         }
         elsif($line =~ /^\s+(\S+)\s+(\S+)$/) { 
