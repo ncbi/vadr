@@ -88,11 +88,15 @@ use Cwd;
 #
 # Subroutines related to sequence and model coordinates: 
 # dng_CoordsTokenParse()
+# dng_CoordsTokenCreate()
 # dng_CoordsLength()
 # dng_CoordsFromLocation()
 # dng_CoordsFromLocationWithCarrots()
 # dng_CoordsComplement()
 # dng_CoordsComplementWithCarrots()
+# dng_CoordsMin()
+# dng_CoordsMax()
+# dng_CoordsMissing()
 #
 # Subroutines related to eutils:
 # dng_EutilsFetchToFile()

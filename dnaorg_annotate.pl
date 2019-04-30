@@ -84,8 +84,10 @@ require "epn-utils.pm";
 # 6. alert_add_b_zft()
 #    b_zft (1)
 # 
-# * b_per errors can be added in two places, and are only added in add_blastx_alerts for
-#   features for which they weren't already added in fetch_features_and_add_cds_and_mp_alerts()
+# 7. add_low_similarity_alerts()
+#    x_fss, x_fse, x_fsi, c_lss, c_lse, c_lsi, b_per* (7)
+# 
+# * b_per errors can be added in multiple places, and are only added once per feature
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -3062,7 +3064,7 @@ sub sqstring_find_stops {
 # Purpose:   For each sequence with >1 hits in the sequence coverage
 #            determine stage (r2 search stage), report any 
 #            low similarity per-sequence alerts (c_lss, c_lse, c_lsi) and
-#            low similarity per-feature alerts (x_lfs). 
+#            low similarity per-feature alerts (x_fss, x_fse, x_fsi). 
 #
 # Arguments:
 #  $mdl_name:               name of model these sequences were assigned to
