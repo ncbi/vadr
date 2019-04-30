@@ -1187,7 +1187,6 @@ sub dng_AlertInfoInitialize {
   # add each alert code, this function will die if we try to add the same code twice, or if something is wrong 
   # with how we try to add it (args to dng_AlertInfoAdd don't pass the contract check)
 
-  # classification errors
   dng_AlertInfoAdd($alt_info_HHR, "c_noa", "sequence",
                    "No Annotation", # short description
                    "no significant similarity detected", # long  description
@@ -1263,6 +1262,24 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "c_bst", "sequence",
                    "Indefinite Strand", # short description
                    "significant similarity detected on both strands", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_lss", "sequence",
+                   "Low Similarity at Start", # short description
+                   "significant similarity not detected at 5' end of the sequence", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_lse", "sequence",
+                   "Low Similarity at End", # short description
+                   "significant similarity not detected at 3' end of the sequence", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_lsi", "sequence",
+                   "Low Similarity", # short description
+                   "internal region without significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1407,6 +1424,24 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
                    "Deletion of Nucleotides", # short description
                    "too large of a deletion in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "x_fss", "feature",
+                   "Low Feature Similarity at Start", # short description
+                   "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "x_fse", "feature",
+                   "Low Feature Similarity at End", # short description
+                   "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "x_fsi", "feature",
+                   "Low Feature Similarity", # short description
+                   "region within annotated feature lacks significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1895,6 +1930,37 @@ sub dng_CoordsTokenParse {
 }
 
 #################################################################
+# Subroutine: dng_CoordsTokenCreate()
+# Incept:     EPN, Mon Apr 29 14:07:26 2019
+#
+# Synopsis: Create a coords token from a given start, stop, strand
+# 
+# Arguments:
+#  $start:    start position
+#  $stop:     stop position
+#  $strand:   strand ("+" or "-")
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    coordinate token <start>..<stop>:<strand>
+#
+# Dies:  if $start or $stop is invalid
+#        if $strand is not "+" or "-"
+#
+#################################################################
+sub dng_CoordsTokenCreate {
+  my $sub_name = "dng_CoordsTokenCreate";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start, $stop, $strand, $FH_HR) = @_;
+  if($start !~ /^\<?(\d+)$/) { ofile_FAIL("ERROR in $sub_name, start is invalid ($start)", "dnaorg", 1, $FH_HR); }
+  if($stop  !~ /^\>?(\d+)$/) { ofile_FAIL("ERROR in $sub_name, stop is invalid ($stop)", "dnaorg", 1, $FH_HR); }
+  if(($strand ne "+") && ($strand ne "-")) { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", "dnaorg", 1, $FH_HR); }
+
+  return $start . ".." . $stop . ":" . $strand;
+}
+
+#################################################################
 # Subroutine: dng_CoordsLength()
 # Incept:     EPN, Tue Mar 26 05:56:08 2019
 #
@@ -2191,6 +2257,180 @@ sub dng_CoordsComplementWithCarrots {
   return $ret_val;
 }
 
+#################################################################
+# Subroutine: dng_CoordsMin()
+# Incept:     EPN, Mon Apr 29 13:49:55 2019
+#
+# Synopsis: Given a comma separated coords string, return the 
+#           minimum position that it corresponds to.
+# 
+# Arguments:
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_CoordsMin {
+  my $sub_name = "dng_CoordsMin";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = dng_CoordsTokenParse($coords, $FH_HR);
+    return utl_Min($start, $stop);
+  }
+  # else, split it up and find minimum
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_min = undef;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    if(! defined $ret_min) { 
+      $ret_min = utl_Min($start, $stop);
+    }
+    else { 
+      $ret_min = utl_Min($ret_min, utl_Min($start, $stop));
+    }
+  }
+
+  return $ret_min;
+}
+
+#################################################################
+# Subroutine: dng_CoordsMax()
+# Incept:     EPN, Mon Apr 29 13:57:57 2019
+#
+# Synopsis: Given a comma separated coords string, return the 
+#           maximum position that it corresponds to.
+# 
+# Arguments:
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_CoordsMax {
+  my $sub_name = "dng_CoordsMax";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = dng_CoordsTokenParse($coords, $FH_HR);
+    return utl_Max($start, $stop);
+  }
+  # else, split it up and find maximum
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_max = undef;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    if(! defined $ret_max) { 
+      $ret_max = utl_Max($start, $stop);
+    }
+    else { 
+      $ret_max = utl_Max($ret_max, utl_Max($start, $stop));
+    }
+  }
+
+  return $ret_max;
+}
+
+#################################################################
+# Subroutine: dng_CoordsMissing()
+# Incept:     EPN, Mon Apr 29 13:57:57 2019
+#
+# Synopsis: Given a comma separated coords string, a strand
+#           ("+" or "-") and the total length, return a 
+#           comma separated coords string with each interval
+#           on strand $in_strand that is missing in $in_coords.
+# 
+# Arguments:
+#  $in_coords: coordinate string
+#  $in_strand: strand we are interested in
+#  $in_length: length of sequence
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $in_coords
+#       if $in_coords has a position that is < 0 or exceeds $in_length
+#################################################################
+sub dng_CoordsMissing {
+  my $sub_name = "dng_CoordsMissing";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($in_coords, $in_strand, $in_length, $FH_HR) = @_;
+
+  printf("in $sub_name in_coords: $in_coords\n");
+  if(! defined $in_coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+  if(! defined $in_strand) { 
+    ofile_FAIL("ERROR in $sub_name, strand is undefined", "dnaorg", 1, $FH_HR); 
+  }
+  if(! defined $in_length) { 
+    ofile_FAIL("ERROR in $sub_name, length is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  my @coords_A  = split(",", $in_coords); # the tokens in $in_coords
+  my $ret_coords = ""; # return coordinates value
+  my @covered_A = ();  # 1..$i..$in_length: '1' if a coordinate token in $in_coords covers position $i on strand $in_strand, else '0'
+  my $i;               # sequence position 1..$in_length
+  my ($start, $stop, $strand); # start, stop and strand of a coords token
+
+  # initialize
+  for($i = 0; $i <= $in_length; $i++) { 
+    $covered_A[$i] = 0;
+  }
+
+  # fill @covered_A based on @coords_A
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, $strand) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    if(($start < 0) || ($start > $in_length)) { 
+      ofile_FAIL("ERROR in $sub_name, start is invalid ($start in_length: $in_length)", "dnaorg", 1, $FH_HR); 
+    }
+    if(($stop < 0) || ($stop > $in_length)) { 
+      ofile_FAIL("ERROR in $sub_name, stop is invalid ($stop, in_length: $in_length)", "dnaorg", 1, $FH_HR); 
+    }
+    if($strand eq $in_strand) { 
+      my $min = utl_Min($start, $stop);
+      my $max = utl_Max($start, $stop);
+      for($i = $min; $i <= $max; $i++) { $covered_A[$i] = 1; }
+    }
+  }
+  
+  # go back and create return coords
+  for($i = 1; $i <= $in_length; $i++) { 
+    if($covered_A[$i] == 0) { 
+      $start = $i;
+      while((($i+1) <= $in_length) && ($covered_A[($i+1)] == 0)) { $i++; }
+      $stop = $i; 
+      if($ret_coords ne "") { $ret_coords .= ","; }
+      $ret_coords .= dng_CoordsTokenCreate($start, $stop, $in_strand, $FH_HR);
+    }
+  }
+
+  return $ret_coords;
+}
 
 #################################################################
 # Subroutine: dng_EutilsFetchToFile()

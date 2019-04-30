@@ -162,15 +162,17 @@ opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, unde
 opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO NOT cause FAILure",             "specify that alert codes in comma-separated <s> DO     cause FAILure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning classification alerts";
-#     option                type         default            group   requires incompat     preamble-output                                                   help-output    
-opt_Add("--lowcovthresh",   "real",    0.9,                  $g,   undef,   undef,        "fractional coverage threshold for 'low coverage' is <x>",        "fractional coverage threshold for 'low coverage' alert is <x>",       \%opt_HH, \@opt_order_A);
-opt_Add("--lowscthresh",    "real",    0.3,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'low score' is <x>",           "bits per nucleotide threshold for 'low score' alert is <x>",          \%opt_HH, \@opt_order_A);
-opt_Add("--vlowscthresh",   "real",    0.2,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'very low score' is <x>",      "bits per nucleotide threshold for 'very low score' alert is <x>",     \%opt_HH, \@opt_order_A);
-opt_Add("--lowdiffthresh",  "real",    0.06,                 $g,   undef,   undef,        "bits per nucleotide diff threshold for 'low diff' is <x>",       "bits per nucleotide diff threshold for 'low diff' alert is <x>",      \%opt_HH, \@opt_order_A);
-opt_Add("--vlowdiffthresh", "real",    0.006,                $g,   undef,   undef,        "bits per nucleotide diff threshold for 'very low diff' is <x>",  "bits per nucleotide diff threshold for 'very low diff' alert is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--biasfract",      "real",    0.25,                 $g,   undef,   undef,        "fractional threshold for 'high bias' is <x>",                    "fractional threshold for 'high bias' alert is <x>",                   \%opt_HH, \@opt_order_A);
-opt_Add("--dupregmin",   "integer",    20,                   $g,   undef,   undef,        "minimum model overlap for 'duplicate region' alert is <n>",      "minimum model overlap for 'duplicate region' alert is <n>",            \%opt_HH, \@opt_order_A);
-opt_Add("--ostrscthresh",   "real",    20,                   $g,   undef,   undef,        "minimum weaker strand bit score for 'indefinite strand' is <x>", "minimum weaker strand bit score for 'indefinite strand' is <x>",         \%opt_HH, \@opt_order_A);
+#     option                type         default            group   requires incompat     preamble-output                                                     help-output    
+opt_Add("--lowcovthresh",   "real",    0.9,                  $g,   undef,   undef,        "fractional coverage threshold for 'low coverage' is <x>",          "fractional coverage threshold for 'low coverage' alert is <x>",       \%opt_HH, \@opt_order_A);
+opt_Add("--lowscthresh",    "real",    0.3,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'low score' is <x>",             "bits per nucleotide threshold for 'low score' alert is <x>",          \%opt_HH, \@opt_order_A);
+opt_Add("--vlowscthresh",   "real",    0.2,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'very low score' is <x>",        "bits per nucleotide threshold for 'very low score' alert is <x>",     \%opt_HH, \@opt_order_A);
+opt_Add("--lowdiffthresh",  "real",    0.06,                 $g,   undef,   undef,        "bits per nucleotide diff threshold for 'low diff' is <x>",         "bits per nucleotide diff threshold for 'low diff' alert is <x>",      \%opt_HH, \@opt_order_A);
+opt_Add("--vlowdiffthresh", "real",    0.006,                $g,   undef,   undef,        "bits per nucleotide diff threshold for 'very low diff' is <x>",    "bits per nucleotide diff threshold for 'very low diff' alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--biasfract",      "real",    0.25,                 $g,   undef,   undef,        "fractional threshold for 'high bias' is <x>",                      "fractional threshold for 'high bias' alert is <x>",                   \%opt_HH, \@opt_order_A);
+opt_Add("--dupregmin",   "integer",    20,                   $g,   undef,   undef,        "minimum model overlap for 'duplicate region' alert is <n>",        "minimum model overlap for 'duplicate region' alert is <n>",           \%opt_HH, \@opt_order_A);
+opt_Add("--ostrscthresh",   "real",    20,                   $g,   undef,   undef,        "minimum weaker strand bit score for 'indefinite strand' is <x>",   "minimum weaker strand bit score for 'indefinite strand' is <x>",      \%opt_HH, \@opt_order_A);
+opt_Add("--mingapterm",  "integer",    10,                   $g,   undef,   undef,        "minimum length 'low similarity region at start/end' is <n>",       "minimum length 'low similarity region at start/end is <n>",           \%opt_HH, \@opt_order_A);
+opt_Add("--mingapint",   "integer",    1,                    $g,   undef,   undef,        "minimum length 'low similarity region' (internal) is <n>",         "minimum length 'low similarity region (internal) is <n>",             \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning nucleotide-based annotation errors:";
 #        option               type   default                group  requires incompat   preamble-output                                                             help-output    
@@ -245,6 +247,8 @@ my $options_okay =
                 'biasfract=s'      => \$GetOptions_H{"--biasfract"},  
                 'dupregmin=s'      => \$GetOptions_H{"--dupregmin"},  
                 'ostrscthresh=s'   => \$GetOptions_H{"--ostrscthresh"},  
+                'mingapterm=s'     => \$GetOptions_H{"--mingapterm"},
+                'mingapint=s'      => \$GetOptions_H{"--mingapint"},
 # options for tuning nucleotide-based annotation errors
                 'ppmin=s'      => \$GetOptions_H{"--ppmin"},
 # options for tuning protein validation with blastx
@@ -744,6 +748,19 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 }
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#################################
+# add low similarity alerts for seqs with multiple hits in coverage determination stage
+#################################
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    add_low_similarity_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                              \%cls_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                              \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+  }
+}
 
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
@@ -2644,7 +2661,7 @@ sub cmalign_store_overflow {
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
 #  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
-#  $ftr_results_HAHR:       REF to feature results NAH, added to here
+#  $ftr_results_HAHR:       REF to feature results HAH, added to here
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
@@ -3037,6 +3054,164 @@ sub sqstring_find_stops {
 
   return;
 }
+
+#################################################################
+# Subroutine: add_low_similarity_alerts()
+# Incept:     EPN, Mon Apr 29 13:29:37 2019
+#
+# Purpose:   For each sequence with >1 hits in the sequence coverage
+#            determine stage (r2 search stage), report any 
+#            low similarity per-sequence alerts (c_lss, c_lse, c_lsi) and
+#            low similarity per-feature alerts (x_lfs). 
+#
+# Arguments:
+#  $mdl_name:               name of model these sequences were assigned to
+#  $seq_name_AR:            REF to array of sequence names
+#  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $cls_results_HHHR:       REF to 3D hash of classification results, PRE-FILLED
+#  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
+#  $ftr_results_HAHR:       REF to feature results HAH, added to here
+#  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, PRE-FILLED
+#  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub add_low_similarity_alerts { 
+  my $sub_name = "add_low_similarity_alerts";
+  my $nargs_exp = 13;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+      $cls_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
+
+  my $terminal_min_length = opt_Get("--mingapterm",  $opt_HHR); # minimum length of terminal missing region that triggers an alert
+  my $internal_min_length = opt_Get("--mingapint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
+
+  # get children info for all features, we'll use this in the loop below
+  my @children_AA = ();
+  dng_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_name_AR->[$seq_idx];
+    my $seq_len  = $seq_len_HR->{$seq_name};
+    # determine number of nucleotides not covered by r2.bs search stage 
+    # at 5' and 3' ends
+    if((defined $cls_results_HHHR->{$seq_name}) && 
+       (defined $cls_results_HHHR->{$seq_name}{"r2.bs"}) && 
+       (defined $cls_results_HHHR->{$seq_name}{"r2.bs"}{"score"})) { 
+      my @tmp_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"score"}); # only do this to get nhits
+      my $nhits = scalar(@tmp_A); 
+      my $missing_coords = "";
+      my $bstrand = $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"};
+      if($nhits == 1) { 
+        # only 1 hit
+        my $min_coord = dng_CoordsMin($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
+        my $max_coord = dng_CoordsMax($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
+        if($min_coord != 1) { 
+          if($bstrand eq "+") { $missing_coords = dng_CoordsTokenCreate(1, $min_coord-1, "+", $FH_HR); }
+          else                { $missing_coords = dng_CoordsTokenCreate($min_coord-1, 1, "-", $FH_HR); }
+        }
+        if($max_coord != $seq_len) { 
+          if($missing_coords ne "") { $missing_coords .= ","; }
+          if($bstrand eq "+") { $missing_coords .= dng_CoordsTokenCreate($max_coord+1, $seq_len, "+", $FH_HR); }
+          else                { $missing_coords .= dng_CoordsTokenCreate($seq_len, $max_coord+1, "-", $FH_HR); }
+        }
+      }
+      else { 
+        # multiple hits
+        $missing_coords .= dng_CoordsMissing($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $bstrand, $seq_len, $FH_HR);
+      }
+      if($missing_coords ne "") { 
+        my @missing_coords_A = split(",", $missing_coords);
+        foreach my $missing_coords_tok (@missing_coords_A) { 
+          my ($start, $stop, undef) = dng_CoordsTokenParse($missing_coords_tok, $FH_HR);
+          my $length = abs($start - $stop) + 1;
+          if($bstrand eq "+") { 
+            my $is_start   = ($start == 1)        ? 1 : 0;
+            my $is_end     = ($stop  == $seq_len) ? 1 : 0;
+            my $min_length = ($is_start || $is_end) ? $terminal_min_length : $internal_min_length;
+            if($length >= $min_length) { 
+              # does this overlap with a feature? 
+              my $nftr_overlap = 0;
+              for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+                if(! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
+                  my $ftr_is_cds = dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+                  my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
+                  if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+                    my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
+                    my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_stop"};
+                    my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
+                    if($f_strand eq $bstrand) { 
+                      my $noverlap = undef;
+                      my $overlap_reg = "";
+                      my $start1 = utl_Min($start,   $stop);
+                      my $stop1  = utl_Max($start,   $stop);
+                      my $start2 = utl_Min($f_start, $f_stop);
+                      my $stop2  = utl_Max($f_start, $f_stop);
+                      ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+                      if($noverlap > 0) { 
+                        $nftr_overlap++;
+                        my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                        if($is_start) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fss", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        if($is_end) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fse", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        if((! $is_start) && (! $is_end)) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fsi", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+                        if(($ftr_is_cds) && ($ftr_nchildren > 0)) {
+                          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+                            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+                            if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
+                              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              if($nftr_overlap == 0) { # no features overlapped, throw c_lss, c_lse, or c_lsi
+                my $alt_msg = "low similarity region ($start..$stop)";
+                if($is_start) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lss", $seq_name, $alt_msg, $FH_HR);
+                }
+                if($is_end) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lse", $seq_name, $alt_msg, $FH_HR);
+                }
+                if((! $is_start) && (! $is_end)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lsi", $seq_name, $alt_msg, $FH_HR);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }  
+  return;
+}  
 
 #################################################################
 #
@@ -5161,11 +5336,11 @@ sub output_feature_table {
           if(! $defined_n_start) { 
             # $defined_p_start must be TRUE
             $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
-                                                                            $ftr_results_HAHR, $FH_HR);
+                                                                        $ftr_results_HAHR, $FH_HR);
           }
           else { # $is_duplicate is '0' and $defined_n_start is '1'
             $ftr_coords_str = helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
-                                                                          $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
+                                                                      $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
 
           # only look up alerts if we're not a duplicate feature
