@@ -1203,15 +1203,27 @@ sub dng_AlertInfoInitialize {
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
-                   "Unexpected Subgroup Classification", # short description
-                   "score difference too large between best overall model and best expected subgroup model", # long description
+  dng_AlertInfoAdd($alt_info_HHR, "c_qsg", "sequence",
+                   "Questionable Specified Subgroup", # short description
+                   "best overall model is not from specified subgroup", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_qgr", "sequence",
+                   "Questionable Specified Group", # short description
+                   "best overall model is not from specified group", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_isg", "sequence",
+                   "Incorrect Specified Subgroup", # short description
+                   "score difference too large between best overall model and best specified subgroup model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_ugr", "sequence",
-                   "Unexpected Group Classification", # short description
-                   "score difference too large between best overall model and best expected group model", # long description
+  dng_AlertInfoAdd($alt_info_HHR, "c_igr", "sequence",
+                   "Incorrect Specified Group", # short description
+                   "score difference too large between best overall model and best specified group model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -1221,27 +1233,15 @@ sub dng_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_lod", "sequence",
-                   "Low Score Difference", # short description
+  dng_AlertInfoAdd($alt_info_HHR, "c_idc", "sequence",
+                   "Indefinite Classification", # short description
                    "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
-                   "Very Low Score Difference", # description
-                   "very low score difference between best overall model and second best model (not in best model's subgroup)", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
                    "Low Score", # short description
                    "score to homology model below low threshold", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "c_vls", "sequence",
-                   "Very Low Score", # short description
-                   "score to homology model below very low threshold", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -1257,8 +1257,8 @@ sub dng_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_who", "sequence",
-                   "Wrong Order", # short description
+  dng_AlertInfoAdd($alt_info_HHR, "c_dcs", "sequence",
+                   "Discontiguous Similarity", # short description
                    "not all hits are in the same order in the sequence and the homology model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
@@ -2384,7 +2384,6 @@ sub dng_CoordsMissing {
 
   my ($in_coords, $in_strand, $in_length, $FH_HR) = @_;
 
-  printf("in $sub_name in_coords: $in_coords\n");
   if(! defined $in_coords) { 
     ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
   }
