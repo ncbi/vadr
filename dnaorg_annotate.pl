@@ -2708,9 +2708,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
         # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
 
-        my %alt_str_H = ();   # added to as we find alerts below
-                              # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
-        my $alt_flag = 0; # set to '1' if we set an alert for this feature
+        my %alt_str_H = (); # added to as we find alerts below
+                            # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
+        my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
         
         for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
@@ -2777,9 +2777,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
               
           if(! $ftr_is_5trunc) { 
-            # feature is not 5' truncated, look for a start codon if it's the proper feature
+            # feature is not 5' truncated, look for a start codon if it's a CDS
             if($ftr_is_cds) { 
-              if(! sqstring_check_start($ftr_sqstring, $FH_HR)) { 
+              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
                 $alt_str_H{"n_str"} = "";
               }
             }
@@ -3177,7 +3177,7 @@ sub add_low_similarity_alerts {
                 }
               }
               if($nftr_overlap == 0) { # no features overlapped, throw c_lss, c_lse, or c_lsi
-                my $alt_msg = "low similarity region ($start..$stop)";
+                my $alt_msg = "low similarity region of length $length ($start..$stop)";
                 if($is_start) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lss", $seq_name, $alt_msg, $FH_HR);
                 }
