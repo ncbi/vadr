@@ -9,6 +9,8 @@ use strict;
 use warnings;
 use Time::HiRes qw(gettimeofday);
 
+require "epn-ofile.pm";
+
 #################################################################
 # Subroutine:  seq_SqstringAddNewlines()
 # Incept:      EPN, Thu Mar 14 06:12:11 2019
@@ -278,8 +280,8 @@ sub seq_Overlap {
 
   # printf("in $sub_name $start1..$end1 $start2..$end2\n");
 
-  if($start1 > $end1) { ofile_FAIL("ERROR in $sub_name start1 > end1 ($start1 > $end1)", undef, 1, $FH_HR); }
-  if($start2 > $end2) { ofile_FAIL("ERROR in $sub_name start2 > end2 ($start2 > $end2)", undef, 1, $FH_HR); }
+  if($start1 > $end1) { ofile_FAIL("ERROR in $sub_name start1 > end1 ($start1 > $end1)", 1, $FH_HR); }
+  if($start2 > $end2) { ofile_FAIL("ERROR in $sub_name start2 > end2 ($start2 > $end2)", 1, $FH_HR); }
 
   # Given: $start1 <= $end1 and $start2 <= $end2.
   
@@ -302,6 +304,30 @@ sub seq_Overlap {
   return; # NOT REACHED
 }
 
+#################################################################
+# Subroutine: seq_StripVersion()
+# Incept:     EPN, Thu Feb 11 14:25:52 2016
+#
+# Purpose:    Given a ref to an accession.version string, remove the version.
+#
+# Arguments: 
+#   $accver_R: ref to accession version string to remove version from
+#
+# Returns:    Nothing, $$accver_R has version removed
+#
+# Dies:       never
+#################################################################
+sub seq_StripVersion {
+  my $sub_name  = "seq_StripVersion()";
+  my $nargs_expected = 1;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($accver_R) = (@_);
+
+  $$accver_R =~ s/\.[0-9]*$//; # strip version
+
+  return;
+}
 
 ####################################################################
 # the next line is critical, a perl module must return a true value

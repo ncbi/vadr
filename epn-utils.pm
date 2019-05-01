@@ -65,7 +65,7 @@ sub utl_RunCommand {
   my $stop_time = ($seconds + ($microseconds / 1000000.));
 
   if(($? != 0) && (! $do_failok)) { 
-    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", undef, $?, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, the following command failed:\n$cmd\n", $?, $FH_HR); 
   }
 
   return ($stop_time - $start_time);
@@ -141,7 +141,7 @@ sub utl_ConcatenateListOfFiles {
 
   if(utl_AFindNonNumericValue($file_AR, $outfile, $FH_HR) != -1) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, output file name $outfile exists in list of files to concatenate", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), undef, 1, $FH_HR);
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
   }
 
   # first, convert @{$file_AR} array into a 2D array of file names, each of which has 
@@ -152,7 +152,7 @@ sub utl_ConcatenateListOfFiles {
   if($nfiles > ($max_nfiles * $max_nfiles)) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, trying to concatenate %d files, our limit is %d", 
                        (defined $caller_sub_name) ? " called by $caller_sub_name" : "", $nfiles, $max_nfiles * $max_nfiles), 
-               undef, 1, $FH_HR);
+               1, $FH_HR);
   }
     
   my ($idx1, $idx2); # indices in @{$file_AR}, and of secondary files
@@ -239,11 +239,11 @@ sub utl_AFindNonNumericValue {
   my ($AR, $value, $FH_HR) = (@_);
 
   if(utl_IsReal($value)) { 
-    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
   }
 
   if(! defined $AR) { 
-    ofile_FAIL("ERROR in $sub_name, array reference is not defined", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
   }
 
   for(my $i = 0; $i < scalar(@{$AR}); $i++) {
@@ -279,7 +279,7 @@ sub utl_AFindValue {
   my ($value, $AR, $FH_HR) = @_;
 
   if(! defined $AR) { 
-    ofile_FAIL("ERROR in $sub_name, array reference is not defined", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
   }
 
   if(utl_IsReal($value)) { # compare with ==
@@ -327,11 +327,11 @@ sub utl_ACountNonNumericValue {
   my ($AR, $value, $FH_HR) = @_;
 
   if(utl_IsReal($value)) { 
-    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, value $value seems to be numeric, we can't compare it for equality", 1, $FH_HR);
   }
 
   if(! defined $AR) { 
-    ofile_FAIL("ERROR in $sub_name, array reference is not defined", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, array reference is not defined", 1, $FH_HR);
   }
 
   my $ct = 0;
@@ -370,7 +370,7 @@ sub utl_FileRemoveUsingSystemRm {
   
   if(! -e $file) { 
     ofile_FAIL(sprintf("ERROR in $sub_name, %s trying to remove file $file but it does not exist", 
-                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), undef, 1, $FH_HR); 
+                (defined $caller_sub_name) ? "called by $caller_sub_name," : 0), 1, $FH_HR); 
   }
 
   utl_RunCommand("rm $file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -443,12 +443,12 @@ sub utl_HHFromAH {
   for(my $i = 0; $i < $n; $i++) { 
     if(! defined $AHR->[$i]{$AH_key_for_HH_key}) {
       ofile_FAIL("ERROR in $sub_name,%selement $i does not have key $AH_key_for_HH_key", 
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     $AH_value_for_HH_key = $AHR->[$i]{$AH_key_for_HH_key};
     if(defined $HHR->{$AH_value_for_HH_key}) { 
       ofile_FAIL("ERROR in $sub_name,%stwo elements have same value for $AH_key_for_HH_key key ($AH_value_for_HH_key)", 
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     %{$HHR->{$AH_value_for_HH_key}} = ();
     foreach my $AH_key2_for_HH_key (keys (%{$AHR->[$i]})) { 
@@ -500,14 +500,14 @@ sub utl_HHFromAHAddIdx {
   # make sure "idx" is not the $AH_key_for_HH_key
   if($AH_key_for_HH_key eq "idx") { 
     ofile_FAIL("ERROR in $sub_name,%skey to choose is \"idx\"", 
-               (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+               (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
   }
   # make sure "idx" 2D key does not exist for any element
   my $n = scalar(@{$AHR});
   for(my $i = 0; $i < $n; $i++) { 
     if(defined $AHR->[$i]{"idx"}) {
       ofile_FAIL("ERROR in $sub_name,%selement $i already has key \"idx\" upon entry", 
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
   }
 
@@ -568,17 +568,17 @@ sub utl_HFromAH {
   for(my $i = 0; $i < $n; $i++) { 
     if(! defined $AHR->[$i]{$AH_key_for_H_key}) { 
       ofile_FAIL("ERROR in $sub_name,%selement $i does not have key $AH_key_for_H_key", 
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     if(! defined $AHR->[$i]{$AH_key_for_H_value}) { 
       ofile_FAIL("ERROR in $sub_name,%selement $i does not have key $AH_key_for_H_value", 
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     my $H_key   = $AHR->[$i]{$AH_key_for_H_key};
     my $H_value = $AHR->[$i]{$AH_key_for_H_value};
     if(defined $HR->{$H_key}) { 
       ofile_FAIL("ERROR in $sub_name,%stwo elements have same value for key $AH_key_for_H_key ($H_key)", 
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     $HR->{$H_key} = $H_value;
   }
@@ -621,7 +621,7 @@ sub utl_IdxHFromA {
     if(defined $HR->{$key}) { 
       # should I check here that $key is not a number? 
       ofile_FAIL("ERROR in $sub_name,%stwo elements in array have same value ($key)",
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     $HR->{$key} = $i;
   }
@@ -663,12 +663,12 @@ sub utl_IdxHFromAH {
   for(my $i = 0; $i < $n; $i++) { 
     if(! defined $AHR->[$i]{$AH_key}) { 
       ofile_FAIL("ERROR in $sub_name,%shash that is array element $i does not have key $AH_key",
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     my $H_key = $AHR->[$i]{$AH_key};
     if(defined $HR->{$H_key}) { 
       ofile_FAIL("ERROR in $sub_name,%stwo elements of source array of hashes we are trying to use as keys in destination hash have same value ($H_key)",
-                 (defined $call_str) ? "$call_str" : "", undef, 1, $FH_HR); 
+                 (defined $call_str) ? "$call_str" : "", 1, $FH_HR); 
     }
     $HR->{$H_key} = $i;
   }
@@ -772,10 +772,10 @@ sub utl_HValidate {
 
   foreach my $key (@{$keys_AR}) { 
     if(! exists $HR->{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), undef, 1, $FH_HR); 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key does not exist\n%s", (defined $fail_str) ? $fail_str : ""), 1, $FH_HR); 
     }
     if(! defined $HR->{$key}) { 
-      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), undef, 1, $FH_HR); 
+      ofile_FAIL(sprintf("ERROR in $sub_name, required hash key $key exists but its value is undefined\n%s", (defined $fail_str) ? $fail_str : ""), 1, $FH_HR); 
     }
   }
 
@@ -1410,10 +1410,10 @@ sub utl_StringMonoChar {
   my ($len, $char, $FH_HR) = @_;
 
   if(! utl_IsInteger($len)) { 
-    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is not a non-negative integer", 1, $FH_HR);
   }
   if($len < 0) { 
-    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, passed in length ($len) is a negative integer", 1, $FH_HR);
   }
     
   my $ret_str = "";
@@ -1691,7 +1691,7 @@ sub utl_FileValidateExistsAndNonEmpty {
     ofile_FAIL(sprintf("ERROR in $sub_name, %sfilename%s is undef", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
+                 1, $FH_HR); 
   }
 
   if(-d $filename) {
@@ -1699,7 +1699,7 @@ sub utl_FileValidateExistsAndNonEmpty {
       ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is a directory.", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
+                 1, $FH_HR); 
     }
     return -2;
   }
@@ -1708,7 +1708,7 @@ sub utl_FileValidateExistsAndNonEmpty {
       ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s does not exist.", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
+                 1, $FH_HR); 
     }
     return 0;
   }
@@ -1717,7 +1717,7 @@ sub utl_FileValidateExistsAndNonEmpty {
       ofile_FAIL(sprintf("ERROR in $sub_name, %sfile $filename%s exists but is empty.", 
                          (defined $calling_sub_name ? "called by $calling_sub_name," : ""),
                          (defined $filedesc         ? " ($filedesc)" : "")),
-                 undef, 1, $FH_HR); 
+                 1, $FH_HR); 
     }
     return -1;
   }
@@ -1753,7 +1753,7 @@ sub utl_FileMd5 {
 
   if(! -s $file) { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, file to get md5 checksum of ($file) does no exist or is empty", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), undef, 1, $FH_HR);
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
   }
 
   my $out_file = removeDirPath($file . ".md5sum");
@@ -1768,7 +1768,7 @@ sub utl_FileMd5 {
   }
   else { 
     ofile_FAIL(sprintf("ERROR in $sub_name%s, unable to parse md5sum output: $md5sum", 
-                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), undef, 1, $FH_HR);
+                        (defined $caller_sub_name) ? " called by $caller_sub_name" : ""), 1, $FH_HR);
   }
   close(MD5);
 
@@ -1878,7 +1878,7 @@ sub utl_ExecHValidate {
   }
   
   if(defined $fail_str) { 
-    ofile_FAIL("ERROR in $sub_name(),\n$fail_str", undef, 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name(),\n$fail_str", 1, $FH_HR);
   }
 
   return;

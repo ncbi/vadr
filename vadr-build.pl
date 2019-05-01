@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
-# EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
+# EPN, Wed May  1 10:48:51 2019 [renamed to vadr-build.pl]
 # EPN, Mon Feb  1 15:07:43 2016 [dnaorg_build.pl split off from dnaorg_annotate_genomes.pl]
+# EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
 #
 use strict;
 use warnings;
@@ -10,7 +11,7 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 use LWP::Simple; 
 
-require "dnaorg.pm"; 
+require "vadr.pm";
 require "epn-options.pm";
 require "epn-ofile.pm";
 require "epn-seq.pm";
@@ -39,17 +40,17 @@ require "epn-utils.pm";
 # 
 #######################################################################################
 # make sure required environment variables are set
-my $env_dnaorg_scripts_dir  = utl_DirEnvVarValid("DNAORGSCRIPTSDIR");
-my $env_dnaorg_blast_dir    = utl_DirEnvVarValid("DNAORGBLASTDIR");
-my $env_dnaorg_infernal_dir = utl_DirEnvVarValid("DNAORGINFERNALDIR");
-my $env_dnaorg_easel_dir    = utl_DirEnvVarValid("DNAORGEASELDIR");
+my $env_vadr_scripts_dir  = utl_DirEnvVarValid("VADRSCRIPTSDIR");
+my $env_vadr_blast_dir    = utl_DirEnvVarValid("VADRBLASTDIR");
+my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
+my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmbuild"}       = $env_dnaorg_infernal_dir . "/cmbuild";
-$execs_H{"cmpress"}       = $env_dnaorg_infernal_dir . "/cmpress";
-$execs_H{"esl-reformat"}  = $env_dnaorg_easel_dir    . "/esl-reformat";
-$execs_H{"esl-translate"} = $env_dnaorg_easel_dir    . "/esl-translate";
-$execs_H{"makeblastdb"}   = $env_dnaorg_blast_dir    . "/makeblastdb";
+$execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
+$execs_H{"cmpress"}       = $env_vadr_infernal_dir . "/cmpress";
+$execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
+$execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
+$execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
@@ -130,8 +131,8 @@ opt_Add("--sgminfo",    "boolean", 0,         $g,    undef,     undef,    "outpu
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_build.pl [-options] <accession> <path to output directory to create>\n";
-my $synopsis = "dnaorg_build.pl :: build homology model of a single sequence for feature annotation";
+my $usage    = "Usage: vadr-build.pl [-options] <accession> <path to output directory to create>\n";
+my $synopsis = "vadr-build.pl :: build homology model of a single sequence for feature annotation";
 
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
@@ -171,7 +172,7 @@ my $executable    = $0;
 my $date          = scalar localtime();
 my $version       = "0.91";
 my $releasedate   = "Apr 2019";
-my $pkgname       = "dnaorg";
+my $pkgname       = "VADR";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -185,7 +186,7 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
+  print "\nTo see more help on available options, do vadr-build.pl -h\n\n";
   exit(1);
 }
 my ($mdl_name, $dir) = (@ARGV);
@@ -200,7 +201,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # if --onlyurl used, output the url and exit
 ############################################
 if(opt_Get("--onlyurl", \%opt_HH)) { 
-  print dng_EutilsFetchUrl($mdl_name, "gb") . "\n";
+  print vdr_EutilsFetchUrl($mdl_name, "gb") . "\n";
   exit 0;
 }
 
@@ -229,7 +230,7 @@ push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
-my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
+my $out_root = $dir . "/" . $dir_tail . ".vadr";
 
 #######################
 # output program banner
@@ -238,10 +239,10 @@ my $out_root = $dir . "/" . $dir_tail . ".dnaorg_build";
 my @arg_desc_A = ("accession/model name", "output directory");
 my @arg_A      = ($mdl_name, $dir);
 my %extra_H    = ();
-$extra_H{"\$DNAORGSCRIPTSDIR"}  = $env_dnaorg_scripts_dir;
-$extra_H{"\$DNAORGINFERNALDIR"} = $env_dnaorg_infernal_dir;
-$extra_H{"\$DNAORGEASELDIR"}    = $env_dnaorg_easel_dir;
-$extra_H{"\$DNAORGBLASTDIR"}    = $env_dnaorg_blast_dir;
+$extra_H{"\$VADRSCRIPTSDIR"}  = $env_vadr_scripts_dir;
+$extra_H{"\$VADRINFERNALDIR"} = $env_vadr_infernal_dir;
+$extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
+$extra_H{"\$VADRBLASTDIR"}    = $env_vadr_blast_dir;
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -258,9 +259,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log",  $out_root . ".log",  1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -269,10 +270,10 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 
 # open optional output files
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
 }
 if(opt_Get("--sgminfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "sgminfo", $out_root . ".sgminfo", 1, "Segment information (created due to --sgminfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Segment information (created due to --sgminfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -302,8 +303,8 @@ else {
   $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
 
   $gb_file = $out_root . ".gb";
-  dng_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
+  vdr_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -317,10 +318,10 @@ my %ftr_info_HAH = (); # the feature info
 my %seq_info_HH  = (); # the sequence info 
 sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
 if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
-  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
+  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
 }
 if(! exists $ftr_info_HAH{$mdl_name}) { 
-  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", "dnaorg", 1, $FH_HR);
+  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
 }
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -414,7 +415,7 @@ else {
   # to a stockholm file
   $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
   sqf_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
                          $seq_info_HH{$mdl_name}{"ver"}, 
                          $seq_info_HH{$mdl_name}{"def"}, 
@@ -426,7 +427,7 @@ else {
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
   sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -436,33 +437,33 @@ else {
 ######################################################################
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
-dng_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 
 my @sgm_info_AH = (); # segment info, inferred from feature info
-dng_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################################
 # Translate the CDS, if we have any
 ###################################
-my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
+my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 my $cds_fa_file = undef;
 my $protein_fa_file = undef;
 if($ncds > 0) { 
   $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 
   $cds_fa_file  = $out_root . ".cds.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-  dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+  vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
   sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                                  $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
@@ -504,8 +505,8 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   utl_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cm",      $cm_file, 1, "CM file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, "CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
 
   # press the file we just created 
   $start_secs = ofile_OutputProgressPrior("Pressing CM file", $progress_w, $log_FH, *STDOUT);
@@ -514,11 +515,11 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   utl_RunCommand($cmpress_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1m",     $cm_file . ".i1m", 1, "binary CM and p7 HMM filter file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1i",     $cm_file . ".i1i", 1, "SSI index for binary CM file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1f",     $cm_file . ".i1f", 1, "optimized p7 HMM filters (MSV part)");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "i1p",     $cm_file . ".i1p", 1, "optimized p7 HMM filters (remainder)");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmpress", $cmpress_file,     1, "cmpress output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1m",     $cm_file . ".i1m", 1, "binary CM and p7 HMM filter file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1i",     $cm_file . ".i1i", 1, "SSI index for binary CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, "optimized p7 HMM filters (MSV part)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, "optimized p7 HMM filters (remainder)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, "cmpress output file");
 }
 
 ########################
@@ -549,8 +550,8 @@ if(opt_IsUsed("--group", \%opt_HH)) {
   }
 }
 my $modelinfo_file  = $out_root . ".modelinfo";
-dng_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "modelinfo", $modelinfo_file, 1, "DNAORG 'model info' format file for $mdl_name");
+vdr_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, "VADR 'model info' format file for $mdl_name");
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -566,7 +567,7 @@ if(exists $ofile_info_HH{"FH"}{"sgminfo"}) {
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $pkgname, $dir, \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 ###############
@@ -598,15 +599,15 @@ sub stockholm_validate_single_sequence_input {
 
   my ($in_stk_file, $exp_sqstring, $opt_HHR, $FH_HR) = @_;
 
-  if(! -e $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", "dnaorg", 1, $FH_HR); }
-  if(! -s $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", "dnaorg", 1, $FH_HR); }
-  if(  -d $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", "dnaorg", 1, $FH_HR); }
+  if(! -e $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", 1, $FH_HR); }
+  if(! -s $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", 1, $FH_HR); }
+  if(  -d $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", 1, $FH_HR); }
   my $msa = Bio::Easel::MSA->new({ fileLocation => $in_stk_file, isDna => 1});
   my $nseq = $msa->nseq;
   if($nseq == 1) { 
     # single sequence, make sure there are no gaps
     if($msa->any_allgap_columns) { 
-      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", 1, $FH_HR);
     }
     # validate it matches $exp_sqstring
     my $fetched_sqstring = $msa->get_sqstring_unaligned(0);
@@ -616,11 +617,11 @@ sub stockholm_validate_single_sequence_input {
     seq_SqstringDnaize(\$exp_sqstring);
     if($fetched_sqstring ne $exp_sqstring) { 
       my $summary_sqstring_diff_str = seq_SqstringDiffSummary($fetched_sqstring, $exp_sqstring);
-      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", "dnaorg", 1, $FH_HR); 
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it does not match sequence read from GenBank file $gb_file:\n$summary_sqstring_diff_str", 1, $FH_HR); 
     }
   }
   else { # nseq != 1
-    ofile_FAIL("ERROR, did not read exactly 1 sequence in --stk file $in_stk_file.\nTo use DNAORG with models built from alignments of multiple sequences,\nyou will have to build the CM with cmbuild and create the model info file manually.\n", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR, did not read exactly 1 sequence in --stk file $in_stk_file.\nTo use VADR with models built from alignments of multiple sequences,\nyou will have to build the CM with cmbuild and create the model info file manually.\n", 1, $FH_HR);
   }
 
   return $msa->has_ss_cons;
@@ -660,7 +661,7 @@ sub process_add_and_skip_options {
   # make sure $add_opt and $skip_opt have no values in common
   foreach my $key (sort keys (%{$add_HR})) { 
     if(defined $skip_HR->{$key}) { 
-      ofile_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", 1, $FH_HR);
     }
   }
 

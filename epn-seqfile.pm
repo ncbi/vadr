@@ -47,7 +47,7 @@ sub sqf_EslSeqstatOptAParse {
 
   my ($seqstat_file, $seq_name_AR, $seq_len_HR, $FH_HR) = @_;
 
-  open(IN, $seqstat_file) || ofile_FileOpenFailure($seqstat_file, undef, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $seqstat_file) || ofile_FileOpenFailure($seqstat_file, $sub_name, $!, "reading", $FH_HR);
 
   my $nread = 0;            # number of sequences read
   my $tot_length = 0;       # summed length of all sequences
@@ -92,7 +92,7 @@ sub sqf_EslSeqstatOptAParse {
   }
   close(IN);
   if($nread == 0) { 
-    ofile_FAIL("ERROR in $sub_name, did not read any sequence lengths in esl-seqstat file $seqstat_file, did you use -a option with esl-seqstat", "RIBO", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, did not read any sequence lengths in esl-seqstat file $seqstat_file, did you use -a option with esl-seqstat", 1, $FH_HR);
   }
   if($at_least_one_dup) { 
     my $i = 1;
@@ -102,7 +102,7 @@ sub sqf_EslSeqstatOptAParse {
       $i++;
     }
     $die_string .= "\n";
-    ofile_FAIL($die_string, undef, 1, $FH_HR);
+    ofile_FAIL($die_string, 1, $FH_HR);
   }
 
   return $tot_length;
@@ -135,8 +135,8 @@ sub sqf_FastaFileRemoveDescriptions {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef; # for convenience
 
-  open(IN,       $in_file)  || ofile_FileOpenFailure($in_file,  undef, $sub_name, $!, "reading", $FH_HR);
-  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, undef, $sub_name, $!, "writing", $FH_HR);
+  open(IN,       $in_file)  || ofile_FileOpenFailure($in_file,  $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
 
   while(my $line = <IN>) { 
     chomp $line;
@@ -193,7 +193,7 @@ sub sqf_GenbankParse {
   my $ftr_idx   = -1;    # number of features read for current sequence
   my $line      = undef; # a line
 
-  open(IN, $infile) || fileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $infile) || ofile_FileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
   $line = <IN>; 
   while(defined $line) { 
@@ -201,12 +201,12 @@ sub sqf_GenbankParse {
     if($line =~ /^LOCUS\s+(\S+)\s+(\d+)/) { 
       #LOCUS       NC_039477               7567 bp    RNA     linear   VRL 22-FEB-2019
       if((defined $acc) || (defined $len)) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple LOCUS lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple LOCUS lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
       }
       ($acc, $len) = ($1, $2);
       # initialize the array of hashes for this accession's features
       if(defined $ftr_info_HAHR->{$acc}) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, trying to add feature info for accession $acc, but it already exists, line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, trying to add feature info for accession $acc, but it already exists, line:\n$line\n", 1, $FH_HR);
       }
       @{$ftr_info_HAHR->{$acc}} = ();
       $line = <IN>; 
@@ -215,7 +215,7 @@ sub sqf_GenbankParse {
       #DEFINITION  Norovirus GII isolate strain Hu/GBR/2016/GII.P16-GII.4_Sydney/226,
       #            complete genome.
       if(defined $def) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple DEFINITION lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple DEFINITION lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
       }
       $def = $1;
       # read remainder of the definition (>= 0 lines)
@@ -231,21 +231,21 @@ sub sqf_GenbankParse {
       # verify this matches what we read in the LOCUS line
       $tmp_acc = $1;
       if((! defined $acc) || ($tmp_acc ne $acc)) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, accession mismatch for $tmp_acc, line:\n$line\n", 1, $FH_HR);
       }
       $line = <IN>;
     }
     elsif($line =~ /^VERSION\s+(\S+)$/) { 
       #VERSION     NC_039477.1
       if(defined $ver) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple VERSION lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple VERSION lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
       }
       # verify this matches what we read in the LOCUS line
       $ver = $1;
       $tmp_acc = $ver;
-      dng_StripVersion(\$tmp_acc);
+      seq_StripVersion(\$tmp_acc);
       if((! defined $acc) || ($tmp_acc ne $acc)) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, version/accession mismatch for $tmp_acc, line:\n$line\n", 1, $FH_HR);
       }
       $line = <IN>;
     }
@@ -279,7 +279,7 @@ sub sqf_GenbankParse {
       #       example2: of picornavirus"
       #
       if($ftr_idx != -1) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
       }
       $line = <IN>;
       while((defined $line) && ($line !~ /^ORIGIN/)) { 
@@ -334,7 +334,7 @@ sub sqf_GenbankParse {
             $save_value .= $line;
           }
           else { 
-            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read unparseable qualifier value line:\n$line\n", "dnaorg", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read unparseable qualifier value line:\n$line\n", 1, $FH_HR);
           }
           if(defined $value) { # we are finished with previous value
             sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
@@ -367,7 +367,7 @@ sub sqf_GenbankParse {
         $line = <IN>;
       }
       if(! defined $line) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", 1, $FH_HR);
       }
       # if we get here we just read the ORIGIN line
       # first store final qualifier/value
@@ -378,7 +378,7 @@ sub sqf_GenbankParse {
       $line = <IN>;
       # sanity check
       if(defined $seq) { 
-        ofile_FAIL("ERROR in $sub_name, read multiple ORIGIN lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, read multiple ORIGIN lines for single record ($acc), line:\n$line\n", 1, $FH_HR);
       }
       $seq = "";
       while((defined $line) && ($line !~ /^\/\/$/)) { 
@@ -395,15 +395,15 @@ sub sqf_GenbankParse {
         $line = <IN>;
       }
       if(! defined $line) { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not, line $line_idx\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to find a // line after ORIGIN but did not, line $line_idx\n", 1, $FH_HR);
       }
       # if we get here we just read the // line
       # we are finished with this sequence, store the information
-      if(! defined $acc) { ofile_FAIL(        "ERROR in $sub_name, failed to read accession, line: $line_idx\n", "dnaorg", 1, $FH_HR); }
-      if(! defined $len) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read length (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-      if(! defined $ver) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read version (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-      if(! defined $def) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read definition (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
-      if(! defined $seq) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), "dnaorg", 1, $FH_HR); }
+      if(! defined $acc) { ofile_FAIL(        "ERROR in $sub_name, failed to read accession, line: $line_idx\n", 1, $FH_HR); }
+      if(! defined $len) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read length (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $ver) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read version (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $def) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read definition (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
+      if(! defined $seq) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
 
       # store sequence info
       %{$seq_info_HHR->{$acc}} = ();
@@ -434,7 +434,7 @@ sub sqf_GenbankParse {
   }
 
   if($seq_idx == 0) { 
-    ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", 1, $FH_HR);
   }
 
   return;
@@ -468,7 +468,7 @@ sub sqf_GenbankStoreQualifierValue {
   my ($ftr_info_AHR, $ftr_idx, $qualifier, $value, $FH_HR) = @_;
 
   if($value =~ /\:GPSEP\:/) { 
-    ofile_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", 1, $FH_HR);
   }
 
   # remove leading and trailing " in the value, if they exist
@@ -562,8 +562,8 @@ sub sqf_EslTranslateCdsToFastaFile {
   utl_RunCommand($translate_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   # go through output fasta file and rewrite names, so we can fetch 
-  open(IN,       $tmp1_translate_fa_file) || fileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
-  open(OUT, ">", $tmp2_translate_fa_file) || fileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
+  open(IN,       $tmp1_translate_fa_file) || ofile_FileOpenFailure($tmp1_translate_fa_file, $sub_name, $!, "reading", $FH_HR);
+  open(OUT, ">", $tmp2_translate_fa_file) || ofile_FileOpenFailure($tmp2_translate_fa_file, $sub_name, $!, "writing", $FH_HR);
   while(my $line = <IN>) { 
     if($line =~ m/^\>/) { 
       #>orf58 source=NC_039477.1/5..5104:+ coords=1..5097 length=1699 frame=1  
@@ -573,7 +573,7 @@ sub sqf_EslTranslateCdsToFastaFile {
         print OUT (">" . $1 . "," . $2 . "\n");
       }
       else { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing esl-translate output file $tmp1_translate_fa_file, line:\n$line\n", 1, $FH_HR);
       }
     }
     else { 
@@ -593,7 +593,7 @@ sub sqf_EslTranslateCdsToFastaFile {
     my ($seq_name, $seq_length) = $cds_sqfile->fetch_seq_name_and_length_given_ssi_number($seq_idx);
     my $fetch_name = "source=" . $seq_name . ",coords=1.." . ($seq_length - 3); # subtract length of stop codon
     if(! $protein_sqfile->check_seq_exists($fetch_name)) { 
-      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, problem translating CDS feature, unable to find expected translated sequence in $tmp2_translate_fa_file:\n\tseq: $seq_name\n\texpected sequence:$fetch_name\n", 1, $FH_HR);
     }
     print $out_FH ">" . $seq_name . "\n";
     print $out_FH seq_SqstringAddNewlines($protein_sqfile->fetch_seq_to_sqstring($fetch_name), 60);
@@ -632,8 +632,8 @@ sub sqf_FastaWriteSequence {
 
   my ($out_FH, $name, $def, $seq, $FH_HR) = @_;
 
-  if(! defined $name) { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
-  if(! defined $seq)  { ofile_FAIL("ERROR in $sub_name, name is undefined", "dnaorg", 1, $FH_HR); }
+  if(! defined $name) { ofile_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
+  if(! defined $seq)  { ofile_FAIL("ERROR in $sub_name, name is undefined", 1, $FH_HR); }
 
   # capitalize and DNAize $seq
   seq_SqstringCapitalize(\$seq);
