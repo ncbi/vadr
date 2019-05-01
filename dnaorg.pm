@@ -51,7 +51,7 @@ use Cwd;
 # dng_FeatureInfoImputeCoords
 # dng_FeatureInfoImputeLength
 # dng_FeatureInfoImputeSourceIdx
-# dng_FeatureInfoImputeParentIdx
+# dng_FeatureInfoImputeParentIndices
 # dng_FeatureInfoImputeOutname()
 # dng_FeatureInfoImpute3paFtrIdx
 # dng_FeatureInfoStartStopStrandArrays()
@@ -88,9 +88,15 @@ use Cwd;
 #
 # Subroutines related to sequence and model coordinates: 
 # dng_CoordsTokenParse()
+# dng_CoordsTokenCreate()
 # dng_CoordsLength()
 # dng_CoordsFromLocation()
+# dng_CoordsFromLocationWithCarrots()
 # dng_CoordsComplement()
+# dng_CoordsComplementWithCarrots()
+# dng_CoordsMin()
+# dng_CoordsMax()
+# dng_CoordsMissing()
 #
 # Subroutines related to eutils:
 # dng_EutilsFetchToFile()
@@ -125,7 +131,7 @@ sub dng_FeatureInfoImputeCoords {
   my $sub_name = "dng_FeatureInfoImputeCoords";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
+
   my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "location"
@@ -232,10 +238,10 @@ sub dng_FeatureInfoImputeSourceIdx {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoImputeParentIdx
+# Subroutine: dng_FeatureInfoImputeParentIndices
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Fill "parent_idx" values in @{$ftr_info_AHR}
+# Purpose:    Fill "parent_idx_str" values in @{$ftr_info_AHR}
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
@@ -246,8 +252,8 @@ sub dng_FeatureInfoImputeSourceIdx {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImputeParentIdx {
-  my $sub_name = "dng_FeatureInfoImputeParentIdx";
+sub dng_FeatureInfoImputeParentIndices {
+  my $sub_name = "dng_FeatureInfoImputeParentIndices";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -257,9 +263,10 @@ sub dng_FeatureInfoImputeParentIdx {
   my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
-  # go through all features and determine parents (set 'parent_idx')
+  # go through all features and determine parents (set 'parent_idx_str')
   # 
-  # $ftr_info_AHR->{"parent_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
+  #   a comma separated string of >= 1 $ftr_idx2 if:
   # - $ftr_idx type is mat_peptide
   # - $ftr_idx2 type is CDS
   # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
@@ -268,7 +275,9 @@ sub dng_FeatureInfoImputeParentIdx {
   # 
   # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
   #
-  # dies if more than one $ftr_idx2 satisfies above
+  # note: more than one $ftr_idx2 can satisfy above, in which
+  # case $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
+  # comma separated string of > 1 $ftr_idx2
   my ($ftr_idx, $ftr_idx2); # feature indices
   my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
   my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
@@ -278,7 +287,7 @@ sub dng_FeatureInfoImputeParentIdx {
   my $ftr_strand2; # strand for feature $ftr_idx2
   my $found_parent; # flag for if we found a parent or not
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
+    $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = ""; # initialize
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
       $ftr_5p_pos = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
@@ -302,17 +311,8 @@ sub dng_FeatureInfoImputeParentIdx {
             $found_parent = 1;
           }
           if($found_parent) { 
-            if($ftr_info_AHR->[$ftr_idx]{"parent_idx"} != -1) { 
-              printf("ftr_5p_pos:  $ftr_5p_pos\n");
-              printf("ftr_3p_pos:  $ftr_3p_pos\n");
-              printf("ftr_5p_pos2: $ftr_5p_pos2\n");
-              printf("ftr_3p_pos2: $ftr_3p_pos2\n");
-              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"},
-                                  $ftr_info_AHR->[($ftr_info_AHR->[$ftr_idx]{"parent_idx"})]{"coords"}, 
-                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), "dnaorg", 1, $FH_HR);
-            }
-            $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = $ftr_idx2;
+            if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "") { $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= ","; }
+            $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= "$ftr_idx2";
           }
         }
       }
@@ -591,10 +591,21 @@ sub dng_FeatureInfoChildrenArrayOfArrays {
   @{$AAR} = ();
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    dng_FeatureChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, \@{$AAR->[$ftr_idx]}, $FH_HR);
+  my ($parent_ftr_idx, $child_ftr_idx);
+
+  # initialize
+  for($parent_ftr_idx = 0; $parent_ftr_idx < $nftr; $parent_ftr_idx++) { 
+    @{$AAR->[$parent_ftr_idx]} = ();
   }
-  
+
+  # fill
+  for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
+    my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+    foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+      push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+    }
+  }
+
   return;
 }
 
@@ -704,7 +715,7 @@ sub dng_SegmentInfoPopulate {
 ################################################################# 
 sub dng_FeatureTypeAndTypeIndexString { 
   my $nargs_expected = 3;
-  my $sub_name = "dng_FeatureChildrenArray";
+  my $sub_name = "dng_FeatureTypeAndTypeIndexString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
 
@@ -847,42 +858,6 @@ sub dng_FeatureTypeIsCdsOrMatPeptideOrGene {
 }
 
 #################################################################
-# Subroutine:  dng_FeatureChildrenArray()
-# Incept:      EPN, Sun Mar 10 06:26:03 2019
-#
-# Purpose:     Fill @{$AAR} with array of children (feature indices)
-#              for feature $ftr_idx in %{$ftr_info_AHR}.
-# 
-# Arguments: 
-#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index we are interested in
-#   $nftr:           number of features in %{$ftr_info_AHR}
-#   $AR:             REF to array children feature indices, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-#
-################################################################# 
-sub dng_FeatureChildrenArray { 
-  my $nargs_expected = 5;
-  my $sub_name = "dng_FeatureChildrenArray";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
-
-  @{$AR} = ();
-
-  for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-    if(($ftr_idx2 != $ftr_idx) && 
-       ($ftr_info_AHR->[$ftr_idx2]{"parent_idx"} == $ftr_idx)) { 
-      push(@{$AR}, $ftr_idx2);
-    }
-  }
-  
-  return;
-}
-
-#################################################################
 # Subroutine: dng_FeatureNumSegments()
 # Incept:     EPN, Tue Mar  5 13:05:38 2019
 #
@@ -906,8 +881,6 @@ sub dng_FeatureNumSegments {
 
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
-
-
 
 #################################################################
 # Subroutine: dng_FeatureIsDuplicate()
@@ -1218,7 +1191,6 @@ sub dng_AlertInfoInitialize {
   # add each alert code, this function will die if we try to add the same code twice, or if something is wrong 
   # with how we try to add it (args to dng_AlertInfoAdd don't pass the contract check)
 
-  # classification errors
   dng_AlertInfoAdd($alt_info_HHR, "c_noa", "sequence",
                    "No Annotation", # short description
                    "no significant similarity detected", # long  description
@@ -1231,15 +1203,27 @@ sub dng_AlertInfoInitialize {
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
-                   "Unexpected Subgroup Classification", # short description
-                   "score difference too large between best overall model and best expected subgroup model", # long description
+  dng_AlertInfoAdd($alt_info_HHR, "c_qsg", "sequence",
+                   "Questionable Specified Subgroup", # short description
+                   "best overall model is not from specified subgroup", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_qgr", "sequence",
+                   "Questionable Specified Group", # short description
+                   "best overall model is not from specified group", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_isg", "sequence",
+                   "Incorrect Specified Subgroup", # short description
+                   "score difference too large between best overall model and best specified subgroup model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_ugr", "sequence",
-                   "Unexpected Group Classification", # short description
-                   "score difference too large between best overall model and best expected group model", # long description
+  dng_AlertInfoAdd($alt_info_HHR, "c_igr", "sequence",
+                   "Incorrect Specified Group", # short description
+                   "score difference too large between best overall model and best specified group model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -1249,27 +1233,15 @@ sub dng_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_lod", "sequence",
-                   "Low Score Difference", # short description
+  dng_AlertInfoAdd($alt_info_HHR, "c_idc", "sequence",
+                   "Indefinite Classification", # short description
                    "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
-                   "Very Low Score Difference", # description
-                   "very low score difference between best overall model and second best model (not in best model's subgroup)", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
                    "Low Score", # short description
                    "score to homology model below low threshold", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "c_vls", "sequence",
-                   "Very Low Score", # short description
-                   "score to homology model below very low threshold", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -1285,8 +1257,8 @@ sub dng_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_who", "sequence",
-                   "Wrong Order", # short description
+  dng_AlertInfoAdd($alt_info_HHR, "c_dcs", "sequence",
+                   "Discontiguous Similarity", # short description
                    "not all hits are in the same order in the sequence and the homology model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
@@ -1294,6 +1266,24 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "c_bst", "sequence",
                    "Indefinite Strand", # short description
                    "significant similarity detected on both strands", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_lss", "sequence",
+                   "Low Similarity at Start", # short description
+                   "significant similarity not detected at 5' end of the sequence", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_lse", "sequence",
+                   "Low Similarity at End", # short description
+                   "significant similarity not detected at 3' end of the sequence", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "c_lsi", "sequence",
+                   "Low Similarity", # short description
+                   "internal region without significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1353,7 +1343,7 @@ sub dng_AlertInfoInitialize {
 
   dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "Peptide Translation Problem", # short description
-                   "mat_peptide may not be translated because its CDS has a problem", # long description
+                   "mat_peptide may not be translated because a CDS that spans it has a problem", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1438,6 +1428,24 @@ sub dng_AlertInfoInitialize {
   dng_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
                    "Deletion of Nucleotides", # short description
                    "too large of a deletion in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "x_fss", "feature",
+                   "Low Feature Similarity at Start", # short description
+                   "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "x_fse", "feature",
+                   "Low Feature Similarity at End", # short description
+                   "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  dng_AlertInfoAdd($alt_info_HHR, "x_fsi", "feature",
+                   "Low Feature Similarity", # short description
+                   "region within annotated feature lacks significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1926,6 +1934,37 @@ sub dng_CoordsTokenParse {
 }
 
 #################################################################
+# Subroutine: dng_CoordsTokenCreate()
+# Incept:     EPN, Mon Apr 29 14:07:26 2019
+#
+# Synopsis: Create a coords token from a given start, stop, strand
+# 
+# Arguments:
+#  $start:    start position
+#  $stop:     stop position
+#  $strand:   strand ("+" or "-")
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    coordinate token <start>..<stop>:<strand>
+#
+# Dies:  if $start or $stop is invalid
+#        if $strand is not "+" or "-"
+#
+#################################################################
+sub dng_CoordsTokenCreate {
+  my $sub_name = "dng_CoordsTokenCreate";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start, $stop, $strand, $FH_HR) = @_;
+  if($start !~ /^\<?(\d+)$/) { ofile_FAIL("ERROR in $sub_name, start is invalid ($start)", "dnaorg", 1, $FH_HR); }
+  if($stop  !~ /^\>?(\d+)$/) { ofile_FAIL("ERROR in $sub_name, stop is invalid ($stop)", "dnaorg", 1, $FH_HR); }
+  if(($strand ne "+") && ($strand ne "-")) { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", "dnaorg", 1, $FH_HR); }
+
+  return $start . ".." . $stop . ":" . $strand;
+}
+
+#################################################################
 # Subroutine: dng_CoordsLength()
 # Incept:     EPN, Tue Mar 26 05:56:08 2019
 #
@@ -1976,6 +2015,11 @@ sub dng_CoordsLength {
 #             a coords string in the format:
 #             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
 # 
+#             Any carrots before start/stop positions in the 
+#             location string are removed.
+#             See dng_CoordsFromLocationWithCarrots() for 
+#             a similar subroutine that keeps carrots.
+#
 #             This function has to call itself recursively in some
 #             cases.
 # 
@@ -1989,7 +2033,7 @@ sub dng_CoordsLength {
 #
 # Ref: GenBank release notes (release 230.0) as of this writing
 #      and
-#      https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
+#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
 #################################################################
 sub dng_CoordsFromLocation { 
   my $sub_name = "dng_CoordsFromLocation";
@@ -2003,8 +2047,8 @@ sub dng_CoordsFromLocation {
   # ---------------------------------  -----------------
   # 1..200                             1..200:+
   # <1..200                            1..200:+
-  # 100..200>                          100..200:+
-  # <1..200>                           1..200:+
+  # 100..>200                          100..200:+
+  # <1..>200                           1..200:+
   # complement(1..200)                 200..1:-
   # join(1..200,300..400)              1..200:+,300..400:+
   # complement(join(1..200,300..400))  400..300:-,200..1:-
@@ -2028,6 +2072,82 @@ sub dng_CoordsFromLocation {
       $ret_val .= dng_CoordsFromLocation($location_el, $FH_HR);
     }
   }
+  elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
+    $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", "dnaorg", 1, $FH_HR);
+  }
+
+  return $ret_val;
+}
+
+#################################################################
+# Subroutine: dng_CoordsFromLocationWithCarrots
+# Incept:     EPN, Fri Apr 12 11:51:16 2019
+# 
+# Purpose:    Convert a GenBank file 'location' value to 
+#             a coords string in the format:
+#             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
+#             
+#             <startN>: may begin with "<" carrot.
+#             <stopN>: may begin with ">" carrot.
+#
+#             dng_CoordsFromLocation() does the same thing but 
+#             removes carrots.
+#
+#             This function has to call itself recursively in some
+#             cases.
+# 
+# Arguments:
+#   $location: GenBank file location string
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if unable to parse $location
+#
+# Ref: GenBank release notes (release 230.0) as of this writing
+#      and
+#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
+#################################################################
+sub dng_CoordsFromLocationWithCarrots { 
+  my $sub_name = "dng_CoordsFromLocationWithCarrots";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($location, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $location                          return value
+  # ---------------------------------  -----------------
+  # 1..200                             1..200:+
+  # <1..200                            <1..200:+
+  # 100..>200                          100..>200:+
+  # <1..>200                           <1..>200:+
+  # complement(1..200)                 200..1:-
+  # join(1..200,300..400)              1..200:+,300..400:+
+  # complement(join(1..200,300..400))  400..300:-,200..1:-
+  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
+  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
+
+  my $ret_val = "";
+  if($location =~ /^join\((.+)\)$/) { 
+    my $location_to_join = $1;
+    $ret_val = dng_CoordsFromLocationWithCarrots($location_to_join, $FH_HR);
+  }
+  elsif($location =~ /^complement\((.+)\)$/) { 
+    my $location_to_complement = $1;
+    my $coords_to_complement = dng_CoordsFromLocationWithCarrots($location_to_complement, $FH_HR);
+    $ret_val = dng_CoordsComplementWithCarrots($coords_to_complement, $FH_HR);
+  }
+  elsif($location =~ /\,/) { 
+    # not wrapped in join() or complement(), but multiple segments
+    foreach my $location_el (split(",", $location)) { 
+      if($ret_val ne "") { $ret_val .= ","; }
+      $ret_val .= dng_CoordsFromLocationWithCarrots($location_el, $FH_HR);
+    }
+  }
   elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
     $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
   }
@@ -2043,7 +2163,10 @@ sub dng_CoordsFromLocation {
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
 # Purpose:    Complement a coords string by complementing all
-#             elements within it.
+#             elements within it. Removes carrots "<" and ">"
+#             before start and stop positions, if they exist.
+#             See dng_CoordsComplementWithCarrots() to keep
+#             carrots.
 # 
 # Arguments:
 #   $coords:   coords string to complement
@@ -2057,6 +2180,56 @@ sub dng_CoordsFromLocation {
 #################################################################
 sub dng_CoordsComplement { 
   my $sub_name = "dng_CoordsComplement";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($coords, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $coords                  return value
+  # -----------------------  -----------------
+  # 1-200:+                  200-1:-
+  # 1-200:+,300-400:+        400-300:-,200-1:-
+
+  my $ret_val = "";
+  my @el_A = split(",", $coords);
+  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
+    if($el_A[$i] =~ /^\<?(\d+)\.\.\>?(\d+)\:\+/) { 
+      my ($start, $stop) = ($1, $2, $3, $4);
+      if($ret_val ne "") { $ret_val .= ","; }
+      $ret_val .= $stop . ".." . $start . ":-";
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", "dnaorg", 1, $FH_HR);
+    }
+  }
+
+  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
+
+  return $ret_val;
+}
+
+#################################################################
+# Subroutine: dng_CoordsComplementWithCarrots
+# Incept:     EPN, Fri Apr 12 11:49:06 2019
+# 
+# Purpose:    Complement a coords string by complementing all
+#             elements within it, and reverse any carrots. 
+#             Just like dng_CoordsComplement() but keeps
+#             and complements carrots.
+# 
+# Arguments:
+#   $coords:   coords string to complement
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    complemented $coords
+# 
+# Dies:       if unable to parse $coords, or any segment in $coords
+#             is already on the negative strand.
+#
+#################################################################
+sub dng_CoordsComplementWithCarrots { 
+  my $sub_name = "dng_CoordsComplementWithCarrots";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -2088,6 +2261,179 @@ sub dng_CoordsComplement {
   return $ret_val;
 }
 
+#################################################################
+# Subroutine: dng_CoordsMin()
+# Incept:     EPN, Mon Apr 29 13:49:55 2019
+#
+# Synopsis: Given a comma separated coords string, return the 
+#           minimum position that it corresponds to.
+# 
+# Arguments:
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_CoordsMin {
+  my $sub_name = "dng_CoordsMin";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = dng_CoordsTokenParse($coords, $FH_HR);
+    return utl_Min($start, $stop);
+  }
+  # else, split it up and find minimum
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_min = undef;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    if(! defined $ret_min) { 
+      $ret_min = utl_Min($start, $stop);
+    }
+    else { 
+      $ret_min = utl_Min($ret_min, utl_Min($start, $stop));
+    }
+  }
+
+  return $ret_min;
+}
+
+#################################################################
+# Subroutine: dng_CoordsMax()
+# Incept:     EPN, Mon Apr 29 13:57:57 2019
+#
+# Synopsis: Given a comma separated coords string, return the 
+#           maximum position that it corresponds to.
+# 
+# Arguments:
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub dng_CoordsMax {
+  my $sub_name = "dng_CoordsMax";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = dng_CoordsTokenParse($coords, $FH_HR);
+    return utl_Max($start, $stop);
+  }
+  # else, split it up and find maximum
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_max = undef;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    if(! defined $ret_max) { 
+      $ret_max = utl_Max($start, $stop);
+    }
+    else { 
+      $ret_max = utl_Max($ret_max, utl_Max($start, $stop));
+    }
+  }
+
+  return $ret_max;
+}
+
+#################################################################
+# Subroutine: dng_CoordsMissing()
+# Incept:     EPN, Mon Apr 29 13:57:57 2019
+#
+# Synopsis: Given a comma separated coords string, a strand
+#           ("+" or "-") and the total length, return a 
+#           comma separated coords string with each interval
+#           on strand $in_strand that is missing in $in_coords.
+# 
+# Arguments:
+#  $in_coords: coordinate string
+#  $in_strand: strand we are interested in
+#  $in_length: length of sequence
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $in_coords
+#       if $in_coords has a position that is < 0 or exceeds $in_length
+#################################################################
+sub dng_CoordsMissing {
+  my $sub_name = "dng_CoordsMissing";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($in_coords, $in_strand, $in_length, $FH_HR) = @_;
+
+  if(! defined $in_coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+  }
+  if(! defined $in_strand) { 
+    ofile_FAIL("ERROR in $sub_name, strand is undefined", "dnaorg", 1, $FH_HR); 
+  }
+  if(! defined $in_length) { 
+    ofile_FAIL("ERROR in $sub_name, length is undefined", "dnaorg", 1, $FH_HR); 
+  }
+
+  my @coords_A  = split(",", $in_coords); # the tokens in $in_coords
+  my $ret_coords = ""; # return coordinates value
+  my @covered_A = ();  # 1..$i..$in_length: '1' if a coordinate token in $in_coords covers position $i on strand $in_strand, else '0'
+  my $i;               # sequence position 1..$in_length
+  my ($start, $stop, $strand); # start, stop and strand of a coords token
+
+  # initialize
+  for($i = 0; $i <= $in_length; $i++) { 
+    $covered_A[$i] = 0;
+  }
+
+  # fill @covered_A based on @coords_A
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, $strand) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    if(($start < 0) || ($start > $in_length)) { 
+      ofile_FAIL("ERROR in $sub_name, start is invalid ($start in_length: $in_length)", "dnaorg", 1, $FH_HR); 
+    }
+    if(($stop < 0) || ($stop > $in_length)) { 
+      ofile_FAIL("ERROR in $sub_name, stop is invalid ($stop, in_length: $in_length)", "dnaorg", 1, $FH_HR); 
+    }
+    if($strand eq $in_strand) { 
+      my $min = utl_Min($start, $stop);
+      my $max = utl_Max($start, $stop);
+      for($i = $min; $i <= $max; $i++) { $covered_A[$i] = 1; }
+    }
+  }
+  
+  # go back and create return coords
+  for($i = 1; $i <= $in_length; $i++) { 
+    if($covered_A[$i] == 0) { 
+      $start = $i;
+      while((($i+1) <= $in_length) && ($covered_A[($i+1)] == 0)) { $i++; }
+      $stop = $i; 
+      if($ret_coords ne "") { $ret_coords .= ","; }
+      $ret_coords .= dng_CoordsTokenCreate($start, $stop, $in_strand, $FH_HR);
+    }
+  }
+
+  return $ret_coords;
+}
 
 #################################################################
 # Subroutine: dng_EutilsFetchToFile()
@@ -2234,16 +2580,16 @@ sub dng_ModelInfoFileWrite {
 
     # define feature keys to ignore
     my %ftr_key_ignore_H = ();
-    $ftr_key_ignore_H{"type"}        = 1; # this automatically gets added to @key_order_A, so it goes first
-    $ftr_key_ignore_H{"coords"}      = 1; # this automatically gets added to @key_order_A, so it goes second
-    $ftr_key_ignore_H{"length"}      = 1; # will be inferred from coords
-    $ftr_key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"outname"}     = 1; # will be inferred from product and gene (or lack of)
-    $ftr_key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-    $ftr_key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-    $ftr_key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
+    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, so it goes first
+    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, so it goes second
+    $ftr_key_ignore_H{"length"}         = 1; # will be inferred from coords
+    $ftr_key_ignore_H{"source_idx"}     = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"parent_idx_str"} = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"3pa_ftr_idx"}    = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"outname"}        = 1; # will be inferred from product and gene (or lack of)
+    $ftr_key_ignore_H{"5p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"3p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"location"}       = 1; # *could* (but won't be) inferred from coords
 
     $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
     # determine order of keys for this feature

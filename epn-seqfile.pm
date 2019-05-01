@@ -252,17 +252,32 @@ sub sqf_GenbankParse {
     elsif($line =~ /^FEATURES\s+Location\/Qualifiers$/) { 
       # parse the features and then the sequence
       # FEATURES section
-      # two types of line:
+      # 4 types of line:
       # feature/location line
-      #        example:      gene            5..5104
-      #        example:      misc_feature    join(2682..2689,1..2)
-      #        example:      misc_feature    join(161990..162784,complement(88222..88806),complement(86666..87448))
-      # qualifier/value line type A, first line of a new qualifier
+      #        example1:      gene            5..5104
+      #        example2:      misc_feature    join(2682..2689,1..2)
+      #        example3:      misc_feature    join(161990..162784,complement(88222..88806),complement(86666..87448))
+      # qualifier, no value, single line
+      #        example: /ribosomal_slippage
+      # qualifier/value type A, single line of controlled vocab or enumerated value
       #        example: /codon_start=1
-      #        example: /gene="ORF1"
-      # qualifier/value line type B, not the first line of a new qualifier, line 2 to N of a qualifier value
-      #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
-      #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
+      # qualifier/value type B, single line of free text
+      #        example1: /gene="ORF1"
+      # qualifier/value type C, multiple lines of free text
+      #       example1: /translation="MMMASKDVVPTAASSENANNNSSIKSRLLARLKGSGGATSPPNS
+      #       example1: IKITNQDMALGLIGQVPAPKATSVDVPKQQRDRPPRTVAEVQQNLRWTERPQDQNVKT
+      #       example1: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
+      #       example1: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
+      #
+      #       example2: /note="The mature peptides were added by the NCBI staff
+      #       example2: following publications Liu et all (1996, 1999), that
+      #       example2: (tentatively) determined processing map by site-directed
+      #       example2: mutagenesis or by direct sequencing of the cleavage
+      #       example2: products for closely related Southampton virus (a
+      #       example2: Norwalk-like virus); ORF1; sequence homologies to 2C
+      #       example2: helicase, 3C protease, and 3D RNA-dependent RNA polymerase
+      #       example2: of picornavirus"
+      #
       if($ftr_idx != -1) { 
         ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read multiple FEATURES lines for single record ($acc), line:\n$line\n", "dnaorg", 1, $FH_HR);
       }
@@ -270,20 +285,74 @@ sub sqf_GenbankParse {
       while((defined $line) && ($line !~ /^ORIGIN/)) { 
         chomp $line; $line_idx++;
         if($line =~ /^\s+\/(\S+)\=(.+)$/) { # first token must start with '/'
-          # qualifier/value line type A, examples:
-          #  /codon_start=1
-          #  /gene="ORF1"
-          #  /translation="MKMASNDATVAVACNNNNDKEKSSGEGLFTNMSSTLKKALGARP
           my ($save_qualifier, $save_value) = ($1, $2);
+          # determine type of qualifier value
+          # A: single line of controlled vocabulary or enumerated value, does not start with '"'
+          # B: single line of free text: starts and ends with single '"'
+          # C: first line of multiple lines of free text: starts with single '"', does not end with single '"'
+          if($save_value  =~ /^[^\"].*/) { 
+            # A: single line of controlled vocabulary or enumerated value, does not start with '"'
+            # example:
+            # /codon_start=1
+            ; # do nothing, we just need this if to catch a valid line (so we don't get to the else below that leads to a failure)
+          }
+          elsif(($save_value =~ /^\"[^\"]\"$/) || # single non-'"' character in between two '"' characters
+                ($save_value =~ /^\"[^\"].*[^\"]\"$/)) { # '"' then a non-'"', then >= 0 characters, then a non-'"' character then ends with a '"' character
+            # B: single line of free text: starts and ends with single '"'
+            # example:
+            # /product="nonstructural polyprotein"
+            ; # do nothing, we just need this elsif to catch a valid line (so we don't get to the else below that leads to a failure)
+          }
+          elsif(($save_value =~ /^\"[^\"]$/) || # single non-'"' character after '"' character
+                ($save_value =~ /^\"[^\"].*[^\"]$/)) { # '"' then a non-'"', then >= 0 characters, then ends with a non-'"' character
+            # C: first line of multiple lines of free text: starts with single '"', does not end with single '"'
+            # example:
+            # /note="The mature peptides were added by the NCBI staff
+            # 
+            # continue to read lines until we read one that ends with a single '"'
+            #
+            # example of remaining lines in value:
+            #  following publications Liu et all (1996, 1999), that
+            #  (tentatively) determined processing map by site-directed
+            #  mutagenesis or by direct sequencing of the cleavage
+            #  products for closely related Southampton virus (a
+            #  Norwalk-like virus); ORF1; sequence homologies to 2C
+            #  helicase, 3C protease, and 3D RNA-dependent RNA polymerase
+            #  of picornavirus"
+            $line = <IN>; chomp $line; $line_idx++;
+            while((defined $line) && ($line !~ /[^\"]\"$/)) { # ends with a non-'"' character followed by '"' character
+              $line =~ s/^\s+//; # remove leading whitespace
+              # add a single white space if there is at least one white space character already exising in $save_value
+              if($save_value =~ m/\s/) { $save_value .= " "; }
+              $save_value .= $line;
+              $line = <IN>; chomp $line; $line_idx++;
+            }
+            # add final line we read
+            $line =~ s/^\s+//; # remove leading whitespace
+            # add a single white space if there is at least one white space character already exising in $save_value
+            if($save_value =~ m/\s/) { $save_value .= " "; }
+            $save_value .= $line;
+          }
+          else { 
+            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read unparseable qualifier value line:\n$line\n", "dnaorg", 1, $FH_HR);
+          }
           if(defined $value) { # we are finished with previous value
             sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
           }
           ($qualifier, $value) = ($save_qualifier, $save_value);
         }
+        elsif($line =~ /^\s+\/([^\s\=]+)$/) { # first token must start with '/'
+          my ($save_qualifier, $save_value) = ($1, "");
+          printf("HEYA save_qualifier: $save_qualifier, value: empty\n");
+          if(defined $value) { # we are finished with previous value
+            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            ($qualifier, $value) = (undef, undef);
+          }
+          # qualifier, no value, single line
+          #        example: /ribosomal_slippage
+          ($qualifier, $value) = ($save_qualifier, $save_value);
+        }
         elsif($line =~ /^\s+(\S+)\s+(\S+)$/) { 
-          # NOTE: this will pass for a non-first line of a qualifier value that has whitespace in it:
-          # e.g.                      KQP ASRDESQKPPRPPTPELVKRIPPPPPNGEEEEEPVIRYEVKSGISGLPELTTVPQ
-          # But I think those are illegal, if they're not, then we'll set "KQP" as feature below, which is bad
           if(defined $value) { # we are finished with previous value
             sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
             ($qualifier, $value) = (undef, undef);
@@ -295,17 +364,7 @@ sub sqf_GenbankParse {
           sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
           sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
         }
-        else { 
-          # qualifier/value line type B
-          #        example: QNVIDPWIRNNFVQAPGGEFTVSPRNAPGEILWSAPLGPDLNPYLSHLARMYNGYAGG
-          #        example: IPPNGYFRFDSWVNQFYTLAPMGNGTGRRRVV"
-          $line =~ s/^\s+//; # remove leading whitespace
-          if(! defined $value) { 
-            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read qualifier value line without qualifier first, line:\n$line\n", "dnaorg", 1, $FH_HR);
-          }
-          $value .= $line; 
-        }
-        $line = <IN>; chomp $line; $line_idx++;
+        $line = <IN>;
       }
       if(! defined $line) { 
         ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, expected to read ORIGIN line after FEATURES but did not\n", "dnaorg", 1, $FH_HR);

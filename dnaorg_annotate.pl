@@ -19,43 +19,39 @@ require "epn-utils.pm";
 #######################################################################################
 # What this script does: 
 #
-# Given a single full length homology model (CM) built for a reference
-# accession created by a previous run of dnaorg_build.pl, this script
-# aligns each input sequence to that homologoy model and uses that
-# alignment to annotate the features (CDS and mature peptides) in
-# those incoming sequences. This script outputs a tabular file and d
-# feature table summarizing the annotations, as well as information on
-# alerts found.
+# Given an input sequence file, each sequence is compared against a
+# library of homology models (CMs) and classified and annotated and
+# determined to PASS or FAIL.  Certain types of unexpected results are
+# detected and reported in the output as 'alerts'. There are two
+# classes of alerts: those that cause a sequence to FAIL and those
+# that do not. 
 #
-# A list of subroutines can be found after the main script before
-# the subroutines.
-# 
-# Immediately below are a list of the steps performed by this
-# script. Each has a corresponding code block in the main script.
+# The script proceeds through four main stages:
 #
-# Preliminaries: 
-#   - process options
-#   - output program banner and open output files
-#   - parse the optional input files, if necessary
-#   - make sure the required executables are executable
+# (1) classification: each sequence is compared against the CM library
+#     using a relatively fast HMM scoring algorithm, and the highest
+#     scoring model in the library is defined as the winning CM for
+#     that sequence.
 #
-# Step 1.  Gather and process information on reference genome using Edirect.
-# Step 2.  Fetch and process the reference genome sequence.
-# Step 3.  Verify we have the model file that we need to run cmalign.
+# (2) coverage determination: each sequence is compared against its
+#    winning model (only) for a second time using a more expensive HMM
+#    scoring algorithm that is local with respect to the model and
+#    sequence. This stage allows statistics related to the coverage of
+#    the sequence and model to be determined, and some alerts can be
+#    reported based on those statisics.
 #
-#    Steps 1-2 are very similar to those done in dnaorg_build.pl, but
-#    dnaorg_build.pl and dnaorg_annotate,pl are run separately, perhaps
-#    with a big time lag. Therefore, this script, in step 3, verifies 
-#    that the models built by dnaorg_build.pl are still up-to-date with 
-#    respect to the reference used in running this script.
-#
-# Step 4.  Align sequences to the homology model (CM).
-# Step 5.  Parse cmalign alignments.
-# Step 6.  Fetch features and detect most nucleotide-annotation based alerts.
-# Step 7.  Run BLASTX: all full length sequences and all fetched CDS features 
-#          versus all proteins
-# Step 8.  Add b_zft alerts for sequences with zero annotated features
-# Step 9.  Output annotations and alerts.
+# (3) alignment/annotation: each sequence is aligned to its winning
+#    model using a still more expensive CM algorithm that takes into
+#    account secondary structure in the model (if any). This algorithm
+#    is aligns the full sequence either locally or globally with
+#    respect to the model. Features are then annotated based on the
+#    alignment coordinates and the known feature coordinates in the 
+#    model (supplied via the modelinfo file). 
+#   
+# (4) blastx CDS validation: CDS features are then validated via
+#     blastx by comparing predicted feature spans from (3) to pre-computed
+#     BLAST databases for the model. Alerts can be reported based on
+#     the blast results. 
 #
 #######################################################################################
 #
@@ -64,13 +60,14 @@ require "epn-utils.pm";
 # This script identifies and outputs a list of all alerts in each of
 # the sequences it annotates. Each type of alert has an associated
 # five letter alert 'code'. The list of alert codes is in the
-# dnaorg.pm perl module file. It can also be found here:
+# dnaorg.pm perl module file in the subroutine: dng_AlertInfoInitialize().
 #
-#  /panfs/pan1/dnaorg/virseqannot/error_code_documentation/errorcodes.v6a.documentation.txt
-#
+# A table of alerts is output by dnaorg_annotate.pl when the --alt_list
+# option is used.
+# 
 # List of subroutines in which errors are detected and added:
 # 1. add_classification_alerts()
-#    c_noa, c_vls, c_los, c_vld, c_lod, c_ugr, c_usg, c_mst, c_loc, c_hbi (10)
+#    c_noa, c_los, c_idc, c_qsg, c_qgr, c_isg, c_igr, c_mst, c_loc, c_hbi (10)
 #
 # 2. alert_add_n_div()
 #    n_div (1)
@@ -87,8 +84,10 @@ require "epn-utils.pm";
 # 6. alert_add_b_zft()
 #    b_zft (1)
 # 
-# * b_per errors can be added in two places, and are only added in add_blastx_alerts for
-#   features for which they weren't already added in fetch_features_and_add_cds_and_mp_alerts()
+# 7. add_low_similarity_alerts()
+#    x_fss, x_fse, x_fsi, c_lss, c_lse, c_lsi, b_per* (7)
+# 
+# * b_per errors can be added in multiple places, and are only added once per feature
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -151,12 +150,10 @@ opt_Add("-b",           "string",  undef,                   $g,    undef, undef,
 opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options related to expected classification";
+$opt_group_desc_H{++$g} = "options for specifying classification";
 #        option               type   default                group  requires incompat    preamble-output                                                     help-output    
 opt_Add("--group",         "string",  undef,                  $g,     undef, undef,     "set expected classification of all seqs to group <s>",             "set expected classification of all seqs to group <s>",            \%opt_HH, \@opt_order_A);
 opt_Add("--subgroup",      "string",  undef,                  $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
-opt_Add("--cthresh",         "real",  "0.3",                  $g,     undef, undef,     "expected classification must be within <x> bits/nt of top match",  "expected classification must be within <x> bits/nt of top match", \%opt_HH, \@opt_order_A);
-opt_Add("--ctoponly",     "boolean",  0,                      $g,     undef, undef,     "top match must be expected classification",                        "top match must be expected classification",                       \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
 #        option               type   default                group  requires incompat    preamble-output                                                     help-output    
@@ -165,19 +162,17 @@ opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, unde
 opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO NOT cause FAILure",             "specify that alert codes in comma-separated <s> DO     cause FAILure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning classification alerts";
-#     option                type         default            group   requires incompat     preamble-output                                                   help-output    
-opt_Add("--lowcovthresh",   "real",    0.9,                  $g,   undef,   undef,        "fractional coverage threshold for 'low coverage' is <x>",        "fractional coverage threshold for 'low coverage' alert is <x>",       \%opt_HH, \@opt_order_A);
-opt_Add("--lowscthresh",    "real",    0.3,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'low score' is <x>",           "bits per nucleotide threshold for 'low score' alert is <x>",          \%opt_HH, \@opt_order_A);
-opt_Add("--vlowscthresh",   "real",    0.2,                  $g,   undef,   undef,        "bits per nucleotide threshold for 'very low score' is <x>",      "bits per nucleotide threshold for 'very low score' alert is <x>",     \%opt_HH, \@opt_order_A);
-opt_Add("--lowdiffthresh",  "real",    0.06,                 $g,   undef,   undef,        "bits per nucleotide diff threshold for 'low diff' is <x>",       "bits per nucleotide diff threshold for 'low diff' alert is <x>",      \%opt_HH, \@opt_order_A);
-opt_Add("--vlowdiffthresh", "real",    0.006,                $g,   undef,   undef,        "bits per nucleotide diff threshold for 'very low diff' is <x>",  "bits per nucleotide diff threshold for 'very low diff' alert is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--biasfract",      "real",    0.25,                 $g,   undef,   undef,        "fractional threshold for 'high bias' is <x>",                    "fractional threshold for 'high bias' alert is <x>",                   \%opt_HH, \@opt_order_A);
-opt_Add("--dupregmin",   "integer",    20,                   $g,   undef,   undef,        "minimum model overlap for 'duplicate region' alert is <n>",      "minimum model overlap for 'duplicate region' alert is <n>",            \%opt_HH, \@opt_order_A);
-opt_Add("--ostrscthresh",   "real",    20,                   $g,   undef,   undef,        "minimum weaker strand bit score for 'indefinite strand' is <x>", "minimum weaker strand bit score for 'indefinite strand' is <x>",         \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for tuning nucleotide-based annotation errors:";
-#        option               type   default                group  requires incompat   preamble-output                                                             help-output    
-opt_Add("--ppmin",          "real",  0.8,                    $g,     undef, undef,     "set minimum allowed posterior probability at feature segment ends to <x>", "set minimum allowed posterior probability at feature segment ends to <x>", \%opt_HH, \@opt_order_A);
+#       option          type         default            group   requires incompat     preamble-output                                                             help-output    
+opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "'Low Coverage' fractional coverage threshold is <x>",                      "'Low Coverage' fractional coverage threshold is <x>",                      \%opt_HH, \@opt_order_A);
+opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "'Low Score' bits per nucleotide threshold is <x>",                         "'Low Score' bits per nucleotide threshold is <x>",                         \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimterm", "integer",   10,                   $g,   undef,   undef,      "'Low Similarity at Start/End' minimum length is <n>",                      "'Low Similarity at Start/End' minimum length is <n>",                      \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,      "'Low Similarity' (internal) minimum length is <n>",                        "'Low Similarity' (internal) minimum length is <n>",                        \%opt_HH, \@opt_order_A);
+opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    \%opt_HH, \@opt_order_A);
+opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "'Biased Sequence' fractional threshold is <x>",                            "'Biased Sequence' fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
+opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "'Duplicate Regions' minimum model overlap is <n>",                         "'Duplicate Regions' minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
+opt_Add("--indefstr",   "real",      20,                   $g,   undef,   undef,      "'Indefinite Strand' minimum weaker strand bit score is <x>",               "'Indefinite Strand' minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x>", "'Indefinite Annotation at Start/End' min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
 #        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
@@ -230,26 +225,24 @@ my $options_okay =
                 'b=s'          => \$GetOptions_H{"-b"}, 
                 'n=s'          => \$GetOptions_H{"-n"}, 
                 'keep'         => \$GetOptions_H{"--keep"},
-# options related to expected classification
+# options for specifiying classification
                 'group=s'     => \$GetOptions_H{"--group"},
                 'subgroup=s'  => \$GetOptions_H{"--subgroup"},
-                'cthresh=s'   => \$GetOptions_H{"--cthresh"},
-                'ctoponly'    => \$GetOptions_H{"--ctoponly"},
 # options for controlling which alerts cause failure
                 "alt_list"    => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"  => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"  => \$GetOptions_H{"--alt_fail"},
 # options for tuning classification alerts
-                "lowcovthresh=s"   => \$GetOptions_H{"--lowcovthresh"},
-                "lowscthresh=s"    => \$GetOptions_H{"--lowscthresh"},
-                "vlowscthresh=s"   => \$GetOptions_H{"--vlowscthresh"},
-                "lowdiffthresh=s"  => \$GetOptions_H{"--lowdiffthresh"},
-                "vlowdiffthresh=s" => \$GetOptions_H{"--vlowdiffthresh"},
-                'biasfract=s'      => \$GetOptions_H{"--biasfract"},  
-                'dupregmin=s'      => \$GetOptions_H{"--dupregmin"},  
-                'ostrscthresh=s'   => \$GetOptions_H{"--ostrscthresh"},  
-# options for tuning nucleotide-based annotation errors
-                'ppmin=s'      => \$GetOptions_H{"--ppmin"},
+                "lowcov=s"     => \$GetOptions_H{"--lowcov"},
+                "lowsc=s"      => \$GetOptions_H{"--lowsc"},
+                'lowsimterm=s' => \$GetOptions_H{"--lowsimterm"},
+                'lowsimint=s'  => \$GetOptions_H{"--lowsimint"},
+                'indefclass=s' => \$GetOptions_H{"--indefclass"},
+                'biasfract=s'  => \$GetOptions_H{"--biasfract"},  
+                'dupreg=s'     => \$GetOptions_H{"--dupreg"},  
+                'indefstr=s'   => \$GetOptions_H{"--indefstr"},  
+                'indefann=s'   => \$GetOptions_H{"--indefann"},  
+                'incspec=s'    => \$GetOptions_H{"--incspec"},  
 # options for tuning protein validation with blastx
                 'xminntlen=s'  => \$GetOptions_H{"--xminntlen"},
                 'xalntol=s'    => \$GetOptions_H{"--xalntol"},
@@ -329,21 +322,6 @@ my ($fa_file, $dir) = (@ARGV);
 ############################################################
 # option checks that are too sophisticated for epn-options
 ############################################################
-# enforce that lowscthresh >= vlowscthresh
-if(opt_IsUsed("--lowscthresh",\%opt_HH) || opt_IsUsed("--vlowscthresh",\%opt_HH)) { 
-  if(opt_Get("--lowscthresh",\%opt_HH) < opt_Get("--vlowscthresh",\%opt_HH)) { 
-    die sprintf("ERROR, with --lowscthresh <x> and --vlowscthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
-                opt_Get("--lowscthresh",\%opt_HH), opt_Get("--vlowscthresh",\%opt_HH)); 
-  }
-}
-# enforce that lowdiffthresh >= vlowdiffthresh
-if(opt_IsUsed("--lowdiffthresh",\%opt_HH) || opt_IsUsed("--vlowdiffthresh",\%opt_HH)) { 
-  if(opt_Get("--lowdiffthresh",\%opt_HH) < opt_Get("--vlowdiffthresh",\%opt_HH)) { 
-    die sprintf("ERROR, with --lowdiffthresh <x> and --vlowdiffthresh <y>, <x> must be less than <y> (got <x>: %f, <y>: %f)\n", 
-                opt_Get("--lowdiffthresh",\%opt_HH), opt_Get("--vlowdiffthresh",\%opt_HH)); 
-  }
-}
-
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
@@ -531,7 +509,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
   dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  dng_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   dng_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   dng_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -747,6 +725,19 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 }
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+#################################
+# add low similarity alerts for seqs with multiple hits in coverage determination stage
+#################################
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    add_low_similarity_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                              \%cls_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                              \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+  }
+}
 
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
@@ -1432,30 +1423,21 @@ sub add_classification_alerts {
   my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
 
   # get thresholds
-  my $small_value        = 0.00000001; # for handling precision issues
-  my $lowcovthresh_opt   = opt_Get("--lowcovthresh",   $opt_HHR) - $small_value;
-  my $vlowscthresh_opt   = opt_Get("--vlowscthresh",   $opt_HHR) - $small_value;
-  my $lowscthresh_opt    = opt_Get("--lowscthresh",    $opt_HHR) - $small_value;
-  my $ostrscthresh_opt   = opt_Get("--ostrscthresh",   $opt_HHR) + $small_value;
-  my $vlowdiffthresh_opt = opt_Get("--vlowdiffthresh", $opt_HHR) - $small_value;
-  my $lowdiffthresh_opt  = opt_Get("--lowdiffthresh",  $opt_HHR) - $small_value;
-  my $biasfract_opt      = opt_Get("--biasfract",      $opt_HHR) + $small_value;
-  my $cthresh_opt        = opt_Get("--cthresh",        $opt_HHR) + $small_value;
-  my $dupreg_opt         = opt_Get("--dupregmin",      $opt_HHR);
-  my $ctoponly_opt_used  = 0;
-  if(opt_IsUsed("--ctoponly", $opt_HHR)) { 
-    $cthresh_opt = $small_value;
-    $ctoponly_opt_used = 1;
-  }
+  my $small_value    = 0.00000001; # for handling precision issues
+  my $lowcov_opt     = opt_Get("--lowcov",     $opt_HHR) - $small_value;
+  my $lowsc_opt      = opt_Get("--lowsc",      $opt_HHR) - $small_value;
+  my $indefstr_opt   = opt_Get("--indefstr",   $opt_HHR) + $small_value;
+  my $indefclass_opt = opt_Get("--indefclass", $opt_HHR) - $small_value;
+  my $biasfract_opt  = opt_Get("--biasfract",  $opt_HHR) + $small_value;
+  my $incspec_opt    = opt_Get("--incspec",    $opt_HHR) + $small_value;
+  my $dupreg_opt     = opt_Get("--dupreg",     $opt_HHR);
 
-  my $lowcovthresh_opt2print   = sprintf("%.3f", opt_Get("--lowcovthresh",   $opt_HHR));
-  my $lowdiffthresh_opt2print  = sprintf("%.3f", opt_Get("--lowdiffthresh",  $opt_HHR));
-  my $vlowdiffthresh_opt2print = sprintf("%.3f", opt_Get("--vlowdiffthresh", $opt_HHR));
-  my $lowscthresh_opt2print    = sprintf("%.3f", opt_Get("--lowscthresh",    $opt_HHR));
-  my $vlowscthresh_opt2print   = sprintf("%.3f", opt_Get("--vlowscthresh",   $opt_HHR));
-  my $ostrscthresh_opt2print   = sprintf("%.1f", opt_Get("--ostrscthresh",   $opt_HHR));
-  my $biasfract_opt2print      = sprintf("%.3f", opt_Get("--biasfract",      $opt_HHR));
-  my $cthresh_opt2print        = sprintf("%.3f", opt_Get("--cthresh",        $opt_HHR));
+  my $lowcov_opt2print     = sprintf("%.3f", opt_Get("--lowcov",     $opt_HHR));
+  my $lowsc_opt2print      = sprintf("%.3f", opt_Get("--lowsc",      $opt_HHR));
+  my $indefstr_opt2print   = sprintf("%.1f", opt_Get("--indefstr",   $opt_HHR));
+  my $indefclass_opt2print = sprintf("%.3f", opt_Get("--indefclass", $opt_HHR));
+  my $biasfract_opt2print  = sprintf("%.3f", opt_Get("--biasfract",  $opt_HHR));
+  my $incspec_opt2print    = sprintf("%.3f", opt_Get("--incspec",    $opt_HHR));
 
   %{$cls_output_HHR} = ();
   foreach $seq_name (sort keys(%{$seq_len_HR})) { 
@@ -1493,15 +1475,12 @@ sub add_classification_alerts {
       $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
       $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"r1.1"});
 
-      # low score (c_los) and very low score (c_vls) 
-      if($scpnt_H{"r1.1"} < $vlowscthresh_opt) { 
-        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_vls", $seq_name, $scpnt2print . "<" . $vlowscthresh_opt2print . " bits/nt", $FH_HR);
-      }
-      elsif($scpnt_H{"r1.1"} < $lowscthresh_opt) { 
-        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "c_los", $seq_name, $scpnt2print . "<" . $lowscthresh_opt2print . " bits/nt", $FH_HR);
+      # low score (c_los)
+      if($scpnt_H{"r1.1"} < $lowsc_opt) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "c_los", $seq_name, $scpnt2print . "<" . $lowsc_opt2print . " bits/nt", $FH_HR);
       }
 
-      # low difference (c_lod) and very low difference (c_vld)
+      # indefinite classification (c_idc))
       if(defined $scpnt_H{"r1.2"}) { 
         my $diffpnt = $scpnt_H{"r1.1"} - $scpnt_H{"r1.2"};
         my $diffpnt2print = sprintf("%.3f", $diffpnt);
@@ -1512,58 +1491,77 @@ sub add_classification_alerts {
             ", second group/subgroup: " . 
             group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.2"});
 
-        if($diffpnt < $vlowdiffthresh_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_vld", $seq_name, $diffpnt2print . "<" . $vlowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
-        }
-        elsif($diffpnt < $lowdiffthresh_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lod", $seq_name, $diffpnt2print . "<" . $lowdiffthresh_opt2print . " bits/nt, " . $group_str, $FH_HR);
+        if($diffpnt < $indefclass_opt) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_idc", $seq_name, $diffpnt2print . "<" . $indefclass_opt2print . " bits/nt, " . $group_str, $FH_HR);
         }
       }
 
-      # unexpected group (c_ugr) 
-      # $exp_group must be defined 
-      # - no hits in r1.eg (no hits to group)
+      # incorrect group (c_igr) 
+      # - $exp_group must be defined 
+      # - no hits in r1.eg (no hits to group) (c_igr)
       # OR 
       # - hit(s) in r1.eg but scpernt diff between
-      #   r1.eg and r1.1 exceeds cthresh_opt
+      #   r1.eg and r1.1 exceeds incspec_opt (c_igr)
       #
-      my $ugr_flag = 0;
+      # questionable group (c_qgr)
+      # - $exp_group must be defined 
+      # - hit(s) in r1.eg but scpernt diff between
+      #   r1.eg and r1.1 does not exceed incspec_opt (c_qgr)
+      #
+      my $igr_flag = 0;
+      my $qgr_flag = 0;
       if(defined $exp_group) { 
         if(! defined $scpnt_H{"r1.eg"}) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_ugr", $seq_name, 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_igr", $seq_name, 
                                       "no hits to expected group $exp_group, best model group/subgroup: " . 
                                       group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}), $FH_HR);
-          $ugr_flag = 1;
+          $igr_flag = 1;
         }
         else { 
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.eg"};
           my $diff2print = sprintf("%.3f", $diff);
-          if($diff > $cthresh_opt) { 
-            $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
-                " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_ugr", $seq_name, $alt_str, $FH_HR);
-            $ugr_flag = 1;
+          if($diff > $incspec_opt) { 
+            $alt_str = "$diff2print > $incspec_opt2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_igr", $seq_name, $alt_str, $FH_HR);
+            $igr_flag = 1;
+          }
+          elsif($diff > $small_value) { 
+            $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_qgr", $seq_name, $alt_str, $FH_HR);
+            $qgr_flag = 1;
           }
         }
       }
 
-      # unexpected subgroup (c_usg) 
-      # - c_ugr not already detected
-      # - no hits in r1.esg (no hits to subgroup)
+      # incorrect subgroup (c_sgr) 
+      # - $exp_subgroup must be defined 
+      # - c_igr not already reported
+      # - no hits in r1.esg (no hits to group) (c_isg)
       # OR 
       # - hit(s) in r1.esg but scpernt diff between
-      #   r1.esg and r1.1 exceeds cthresh_opt
-      if((! $ugr_flag) && (defined $exp_subgroup)) { 
+      #   r1.esg and r1.1 exceeds incspec_opt (c_isg)
+      #
+      # questionable subgroup (c_qsg)
+      # - $exp_subgroup must be defined 
+      # - i_qgr not already reported
+      # - c_qgr not already reported
+      # - hit(s) in r1.esg but scpernt diff between
+      #   r1.esg and r1.1 does not exceed incspec_opt (c_qsg)
+      #
+      if((! $igr_flag) && (defined $exp_subgroup)) { 
         if(! defined $scpnt_H{"r1.esg"}) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_usg", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_isg", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
         }
         else { 
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.esg"};
           my $diff2print = sprintf("%.3f", $diff);
-          if($diff > $cthresh_opt) { 
-            $alt_str = ($ctoponly_opt_used) ? $diff2print . ">0.0" : $diff2print . ">" . $cthresh_opt2print . 
-                " bits/nt, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_usg", $seq_name, $alt_str, $FH_HR);
+          if($diff > $incspec_opt) { 
+            $alt_str = "$diff2print > $incspec_opt2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_isg", $seq_name, $alt_str, $FH_HR);
+          }
+          elsif((! $qgr_flag) && ($diff > $small_value)) { 
+            $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_qsg", $seq_name, $alt_str, $FH_HR);
           }
         }
       }
@@ -1591,8 +1589,8 @@ sub add_classification_alerts {
         }
 
         # low coverage (c_loc)
-        if($scov < $lowcovthresh_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_loc", $seq_name, $scov2print . "<" . $lowcovthresh_opt2print, $FH_HR);
+        if($scov < $lowcov_opt) { 
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_loc", $seq_name, $scov2print . "<" . $lowcov_opt2print, $FH_HR);
         }
 
         # high bias (c_hbi) 
@@ -1605,7 +1603,7 @@ sub add_classification_alerts {
         if(defined $cls_results_HHHR->{$seq_name}{"r2.os"}) { 
           my @ostrand_score_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.os"}{"score"});
           my $top_ostrand_score = $ostrand_score_A[0];
-          if($top_ostrand_score > $ostrscthresh_opt) { 
+          if($top_ostrand_score > $indefstr_opt) { 
             my @ostrand_start_A = ();
             my @ostrand_stop_A  = ();
             dng_FeatureStartStopStrandArrays($cls_results_HHHR->{$seq_name}{"r2.os"}{"s_coords"}, \@ostrand_start_A, \@ostrand_stop_A, undef, $FH_HR);
@@ -1613,7 +1611,7 @@ sub add_classification_alerts {
                                $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"}, 
                                $cls_results_HHHR->{$seq_name}{"r2.os"}{"bstrand"}, 
                                $ostrand_start_A[0], $ostrand_stop_A[0], $top_ostrand_score, 
-                               $ostrscthresh_opt2print);
+                               $indefstr_opt2print);
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_bst", $seq_name, $alt_str, $FH_HR);
           }
         }
@@ -1646,7 +1644,7 @@ sub add_classification_alerts {
           }
         }
       
-        # inconsistent hits: wrong hit order (c_who)
+        # inconsistent hits: wrong hit order (c_dcs)
         if($nhits > 1) { 
           my $i;
           my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
@@ -1680,7 +1678,7 @@ sub add_classification_alerts {
           if($out_of_order_flag) { 
             $alt_str = "seq order: " . $seq_hit_order_str . "(" . $cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"} . ")";
             $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $cls_results_HHHR->{$seq_name}{"r2.bs"}{"m_coords"} . ")";
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_who", $seq_name, $alt_str, $FH_HR);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_dcs", $seq_name, $alt_str, $FH_HR);
           }
         }
       }
@@ -2299,7 +2297,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   
   my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
 
-  my $pp_thresh = opt_Get("--ppmin", $opt_HHR);
+  my $pp_thresh = opt_Get("--indefann", $opt_HHR);
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nsgm = scalar(@{$sgm_info_AHR});
 
@@ -2560,7 +2558,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           } 
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
                                        sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
                                        $FH_HR);
@@ -2572,7 +2570,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           }
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < $small_value) { # only check PP if it's not a gap
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
                                        sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . dng_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
                                        $FH_HR);
@@ -2647,7 +2645,7 @@ sub cmalign_store_overflow {
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
 #  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
-#  $ftr_results_HAHR:       REF to feature results NAH, added to here
+#  $ftr_results_HAHR:       REF to feature results HAH, added to here
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
@@ -2710,9 +2708,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
         # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
 
-        my %alt_str_H = ();   # added to as we find alerts below
-                              # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
-        my $alt_flag = 0; # set to '1' if we set an alert for this feature
+        my %alt_str_H = (); # added to as we find alerts below
+                            # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
+        my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
         
         for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
@@ -2779,9 +2777,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
               
           if(! $ftr_is_5trunc) { 
-            # feature is not 5' truncated, look for a start codon if it's the proper feature
+            # feature is not 5' truncated, look for a start codon if it's a CDS
             if($ftr_is_cds) { 
-              if(! sqstring_check_start($ftr_sqstring, $FH_HR)) { 
+              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
                 $alt_str_H{"n_str"} = "";
               }
             }
@@ -2854,20 +2852,25 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                   } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
                 } # end of 'if($ftr_is_cds) {' 
               } # end of 'else' entered if feature is a multiple of 3
-              # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
-              my $alt_flag = 0;
-              foreach my $alt_code (sort keys %alt_str_H) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
-                $alt_flag = 1;
-              }
-              if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
-                for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-                  my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
-                }
-              }
             } # end of 'if($ftr_is_cds_or_mp)'
           } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
+
+          # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
+          my $alt_flag = 0;
+          foreach my $alt_code (sort keys %alt_str_H) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
+            $alt_flag = 1;
+          }
+          if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
+            for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+              my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+              if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+              }
+            }
+          }
 
           # if we are a mature peptide, make sure we are adjacent to the next one, if there is one
           if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1)) { 
@@ -3035,6 +3038,164 @@ sub sqstring_find_stops {
 
   return;
 }
+
+#################################################################
+# Subroutine: add_low_similarity_alerts()
+# Incept:     EPN, Mon Apr 29 13:29:37 2019
+#
+# Purpose:   For each sequence with >1 hits in the sequence coverage
+#            determine stage (r2 search stage), report any 
+#            low similarity per-sequence alerts (c_lss, c_lse, c_lsi) and
+#            low similarity per-feature alerts (x_fss, x_fse, x_fsi). 
+#
+# Arguments:
+#  $mdl_name:               name of model these sequences were assigned to
+#  $seq_name_AR:            REF to array of sequence names
+#  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $cls_results_HHHR:       REF to 3D hash of classification results, PRE-FILLED
+#  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
+#  $ftr_results_HAHR:       REF to feature results HAH, added to here
+#  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, PRE-FILLED
+#  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub add_low_similarity_alerts { 
+  my $sub_name = "add_low_similarity_alerts";
+  my $nargs_exp = 13;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+      $cls_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
+
+  my $terminal_min_length = opt_Get("--lowsimterm",  $opt_HHR); # minimum length of terminal missing region that triggers an alert
+  my $internal_min_length = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
+
+  # get children info for all features, we'll use this in the loop below
+  my @children_AA = ();
+  dng_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
+
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_name_AR->[$seq_idx];
+    my $seq_len  = $seq_len_HR->{$seq_name};
+    # determine number of nucleotides not covered by r2.bs search stage 
+    # at 5' and 3' ends
+    if((defined $cls_results_HHHR->{$seq_name}) && 
+       (defined $cls_results_HHHR->{$seq_name}{"r2.bs"}) && 
+       (defined $cls_results_HHHR->{$seq_name}{"r2.bs"}{"score"})) { 
+      my @tmp_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.bs"}{"score"}); # only do this to get nhits
+      my $nhits = scalar(@tmp_A); 
+      my $missing_coords = "";
+      my $bstrand = $cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"};
+      if($nhits == 1) { 
+        # only 1 hit
+        my $min_coord = dng_CoordsMin($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
+        my $max_coord = dng_CoordsMax($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
+        if($min_coord != 1) { 
+          if($bstrand eq "+") { $missing_coords = dng_CoordsTokenCreate(1, $min_coord-1, "+", $FH_HR); }
+          else                { $missing_coords = dng_CoordsTokenCreate($min_coord-1, 1, "-", $FH_HR); }
+        }
+        if($max_coord != $seq_len) { 
+          if($missing_coords ne "") { $missing_coords .= ","; }
+          if($bstrand eq "+") { $missing_coords .= dng_CoordsTokenCreate($max_coord+1, $seq_len, "+", $FH_HR); }
+          else                { $missing_coords .= dng_CoordsTokenCreate($seq_len, $max_coord+1, "-", $FH_HR); }
+        }
+      }
+      else { 
+        # multiple hits
+        $missing_coords .= dng_CoordsMissing($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $bstrand, $seq_len, $FH_HR);
+      }
+      if($missing_coords ne "") { 
+        my @missing_coords_A = split(",", $missing_coords);
+        foreach my $missing_coords_tok (@missing_coords_A) { 
+          my ($start, $stop, undef) = dng_CoordsTokenParse($missing_coords_tok, $FH_HR);
+          my $length = abs($start - $stop) + 1;
+          if($bstrand eq "+") { 
+            my $is_start   = ($start == 1)        ? 1 : 0;
+            my $is_end     = ($stop  == $seq_len) ? 1 : 0;
+            my $min_length = ($is_start || $is_end) ? $terminal_min_length : $internal_min_length;
+            if($length >= $min_length) { 
+              # does this overlap with a feature? 
+              my $nftr_overlap = 0;
+              for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+                if(! dng_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
+                  my $ftr_is_cds = dng_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+                  my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
+                  if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+                    my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
+                    my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_stop"};
+                    my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
+                    if($f_strand eq $bstrand) { 
+                      my $noverlap = undef;
+                      my $overlap_reg = "";
+                      my $start1 = utl_Min($start,   $stop);
+                      my $stop1  = utl_Max($start,   $stop);
+                      my $start2 = utl_Min($f_start, $f_stop);
+                      my $stop2  = utl_Max($f_start, $f_stop);
+                      ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+                      if($noverlap > 0) { 
+                        $nftr_overlap++;
+                        my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                        if($is_start) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fss", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        if($is_end) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fse", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        if((! $is_start) && (! $is_end)) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fsi", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+                        if(($ftr_is_cds) && ($ftr_nchildren > 0)) {
+                          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+                            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+                            if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
+                              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              if($nftr_overlap == 0) { # no features overlapped, throw c_lss, c_lse, or c_lsi
+                my $alt_msg = "low similarity region of length $length ($start..$stop)";
+                if($is_start) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lss", $seq_name, $alt_msg, $FH_HR);
+                }
+                if($is_end) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lse", $seq_name, $alt_msg, $FH_HR);
+                }
+                if((! $is_start) && (! $is_end)) { 
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lsi", $seq_name, $alt_msg, $FH_HR);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }  
+  return;
+}  
 
 #################################################################
 #
@@ -3318,7 +3479,9 @@ sub add_blastx_alerts {
             if(($alt_flag) && ($ftr_nchildren > 0)) { 
               for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
                 my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                if(! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"}) { 
+                if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                   (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                   (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
                 }
               }
@@ -5157,11 +5320,11 @@ sub output_feature_table {
           if(! $defined_n_start) { 
             # $defined_p_start must be TRUE
             $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
-                                                                            $ftr_results_HAHR, $FH_HR);
+                                                                        $ftr_results_HAHR, $FH_HR);
           }
           else { # $is_duplicate is '0' and $defined_n_start is '1'
             $ftr_coords_str = helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
-                                                                          $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
+                                                                      $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
 
           # only look up alerts if we're not a duplicate feature
@@ -5496,7 +5659,12 @@ sub helper_ftable_add_qualifier_from_ftr_info {
      (defined $ftr_info_AHR->[$ftr_idx]{$key})) { 
     my @qval_A = split($qval_sep, $ftr_info_AHR->[$ftr_idx]{$key});
     foreach my $qval (@qval_A) { 
-      $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
+      if($qval ne "") { 
+        $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
+      }
+      else { 
+        $ret_str .= sprintf("\t\t\t%s\n", $key);
+      }
     }
   }
   return $ret_str;
