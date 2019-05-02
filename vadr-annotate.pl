@@ -784,11 +784,11 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl_tbl",      $out_root . ".
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc_tbl",      $out_root . ".alc.tbl", 1, "alert count tabular summary file");
 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".ap.sqtable",        1, "Sequin feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".af.sqtable",        1, "Sequin feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".ap.seqlist",        1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".af.seqlist",        1, "list of failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".altlist",           1, "list of errors in the sequence tables");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".pass.sqtable",        1, "Sequin feature table output for passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".fail.sqtable",        1, "Sequin feature table output for failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.seqlist",        1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.seqlist",        1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",            1, "list of alerts in the feature tables");
 
 ########################
 # tabular output files #
@@ -2720,17 +2720,19 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my ($start, $stop, $strand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
               
-            # update truncated mode
-            if($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
+            # only update start and 5trunc value if this is the first segment annotated
+            if(! defined $ftr_start) { # first feature
               $ftr_start = $start;
               $ftr_is_5trunc = $sgm_results_HR->{"5trunc"};
             }
-            if($sgm_idx == $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}) { 
-              $ftr_stop = $stop;
-              $ftr_is_3trunc = $sgm_results_HR->{"3trunc"};
-            }
+            # always update $ftr_stop and $ftr_is_3trunc, 
+            # values final annotated segment will survive past this for $sgm_idx loop
+            $ftr_stop = $stop;
+            $ftr_is_3trunc = $sgm_results_HR->{"3trunc"};
             
-            # check or update feature strand, but only if cds or mp (otherwise we don't care)
+            # set feature strand if this is the first segment annotated
+            # else for cds/mp validate it hasn't changed and fail if it has
+            # or update strand to "!" if not cds/mp and it has changed
             if(! defined $ftr_strand) { 
               $ftr_strand = $strand; 
             }
@@ -5291,10 +5293,10 @@ sub output_feature_table {
         # initialize
         my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
         my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
-        my $is_mat_peptide    = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
         my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
         my $ftr_coords_str    = ""; # string of coordinates for this feature
         my $ftr_out_str       = ""; # output string for this feature
+        my $is_cds_or_mp      = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
 
         my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
         my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
@@ -5342,11 +5344,11 @@ sub output_feature_table {
         
         # add qualifiers: product, gene, exception and codon_start (if !duplicate)
         if(! $is_misc_feature) { 
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product",   $qval_sep, $ftr_info_AHR, $FH_HR);
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
-          if(! $is_mat_peptide) { 
-            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene",      $qval_sep, $ftr_info_AHR, $FH_HR);
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product", $qval_sep, $ftr_info_AHR, $FH_HR);
+          if(! $is_cds_or_mp) { 
+            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
           }
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
           # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
           if((! $is_duplicate) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
             my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
