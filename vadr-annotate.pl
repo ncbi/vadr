@@ -166,7 +166,7 @@ $opt_group_desc_H{++$g} = "options for tuning classification alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                             help-output    
 opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "'Low Coverage' fractional coverage threshold is <x>",                      "'Low Coverage' fractional coverage threshold is <x>",                      \%opt_HH, \@opt_order_A);
 opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "'Low Score' bits per nucleotide threshold is <x>",                         "'Low Score' bits per nucleotide threshold is <x>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimterm", "integer",   10,                   $g,   undef,   undef,      "'Low Similarity at Start/End' minimum length is <n>",                      "'Low Similarity at Start/End' minimum length is <n>",                      \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimterm", "integer",   5,                    $g,   undef,   undef,      "'Low Similarity at Start/End' minimum length is <n>",                      "'Low Similarity at Start/End' minimum length is <n>",                      \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,      "'Low Similarity' (internal) minimum length is <n>",                        "'Low Similarity' (internal) minimum length is <n>",                        \%opt_HH, \@opt_order_A);
 opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "'Biased Sequence' fractional threshold is <x>",                            "'Biased Sequence' fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
@@ -1456,7 +1456,7 @@ sub add_classification_alerts {
        ((defined $cls_results_HHHR->{$seq_name}) &&
         (defined $cls_results_HHHR->{$seq_name}{"r1.1"}) &&
         (! defined $cls_results_HHHR->{$seq_name}{"r2.bs"}))) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_noa", $seq_name, "-", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_noa", $seq_name, "VADRNULL", $FH_HR);
     }
     else { 
       if(! defined $cls_results_HHHR->{$seq_name}{"r1.1"}) { 
@@ -1586,7 +1586,7 @@ sub add_classification_alerts {
       
         # minus strand (c_mst)
         if($cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"} eq "-") { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_mst", $seq_name, "", $FH_HR);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_mst", $seq_name, "VADRNULL", $FH_HR);
         }
 
         # low coverage (c_loc)
@@ -2783,7 +2783,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             # feature is not 5' truncated, look for a start codon if it's a CDS
             if($ftr_is_cds) { 
               if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
-                $alt_str_H{"n_str"} = "";
+                $alt_str_H{"n_str"} = "VADRNULL";
               }
             }
           }
@@ -2840,7 +2840,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                         # or we checked the sequence but didn't find any
                         # either way, we have a n_nst alert:
                         $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                        $alt_str_H{"n_nst"} = "";
+                        $alt_str_H{"n_nst"} = "VADRNULL";
                       }
                     } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
                     else { 
@@ -2870,7 +2870,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
                  (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
                  (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
               }
             }
           }
@@ -3170,7 +3170,7 @@ sub add_low_similarity_alerts {
                             if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
                                (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
                                (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
-                              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
                             }
                           }
                         }
@@ -3180,15 +3180,15 @@ sub add_low_similarity_alerts {
                 }
               }
               if($nftr_overlap == 0) { # no features overlapped, throw c_lss, c_lse, or c_lsi
-                my $alt_msg = "low similarity region of length $length ($start..$stop)";
+                my $alt_str = "low similarity region of length $length ($start..$stop)";
                 if($is_start) { 
-                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lss", $seq_name, $alt_msg, $FH_HR);
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lss", $seq_name, $alt_str, $FH_HR);
                 }
                 if($is_end) { 
-                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lse", $seq_name, $alt_msg, $FH_HR);
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lse", $seq_name, $alt_str, $FH_HR);
                 }
                 if((! $is_start) && (! $is_end)) { 
-                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lsi", $seq_name, $alt_msg, $FH_HR);
+                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "c_lsi", $seq_name, $alt_str, $FH_HR);
                 }
               }
             }
@@ -3367,7 +3367,7 @@ sub add_blastx_alerts {
             if(defined $n_start) { 
               # check for b_nop
               if(! defined $p_start) { 
-                $alt_str_H{"b_nop"} = "";
+                $alt_str_H{"b_nop"} = "VADRNULL";
               }
               else { 
                 # we have both $n_start and $p_start, we can compare CM and blastx predictions
@@ -3465,7 +3465,7 @@ sub add_blastx_alerts {
                   }
                   # check for 'p_trc': blast predicted truncation
                   if(defined $p_trcstop) { 
-                    $alt_str_H{"p_trc"} = "$p_trcstop";
+                    $alt_str_H{"p_trc"} = "stop codon begins at position(s) $p_trcstop";
                   }
                 }
               }
@@ -3485,7 +3485,7 @@ sub add_blastx_alerts {
                 if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
                    (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
                    (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "", $FH_HR);
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
                 }
               }
             }
@@ -4262,6 +4262,12 @@ sub alert_sequence_instance_add {
   if($alt_info_HHR->{$alt_code}{"pertype"} ne "sequence") { 
     ofile_FAIL("ERROR in $sub_name alert code $alt_code is not a per-sequence alert", 1, $FH_HR);
   }
+  if(! defined $value) { 
+    ofile_FAIL("ERROR in $sub_name, value is undefined", 1, $FH_HR);
+  }
+  if($value eq "") { 
+    ofile_FAIL("ERROR in $sub_name, value is empty string", 1, $FH_HR);
+  }
 
   if(! defined $alt_seq_instances_HHR->{$seq_name}) { 
     %{$alt_seq_instances_HHR->{$seq_name}} = (); 
@@ -4319,6 +4325,12 @@ sub alert_feature_instance_add {
   if($alt_info_HHR->{$alt_code}{"pertype"} ne "feature") { 
     ofile_FAIL("ERROR in $sub_name alert code $alt_code is not a per-feature alert", 1, $FH_HR);
   }
+  if(! defined $value) { 
+    ofile_FAIL("ERROR in $sub_name, value is undefined", 1, $FH_HR);
+  }
+  if($value eq "") { 
+    ofile_FAIL("ERROR in $sub_name, value is empty string", 1, $FH_HR);
+  }
 
   if(! defined $alt_ftr_instances_HHHR->{$seq_name}) { 
     %{$alt_ftr_instances_HHHR->{$seq_name}} = (); 
@@ -4332,7 +4344,7 @@ sub alert_feature_instance_add {
     $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} .= ":VADRSEP:" . $value; 
   }
   else { # if it doesn't already exist (normal case), create it
-    $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} .= $value; 
+    $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} = $value; 
   }
 
   return;
@@ -4455,7 +4467,7 @@ sub alert_add_b_zft {
       } 
     }
     if($seq_nftr == 0) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "b_zft", $seq_name, "", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "b_zft", $seq_name, "VADRNULL", $FH_HR);
     }
   }
 
@@ -4740,7 +4752,7 @@ sub output_tabular {
           if($alt_nseqftr == 0) { 
             $alt_nftr++;
           }
-          my @instance_str_A = ($alt_instance eq "") ? ("") : (split(":VADRSEP:", $alt_instance));
+          my @instance_str_A = split(":VADRSEP:", $alt_instance);
           foreach my $instance_str (@instance_str_A) { 
             $alt_nseqftr++;
             $alt_ct_H{$alt_code}++;
@@ -4748,7 +4760,7 @@ sub output_tabular {
             push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, 
                                 $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                 helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "") ? "" : " [" . $instance_str . "]")]);
+                                $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
             $alt_nprinted++;
           }
         }
@@ -4868,7 +4880,7 @@ sub output_tabular {
                 if($alt_nseqftr == 0) { 
                   $alt_nftr++;
                 }
-                my @instance_str_A = ($alt_instance eq "") ? ("") : (split(":VADRSEP:", $alt_instance));
+                my @instance_str_A = split(":VADRSEP:", $alt_instance);
                 foreach my $instance_str (@instance_str_A) { 
                   $alt_nseqftr++;
                   $alt_ct_H{$alt_code}++;
@@ -4876,7 +4888,7 @@ sub output_tabular {
                   push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
                                       $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                       helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                      $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "") ? "" : " [" . $instance_str . "]")]);
+                                      $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
                   $alt_nprinted++;
                 }
               }
@@ -5353,11 +5365,11 @@ sub output_feature_table {
           if((! $is_duplicate) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
             my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
             if($tmp_str eq "") { 
-              # we didn't have an p_frame value for this CDS, so raise a flag
-              # we check later that if the sequence passes that this flag 
+              # we didn't have a p_frame value for this CDS, so raise a flag
+              # we check later that if the sequence PASSes that this flag 
               # is *NOT* raised, if it is, something went wrong and we die
               $missing_codon_start_flag = 1; 
-              printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
+              # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
             } 
             if($is_5trunc) { # only add the codon_start if we are 5' truncated (and if we're here we're not a duplicate)
               $ftr_out_str .= $tmp_str;
@@ -5808,18 +5820,12 @@ sub helper_ftable_process_sequence_alerts {
     }
     if($do_report) { 
       # we could have more than one instance of this sequence/alert pair
-      my @instance_str_A = ();
-      if($alt_seq_instances_HHR->{$seq_name}{$alt_code} eq "") { 
-        @instance_str_A = ("");
-      }
-      else {
-        @instance_str_A = split(":VADRSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
-      }
+      my @instance_str_A = split(":VADRSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
       foreach my $instance_str (@instance_str_A) { 
         my $alert_str = sprintf("%s: (*sequence*) %s%s", 
                              $alt_info_HHR->{$alt_code}{"sdesc"}, 
                              $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
+                             ($instance_str ne "VADRNULL") ? " [" . $instance_str . "]" : "");
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
@@ -5897,19 +5903,13 @@ sub helper_ftable_process_feature_alerts {
     }
     if($do_report) { 
       # we could have more than one instance of this sequence/feature/alert trio
-      my @instance_str_A = ();
-      if($alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code} eq "") { 
-        @instance_str_A = ("");
-      }
-      else {
-        @instance_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code});
-      }
+      my @instance_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code});
       foreach my $instance_str (@instance_str_A) { 
         my $alert_str = sprintf("%s: (%s) %s%s", 
                              $alt_info_HHR->{$alt_code}{"sdesc"}, 
                              $ftr_info_AHR->[$ftr_idx]{"outname"}, 
                              $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                             ($instance_str ne "") ? " [" . $instance_str . "]" : "");
+                             ($instance_str ne "VADRNULL") ? " [" . $instance_str . "]" : "");
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 

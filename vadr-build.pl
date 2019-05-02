@@ -9,7 +9,6 @@ use Getopt::Long;
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
-use LWP::Simple; 
 
 require "vadr.pm";
 require "epn-options.pm";
@@ -170,8 +169,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.91";
-my $releasedate   = "Apr 2019";
+my $version       = "0.92";
+my $releasedate   = "May 2019";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
