@@ -271,14 +271,12 @@ my $options_okay =
 # options for skipping stages, using earlier results
                 'skipalign'     => \$GetOptions_H{"--skipalign"});
 
-my $total_seconds     = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
-my $executable        = $0;
-my $date              = scalar localtime();
-my $version           = "0.92";
-my $model_version_str = "0p92"; 
-my $qsub_version_str  = "0p92"; 
-my $releasedate       = "May 2019";
-my $pkgname           = "VADR";
+my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $executable    = $0;
+my $date          = scalar localtime();
+my $version       = "0.92";
+my $releasedate   = "May 2019";
+my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
 # it is printed to
@@ -422,7 +420,7 @@ utl_FileValidateExistsAndNonEmpty($fa_file, "input fasta sequence file", undef, 
 
 my $df_model_dir = $env_vadr_model_dir;
 
-my $df_cm_file   = $df_model_dir . "/" . "vadr." . $model_version_str . ".cm";
+my $df_cm_file   = $df_model_dir . "/" . "vadr.cm";
 my $cm_file      = undef;
 if(! opt_IsUsed("-m", \%opt_HH)) { $cm_file = $df_cm_file; }
 else                             { $cm_file = opt_Get("-m", \%opt_HH); }
@@ -436,7 +434,7 @@ for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") {
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
-my $df_modelinfo_file = $df_model_dir . "/" . "vadr." . $model_version_str . ".minfo";
+my $df_modelinfo_file = $df_model_dir . "/" . "vadr.minfo";
 my $modelinfo_file = undef;
 if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
 else                             { $modelinfo_file = opt_Get("-i", \%opt_HH); }
@@ -448,7 +446,7 @@ else { # -i used on the command line
 }
 
 my $qsubinfo_file    = undef;
-my $df_qsubinfo_file = $env_vadr_scripts_dir . "/" . "vadr." . $qsub_version_str . ".qsubinfo";
+my $df_qsubinfo_file = $env_vadr_scripts_dir . "/" . "vadr.qsubinfo";
 if(! opt_IsUsed("-q", \%opt_HH)) { $qsubinfo_file = $df_qsubinfo_file; }
 else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
 
