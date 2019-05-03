@@ -50,9 +50,9 @@ require "epn-utils.pm";
 #    model (supplied via the modelinfo file). 
 #   
 # (4) blastx CDS validation: CDS features are then validated via
-#     blastx by comparing predicted feature spans from (3) to pre-computed
-#     BLAST databases for the model. Alerts can be reported based on
-#     the blast results. 
+#    blastx by comparing predicted feature spans from (3) to pre-computed
+#    BLAST databases for the model. Alerts can be reported based on
+#    the blast results. 
 #
 #######################################################################################
 #
@@ -430,7 +430,7 @@ if(! opt_IsUsed("-m", \%opt_HH)) {
   utl_FileValidateExistsAndNonEmpty($cm_file, "default CM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 else { # -m used on the command line
-  utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -m", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -554,6 +554,7 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Classification: cmsearch round 1
 ####################################
 my $r1_cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
+printf("cm_file: $cm_file\n");
 cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmscan_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
 
 # sort into a new file by score
@@ -3465,7 +3466,7 @@ sub add_blastx_alerts {
                   }
                   # check for 'p_trc': blast predicted truncation
                   if(defined $p_trcstop) { 
-                    $alt_str_H{"p_trc"} = "stop codon begins at position(s) $p_trcstop";
+                    $alt_str_H{"p_trc"} = "stop codon(s) end at position(s) $p_trcstop";
                   }
                 }
               }
