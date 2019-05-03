@@ -470,11 +470,16 @@ sub sqf_GenbankStoreQualifierValue {
   if($value =~ /\:GPSEP\:/) { 
     ofile_FAIL("ERROR in $sub_name, qualifier value $value includes the special string :GPSEP:, this is not allowed", 1, $FH_HR);
   }
+  if($value =~ /^\"GBNULL\"$/) { 
+    ofile_FAIL("ERROR in $sub_name, qualifier value $value is GBNULL, this is not allowed", 1, $FH_HR);
+  }
 
   # remove leading and trailing " in the value, if they exist
   # GenBank format uses "" as a substitute for " in these strings
   $value =~ s/^\"//;
   $value =~ s/\"$//;
+
+  if($value eq "") { $value = "GBNULL"; }
 
   # printf("in $sub_name q: $qualifier v: $value\n");
   if(! defined ($ftr_info_AHR->[$ftr_idx])) { 

@@ -2717,7 +2717,7 @@ sub vdr_ModelInfoFileParse {
       while($line ne "") { 
         if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) { 
           # key   must not include ':' or whitespace
-          # value must begin and end with '"' but otherwise include on '"' characters
+          # value must begin and end with '"' but otherwise include no '"' characters
           my ($key, $value) = ($1, $2);
           if($is_model_line) { 
             if(exists $mdl_info_AHR->[$mdl_idx]{$key}) {

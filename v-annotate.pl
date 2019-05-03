@@ -436,7 +436,7 @@ for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") {
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
-my $df_modelinfo_file = $df_model_dir . "/" . "vadr." . $model_version_str . ".modelinfo";
+my $df_modelinfo_file = $df_model_dir . "/" . "vadr." . $model_version_str . ".minfo";
 my $modelinfo_file = undef;
 if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
 else                             { $modelinfo_file = opt_Get("-i", \%opt_HH); }
@@ -554,7 +554,6 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Classification: cmsearch round 1
 ####################################
 my $r1_cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
-printf("cm_file: $cm_file\n");
 cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmscan_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
 
 # sort into a new file by score
@@ -5361,6 +5360,7 @@ sub output_feature_table {
           if(! $is_cds_or_mp) { 
             $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
           }
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ribosomal_slippage", $qval_sep, $ftr_info_AHR, $FH_HR);
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
           # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
           if((! $is_duplicate) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
@@ -5675,14 +5675,15 @@ sub helper_ftable_add_qualifier_from_ftr_info {
      (defined $ftr_info_AHR->[$ftr_idx]{$key})) { 
     my @qval_A = split($qval_sep, $ftr_info_AHR->[$ftr_idx]{$key});
     foreach my $qval (@qval_A) { 
-      if($qval ne "") { 
-        $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
+      if($qval eq "GBNULL") { 
+        $ret_str .= sprintf("\t\t\t%s\n", $key);
       }
       else { 
-        $ret_str .= sprintf("\t\t\t%s\n", $key);
+        $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
       }
     }
   }
+
   return $ret_str;
 }
 
@@ -5720,7 +5721,12 @@ sub helper_ftable_add_qualifier_from_ftr_results {
      (defined $ftr_results_HAHR->{$seq_name}) && 
      (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]) && 
      (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key})) { 
-    $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key});
+    if($ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key} eq "") { 
+      $ret_str = sprintf("\t\t\t%s\n", $qualifier);
+    }
+    else { 
+      $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key});
+    }
   }
   return $ret_str;
 }

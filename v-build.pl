@@ -95,7 +95,7 @@ opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store
 opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--fskip",      "string",  undef,      $g,    undef,  undef,      "do not store info for feature types in comma separated string <s>",  "do not store info for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception]";
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception,ribosomal_slippage]";
 #     option            type       default  group   requires incompat     preamble-output                                                   help-output    
 opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",        "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",   "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
@@ -343,7 +343,7 @@ process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", \%fdf_
 my %qdf_H   = (); # default qualifiers to keep
 my %qadd_H  = (); # qualifiers to add
 my %qskip_H = (); # qualifiers to skip
-process_add_and_skip_options("type,location,product,gene,exception", "--qadd", "--qskip", \%qdf_H, \%qadd_H, \%qskip_H, \%opt_HH, $FH_HR);
+process_add_and_skip_options("type,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", \%qdf_H, \%qadd_H, \%qskip_H, \%opt_HH, $FH_HR);
 
 # remove all features types we don't want
 my $ftr_idx;
@@ -548,7 +548,7 @@ if(opt_IsUsed("--group", \%opt_HH)) {
     $mdl_info_AH[0]{"subgroup"} = opt_Get("--subgroup", \%opt_HH); 
   }
 }
-my $modelinfo_file  = $out_root . ".modelinfo";
+my $modelinfo_file  = $out_root . ".minfo";
 vdr_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, "VADR 'model info' format file for $mdl_name");
 
