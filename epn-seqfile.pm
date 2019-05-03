@@ -545,7 +545,7 @@ sub sqf_BlastDbProteinCreate {
 #
 #################################################################
 sub sqf_EslTranslateCdsToFastaFile { 
-  my $sub_name = "sqf_EslTranslateCdsTranslateToFastaFile";
+  my $sub_name = "sqf_EslTranslateCdsToFastaFile";
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
