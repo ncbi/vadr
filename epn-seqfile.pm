@@ -343,7 +343,6 @@ sub sqf_GenbankParse {
         }
         elsif($line =~ /^\s+\/([^\s\=]+)$/) { # first token must start with '/'
           my ($save_qualifier, $save_value) = ($1, "");
-          printf("HEYA save_qualifier: $save_qualifier, value: empty\n");
           if(defined $value) { # we are finished with previous value
             sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
             ($qualifier, $value) = (undef, undef);

@@ -385,6 +385,22 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
+# deal with special cases: add some qualifiers based on others 
+# special case 1 of 1: if ribosomal_slippage qualifier exists: create a new "exception" 
+#                      qualifier with value of "ribosomal slippage"
+# (make this more general or a subroutine when new special cases are added)
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
+     (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
+    if(defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"}) { 
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} .= ":GBSEP:" . "ribosomal slippage";
+    }
+    else { 
+      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
+    }
+  }
+}
+
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #####################################################################

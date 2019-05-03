@@ -482,7 +482,7 @@ utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file", undef, 1, 
 vdr_ModelInfoFileParse($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 
 # validate %mdl_info_AH
-my @mdl_reqd_keys_A = ("name", "cmfile", "length");
+my @mdl_reqd_keys_A = ("name", "length");
 my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $modelinfo_file", $FH_HR);
 my $mdl_idx;
 
