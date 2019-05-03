@@ -63,7 +63,7 @@ require "epn-utils.pm";
 # five letter alert 'code'. The list of alert codes is in the
 # vadr.pm perl module file in the subroutine: vdr_AlertInfoInitialize().
 #
-# A table of alerts is output by vadr-annotate.pl when the --alt_list
+# A table of alerts is output by v-annotate.pl when the --alt_list
 # option is used.
 # 
 # List of subroutines in which errors are detected and added:
@@ -212,9 +212,9 @@ opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: vadr-annotate.pl [-options] <fasta file to annotate> <output directory to create>\n";
+my $usage    = "Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>\n";
 $usage      .= "\n";
-my $synopsis = "vadr-annotate.pl :: classify and annotate sequences using a CM library";
+my $synopsis = "v-annotate.pl :: classify and annotate sequences using a CM library";
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
@@ -314,7 +314,7 @@ if(opt_IsUsed("--alt_list",\%opt_HH)) {
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do vadr-annotate.pl -h\n\n";
+  print "\nTo see more help on available options, do v-annotate.pl -h\n\n";
   exit(1);
 }
 

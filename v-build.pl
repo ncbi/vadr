@@ -130,8 +130,8 @@ opt_Add("--sgminfo",    "boolean", 0,         $g,    undef,     undef,    "outpu
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: vadr-build.pl [-options] <accession> <path to output directory to create>\n";
-my $synopsis = "vadr-build.pl :: build homology model of a single sequence for feature annotation";
+my $usage    = "Usage: v-build.pl [-options] <accession> <path to output directory to create>\n";
+my $synopsis = "v-build.pl :: build homology model of a single sequence for feature annotation";
 
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
@@ -185,7 +185,7 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do vadr-build.pl -h\n\n";
+  print "\nTo see more help on available options, do v-build.pl -h\n\n";
   exit(1);
 }
 my ($mdl_name, $dir) = (@ARGV);
