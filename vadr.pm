@@ -2632,13 +2632,14 @@ sub vdr_ModelInfoFileWrite {
 #           feature information for each model $model in 
 #           @{$ftr_info_HAHR->{$model}}.
 #
-#           The following keys must be defined for all features:
-#             "type":   feature type, e.g. "mat_peptide", "CDS"
-#             "coords": coordinates for this feature in the reference
-#           We verify this at end of subroutine
+#           This subroutine validates that keys in @{$reqd_mdl_keys_AR}
+#           are read and stored in $mdl_info_AHR, and that keys in 
+#           @{$reqd_ftr_keys_AR} are read and stored in $ftr_info_HAHR.
 # 
 # Arguments:
 #  $in_file:          input .minfo file to parse
+#  $reqd_mdl_keys_AR: REF to array of required model   keys, e.g. ("name", "length")
+#  $reqd_ftr_keys_AR: REF to array of required feature keys, e.g. ("type", "coords")
 #  $mdl_info_AHR:     REF to array of hashes of model information, filled here
 #  $ftr_info_HAHR:    REF to hash of array of hashes with information 
 #                     on the features per model, filled here
@@ -2647,14 +2648,14 @@ sub vdr_ModelInfoFileWrite {
 # Returns:    void
 #
 # Dies:       if unable to parse $in_file
-#             if a feature is defined without "type" or "coords" keys
+#             if a required mdl or ftr key does not exist
 #################################################################
 sub vdr_ModelInfoFileParse {
   my $sub_name = "vdr_ModelInfoFileParse";
-  my $nargs_expected = 4;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($in_file, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
+  my ($in_file, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
   
   my $format_str = "# VADR model info (.minfo) format specifications:\n";
   $format_str   .= "# Lines prefixed with '#' are ignored.\n";
@@ -2743,20 +2744,93 @@ sub vdr_ModelInfoFileParse {
   close(IN);
 
   # verify we read what we need
-  my @reqd_mdl_keys_A = ("name", "length");
-  my @reqd_ftr_keys_A = ("type", "coords");
-  utl_AHValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
+  utl_AHValidate($mdl_info_AHR, $reqd_mdl_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    utl_AHValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+    utl_AHValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
-  # verify feature coords make sense
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    vdr_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoMerge()
+# Incept:     EPN, Sun May  5 10:32:40 2019
+#
+# Synopsis: Add info in one feature information arrays to another
+#           after validating that they can be merged.
+#
+#           Features to be merged are identified as "consistent"
+#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
+#           defined as those for which there is a subset of >=1
+#           features that are in common (identical qualifier name and
+#           value) between the two.
+#
+#           If any "inconsistent" features are identified between
+#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
+#           die. "Inconsistent" features are those for which a subset
+#           of >=1 qualifiers have identical values but another subset
+#           of >=1 qualifiers have different values.
+# 
+# Arguments:
+#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
+#                       add to $
+#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
+#                    on the features to add to  $ftr_info1_HAHR
+#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if something is inconsistent between the two mdl_info_AHRs or
+#             ftr_info_HAHRs that prevent merging
+#################################################################
+sub vdr_FeatureInfoMerge { 
+  my $sub_name = "vdr_FeatureInfoMerge";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $src_nftr = scalar(@{$src_ftr_info_AHR});
+  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
+  my $src_ftr_key;
+  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
+    my $found_consistent = 0;
+    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
+      my $nconsistent   = 0;
+      my $ninconsistent = 0;
+      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
+             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $nconsistent++;
+          }
+          else { 
+            $ninconsistent++;
+          }
+        }
+      }
+      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
+        # we found a match, merge them
+        if($found_consistent) { 
+          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+        }
+        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
+                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
+          }
+        }
+        $found_consistent = 1;
+      }
+    }
+    if(! $found_consistent) { 
+      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
+    }
   }
+
   return;
 }
 

@@ -44,6 +44,8 @@ my $env_vadr_blast_dir    = utl_DirEnvVarValid("VADRBLASTDIR");
 my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 
+
+# make sure the required executables exist and are executable
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
 $execs_H{"cmpress"}       = $env_vadr_infernal_dir . "/cmpress";
@@ -87,6 +89,7 @@ opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forci
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--addminfo",   "string",  undef,      $g,    undef,  undef,      "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
@@ -140,6 +143,7 @@ my $options_okay =
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
                 'gb=s'         => \$GetOptions_H{"--gb"},
+                'addminfo=s'   => \$GetOptions_H{"--addminfo"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # options for controlling what feature types are stored in model info file
                 'fall'         => \$GetOptions_H{"--fall"},
@@ -284,15 +288,29 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-#############################################################
-# make sure the required executables exist and are executable
-#############################################################
+#######################################################
+# Parse the input minfo file if --addminfo file is used
+#######################################################
+my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $start_secs;
+my $addminfo_file = opt_Get("--addminfo", \%opt_HH);
+my @add_mdl_info_AH  = ();
+my %add_ftr_info_HAH = ();
+
+if(defined $addminfo_file) { 
+  $start_secs = ofile_OutputProgressPrior("Processing --addminfo option", $progress_w, $log_FH, *STDOUT);
+
+  my @reqd_mdl_keys_A = ("name");
+  my @reqd_ftr_keys_A = ("type");
+  utl_FileValidateExistsAndNonEmpty($addminfo_file, "--addminfo file", undef, 1, $FH_HR);
+  vdr_ModelInfoFileParse($addminfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@add_mdl_info_AH, \%add_ftr_info_HAH, $FH_HR);
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
 
 ###########################################
 # Fetch the genbank file (if --gb not used)
 ###########################################
-my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
-my $start_secs;
 my $gb_file = undef;
 if(opt_IsUsed("--gb", \%opt_HH)) { 
   $gb_file = opt_Get("--gb", \%opt_HH);
@@ -400,8 +418,21 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
     }
   }
 }
-
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###############################################
+# Add in features read from --addminfo if used
+###############################################
+# if --addminfo was used, add the feature info read from that file
+if(defined $addminfo_file) { 
+  $start_secs = ofile_OutputProgressPrior("Adding feature info read from --addminfo file", $progress_w, $log_FH, *STDOUT);
+  if(! defined $add_ftr_info_HAH{$mdl_name}) { 
+    ofile_FAIL("ERROR with --addminfo <s>, <s> must include model $mdl_name, but it does not", 1, $FH_HR);
+  }
+  vdr_FeatureInfoMerge(\@{$add_ftr_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
 
 #####################################################################
 # Parse the input stockholm file (if --stk) or create it (if ! --stk)

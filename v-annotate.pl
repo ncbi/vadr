@@ -476,13 +476,20 @@ my @mdl_info_AH  = (); # array of hashes with model info
 my %ftr_info_HAH = (); # hash of array of hashes with feature info 
 my %sgm_info_HAH = (); # hash of array of hashes with segment info 
 
+my @reqd_mdl_keys_A = ("name", "length");
+my @reqd_ftr_keys_A = ("type", "coords");
 utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file", undef, 1, $FH_HR);
-vdr_ModelInfoFileParse($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+vdr_ModelInfoFileParse($modelinfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 
 # validate %mdl_info_AH
 my @mdl_reqd_keys_A = ("name", "length");
 my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $modelinfo_file", $FH_HR);
 my $mdl_idx;
+# verify feature coords make sense
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  vdr_FeatureInfoValidateCoords(\%{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
+}
 
 # if --group or --subgroup used, make sure at least one model has that group/subgroup
 my $exp_group    = opt_Get("--group", \%opt_HH);
