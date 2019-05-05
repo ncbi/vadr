@@ -487,7 +487,7 @@ my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model
 my $mdl_idx;
 # verify feature coords make sense
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   vdr_FeatureInfoValidateCoords(\%{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
 }
 
