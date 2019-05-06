@@ -12,14 +12,24 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/dengue.r5.fa --dirbuild !dirbuild! --dirout dt-dengue.r5 > dt-dengue.r5.out
-desc: classify-dengue-5-parallel
-out: dt-dengue.r5/dt-dengue.r5-NC_001474/dt-dengue.r5-NC_001474.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r5/dt-dengue.r5-NC_001474/dt-dengue.r5-NC_001474.dnaorg_annotate.af.sqtable 
-out: dt-dengue.r5/dt-dengue.r5-NC_001477/dt-dengue.r5-NC_001477.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r5/dt-dengue.r5-NC_001477/dt-dengue.r5-NC_001477.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001474.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001474.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001477.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r5/dt-dengue.r5-NC_001477.dnaorg_annotate.af.sqtable 
-rmdir: dt-dengue.r5
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -p -f $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue.r5 > va-dengue.r5.out
+desc: annotate-noro-10-local
+out: va-dengue.r5/va-dengue.r5.vadr.pass.sqtable 
+out: va-dengue.r5/va-dengue.r5.vadr.fail.sqtable 
+out: va-dengue.r5/va-dengue.r5.vadr.sqa.tbl
+out: va-dengue.r5/va-dengue.r5.vadr.sqc.tbl
+out: va-dengue.r5/va-dengue.r5.vadr.ftr.tbl
+out: va-dengue.r5/va-dengue.r5.vadr.sgm.tbl
+out: va-dengue.r5/va-dengue.r5.vadr.mdl.tbl
+out: va-dengue.r5/va-dengue.r5.vadr.alt.tbl
+out: va-dengue.r5/va-dengue.r5.vadr.alc.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.sqtable 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.sqtable 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sqa.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sqc.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.ftr.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sgm.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.mdl.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alt.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alc.tbl
+rmdir: va-dengue.r5
