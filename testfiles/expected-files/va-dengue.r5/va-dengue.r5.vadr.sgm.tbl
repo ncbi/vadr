@@ -7,7 +7,7 @@
 #
 2.1.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  gene         POLY                                   3    1    1     1  2325    97   2421  2325    +  3'     0.975      -  no   yes
 2.2.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  CDS          polyprotein                            4    1    1     1  2325    97   2421  2325    +  3'     0.975      -  no   yes
-2.3.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  mat_peptide  anchored_capsid_protein_C              5    1    1     1   342    97    438   342    +  no     0.975  0.975  no   no 
+2.3.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC           5    1    1     1   342    97    438   342    +  no     0.975  0.975  no   no 
 2.4.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  mat_peptide  capsid_protein_C                       6    1    1     1   300    97    396   300    +  no     0.975  0.975  no   no 
 2.5.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM    7    1    1   343   840   439    936   498    +  no     0.975  0.975  no   no 
 2.6.1  gi|1126644957|gb|KX577695.1|  2325  PASS  NC_001474  mat_peptide  protein_pr                             8    1    1   343   615   439    711   273    +  no     0.975  0.975  no   no 
@@ -17,7 +17,7 @@
 #
 3.1.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  gene         POLY                                   3    1    1     1  2325    97   2421  2325    +  3'     0.975      -  no   yes
 3.2.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  CDS          polyprotein                            4    1    1     1  2325    97   2421  2325    +  3'     0.975      -  no   yes
-3.3.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  anchored_capsid_protein_C              5    1    1     1   342    97    438   342    +  no     0.975  0.975  no   no 
+3.3.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC           5    1    1     1   342    97    438   342    +  no     0.975  0.975  no   no 
 3.4.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  capsid_protein_C                       6    1    1     1   300    97    396   300    +  no     0.975  0.975  no   no 
 3.5.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM    7    1    1   343   840   439    936   498    +  no     0.975  0.975  no   no 
 3.6.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  protein_pr                             8    1    1   343   615   439    711   273    +  no     0.975  0.975  no   no 
