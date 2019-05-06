@@ -1441,7 +1441,7 @@ sub utl_FileCountLines {
   my ($filename, $FH_HR) = @_;
 
   my $nlines = 0;
-  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $filename) || ofile_FileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
   while(<IN>) { 
     $nlines++;
   }
@@ -1474,7 +1474,7 @@ sub utl_FileLinesToArray {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($filename, $remove_trailing_whitespace, $AR, $FH_HR) = @_;
 
-  open(IN, $filename) || fileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $filename) || ofile_FileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
     if($line =~ /\S/) { 
       chomp $line;
@@ -1753,7 +1753,7 @@ sub utl_FileMd5 {
   my $out_file = removeDirPath($file . ".md5sum");
   utl_RunCommand("md5sum $file > $out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
-  open(MD5, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
+  open(MD5, $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
   #194625f7c3e2a5129f9880c7e29f63de  wnv.lin2.matpept.in
   my $md5sum = <MD5>;
   chomp $md5sum;
