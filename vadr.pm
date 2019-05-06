@@ -2472,7 +2472,7 @@ sub vdr_EutilsFetchToFile {
     ofile_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
   }
 
-  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
   print OUT $fetched_str;
   close(OUT);
 
@@ -2559,7 +2559,7 @@ sub vdr_ModelInfoFileWrite {
   }
 
   # output 
-  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     print OUT ("MODEL $mdl_name");
@@ -2680,7 +2680,7 @@ sub vdr_ModelInfoFileParse {
   my $ftr_idx    = undef; # index of current feature
   my $mdl_idx    = -1;    # index of current model
   my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
-  open(IN, $in_file) || fileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
     if($line !~ /^#/) { 
       # not a comment line
