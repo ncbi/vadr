@@ -31,7 +31,7 @@ viruses.)
 authors: Eric Nawrocki and Alejandro Schaffer
 contact: eric.nawrocki@nih.gov
 
-Git repository for dnaorg_scripts:
+Git repository for vadr:
 https://github.com/nawrockie/vadr.git
 
 (To be automatically updated about new releases, you can become a
