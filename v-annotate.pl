@@ -166,7 +166,7 @@ $opt_group_desc_H{++$g} = "options for tuning classification alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                             help-output    
 opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "'Low Coverage' fractional coverage threshold is <x>",                      "'Low Coverage' fractional coverage threshold is <x>",                      \%opt_HH, \@opt_order_A);
 opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "'Low Score' bits per nucleotide threshold is <x>",                         "'Low Score' bits per nucleotide threshold is <x>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimterm", "integer",   5,                    $g,   undef,   undef,      "'Low Similarity at Start/End' minimum length is <n>",                      "'Low Similarity at Start/End' minimum length is <n>",                      \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimterm", "integer",   10,                    $g,   undef,   undef,      "'Low Similarity at Start/End' minimum length is <n>",                      "'Low Similarity at Start/End' minimum length is <n>",                      \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,      "'Low Similarity' (internal) minimum length is <n>",                        "'Low Similarity' (internal) minimum length is <n>",                        \%opt_HH, \@opt_order_A);
 opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "'Biased Sequence' fractional threshold is <x>",                            "'Biased Sequence' fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
@@ -3101,10 +3101,6 @@ sub add_low_similarity_alerts {
   my $terminal_min_length = opt_Get("--lowsimterm",  $opt_HHR); # minimum length of terminal missing region that triggers an alert
   my $internal_min_length = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
 
-  # get children info for all features, we'll use this in the loop below
-  my @children_AA = ();
-  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
-
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
     my $seq_len  = $seq_len_HR->{$seq_name};
@@ -3149,7 +3145,7 @@ sub add_low_similarity_alerts {
               my $nftr_overlap = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
                 if(! vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
-                  my $ftr_is_cds = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+                  my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
                   my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
                   if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
                     my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
@@ -3165,25 +3161,18 @@ sub add_low_similarity_alerts {
                       ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
                       if($noverlap > 0) { 
                         $nftr_overlap++;
-                        my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
-                        if($is_start) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fss", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
-                        if($is_end) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fse", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
-                        if((! $is_start) && (! $is_end)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fsi", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
-                        my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
-                        if(($ftr_is_cds) && ($ftr_nchildren > 0)) {
-                          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-                            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                            if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
-                               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
-                               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
-                              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
-                            }
+                        # only actually report an alert for non-CDS and non-MP features
+                        # because CDS and MP are independently validated by blastx
+                        if(! $ftr_is_cds_or_mp) { 
+                          my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                          if($is_start) { 
+                            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fss", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                          }
+                          if($is_end) { 
+                            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fse", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                          }
+                          if((! $is_start) && (! $is_end)) { 
+                            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fsi", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                           }
                         }
                       }
