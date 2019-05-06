@@ -304,7 +304,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 my %alt_info_HH = (); 
 vdr_AlertInfoInitialize(\%alt_info_HH, undef);
 if(opt_IsUsed("--alt_list",\%opt_HH)) { 
-  alert_list_option(\%alt_info_HH);
+  alert_list_option(\%alt_info_HH, $pkgname, $version, $releasedate);
   exit 0;
 }
 
@@ -318,9 +318,6 @@ if(scalar(@ARGV) != 2) {
 
 my ($fa_file, $dir) = (@ARGV);
 
-############################################################
-# option checks that are too sophisticated for epn-options
-############################################################
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
@@ -791,8 +788,8 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc_tbl",      $out_root . ".
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".pass.sqtable",        1, "Sequin feature table output for passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".fail.sqtable",        1, "Sequin feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.seqlist",        1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.seqlist",        1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.seq.list",       1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.seq.list",       1, "list of failing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",            1, "list of alerts in the feature tables");
 
 ########################
@@ -4007,6 +4004,9 @@ sub helper_blastx_db_seqname_to_ftr_idx {
 #
 # Arguments: 
 #  $alt_info_HHR:  REF to the alert info hash of arrays, PRE-FILLED
+#  $pkgname:       package name ("VADR"
+#  $version:       version
+#  $releasedate:   release date
 #
 # Returns:    void
 #
@@ -4015,10 +4015,10 @@ sub helper_blastx_db_seqname_to_ftr_idx {
 #################################################################
 sub alert_list_option { 
   my $sub_name = "alert_list_option()"; 
-  my $nargs_exp = 1;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($alt_info_HHR) = @_;
+  my ($alt_info_HHR, $pkgname, $version, $releasedate) = @_;
   
   my $div_line = utl_StringMonoChar(60, "#", undef) . "\n";
   
@@ -4037,6 +4037,8 @@ sub alert_list_option {
   @{$head_AA[1]} = ("idx", "code",   "description", "description");
 
   push(@bcom_A, $div_line);
+  push(@bcom_A, "#\n");
+  push(@bcom_A, "# $pkgname $version ($releasedate)\n");
   push(@bcom_A, "#\n");
   push(@bcom_A, "# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
   push(@bcom_A, "# listed in --alt_pass or --alt_fail option strings:\n#\n");
