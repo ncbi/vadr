@@ -12,18 +12,24 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl --local -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.r10.fa --dirbuild !dirbuild! --dirout dt-noro.r10 > dt-noro.r10.out
-desc: classify-noro-10-local
-out: dt-noro.r10/dt-noro.r10-NC_029646/dt-noro.r10-NC_029646.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r10/dt-noro.r10-NC_029646/dt-noro.r10-NC_029646.dnaorg_annotate.af.sqtable 
-out: dt-noro.r10/dt-noro.r10-NC_039476/dt-noro.r10-NC_039476.dnaorg_annotate.ap.sqtable
-out: dt-noro.r10/dt-noro.r10-NC_039476/dt-noro.r10-NC_039476.dnaorg_annotate.af.sqtable
-out: dt-noro.r10/dt-noro.r10-NC_039477/dt-noro.r10-NC_039477.dnaorg_annotate.ap.sqtable
-out: dt-noro.r10/dt-noro.r10-NC_039477/dt-noro.r10-NC_039477.dnaorg_annotate.af.sqtable
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r10/dt-noro.r10-NC_029646.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r10/dt-noro.r10-NC_029646.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r10/dt-noro.r10-NC_039476.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r10/dt-noro.r10-NC_039476.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r10/dt-noro.r10-NC_039477.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r10/dt-noro.r10-NC_039477.dnaorg_annotate.af.sqtable 
-rmdir: dt-noro.r10
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro.r10 > va-noro.r10.out
+desc: annotate-noro-10-local
+out: va-noro.r10/va-noro.r10.vadr.pass.sqtable 
+out: va-noro.r10/va-noro.r10.vadr.fail.sqtable 
+out: va-noro.r10/va-noro.r10.vadr.sqa.tbl
+out: va-noro.r10/va-noro.r10.vadr.sqc.tbl
+out: va-noro.r10/va-noro.r10.vadr.ftr.tbl
+out: va-noro.r10/va-noro.r10.vadr.sgm.tbl
+out: va-noro.r10/va-noro.r10.vadr.mdl.tbl
+out: va-noro.r10/va-noro.r10.vadr.alt.tbl
+out: va-noro.r10/va-noro.r10.vadr.alc.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass.sqtable 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.sqtable 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.sqa.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.sqc.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.ftr.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.sgm.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.mdl.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alt.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alc.tbl
+rmdir: va-noro.r10

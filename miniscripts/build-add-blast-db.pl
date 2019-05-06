@@ -27,8 +27,8 @@ require "epn-ofile.pm";
 # first, determine the paths to all modules, scripts and executables that we'll need
 
 # make sure the DNAORGDIR environment variable is set
-my $env_dnaorgdir      = dng_VerifyEnvVariableIsValidDir("DNAORGDIR");
-my $env_dnaorgblastdir = dng_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_dnaorgdir      = vdr_VerifyEnvVariableIsValidDir("DNAORGDIR");
+my $env_dnaorgblastdir = vdr_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
 
 my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
 my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
@@ -84,9 +84,9 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.45x";
-my $releasedate   = "Feb 2019";
-my $pkgname       = "dnaorg";
+my $version       = "0.92";
+my $releasedate   = "May 2019";
+my $pkgname       = "VADR";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -136,9 +136,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
  # open the log and command files 
-#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "log", $out_root . ".log", 1, "Output printed to screen");
-#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cmd", $out_root . ".cmd", 1, "List of executed commands");
-#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "list", $out_root . ".list", 1, "List and description of all output files");
+#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
+#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
+#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
 #my $log_FH = $ofile_info_HH{"FH"}{"log"};
 #my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -152,7 +152,7 @@ my %execs_H = (); # hash with paths to all required executables
 $execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
 $execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
 $execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
-dng_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
+vdr_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
 
 ###########################
 # Parse the model info file
@@ -163,20 +163,20 @@ my %ftr_info_HAH = (); # hash of array of hashes with feature info
 my $progress_w = 50;
 my $start_secs = ofile_OutputProgressPrior("Parsing input model info file", $progress_w, undef, *STDOUT);
 
-dng_ValidateFileExistsAndIsNonEmpty($in_minfo_file, "model info file", undef, 1, $FH_HR);
-dng_ModelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+utl_FileValidateExistsAndNonEmpty($in_minfo_file, "model info file", undef, 1, $FH_HR);
+vdr_ModelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 # ensure we read info only a single model from the input file
-if(scalar(@mdl_info_AH) == 0) { ofile_FAIL("ERROR did not read info for any models in $in_minfo_file", "dnaorg", 1, $FH_HR); }
-if(scalar(@mdl_info_AH) > 1)  { ofile_FAIL("ERROR read info for multiple models in $in_minfo_file, it must have info for only 1 model", "dnaorg", 1, $FH_HR); }
+if(scalar(@mdl_info_AH) == 0) { ofile_FAIL("ERROR did not read info for any models in $in_minfo_file", 1, $FH_HR); }
+if(scalar(@mdl_info_AH) > 1)  { ofile_FAIL("ERROR read info for multiple models in $in_minfo_file, it must have info for only 1 model", 1, $FH_HR); }
 if(! defined $mdl_info_AH[0]{"name"}) { 
-  ofile_FAIL("ERROR did not read name of model in $in_minfo_file", "dnaorg", 1, $FH_HR);
+  ofile_FAIL("ERROR did not read name of model in $in_minfo_file", 1, $FH_HR);
 }
 my $mdl_name = $mdl_info_AH[0]{"name"};
 my $mdl_len  = $mdl_info_AH[0]{"length"};
 
-my $ncds = dng_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
+my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 if($ncds == 0) { 
-  ofile_FAIL("ERROR did not read any CDS features in model info file $in_minfo_file", "dnaorg", 1, $FH_HR);
+  ofile_FAIL("ERROR did not read any CDS features in model info file $in_minfo_file", 1, $FH_HR);
 }
 
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
@@ -191,12 +191,12 @@ $start_secs  = ofile_OutputProgressPrior("Validating input Stockholm file", $pro
 my $stk_mdl_len = stockholm_validate_input($in_stk_file, \%opt_HH, $FH_HR);
 if($stk_mdl_len != $mdl_len) { 
   ofile_FAIL(sprintf("ERROR, model length inferred from stockholm alignment ($stk_mdl_len) does not match length read from %s ($mdl_len)", 
-                      (opt_IsUsed("-m", \%opt_HH) ? "model info file" : "GenBank file")), "dnaorg", 1, $FH_HR);
+                      (opt_IsUsed("-m", \%opt_HH) ? "model info file" : "GenBank file")), 1, $FH_HR);
 }
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
   
 $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, undef, *STDOUT);
-dng_FastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $in_stk_file, \%opt_HH, $FH_HR);
+vdr_FastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $in_stk_file, \%opt_HH, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
@@ -207,11 +207,11 @@ my @sgm_info_AH = (); # segment info, inferred from feature info
 
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, undef, *STDOUT);
 
-dng_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-dng_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
-dng_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
@@ -221,17 +221,17 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, undef, *STDOUT);
 
 my $cds_fa_file  = $out_root . ".cds.fa";
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
-dng_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $in_stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $in_stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 close $ofile_info_HH{"FH"}{"cdsfasta"};
 
 my $protein_fa_file  = $out_root . ".protein.fa";
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, $pkgname, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
-dng_CdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+vdr_CdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                         $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
 close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-dng_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+vdr_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
 # add to mdl_info_AH
 $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
@@ -249,11 +249,11 @@ $start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w,
 my $out_minfo_file   = $out_root . ".modelinfo";
 if($in_minfo_file eq $out_minfo_file) { 
   my $old_minfo_file = $in_minfo_file . ".old";
-  dng_RunCommand("cp $in_minfo_file " . $in_minfo_file . ".old", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "oldminfo", $old_minfo_file, 1, "Copy of input model info file");
+  vdr_RunCommand("cp $in_minfo_file " . $in_minfo_file . ".old", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "oldminfo", $old_minfo_file, 1, "Copy of input model info file");
 }  
-dng_ModelInfoFileWrite($out_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $pkgname, "outminfo", $out_minfo_file, 1, "Output model info file with blastdb added");
+vdr_ModelInfoFileWrite($out_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "outminfo", $out_minfo_file, 1, "Output model info file with blastdb added");
 
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
@@ -262,7 +262,7 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 ##########
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $pkgname, "", \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFiles($total_seconds, "", \%ofile_info_HH);
 exit 0;
 
 #################################################################
@@ -292,26 +292,26 @@ sub stockholm_validate_input {
 
   my ($in_stk_file, $opt_HHR, $FH_HR) = @_;
 
-  if(! -e $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", "dnaorg", 1, $FH_HR); }
-  if(! -s $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", "dnaorg", 1, $FH_HR); }
-  if(  -d $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", "dnaorg", 1, $FH_HR); }
+  if(! -e $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file does not exist", 1, $FH_HR); }
+  if(! -s $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file exists but is empty", 1, $FH_HR); }
+  if(  -d $in_stk_file) { ofile_FAIL("ERROR, --stk enabled, stockholm file $in_stk_file is actually a directory", 1, $FH_HR); }
   my $msa = Bio::Easel::MSA->new({ fileLocation => $in_stk_file, isDna => 1});
   my $nseq = $msa->nseq;
   if($nseq > 1) { 
     # multiple sequences in the alignment
     # this only works if the alignment has RF annotation
     if(! $msa->has_rf) { 
-      ofile_FAIL("ERROR, read more than 1 ($nseq) sequences in --stk file $in_stk_file, this is only allowed ifalignment has RF annotation (cmbuild -O will give you this)", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR, read more than 1 ($nseq) sequences in --stk file $in_stk_file, this is only allowed ifalignment has RF annotation (cmbuild -O will give you this)", 1, $FH_HR);
     }
   }
   elsif($nseq == 1) { 
     # a single sequence in the alignment, it must have zero gaps
     if($msa->any_allgap_columns) { 
-      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR, read 1 sequence in --stk file $in_stk_file, but it has gaps, this is not allowed for single sequence 'alignments' (remove gaps with 'esl-reformat --mingap')", 1, $FH_HR);
     }
   }
   else { # nseq == 0
-    ofile_FAIL("ERROR, did not read any sequence data in --stk file $in_stk_file", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR, did not read any sequence data in --stk file $in_stk_file", 1, $FH_HR);
   }
 
   # determine return value

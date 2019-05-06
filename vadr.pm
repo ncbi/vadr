@@ -1,15 +1,15 @@
 #!/usr/bin/perl
 # 
-# version: 0.91 [Apr 2019]
+# version: 0.92 [May 2019]
 #
-# dnaorg.pm
+# vadr.pm
 # Eric Nawrocki
 # EPN, Mon Feb  1 15:23:00 2016
 # 
 # Some subroutines are taken from rnavore.pm [EPN, Tue Sep 23 09:22:55 2014]
 # and ssu.pm [EPN, Thu Nov  5 05:39:37 2009].
 #
-# Perl module used by dnaorg_build.pl and dnaorg_annotate.pl scripts
+# Perl module used by vadr-build.pl and vadr-annotate.pl scripts
 # which contains subroutines called by both of those scripts.
 #
 #########################
@@ -44,70 +44,76 @@
 use strict;
 use warnings;
 use Cwd;
+use LWP::Simple; 
 
 #########################################################################################
 #
 # Subroutines related to features or segments:
-# dng_FeatureInfoImputeCoords
-# dng_FeatureInfoImputeLength
-# dng_FeatureInfoImputeSourceIdx
-# dng_FeatureInfoImputeParentIdx
-# dng_FeatureInfoImputeOutname()
-# dng_FeatureInfoImpute3paFtrIdx
-# dng_FeatureInfoStartStopStrandArrays()
-# dng_FeatureInfoCountType
-# dng_FeatureInfoValidateCoords
-# dng_FeatureInfoChildrenArrayOfArrays()
+# vdr_FeatureInfoImputeCoords
+# vdr_FeatureInfoImputeLength
+# vdr_FeatureInfoImputeSourceIdx
+# vdr_FeatureInfoImputeParentIndices
+# vdr_FeatureInfoImputeOutname()
+# vdr_FeatureInfoImpute3paFtrIdx
+# vdr_FeatureInfoStartStopStrandArrays()
+# vdr_FeatureInfoCountType
+# vdr_FeatureInfoValidateCoords
+# vdr_FeatureInfoChildrenArrayOfArrays()
 #
-# dng_SegmentInfoPopulate()
+# vdr_SegmentInfoPopulate()
 # 
-# dng_FeatureTypeAndTypeIndexString()
-# dng_FeatureTypeIsCds()
-# dng_FeatureTypeIsMatPeptide()
-# dng_FeatureTypeIsGene()
-# dng_FeatureTypeIsCdsOrMatPeptide()
-# dng_FeatureTypeIsCdsOrMatPeptideOrGene()
-# dng_FeatureChildrenArray()
-# dng_FeatureNumSegments()
-# dng_FeatureIsDuplicate()
-# dng_Feature5pMostPosition()
-# dng_Feature3pMostPosition()
-# dng_FeatureSummarizeSegment()
-# dng_FeatureStartStopStrandArrays()
-# dng_FeatureSummaryStrand
-# dng_FeaturePositionSpecificValueBreakdown()
+# vdr_FeatureTypeAndTypeIndexString()
+# vdr_FeatureTypeIsCds()
+# vdr_FeatureTypeIsMatPeptide()
+# vdr_FeatureTypeIsGene()
+# vdr_FeatureTypeIsCdsOrMatPeptide()
+# vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
+# vdr_FeatureChildrenArray()
+# vdr_FeatureNumSegments()
+# vdr_FeatureIsDuplicate()
+# vdr_Feature5pMostPosition()
+# vdr_Feature3pMostPosition()
+# vdr_FeatureSummarizeSegment()
+# vdr_FeatureStartStopStrandArrays()
+# vdr_FeatureSummaryStrand
+# vdr_FeaturePositionSpecificValueBreakdown()
 # 
 # Subroutines related to alerts:
-# dng_AlertInfoInitialize()
-# dng_AlertInfoAdd()
-# dng_AlertInfoSetFTableInvalidatedBy
+# vdr_AlertInfoInitialize()
+# vdr_AlertInfoAdd()
+# vdr_AlertInfoSetFTableInvalidatedBy
 # 
 # Subroutines related to parallelization on the compute farm:
-# dng_SubmitJob()
-# dng_WaitForFarmJobsToFinish()
+# vdr_SubmitJob()
+# vdr_WaitForFarmJobsToFinish()
 #
 # Subroutines related to sequence and model coordinates: 
-# dng_CoordsTokenParse()
-# dng_CoordsLength()
-# dng_CoordsFromLocation()
-# dng_CoordsComplement()
+# vdr_CoordsTokenParse()
+# vdr_CoordsTokenCreate()
+# vdr_CoordsLength()
+# vdr_CoordsFromLocation()
+# vdr_CoordsFromLocationWithCarrots()
+# vdr_CoordsComplement()
+# vdr_CoordsComplementWithCarrots()
+# vdr_CoordsMin()
+# vdr_CoordsMax()
+# vdr_CoordsMissing()
 #
 # Subroutines related to eutils:
-# dng_EutilsFetchToFile()
-# dng_EutilsFetchUrl()
+# vdr_EutilsFetchToFile()
+# vdr_EutilsFetchUrl()
 # 
 # Subroutines related to model info files:
-# dng_ModelInfoFileWrite()
-# dng_ModelInfoFileParse()
+# vdr_ModelInfoFileWrite()
+# vdr_ModelInfoFileParse()
 # 
 # Miscellaneous subroutines:
-# dng_SplitFastaFile()
-# dng_SplitNumSeqFiles()
-# dng_CdsFetchStockholmToFasta()
-# dng_StripVersion()
+# vdr_SplitFastaFile()
+# vdr_SplitNumSeqFiles()
+# vdr_CdsFetchStockholmToFasta()
 #
 #################################################################
-# Subroutine: dng_FeatureInfoImputeCoords
+# Subroutine: vdr_FeatureInfoImputeCoords
 # Incept:     EPN, Wed Mar 13 13:15:33 2019
 # 
 # Purpose:    Fill "coords" values in %{$ftr_info_AHR}
@@ -121,11 +127,11 @@ use Cwd;
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImputeCoords { 
-  my $sub_name = "dng_FeatureInfoImputeCoords";
+sub vdr_FeatureInfoImputeCoords { 
+  my $sub_name = "vdr_FeatureInfoImputeCoords";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
+
   my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "location"
@@ -133,14 +139,14 @@ sub dng_FeatureInfoImputeCoords {
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = dng_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
+    $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
   }
 
   return;
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoImputeLength
+# Subroutine: vdr_FeatureInfoImputeLength
 # Incept:     EPN, Thu Mar 14 12:07:16 2019
 # 
 # Purpose:    Fill "length" values in @{$ftr_info_AHR}
@@ -154,8 +160,8 @@ sub dng_FeatureInfoImputeCoords {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImputeLength { 
-  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
+sub vdr_FeatureInfoImputeLength { 
+  my $sub_name = "vdr_FeatureInfoImputeSourceIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -168,14 +174,14 @@ sub dng_FeatureInfoImputeLength {
   # go through all features and determine length by parsing the 
   # "coords" value
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"length"} = dng_CoordsLength($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+    $ftr_info_AHR->[$ftr_idx]{"length"} = vdr_CoordsLength($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
   }
 
   return;
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoImputeSourceIdx
+# Subroutine: vdr_FeatureInfoImputeSourceIdx
 # Incept:     EPN, Wed Mar 13 13:20:01 2019
 # 
 # Purpose:    Fill "source_idx" values in @{$ftr_info_AHR}
@@ -189,8 +195,8 @@ sub dng_FeatureInfoImputeLength {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImputeSourceIdx { 
-  my $sub_name = "dng_FeatureInfoImputeSourceIdx";
+sub vdr_FeatureInfoImputeSourceIdx { 
+  my $sub_name = "vdr_FeatureInfoImputeSourceIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -220,7 +226,7 @@ sub dng_FeatureInfoImputeSourceIdx {
            ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
           if($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) { 
             ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
-                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), "dnaorg", 1, $FH_HR);
+                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
           }
           $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx2;
         }
@@ -232,10 +238,10 @@ sub dng_FeatureInfoImputeSourceIdx {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoImputeParentIdx
+# Subroutine: vdr_FeatureInfoImputeParentIndices
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Fill "parent_idx" values in @{$ftr_info_AHR}
+# Purpose:    Fill "parent_idx_str" values in @{$ftr_info_AHR}
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
@@ -246,8 +252,8 @@ sub dng_FeatureInfoImputeSourceIdx {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImputeParentIdx {
-  my $sub_name = "dng_FeatureInfoImputeParentIdx";
+sub vdr_FeatureInfoImputeParentIndices {
+  my $sub_name = "vdr_FeatureInfoImputeParentIndices";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -257,9 +263,10 @@ sub dng_FeatureInfoImputeParentIdx {
   my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
-  # go through all features and determine parents (set 'parent_idx')
+  # go through all features and determine parents (set 'parent_idx_str')
   # 
-  # $ftr_info_AHR->{"parent_idx"}[$ftr_idx] set to $ftr_idx2 if:
+  # $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
+  #   a comma separated string of >= 1 $ftr_idx2 if:
   # - $ftr_idx type is mat_peptide
   # - $ftr_idx2 type is CDS
   # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
@@ -268,7 +275,9 @@ sub dng_FeatureInfoImputeParentIdx {
   # 
   # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
   #
-  # dies if more than one $ftr_idx2 satisfies above
+  # note: more than one $ftr_idx2 can satisfy above, in which
+  # case $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
+  # comma separated string of > 1 $ftr_idx2
   my ($ftr_idx, $ftr_idx2); # feature indices
   my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
   my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
@@ -278,15 +287,15 @@ sub dng_FeatureInfoImputeParentIdx {
   my $ftr_strand2; # strand for feature $ftr_idx2
   my $found_parent; # flag for if we found a parent or not
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1; # initialize
+    $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = ""; # initialize
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_5p_pos = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_5p_pos = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_3p_pos2 = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+        $ftr_5p_pos2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_3p_pos2 = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_strand2 = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
         $found_parent = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
@@ -302,17 +311,8 @@ sub dng_FeatureInfoImputeParentIdx {
             $found_parent = 1;
           }
           if($found_parent) { 
-            if($ftr_info_AHR->[$ftr_idx]{"parent_idx"} != -1) { 
-              printf("ftr_5p_pos:  $ftr_5p_pos\n");
-              printf("ftr_3p_pos:  $ftr_3p_pos\n");
-              printf("ftr_5p_pos2: $ftr_5p_pos2\n");
-              printf("ftr_3p_pos2: $ftr_3p_pos2\n");
-              ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine parent of mature peptide with coords %s (multiple CDS cover it with coords %s and %s)\n", 
-                                  $ftr_info_AHR->[$ftr_idx]{"coords"},
-                                  $ftr_info_AHR->[($ftr_info_AHR->[$ftr_idx]{"parent_idx"})]{"coords"}, 
-                                  $ftr_info_AHR->[$ftr_idx2]{"coords"}), "dnaorg", 1, $FH_HR);
-            }
-            $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = $ftr_idx2;
+            if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "") { $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= ","; }
+            $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= "$ftr_idx2";
           }
         }
       }
@@ -322,7 +322,7 @@ sub dng_FeatureInfoImputeParentIdx {
 }
       
 #################################################################
-# Subroutine: dng_FeatureInfoImputeOutname()
+# Subroutine: vdr_FeatureInfoImputeOutname()
 # Incept:     EPN, Mon Apr  1 06:49:20 2019
 #
 # Purpose:    Fill "outname" values in @{$ftr_info_AHR}
@@ -339,8 +339,8 @@ sub dng_FeatureInfoImputeParentIdx {
 # Dies: Never, nothing is validated
 # 
 #################################################################
-sub dng_FeatureInfoImputeOutname { 
-  my $sub_name  = "dng_FeatureInfoImputeOutname";
+sub vdr_FeatureInfoImputeOutname { 
+  my $sub_name  = "vdr_FeatureInfoImputeOutname";
   my $nargs_expected = 1;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -355,7 +355,7 @@ sub dng_FeatureInfoImputeOutname {
       $ftr_info_AHR->[$ftr_idx]{"outname"} = $ftr_info_AHR->[$ftr_idx]{"gene"}; 
     }
     else { 
-      $ftr_info_AHR->[$ftr_idx]{"outname"} = dng_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+      $ftr_info_AHR->[$ftr_idx]{"outname"} = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
     }
   }
 
@@ -363,7 +363,7 @@ sub dng_FeatureInfoImputeOutname {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoImpute3paFtrIdx
+# Subroutine: vdr_FeatureInfoImpute3paFtrIdx
 # Incept:     EPN, Wed Mar 13 13:39:34 2019
 # 
 # Purpose:    Fill "3pa_ftr_idx" values in @{$ftr_info_AHR}
@@ -377,8 +377,8 @@ sub dng_FeatureInfoImputeOutname {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub dng_FeatureInfoImpute3paFtrIdx {
-  my $sub_name = "dng_FeatureInfoImpute3paFtrIdx";
+sub vdr_FeatureInfoImpute3paFtrIdx {
+  my $sub_name = "vdr_FeatureInfoImpute3paFtrIdx";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -408,11 +408,11 @@ sub dng_FeatureInfoImpute3paFtrIdx {
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} = -1;
     if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_3p_pos = dng_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = dng_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_strand2 = dng_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_5p_pos2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
+        $ftr_strand2 = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
         $found_adj = 0;
         if(($ftr_idx != $ftr_idx2) && 
            ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "mat_peptide") &&
@@ -438,7 +438,7 @@ sub dng_FeatureInfoImpute3paFtrIdx {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoStartStopStrandArrays()
+# Subroutine: vdr_FeatureInfoStartStopStrandArrays()
 # Incept:     EPN, Fri Mar 15 15:39:35 2019
 #
 # Synopsis: For all features in a @{$ftr_info_AHR}, validate 
@@ -457,8 +457,8 @@ sub dng_FeatureInfoImpute3paFtrIdx {
 # Dies: if unable to parse $coords_str
 #
 #################################################################
-sub dng_FeatureInfoStartStopStrandArrays {
-  my $sub_name = "dng_FeatureInfoStartStopStrandArrays";
+sub vdr_FeatureInfoStartStopStrandArrays {
+  my $sub_name = "vdr_FeatureInfoStartStopStrandArrays";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -475,7 +475,7 @@ sub dng_FeatureInfoStartStopStrandArrays {
     @{$start_AA[$ftr_idx]}  = ();
     @{$stop_AA[$ftr_idx]}   = ();
     @{$strand_AA[$ftr_idx]} = ();
-    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
+    vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@{$start_AA[$ftr_idx]}, \@{$stop_AA[$ftr_idx]}, \@{$strand_AA[$ftr_idx]}, $FH_HR);
   }
   if(defined $start_AAR)  { @{$start_AAR}   = @start_AA;   }
   if(defined $stop_AAR)   { @{$stop_AAR}    = @stop_AA;    }
@@ -485,7 +485,7 @@ sub dng_FeatureInfoStartStopStrandArrays {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoCountType
+# Subroutine: vdr_FeatureInfoCountType
 # Incept:     EPN, Thu Mar 14 12:16:26 2019
 # 
 # Purpose:    Count number of elements in @{$ftr_info_AHR} 
@@ -500,8 +500,8 @@ sub dng_FeatureInfoStartStopStrandArrays {
 # Dies:       never, nothing is validated
 #
 #################################################################
-sub dng_FeatureInfoCountType { 
-  my $sub_name = "dng_FeatureInfoCountType";
+sub vdr_FeatureInfoCountType { 
+  my $sub_name = "vdr_FeatureInfoCountType";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -521,7 +521,7 @@ sub dng_FeatureInfoCountType {
 }
 
 #################################################################
-# Subroutine: dng_FeatureInfoValidateCoords
+# Subroutine: vdr_FeatureInfoValidateCoords
 # Incept:     EPN, Fri Mar 15 14:31:36 2019
 # 
 # Purpose:    Validate that "coords" values are in the proper
@@ -538,8 +538,8 @@ sub dng_FeatureInfoCountType {
 #             if a position in a "coords" value exceeds $length
 #
 #################################################################
-sub dng_FeatureInfoValidateCoords { 
-  my $sub_name = "dng_FeatureInfoValidateCoords";
+sub vdr_FeatureInfoValidateCoords { 
+  my $sub_name = "vdr_FeatureInfoValidateCoords";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -553,21 +553,21 @@ sub dng_FeatureInfoValidateCoords {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my @start_A  = (); # array of starts, one per segment
     my @stop_A   = (); # array of stops, one per segment
-    # this sub dng_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
-    dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
+    # this sub vdr_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
+    vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
     foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
     foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
   }
 
   if($fail_str ne "") { 
-    ofile_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, some coordinates exceed model length ($length):\n$fail_str\n", 1, $FH_HR);
   }
   
   return;
 }
 
 #################################################################
-# Subroutine:  dng_FeatureInfoChildrenArrayOfArrays()
+# Subroutine:  vdr_FeatureInfoChildrenArrayOfArrays()
 # Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
 # Purpose:     Fill @{$AAR} with arrays of children (feature indices)
@@ -582,24 +582,35 @@ sub dng_FeatureInfoValidateCoords {
 # 
 #
 ################################################################# 
-sub dng_FeatureInfoChildrenArrayOfArrays { 
+sub vdr_FeatureInfoChildrenArrayOfArrays { 
   my $nargs_expected = 3;
-  my $sub_name = "dng_FeatureInfoChildrenArrayOfArrays";
+  my $sub_name = "vdr_FeatureInfoChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
 
   @{$AAR} = ();
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    dng_FeatureChildrenArray($ftr_info_AHR, $ftr_idx, $nftr, \@{$AAR->[$ftr_idx]}, $FH_HR);
+  my ($parent_ftr_idx, $child_ftr_idx);
+
+  # initialize
+  for($parent_ftr_idx = 0; $parent_ftr_idx < $nftr; $parent_ftr_idx++) { 
+    @{$AAR->[$parent_ftr_idx]} = ();
   }
-  
+
+  # fill
+  for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
+    my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+    foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+      push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+    }
+  }
+
   return;
 }
 
 #################################################################
-# Subroutine: dng_SegmentInfoPopulate()
+# Subroutine: vdr_SegmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
 # Synopsis: Fill @{$sgm_info_AHR} and add to @{$ftr_info_AHR}
@@ -631,8 +642,8 @@ sub dng_FeatureInfoChildrenArrayOfArrays {
 # Dies:       if @{$ftr_info_AHR} is not valid upon entry
 #
 #################################################################
-sub dng_SegmentInfoPopulate {
-  my $sub_name = "dng_SegmentInfoPopulate";
+sub vdr_SegmentInfoPopulate {
+  my $sub_name = "vdr_SegmentInfoPopulate";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -657,7 +668,7 @@ sub dng_SegmentInfoPopulate {
       my @sgm_start_A  = (); # array of starts, one per segment
       my @sgm_stop_A   = (); # array of stops, one per segment
       my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
-      dng_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
+      vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
       my $cur_nseg = scalar(@sgm_start_A);
       for(my $s = 0; $s < $cur_nseg; $s++) { 
         $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
@@ -687,7 +698,7 @@ sub dng_SegmentInfoPopulate {
 }
 
 #################################################################
-# Subroutine:  dng_FeatureTypeAndTypeIndexString()
+# Subroutine:  vdr_FeatureTypeAndTypeIndexString()
 # Incept:      EPN, Sun Mar 10 06:41:53 2019
 #
 # Purpose:     Return a string giving feature type and type index
@@ -702,9 +713,9 @@ sub dng_SegmentInfoPopulate {
 # Returns:     String
 #
 ################################################################# 
-sub dng_FeatureTypeAndTypeIndexString { 
+sub vdr_FeatureTypeAndTypeIndexString { 
   my $nargs_expected = 3;
-  my $sub_name = "dng_FeatureChildrenArray";
+  my $sub_name = "vdr_FeatureTypeAndTypeIndexString";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
 
@@ -719,7 +730,7 @@ sub dng_FeatureTypeAndTypeIndexString {
 }
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsCds()
+# Subroutine: vdr_FeatureTypeIsCds()
 # Incept:     EPN, Mon Mar 25 11:07:05 2019
 #
 # Purpose:    Is feature $ftr_idx a CDS?
@@ -733,8 +744,8 @@ sub dng_FeatureTypeAndTypeIndexString {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsCds { 
-  my $sub_name = "dng_FeatureTypeIsCds";
+sub vdr_FeatureTypeIsCds { 
+  my $sub_name = "vdr_FeatureTypeIsCds";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -744,7 +755,7 @@ sub dng_FeatureTypeIsCds {
 }
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsMatPeptide()
+# Subroutine: vdr_FeatureTypeIsMatPeptide()
 # Incept:     EPN, Fri Apr  5 14:32:28 2019
 #
 # Purpose:    Is feature $ftr_idx a mat_peptide?
@@ -758,8 +769,8 @@ sub dng_FeatureTypeIsCds {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsMatPeptide { 
-  my $sub_name = "dng_FeatureTypeIsMatPeptide";
+sub vdr_FeatureTypeIsMatPeptide { 
+  my $sub_name = "vdr_FeatureTypeIsMatPeptide";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -769,7 +780,7 @@ sub dng_FeatureTypeIsMatPeptide {
 }
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsGene()
+# Subroutine: vdr_FeatureTypeIsGene()
 # Incept:     EPN, Fri Apr  5 14:32:54 2019
 #
 # Purpose:    Is feature $ftr_idx a gene?
@@ -783,8 +794,8 @@ sub dng_FeatureTypeIsMatPeptide {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsGene { 
-  my $sub_name = "dng_FeatureTypeIsGene";
+sub vdr_FeatureTypeIsGene { 
+  my $sub_name = "vdr_FeatureTypeIsGene";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -794,7 +805,7 @@ sub dng_FeatureTypeIsGene {
 }
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsCdsOrMatPeptide()
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptide()
 # Incept:     EPN, Mon Feb 25 14:30:34 2019
 #
 # Purpose:    Is feature $ftr_idx a CDS or mature peptide?
@@ -808,8 +819,8 @@ sub dng_FeatureTypeIsGene {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsCdsOrMatPeptide { 
-  my $sub_name = "dng_FeatureTypeIsCdsOrMatPeptide";
+sub vdr_FeatureTypeIsCdsOrMatPeptide { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptide";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -820,7 +831,7 @@ sub dng_FeatureTypeIsCdsOrMatPeptide {
 }
 
 #################################################################
-# Subroutine: dng_FeatureTypeIsCdsOrMatPeptideOrGene()
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # Incept:     EPN, Wed Apr  3 14:31:33 2019
 #
 # Purpose:    Is feature $ftr_idx a CDS or mature peptide or gene?
@@ -834,8 +845,8 @@ sub dng_FeatureTypeIsCdsOrMatPeptide {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureTypeIsCdsOrMatPeptideOrGene { 
-  my $sub_name = "dng_FeatureTypeIsCdsOrMatPeptideOrGene";
+sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptideOrGene";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -847,43 +858,7 @@ sub dng_FeatureTypeIsCdsOrMatPeptideOrGene {
 }
 
 #################################################################
-# Subroutine:  dng_FeatureChildrenArray()
-# Incept:      EPN, Sun Mar 10 06:26:03 2019
-#
-# Purpose:     Fill @{$AAR} with array of children (feature indices)
-#              for feature $ftr_idx in %{$ftr_info_AHR}.
-# 
-# Arguments: 
-#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
-#   $ftr_idx:        index we are interested in
-#   $nftr:           number of features in %{$ftr_info_AHR}
-#   $AR:             REF to array children feature indices, FILLED HERE
-#   $FH_HR:          REF to hash of file handles
-# 
-# Returns:     Nothing.
-# 
-#
-################################################################# 
-sub dng_FeatureChildrenArray { 
-  my $nargs_expected = 5;
-  my $sub_name = "dng_FeatureChildrenArray";
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $ftr_idx, $nftr, $AR, $FH_HR) = @_;
-
-  @{$AR} = ();
-
-  for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-    if(($ftr_idx2 != $ftr_idx) && 
-       ($ftr_info_AHR->[$ftr_idx2]{"parent_idx"} == $ftr_idx)) { 
-      push(@{$AR}, $ftr_idx2);
-    }
-  }
-  
-  return;
-}
-
-#################################################################
-# Subroutine: dng_FeatureNumSegments()
+# Subroutine: vdr_FeatureNumSegments()
 # Incept:     EPN, Tue Mar  5 13:05:38 2019
 #
 # Purpose:    Return number of segments in feature $ftr_idx.
@@ -897,7 +872,7 @@ sub dng_FeatureChildrenArray {
 # Dies: Never, nothing is validated
 # 
 #################################################################
-sub dng_FeatureNumSegments { 
+sub vdr_FeatureNumSegments { 
   my $sub_name  = "featureNumSegments";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -907,10 +882,8 @@ sub dng_FeatureNumSegments {
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
 
-
-
 #################################################################
-# Subroutine: dng_FeatureIsDuplicate()
+# Subroutine: vdr_FeatureIsDuplicate()
 # Incept:      EPN, Sun Mar 10 07:04:24 2019
 #
 # Purpose:    Is feature $ftr_idx a duplicate of another feature?
@@ -925,8 +898,8 @@ sub dng_FeatureNumSegments {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureIsDuplicate { 
-  my $sub_name = "dng_FeatureIsDuplicate";
+sub vdr_FeatureIsDuplicate { 
+  my $sub_name = "vdr_FeatureIsDuplicate";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -936,7 +909,7 @@ sub dng_FeatureIsDuplicate {
 }
 
 #################################################################
-# Subroutine: dng_Feature5pMostPosition()
+# Subroutine: vdr_Feature5pMostPosition()
 # Incept:      EPN, Fri Mar  8 12:57:21 2019
 #
 # Purpose:    Return 5'-most position in all segments for a feature.
@@ -950,8 +923,8 @@ sub dng_FeatureIsDuplicate {
 # Dies:      if $coords is not parseable.
 #
 ################################################################# 
-sub dng_Feature5pMostPosition { 
-  my $sub_name = "dng_Feature5pMostPosition";
+sub vdr_Feature5pMostPosition { 
+  my $sub_name = "vdr_Feature5pMostPosition";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -961,14 +934,14 @@ sub dng_Feature5pMostPosition {
     return $1;
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
 }
 
 #################################################################
-# Subroutine: dng_Feature3pMostPosition()
+# Subroutine: vdr_Feature3pMostPosition()
 # Incept:      EPN, Fri Mar  8 13:00:31 2019
 #
 # Purpose:    Return 3'-most position in all segments for a feature.
@@ -982,8 +955,8 @@ sub dng_Feature5pMostPosition {
 # Dies:      if $coords is not parseable.
 #
 ################################################################# 
-sub dng_Feature3pMostPosition { 
-  my $sub_name = "dng_Feature3pMostPosition";
+sub vdr_Feature3pMostPosition { 
+  my $sub_name = "vdr_Feature3pMostPosition";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -993,14 +966,14 @@ sub dng_Feature3pMostPosition {
     return $1;
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to parse ftr_info_HA coords string " . $coords, 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
 }
 
 #################################################################
-# Subroutine: dng_FeatureSummarizeSegment()
+# Subroutine: vdr_FeatureSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
 # Purpose:    Return a string indicating what model this is
@@ -1017,8 +990,8 @@ sub dng_Feature3pMostPosition {
 # Dies:       never; does not validate anything.
 #
 ################################################################# 
-sub dng_FeatureSummarizeSegment { 
-  my $sub_name = "dng_FeatureSummarizeSegment";
+sub vdr_FeatureSummarizeSegment { 
+  my $sub_name = "vdr_FeatureSummarizeSegment";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -1036,7 +1009,7 @@ sub dng_FeatureSummarizeSegment {
 
 
 #################################################################
-# Subroutine: dng_FeatureStartStopStrandArrays()
+# Subroutine: vdr_FeatureStartStopStrandArrays()
 # Incept:     EPN, Sat Mar  9 05:50:10 2019
 #
 # Synopsis: Given a comma separated coords string, parse it, 
@@ -1055,14 +1028,14 @@ sub dng_FeatureSummarizeSegment {
 # Dies: if unable to parse $coords
 #
 #################################################################
-sub dng_FeatureStartStopStrandArrays {
-  my $sub_name = "dng_FeatureStartStopStrandArrays";
+sub vdr_FeatureStartStopStrandArrays {
+  my $sub_name = "vdr_FeatureStartStopStrandArrays";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($coords, $start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
   if(! defined $coords) { 
-    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
   }
 
   my @start_A  = ();
@@ -1072,8 +1045,8 @@ sub dng_FeatureStartStopStrandArrays {
   my @coords_A  = split(",", $coords);
   my $nsgm = scalar(@coords_A);
   for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
-    ($start, $stop, $strand) = dng_CoordsTokenParse($coords_A[$sgm_idx], $FH_HR);
-    # dng_CoordsTokenParse() will fail if unable to parse $coords_A[$sgm_idx]
+    ($start, $stop, $strand) = vdr_CoordsTokenParse($coords_A[$sgm_idx], $FH_HR);
+    # vdr_CoordsTokenParse() will fail if unable to parse $coords_A[$sgm_idx]
     push(@start_A,  $start);
     push(@stop_A,   $stop);
     push(@strand_A, $strand); 
@@ -1087,7 +1060,7 @@ sub dng_FeatureStartStopStrandArrays {
 }
 
 #################################################################
-# Subroutine: dng_FeatureSummaryStrand
+# Subroutine: vdr_FeatureSummaryStrand
 # Incept:     EPN, Wed Mar 13 15:38:06 2019
 # 
 # Purpose:    Summarize the strandedness of segments for a feature
@@ -1105,8 +1078,8 @@ sub dng_FeatureStartStopStrandArrays {
 # Dies:      if unable to parse $coords
 #
 #################################################################
-sub dng_FeatureSummaryStrand { 
-  my $sub_name = "dng_FeatureSummaryStrand";
+sub vdr_FeatureSummaryStrand { 
+  my $sub_name = "vdr_FeatureSummaryStrand";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -1119,27 +1092,27 @@ sub dng_FeatureSummaryStrand {
   # 1-200:+,300-400:+        400-300:-,200-1:-
 
   my @strand_A = ();
-  dng_FeatureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
+  vdr_FeatureStartStopStrandArrays($coords, undef, undef, \@strand_A, $FH_HR);
 
   my $npos = 0;
   my $nneg = 0;
   foreach my $strand (@strand_A) { 
     if   ($strand eq "+") { $npos++; }
     elsif($strand eq "-") { $nneg++; }
-    else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); }
+    else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); }
   }
 
   if(($npos >  0) && ($nneg == 0)) { return "+"; }
   if(($npos == 0) && ($nneg >  0)) { return "-"; }
   if(($npos == 0) && ($nneg == 0)) { 
-    ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); 
   }
 
   return; # NEVER REACHED
 }
 
 #################################################################
-# Subroutine: dng_FeaturePositionSpecificValueBreakdown()
+# Subroutine: vdr_FeaturePositionSpecificValueBreakdown()
 # Incept:     EPN, Tue Apr  2 10:22:16 2019
 #
 # Purpose:    Breakdown a list of position specific values
@@ -1165,8 +1138,8 @@ sub dng_FeatureSummaryStrand {
 #             be parsed.
 #
 ################################################################# 
-sub dng_FeaturePositionSpecificValueBreakdown { 
-  my $sub_name = "dng_FeaturePositionSpecificValueBreakdown";
+sub vdr_FeaturePositionSpecificValueBreakdown { 
+  my $sub_name = "vdr_FeaturePositionSpecificValueBreakdown";
   my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -1188,7 +1161,7 @@ sub dng_FeaturePositionSpecificValueBreakdown {
 }
 
 #################################################################
-# Subroutine: dng_AlertInfoInitialize()
+# Subroutine: vdr_AlertInfoInitialize()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
 #
 # Purpose:    Set the initial values in an alert info hash or hashes,
@@ -1204,240 +1177,275 @@ sub dng_FeaturePositionSpecificValueBreakdown {
 # Dies:    if $alt_info_HHR already has keys upon entering this function
 #
 #################################################################
-sub dng_AlertInfoInitialize { 
-  my $sub_name = "dng_AlertInfoInitialize";
+sub vdr_AlertInfoInitialize { 
+  my $sub_name = "vdr_AlertInfoInitialize";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
   my ($alt_info_HHR, $FH_HR) = (@_);
 
   if(scalar (keys(%{$alt_info_HHR})) > 0) { 
-    ofile_FAIL("ERROR in $sub_name, alert info hash of arrays already has at least one key", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, alert info hash of arrays already has at least one key", 1, $FH_HR);
   }
 
   # add each alert code, this function will die if we try to add the same code twice, or if something is wrong 
-  # with how we try to add it (args to dng_AlertInfoAdd don't pass the contract check)
+  # with how we try to add it (args to vdr_AlertInfoAdd don't pass the contract check)
 
-  # classification errors
-  dng_AlertInfoAdd($alt_info_HHR, "c_noa", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_noa", "sequence",
                    "No Annotation", # short description
                    "no significant similarity detected", # long  description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_mst", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_mst", "sequence",
                    "Minus Strand", # short description
                    "sequence appears to be reverse complemented", # long description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_usg", "sequence",
-                   "Unexpected Subgroup Classification", # short description
-                   "score difference too large between best overall model and best expected subgroup model", # long description
+  vdr_AlertInfoAdd($alt_info_HHR, "c_qsg", "sequence",
+                   "Questionable Specified Subgroup", # short description
+                   "best overall model is not from specified subgroup", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "c_qgr", "sequence",
+                   "Questionable Specified Group", # short description
+                   "best overall model is not from specified group", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "c_isg", "sequence",
+                   "Incorrect Specified Subgroup", # short description
+                   "score difference too large between best overall model and best specified subgroup model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_ugr", "sequence",
-                   "Unexpected Group Classification", # short description
-                   "score difference too large between best overall model and best expected group model", # long description
+  vdr_AlertInfoAdd($alt_info_HHR, "c_igr", "sequence",
+                   "Incorrect Specified Group", # short description
+                   "score difference too large between best overall model and best specified group model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_loc", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_loc", "sequence",
                    "Low Coverage", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_lod", "sequence",
-                   "Low Score Difference", # short description
+  vdr_AlertInfoAdd($alt_info_HHR, "c_idc", "sequence",
+                   "Indefinite Classification", # short description
                    "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_vld", "sequence",
-                   "Very Low Score Difference", # description
-                   "very low score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_los", "sequence",
                    "Low Score", # short description
                    "score to homology model below low threshold", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_vls", "sequence",
-                   "Very Low Score", # short description
-                   "score to homology model below very low threshold", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR); 
-
-  dng_AlertInfoAdd($alt_info_HHR, "c_hbi", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_hbi", "sequence",
                    "Biased Sequence", # short description
                    "high fraction of score attributed to biased sequence composition", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_dpr", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_dpr", "sequence",
                    "Duplicate Regions", # short description
                    "similarity to a model region occurs more than once", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_who", "sequence",
-                   "Wrong Order", # short description
+  vdr_AlertInfoAdd($alt_info_HHR, "c_dcs", "sequence",
+                   "Discontiguous Similarity", # short description
                    "not all hits are in the same order in the sequence and the homology model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "c_bst", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_bst", "sequence",
                    "Indefinite Strand", # short description
                    "significant similarity detected on both strands", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "c_lss", "sequence",
+                   "Low Similarity at Start", # short description
+                   "significant similarity not detected at 5' end of the sequence", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "c_lse", "sequence",
+                   "Low Similarity at End", # short description
+                   "significant similarity not detected at 3' end of the sequence", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "c_lsi", "sequence",
+                   "Low Similarity", # short description
+                   "internal region without significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "n_div", "sequence",
                    "Unexpected Divergence", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_zft", "sequence",
                    "No Features Annotated", # short description
                    "sequence similarity to homology model does not overlap with any features", # long description
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_str", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_str", "feature",
                    "Mutation at Start", # short description
                    "expected start codon could not be identified", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_stp", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_stp", "feature",
                    "Mutation at End", # short description
                    "expected stop codon could not be identified, predicted CDS stop by homology is invalid", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_nst", "feature",  
+  vdr_AlertInfoAdd($alt_info_HHR, "n_nst", "feature",  
                    "Mutation at End", # short description
                    "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_ext", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_ext", "feature",
                    "Mutation at End", # short description
                    "expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_nm3", "feature",  
+  vdr_AlertInfoAdd($alt_info_HHR, "n_nm3", "feature",  
                    "Unexpected Length", # short description
                    "length of complete coding (CDS or mat_peptide) feature is not a multiple of 3", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_trc", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_trc", "feature",
                    "Unexpected Stop Codon", # short description
                    "in-frame stop codon exists 5' of stop position predicted by homology to reference", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "p_trc", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "p_trc", "feature",
                    "Unexpected Stop Codon", # short description
                    "stop codon in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "Peptide Translation Problem", # short description
-                   "mat_peptide may not be translated because its CDS has a problem", # long description
+                   "mat_peptide may not be translated because a CDS that spans it has a problem", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_adj", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_adj", "feature",
                    "Peptide Adjacency Problem", # short description
                    "predictions of two mat_peptides expected to be adjacent are not adjacent", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_non", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_non", "feature",
                    "Indefinite Annotation", # short description
                    "protein-based search identifies CDS not identified in nucleotide-based search", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_nop", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_nop", "feature",
                    "Indefinite Annotation", # short description
                    "nucleotide-based search identifies CDS not identified in protein-based search", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_gp5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_gp5", "feature",
                    "Indefinite Annotation at Start", # short description
                    "alignment to homology model is a gap at 5' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_lp5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_lp5", "feature",
                    "Indefinite Annotation at Start", # short description
                    "alignment to homology model has low confidence at 5' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_p5l", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_p5l", "feature",
                    "Indefinite Annotation at Start", # short description
                    "protein-based alignment extends past nucleotide-based alignment at 5' end", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_p5s", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_p5s", "feature",
                    "Indefinite Annotation at Start", , # short description
                    "protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_gp3", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_gp3", "feature",
                    "Indefinite Annotation at End", # short description
                    "alignment to homology model is a gap at 3' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "n_lp3", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "n_lp3", "feature",
                    "Indefinite Annotation at End", # short description
                    "alignment to homology model has low confidence at 3' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_p3l", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_p3l", "feature",
                    "Indefinite Annotation at End", # short description
                    "protein-based alignment extends past nucleotide-based alignment at 3' end", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_p3s", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_p3s", "feature",
                    "Indefinite Annotation at End", # short description
                    "protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "b_cst", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "b_cst", "feature",
                    "Indefinite Strand", # short description
                    "strand mismatch between protein-based and nucleotide-based predictions", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "p_lin", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "p_lin", "feature",
                    "Insertion of Nucleotides", # short description
                    "too large of an insertion in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  dng_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "p_lde", "feature",
                    "Deletion of Nucleotides", # short description
                    "too large of a deletion in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "x_fss", "feature",
+                   "Low Feature Similarity at Start", # short description
+                   "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "x_fse", "feature",
+                   "Low Feature Similarity at End", # short description
+                   "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "x_fsi", "feature",
+                   "Low Feature Similarity", # short description
+                   "region within annotated feature lacks significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1445,19 +1453,19 @@ sub dng_AlertInfoInitialize {
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
 
   # n_trc, n_ext and n_nst are preferred to n_stp
-  dng_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "n_stp", "n_trc,n_ext,n_nst", $FH_HR); 
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "n_stp", "n_trc,n_ext,n_nst", $FH_HR); 
 
   # n_div is preferred to b_zft
-  dng_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "b_zft", "n_div", $FH_HR);
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "b_zft", "n_div", $FH_HR);
 
   # validate the alert info hash
-  #dng_AlertInfoValidate($alt_info_HHR, undef, $FH_HR); 
+  #vdr_AlertInfoValidate($alt_info_HHR, undef, $FH_HR); 
 
   return;
 }
 
 #################################################################
-# Subroutine: dng_AlertInfoAdd()
+# Subroutine: vdr_AlertInfoAdd()
 # Incept:     EPN, Fri Mar  4 13:09:52 2016
 #
 # Purpose:    Add an element to the error info hash.
@@ -1481,8 +1489,8 @@ sub dng_AlertInfoInitialize {
 #          if $type ne "sequence" and $prevents_annot == 1 (not allowed)
 #
 ######################p###########################################
-sub dng_AlertInfoAdd { 
-  my $sub_name = "dng_AlertInfoAdd";
+sub vdr_AlertInfoAdd { 
+  my $sub_name = "vdr_AlertInfoAdd";
   my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1490,35 +1498,35 @@ sub dng_AlertInfoAdd {
 
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code with per-type $pertype that is not neither \"feature\" nor \"sequence\".", 1, $FH_HR); 
   }
   
   # make sure $always_fails is valid
   if((! defined $causes_failure) || (($causes_failure != 0) && ($causes_failure != 1))) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", 1, $FH_HR);
   }
 
   # make sure $causes_failure is valid, and makes sense with $always_fail
   if((! defined $causes_failure) || (($causes_failure != 0) && ($causes_failure != 1))) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", 1, $FH_HR);
   }
   if($always_fails && (! $causes_failure)) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but always_fails is 1 and causes_failure 0", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but always_fails is 1 and causes_failure 0", 1, $FH_HR);
   }
   
   # make sure $prevents_annot is valid
   if((! defined $prevents_annot) || (($prevents_annot != 0) && ($prevents_annot != 1))) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is undefined or not 0 or 1", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is undefined or not 0 or 1", 1, $FH_HR);
   }
 
   # make sure $prevents_annot is only 1 if $pertype is "sequence"
   if(($prevents_annot == 1) && ($pertype ne "sequence")) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is 1 and pertype is feature", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is 1 and pertype is feature", 1, $FH_HR);
   }
   
   # check if $code already exists
   if(defined $alt_info_HHR->{$code}) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code, but it already exists in the error info hash", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code, but it already exists in the error info hash", 1, $FH_HR);
   }
 
   # find highest "order" index so far in the 2D hash
@@ -1540,7 +1548,7 @@ sub dng_AlertInfoAdd {
 }
 
 #################################################################
-# Subroutine: dng_AlertInfoSetFTableInvalidatedBy
+# Subroutine: vdr_AlertInfoSetFTableInvalidatedBy
 # Incept:     EPN, Thu Nov  1 10:10:03 2018
 #
 # Purpose:    Add to the ftbl_invalid_by value for an error code $code1 given
@@ -1559,8 +1567,8 @@ sub dng_AlertInfoAdd {
 #          exist in %{$alt_info_HHR}.
 #
 #################################################################
-sub dng_AlertInfoSetFTableInvalidatedBy {
-  my $sub_name = "dng_AlertInfoSetFTableInvalidatedBy";
+sub vdr_AlertInfoSetFTableInvalidatedBy {
+  my $sub_name = "vdr_AlertInfoSetFTableInvalidatedBy";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
@@ -1570,10 +1578,10 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
   my @code2_A = split(',', $code2str);
   foreach my $code2 (@code2_A) { 
     if(! defined $alt_info_HHR->{$code2}) { 
-      ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between codes $code1 and $code2, but $code2 does not exist in the error info hash", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between codes $code1 and $code2, but $code2 does not exist in the error info hash", 1, $FH_HR);
     }
     if($code1 eq $code2) { 
-      ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between a code and itself: $code1 and $code2", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship between a code and itself: $code1 and $code2", 1, $FH_HR);
     }
   }
 
@@ -1584,7 +1592,7 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 }
 
 #################################################################
-# Subroutine: dng_AlertInfoSetCausesFailure
+# Subroutine: vdr_AlertInfoSetCausesFailure
 # Incept:     EPN, Wed Apr  3 12:58:58 2019
 #
 # Purpose:    Set the "causes_failure" value for %{$ftr_info_HHR->{$code}
@@ -1601,18 +1609,18 @@ sub dng_AlertInfoSetFTableInvalidatedBy {
 #          if $value is not '1' or '0'
 #
 #################################################################
-sub dng_AlertInfoSetCausesFailure {
-  my $sub_name = "dng_AlertInfoSetCausesFailure";
+sub vdr_AlertInfoSetCausesFailure {
+  my $sub_name = "vdr_AlertInfoSetCausesFailure";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
   my ($alt_info_HHR, $code, $value, $FH_HR) = (@_);
 
   if(! defined $alt_info_HHR->{$code}) { 
-    ofile_FAIL("ERROR in $sub_name, trying to set causes_failure for invalid code $code", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to set causes_failure for invalid code $code", 1, $FH_HR);
   }
   if(($value ne "1") && ($value ne "0")) { 
-    ofile_FAIL("ERROR in $sub_name, trying to set causes_failure to invalid value $value (must be 1 or 0)", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to set causes_failure to invalid value $value (must be 1 or 0)", 1, $FH_HR);
   }
 
   $alt_info_HHR->{$code}{"causes_failure"} = $value;
@@ -1621,7 +1629,7 @@ sub dng_AlertInfoSetCausesFailure {
 }
 
 #################################################################
-# Subroutine:  dng_AlertInfoDump()
+# Subroutine:  vdr_AlertInfoDump()
 # Incept:      EPN, Wed Apr  3 11:11:26 2019
 #
 # Purpose:    Output all the information in the alert info 2D hash.
@@ -1635,8 +1643,8 @@ sub dng_AlertInfoSetCausesFailure {
 # Dies:       never
 #
 #################################################################
-sub dng_AlertInfoDump { 
-  my $sub_name = "dng_AlertInfoDump";
+sub vdr_AlertInfoDump { 
+  my $sub_name = "vdr_AlertInfoDump";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -1687,7 +1695,7 @@ sub dng_AlertInfoDump {
 }
 
 #################################################################
-# Subroutine: dng_SubmitJob()
+# Subroutine: vdr_SubmitJob()
 # Incept:      EPN, Wed Feb  6 12:35:04 2019
 #
 # Purpose:     Submits a job to sge.
@@ -1703,10 +1711,10 @@ sub dng_AlertInfoDump {
 #
 # Returns:    amount of time the command took, in seconds
 #
-# Dies:       if qsub dng_$cmd fails
+# Dies:       if qsub vdr_$cmd fails
 #################################################################
-sub dng_SubmitJob {
-  my $sub_name = "dng_SubmitJob()";
+sub vdr_SubmitJob {
+  my $sub_name = "vdr_SubmitJob()";
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -1725,9 +1733,8 @@ sub dng_SubmitJob {
 }
 
 #################################################################
-# Subroutine:  dng_WaitForFarmJobsToFinish()
+# Subroutine:  vdr_WaitForFarmJobsToFinish()
 # Incept:      EPN, Mon Feb 29 16:20:54 2016
-#              EPN, Wed Aug 31 09:07:05 2016 [moved from dnaorg_annotate.pl to dnaorg.pm]
 #
 # Purpose: Wait for jobs on the farm to finish by checking the final
 #          line of their output files (in @{$outfile_AR}) to see
@@ -1767,8 +1774,8 @@ sub dng_SubmitJob {
 # Dies: never.
 #
 ################################################################# 
-sub dng_WaitForFarmJobsToFinish { 
-  my $sub_name = "dng_WaitForFarmJobsToFinish()";
+sub vdr_WaitForFarmJobsToFinish { 
+  my $sub_name = "vdr_WaitForFarmJobsToFinish()";
   my $nargs_expected = 7;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -1780,13 +1787,13 @@ sub dng_WaitForFarmJobsToFinish {
 
   # contract check
   if(($do_cmalign) && (! exists $out_file_AHR->[0]{"stdout"})) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign mode, no stdout files in out_file_AHR", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign mode, no stdout files in out_file_AHR", 1, $FH_HR);
   }
   if((! $do_cmalign) && (! exists $out_file_AHR->[0]{"tblout"})) { 
-    ofile_FAIL("ERROR in $sub_name, cmsearch mode, no stdout files in out_file_AHR", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmsearch mode, no stdout files in out_file_AHR", 1, $FH_HR);
   }
   if(! exists $out_file_AHR->[0]{"err"}) { 
-    ofile_FAIL("ERROR in $sub_name, no err files in out_file_AHR", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, no err files in out_file_AHR", 1, $FH_HR);
   }
 
   my $outkey = ($do_cmalign) ? "stdout" : "tblout";
@@ -1797,7 +1804,7 @@ sub dng_WaitForFarmJobsToFinish {
 
   my $njobs = scalar(@outfile_A);
   if($njobs != scalar(@errfile_A)) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@errfile_A)), "dnaorg", 1, $FH_HR);
+    ofile_FAIL(sprintf("ERROR in $sub_name, number of elements in outfile array ($njobs) differ from number of jobs in errfile array (%d)", scalar(@errfile_A)), 1, $FH_HR);
   }
   my @is_finished_A  = ();  # $is_finished_A[$i] is 1 if job $i is finished (either successfully or having failed), else 0
   my @is_failed_A    = ();  # $is_failed_A[$i] is 1 if job $i has finished and failed (all failed jobs are considered 
@@ -1833,7 +1840,7 @@ sub dng_WaitForFarmJobsToFinish {
       if(! $is_finished_A[$i]) { 
         if(-s $outfile_A[$i]) { 
           if($do_cmalign) { 
-            my $success = dng_CmalignCheckStdOutput($outfile_A[$i], 
+            my $success = vdr_CmalignCheckStdOutput($outfile_A[$i], 
                                                     (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
                                                     $FH_HR);
             if($success == 0 || $success == 1) { 
@@ -1882,7 +1889,7 @@ sub dng_WaitForFarmJobsToFinish {
         $errmsg .= "\t$outfile_A[$i]\t$errfile_A[$i]\n";
       }
     }
-    ofile_FAIL($errmsg, "dnaorg", 1, $FH_HR);
+    ofile_FAIL($errmsg, 1, $FH_HR);
   }
 
   # if we get here we have no failures
@@ -1890,7 +1897,7 @@ sub dng_WaitForFarmJobsToFinish {
 }
 
 #################################################################
-# Subroutine: dng_CoordsTokenParse()
+# Subroutine: vdr_CoordsTokenParse()
 # Incept:     EPN, Tue Mar 26 06:15:09 2019
 #
 # Synopsis: Given a single coords token, validate it, 
@@ -1908,25 +1915,56 @@ sub dng_WaitForFarmJobsToFinish {
 # Dies: if unable to parse $coords
 #
 #################################################################
-sub dng_CoordsTokenParse {
-  my $sub_name = "dng_CoordsTokenParse";
+sub vdr_CoordsTokenParse {
+  my $sub_name = "vdr_CoordsTokenParse";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($coords_tok, $FH_HR) = @_;
   if(! defined $coords_tok) { 
-    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
   }
   if($coords_tok =~ /^\<?(\d+)\.\.\>?(\d+)\:([\+\-])$/) { 
     return ($1, $2, $3);
   }
-  ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_tok", "dnaorg", 1, $FH_HR); 
+  ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords_tok", 1, $FH_HR); 
 
   return; # NEVER REACHED
 }
 
 #################################################################
-# Subroutine: dng_CoordsLength()
+# Subroutine: vdr_CoordsTokenCreate()
+# Incept:     EPN, Mon Apr 29 14:07:26 2019
+#
+# Synopsis: Create a coords token from a given start, stop, strand
+# 
+# Arguments:
+#  $start:    start position
+#  $stop:     stop position
+#  $strand:   strand ("+" or "-")
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    coordinate token <start>..<stop>:<strand>
+#
+# Dies:  if $start or $stop is invalid
+#        if $strand is not "+" or "-"
+#
+#################################################################
+sub vdr_CoordsTokenCreate {
+  my $sub_name = "vdr_CoordsTokenCreate";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start, $stop, $strand, $FH_HR) = @_;
+  if($start !~ /^\<?(\d+)$/) { ofile_FAIL("ERROR in $sub_name, start is invalid ($start)", 1, $FH_HR); }
+  if($stop  !~ /^\>?(\d+)$/) { ofile_FAIL("ERROR in $sub_name, stop is invalid ($stop)", 1, $FH_HR); }
+  if(($strand ne "+") && ($strand ne "-")) { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", 1, $FH_HR); }
+
+  return $start . ".." . $stop . ":" . $strand;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsLength()
 # Incept:     EPN, Tue Mar 26 05:56:08 2019
 #
 # Synopsis: Given a comma separated coords string, parse it, 
@@ -1941,19 +1979,19 @@ sub dng_CoordsTokenParse {
 # Dies: if unable to parse $coords
 #
 #################################################################
-sub dng_CoordsLength {
-  my $sub_name = "dng_CoordsLength";
+sub vdr_CoordsLength {
+  my $sub_name = "vdr_CoordsLength";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($coords, $FH_HR) = @_;
   if(! defined $coords) { 
-    ofile_FAIL("ERROR in $sub_name, coords is undefined", "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
   }
 
   # if there's no comma, we should have a single span
   if($coords !~ m/\,/) { 
-    my ($start, $stop, undef) = dng_CoordsTokenParse($coords, $FH_HR);
+    my ($start, $stop, undef) = vdr_CoordsTokenParse($coords, $FH_HR);
     return abs($start - $stop) + 1;
   }
   # else, split it up and sum length of all
@@ -1961,7 +1999,7 @@ sub dng_CoordsLength {
   my ($start, $stop);
   my $ret_len = 0;
   foreach my $coords_tok (@coords_A) { 
-    ($start, $stop, undef) = dng_CoordsTokenParse($coords_tok, $FH_HR);
+    ($start, $stop, undef) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
     $ret_len += abs($start - $stop) + 1;
   }
 
@@ -1969,13 +2007,18 @@ sub dng_CoordsLength {
 }
 
 #################################################################
-# Subroutine: dng_CoordsFromLocation
+# Subroutine: vdr_CoordsFromLocation
 # Incept:     EPN, Wed Mar 13 14:17:08 2019
 # 
 # Purpose:    Convert a GenBank file 'location' value to 
 #             a coords string in the format:
 #             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
 # 
+#             Any carrots before start/stop positions in the 
+#             location string are removed.
+#             See vdr_CoordsFromLocationWithCarrots() for 
+#             a similar subroutine that keeps carrots.
+#
 #             This function has to call itself recursively in some
 #             cases.
 # 
@@ -1989,10 +2032,10 @@ sub dng_CoordsLength {
 #
 # Ref: GenBank release notes (release 230.0) as of this writing
 #      and
-#      https://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html
+#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
 #################################################################
-sub dng_CoordsFromLocation { 
-  my $sub_name = "dng_CoordsFromLocation";
+sub vdr_CoordsFromLocation { 
+  my $sub_name = "vdr_CoordsFromLocation";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -2003,8 +2046,8 @@ sub dng_CoordsFromLocation {
   # ---------------------------------  -----------------
   # 1..200                             1..200:+
   # <1..200                            1..200:+
-  # 100..200>                          100..200:+
-  # <1..200>                           1..200:+
+  # 100..>200                          100..200:+
+  # <1..>200                           1..200:+
   # complement(1..200)                 200..1:-
   # join(1..200,300..400)              1..200:+,300..400:+
   # complement(join(1..200,300..400))  400..300:-,200..1:-
@@ -2014,36 +2057,115 @@ sub dng_CoordsFromLocation {
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
     my $location_to_join = $1;
-    $ret_val = dng_CoordsFromLocation($location_to_join, $FH_HR);
+    $ret_val = vdr_CoordsFromLocation($location_to_join, $FH_HR);
   }
   elsif($location =~ /^complement\((.+)\)$/) { 
     my $location_to_complement = $1;
-    my $coords_to_complement = dng_CoordsFromLocation($location_to_complement, $FH_HR);
-    $ret_val = dng_CoordsComplement($coords_to_complement, $FH_HR);
+    my $coords_to_complement = vdr_CoordsFromLocation($location_to_complement, $FH_HR);
+    $ret_val = vdr_CoordsComplement($coords_to_complement, $FH_HR);
   }
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
       if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= dng_CoordsFromLocation($location_el, $FH_HR);
+      $ret_val .= vdr_CoordsFromLocation($location_el, $FH_HR);
     }
   }
-  elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
-    $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
+  elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
+    $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
   }
 
   return $ret_val;
 }
 
 #################################################################
-# Subroutine: dng_CoordsComplement
+# Subroutine: vdr_CoordsFromLocationWithCarrots
+# Incept:     EPN, Fri Apr 12 11:51:16 2019
+# 
+# Purpose:    Convert a GenBank file 'location' value to 
+#             a coords string in the format:
+#             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
+#             
+#             <startN>: may begin with "<" carrot.
+#             <stopN>: may begin with ">" carrot.
+#
+#             vdr_CoordsFromLocation() does the same thing but 
+#             removes carrots.
+#
+#             This function has to call itself recursively in some
+#             cases.
+# 
+# Arguments:
+#   $location: GenBank file location string
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if unable to parse $location
+#
+# Ref: GenBank release notes (release 230.0) as of this writing
+#      and
+#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
+#################################################################
+sub vdr_CoordsFromLocationWithCarrots { 
+  my $sub_name = "vdr_CoordsFromLocationWithCarrots";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($location, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $location                          return value
+  # ---------------------------------  -----------------
+  # 1..200                             1..200:+
+  # <1..200                            <1..200:+
+  # 100..>200                          100..>200:+
+  # <1..>200                           <1..>200:+
+  # complement(1..200)                 200..1:-
+  # join(1..200,300..400)              1..200:+,300..400:+
+  # complement(join(1..200,300..400))  400..300:-,200..1:-
+  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
+  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
+
+  my $ret_val = "";
+  if($location =~ /^join\((.+)\)$/) { 
+    my $location_to_join = $1;
+    $ret_val = vdr_CoordsFromLocationWithCarrots($location_to_join, $FH_HR);
+  }
+  elsif($location =~ /^complement\((.+)\)$/) { 
+    my $location_to_complement = $1;
+    my $coords_to_complement = vdr_CoordsFromLocationWithCarrots($location_to_complement, $FH_HR);
+    $ret_val = vdr_CoordsComplementWithCarrots($coords_to_complement, $FH_HR);
+  }
+  elsif($location =~ /\,/) { 
+    # not wrapped in join() or complement(), but multiple segments
+    foreach my $location_el (split(",", $location)) { 
+      if($ret_val ne "") { $ret_val .= ","; }
+      $ret_val .= vdr_CoordsFromLocationWithCarrots($location_el, $FH_HR);
+    }
+  }
+  elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
+    $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+  }
+
+  return $ret_val;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsComplement
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
 # Purpose:    Complement a coords string by complementing all
-#             elements within it.
+#             elements within it. Removes carrots "<" and ">"
+#             before start and stop positions, if they exist.
+#             See vdr_CoordsComplementWithCarrots() to keep
+#             carrots.
 # 
 # Arguments:
 #   $coords:   coords string to complement
@@ -2055,8 +2177,58 @@ sub dng_CoordsFromLocation {
 #             is already on the negative strand.
 #
 #################################################################
-sub dng_CoordsComplement { 
-  my $sub_name = "dng_CoordsComplement";
+sub vdr_CoordsComplement { 
+  my $sub_name = "vdr_CoordsComplement";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($coords, $FH_HR) = @_;
+
+  # Examples we can parse: 
+  # $coords                  return value
+  # -----------------------  -----------------
+  # 1-200:+                  200-1:-
+  # 1-200:+,300-400:+        400-300:-,200-1:-
+
+  my $ret_val = "";
+  my @el_A = split(",", $coords);
+  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
+    if($el_A[$i] =~ /^\<?(\d+)\.\.\>?(\d+)\:\+/) { 
+      my ($start, $stop) = ($1, $2, $3, $4);
+      if($ret_val ne "") { $ret_val .= ","; }
+      $ret_val .= $stop . ".." . $start . ":-";
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
+    }
+  }
+
+  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
+
+  return $ret_val;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsComplementWithCarrots
+# Incept:     EPN, Fri Apr 12 11:49:06 2019
+# 
+# Purpose:    Complement a coords string by complementing all
+#             elements within it, and reverse any carrots. 
+#             Just like vdr_CoordsComplement() but keeps
+#             and complements carrots.
+# 
+# Arguments:
+#   $coords:   coords string to complement
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    complemented $coords
+# 
+# Dies:       if unable to parse $coords, or any segment in $coords
+#             is already on the negative strand.
+#
+#################################################################
+sub vdr_CoordsComplementWithCarrots { 
+  my $sub_name = "vdr_CoordsComplementWithCarrots";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -2079,7 +2251,7 @@ sub dng_CoordsComplement {
       $ret_val .= $stop_carrot . $stop . ".." . $start_carrot . $start . ":-";
     }
     else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", "dnaorg", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
     }
   }
 
@@ -2088,9 +2260,182 @@ sub dng_CoordsComplement {
   return $ret_val;
 }
 
+#################################################################
+# Subroutine: vdr_CoordsMin()
+# Incept:     EPN, Mon Apr 29 13:49:55 2019
+#
+# Synopsis: Given a comma separated coords string, return the 
+#           minimum position that it corresponds to.
+# 
+# Arguments:
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsMin {
+  my $sub_name = "vdr_CoordsMin";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+  }
+
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = vdr_CoordsTokenParse($coords, $FH_HR);
+    return utl_Min($start, $stop);
+  }
+  # else, split it up and find minimum
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_min = undef;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    if(! defined $ret_min) { 
+      $ret_min = utl_Min($start, $stop);
+    }
+    else { 
+      $ret_min = utl_Min($ret_min, utl_Min($start, $stop));
+    }
+  }
+
+  return $ret_min;
+}
 
 #################################################################
-# Subroutine: dng_EutilsFetchToFile()
+# Subroutine: vdr_CoordsMax()
+# Incept:     EPN, Mon Apr 29 13:57:57 2019
+#
+# Synopsis: Given a comma separated coords string, return the 
+#           maximum position that it corresponds to.
+# 
+# Arguments:
+#  $coords:  coordinate string
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsMax {
+  my $sub_name = "vdr_CoordsMax";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+  if(! defined $coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+  }
+
+  # if there's no comma, we should have a single span
+  if($coords !~ m/\,/) { 
+    my ($start, $stop, undef) = vdr_CoordsTokenParse($coords, $FH_HR);
+    return utl_Max($start, $stop);
+  }
+  # else, split it up and find maximum
+  my @coords_A  = split(",", $coords);
+  my ($start, $stop);
+  my $ret_max = undef;
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, undef) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    if(! defined $ret_max) { 
+      $ret_max = utl_Max($start, $stop);
+    }
+    else { 
+      $ret_max = utl_Max($ret_max, utl_Max($start, $stop));
+    }
+  }
+
+  return $ret_max;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMissing()
+# Incept:     EPN, Mon Apr 29 13:57:57 2019
+#
+# Synopsis: Given a comma separated coords string, a strand
+#           ("+" or "-") and the total length, return a 
+#           comma separated coords string with each interval
+#           on strand $in_strand that is missing in $in_coords.
+# 
+# Arguments:
+#  $in_coords: coordinate string
+#  $in_strand: strand we are interested in
+#  $in_length: length of sequence
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies: if unable to parse $in_coords
+#       if $in_coords has a position that is < 0 or exceeds $in_length
+#################################################################
+sub vdr_CoordsMissing {
+  my $sub_name = "vdr_CoordsMissing";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($in_coords, $in_strand, $in_length, $FH_HR) = @_;
+
+  if(! defined $in_coords) { 
+    ofile_FAIL("ERROR in $sub_name, coords is undefined", 1, $FH_HR); 
+  }
+  if(! defined $in_strand) { 
+    ofile_FAIL("ERROR in $sub_name, strand is undefined", 1, $FH_HR); 
+  }
+  if(! defined $in_length) { 
+    ofile_FAIL("ERROR in $sub_name, length is undefined", 1, $FH_HR); 
+  }
+
+  my @coords_A  = split(",", $in_coords); # the tokens in $in_coords
+  my $ret_coords = ""; # return coordinates value
+  my @covered_A = ();  # 1..$i..$in_length: '1' if a coordinate token in $in_coords covers position $i on strand $in_strand, else '0'
+  my $i;               # sequence position 1..$in_length
+  my ($start, $stop, $strand); # start, stop and strand of a coords token
+
+  # initialize
+  for($i = 0; $i <= $in_length; $i++) { 
+    $covered_A[$i] = 0;
+  }
+
+  # fill @covered_A based on @coords_A
+  foreach my $coords_tok (@coords_A) { 
+    ($start, $stop, $strand) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    if(($start < 0) || ($start > $in_length)) { 
+      ofile_FAIL("ERROR in $sub_name, start is invalid ($start in_length: $in_length)", 1, $FH_HR); 
+    }
+    if(($stop < 0) || ($stop > $in_length)) { 
+      ofile_FAIL("ERROR in $sub_name, stop is invalid ($stop, in_length: $in_length)", 1, $FH_HR); 
+    }
+    if($strand eq $in_strand) { 
+      my $min = utl_Min($start, $stop);
+      my $max = utl_Max($start, $stop);
+      for($i = $min; $i <= $max; $i++) { $covered_A[$i] = 1; }
+    }
+  }
+  
+  # go back and create return coords
+  for($i = 1; $i <= $in_length; $i++) { 
+    if($covered_A[$i] == 0) { 
+      $start = $i;
+      while((($i+1) <= $in_length) && ($covered_A[($i+1)] == 0)) { $i++; }
+      $stop = $i; 
+      if($ret_coords ne "") { $ret_coords .= ","; }
+      $ret_coords .= vdr_CoordsTokenCreate($start, $stop, $in_strand, $FH_HR);
+    }
+  }
+
+  return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_EutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
 # Synopsis: Fetch information for an accession using edirect.
@@ -2106,15 +2451,15 @@ sub dng_CoordsComplement {
 #
 # Dies:       if there's a problem fetching the data
 #################################################################
-sub dng_EutilsFetchToFile { 
-  my $sub_name = "dng_EutilsFetchToFile";
+sub vdr_EutilsFetchToFile { 
+  my $sub_name = "vdr_EutilsFetchToFile";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
   if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
 
-  my $url = dng_EutilsFetchUrl($accn, $format);
+  my $url = vdr_EutilsFetchUrl($accn, $format);
 
   my $n = 0;
   my $fetched_str = undef;
@@ -2124,10 +2469,10 @@ sub dng_EutilsFetchToFile {
     sleep(1);
   }
   if(! defined $fetched_str) { 
-    ofile_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", "dnaorg", 1, $FH_HR); 
+    ofile_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
   }
 
-  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
   print OUT $fetched_str;
   close(OUT);
 
@@ -2135,7 +2480,7 @@ sub dng_EutilsFetchToFile {
 }
 
 #################################################################
-# Subroutine: dng_EutilsFetchUrl()
+# Subroutine: vdr_EutilsFetchUrl()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
 # Synopsis: Return a url for an efetch command
@@ -2148,8 +2493,8 @@ sub dng_EutilsFetchToFile {
 #
 # Dies:       never
 #################################################################
-sub dng_EutilsFetchUrl { 
-  my $sub_name = "dng_EutilsFetchUrl";
+sub vdr_EutilsFetchUrl { 
+  my $sub_name = "vdr_EutilsFetchUrl";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2160,7 +2505,7 @@ sub dng_EutilsFetchUrl {
 
 
 #################################################################
-# Subroutine: dng_ModelInfoFileWrite()
+# Subroutine: vdr_ModelInfoFileWrite()
 # Incept:     EPN, Sat Mar  9 05:27:15 2019
 #
 # Synopsis: Output a model info file for all models in @{$mdl_info_AHR}
@@ -2184,8 +2529,8 @@ sub dng_EutilsFetchUrl {
 #
 # Dies:       if $ftr_info_HAHR is not valid upon entering
 #################################################################
-sub dng_ModelInfoFileWrite { 
-  my $sub_name = "dng_ModelInfoFileWrite";
+sub vdr_ModelInfoFileWrite { 
+  my $sub_name = "vdr_ModelInfoFileWrite";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2210,21 +2555,21 @@ sub dng_ModelInfoFileWrite {
 
   # verify feature coords make sense
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    dng_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
+    vdr_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
   }
 
   # output 
-  open(OUT, ">", $out_file) || fileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
+  open(OUT, ">", $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "writing", $FH_HR);
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     print OUT ("MODEL $mdl_name");
     foreach $key (sort keys (%{$mdl_info_AHR->[$mdl_idx]})) { 
       $value = $mdl_info_AHR->[$mdl_idx]{$key};
       if($key =~ m/\:/) { 
-        ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in model key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in model key $key for model $mdl_name", 1, $FH_HR);
       }
       if($value =~ m/\"/) { 
-        ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in model value $value for key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in model value $value for key $key for model $mdl_name", 1, $FH_HR);
       }
       if($key ne "name") { 
         print OUT (" $key:\"$value\"");
@@ -2234,16 +2579,16 @@ sub dng_ModelInfoFileWrite {
 
     # define feature keys to ignore
     my %ftr_key_ignore_H = ();
-    $ftr_key_ignore_H{"type"}        = 1; # this automatically gets added to @key_order_A, so it goes first
-    $ftr_key_ignore_H{"coords"}      = 1; # this automatically gets added to @key_order_A, so it goes second
-    $ftr_key_ignore_H{"length"}      = 1; # will be inferred from coords
-    $ftr_key_ignore_H{"source_idx"}  = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"parent_idx"}  = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"3pa_ftr_idx"} = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"outname"}     = 1; # will be inferred from product and gene (or lack of)
-    $ftr_key_ignore_H{"5p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-    $ftr_key_ignore_H{"3p_sgm_idx"}  = 1; # will be inferred from coords, when sgm_info_HA is created
-    $ftr_key_ignore_H{"location"}    = 1; # *could* (but won't be) inferred from coords
+    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, so it goes first
+    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, so it goes second
+    $ftr_key_ignore_H{"length"}         = 1; # will be inferred from coords
+    $ftr_key_ignore_H{"source_idx"}     = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"parent_idx_str"} = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"3pa_ftr_idx"}    = 1; # will be inferred from coords and type
+    $ftr_key_ignore_H{"outname"}        = 1; # will be inferred from product and gene (or lack of)
+    $ftr_key_ignore_H{"5p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"3p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
+    $ftr_key_ignore_H{"location"}       = 1; # *could* (but won't be) inferred from coords
 
     $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
     # determine order of keys for this feature
@@ -2263,10 +2608,10 @@ sub dng_ModelInfoFileWrite {
         if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) { 
           $value = $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key};
           if($key =~ m/\:/) { 
-            ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in feature key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal ':' character in feature key $key for model $mdl_name", 1, $FH_HR);
           }
           if($value =~ m/\"/) { 
-            ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in feature value $value for key $key for model $mdl_name", "dnaorg", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, problem writing $out_file, illegal '\"' character in feature value $value for key $key for model $mdl_name", 1, $FH_HR);
           }
           print OUT (" $key:\"$value\"");
         }
@@ -2280,20 +2625,21 @@ sub dng_ModelInfoFileWrite {
 }
 
 #################################################################
-# Subroutine: dng_ModelInfoFileParse()
+# Subroutine: vdr_ModelInfoFileParse()
 # Incept:     EPN, Fri Mar 15 05:15:23 2019
 #
 # Synopsis: Parse a model info file for >= 1 models and collect 
 #           feature information for each model $model in 
 #           @{$ftr_info_HAHR->{$model}}.
 #
-#           The following keys must be defined for all features:
-#             "type":   feature type, e.g. "mat_peptide", "CDS"
-#             "coords": coordinates for this feature in the reference
-#           We verify this at end of subroutine
+#           This subroutine validates that keys in @{$reqd_mdl_keys_AR}
+#           are read and stored in $mdl_info_AHR, and that keys in 
+#           @{$reqd_ftr_keys_AR} are read and stored in $ftr_info_HAHR.
 # 
 # Arguments:
 #  $in_file:          input .minfo file to parse
+#  $reqd_mdl_keys_AR: REF to array of required model   keys, e.g. ("name", "length")
+#  $reqd_ftr_keys_AR: REF to array of required feature keys, e.g. ("type", "coords")
 #  $mdl_info_AHR:     REF to array of hashes of model information, filled here
 #  $ftr_info_HAHR:    REF to hash of array of hashes with information 
 #                     on the features per model, filled here
@@ -2302,16 +2648,16 @@ sub dng_ModelInfoFileWrite {
 # Returns:    void
 #
 # Dies:       if unable to parse $in_file
-#             if a feature is defined without "type" or "coords" keys
+#             if a required mdl or ftr key does not exist
 #################################################################
-sub dng_ModelInfoFileParse {
-  my $sub_name = "dng_ModelInfoFileParse";
-  my $nargs_expected = 4;
+sub vdr_ModelInfoFileParse {
+  my $sub_name = "vdr_ModelInfoFileParse";
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($in_file, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
+  my ($in_file, $reqd_mdl_keys_AR, $reqd_ftr_keys_AR, $mdl_info_AHR, $ftr_info_HAHR, $FH_HR) = @_;
   
-  my $format_str = "# DNAORG model info (.minfo) format specifications:\n";
+  my $format_str = "# VADR model info (.minfo) format specifications:\n";
   $format_str   .= "# Lines prefixed with '#' are ignored.\n";
   $format_str   .= "# All other lines must begin with either: 'MODEL' or 'FEATURE'\n";
   $format_str   .= "# followed by one or more whitespace characters and then the model\n";
@@ -2326,7 +2672,7 @@ sub dng_ModelInfoFileParse {
   $format_str   .= "# more whitespace characters.\n";
 
   # example lines:
-  #MODEL NC_039477 cmfile:"test/test.dnaorg_build.cm"
+  #MODEL NC_039477 cmfile:"test/test.vadr.cm"
   #FEATURE NC_039477 type:"gene" coords:"5..5104:+" gene:"ORF1"
   #FEATURE NC_039477 type:"CDS" coords:"5..5104:+" gene:"ORF1" product:"nonstructural polyprotein"
 
@@ -2334,7 +2680,7 @@ sub dng_ModelInfoFileParse {
   my $ftr_idx    = undef; # index of current feature
   my $mdl_idx    = -1;    # index of current model
   my %mdl_read_H = ();    # keeps track of which model names we've seen MODEL lines for, to avoid duplicates
-  open(IN, $in_file) || fileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
     if($line !~ /^#/) { 
       # not a comment line
@@ -2344,7 +2690,7 @@ sub dng_ModelInfoFileParse {
       if($line =~ /^MODEL\s+(\S+)\s*/) { 
         $mdl_name = $1;
         if(exists $mdl_read_H{$mdl_name}) { 
-          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", 1, $FH_HR);
         }
         $mdl_idx++;
         %{$mdl_info_AHR->[$mdl_idx]} = ();
@@ -2358,7 +2704,7 @@ sub dng_ModelInfoFileParse {
       elsif($line =~ /^FEATURE\s+(\S+)\s*/) { 
         $mdl_name = $1;
         if(! exists $mdl_read_H{$mdl_name}) { 
-          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read FEATURE line for model $mdl_name before a MODEL line for $mdl_name; line:\n$orig_line\n", 1, $FH_HR);
         }
         $ftr_idx = scalar(@{$ftr_info_HAHR->{$mdl_name}});
         # initialize ftr_info for this model/feature pair
@@ -2366,23 +2712,23 @@ sub dng_ModelInfoFileParse {
         $line =~ s/^FEATURE\s+\S+\s*//; # remove FEATURE and model value
       }
       else { 
-        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, non-comment line does not start with 'MODEL <modelname>' or 'FEATURE <featurename>', line:\n$orig_line\n", 1, $FH_HR);
       }
       # if we get here we have either a MODEL or FEATURE line, parse the rest of it
       while($line ne "") { 
         if($line =~ /^([^\:\s]+)\:\"([^\"]+)\"\s*/) { 
           # key   must not include ':' or whitespace
-          # value must begin and end with '"' but otherwise include on '"' characters
+          # value must begin and end with '"' but otherwise include no '"' characters
           my ($key, $value) = ($1, $2);
           if($is_model_line) { 
             if(exists $mdl_info_AHR->[$mdl_idx]{$key}) {
-              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $mdl_info_AHR->[$mdl_idx]{$key} = $value;
           }
           else { # feature line
             if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
-              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", "dnaorg", 1, $FH_HR);
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
             # printf("\tadded ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
@@ -2390,7 +2736,7 @@ sub dng_ModelInfoFileParse {
           $line =~ s/^[^\:\s]+\:\"[^\"]+\"\s*//; # remove this key/value pair
         }
         else { 
-          ofile_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", "dnaorg", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, unable to parse $in_file, failed to parse key:value pairs in line:\n$orig_line\n$format_str\n", 1, $FH_HR);
         }
       } 
     }
@@ -2398,25 +2744,98 @@ sub dng_ModelInfoFileParse {
   close(IN);
 
   # verify we read what we need
-  my @reqd_mdl_keys_A = ("name", "length");
-  my @reqd_ftr_keys_A = ("type", "coords");
-  utl_AHValidate($mdl_info_AHR, \@reqd_mdl_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
+  utl_AHValidate($mdl_info_AHR, $reqd_mdl_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing", $FH_HR);
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    utl_AHValidate($ftr_info_HAHR->{$mdl_name}, \@reqd_ftr_keys_A, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+    utl_AHValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
   }
 
-  # verify feature coords make sense
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
-    dng_FeatureInfoValidateCoords($ftr_info_HAHR->{$mdl_name}, $mdl_info_AHR->[$mdl_idx]{"length"}, $FH_HR); 
-  }
   return;
 }
 
 #################################################################
-# Subroutine:  dng_SplitFastaFile()
+# Subroutine: vdr_FeatureInfoMerge()
+# Incept:     EPN, Sun May  5 10:32:40 2019
+#
+# Synopsis: Add info in one feature information arrays to another
+#           after validating that they can be merged.
+#
+#           Features to be merged are identified as "consistent"
+#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
+#           defined as those for which there is a subset of >=1
+#           features that are in common (identical qualifier name and
+#           value) between the two.
+#
+#           If any "inconsistent" features are identified between
+#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
+#           die. "Inconsistent" features are those for which a subset
+#           of >=1 qualifiers have identical values but another subset
+#           of >=1 qualifiers have different values.
+# 
+# Arguments:
+#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
+#                       add to $
+#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
+#                    on the features to add to  $ftr_info1_HAHR
+#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if something is inconsistent between the two mdl_info_AHRs or
+#             ftr_info_HAHRs that prevent merging
+#################################################################
+sub vdr_FeatureInfoMerge { 
+  my $sub_name = "vdr_FeatureInfoMerge";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $src_nftr = scalar(@{$src_ftr_info_AHR});
+  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
+  my $src_ftr_key;
+  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
+    my $found_consistent = 0;
+    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
+      my $nconsistent   = 0;
+      my $ninconsistent = 0;
+      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
+             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $nconsistent++;
+          }
+          else { 
+            $ninconsistent++;
+          }
+        }
+      }
+      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
+        # we found a match, merge them
+        if($found_consistent) { 
+          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+        }
+        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
+                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
+          }
+        }
+        $found_consistent = 1;
+      }
+    }
+    if(! $found_consistent) { 
+      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_SplitFastaFile()
 # Incept:      EPN, Tue Mar  1 09:30:10 2016
 #
 # Purpose: Split up a fasta file into <n> smaller files by calling
@@ -2435,8 +2854,8 @@ sub dng_ModelInfoFileParse {
 # Dies:       if esl-ssplit command fails
 #
 ################################################################# 
-sub dng_SplitFastaFile { 
-  my $sub_name = "dng_SplitFastaFile()";
+sub vdr_SplitFastaFile { 
+  my $sub_name = "vdr_SplitFastaFile()";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2467,7 +2886,7 @@ sub dng_SplitFastaFile {
 }
 
 #################################################################
-# Subroutine: dng_SplitNumSeqFiles()
+# Subroutine: vdr_SplitNumSeqFiles()
 # Incept:     EPN, Mon Mar 18 15:01:44 2019
 #
 # Synopsis: Return number of sequence files we need to split a sequence
@@ -2482,8 +2901,8 @@ sub dng_SplitFastaFile {
 #
 # Dies:       If --nkb or --maxnjobs options do not exist in %{$opt_HHR}.
 #################################################################
-sub dng_SplitNumSeqFiles { 
-  my $sub_name = "dng_SplitNumSeqFiles";
+sub vdr_SplitNumSeqFiles { 
+  my $sub_name = "vdr_SplitNumSeqFiles";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2504,7 +2923,7 @@ sub dng_SplitNumSeqFiles {
 }
 
 #################################################################
-# Subroutine: dng_CdsFetchStockholmToFasta()
+# Subroutine: vdr_CdsFetchStockholmToFasta()
 # Incept:     EPN, Thu Mar 14 12:30:33 2019
 # 
 # Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
@@ -2513,7 +2932,7 @@ sub dng_SplitNumSeqFiles {
 #
 #             We don't really need both the stockholm and fasta file 
 #             if there are no gaps in the stockholm alignment (as is the
-#             case in dnaorg_build.pl (which requires a single sequence 
+#             case in vadr-build.pl (which requires a single sequence 
 #             'alignment' with no gaps), but this implemenation works for
 #             alignments with gaps too.
 #
@@ -2528,8 +2947,8 @@ sub dng_SplitNumSeqFiles {
 # Dies:    if we have trouble fetching a sequence
 #
 #################################################################
-sub dng_CdsFetchStockholmToFasta { 
-  my $sub_name = "dng_CdsFetchStockholmToFasta";
+sub vdr_CdsFetchStockholmToFasta { 
+  my $sub_name = "vdr_CdsFetchStockholmToFasta";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2542,7 +2961,7 @@ sub dng_CdsFetchStockholmToFasta {
   my @sgm_start_AA  = ();
   my @sgm_stop_AA   = ();
   my @sgm_strand_AA = ();
-  dng_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
 
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nseq = $msa->nseq;
@@ -2572,32 +2991,7 @@ sub dng_CdsFetchStockholmToFasta {
 }
 
 #################################################################
-# Subroutine: dng_StripVersion()
-# Incept:     EPN, Thu Feb 11 14:25:52 2016
-#
-# Purpose:    Given a ref to an accession.version string, remove the version.
-#
-# Arguments: 
-#   $accver_R: ref to accession version string to remove version from
-#
-# Returns:    Nothing, $$accver_R has version removed
-#
-# Dies:       never
-#################################################################
-sub dng_StripVersion {
-  my $sub_name  = "dng_StripVersion()";
-  my $nargs_expected = 1;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($accver_R) = (@_);
-
-  $$accver_R =~ s/\.[0-9]*$//; # strip version
-
-  return;
-}
-
-#################################################################
-# Subroutine:  dng_CmalignCheckStdOutput()
+# Subroutine:  vdr_CmalignCheckStdOutput()
 # Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
 # Purpose:     Check cmalign output to see if it indicates that 
@@ -2618,8 +3012,8 @@ sub dng_StripVersion {
 # Dies: If $stdout_file does not exist or is empty
 # 
 ################################################################# 
-sub dng_CmalignCheckStdOutput { 
-  my $sub_name = "dng_CmalignCheckStdOutput";
+sub vdr_CmalignCheckStdOutput { 
+  my $sub_name = "vdr_CmalignCheckStdOutput";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2629,10 +3023,10 @@ sub dng_CmalignCheckStdOutput {
   }
 
   if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
   }
   if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", "dnaorg", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
   }
 
   # if we get here, the file exists and is non-empty

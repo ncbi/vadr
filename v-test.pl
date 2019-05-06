@@ -8,28 +8,10 @@ use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
-require "dnaorg.pm"; 
+require "vadr.pm";
 require "epn-options.pm";
-
-# first, determine the paths to all modules, scripts and executables that we'll need
-# make sure the DNAORGDIR environment variable is set
-my $dnaorgdir = $ENV{'DNAORGDIR'};
-if(! exists($ENV{'DNAORGDIR'})) { 
-    printf STDERR ("\nERROR, the environment variable DNAORGDIR is not set, please set it to the directory where you installed the dnaorg scripts and their dependencies.\n"); 
-    exit(1); 
-}
-if(! (-d $dnaorgdir)) { 
-    printf STDERR ("\nERROR, the dnaorg directory specified by your environment variable DNAORGDIR does not exist.\n"); 
-    exit(1); 
-}    
- 
-# determine other required paths to executables relative to $dnaorgdir
-my $inf_exec_dir      = $dnaorgdir . "/infernal-dev/src/";
-my $hmmer_exec_dir    = $dnaorgdir . "/hmmer-3.1b2/src/";
-my $esl_exec_dir      = $dnaorgdir . "/infernal-dev/easel/miniapps/";
-my $esl_fetch_cds     = $dnaorgdir . "/esl-fetch-cds/esl-fetch-cds.pl";
-my $esl_epn_translate = $dnaorgdir . "/esl-epn-translate/esl-epn-translate.pl";
-my $esl_ssplit        = $dnaorgdir . "/Bio-Easel/scripts/esl-ssplit.pl";
+require "epn-ofile.pm";
+require "epn-utils.pm";
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -73,8 +55,8 @@ opt_Add("--skipmsg",    "boolean", 0,                        3,    undef, undef,
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: dnaorg_test.pl [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
-my $synopsis = "dnaorg_test.pl :: test dnaorg scripts [TEST SCRIPT]";
+my $usage    = "Usage: v-test.pl [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
+my $synopsis = "v-test.pl :: test VADR scripts [TEST SCRIPT]";
 
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"},
@@ -85,38 +67,20 @@ my $options_okay =
                 'keep'         => \$GetOptions_H{"--keep"},
                 'skipmsg'      => \$GetOptions_H{"--skipmsg"});
 
-my $total_seconds = -1 * secondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
+my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.45";
-my $releasedate   = "Feb 2019";
+my $version       = "0.92";
+my $releasedate   = "May 2019";
+my $pkgname       = "VADR";
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
-  outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+  ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
 }
-
-# check that number of command line args is correct
-if(scalar(@ARGV) != 2) {   
-  print "Incorrect number of command line arguments.\n";
-  print $usage;
-  print "\nTo see more help on available options, do dnaorg_build.pl -h\n\n";
-  exit(1);
-}
-my ($test_file, $dir_out) = (@ARGV);
-
-if(defined $dir_out) { 
-  $dir_out =~ s/\/$//; # remove final '/' if there is one
-}
-my $dir_out_tail   = $dir_out;
-$dir_out_tail   =~ s/^.+\///; # remove all but last dir
-my $out_root   = $dir_out .   "/" . $dir_out_tail   . ".dnaorg_test";
-
-my $cmd;
-my @early_cmd_A = ();  # array of commands we run before our log file is opened
 
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
@@ -124,28 +88,50 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
-if(-d $dir_out) { 
-  $cmd = "rm -rf $dir_out";
-  if(opt_Get("-f", \%opt_HH)) { # -f used, always remove it
-    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); 
-  }
-  else { # dirout exists but -f not used
-    die "ERROR directory named $dir_out (specified with --dirout) already exists. Remove it, or use -f to overwrite it."; 
-  }
+# check that number of command line args is correct
+if(scalar(@ARGV) != 2) {   
+  print "Incorrect number of command line arguments.\n";
+  print $usage;
+  print "\nTo see more help on available options, do v-test.pl -h\n\n";
+  exit(1);
 }
 
-if(! -d $dir_out) {
-  $cmd = "mkdir $dir_out";
-  runCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+my ($test_file, $dir) = (@ARGV);
+
+#############################
+# create the output directory
+#############################
+my $cmd;               # a command to run with utl_RunCommand()
+my @early_cmd_A = ();  # array of commands we run before our log file is opened
+
+if($dir !~ m/\/$/) { $dir =~ s/\/$//; } # remove final '/' if it exists
+if(-d $dir) { 
+  $cmd = "rm -rf $dir";
+  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR directory named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
+if(-e $dir) { 
+  $cmd = "rm $dir";
+ if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
+  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+}
+
+# create the dir
+$cmd = "mkdir $dir";
+utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef);
+push(@early_cmd_A, $cmd);
+
+my $dir_tail = $dir;
+$dir_tail =~ s/^.+\///; # remove all but last dir
+my $out_root = $dir . "/" . $dir_tail . ".vadr";
 
 #############################################
 # output program banner and open output files
 #############################################
 # output preamble
-my @arg_desc_A = ("test file");
-my @arg_A      = ($test_file);
-outputBanner(*STDOUT, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+my @arg_desc_A = ("test file", "output directory");
+my @arg_A      = ($test_file, $dir);
+ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, undef);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # open the log and command files:
@@ -156,21 +142,23 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "nodirpath": file name, full path minus all directories
                          #  "desc":      short description of the file
                          #  "FH":        file handle to output to for this file, maybe undef
-                         # 2D keys:
-                         #  "log": log file of what's output to stdout
-                         #  "cmd": command file with list of all commands executed
+                         # 2D keys (at least initially)
+                         #  "log":  log file of what's output to stdout
+                         #  "cmd":  command file with list of all commands executed
+                         #  "list": file with list of all output files created
 
 # open the log and command files 
-openAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
-openAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
+my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
 # now we have the log file open, output the banner there too
-outputBanner($log_FH, $version, $releasedate, $synopsis, $date, $dnaorgdir);
+ofile_OutputBanner($log_FH, $pkgname, $version, $releasedate, $synopsis, $date, undef);
 opt_OutputPreamble($log_FH, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
 # output any commands we already executed to $log_FH
@@ -178,34 +166,36 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
+
 # read in the test file
+my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
+my $start_secs = ofile_OutputProgressPrior("Parsing test file", $progress_w, $log_FH, *STDOUT);
 my @cmd_A      = (); # array of the commands to run
 my @desc_A     = (); # array of the descriptions for the commands
 my @outfile_AA = (); # array of arrays of output files to compare for each command
 my @expfile_AA = (); # array of arrays of expected files to compare output to for each command
 my @rmdir_AA   = (); # array of directories to remove after each command is completed
 my $ncmd = parse_test_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, \%opt_HH, $ofile_info_HH{"FH"});
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 my $npass = 0;
 my $nfail = 0;
-my $start_secs = undef;
 for(my $i = 1; $i <= $ncmd; $i++) { 
   my $cmd  = $cmd_A[($i-1)];
   my $desc = $desc_A[($i-1)];
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
   my $rmdir_AR   = \@{$rmdir_AA[($i-1)]};
-  my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
   if((opt_IsUsed("-s", \%opt_HH)) && (opt_Get("-s", \%opt_HH))) { 
     # -s used, we aren't running commands, just comparing files
-    $start_secs = outputProgressPrior(sprintf("Skipping command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
-    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    $start_secs = ofile_OutputProgressPrior(sprintf("Skipping command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   else { 
     # -s not used, run command
-    $start_secs = outputProgressPrior(sprintf("Running command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
-    runCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
-    outputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    $start_secs = ofile_OutputProgressPrior(sprintf("Running command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
+    utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
 
   my $nout = scalar(@{$outfile_AR});
@@ -219,9 +209,9 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   if(($nfail == 0) && (! opt_Get("--keep", \%opt_HH))) { # only remove dir if no tests failed
     my $nrmdir = (defined $rmdir_AR) ? scalar(@{$rmdir_AR}) : 0;
     for(my $k = 0; $k < $nrmdir; $k++) { 
-      outputString($log_FH, 1, sprintf("#\t%-60s ... ", "removing directory $rmdir_AR->[$k]"));
-      runCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"}); 
-      outputString($log_FH, 1, "done\n");
+      ofile_OutputString($log_FH, 1, sprintf("#\t%-60s ... ", "removing directory $rmdir_AR->[$k]"));
+      utl_RunCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"}); 
+      ofile_OutputString($log_FH, 1, "done\n");
     }
   }
 }
@@ -231,17 +221,17 @@ for(my $i = 1; $i <= $ncmd; $i++) {
 ##########
 # summarize number of files checked and passed
 my $overall_pass = ($nfail == 0) ? 1 : 0;
-outputString($log_FH, 1, "#\n#\n");
+ofile_OutputString($log_FH, 1, "#\n#\n");
 if($overall_pass) { 
-  outputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
+  ofile_OutputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
 }
 else { 
-  outputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
+  ofile_OutputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
 }
-outputString($log_FH, 1, sprintf("#\n"));
+ofile_OutputString($log_FH, 1, sprintf("#\n"));
 
-$total_seconds += secondsSinceEpoch();
-outputConclusionAndCloseFiles($total_seconds, $dir_out, \%ofile_info_HH);
+$total_seconds += ofile_SecondsSinceEpoch();
+ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 #################################################################
@@ -276,7 +266,7 @@ sub parse_test_file {
 
   my ($testfile, $cmd_AR, $desc_AR, $outfile_AAR, $expfile_AAR, $rmdir_AAR, $opt_HHR, $FH_HR) = @_;
 
-  open(IN, $testfile) || fileOpenFailure($testfile, $sub_name, $!, "reading", $FH_HR);
+  open(IN, $testfile) || ofile_FileOpenFailure($testfile, $sub_name, $!, "reading", $FH_HR);
   my $ncmd = 0;
   my $ndesc = 0;
   my $outfile;
@@ -297,12 +287,12 @@ sub parse_test_file {
         my $cmd = $line;
         if($ncmd > 0) { 
           # make sure we have read >= 1 outfiles and expfiles for previous command
-          if(! (@{$outfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
-          if(! (@{$expfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
+          if(! (@{$outfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
+          if(! (@{$expfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
           my $nout_prv = scalar(@{$outfile_AAR->[($ncmd-1)]});
           my $nexp_prv = scalar(@{$expfile_AAR->[($ncmd-1)]});
           if($nout_prv != $nexp_prv) { 
-            DNAORG_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
+            ofile_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
           }
         }
         # replace !<s>! with value of --<s> from options, die if it wasn't set or doesn't exist
@@ -310,10 +300,10 @@ sub parse_test_file {
           my $var = $1;
           my $varopt = "--" . $var;
           if(! opt_Exists($varopt, $opt_HHR)) { 
-            DNAORG_FAIL("ERROR trying to replace !$var! in test file but option --$var does not exist in command line options", 1, $FH_HR); 
+            ofile_FAIL("ERROR trying to replace !$var! in test file but option --$var does not exist in command line options", 1, $FH_HR); 
           }
           if(! opt_IsUsed($varopt, $opt_HHR)) { 
-            DNAORG_FAIL("ERROR trying to replace !$var! in test file but option --$var was not specified on the command line, please rerun with --$var", 1, $FH_HR); 
+            ofile_FAIL("ERROR trying to replace !$var! in test file but option --$var was not specified on the command line, please rerun with --$var", 1, $FH_HR); 
           }
           my $replacevalue = opt_Get($varopt, $opt_HHR);
           $cmd =~ s/\!$var\!/$replacevalue/g;
@@ -330,18 +320,18 @@ sub parse_test_file {
         $outfile = $line;
         $outfile =~ s/^\s+//;
         $outfile =~ s/\s+$//;
-        if($outfile =~ m/\s/) { DNAORG_FAIL("ERROR output file has spaces: $outfile", 1, $FH_HR); }
+        if($outfile =~ m/\s/) { ofile_FAIL("ERROR output file has spaces: $outfile", 1, $FH_HR); }
         if(scalar(@{$outfile_AAR}) < $ncmd) { 
           @{$outfile_AAR->[($ncmd-1)]} = ();
         }
         push(@{$outfile_AAR->[($ncmd-1)]}, $outfile);
         if((opt_IsUsed("-s", $opt_HHR)) && (opt_Get("-s", $opt_HHR))) { 
           # -s used, we aren't running commands, just comparing files, output files must already exist
-          if(! -e $outfile) { DNAORG_FAIL("ERROR, output file $outfile does not already exist (and -s used)", 1, $FH_HR); }
+          if(! -e $outfile) { ofile_FAIL("ERROR, output file $outfile does not already exist (and -s used)", 1, $FH_HR); }
         }
         else { 
           # -s not used
-          if(-e $outfile) { DNAORG_FAIL("ERROR, output file $outfile already exists (and -s not used)", 1, $FH_HR); }
+          if(-e $outfile) { ofile_FAIL("ERROR, output file $outfile already exists (and -s not used)", 1, $FH_HR); }
         }
       }
       elsif($line =~ s/^exp\:\s+//) { 
@@ -354,12 +344,12 @@ sub parse_test_file {
           my $replacevalue = $ENV{"$envvar"};
           $expfile =~ s/\@$envvar\@/$replacevalue/g;
         }
-        if($expfile =~ m/\s/) { DNAORG_FAIL("ERROR expected file has spaces: $expfile", 1, $FH_HR) }
+        if($expfile =~ m/\s/) { ofile_FAIL("ERROR expected file has spaces: $expfile", 1, $FH_HR) }
         if(scalar(@{$expfile_AAR}) < $ncmd) { 
           @{$expfile_AAR->[($ncmd-1)]} = ();
         }
         push(@{$expfile_AAR->[($ncmd-1)]}, $expfile);
-        if(! -e $expfile) { DNAORG_FAIL("ERROR, expected file $expfile does not exist", 1, $FH_HR); }
+        if(! -e $expfile) { ofile_FAIL("ERROR, expected file $expfile does not exist", 1, $FH_HR); }
       }
       elsif($line =~ s/^rmdir\:\s+//) { 
         $rmdir = $line;
@@ -371,21 +361,21 @@ sub parse_test_file {
         push(@{$rmdir_AAR->[($ncmd-1)]}, $rmdir);
       }
       else { 
-        DNAORG_FAIL("ERROR unable to parse line $line in $testfile", 1, $FH_HR);
+        ofile_FAIL("ERROR unable to parse line $line in $testfile", 1, $FH_HR);
       }
     }
   }
   close(IN);
 
-  if($ndesc != $ncmd) { DNAORG_FAIL("ERROR did not read same number of descriptions and commands", 1, $FH_HR); }
+  if($ndesc != $ncmd) { ofile_FAIL("ERROR did not read same number of descriptions and commands", 1, $FH_HR); }
 
   # for final command, check that number of exp and out files is equal
-  if(! (@{$outfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
-  if(! (@{$expfile_AAR->[($ncmd-1)]})) { DNAORG_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
+  if(! (@{$outfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
+  if(! (@{$expfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
   my $nout_prv = scalar(@{$outfile_AAR->[($ncmd-1)]});
   my $nexp_prv = scalar(@{$expfile_AAR->[($ncmd-1)]});
   if($nout_prv != $nexp_prv) { 
-    DNAORG_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
+    ofile_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
   }
 
   return $ncmd;
@@ -425,19 +415,19 @@ sub diff_two_files {
   my $pass = 0;
 
   if(! $exp_file_exists) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
+    ofile_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
   }
     
-  outputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
+  ofile_OutputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
 
   if($out_file_exists) { 
-    runCommand("diff -U 0 $out_file $exp_file > $diff_file", opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1: don't die if command fails
+    utl_RunCommand("diff -U 0 $out_file $exp_file > $diff_file", opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1: don't die if command fails
     if(-s $diff_file) { 
       # copy the two files here:
       my $copy_of_out_file = $diff_file . ".out";
       my $copy_of_exp_file = $diff_file . ".exp";
-      runCommand("cp $out_file $copy_of_out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-      runCommand("cp $exp_file $copy_of_exp_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      utl_RunCommand("cp $out_file $copy_of_out_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+      utl_RunCommand("cp $exp_file $copy_of_exp_file", opt_Get("-v", $opt_HHR), 0, $FH_HR);
       # analyze the diff file and print out how many lines 
       if($out_file =~ m/\.sqtable/ && $exp_file =~ m/\.sqtable/) { 
         if($out_file_nonempty && $exp_file_nonempty) { 
@@ -453,7 +443,7 @@ sub diff_two_files {
             $conclusion = "FAIL [files differ, output file is empty, but expected file is not (see $diff_file)]";
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, unexpected case exp_file_nonempty: $exp_file_nonempty out_file_nonempty: $out_file_nonempty", 1, $FH_HR) ;
+            ofile_FAIL("ERROR in $sub_name, unexpected case exp_file_nonempty: $exp_file_nonempty out_file_nonempty: $out_file_nonempty", 1, $FH_HR) ;
           }
         }
       }
@@ -470,7 +460,7 @@ sub diff_two_files {
     $conclusion = "FAIL [output file does not exist]";
   }
 
-  outputString($FH_HR->{"log"}, 1, "$conclusion\n");
+  ofile_OutputString($FH_HR->{"log"}, 1, "$conclusion\n");
 
   return $pass;
 }
@@ -512,16 +502,16 @@ sub compare_two_sqtable_files {
   my $skip_msg_lines = opt_Get("--skipmsg", $opt_HHR) ? 1 : 0;
 
   if(! $exp_file_exists) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
+    ofile_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
   }
   if(! $exp_file_nonempty) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
   }
   if(! $out_file_exists) { 
-    DNAORG_FAIL("ERROR in $sub_name, output file $out_file does not exist", 1, $FH_HR) ;
+    ofile_FAIL("ERROR in $sub_name, output file $out_file does not exist", 1, $FH_HR) ;
   }
   if(! $out_file_nonempty) { 
-    DNAORG_FAIL("ERROR in $sub_name, output file $out_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, output file $out_file exists but is empty", 1, $FH_HR);
   }
     
   my @out_line_A = ();  # array of all lines in out file
@@ -552,7 +542,7 @@ sub compare_two_sqtable_files {
   my $tot_nseq_note_exp_only  = 0; # number of sequences with >=1 note only in the expected file (not in the output file)
 
   if($out_file_nonempty && $exp_file_nonempty) { 
-    open(DIFFOUT, ">", $diff_file) || fileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
+    open(DIFFOUT, ">", $diff_file) || ofile_FileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
     my %seq_H     = (); # key is sequence name, 1 is if sequence exists in @seq_A or not
     my @seq_A     = (); # array of sequence names in order
     my %seq_ftr_HH = (); # key1: sequence, key2: feature, value always 1
@@ -568,7 +558,7 @@ sub compare_two_sqtable_files {
       $ftr = ""; # current feature string (multiple lines)
       my $prv_line_seq = 0;
       %{$file_seq_ftr_HHH{$filekey}} = ();
-      open(IN, $file) || fileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
+      open(IN, $file) || ofile_FileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while(my $line = <IN>) { 
         if($line !~ m/\S+/) { # skip blank lines
           ; # do nothing
@@ -664,7 +654,7 @@ sub compare_two_sqtable_files {
               $prefix = "FTR-EXP-ONLY: ";
           }
           else { 
-            DNAORG_FAIL("ERROR in $sub_name, second pass feature not in either file:\n$ftr", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, second pass feature not in either file:\n$ftr", 1, $FH_HR);
           }
           foreach $line (split("\n", $ftr)) { 
             push(@out_A, $prefix . $line . "\n");
@@ -731,10 +721,10 @@ sub OLD_compare_two_sqtable_files {
   my $pass = 0;
 
   if(! $exp_file_exists) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
+    ofile_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
   }
   if(! $exp_file_nonempty) { 
-    DNAORG_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
   }
     
   my @out_line_A = ();  # array of all lines in out file
@@ -765,7 +755,7 @@ sub OLD_compare_two_sqtable_files {
   my $tot_nseq_note_exp_only  = 0; # number of sequences with >=1 note only in the expected file (not in the output file)
 
   if($out_file_nonempty) { 
-    open(OUT, $out_file) || fileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
+    open(OUT, $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
     $lidx = 0;
     while($out_line = <OUT>) { 
       if($out_line =~ m/^\>/) { 
@@ -782,7 +772,7 @@ sub OLD_compare_two_sqtable_files {
     }
     close(OUT);
 
-    open(EXP, $exp_file) || fileOpenFailure($exp_file, $sub_name, $!, "reading", $FH_HR);
+    open(EXP, $exp_file) || ofile_FileOpenFailure($exp_file, $sub_name, $!, "reading", $FH_HR);
     $lidx = 0;
     while($exp_line = <EXP>) { 
       if($exp_line =~ m/^\>/) { 
@@ -802,24 +792,23 @@ sub OLD_compare_two_sqtable_files {
     # make sure all sequences existed in both files
     foreach $seq (sort keys %seq_exists_H) { 
       if(! exists $out_seq_lidx_H{$seq}) { 
-        DNAORG_FAIL("ERROR in $sub_name, $seq not in out_seq_lidx_H", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, $seq not in out_seq_lidx_H", 1, $FH_HR);
       }
       if(! exists $exp_seq_lidx_H{$seq}) { 
-        DNAORG_FAIL("ERROR in $sub_name, $seq not in exp_seq_lidx_H", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, $seq not in exp_seq_lidx_H", 1, $FH_HR);
       }
-      printf("HEYA $seq $out_seq_lidx_H{$seq} $exp_seq_lidx_H{$seq}\n");
     }
     # make sure all sequences are in the same order in both files
     $nseq = scalar(@out_seq_A);
     my $s;
     for($s = 0; $s < $nseq; $s++) { 
       if($out_seq_A[$s] ne $exp_seq_A[$s]) { 
-        DNAORG_FAIL("ERROR in $sub_name, $seq not in same order in both files", 1, $FH_HR);
+        ofile_FAIL("ERROR in $sub_name, $seq not in same order in both files", 1, $FH_HR);
       }
       printf("HEYA $out_seq_A[$s] " . $out_seq_lidx_H{$out_seq_A[$s]} . " " . $exp_seq_lidx_H{$out_seq_A[$s]} . "\n");
     }
     
-    open(DIFFOUT, ">", $diff_file) || fileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
+    open(DIFFOUT, ">", $diff_file) || ofile_FileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
 
     # for each sequence, compare the annotations
     my $lidx;        # counter over lines
@@ -922,7 +911,7 @@ sub OLD_compare_two_sqtable_files {
         }
 
         if((! exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
-          DNAORG_FAIL("ERROR in $sub_name, $fline does not exist in either exp or out", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, $fline does not exist in either exp or out", 1, $FH_HR);
         }
         elsif((exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
           if($is_note) { $cur_note_nexp_only++; }

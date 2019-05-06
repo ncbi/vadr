@@ -1103,8 +1103,6 @@ sub findSubjectGaps {
 #   $query_alignment_string:     a subsequence of the query, possibly containing gaps
 #   $query_start:                query start position for current block we are processing
 #   $query_end:                  query end  position for current block we are processing
-
-
 #
 # Returns:    1) a string of positions with stop codons or NULL. 
 #
@@ -1134,7 +1132,7 @@ sub findQueryStops {
     if ($query_start < $query_end) {
 	for ($local_i = 0; $local_i < $local_length; $local_i++) {
 	    if ($local_query_array[$local_i] eq "*") {
-		$local_OneStopString = $query_start + (3 * $local_i);
+		$local_OneStopString = $query_start + (3 * $local_i) + 2; # we want final position of stop codon
 		    if ($local_AllStopString) {
 			$local_AllStopString = $local_AllStopString . ";" . $local_OneStopString;
 		    }
@@ -1148,7 +1146,7 @@ sub findQueryStops {
     else {
 	for ($local_i = 0; $local_i < $local_length; $local_i++) {
 	    if ($local_query_array[$local_i] eq "*") {
-		$local_OneStopString = $query_start - (3 * $local_i) - 2;	    
+		$local_OneStopString = $query_start - (3 * $local_i) - 2; # we want final position of stop codon
 		if ($local_AllStopString) {
 		    $local_AllStopString = $local_OneStopString . ";" . $local_AllStopString;
 		}
