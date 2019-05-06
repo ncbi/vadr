@@ -425,8 +425,14 @@ if(! opt_IsUsed("-m", \%opt_HH)) {
   utl_FileValidateExistsAndNonEmpty($cm_file, "default CM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 else { # -m used on the command line
-  utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -m", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  # check if it is an absolute path first
+  if(utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -m", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
+    # if not, check if it is a subpath within $VADRMODELDIR
+    $cm_file = $env_vadr_model_dir . "/" . $cm_file;
+    utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -m", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
+  }
 }
+
 for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
@@ -439,7 +445,11 @@ if(! opt_IsUsed("-i", \%opt_HH)) {
   utl_FileValidateExistsAndNonEmpty($modelinfo_file, "default model info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 else { # -i used on the command line
-  utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  # check if it is an absolute path first
+  if(utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
+    $modelinfo_file = $env_vadr_model_dir . "/" . $modelinfo_file;
+    utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
+  }
 }
 
 my $qsubinfo_file    = undef;

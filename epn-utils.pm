@@ -11,12 +11,6 @@ use Time::HiRes qw(gettimeofday);
 
 require "epn-ofile.pm";
 
-#####################################################################
-# Data structures used in this module:
-#
-#####################################################################
-# List of subroutines:
-# 
 #################################################################
 # Subroutine: utl_RunCommand()
 # Incept:     EPN, Thu Feb 11 13:32:34 2016 [dnaorg.pm]
