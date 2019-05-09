@@ -274,7 +274,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.92";
+my $version       = "0.93";
 my $releasedate   = "May 2019";
 my $pkgname       = "VADR";
 
@@ -5366,8 +5366,19 @@ sub output_feature_table {
           if(! $is_cds_or_mp) { 
             $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
           }
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ribosomal_slippage", $qval_sep, $ftr_info_AHR, $FH_HR);
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
+          my $ftr_nsgm = $ftr_coords_str =~ tr/\n//; # counts number of lines of ftr_coords_str (this is number of segments)
+          if($ftr_nsgm > 1) { # only annotate ribsomal_slippage if more than one segments exist
+            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ribosomal_slippage", $qval_sep, $ftr_info_AHR, $FH_HR);
+          }
+          # have to be a little careful with 'exception' because there's a special case: 
+          # "exception":"ribosomal slippage" should only be added if we have > 1 segment
+          my $exception_str = helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
+          if(($exception_str =~ /\t\t\texception\tribosomal slippage\n/) && ($ftr_nsgm == 1)) { 
+            # remove ribosomal slippage if it exists
+            $exception_str =~ s/\t\t\texception\tribosomal slippage\n//;
+          }
+          $ftr_out_str .= $exception_str;
+
           # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
           if((! $is_duplicate) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
             my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
