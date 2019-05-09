@@ -1,6 +1,6 @@
 EPN, Mon May  6 06:32:31 2019
 
-VADR 0.92 README.txt 
+VADR 0.93 README.txt 
 
 Organization of this file:
 
@@ -75,7 +75,7 @@ INSTALLATION
 
 The file 'install.sh' is an executable file for installing VADR
 and its dependencies. That file is located online at github here:
-https://github.com/nawrockie/dnaorg_scripts/tree/0.92/install.sh
+https://github.com/nawrockie/dnaorg_scripts/tree/0.93/install.sh
 
 Copy that file into the directory in which you want to install
 VADR. You may want to call that 'vadr-install'. Then move into that
