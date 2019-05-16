@@ -92,13 +92,13 @@ opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read 
 opt_Add("--addminfo",   "string",  undef,      $g,    undef,  undef,      "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide,ncRNA,stem_loop]";
+$opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
 #     option            type       default  group   requires incompat     preamble-output                                                      help-output    
 opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store info for all feature types (except those in --fskip)",        "store info for all feature types (except those in --fskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--fskip",      "string",  undef,      $g,    undef,  undef,      "do not store info for feature types in comma separated string <s>",  "do not store info for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception,ncRNA_class]";
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception]";
 #     option            type       default  group   requires incompat     preamble-output                                                             help-output    
 opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",                  "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",             "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
@@ -356,7 +356,7 @@ $start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank file", $
 my %fdf_H   = (); # default feature types to keep
 my %fadd_H  = (); # feature types to add
 my %fskip_H = (); # feature types to skip
-process_add_and_skip_options("CDS,gene,mat_peptide,ncRNA,stem_loop", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
+process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
 
 # determine what qualifiers we will store based on cmdline options
 # --qall is incompatible with --qadd
