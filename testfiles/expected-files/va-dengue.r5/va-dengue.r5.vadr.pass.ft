@@ -16,6 +16,7 @@
 1	>2325	CDS
 			product	polyprotein
 20	36	stem_loop
+			note	capsid region hairpin (cHP)
 343	840	mat_peptide
 			product	membrane glycoprotein precursor prM
 343	615	mat_peptide
@@ -34,6 +35,7 @@
 1	>2325	CDS
 			product	polyprotein
 20	36	stem_loop
+			note	capsid region hairpin (cHP)
 343	840	mat_peptide
 			product	membrane glycoprotein precursor prM
 343	615	mat_peptide
