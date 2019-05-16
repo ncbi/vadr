@@ -5315,7 +5315,7 @@ sub output_feature_table {
         my $ftr_coords_str    = ""; # string of coordinates for this feature
         my $ftr_out_str       = ""; # output string for this feature
         my $is_cds_or_mp      = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-
+          
         my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
         my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
         my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
@@ -5378,6 +5378,9 @@ sub output_feature_table {
             $exception_str =~ s/\t\t\texception\tribosomal slippage\n//;
           }
           $ftr_out_str .= $exception_str;
+
+          # add note qualifiers, if any
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
 
           # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
           if((! $is_duplicate) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 

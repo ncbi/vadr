@@ -13,9 +13,9 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -p -f $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue.r5 > va-dengue.r5.out
-desc: annotate-noro-10-local
-out: va-dengue.r5/va-dengue.r5.vadr.pass.sqtable 
-out: va-dengue.r5/va-dengue.r5.vadr.fail.sqtable 
+desc: annotate-dengue-5-parallel
+out: va-dengue.r5/va-dengue.r5.vadr.pass.ft 
+out: va-dengue.r5/va-dengue.r5.vadr.fail.ft 
 out: va-dengue.r5/va-dengue.r5.vadr.sqa.tbl
 out: va-dengue.r5/va-dengue.r5.vadr.sqc.tbl
 out: va-dengue.r5/va-dengue.r5.vadr.ftr.tbl
@@ -23,8 +23,8 @@ out: va-dengue.r5/va-dengue.r5.vadr.sgm.tbl
 out: va-dengue.r5/va-dengue.r5.vadr.mdl.tbl
 out: va-dengue.r5/va-dengue.r5.vadr.alt.tbl
 out: va-dengue.r5/va-dengue.r5.vadr.alc.tbl
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.sqtable 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.sqtable 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.ft 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.ft 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sqa.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sqc.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.ftr.tbl
