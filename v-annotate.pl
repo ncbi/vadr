@@ -796,11 +796,11 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl_tbl",      $out_root . ".
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc_tbl",      $out_root . ".alc.tbl", 1, "alert count tabular summary file");
 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".pass.sqtable",        1, "Sequin feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".fail.sqtable",        1, "Sequin feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.seq.list",       1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.seq.list",       1, "list of failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",            1, "list of alerts in the feature tables");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".pass.ft",        1, "Sequin feature table output for passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".fail.ft",        1, "Sequin feature table output for failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, "list of alerts in the feature tables");
 
 ########################
 # tabular output files #

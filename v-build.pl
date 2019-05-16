@@ -98,7 +98,7 @@ opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store
 opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--fskip",      "string",  undef,      $g,    undef,  undef,      "do not store info for feature types in comma separated string <s>",  "do not store info for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception,ribosomal_slippage]";
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception]";
 #     option            type       default  group   requires incompat     preamble-output                                                   help-output    
 opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",        "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",   "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
@@ -403,10 +403,19 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
-# deal with special cases: add some qualifiers based on others 
-# special case 1 of 1: if ribosomal_slippage qualifier exists: create a new "exception" 
-#                      qualifier with value of "ribosomal slippage"
-# (make this more general or a subroutine when new special cases are added)
+# Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
+# existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
+# at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
+# qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
+# only 'exception:ribosomal slippage' qualifier/values are desired in the 
+# output feature table. If we switch to parsing Entrez feature tables as input then
+# the need for this should go away because 'exception:ribosomal slippage' is in that
+# feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
+# we can just ignore). 
+# 
+# If ribosomal_slippage qualifier exists: create a new "exception" 
+# qualifier with value of "ribosomal slippage"
+# 
 for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
   if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
      (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
@@ -415,6 +424,11 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
     }
     else { 
       $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
+    }
+    # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
+    if((! opt_Get("--qall", \%opt_HH)) &&
+       (! defined $qadd_H{"ribosomal_slippage"})) { 
+      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
     }
   }
 }
