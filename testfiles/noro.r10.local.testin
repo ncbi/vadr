@@ -14,8 +14,8 @@
 # file, etc.
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -f $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro.r10 > va-noro.r10.out
 desc: annotate-noro-10-local
-out: va-noro.r10/va-noro.r10.vadr.pass.sqtable 
-out: va-noro.r10/va-noro.r10.vadr.fail.sqtable 
+out: va-noro.r10/va-noro.r10.vadr.pass.ft 
+out: va-noro.r10/va-noro.r10.vadr.fail.ft 
 out: va-noro.r10/va-noro.r10.vadr.sqa.tbl
 out: va-noro.r10/va-noro.r10.vadr.sqc.tbl
 out: va-noro.r10/va-noro.r10.vadr.ftr.tbl
@@ -23,8 +23,8 @@ out: va-noro.r10/va-noro.r10.vadr.sgm.tbl
 out: va-noro.r10/va-noro.r10.vadr.mdl.tbl
 out: va-noro.r10/va-noro.r10.vadr.alt.tbl
 out: va-noro.r10/va-noro.r10.vadr.alc.tbl
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass.sqtable 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.sqtable 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass.ft 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.ft 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.sqa.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.sqc.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.ftr.tbl

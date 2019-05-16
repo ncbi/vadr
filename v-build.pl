@@ -98,11 +98,12 @@ opt_Add("--fall",       "boolean", 0,          $g,    undef,  undef,      "store
 opt_Add("--fadd",       "string",  undef,      $g,    undef,"--fall",     "also store features types in comma separated string <s>",           "also store feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--fskip",      "string",  undef,      $g,    undef,  undef,      "do not store info for feature types in comma separated string <s>",  "do not store info for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception,ribosomal_slippage]";
-#     option            type       default  group   requires incompat     preamble-output                                                   help-output    
-opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",        "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
-opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",   "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>", "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling what qualifiers are stored in model info file\n[default set is:product,gene,exception]";
+#     option            type       default  group   requires incompat     preamble-output                                                             help-output    
+opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store info for all qualifiers (except those in --qskip)",                  "store info for all qualifiers (except those in --qskip)", \%opt_HH, \@opt_order_A);
+opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",             "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--qftradd",    "string",   undef,    $g,"--qadd",    undef,      "--qadd <s2> only applies for feature types in comma separated string <s>", "--qadd <s2> only applies for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>",           "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for including additional model attributes";
 #     option           type       default    group   requires    incompat   preamble-output                       help-output    
@@ -152,6 +153,7 @@ my $options_okay =
 # options for controlling what qualifiers are stored in model info file
                 'qall'         => \$GetOptions_H{"--qall"},
                 'qadd=s'       => \$GetOptions_H{"--qadd"},
+                'qftradd=s'    => \$GetOptions_H{"--qftradd"},
                 'qskip=s'      => \$GetOptions_H{"--qskip"},
 # options for including additional model attributes
                 'group=s'      => \$GetOptions_H{"--group"},
@@ -173,7 +175,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.93";
+my $version       = "0.94";
 my $releasedate   = "May 2019";
 my $pkgname       = "VADR";
 
@@ -354,14 +356,18 @@ $start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank file", $
 my %fdf_H   = (); # default feature types to keep
 my %fadd_H  = (); # feature types to add
 my %fskip_H = (); # feature types to skip
-process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", \%fdf_H, \%fadd_H, \%fskip_H, \%opt_HH, $FH_HR);
+process_add_and_skip_options("CDS,gene,mat_peptide", "--fadd", "--fskip", undef, \%fdf_H, \%fadd_H, \%fskip_H, undef, \%opt_HH, $FH_HR);
 
 # determine what qualifiers we will store based on cmdline options
 # --qall is incompatible with --qadd
-my %qdf_H   = (); # default qualifiers to keep
-my %qadd_H  = (); # qualifiers to add
-my %qskip_H = (); # qualifiers to skip
-process_add_and_skip_options("type,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", \%qdf_H, \%qadd_H, \%qskip_H, \%opt_HH, $FH_HR);
+my %qdf_H      = (); # default qualifiers to keep
+my %qadd_H     = (); # qualifiers to add
+my %qskip_H    = (); # qualifiers to skip
+my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
+process_add_and_skip_options("type,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+# we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
+# qualifier, if we switch to parsing feature tables instead of GenBank files, then
+# "ribosomal_slippage" should be removed from the list.
 
 # remove all features types we don't want
 my $ftr_idx;
@@ -386,27 +392,40 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
 
 # remove any qualifier key/value pairs with keys not in %qual_H, unless --qall used
 for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
   foreach my $qual (sort keys %{$ftr_info_HAH{$mdl_name}[$ftr_idx]}) { 
     # we skip this qualifier and remove it from ftr_info_HAH
     # if all three of A1, A2, A3 OR B is satisfied
-    # (A1) it's not a default qualifier AND
-    # (A2) it's not listed in --qadd AND
+    # (A1) it's not a default qualifier        AND
+    # (A2) (it's not listed in --qadd OR 
+    #       (--qftradd is used AND $ftype is not listed in --qftradd)) AND
     # (A3) --qall not used
     # OR 
     # (B) it is listed in --qskip string 
-    if(((! defined $qdf_H{$qual})        && # (A1)
-        (! defined $qadd_H{$qual})       && # (A2)
-        (! opt_Get("--qall", \%opt_HH)))    # (A3)
-       || (defined $qskip_H{$qual})) {      # (B)
+    if(((! defined $qdf_H{$qual})         && # (A1)
+        ((! defined $qadd_H{$qual}) || 
+         ((opt_IsUsed("--qftradd", \%opt_HH)) && 
+          (! defined $qftr_add_H{$ftype})))   && # (A2)
+        (! opt_Get("--qall", \%opt_HH)))     # (A3)
+       || (defined $qskip_H{$qual})) {       # (B)
       delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{$qual};
     }
   }
 }
 
-# deal with special cases: add some qualifiers based on others 
-# special case 1 of 1: if ribosomal_slippage qualifier exists: create a new "exception" 
-#                      qualifier with value of "ribosomal slippage"
-# (make this more general or a subroutine when new special cases are added)
+# Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
+# existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
+# at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
+# qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
+# only 'exception:ribosomal slippage' qualifier/values are desired in the 
+# output feature table. If we switch to parsing Entrez feature tables as input then
+# the need for this should go away because 'exception:ribosomal slippage' is in that
+# feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
+# we can just ignore). 
+# 
+# If ribosomal_slippage qualifier exists: create a new "exception" 
+# qualifier with value of "ribosomal slippage"
+# 
 for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
   if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
      (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
@@ -415,6 +434,11 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
     }
     else { 
       $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
+    }
+    # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
+    if((! opt_Get("--qall", \%opt_HH)) &&
+       (! defined $qadd_H{"ribosomal_slippage"})) { 
+      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
     }
   }
 }
@@ -684,9 +708,11 @@ sub stockholm_validate_single_sequence_input {
 #  $df_string:  comma separated string of default values (e.g. "CDS,gene,mat_peptide")
 #  $add_opt:    name of add option (e.g. "--fadd")
 #  $skip_opt:   name of skip option (e.g. "--fskip")
+#  $sub_opt:    name of option with subset of features add option applies to, or undef
 #  $df_HR:      ref to hash of default keys, filled here, values will all be '1'
 #  $add_HR:     ref to hash of keys to add, filled here, values will all be '1'
 #  $skip_HR:    ref to hash of keys to skip, filled here, values will all be '1'
+#  $add_sub_HR: ref to hash of feature keys $add_HR applies to, or undef if $sub_opt is undef
 #  $opt_HHR:    ref to hash of cmdline options
 #  $FH_HR:      ref to hash of file handles, including "log" and "cmd"
 #
@@ -696,14 +722,15 @@ sub stockholm_validate_single_sequence_input {
 #################################################################
 sub process_add_and_skip_options { 
   my $sub_name = "process_add_and_skip_options";
-  my $nargs_expected = 8;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($df_string, $add_opt, $skip_opt, $df_HR, $add_HR, $skip_HR, $opt_HHR, $FH_HR) = @_;
+  my ($df_string, $add_opt, $skip_opt, $sub_opt, $df_HR, $add_HR, $skip_HR, $add_sub_HR, $opt_HHR, $FH_HR) = @_;
 
   utl_ExistsHFromCommaSepString($df_HR, $df_string);
   if(opt_IsUsed($add_opt,  $opt_HHR)) { utl_ExistsHFromCommaSepString($add_HR,  opt_Get($add_opt,  $opt_HHR)); }
   if(opt_IsUsed($skip_opt, $opt_HHR)) { utl_ExistsHFromCommaSepString($skip_HR, opt_Get($skip_opt, $opt_HHR)); }
+  if((defined $sub_opt) && (opt_IsUsed($sub_opt, $opt_HHR))) { utl_ExistsHFromCommaSepString($add_sub_HR, opt_Get($sub_opt, $opt_HHR)); }
   # make sure $add_opt and $skip_opt have no values in common
   foreach my $key (sort keys (%{$add_HR})) { 
     if(defined $skip_HR->{$key}) { 
