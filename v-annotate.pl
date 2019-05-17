@@ -5379,6 +5379,9 @@ sub output_feature_table {
           }
           $ftr_out_str .= $exception_str;
 
+          # add ncRNA_class qualifiers, if any
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ncRNA_class", $qval_sep, $ftr_info_AHR, $FH_HR);
+
           # add note qualifiers, if any
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
 
