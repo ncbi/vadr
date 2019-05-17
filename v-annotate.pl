@@ -274,7 +274,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.94";
+my $version       = "0.95";
 my $releasedate   = "May 2019";
 my $pkgname       = "VADR";
 
@@ -5378,6 +5378,9 @@ sub output_feature_table {
             $exception_str =~ s/\t\t\texception\tribosomal slippage\n//;
           }
           $ftr_out_str .= $exception_str;
+
+          # add ncRNA_class qualifiers, if any
+          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ncRNA_class", $qval_sep, $ftr_info_AHR, $FH_HR);
 
           # add note qualifiers, if any
           $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
