@@ -1,6 +1,6 @@
-EPN, Mon May  6 06:32:31 2019
+EPN, Fri May 17 07:23:03 2019
 
-VADR 0.94 README.txt 
+VADR 0.95 README.txt 
 
 Organization of this file:
 
