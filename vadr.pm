@@ -2930,12 +2930,6 @@ sub vdr_SplitNumSeqFiles {
 #             fetch all the CDS for all sequences in the Stockholm alignment
 #             and create a new output fasta file with just the CDS features.
 #
-#             We don't really need both the stockholm and fasta file 
-#             if there are no gaps in the stockholm alignment (as is the
-#             case in vadr-build.pl (which requires a single sequence 
-#             'alignment' with no gaps), but this implemenation works for
-#             alignments with gaps too.
-#
 # Arguments:
 #   $out_FH:         output file handle
 #   $stk_file:       stockholm file with aligned full length sequences
@@ -3052,6 +3046,41 @@ sub vdr_CmalignCheckStdOutput {
   }
     
   return -1; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: vdr_ParseSeqFileToSeqHash()
+# Incept:     EPN, Mon May 20 12:19:29 2019
+# 
+# Purpose:    Parse an input sequence file using Bio::Easel::SqFile
+#             and fill %{$seq_HR}. 
+#
+# Arguments:
+#   $infile:   input file
+#   $seq_HR:   sequence hash, key is sequence name, value is string of sequence
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns: void
+#
+# Dies:    if we have trouble parsing the file
+#
+#################################################################
+sub vdr_ParseSeqFileToSeqHash { 
+  my $sub_name = "vdr_ParseSeqFileToSeqHash";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $seq_HR, $FH_HR) = @_;
+
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infile }); # the sequence file object
+  my $nseq = $sqfile->nseq_ssi;
+
+  for(my $sidx = 0; $sidx < $nseq; $sidx++) {
+    my ($sqname, undef) = $sqfile->fetch_seq_name_and_length_given_ssi_number($sidx);
+    $seq_HR->{$sqname} = $sqfile->fetch_next_seq_to_sqstring();
+  }
+  
+  return;
 }
 
 ###########################################################################

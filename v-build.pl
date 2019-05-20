@@ -88,7 +88,8 @@ opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--inft",       "string",  undef,      $g,    undef, "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--inft",       "string",  undef,      $g, "--inft", "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--gb",         "boolean", 0,          $g,    undef, undef,       "parse a genbank file, not a feature table file",              "parse a genbank file, not a feature table file", \%opt_HH, \@opt_order_A);
 opt_Add("--ingb",       "string",  undef,      $g,   "--gb", undef,       "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
@@ -145,6 +146,7 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
+                'infa=s'       => \$GetOptions_H{"--infa"},
                 'inft=s'       => \$GetOptions_H{"--inft"},
                 'gb'           => \$GetOptions_H{"--gb"},
                 'ingb=s'       => \$GetOptions_H{"--ingb"},
@@ -314,6 +316,38 @@ if(defined $addminfo_file) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
+###################################################
+# Fetch the fasta file (if necessary) and parse it
+###################################################
+my $fa_file = $out_root . ".fa";
+my %seq_H = ();
+if(opt_IsUsed("--infa", \%opt_HH)) { 
+  utl_RunCommand("cp " . opt_Get("--infa", \%opt_HH) . " $fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+}
+else { 
+  $start_secs = ofile_OutputProgressPrior("Fetching FASTA file", $progress_w, $log_FH, *STDOUT);
+  vdr_EutilsFetchToFile($fa_file, $mdl_name, "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta file for $mdl_name");
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+$start_secs = ofile_OutputProgressPrior("Parsing FASTA file", $progress_w, $log_FH, *STDOUT);
+vdr_ParseSeqFileToSeqHash($fa_file, \%seq_H, $FH_HR);
+my @fetched_seq_A = (sort keys %seq_H);
+if(scalar(@fetched_seq_A) != 1) { 
+  ofile_FAIL("ERROR did not fetch exactly 1 sequence from fasta file $fa_file\n", 1, $FH_HR);
+}
+my $mdl_name_ver = $fetched_seq_A[0];
+# make sure it's the right sequence
+if($mdl_name_ver =~ /(\S+)\.\d+/) { 
+  if($1 ne $mdl_name) { 
+    ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
+  }
+}
+else {
+  ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
+}
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 ###################################################################
 # Fetch the feature table (ft) or GenBank (gb) file (if necessary)
 # and parse it.
@@ -321,7 +355,6 @@ if(defined $addminfo_file) {
 my $ft_file = undef;
 my $gb_file = undef;
 my %ftr_info_HAH = (); # the feature info 
-my %seq_info_HH  = (); # the sequence info 
 if(! opt_IsUsed("--gb", \%opt_HH)) { 
   if(opt_IsUsed("--inft", \%opt_HH)) { 
     $ft_file = opt_Get("--inft", \%opt_HH);
@@ -330,17 +363,13 @@ if(! opt_IsUsed("--gb", \%opt_HH)) {
     # --inft not used, create ft file by fetching using eutils
     $start_secs = ofile_OutputProgressPrior("Fetching feature table file", $progress_w, $log_FH, *STDOUT);
     $ft_file = $out_root . ".ft";
-    vdr_EutilsFetchToFile($ft_file, $mdl_name, "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    vdr_EutilsFetchToFile($ft_file, $mdl_name, "ft",    5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
     ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name");
-
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   # parse the feature table file
   $start_secs = ofile_OutputProgressPrior("Parsing feature table file", $progress_w, $log_FH, *STDOUT);
   sqf_FeatureTableParse($ft_file, \%ftr_info_HAH, $FH_HR);
-#  if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
-#    ofile_FAIL("ERROR parsing GenBank file $ft_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
-#  }
   if(! exists $ftr_info_HAH{$mdl_name}) { 
     ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
   }
@@ -363,10 +392,7 @@ else {
   }
   # parse the genbank file
   $start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
-  sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
-  if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
-    ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
-  }
+  sqf_GenbankParse($gb_file, undef, \%ftr_info_HAH, $FH_HR);
   if(! exists $ftr_info_HAH{$mdl_name}) { 
     ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
   }
@@ -375,7 +401,6 @@ else {
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
   utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
-exit 0;
 
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
@@ -396,7 +421,7 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
@@ -494,38 +519,18 @@ if(defined $addminfo_file) {
 # Parse the input stockholm file (if --stk) or create it (if ! --stk)
 #####################################################################
 my $stk_file = $out_root . ".stk";
-my $fa_file  = $out_root . ".fa";
 my $stk_has_ss = undef;
 my $in_stk_file = opt_Get("--stk", \%opt_HH);
 if(defined $in_stk_file) { 
   $start_secs = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_info_HH{$mdl_name}{"seq"}, \%opt_HH, $FH_HR);
+  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_H{$mdl_name}{"seq"}, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-  
-  $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
-
   utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  sqf_EslReformatRun($execs_H{"esl-reformat"}, $stk_file, $fa_file, "stockholm", "fasta", \%opt_HH, $FH_HR);
-
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 else { 
-  # --stk not used, we create it by first making a fasta file of the model
-  # model sequence read from the gb file, then converting that fasta file 
-  # to a stockholm file
-  $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
-
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
-  sqf_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
-                         $seq_info_HH{$mdl_name}{"ver"}, 
-                         $seq_info_HH{$mdl_name}{"def"}, 
-                         $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
-  close $ofile_info_HH{"FH"}{"fasta"};
-
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+  # --stk not used, we create it from the fasta file we read
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
   sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
@@ -539,7 +544,9 @@ else {
 ######################################################################
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
-vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+if(opt_Get("--gb", \%opt_HH)) { # we only need to derive 'coords' if we parsed the GenBank file
+  vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+}
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -581,7 +588,7 @@ if($ncds > 0) {
 my $cm_file = undef;
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
   my $cmbuild_str = undef;
-  my $clen_times_cmn = $seq_info_HH{$mdl_name}{"len"} * 200;
+  my $clen_times_cmn = length($seq_H{$mdl_name_ver}) * 200;
   if(opt_IsUsed("--cmn", \%opt_HH)) { 
     $clen_times_cmn *= (opt_Get("--cmn", \%opt_HH) / 200);
   }
@@ -635,7 +642,7 @@ $start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w,
 my @mdl_info_AH = (); 
 %{$mdl_info_AH[0]} = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
-$mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
+$mdl_info_AH[0]{"length"} = length($seq_H{$mdl_name_ver});
 if(defined $cm_file) { 
   $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
 }

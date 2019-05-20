@@ -345,16 +345,16 @@ sub sqf_FeatureTableParse {
       # -------------------------------------------------------
     }
   }
+  if(! defined $acc) { 
+    ofile_FAIL("ERROR in $sub_name, problem parsing $infile, did not read any accession lines\n", 1, $FH_HR);
+  }
+
   # add the final feature, if we haven't already, we can tell based on previous line type
   if(($prv_was_coords_feature) || ($prv_was_coords_only)) { 
     $ftr_idx++;
     sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
     sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
   }
-
-#  if($seq_idx == 0) { 
-#    ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, failed to read any sequence data\n", 1, $FH_HR);
-#  }
 
   return;
 }
@@ -366,15 +366,15 @@ sub sqf_FeatureTableParse {
 # Synopsis: Parse a GenBank format file.
 #
 # Arguments:
-#  $infile:      GenBank file to parse
-#  $seqinfo_HHR: sequence info, filled here
-#                1D key: accession
-#                2D key: "len", "ver", "def", "seq"
+#  $infile:        GenBank file to parse
+#  $seq_info_HHR:  sequence info, filled here, can be undef
+#                  1D key: accession
+#                  2D key: "len", "ver", "def", "seq"
 #  $ftr_info_HAHR: feature information, filled here
 #                  1D key: accession
 #                  2D:     feature index
 #                  3D key: qualifer, value: qualifier value
-#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
@@ -618,11 +618,13 @@ sub sqf_GenbankParse {
       if(! defined $seq) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
 
       # store sequence info
-      %{$seq_info_HHR->{$acc}} = ();
-      $seq_info_HHR->{$acc}{"len"} = $len;
-      $seq_info_HHR->{$acc}{"ver"} = $ver;
-      $seq_info_HHR->{$acc}{"def"} = $def;
-      $seq_info_HHR->{$acc}{"seq"} = $seq;
+      if(defined $seq_info_HHR) { 
+        %{$seq_info_HHR->{$acc}} = ();
+        $seq_info_HHR->{$acc}{"len"} = $len;
+        $seq_info_HHR->{$acc}{"ver"} = $ver;
+        $seq_info_HHR->{$acc}{"def"} = $def;
+        $seq_info_HHR->{$acc}{"seq"} = $seq;
+      }
 
       # reset variables
       $seq = undef;
