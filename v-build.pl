@@ -87,9 +87,11 @@ $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
-opt_Add("--addminfo",   "string",  undef,      $g,    undef,  undef,      "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--inft",       "string",  undef,      $g,    undef, "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--gb",         "boolean", 0,          $g,    undef, undef,       "parse a genbank file, not a feature table file",              "parse a genbank file, not a feature table file", \%opt_HH, \@opt_order_A);
+opt_Add("--ingb",       "string",  undef,      $g,   "--gb", undef,       "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
@@ -124,7 +126,7 @@ opt_Add("--cmeset",   "real",    0,           $g,   undef,  "--skipbuild", "set 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #       option             type       default     group requires   incompat  preamble-output                                    help-output    
 opt_Add("--skipbuild",     "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
-opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--gb",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--ingb,--inft",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default     group  requires     incompat  preamble-output                          help-output    
@@ -143,7 +145,9 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
-                'gb=s'         => \$GetOptions_H{"--gb"},
+                'inft=s'       => \$GetOptions_H{"--inft"},
+                'gb'           => \$GetOptions_H{"--gb"},
+                'ingb=s'       => \$GetOptions_H{"--ingb"},
                 'addminfo=s'   => \$GetOptions_H{"--addminfo"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # options for controlling what feature types are stored in model info file
@@ -310,40 +314,68 @@ if(defined $addminfo_file) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-###########################################
-# Fetch the genbank file (if --gb not used)
-###########################################
+###################################################################
+# Fetch the feature table (ft) or GenBank (gb) file (if necessary)
+# and parse it.
+###################################################################
+my $ft_file = undef;
 my $gb_file = undef;
-if(opt_IsUsed("--gb", \%opt_HH)) { 
-  $gb_file = opt_Get("--gb", \%opt_HH);
-}
-else { 
-  # --gb not used, create gb file by fetching using eutils
-  $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
-
-  $gb_file = $out_root . ".gb";
-  vdr_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
-
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-}
-
-########################
-# Parse the genbank file
-########################
-$start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
-
 my %ftr_info_HAH = (); # the feature info 
 my %seq_info_HH  = (); # the sequence info 
-sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
-if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
-  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
-}
-if(! exists $ftr_info_HAH{$mdl_name}) { 
-  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
-}
+if(! opt_IsUsed("--gb", \%opt_HH)) { 
+  if(opt_IsUsed("--inft", \%opt_HH)) { 
+    $ft_file = opt_Get("--inft", \%opt_HH);
+  }
+  else { 
+    # --inft not used, create ft file by fetching using eutils
+    $start_secs = ofile_OutputProgressPrior("Fetching feature table file", $progress_w, $log_FH, *STDOUT);
+    $ft_file = $out_root . ".ft";
+    vdr_EutilsFetchToFile($ft_file, $mdl_name, "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name");
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  # parse the feature table file
+  $start_secs = ofile_OutputProgressPrior("Parsing feature table file", $progress_w, $log_FH, *STDOUT);
+  sqf_FeatureTableParse($ft_file, \%ftr_info_HAH, $FH_HR);
+#  if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
+#    ofile_FAIL("ERROR parsing GenBank file $ft_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
+#  }
+  if(! exists $ftr_info_HAH{$mdl_name}) { 
+    ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+} # end of 'if(! opt_IsUsed("--gb", \%opt_HH))' { 
+else { 
+# If --gb (and not --ingb) used: fetch the genbank file 
+  if(opt_IsUsed("--ingb", \%opt_HH)) { 
+    $gb_file = opt_Get("--ingb", \%opt_HH);
+  }
+  else { 
+    # --ingb not used, create gb file by fetching using eutils
+    $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
+    
+    $gb_file = $out_root . ".gb";
+    vdr_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
+    
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  # parse the genbank file
+  $start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
+  sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
+  if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
+    ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
+  }
+  if(! exists $ftr_info_HAH{$mdl_name}) { 
+    ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
+exit 0;
 
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
