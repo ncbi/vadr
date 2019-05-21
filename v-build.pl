@@ -107,6 +107,7 @@ opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",             "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--qftradd",    "string",   undef,    $g,"--qadd",    undef,      "--qadd <s2> only applies for feature types in comma separated string <s>", "--qadd <s2> only applies for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>",           "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--noaddgene", "boolean",  0,        $g,    undef,  undef,       "do not add gene qualifiers from gene features to overlapping features",     "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for including additional model attributes";
 #     option           type       default    group   requires    incompat   preamble-output                       help-output    
@@ -161,6 +162,7 @@ my $options_okay =
                 'qadd=s'       => \$GetOptions_H{"--qadd"},
                 'qftradd=s'    => \$GetOptions_H{"--qftradd"},
                 'qskip=s'      => \$GetOptions_H{"--qskip"},
+                'noaddgene'    => \$GetOptions_H{"--noaddgene"},
 # options for including additional model attributes
                 'group=s'      => \$GetOptions_H{"--group"},
                 'subgroup=s'   => \$GetOptions_H{"--subgroup"},
@@ -514,7 +516,6 @@ if(defined $addminfo_file) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-
 #####################################################################
 # Parse the input stockholm file (if --stk) or create it (if ! --stk)
 #####################################################################
@@ -551,6 +552,12 @@ vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+# add 'gene' qualifiers to 'CDS' features
+if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
+  vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAH{$mdl_name}}, "gene", "gene", "CDS",        "gene", $FH_HR);
+  vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAH{$mdl_name}}, "gene", "gene", "mRNA",       "gene", $FH_HR);
+  vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAH{$mdl_name}}, "gene", "gene", "regulatory", "gene", $FH_HR);
+}
 
 my @sgm_info_AH = (); # segment info, inferred from feature info
 vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);

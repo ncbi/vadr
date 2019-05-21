@@ -49,15 +49,16 @@ use LWP::Simple;
 #########################################################################################
 #
 # Subroutines related to features or segments:
-# vdr_FeatureInfoImputeCoords
-# vdr_FeatureInfoImputeLength
-# vdr_FeatureInfoImputeSourceIdx
-# vdr_FeatureInfoImputeParentIndices
+# vdr_FeatureInfoImputeCoords()
+# vdr_FeatureInfoImputeLength()
+# vdr_FeatureInfoImputeSourceIdx()
+# vdr_FeatureInfoImputeParentIndices()
 # vdr_FeatureInfoImputeOutname()
-# vdr_FeatureInfoImpute3paFtrIdx
+# vdr_FeatureInfoImpute3paFtrIdx()
+# vdr_FeatureInfoImputeByOverlap()
 # vdr_FeatureInfoStartStopStrandArrays()
-# vdr_FeatureInfoCountType
-# vdr_FeatureInfoValidateCoords
+# vdr_FeatureInfoCountType()
+# vdr_FeatureInfoValidateCoords()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 #
 # vdr_SegmentInfoPopulate()
@@ -98,6 +99,8 @@ use LWP::Simple;
 # vdr_CoordsMin()
 # vdr_CoordsMax()
 # vdr_CoordsMissing()
+# vdr_CoordsCheckIfSpans()
+# vdr_CoordsTokenOverlap()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -434,6 +437,81 @@ sub vdr_FeatureInfoImpute3paFtrIdx {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoImputeByOverlap
+# Incept:     EPN, Tue May 21 06:28:07 2019
+# 
+# Purpose:    Add a qualifier and value to instances of one feature
+#             type based on qualifier and values of another feature
+#             type and overlap of nucleotides
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $src_type:      source feature type
+#   $src_key:       source feature key (value in %{$ftr_info_AH[$src_idx]})
+#   $dst_type:      destination feature type
+#   $dst_key:       destination feature key (value in %{$ftr_info_AH[$dst_idx]})
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoImputeByOverlap {
+  my $sub_name = "vdr_FeatureInfoImputeByOverlap";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $src_type, $src_key, $dst_type, $dst_key, $FH_HR) = @_;
+
+  # printf("in $sub_name, src_type: $src_type, src_key: $src_key, dst_type: $dst_type, dst_key: $dst_key\n");
+  # contract check
+  if($src_type eq $dst_type) { 
+    ofile_FAIL("ERROR in $sub_name, source type and destination type are equal ($src_type)\n", 1, $FH_HR);
+  }
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # - go through all features and find F1 of type $src_type
+  #    - look for other features F2 of type $dst_type that overlap with F1
+  #      where overlap means every position in F2 also exists in F1 
+  #      - if F2 does not yet have $dst_key, set $dst_key to value in F1 for $src_key
+  # 
+  # if more than one F2 exist for an F1:
+  #     if all F2's already have key $dst_key: do nothing
+  #     else: die
+  #
+  my ($dst_ftr_idx, $src_ftr_idx); # feature indices
+  for($dst_ftr_idx = 0; $dst_ftr_idx < $nftr; $dst_ftr_idx++) { 
+    if(($ftr_info_AHR->[$dst_ftr_idx]{"type"} eq $dst_type) && 
+       (! defined $ftr_info_AHR->[$dst_ftr_idx]{$dst_key})) { 
+      my $found_src_ftr_idx = undef;
+      for($src_ftr_idx = 0; $src_ftr_idx < $nftr; $src_ftr_idx++) { 
+        if(($dst_ftr_idx != $src_ftr_idx) && 
+           ($ftr_info_AHR->[$src_ftr_idx]{"type"} eq $src_type) && 
+           (defined $ftr_info_AHR->[$src_ftr_idx]{$src_key})) { 
+          # determine if $dst_ftr_idx is completely spanned by $src_ftr_idx overlap completely
+          # printf("checking overlap between src " . $ftr_info_AHR->[$src_ftr_idx]{"coords"} . " and dst " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n");
+          if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$src_ftr_idx]{"coords"}, $ftr_info_AHR->[$dst_ftr_idx]{"coords"}, $FH_HR)) { 
+            # $src_ftr_idx completely spans $dst_ftr_idx
+            if(defined $found_src_ftr_idx) { 
+              ofile_FAIL("ERROR in $sub_name, more than one feature of type $src_type (with key $src_key) spans feature idx $dst_ftr_idx of type $dst_type with coords " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n1: idx: $found_src_ftr_idx, value: " . $ftr_info_AHR->[$src_ftr_idx]{$src_key} . "\n2: idx: $src_ftr_idx, value: " . $ftr_info_AHR->[$dst_ftr_idx]{$dst_key} . "\n", 1, $FH_HR);
+            }
+            # printf("in $sub_name, setting ftr_info_AHR->[$dst_ftr_idx]{$dst_key} of type $dst_type to $ftr_info_AHR->[$src_ftr_idx]{$src_key}\n");
+            $ftr_info_AHR->[$dst_ftr_idx]{$dst_key} = $ftr_info_AHR->[$src_ftr_idx]{$src_key};
+            $found_src_ftr_idx = $src_ftr_idx;
+          }
+        }
+      }
+    }
+  }
+  
   return;
 }
 
@@ -2432,6 +2510,105 @@ sub vdr_CoordsMissing {
   }
 
   return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsCheckIfSpans()
+# Incept:     EPN, Tue May 21 09:59:24 2019
+#
+# Synopsis: Check if coords value $coords1 completely spans
+#           $coords2. This occurs if every segment in $coords2
+#           is spanned completely by at least 1 segment in 
+#           $coords2.
+# 
+# Arguments:
+#  $coords1: coordinate string 1
+#  $coords2: coordinate string 2
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   '1' if $coords1 completely spans $coords2
+#            '0' if not
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsCheckIfSpans {
+  my $sub_name = "vdr_CoordsCheckIfSpans";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords1, $coords2, $FH_HR) = @_;
+  if(! defined $coords1) { ofile_FAIL("ERROR in $sub_name, coords1 is undefined", 1, $FH_HR); }
+  if(! defined $coords2) { ofile_FAIL("ERROR in $sub_name, coords2 is undefined", 1, $FH_HR); }
+
+  my @coords1_A = split(",", $coords1);
+  my @coords2_A = split(",", $coords2);
+
+  foreach my $coords2_tok (@coords2_A) { 
+    my $found_overlap = 0;
+    my $coords2_tok_len = vdr_CoordsLength($coords2_tok, $FH_HR);
+    foreach my $coords1_tok (@coords1_A) { 
+      if(! $found_overlap) { 
+        my ($noverlap, undef) = vdr_CoordsTokenOverlap($coords2_tok, $coords1_tok, $FH_HR);
+        if($noverlap == $coords2_tok_len) { 
+          $found_overlap = 1;
+        }
+      }
+    }
+    if(! $found_overlap) { # no token in $coords2 completely contains $coords1_tok
+      # printf("in $sub_name, coords1: $coords1 coords2: $coords2, returning 0\n");
+      return 0;
+    }
+  }
+
+  # if we get here, there exists a token in $coords2 that completely 
+  # spans each token in $coords1 
+  # printf("in $sub_name, coords1: $coords1 coords2: $coords2, returning 1\n");
+  return 1;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsTokenOverlap()
+# Incept:     EPN, Tue May 21 10:06:26 2019
+#
+# Synopsis: Return number of positions of overlap between 
+#           <$coords_tok1> and <$coords_tok2> on the same 
+#           strand.
+# 
+# Arguments:
+#  $coords_tok1: coordinate token 1
+#  $coords_tok2: coordinate token 2
+#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Number of positions of overap between <$coords1_tok>
+#            and <$coords2_tok> on the same strand.
+#            '0' if no overlap or the two tokens are on opposite strands.
+#
+# Dies: if unable to parse $coords_tok1 or $coords_tok2
+#
+#################################################################
+sub vdr_CoordsTokenOverlap { 
+  my $sub_name = "vdr_CoordsTokenOverlap";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_tok1, $coords_tok2, $FH_HR) = @_;
+  if(! defined $coords_tok1) { ofile_FAIL("ERROR in $sub_name, coords_tok1 is undefined", 1, $FH_HR); }
+  if(! defined $coords_tok2) { ofile_FAIL("ERROR in $sub_name, coords_tok2 is undefined", 1, $FH_HR); }
+
+  my ($start1, $stop1, $strand1) = vdr_CoordsTokenParse($coords_tok1, $FH_HR);
+  my ($start2, $stop2, $strand2) = vdr_CoordsTokenParse($coords_tok2, $FH_HR);
+
+  if($strand1 ne $strand2) { # strand mismatch
+    return 0;
+  }
+
+  if($strand1 eq "-") { # $strand2 must be "-" too
+    utl_Swap(\$start1, \$stop1); 
+    utl_Swap(\$start2, \$stop2);
+  }
+
+  return seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
 }
 
 #################################################################

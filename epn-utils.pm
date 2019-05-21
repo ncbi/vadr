@@ -965,7 +965,7 @@ sub utl_Min {
 # Subroutine:  utl_Swap()
 # Incept:      EPN, Wed Apr  3 06:37:38 2019
 # 
-# Purpose:     Swaps $$xR} and $$yR in place.
+# Purpose:     Swaps $$xR and $$yR in place.
 # Arguments:
 # $xR:         ref to first scalar
 # $yR:         ref to second scalar
