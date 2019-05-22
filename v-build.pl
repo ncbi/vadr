@@ -214,7 +214,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # if --onlyurl used, output the url and exit
 ############################################
 if(opt_Get("--onlyurl", \%opt_HH)) { 
-  print vdr_EutilsFetchUrl($mdl_name, "gb") . "\n";
+  print vdr_EutilsFetchUrl($mdl_name, "nuccore", "gb") . "\n";
   exit 0;
 }
 
@@ -328,7 +328,7 @@ if(opt_IsUsed("--infa", \%opt_HH)) {
 }
 else { 
   $start_secs = ofile_OutputProgressPrior("Fetching FASTA file", $progress_w, $log_FH, *STDOUT);
-  vdr_EutilsFetchToFile($fa_file, $mdl_name, "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  vdr_EutilsFetchToFile($fa_file, $mdl_name, "nuccore", "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta file for $mdl_name");
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -365,7 +365,7 @@ if(! opt_IsUsed("--gb", \%opt_HH)) {
     # --inft not used, create ft file by fetching using eutils
     $start_secs = ofile_OutputProgressPrior("Fetching feature table file", $progress_w, $log_FH, *STDOUT);
     $ft_file = $out_root . ".ft";
-    vdr_EutilsFetchToFile($ft_file, $mdl_name, "ft",    5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    vdr_EutilsFetchToFile($ft_file, $mdl_name, "nuccore", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
     ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name");
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -392,7 +392,7 @@ else {
     $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
     
     $gb_file = $out_root . ".gb";
-    vdr_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    vdr_EutilsFetchToFile($gb_file, $mdl_name, "nuccore", "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
     ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
     
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -428,7 +428,7 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
@@ -556,8 +556,7 @@ if(opt_Get("--gb", \%opt_HH)) { # we only need to derive 'coords' if we parsed t
   vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoSetUndefinedParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 # add 'gene' qualifiers to 'CDS' features
 if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
@@ -839,7 +838,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
         ofile_FAIL("ERROR in $sub_name, unable to parse protein_id $protein_id to get accession.version\n", 1, $FH_HR);
       }
       my $ft_file = $out_root . "." . $accver . ".ft";
-      vdr_EutilsFetchToFile($ft_file, $accver, "ft",    5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+      vdr_EutilsFetchToFile($ft_file, $accver, "protein", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft." . $accver, $ft_file, 1, "feature table format file for $accver");
 
       # parse the file

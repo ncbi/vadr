@@ -51,8 +51,7 @@ use LWP::Simple;
 # Subroutines related to features or segments:
 # vdr_FeatureInfoImputeCoords()
 # vdr_FeatureInfoImputeLength()
-# vdr_FeatureInfoImputeSourceIdx()
-# vdr_FeatureInfoImputeParentIndices()
+# vdr_FeatureInfoSetUndefinedParentIndices()
 # vdr_FeatureInfoImputeOutname()
 # vdr_FeatureInfoImpute3paFtrIdx()
 # vdr_FeatureInfoImputeByOverlap()
@@ -71,7 +70,6 @@ use LWP::Simple;
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureChildrenArray()
 # vdr_FeatureNumSegments()
-# vdr_FeatureIsDuplicate()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
@@ -165,7 +163,7 @@ sub vdr_FeatureInfoImputeCoords {
 #
 #################################################################
 sub vdr_FeatureInfoImputeLength { 
-  my $sub_name = "vdr_FeatureInfoImputeSourceIdx";
+  my $sub_name = "vdr_FeatureInfoImputeLength";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -184,68 +182,13 @@ sub vdr_FeatureInfoImputeLength {
   return;
 }
 
-#################################################################
-# Subroutine: vdr_FeatureInfoImputeSourceIdx
-# Incept:     EPN, Wed Mar 13 13:20:01 2019
-# 
-# Purpose:    Fill "source_idx" values in @{$ftr_info_AHR}
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub vdr_FeatureInfoImputeSourceIdx { 
-  my $sub_name = "vdr_FeatureInfoImputeSourceIdx";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # go through all features and determine duplicates (set 'source_idx')
-  # 
-  # $ftr_info_AHR->{"source_idx"}[$ftr_idx] set to $ftr_idx2 if
-  # - $ftr_idx type is gene
-  # - $ftr_idx2 type is CDS
-  # - $ftr_idx and $ftr_idx2 have identical coords (for all segments)
-  #
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # dies if more than one $ftr_idx2 satisfies above
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx; # initialize
-    for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-      if($ftr_idx != $ftr_idx2) {
-        if(($ftr_info_AHR->[$ftr_idx]{"type"}  eq "gene") && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
-           ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
-          if($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) { 
-            ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
-                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
-          }
-          $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx2;
-        }
-      }
-    }
-  }
-
-  return;
-}
 
 #################################################################
-# Subroutine: vdr_FeatureInfoImputeParentIndices
+# Subroutine: vdr_FeatureInfoSetUndefinedParentIndices
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Fill "parent_idx_str" values in @{$ftr_info_AHR}
+# Purpose:    Set "parent_idx" value to -1 for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
@@ -256,73 +199,21 @@ sub vdr_FeatureInfoImputeSourceIdx {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub vdr_FeatureInfoImputeParentIndices {
+sub vdr_FeatureInfoSetUndefinedParentIndices {
   my $sub_name = "vdr_FeatureInfoImputeParentIndices";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
   my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
-  # go through all features and determine parents (set 'parent_idx_str')
-  # 
-  # $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
-  #   a comma separated string of >= 1 $ftr_idx2 if:
-  # - $ftr_idx type is mat_peptide
-  # - $ftr_idx2 type is CDS
-  # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
-  # - stop  of $ftr_idx2 is 3' of or equal to stop of $ftr_idx
-  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
-  # 
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # note: more than one $ftr_idx2 can satisfy above, in which
-  # case $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
-  # comma separated string of > 1 $ftr_idx2
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_3p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_strand;  # strand for feature $ftr_idx
-  my $ftr_strand2; # strand for feature $ftr_idx2
-  my $found_parent; # flag for if we found a parent or not
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = ""; # initialize
-    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_5p_pos = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_3p_pos2 = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_strand2 = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-        $found_parent = 0;
-        if(($ftr_idx != $ftr_idx2) && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
-           ($ftr_strand eq $ftr_strand2)) { 
-          if(($ftr_strand eq "+") && 
-             ($ftr_5p_pos2 <= $ftr_5p_pos) &&
-             ($ftr_3p_pos2 >= $ftr_3p_pos)) { 
-            $found_parent = 1;
-          }
-          if(($ftr_strand eq "-") && 
-             ($ftr_5p_pos2 >= $ftr_5p_pos) &&
-             ($ftr_3p_pos2 <= $ftr_3p_pos)) { 
-            $found_parent = 1;
-          }
-          if($found_parent) { 
-            if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "") { $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= ","; }
-            $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= "$ftr_idx2";
-          }
-        }
-      }
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx"}) { 
+      $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1;
     }
-  }   
-  return 0;
+  }
+
+  return;
 }
       
 #################################################################
@@ -679,8 +570,7 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
 
   # fill
   for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
-    my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
-    foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+    if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx"} != -1) {
       push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
     }
   }
@@ -728,8 +618,8 @@ sub vdr_SegmentInfoPopulate {
 
   my ($sgm_info_AHR, $ftr_info_AHR, $FH_HR) = @_;
 
-  # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
-  my @keys_A = ("type", "coords", "source_idx");
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
@@ -737,39 +627,36 @@ sub vdr_SegmentInfoPopulate {
   my ($sgm_start, $sgm_stop, $sgm_strand); # start, stop and strand for a segment
   my $nseg = 0; 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; # remains -1 if $ftr_idxs_dup
-    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; # remains -2 if $ftr_idxs_dup
+    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; 
+    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; 
     my $ftr_type   = $ftr_info_AHR->[$ftr_idx]{"type"};
-    my $ftr_is_dup = ($ftr_info_AHR->[$ftr_idx]{"source_idx"} == $ftr_idx) ? 0 : 1;
 
-    if(! $ftr_is_dup) { 
-      # determine start and stop positions of all segments
-      my @sgm_start_A  = (); # array of starts, one per segment
-      my @sgm_stop_A   = (); # array of stops, one per segment
-      my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
-      vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
-      my $cur_nseg = scalar(@sgm_start_A);
-      for(my $s = 0; $s < $cur_nseg; $s++) { 
-        $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
-        $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
-        $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
-        $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
-        if($s == 0) { 
-          $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
-        }
-        else { 
-          $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
-        }
-        if($s == ($cur_nseg-1)) { 
-          $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
-        }
-        else { 
-          $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
-        }
-        $nseg++;
+    # determine start and stop positions of all segments
+    my @sgm_start_A  = (); # array of starts, one per segment
+    my @sgm_stop_A   = (); # array of stops, one per segment
+    my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
+    vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
+    my $cur_nseg = scalar(@sgm_start_A);
+    for(my $s = 0; $s < $cur_nseg; $s++) { 
+      $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
+      $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
+      $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
+      $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
+      if($s == 0) { 
+        $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
+        $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
       }
+      else { 
+        $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
+      }
+      if($s == ($cur_nseg-1)) { 
+        $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
+        $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
+      }
+      else { 
+        $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
+      }
+      $nseg++;
     }
   }
 
@@ -961,31 +848,6 @@ sub vdr_FeatureNumSegments {
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
 
-#################################################################
-# Subroutine: vdr_FeatureIsDuplicate()
-# Incept:      EPN, Sun Mar 10 07:04:24 2019
-#
-# Purpose:    Is feature $ftr_idx a duplicate of another feature?
-#             This is true if $ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#
-# Returns:    1 or 0 
-# 
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub vdr_FeatureIsDuplicate { 
-  my $sub_name = "vdr_FeatureIsDuplicate";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-
-  return(($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) ? 1 : 0);
-}
 
 #################################################################
 # Subroutine: vdr_Feature5pMostPosition()
@@ -1422,7 +1284,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "Peptide Translation Problem", # short description
-                   "mat_peptide may not be translated because a CDS that spans it has a problem", # long description
+                   "mat_peptide may not be translated because its parent CDS has a problem", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -2662,9 +2524,9 @@ sub vdr_CoordsProtToNuc {
 
   my $ret_coords = "";
 
-  printf("in $sub_name, nt_coords: $nt_coords, pt_coords: $pt_coords\n");
+  # printf("in $sub_name, nt_coords: $nt_coords, pt_coords: $pt_coords\n");
   foreach my $pt_coords_tok (@pt_coords_tok_A) { 
-    printf("pt_coords_tok: $pt_coords_tok\n");
+    # printf("pt_coords_tok: $pt_coords_tok\n");
     my ($pt_start, $pt_stop, $pt_strand) = vdr_CoordsTokenParse($pt_coords_tok, $FH_HR);
     if($pt_strand ne "+")      { ofile_FAIL("ERROR in $sub_name, protein strand is not + for token $pt_coords_tok in coords string $pt_coords", 1, $FH_HR); }
     if($pt_start > $pt_stop) { ofile_FAIL("ERROR in $sub_name, protein strand is + but start coordinate is after stop coordinate ($pt_start > $pt_stop)", 1, $FH_HR); }
@@ -2710,7 +2572,7 @@ sub vdr_CoordsProtToNuc {
     }
   }
 
-  printf("in $sub_name, returning $ret_coords\n");
+  # printf("in $sub_name, returning $ret_coords\n");
   return $ret_coords;
 }
 
@@ -2723,6 +2585,7 @@ sub vdr_CoordsProtToNuc {
 # Arguments:
 #  $out_file:  output file to create
 #  $accn:      accession to fetch
+#  $db:        database to fetch from (e.g. "nuccore", "protein")
 #  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
 #  $nattempts: number of times to retry 
 #  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
@@ -2733,20 +2596,21 @@ sub vdr_CoordsProtToNuc {
 #################################################################
 sub vdr_EutilsFetchToFile { 
   my $sub_name = "vdr_EutilsFetchToFile";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
+  my ($out_file, $accn, $db, $format, $nattempts, $FH_HR) = @_;
   if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
 
-  my $url = vdr_EutilsFetchUrl($accn, $format);
+  my $url = vdr_EutilsFetchUrl($accn, $db, $format);
 
   my $n = 0;
   my $fetched_str = undef;
+
   while(($n < $nattempts) && (! defined $fetched_str)) { 
     $fetched_str = get($url);
     $n++;
-    sleep(1);
+    sleep(3);
   }
   if(! defined $fetched_str) { 
     ofile_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
@@ -2767,6 +2631,7 @@ sub vdr_EutilsFetchToFile {
 #
 # Arguments:
 #  $accn:      accession to fetch
+#  $db:        database to fetch from (e.g. "nuccore", "protein")
 #  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
 #
 # Returns:    void
@@ -2775,12 +2640,12 @@ sub vdr_EutilsFetchToFile {
 #################################################################
 sub vdr_EutilsFetchUrl { 
   my $sub_name = "vdr_EutilsFetchUrl";
-  my $nargs_expected = 2;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn, $format) = @_;
+  my ($accn, $db, $format) = @_;
 
-  return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=%s&retmode=text", $accn, $format);
+  return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=%s&id=%s&rettype=%s&retmode=text", $db, $accn, $format);
 }
 
 
@@ -2859,11 +2724,10 @@ sub vdr_ModelInfoFileWrite {
 
     # define feature keys to ignore
     my %ftr_key_ignore_H = ();
-    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, so it goes first
-    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, so it goes second
+    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, just so it goes first
+    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, just so it goes second
+    $ftr_key_ignore_H{"parent_idx"}     = 1; # this automatically gets added to @key_order_A, just so it goes third
     $ftr_key_ignore_H{"length"}         = 1; # will be inferred from coords
-    $ftr_key_ignore_H{"source_idx"}     = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"parent_idx_str"} = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"3pa_ftr_idx"}    = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"outname"}        = 1; # will be inferred from product and gene (or lack of)
     $ftr_key_ignore_H{"5p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
@@ -2872,7 +2736,7 @@ sub vdr_ModelInfoFileWrite {
 
     $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
     # determine order of keys for this feature
-    my @ftr_key_order_A  = ("type", "coords");
+    my @ftr_key_order_A  = ("type", "coords", "parent_idx");
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       foreach $key (sort keys %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]}) { 
         if(! exists $ftr_key_ignore_H{$key}) { 

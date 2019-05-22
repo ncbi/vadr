@@ -521,8 +521,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
   vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoSetUndefinedParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -2699,249 +2698,247 @@ sub fetch_features_and_add_cds_and_mp_alerts {
     @{$ftr_results_HAHR->{$seq_name}} = ();
 
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(! vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
-        my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-        my $ftr_is_cds       = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
-        my $ftr_is_mp        = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
-        my $ftr_type_idx     = $ftr_fileroot_A[$ftr_idx];
-        my $ftr_sqstring = "";
-        my $ftr_seq_name = undef;
-        my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
-        $ftr2org_pos_A[0] = -1; # invalid
-        my $ftr_len = 0;
-        my $ftr_strand = undef;
-        my $ftr_is_5trunc = undef;
-        my $ftr_is_3trunc = undef;
-        my $ftr_start  = undef; # predicted start for the feature
-        my $ftr_stop   = undef; # predicted stop  for the feature
-        my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
-        my $ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx;
-        %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
-        my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
-        my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
-        # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
+      my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+      my $ftr_is_cds       = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+      my $ftr_is_mp        = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
+      my $ftr_type_idx     = $ftr_fileroot_A[$ftr_idx];
+      my $ftr_sqstring = "";
+      my $ftr_seq_name = undef;
+      my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
+      $ftr2org_pos_A[0] = -1; # invalid
+      my $ftr_len = 0;
+      my $ftr_strand = undef;
+      my $ftr_is_5trunc = undef;
+      my $ftr_is_3trunc = undef;
+      my $ftr_start  = undef; # predicted start for the feature
+      my $ftr_stop   = undef; # predicted stop  for the feature
+      my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
+      my $ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx;
+      %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
+      my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
+      my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
+      # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
 
-        my %alt_str_H = (); # added to as we find alerts below
-                            # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
-        my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
+      my %alt_str_H = (); # added to as we find alerts below
+      # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
+      my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
+      
+      for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+        if((defined $sgm_results_HAHR->{$seq_name}) && 
+           (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+           (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+          my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
+          my ($start, $stop, $strand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
+          
+          # only update start and 5trunc value if this is the first segment annotated
+          if(! defined $ftr_start) { # first feature
+            $ftr_start = $start;
+            $ftr_is_5trunc = $sgm_results_HR->{"5trunc"};
+          }
+          # always update $ftr_stop and $ftr_is_3trunc, 
+          # values final annotated segment will survive past this for $sgm_idx loop
+          $ftr_stop = $stop;
+          $ftr_is_3trunc = $sgm_results_HR->{"3trunc"};
+          
+          # set feature strand if this is the first segment annotated
+          # else for cds/mp validate it hasn't changed and fail if it has
+          # or update strand to "!" if not cds/mp and it has changed
+          if(! defined $ftr_strand) { 
+            $ftr_strand = $strand; 
+          }
+          elsif($ftr_strand ne $strand) { 
+            # mixture of strands on different segments, this shouldn't happen if we're a CDS or mat_peptide
+            if($ftr_is_cds_or_mp) { 
+              # this 'shouldn't happen' for a CDS or mature peptide, all segments should be the sames strand
+              ofile_FAIL("ERROR, in $sub_name, different model sgements have different strands for a CDS or MP feature $ftr_idx", 1, undef);
+            }
+            # mixture of strands, set to "!" 
+            $ftr_strand = "!";
+          }
+          
+          # update $ftr_sqstring, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
+          my $sgm_len = abs($stop - $start) + 1;
+          $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          if(! defined $ftr_seq_name) { 
+            $ftr_seq_name = $seq_name . "/" . $ftr_type_idx . "/"; 
+          }
+          else { 
+            $ftr_seq_name .= ",";
+          }
+          $ftr_seq_name .= $start . ".." . $stop . ":" . $strand;
+          
+          if($ftr_is_cds_or_mp) { 
+            # update ftr2org_pos_A, if nec
+            my $sgm_offset = 0;
+            for(my $sgm_offset = 0; $sgm_offset < $sgm_len; $sgm_offset++) { 
+              $ftr2org_pos_A[$ftr_len + $sgm_offset + 1] = ($strand eq "-") ? $start - $sgm_offset : $start + $sgm_offset;
+              # slightly wasteful in certain cases, if $ftr_is_5trunc && $ftr_is_3trunc then we won't use this
+            }
+          }
+          $ftr_len += $sgm_len;
+        } # end of 'if(defined $sgm_results_HAHR->{$seq_name}...'
+      } # end of 'for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}...
+
+      # printf("in $sub_name seq_idx: $seq_idx ftr_idx: $ftr_idx ftr_len: $ftr_len ftr_start: $ftr_start ftr_stop: $ftr_stop\n");
+      if($ftr_len > 0) { 
+        # we had a prediction for at least one of the segments for this feature
         
-        for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
-          if((defined $sgm_results_HAHR->{$seq_name}) && 
-             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
-             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
-            my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
-            my ($start, $stop, $strand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
-              
-            # only update start and 5trunc value if this is the first segment annotated
-            if(! defined $ftr_start) { # first feature
-              $ftr_start = $start;
-              $ftr_is_5trunc = $sgm_results_HR->{"5trunc"};
+        # output the sequence
+        if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
+        }
+        print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
+        
+        if(! $ftr_is_5trunc) { 
+          # feature is not 5' truncated, look for a start codon if it's a CDS
+          if($ftr_is_cds) { 
+            if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
+              $alt_str_H{"n_str"} = "VADRNULL";
             }
-            # always update $ftr_stop and $ftr_is_3trunc, 
-            # values final annotated segment will survive past this for $sgm_idx loop
-            $ftr_stop = $stop;
-            $ftr_is_3trunc = $sgm_results_HR->{"3trunc"};
-            
-            # set feature strand if this is the first segment annotated
-            # else for cds/mp validate it hasn't changed and fail if it has
-            # or update strand to "!" if not cds/mp and it has changed
-            if(! defined $ftr_strand) { 
-              $ftr_strand = $strand; 
-            }
-            elsif($ftr_strand ne $strand) { 
-              # mixture of strands on different segments, this shouldn't happen if we're a CDS or mat_peptide
-              if($ftr_is_cds_or_mp) { 
-                # this 'shouldn't happen' for a CDS or mature peptide, all segments should be the sames strand
-                ofile_FAIL("ERROR, in $sub_name, different model sgements have different strands for a CDS or MP feature $ftr_idx", 1, undef);
-              }
-              # mixture of strands, set to "!" 
-              $ftr_strand = "!";
-            }
-            
-            # update $ftr_sqstring, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
-            my $sgm_len = abs($stop - $start) + 1;
-            $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
-            if(! defined $ftr_seq_name) { 
-              $ftr_seq_name = $seq_name . "/" . $ftr_type_idx . "/"; 
+          }
+        }
+        if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
+          if($ftr_is_cds_or_mp) { 
+            # feature is not truncated on either end, look for stop codons
+            if(($ftr_len % 3) != 0) { 
+              # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
+              # but which could cause weird downstream problems)
+              $alt_str_H{"n_nm3"} = "$ftr_len";
             }
             else { 
-              $ftr_seq_name .= ",";
-            }
-            $ftr_seq_name .= $start . ".." . $stop . ":" . $strand;
-            
-            if($ftr_is_cds_or_mp) { 
-              # update ftr2org_pos_A, if nec
-              my $sgm_offset = 0;
-              for(my $sgm_offset = 0; $sgm_offset < $sgm_len; $sgm_offset++) { 
-                $ftr2org_pos_A[$ftr_len + $sgm_offset + 1] = ($strand eq "-") ? $start - $sgm_offset : $start + $sgm_offset;
-                # slightly wasteful in certain cases, if $ftr_is_5trunc && $ftr_is_3trunc then we won't use this
-              }
-            }
-            $ftr_len += $sgm_len;
-          } # end of 'if(defined $sgm_results_HAHR->{$seq_name}...'
-        } # end of 'for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}...
-
-        # printf("in $sub_name seq_idx: $seq_idx ftr_idx: $ftr_idx ftr_len: $ftr_len ftr_start: $ftr_start ftr_stop: $ftr_stop\n");
-        if($ftr_len > 0) { 
-          # we had a prediction for at least one of the segments for this feature
-          
-          # output the sequence
-          if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-            ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
-          }
-          print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
+              # feature length is a multiple of 3, look for all valid in-frame stops 
+              my @ftr_nxt_stp_A = ();
+              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
               
-          if(! $ftr_is_5trunc) { 
-            # feature is not 5' truncated, look for a start codon if it's a CDS
-            if($ftr_is_cds) { 
-              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
-                $alt_str_H{"n_str"} = "VADRNULL";
-              }
-            }
-          }
-          if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
-            if($ftr_is_cds_or_mp) { 
-              # feature is not truncated on either end, look for stop codons
-              if(($ftr_len % 3) != 0) { 
-                # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
-                # but which could cause weird downstream problems)
-                $alt_str_H{"n_nm3"} = "$ftr_len";
-              }
-              else { 
-                # feature length is a multiple of 3, look for all valid in-frame stops 
-                my @ftr_nxt_stp_A = ();
-                sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
-                
-                if($ftr_is_cds) { 
-                  # check that final add codon is a valid stop, and add 'n_stp' alert if not
-                  if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
-                    $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
-                                                  substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
-                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
-                  }
-                  if($ftr_nxt_stp_A[1] != $ftr_len) { 
-                    # first stop codon 3' of $ftr_start is not $ftr_stop
-                    # We will need to add an alert, (exactly) one of:
-                    # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                    # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                    # 'n_trc': an early stop exists in $ftr_sqstring
-                    if($ftr_nxt_stp_A[1] == 0) { 
-                      # there are no valid in-frame stops in $ftr_sqstring
-                      # we have a 'n_nst' or 'n_ext' alert, to find out which 
-                      # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                      if($ftr_stop < $seq_len) { 
-                        # we have some sequence left 3' of ftr_stop
-                        my $ext_sqstring = undef;
-                        if($ftr_strand eq "+") { 
-                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
-                        }
-                        else { # negative strand
-                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
-                        }
-                        my @ext_nxt_stp_A = ();
-                        sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
-                        if($ext_nxt_stp_A[1] != 0) { 
-                          # there is an in-frame stop codon, n_ext alert
-                          # determine what position it is
-                          $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
-                          $alt_str_H{"n_ext"} = $ftr_stop_c;
-                        }
-                      } # end of 'if($ftr_stop < $seq_len)'
-                      if(! defined $ftr_stop_c) { 
-                        # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
-                        # or we checked the sequence but didn't find any
-                        # either way, we have a n_nst alert:
-                        $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                        $alt_str_H{"n_nst"} = "VADRNULL";
+              if($ftr_is_cds) { 
+                # check that final add codon is a valid stop, and add 'n_stp' alert if not
+                if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
+                  $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
+                                                substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                                $ftr2org_pos_A[$ftr_len], $ftr_strand);
+                }
+                if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                  # first stop codon 3' of $ftr_start is not $ftr_stop
+                  # We will need to add an alert, (exactly) one of:
+                  # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                  # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                  # 'n_trc': an early stop exists in $ftr_sqstring
+                  if($ftr_nxt_stp_A[1] == 0) { 
+                    # there are no valid in-frame stops in $ftr_sqstring
+                    # we have a 'n_nst' or 'n_ext' alert, to find out which 
+                    # we need to fetch the sequence ending at $fstop to the end of the sequence 
+                    if($ftr_stop < $seq_len) { 
+                      # we have some sequence left 3' of ftr_stop
+                      my $ext_sqstring = undef;
+                      if($ftr_strand eq "+") { 
+                        $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                       }
-                    } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
-                    else { 
-                      # there is an early stop (n_trc) in $ftr_sqstring
-                      if($ftr_nxt_stp_A[1] > $ftr_len) { 
-                        # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                        ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                      else { # negative strand
+                        $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                       }
-                      $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
-                      $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                      my @ext_nxt_stp_A = ();
+                      sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
+                      if($ext_nxt_stp_A[1] != 0) { 
+                        # there is an in-frame stop codon, n_ext alert
+                        # determine what position it is
+                        $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                        $alt_str_H{"n_ext"} = $ftr_stop_c;
+                      }
+                    } # end of 'if($ftr_stop < $seq_len)'
+                    if(! defined $ftr_stop_c) { 
+                      # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                      # or we checked the sequence but didn't find any
+                      # either way, we have a n_nst alert:
+                      $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
+                      $alt_str_H{"n_nst"} = "VADRNULL";
                     }
-                  } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
-                } # end of 'if($ftr_is_cds) {' 
-              } # end of 'else' entered if feature is a multiple of 3
-            } # end of 'if($ftr_is_cds_or_mp)'
-          } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
+                  } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
+                  else { 
+                    # there is an early stop (n_trc) in $ftr_sqstring
+                    if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                      # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                      ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                    }
+                    $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+                    $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                  }
+                } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+              } # end of 'if($ftr_is_cds) {' 
+            } # end of 'else' entered if feature is a multiple of 3
+          } # end of 'if($ftr_is_cds_or_mp)'
+        } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
 
-          # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
-          my $alt_flag = 0;
-          foreach my $alt_code (sort keys %alt_str_H) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
-            $alt_flag = 1;
-          }
-          if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
-            for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-              my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-              if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
-                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
-                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
-              }
+        # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
+        my $alt_flag = 0;
+        foreach my $alt_code (sort keys %alt_str_H) { 
+          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
+          $alt_flag = 1;
+        }
+        if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
+          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
+            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
+            if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"b_per"})) { 
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "b_per", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
             }
           }
+        }
 
-          # if we are a mature peptide, make sure we are adjacent to the next one, if there is one
-          if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1)) { 
-            my $ftr_3pa_idx = $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"};
-            my $sgm_5p_idx  = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};     
-            # yes, the 3'-most segment of $ftr_idx is the 5'-most mature peptide we are interested in
-            my $sgm_3p_idx  = $ftr_info_AHR->[$ftr_3pa_idx]{"5p_sgm_idx"}; 
-            # and, yes, the 5'-most segment of the 3' adjacent $ftr_idx is the 3'-most mature peptide we're interested in
-            
-            my $sgm_5p_valid = ((defined $sgm_results_HAHR->{$seq_name}) && 
-                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]) && 
-                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstart"})) ? 1 : 0;
-            my $sgm_3p_valid = ((defined $sgm_results_HAHR->{$seq_name}) && 
-                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]) && 
-                                (defined $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"})) ? 1 : 0;
-            my $sgm_5p_3flush = ($sgm_5p_valid && $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"3seqflush"}) ? 1 : 0;
-            my $sgm_3p_5flush = ($sgm_3p_valid && $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"5seqflush"}) ? 1 : 0;
-            
-            my $stop_5p  = ($sgm_5p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstop"}  : undef;
-            my $start_3p = ($sgm_3p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"} : undef;
-            
-            # Three ways we can get a 'n_adj' alert: 
-            if($sgm_5p_valid && $sgm_3p_valid) { # both are valid 
-              if((abs($stop_5p - $start_3p)) != 1) { # they're not adjacent
-                # 1) both mature peptides are annotated but not adjacent, alert on $ftr_idx
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_idx, 
-                                           sprintf("abs($stop_5p - $start_3p) != 1 (strand:%s)", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}), 
-                                           $FH_HR);
-              }
-            }
-            elsif(($sgm_5p_valid) && (! $sgm_3p_valid) && (! $sgm_5p_3flush)) { 
-              # 2) 5' mature peptide is annotated and ends before end of sequence, but 3' mature peptide is not annotated, alert for $ftr_idx
+        # if we are a mature peptide, make sure we are adjacent to the next one, if there is one
+        if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1)) { 
+          my $ftr_3pa_idx = $ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"};
+          my $sgm_5p_idx  = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};     
+          # yes, the 3'-most segment of $ftr_idx is the 5'-most mature peptide we are interested in
+          my $sgm_3p_idx  = $ftr_info_AHR->[$ftr_3pa_idx]{"5p_sgm_idx"}; 
+          # and, yes, the 5'-most segment of the 3' adjacent $ftr_idx is the 3'-most mature peptide we're interested in
+          
+          my $sgm_5p_valid = ((defined $sgm_results_HAHR->{$seq_name}) && 
+                              (defined $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]) && 
+                              (defined $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstart"})) ? 1 : 0;
+          my $sgm_3p_valid = ((defined $sgm_results_HAHR->{$seq_name}) && 
+                              (defined $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]) && 
+                              (defined $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"})) ? 1 : 0;
+          my $sgm_5p_3flush = ($sgm_5p_valid && $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"3seqflush"}) ? 1 : 0;
+          my $sgm_3p_5flush = ($sgm_3p_valid && $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"5seqflush"}) ? 1 : 0;
+          
+          my $stop_5p  = ($sgm_5p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstop"}  : undef;
+          my $start_3p = ($sgm_3p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"} : undef;
+          
+          # Three ways we can get a 'n_adj' alert: 
+          if($sgm_5p_valid && $sgm_3p_valid) { # both are valid 
+            if((abs($stop_5p - $start_3p)) != 1) { # they're not adjacent
+              # 1) both mature peptides are annotated but not adjacent, alert on $ftr_idx
               alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_idx, 
-                                         sprintf("feature stops at seq position $stop_5p on %s strand which is not terminal but expected 3'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}),
+                                         sprintf("abs($stop_5p - $start_3p) != 1 (strand:%s)", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}), 
                                          $FH_HR);
             }
-            elsif(($sgm_3p_valid) && (! $sgm_5p_valid) && (! $sgm_3p_5flush)) { 
-              # 3) 3' mature peptide is annotated and starts after start of sequence, but 5' mature peptide is not annotated, alert for $ftr_3pa_idx (NOT $ftr_idx)
-              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_3pa_idx, 
-                                         sprintf("feature starts at seq position $start_3p on %s strand which is not terminal but expected 5'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"strand"}),
-                                         $FH_HR);
-            }
-          } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
+          }
+          elsif(($sgm_5p_valid) && (! $sgm_3p_valid) && (! $sgm_5p_3flush)) { 
+            # 2) 5' mature peptide is annotated and ends before end of sequence, but 3' mature peptide is not annotated, alert for $ftr_idx
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_idx, 
+                                       sprintf("feature stops at seq position $stop_5p on %s strand which is not terminal but expected 3'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}),
+                                       $FH_HR);
+          }
+          elsif(($sgm_3p_valid) && (! $sgm_5p_valid) && (! $sgm_3p_5flush)) { 
+            # 3) 3' mature peptide is annotated and starts after start of sequence, but 5' mature peptide is not annotated, alert for $ftr_3pa_idx (NOT $ftr_idx)
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_adj", $seq_name, $ftr_3pa_idx, 
+                                       sprintf("feature starts at seq position $start_3p on %s strand which is not terminal but expected 5'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"strand"}),
+                                       $FH_HR);
+          }
+        } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
 
-          # update %ftr_results_HR
-          $ftr_results_HR->{"n_strand"} = $ftr_strand;
-          $ftr_results_HR->{"n_start"}  = $ftr_start;
-          $ftr_results_HR->{"n_stop"}   = $ftr_stop;
-          $ftr_results_HR->{"n_stop_c"} = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
-          $ftr_results_HR->{"n_5trunc"} = $ftr_is_5trunc;
-          $ftr_results_HR->{"n_3trunc"} = $ftr_is_3trunc;
-          $ftr_results_HR->{"n_len"}    = $ftr_len;
-          #printf("set ftr_results_HR->{n_start} to " . $ftr_results_HR->{"n_start"} . "\n");
-          #printf("set ftr_results_HR->{n_stop}  to " . $ftr_results_HR->{"n_stop"} . "\n");
-        } # end of 'if($ftr_len > 0)'
-      } # end of 'if(! vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) {' 
+        # update %ftr_results_HR
+        $ftr_results_HR->{"n_strand"} = $ftr_strand;
+        $ftr_results_HR->{"n_start"}  = $ftr_start;
+        $ftr_results_HR->{"n_stop"}   = $ftr_stop;
+        $ftr_results_HR->{"n_stop_c"} = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+        $ftr_results_HR->{"n_5trunc"} = $ftr_is_5trunc;
+        $ftr_results_HR->{"n_3trunc"} = $ftr_is_3trunc;
+        $ftr_results_HR->{"n_len"}    = $ftr_len;
+        #printf("set ftr_results_HR->{n_start} to " . $ftr_results_HR->{"n_start"} . "\n");
+        #printf("set ftr_results_HR->{n_stop}  to " . $ftr_results_HR->{"n_stop"} . "\n");
+      } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
   
@@ -3144,36 +3141,34 @@ sub add_low_similarity_alerts {
               # does this overlap with a feature? 
               my $nftr_overlap = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                if(! vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx)) { 
-                  my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-                  my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
-                  if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
-                    my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
-                    my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_stop"};
-                    my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
-                    if($f_strand eq $bstrand) { 
-                      my $noverlap = undef;
-                      my $overlap_reg = "";
-                      my $start1 = utl_Min($start,   $stop);
+                my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+                my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
+                if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+                  my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
+                  my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_stop"};
+                  my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
+                  if($f_strand eq $bstrand) { 
+                    my $noverlap = undef;
+                    my $overlap_reg = "";
+                    my $start1 = utl_Min($start,   $stop);
                       my $stop1  = utl_Max($start,   $stop);
-                      my $start2 = utl_Min($f_start, $f_stop);
-                      my $stop2  = utl_Max($f_start, $f_stop);
-                      ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
-                      if($noverlap > 0) { 
-                        $nftr_overlap++;
-                        # only actually report an alert for non-CDS and non-MP features
-                        # because CDS and MP are independently validated by blastx
-                        if(! $ftr_is_cds_or_mp) { 
-                          my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
-                          if($is_start) { 
-                            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fss", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                          }
-                          if($is_end) { 
-                            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fse", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                          }
-                          if((! $is_start) && (! $is_end)) { 
-                            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fsi", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                          }
+                    my $start2 = utl_Min($f_start, $f_stop);
+                    my $stop2  = utl_Max($f_start, $f_stop);
+                    ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+                    if($noverlap > 0) { 
+                      $nftr_overlap++;
+                      # only actually report an alert for non-CDS and non-MP features
+                      # because CDS and MP are independently validated by blastx
+                      if(! $ftr_is_cds_or_mp) { 
+                        my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                        if($is_start) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fss", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        if($is_end) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fse", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                        }
+                        if((! $is_start) && (! $is_end)) { 
+                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "x_fsi", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                       }
                     }
@@ -4650,9 +4645,9 @@ sub output_tabular {
 
   my @head_ftr_AA = ();
   my @data_ftr_AA = ();
-  @{$head_ftr_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "",    "",       "",     "",        "",    "",       "",     "",        "",     "dup", "",    "",    "seq",    "model",  "ftr");
-  @{$head_ftr_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "str", "n_from", "n_to", "n_instp", "trc", "p_from", "p_to", "p_instp", "p_sc", "idx", "nsa", "nsn", "coords", "coords", "alerts");
-  my @clj_ftr_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,        0,      0,         0,       0,    0,     0,     0,        0,        1);
+  @{$head_ftr_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "",    "",       "",     "",        "",    "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
+  @{$head_ftr_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "str", "n_from", "n_to", "n_instp", "trc", "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
+  my @clj_ftr_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,        0,      0,         0,       0,     0,     0,        0,        1);
 
   my @head_sgm_AA = ();
   my @data_sgm_AA = ();
@@ -4777,15 +4772,14 @@ sub output_tabular {
       $nftr = scalar(@{$ftr_info_HAHR->{$seq_mdl1}});
       my $ftr_info_AHR = \@{$ftr_info_HAHR->{$seq_mdl1}}; # for convenience
       for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"};
-        my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$src_idx]; # for convenience
+        my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
         my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
         if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
           $seq_nftr_annot++;
           my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
           my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
           my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
-          my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $src_idx);
+          my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $ftr_idx);
           my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
           my $ftr_n_start  = (defined $ftr_results_HR->{"n_start"})   ? $ftr_results_HR->{"n_start"}   : "-";
           my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
@@ -4798,7 +4792,6 @@ sub output_tabular {
             $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
           }
           my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
-          my $ftr_dupidx  = vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx) ? $ftr_info_AHR->[$ftr_idx]{"source_idx"} : "-";
           if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
             $seq_nftr_5trunc++; 
           }
@@ -4816,8 +4809,8 @@ sub output_tabular {
           my $m_coords_str   = ""; # model    coordinate string for feature
           my $ftr_nsgm_annot = 0;
           my $ftr_len_by_sgm = 0;
-          my $ftr_first_sgm  = $ftr_info_AHR->[$src_idx]{"5p_sgm_idx"};
-          my $ftr_final_sgm  = $ftr_info_AHR->[$src_idx]{"3p_sgm_idx"};
+          my $ftr_first_sgm  = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"};
+          my $ftr_final_sgm  = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};
           my $ftr_nsgm       = $ftr_final_sgm - $ftr_first_sgm + 1;
           for(my $sgm_idx = $ftr_first_sgm; $sgm_idx <= $ftr_final_sgm; $sgm_idx++) { 
             if((defined $sgm_results_HHAHR) && 
@@ -4865,7 +4858,7 @@ sub output_tabular {
           } # empty array -> blank line
           push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
                                   ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, 
-                                  $ftr_p_score, ($ftr_dupidx eq "-") ? "-" : ($ftr_dupidx+1), $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
+                                  $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
                                   $ftr_alt_str]);
           $ftr_nprinted++;
 
@@ -5280,62 +5273,24 @@ sub output_feature_table {
       my $ftr_results_HAHR = \%{$ftr_results_HHAHR->{$mdl_name}}; # for convenience
       my $sgm_results_HAHR = \%{$sgm_results_HHAHR->{$mdl_name}}; # for convenience
       my $nftr = scalar(@{$ftr_info_AHR});
-      
-      # Determine what features we will annotate, if any,
-      # and order them so that any duplicates occur after their 
-      # 'source' features from which their annotation will be copied.
-      # That way when we get to a duplicate, we already have the annotation
-      # of its source feature.
-      # Non-duplicate features are annotated if they have a nucleotide-based 
-      # or protein-based prediction and (are of a minimum length if they're CDS or mat_peptide)
-      # Duplicate features are annotated if their source features are annotated.
-      my @ftr_idx_to_annotate_A = ();
-      my @ftr_dup_idx_to_annotate_A = ();
-      my $is_duplicate; # is the current feature a duplicate?
-      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        my $src_idx = $ftr_info_AHR->[$ftr_idx]{"source_idx"}; # will be $ftr_idx unless this sequence is a duplicate
-        $is_duplicate = vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx);
-        if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$src_idx]}, $ftr_min_len_HA{$mdl_name}[$src_idx])) { 
-          if($is_duplicate) { 
-            push(@ftr_dup_idx_to_annotate_A, $ftr_idx);
-          }
-          else { 
-            push(@ftr_idx_to_annotate_A, $ftr_idx);
-          }
-        }
-      }
-      # add the duplicates to the end of the non-duplicates
-      push(@ftr_idx_to_annotate_A, @ftr_dup_idx_to_annotate_A);
 
-      foreach $ftr_idx (@ftr_idx_to_annotate_A) { 
-        # initialize
-        my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
-        my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
-        my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
-        my $ftr_coords_str    = ""; # string of coordinates for this feature
-        my $ftr_out_str       = ""; # output string for this feature
-        my $is_cds_or_mp      = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
+
+          # initialize
+          my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
+          my $ftr_coords_str    = ""; # string of coordinates for this feature
+          my $ftr_out_str       = ""; # output string for this feature
+          my $is_cds_or_mp      = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
           
-        my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
-        my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
-        my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
-        my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
-        $is_duplicate         = vdr_FeatureIsDuplicate($ftr_info_AHR, $ftr_idx); # is this feature a duplicate?
+          my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
+          my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
+          my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
+          my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
           
-        # determine coordinates for the feature differently depending on
-        # if we are a duplicate or not: 
-        if($is_duplicate) { 
-          # copy from previously determined source feature
-          if(! defined $ftr_idx2ftout_idx_H{$ftr_info_AHR->[$ftr_idx]{"source_idx"}}) { 
-            ofile_FAIL("ERROR, trying to output feature table info for a duplicate feature but source feature info is undefined", 1, $ofile_info_HHR->{"FH"});;
-          }
-          my $dup_src_ftidx = $ftr_idx2ftout_idx_H{$ftr_info_AHR->[$ftr_idx]{"source_idx"}};
-          $is_5trunc      = $ftout_AH[$dup_src_ftidx]{"5trunc"};
-          $is_3trunc      = $ftout_AH[$dup_src_ftidx]{"3trunc"};
-          $ftr_coords_str = $ftout_AH[$dup_src_ftidx]{"coords"};
-          $min_coord      = $ftout_AH[$dup_src_ftidx]{"mincoord"};
-        }
-        else { # ! duplicate
+          # determine coordinates for the feature
           $is_5trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}; 
           $is_3trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}; 
           if(! $defined_n_start) { 
@@ -5343,77 +5298,76 @@ sub output_feature_table {
             $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
                                                                         $ftr_results_HAHR, $FH_HR);
           }
-          else { # $is_duplicate is '0' and $defined_n_start is '1'
+          else { # $defined_n_start is '1'
             $ftr_coords_str = helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
                                                                       $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
-
-          # only look up alerts if we're not a duplicate feature
+          
           # fill an array and strings with all alerts for this sequence/feature combo
           my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
           if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
             $is_misc_feature = 1;
-            $feature_type = "misc_feature";
+              $feature_type = "misc_feature";
           }
-        } # end of 'else' entered if ! $is_duplicate)'
           
-        # convert coordinate string to output string
-        $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
-        
-        # add qualifiers: product, gene, exception and codon_start (if !duplicate)
-        if(! $is_misc_feature) { 
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product", $qval_sep, $ftr_info_AHR, $FH_HR);
-          if(! $is_cds_or_mp) { 
-            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
-          }
-          my $ftr_nsgm = $ftr_coords_str =~ tr/\n//; # counts number of lines of ftr_coords_str (this is number of segments)
-          if($ftr_nsgm > 1) { # only annotate ribsomal_slippage if more than one segments exist
-            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ribosomal_slippage", $qval_sep, $ftr_info_AHR, $FH_HR);
-          }
-          # have to be a little careful with 'exception' because there's a special case: 
-          # "exception":"ribosomal slippage" should only be added if we have > 1 segment
-          my $exception_str = helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
-          if(($exception_str =~ /\t\t\texception\tribosomal slippage\n/) && ($ftr_nsgm == 1)) { 
-            # remove ribosomal slippage if it exists
-            $exception_str =~ s/\t\t\texception\tribosomal slippage\n//;
-          }
-          $ftr_out_str .= $exception_str;
+          # convert coordinate string to output string
+          $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
+          
+          # add qualifiers: product, gene, exception and codon_start
+          if(! $is_misc_feature) { 
+            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "product", $qval_sep, $ftr_info_AHR, $FH_HR);
+            if(! $is_cds_or_mp) { 
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
+            }
+            my $ftr_nsgm = $ftr_coords_str =~ tr/\n//; # counts number of lines of ftr_coords_str (this is number of segments)
+            if($ftr_nsgm > 1) { # only annotate ribsomal_slippage if more than one segments exist
+              $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ribosomal_slippage", $qval_sep, $ftr_info_AHR, $FH_HR);
+            }
+            # have to be a little careful with 'exception' because there's a special case: 
+            # "exception":"ribosomal slippage" should only be added if we have > 1 segment
+            my $exception_str = helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "exception", $qval_sep, $ftr_info_AHR, $FH_HR);
+            if(($exception_str =~ /\t\t\texception\tribosomal slippage\n/) && ($ftr_nsgm == 1)) { 
+              # remove ribosomal slippage if it exists
+              $exception_str =~ s/\t\t\texception\tribosomal slippage\n//;
+            }
+            $ftr_out_str .= $exception_str;
 
-          # add ncRNA_class qualifiers, if any
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ncRNA_class", $qval_sep, $ftr_info_AHR, $FH_HR);
+            # add ncRNA_class qualifiers, if any
+            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ncRNA_class", $qval_sep, $ftr_info_AHR, $FH_HR);
 
-          # add note qualifiers, if any
-          $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
+            # add note qualifiers, if any
+            $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
 
-          # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
-          if((! $is_duplicate) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))) { 
-            my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
-            if($tmp_str eq "") { 
-              # we didn't have a p_frame value for this CDS, so raise a flag
-              # we check later that if the sequence PASSes that this flag 
-              # is *NOT* raised, if it is, something went wrong and we die
-              $missing_codon_start_flag = 1; 
-              # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
-            } 
-            if($is_5trunc) { # only add the codon_start if we are 5' truncated (and if we're here we're not a duplicate)
-              $ftr_out_str .= $tmp_str;
+            # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
+            if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+              my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
+              if($tmp_str eq "") { 
+                # we didn't have a p_frame value for this CDS, so raise a flag
+                # we check later that if the sequence PASSes that this flag 
+                # is *NOT* raised, if it is, something went wrong and we die
+                $missing_codon_start_flag = 1; 
+                # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
+              } 
+              if($is_5trunc) { # only add the codon_start if we are 5' truncated
+                $ftr_out_str .= $tmp_str;
+              }
             }
           }
-        }
-        else { # we are a misc_feature, add the 'similar to X' note
-          $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", "similar to " . $ftr_info_AHR->[$ftr_idx]{"outname"});
-        }
-        
-        # push to the output hash
-        %{$ftout_AH[$ftidx]} = ();
-        $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc;
-        $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc;
-        $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
-        $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-        $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
-        $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
-        $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
-        $ftidx++;
+          else { # we are a misc_feature, add the 'similar to X' note
+            $ftr_out_str .= sprintf("\t\t\t%s\t%s\n", "note", "similar to " . $ftr_info_AHR->[$ftr_idx]{"outname"});
+          }
+          
+          # push to the output hash
+          %{$ftout_AH[$ftidx]} = ();
+          $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc;
+          $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc;
+          $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
+          $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
+          $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
+          $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
+          $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
+          $ftidx++;
+        } # end of 'if(check_for_valid_feature_prediction('
       } # end of 'for(my $ftr_idx...'
     } # end of 'if(defined $mdl_name)'
 
@@ -5698,11 +5652,14 @@ sub helper_ftable_add_qualifier_from_ftr_info {
      (defined $ftr_info_AHR->[$ftr_idx]{$key})) { 
     my @qval_A = split($qval_sep, $ftr_info_AHR->[$ftr_idx]{$key});
     foreach my $qval (@qval_A) { 
-      if($qval eq "GBNULL") { 
-        $ret_str .= sprintf("\t\t\t%s\n", $key);
-      }
-      else { 
-        $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval);
+      my @qval_A = split(":GBSEP:", $qval);
+      foreach my $qval_line (@qval_A) { 
+        if($qval_line eq "GBNULL") { 
+          $ret_str .= sprintf("\t\t\t%s\n", $key);
+        }
+        else { 
+          $ret_str .= sprintf("\t\t\t%s\t%s\n", $key, $qval_line);
+        }
       }
     }
   }
