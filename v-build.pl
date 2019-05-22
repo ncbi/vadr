@@ -372,6 +372,11 @@ if(! opt_IsUsed("--gb", \%opt_HH)) {
   # parse the feature table file
   $start_secs = ofile_OutputProgressPrior("Parsing feature table file", $progress_w, $log_FH, *STDOUT);
   sqf_FeatureTableParse($ft_file, \%ftr_info_HAH, $FH_HR);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  # if we have any CDS features with protein_id qualifiers, fetch and parse those
+  $start_secs = ofile_OutputProgressPrior("Fetching and parsing protein feature table file(s)", $progress_w, $log_FH, *STDOUT);
+  fetch_and_parse_cds_protein_feature_tables(\@{$ftr_info_HAH{$mdl_name}}, $out_root, $FH_HR);
   if(! exists $ftr_info_HAH{$mdl_name}) { 
     ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
   }
@@ -472,32 +477,34 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
-# Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
-# existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
-# at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
-# qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
-# only 'exception:ribosomal slippage' qualifier/values are desired in the 
-# output feature table. If we switch to parsing Entrez feature tables as input then
-# the need for this should go away because 'exception:ribosomal slippage' is in that
-# feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
-# we can just ignore). 
-# 
-# If ribosomal_slippage qualifier exists: create a new "exception" 
-# qualifier with value of "ribosomal slippage"
-# 
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-  if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
-     (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
-    if(defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"}) { 
-      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} .= ":GBSEP:" . "ribosomal slippage";
-    }
-    else { 
-      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
-    }
-    # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
-    if((! opt_Get("--qall", \%opt_HH)) &&
-       (! defined $qadd_H{"ribosomal_slippage"})) { 
-      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
+if(opt_Get("--gb", \%opt_HH)) { 
+  # Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
+  # existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
+  # at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
+  # qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
+  # only 'exception:ribosomal slippage' qualifier/values are desired in the 
+  # output feature table. If we switch to parsing Entrez feature tables as input then
+  # the need for this should go away because 'exception:ribosomal slippage' is in that
+  # feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
+  # we can just ignore). 
+  # 
+  # If ribosomal_slippage qualifier exists: create a new "exception" 
+  # qualifier with value of "ribosomal slippage"
+  # 
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+    if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
+       (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
+      if(defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"}) { 
+        $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} .= ":GBSEP:" . "ribosomal slippage";
+      }
+      else { 
+        $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
+      }
+      # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
+      if((! opt_Get("--qall", \%opt_HH)) &&
+         (! defined $qadd_H{"ribosomal_slippage"})) { 
+        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
+      }
     }
   }
 }
@@ -781,6 +788,79 @@ sub process_add_and_skip_options {
   foreach my $key (sort keys (%{$add_HR})) { 
     if(defined $skip_HR->{$key}) { 
       ofile_FAIL("ERROR in $sub_name, processing $add_opt <s1> and $skip_opt <s2> options, $key exists in both <s1> and <s2>", 1, $FH_HR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: fetch_and_parse_cds_protein_feature_tables()
+# Incept:     EPN, Tue May 21 20:49:40 2019
+#
+# Synopsis: Fetch and parse feature tables for proteins stored
+#           as qualifier values for the "protein_id" qualifier
+#           of "CDS" features in @{$ftr_info_AHR}. Features
+#           and qualifiers read from these feature tables are
+#           added to @{$ftr_info_AHR} after converting the
+#           coordinates as necessary.
+#
+# Arguments:
+#  $ftr_info_AHR:  ref to the feature info array of hashes
+#  $out_root:      output root for the file names
+#  $FH_HR:         ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching of parsing any
+#             protein feature tables
+#################################################################
+sub fetch_and_parse_cds_protein_feature_tables { 
+  my $sub_name = "fetch_and_parse_cds_protein_feature_tables()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $out_root, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my %prot_ftr_info_HAH = ();
+    if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") && 
+       (defined $ftr_info_AHR->[$ftr_idx]{"protein_id"})) { 
+      my $protein_id = $ftr_info_AHR->[$ftr_idx]{"protein_id"};
+      my $accver = undef;
+      if($protein_id =~ /[^\|]*\|([^\|]+\.\d+)\|/) { 
+        $accver = $1;
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, unable to parse protein_id $protein_id to get accession.version\n", 1, $FH_HR);
+      }
+      my $ft_file = $out_root . "." . $accver . ".ft";
+      vdr_EutilsFetchToFile($ft_file, $accver, "ft",    5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft." . $accver, $ft_file, 1, "feature table format file for $accver");
+
+      # parse the file
+      sqf_FeatureTableParse($ft_file, \%prot_ftr_info_HAH, $FH_HR);
+    }
+    # copy info from \%prot_ftr_info_HAH to %ftr_info_AHR
+    foreach my $prot_accver (sort keys %prot_ftr_info_HAH) { 
+      my $prot_nftr = utl_AHValidate(\@{$prot_ftr_info_HAH{$prot_accver}}, \@keys_A, "ERROR in $sub_name for accver $prot_accver", $FH_HR);
+      for(my $prot_ftr_idx = 0; $prot_ftr_idx < $prot_nftr; $prot_ftr_idx++) { 
+        # copy only if it is not the same type as the parent (e.g. CDS)
+        if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne $ftr_info_AHR->[$ftr_idx]{"type"}) { 
+          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"parent_idx"} = $ftr_idx;
+          my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
+          %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
+          foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
+            $ftr_info_AHR->[$nxt_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+          }
+          # convert protein coordinates to nucleotide coordinates
+          $ftr_info_AHR->[$nxt_ftr_idx]{"coords"} = vdr_CoordsProtToNuc($ftr_info_AHR->[$ftr_idx]{"coords"}, $ftr_info_AHR->[$nxt_ftr_idx]{"coords"}, $FH_HR);
+        }
+      }
     }
   }
 

@@ -101,6 +101,7 @@ use LWP::Simple;
 # vdr_CoordsMissing()
 # vdr_CoordsCheckIfSpans()
 # vdr_CoordsTokenOverlap()
+# vdr_CoordsProtToNuc
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -2020,7 +2021,7 @@ sub vdr_CoordsTokenParse {
 #  $start:    start position
 #  $stop:     stop position
 #  $strand:   strand ("+" or "-")
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    coordinate token <start>..<stop>:<strand>
 #
@@ -2609,6 +2610,108 @@ sub vdr_CoordsTokenOverlap {
   }
 
   return seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsProtToNuc()
+# Incept:     EPN, Wed May 22 09:49:30 2019
+#
+# Synopsis: Return nucleotide coordinates that correspond to the 
+#           protein coordinates in the coords string <$pt_coords>
+#           for a protein that is encoded by the the nucleotide
+#           coordinates in the coords string <$nt_coords>.
+#  
+#           Examples:
+#           nt_coords             pt_coords          returns
+#           "11..100:+"            "2..11:+"         "14..43:+"     
+#           "100..11:-"            "2..11:+"         "97..68:-"
+#           "11..40:+,42..101:+"   "2..11:+"         "14..40:+,42..44:+"
+#           "11..100:+"            "2..3:+,5..11:+"  "14..19:+,23..43:+"
+#           "100..11:-"            "2..3:+,5..11:+"  "97..92:-,88..68:-"
+#           "11..40:+,42..101:+"   "2..3:+,5..11:+"  "14..19:+,23..40:+,42..44:+"
+#
+# Arguments:
+#  $nt_coords:  nucleotide coordinates
+#  $pt_coords: protein coordinates to convert to nucleotide coordinates
+#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $pt_coords in nucleotide 
+#            coordinates relative to $nt_coords.
+#            '0' if no overlap or the two tokens are on opposite strands.
+#
+# Dies: if protein coordinates imply positions outside nucleotide coordinates
+#       (protein is too long)
+#       if protein coordinates have a segment on the negative strand
+#
+#################################################################
+sub vdr_CoordsProtToNuc { 
+  my $sub_name = "vdr_CoordsProtToNuc";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($nt_coords, $pt_coords, $FH_HR) = @_;
+  if(! defined $nt_coords) { ofile_FAIL("ERROR in $sub_name, nt_coords is undefined", 1, $FH_HR); }
+  if(! defined $pt_coords) { ofile_FAIL("ERROR in $sub_name, pt_coords is undefined", 1, $FH_HR); }
+
+  my @nt_coords_tok_A = split(",", $nt_coords);
+  my @pt_coords_tok_A = split(",", $pt_coords);
+  my $nt_len = vdr_CoordsLength($nt_coords, $FH_HR);
+  my $pt_len = vdr_CoordsLength($pt_coords, $FH_HR);
+  if(($pt_len * 3) > $nt_len) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, protein length * 3 (%d) exceeds nucleotide length (%d) for protein coords: $pt_coords and nucleotide coords: $nt_coords", (3 * $pt_len), $nt_len), 1, $FH_HR); }
+
+  my $ret_coords = "";
+
+  printf("in $sub_name, nt_coords: $nt_coords, pt_coords: $pt_coords\n");
+  foreach my $pt_coords_tok (@pt_coords_tok_A) { 
+    printf("pt_coords_tok: $pt_coords_tok\n");
+    my ($pt_start, $pt_stop, $pt_strand) = vdr_CoordsTokenParse($pt_coords_tok, $FH_HR);
+    if($pt_strand ne "+")      { ofile_FAIL("ERROR in $sub_name, protein strand is not + for token $pt_coords_tok in coords string $pt_coords", 1, $FH_HR); }
+    if($pt_start > $pt_stop) { ofile_FAIL("ERROR in $sub_name, protein strand is + but start coordinate is after stop coordinate ($pt_start > $pt_stop)", 1, $FH_HR); }
+
+    my $pt_tok_len = 
+    my $remaining_conv_tok_nt_len = (($pt_stop - $pt_start) + 1) * 3; # number of nucleotide positions left to convert from protein coords to nt coords
+    my $cur_nt_offset = ($pt_start - 1) * 3; # number of nucleotides to skip from start of $nt_coords_tok when converting protein coords
+    # 
+    foreach my $nt_coords_tok (@nt_coords_tok_A) { 
+      if($remaining_conv_tok_nt_len > 0) { # only need to look at this token if we still have sequence left to convert
+        my ($nt_start, $nt_stop, $nt_strand) = vdr_CoordsTokenParse($nt_coords_tok, $FH_HR);
+        my $nt_coords_tok_len = abs($nt_start - $nt_stop) + 1;
+        my ($conv_start, $conv_stop) = (undef, undef); 
+        if($cur_nt_offset <= $nt_coords_tok_len) { # this nt token has >= 1 nt corresponding to $pt_coords_tok
+          if($nt_strand eq "+") { 
+            $conv_start = $nt_start + $cur_nt_offset;
+            $conv_stop  = $conv_start + $remaining_conv_tok_nt_len - 1;
+            # make sure we didn't go off the end of the nt token
+            if($conv_stop > $nt_stop) { $conv_stop = $nt_stop; }
+          }
+          elsif($nt_strand eq "-") { 
+            $conv_start = $nt_start - $cur_nt_offset;
+            $conv_stop  = $conv_start - $remaining_conv_tok_nt_len + 1;
+            # make sure we didn't go off the end of the nt token
+            if($conv_stop < $nt_stop) { $conv_stop = $nt_stop; }
+          }          
+          else { 
+            ofile_FAIL("ERROR in $sub_name, nt_coords token $nt_coords_tok has strand $nt_strand that is not either + or -", 1, $FH_HR); 
+          }
+          # determine how many more nt we have to cover for this protein coord token
+          $remaining_conv_tok_nt_len -= abs($conv_stop - $conv_start) + 1;
+          
+          # append converted token to return coords string
+          if($ret_coords ne "") { $ret_coords .= ","; }
+          $ret_coords .= vdr_CoordsTokenCreate($conv_start, $conv_stop, $nt_strand, $FH_HR);
+        }   
+        # adjust nt offset so that for next nt coords token we start at the proper position
+        $cur_nt_offset -= $nt_coords_tok_len;
+        if($cur_nt_offset < 0) { 
+          $cur_nt_offset = 0;
+        }
+      }
+    }
+  }
+
+  printf("in $sub_name, returning $ret_coords\n");
+  return $ret_coords;
 }
 
 #################################################################

@@ -231,11 +231,11 @@ sub sqf_FeatureTableParse {
         #printf("set prv_was_accn\n");
       }
       # -------------------------------------------------------
-      elsif($line =~ /^(\<?\d+\^?)\t(\>?\d+)\t(\S+)$/) { 
+      elsif($line =~ /^(\<?)(\d+\^?)\t(\>?)(\d+)\t(\S+)$/) { 
         # COORDINATES LINE WITH A FEATURE NAME (coords_feature)
         # example:
         # 230   985     gene
-        my ($tmp_start, $tmp_stop, $tmp_feature) = ($1, $2, $3);
+        my ($start_carrot, $start_coord, $stop_carrot, $stop_coord, $tmp_feature) = ($1, $2, $3, $4, $5);
         # coords_feature line can occur after any other line type, so we don't have to check if line order makes sense for this case
 
         # if our previous line was coords_feature or coords_only, we need to store the feature from that previous line
@@ -244,13 +244,13 @@ sub sqf_FeatureTableParse {
           sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
           sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
         }
-        ($start, $stop, $feature) = ($tmp_start, $tmp_stop, $tmp_feature);
+        $feature = $tmp_feature;
 
-        if($start == $stop) { 
+        if($start_coord == $stop_coord) { 
           ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
         }
-        if ($start <= $stop) { $coords = $start . ".." . $stop  . ":+"; }
-        else                 { $coords = $stop .  ".." . $start . ":-"; }
+        if ($start_coord <= $stop_coord) { $coords = $start_coord . ".." . $stop_coord  . ":+"; }
+        else                             { $coords = $stop_coord .  ".." . $start_coord . ":-"; }
 
         # update '$prv_*' values that we use to make sure line order makes sense
         $prv_was_accn           = 0;
