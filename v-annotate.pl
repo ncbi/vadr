@@ -2799,77 +2799,72 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               }
             }
           }
-          if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
-            if($ftr_is_cds_or_mp) { 
-              # feature is not truncated on either end, look for stop codons
-              if(($ftr_len % 3) != 0) { 
-                # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
-                # but which could cause weird downstream problems)
-                $alt_str_H{"n_nm3"} = "$ftr_len";
+          if(! $ftr_is_3trunc) { 
+            if($ftr_is_cds) { 
+              # CDS feature is not 3' truncated, look for all valid in-frame stops 
+              my @ftr_nxt_stp_A = ();
+              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
+              # check that final add codon is a valid stop, and add 'n_stp' alert if not
+              if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
+                $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
+                                              substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                              $ftr2org_pos_A[$ftr_len], $ftr_strand);
               }
-              else { 
-                # feature length is a multiple of 3, look for all valid in-frame stops 
-                my @ftr_nxt_stp_A = ();
-                sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
-                
-                if($ftr_is_cds) { 
-                  # check that final add codon is a valid stop, and add 'n_stp' alert if not
-                  if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
-                    $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
-                                                  substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
-                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
-                  }
-                  if($ftr_nxt_stp_A[1] != $ftr_len) { 
-                    # first stop codon 3' of $ftr_start is not $ftr_stop
-                    # We will need to add an alert, (exactly) one of:
-                    # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                    # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                    # 'n_trc': an early stop exists in $ftr_sqstring
-                    if($ftr_nxt_stp_A[1] == 0) { 
-                      # there are no valid in-frame stops in $ftr_sqstring
-                      # we have a 'n_nst' or 'n_ext' alert, to find out which 
-                      # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                      if($ftr_stop < $seq_len) { 
-                        # we have some sequence left 3' of ftr_stop
-                        my $ext_sqstring = undef;
-                        if($ftr_strand eq "+") { 
-                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
-                        }
-                        else { # negative strand
-                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
-                        }
-                        my @ext_nxt_stp_A = ();
-                        sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
-                        if($ext_nxt_stp_A[1] != 0) { 
-                          # there is an in-frame stop codon, n_ext alert
-                          # determine what position it is
-                          $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
-                          $alt_str_H{"n_ext"} = $ftr_stop_c;
-                        }
-                      } # end of 'if($ftr_stop < $seq_len)'
-                      if(! defined $ftr_stop_c) { 
-                        # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
-                        # or we checked the sequence but didn't find any
-                        # either way, we have a n_nst alert:
-                        $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                        $alt_str_H{"n_nst"} = "VADRNULL";
-                      }
-                    } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
-                    else { 
-                      # there is an early stop (n_trc) in $ftr_sqstring
-                      if($ftr_nxt_stp_A[1] > $ftr_len) { 
-                        # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                        ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
-                      }
-                      $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
-                      $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+              if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                # first stop codon 3' of $ftr_start is not $ftr_stop
+                # We will need to add an alert, (exactly) one of:
+                # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                # 'n_trc': an early stop exists in $ftr_sqstring
+                if($ftr_nxt_stp_A[1] == 0) { 
+                  # there are no valid in-frame stops in $ftr_sqstring
+                  # we have a 'n_nst' or 'n_ext' alert, to find out which 
+                  # we need to fetch the sequence ending at $fstop to the end of the sequence 
+                  if($ftr_stop < $seq_len) { 
+                    # we have some sequence left 3' of ftr_stop
+                    my $ext_sqstring = undef;
+                    if($ftr_strand eq "+") { 
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                     }
-                  } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
-                } # end of 'if($ftr_is_cds) {' 
-              } # end of 'else' entered if feature is a multiple of 3
-            } # end of 'if($ftr_is_cds_or_mp)'
-          } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
-
+                    else { # negative strand
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                    }
+                    my @ext_nxt_stp_A = ();
+                    sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
+                    if($ext_nxt_stp_A[1] != 0) { 
+                      # there is an in-frame stop codon, n_ext alert
+                      # determine what position it is
+                      $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                      $alt_str_H{"n_ext"} = $ftr_stop_c;
+                    }
+                  } # end of 'if($ftr_stop < $seq_len)'
+                  if(! defined $ftr_stop_c) { 
+                    # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                    # or we checked the sequence but didn't find any
+                    # either way, we have a n_nst alert:
+                    $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
+                    $alt_str_H{"n_nst"} = "VADRNULL";
+                  }
+                } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
+                else { 
+                  # there is an early stop (n_trc) in $ftr_sqstring
+                  if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                    # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                    ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                  }
+                  $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+                  $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                }
+              } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+            } # end of 'if($ftr_is_cds) {' 
+          } # end of 'if(! $ftr_is_3trunc)'
+          if(($ftr_is_cds_or_mp) && (! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
+            if(($ftr_len % 3) != 0) { 
+              # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
+              # but which could cause weird downstream problems)
+              $alt_str_H{"n_nm3"} = "$ftr_len";
+            }
+          }
           # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
           my $alt_flag = 0;
           foreach my $alt_code (sort keys %alt_str_H) { 
@@ -2992,6 +2987,16 @@ sub sqstring_check_start {
 #            but currently it is only concerned with 
 #            frame 1.           
 #
+#            We determine what frame each position is
+#            by asserting that the final position is
+#            frame 3 (the frame for the final position 
+#            of a stop codon). We do it this way 
+#            instead of assuming that position 1 is
+#            frame 1 because we may be passed in 
+#            sequences that are 5' truncated, but 
+#            we assume we are not passed in sequences
+#            that are 3' truncated.
+#
 # Arguments:
 #  $sqstring:       the sequence string
 #  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
@@ -3034,10 +3039,8 @@ sub sqstring_find_stops {
   # pass over sequence from right to left, filling @{$nxt_stp_AR}
   $cur_stp = 0;
   for($i = ($sqlen-2); $i >= 1; $i--) { 
-    $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
-    $cstart = $i;
-    $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
-    if($frame == 1) { 
+    if(((($sqlen-2) - $i) % 3) == 0) { # starting position of a codon, frame == 1
+      $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
       if(seq_CodonValidateStopCapDna($codon)) { 
         $cur_stp = $i+2;
       }
