@@ -172,7 +172,8 @@ opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "'Biased Sequence' fractional threshold is <x>",                            "'Biased Sequence' fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "'Duplicate Regions' minimum model overlap is <n>",                         "'Duplicate Regions' minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--indefstr",   "real",      20,                   $g,   undef,   undef,      "'Indefinite Strand' minimum weaker strand bit score is <x>",               "'Indefinite Strand' minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x>", "'Indefinite Annotation at Start/End' min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features", "'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features",     "'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features", \%opt_HH, \@opt_order_A);
 opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
@@ -216,58 +217,59 @@ my $usage    = "Usage: v-annotate.pl [-options] <fasta file to annotate> <output
 $usage      .= "\n";
 my $synopsis = "v-annotate.pl :: classify and annotate sequences using a CM library";
 my $options_okay = 
-    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+    &GetOptions('h'             => \$GetOptions_H{"-h"}, 
 # basic options
-                'f'            => \$GetOptions_H{"-f"},
-                'v'            => \$GetOptions_H{"-v"},
-                's'            => \$GetOptions_H{"-s"}, 
-                'm=s'          => \$GetOptions_H{"-m"}, 
-                'i=s'          => \$GetOptions_H{"-i"}, 
-                'b=s'          => \$GetOptions_H{"-b"}, 
-                'n=s'          => \$GetOptions_H{"-n"}, 
-                'keep'         => \$GetOptions_H{"--keep"},
+                'f'             => \$GetOptions_H{"-f"},
+                'v'             => \$GetOptions_H{"-v"},
+                's'             => \$GetOptions_H{"-s"}, 
+                'm=s'           => \$GetOptions_H{"-m"}, 
+                'i=s'           => \$GetOptions_H{"-i"}, 
+                'b=s'           => \$GetOptions_H{"-b"}, 
+                'n=s'           => \$GetOptions_H{"-n"}, 
+                'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
-                'group=s'     => \$GetOptions_H{"--group"},
-                'subgroup=s'  => \$GetOptions_H{"--subgroup"},
+                'group=s'       => \$GetOptions_H{"--group"},
+                'subgroup=s'    => \$GetOptions_H{"--subgroup"},
 # options for controlling which alerts cause failure
-                "alt_list"    => \$GetOptions_H{"--alt_list"},
-                "alt_pass=s"  => \$GetOptions_H{"--alt_pass"},
-                "alt_fail=s"  => \$GetOptions_H{"--alt_fail"},
+                "alt_list"      => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
 # options for tuning classification alerts
-                "lowcov=s"     => \$GetOptions_H{"--lowcov"},
-                "lowsc=s"      => \$GetOptions_H{"--lowsc"},
-                'lowsimterm=s' => \$GetOptions_H{"--lowsimterm"},
-                'lowsimint=s'  => \$GetOptions_H{"--lowsimint"},
-                'indefclass=s' => \$GetOptions_H{"--indefclass"},
-                'biasfract=s'  => \$GetOptions_H{"--biasfract"},  
-                'dupreg=s'     => \$GetOptions_H{"--dupreg"},  
-                'indefstr=s'   => \$GetOptions_H{"--indefstr"},  
-                'indefann=s'   => \$GetOptions_H{"--indefann"},  
-                'incspec=s'    => \$GetOptions_H{"--incspec"},  
+                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
+                "lowsc=s"       => \$GetOptions_H{"--lowsc"},
+                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
+                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
+                'indefclass=s'  => \$GetOptions_H{"--indefclass"},
+                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
+                'dupreg=s'      => \$GetOptions_H{"--dupreg"},  
+                'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
+                'indefann=s'    => \$GetOptions_H{"--indefann"},  
+                'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
+                'incspec=s'     => \$GetOptions_H{"--incspec"},  
 # options for tuning protein validation with blastx
-                'xminntlen=s'  => \$GetOptions_H{"--xminntlen"},
-                'xalntol=s'    => \$GetOptions_H{"--xalntol"},
-                'xmaxins=s'    => \$GetOptions_H{"--xmaxins"},
-                'xmaxdel=s'    => \$GetOptions_H{"--xmaxdel"},
-                'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
+                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
+                'xalntol=s'     => \$GetOptions_H{"--xalntol"},
+                'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
+                'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
+                'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
 # options for changing search sensitivity modes
-                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
-                'tau=s'        => \$GetOptions_H{"--tau"},
-                'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
-                'nosub'        => \$GetOptions_H{"--nosub"},
-                'noglocal'     => \$GetOptions_H{"--noglocal"},
+                'mxsize=s'      => \$GetOptions_H{"--mxsize"},
+                'tau=s'         => \$GetOptions_H{"--tau"},
+                'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
+                'nosub'         => \$GetOptions_H{"--nosub"},
+                'noglocal'      => \$GetOptions_H{"--noglocal"},
 # options related to parallelization
-                'p'            => \$GetOptions_H{"-p"},
-                'q=s'          => \$GetOptions_H{"-q"},
-                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
-                'wait=s'       => \$GetOptions_H{"--wait"},
-                'errcheck'     => \$GetOptions_H{"--errcheck"},
-                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"},
+                'p'             => \$GetOptions_H{"-p"},
+                'q=s'           => \$GetOptions_H{"-q"},
+                'nkb=s'         => \$GetOptions_H{"--nkb"}, 
+                'wait=s'        => \$GetOptions_H{"--wait"},
+                'errcheck'      => \$GetOptions_H{"--errcheck"},
+                'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # optional output files
-                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
-                'sgminfo'      => \$GetOptions_H{"--sgminfo"},
-                'seqinfo'      => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'      => \$GetOptions_H{"--altinfo"},
+                'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
+                'sgminfo'       => \$GetOptions_H{"--sgminfo"},
+                'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
+                'altinfo'       => \$GetOptions_H{"--altinfo"},
 # options for skipping stages, using earlier results
                 'skipalign'     => \$GetOptions_H{"--skipalign"});
 
@@ -2310,7 +2312,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   
   my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
 
-  my $pp_thresh = opt_Get("--indefann", $opt_HHR);
+  my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
+  my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nsgm = scalar(@{$sgm_info_AHR});
 
@@ -2505,6 +2508,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
       my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
       my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
+      my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
+      my $ftr_pp_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
+      my $ftr_pp_msg    = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
 
 # Debugging print block
 #      printf("segment $sgm_idx $sgm_start_rfpos..$sgm_stop_rfpos\n");
@@ -2567,25 +2573,25 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         # add errors, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp5", $seq_name, $$ftr_idx,
                                        "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           } 
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
-                                       sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $$ftr_idx,
+                                       sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
                                        $FH_HR);
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp3", $seq_name, $$ftr_idx,
                                        "RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           }
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
-                                       sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $$ftr_idx,
+                                       sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
                                        $FH_HR);
           }
         }
