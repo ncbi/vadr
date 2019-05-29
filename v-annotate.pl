@@ -172,7 +172,8 @@ opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "'Biased Sequence' fractional threshold is <x>",                            "'Biased Sequence' fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "'Duplicate Regions' minimum model overlap is <n>",                         "'Duplicate Regions' minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--indefstr",   "real",      20,                   $g,   undef,   undef,      "'Indefinite Strand' minimum weaker strand bit score is <x>",               "'Indefinite Strand' minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x>", "'Indefinite Annotation at Start/End' min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features", "'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features",     "'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features", \%opt_HH, \@opt_order_A);
 opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
@@ -216,65 +217,66 @@ my $usage    = "Usage: v-annotate.pl [-options] <fasta file to annotate> <output
 $usage      .= "\n";
 my $synopsis = "v-annotate.pl :: classify and annotate sequences using a CM library";
 my $options_okay = 
-    &GetOptions('h'            => \$GetOptions_H{"-h"}, 
+    &GetOptions('h'             => \$GetOptions_H{"-h"}, 
 # basic options
-                'f'            => \$GetOptions_H{"-f"},
-                'v'            => \$GetOptions_H{"-v"},
-                's'            => \$GetOptions_H{"-s"}, 
-                'm=s'          => \$GetOptions_H{"-m"}, 
-                'i=s'          => \$GetOptions_H{"-i"}, 
-                'b=s'          => \$GetOptions_H{"-b"}, 
-                'n=s'          => \$GetOptions_H{"-n"}, 
-                'keep'         => \$GetOptions_H{"--keep"},
+                'f'             => \$GetOptions_H{"-f"},
+                'v'             => \$GetOptions_H{"-v"},
+                's'             => \$GetOptions_H{"-s"}, 
+                'm=s'           => \$GetOptions_H{"-m"}, 
+                'i=s'           => \$GetOptions_H{"-i"}, 
+                'b=s'           => \$GetOptions_H{"-b"}, 
+                'n=s'           => \$GetOptions_H{"-n"}, 
+                'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
-                'group=s'     => \$GetOptions_H{"--group"},
-                'subgroup=s'  => \$GetOptions_H{"--subgroup"},
+                'group=s'       => \$GetOptions_H{"--group"},
+                'subgroup=s'    => \$GetOptions_H{"--subgroup"},
 # options for controlling which alerts cause failure
-                "alt_list"    => \$GetOptions_H{"--alt_list"},
-                "alt_pass=s"  => \$GetOptions_H{"--alt_pass"},
-                "alt_fail=s"  => \$GetOptions_H{"--alt_fail"},
+                "alt_list"      => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
 # options for tuning classification alerts
-                "lowcov=s"     => \$GetOptions_H{"--lowcov"},
-                "lowsc=s"      => \$GetOptions_H{"--lowsc"},
-                'lowsimterm=s' => \$GetOptions_H{"--lowsimterm"},
-                'lowsimint=s'  => \$GetOptions_H{"--lowsimint"},
-                'indefclass=s' => \$GetOptions_H{"--indefclass"},
-                'biasfract=s'  => \$GetOptions_H{"--biasfract"},  
-                'dupreg=s'     => \$GetOptions_H{"--dupreg"},  
-                'indefstr=s'   => \$GetOptions_H{"--indefstr"},  
-                'indefann=s'   => \$GetOptions_H{"--indefann"},  
-                'incspec=s'    => \$GetOptions_H{"--incspec"},  
+                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
+                "lowsc=s"       => \$GetOptions_H{"--lowsc"},
+                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
+                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
+                'indefclass=s'  => \$GetOptions_H{"--indefclass"},
+                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
+                'dupreg=s'      => \$GetOptions_H{"--dupreg"},  
+                'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
+                'indefann=s'    => \$GetOptions_H{"--indefann"},  
+                'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
+                'incspec=s'     => \$GetOptions_H{"--incspec"},  
 # options for tuning protein validation with blastx
-                'xminntlen=s'  => \$GetOptions_H{"--xminntlen"},
-                'xalntol=s'    => \$GetOptions_H{"--xalntol"},
-                'xmaxins=s'    => \$GetOptions_H{"--xmaxins"},
-                'xmaxdel=s'    => \$GetOptions_H{"--xmaxdel"},
-                'xlonescore=s' => \$GetOptions_H{"--xlonescore"},
+                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
+                'xalntol=s'     => \$GetOptions_H{"--xalntol"},
+                'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
+                'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
+                'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
 # options for changing search sensitivity modes
-                'mxsize=s'     => \$GetOptions_H{"--mxsize"},
-                'tau=s'        => \$GetOptions_H{"--tau"},
-                'nofixedtau'   => \$GetOptions_H{"--nofixedtau"},
-                'nosub'        => \$GetOptions_H{"--nosub"},
-                'noglocal'     => \$GetOptions_H{"--noglocal"},
+                'mxsize=s'      => \$GetOptions_H{"--mxsize"},
+                'tau=s'         => \$GetOptions_H{"--tau"},
+                'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
+                'nosub'         => \$GetOptions_H{"--nosub"},
+                'noglocal'      => \$GetOptions_H{"--noglocal"},
 # options related to parallelization
-                'p'            => \$GetOptions_H{"-p"},
-                'q=s'          => \$GetOptions_H{"-q"},
-                'nkb=s'        => \$GetOptions_H{"--nkb"}, 
-                'wait=s'       => \$GetOptions_H{"--wait"},
-                'errcheck'     => \$GetOptions_H{"--errcheck"},
-                'maxnjobs=s'   => \$GetOptions_H{"--maxnjobs"},
+                'p'             => \$GetOptions_H{"-p"},
+                'q=s'           => \$GetOptions_H{"-q"},
+                'nkb=s'         => \$GetOptions_H{"--nkb"}, 
+                'wait=s'        => \$GetOptions_H{"--wait"},
+                'errcheck'      => \$GetOptions_H{"--errcheck"},
+                'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # optional output files
-                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"}, 
-                'sgminfo'      => \$GetOptions_H{"--sgminfo"},
-                'seqinfo'      => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'      => \$GetOptions_H{"--altinfo"},
+                'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
+                'sgminfo'       => \$GetOptions_H{"--sgminfo"},
+                'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
+                'altinfo'       => \$GetOptions_H{"--altinfo"},
 # options for skipping stages, using earlier results
                 'skipalign'     => \$GetOptions_H{"--skipalign"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.95";
+my $version       = "0.96";
 my $releasedate   = "May 2019";
 my $pkgname       = "VADR";
 
@@ -2310,7 +2312,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   
   my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
 
-  my $pp_thresh = opt_Get("--indefann", $opt_HHR);
+  my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
+  my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nsgm = scalar(@{$sgm_info_AHR});
 
@@ -2505,6 +2508,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
       my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
       my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
+      my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
+      my $ftr_pp_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
+      my $ftr_pp_msg    = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
 
 # Debugging print block
 #      printf("segment $sgm_idx $sgm_start_rfpos..$sgm_stop_rfpos\n");
@@ -2567,25 +2573,25 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         # add errors, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp5", $seq_name, $ftr_idx,
                                        "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           } 
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
-                                       sprintf("%.2f < %.2f, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $pp_thresh),
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp5", $seq_name, $ftr_idx,
+                                       sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
                                        $FH_HR);
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_gp3", $seq_name, $ftr_idx,
                                        "RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           }
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $sgm_info_AHR->[$sgm_idx]{"map_ftr"},
-                                       sprintf("%.2f < %.2f, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $pp_thresh),
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "n_lp3", $seq_name, $ftr_idx,
+                                       sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
                                        $FH_HR);
           }
         }
@@ -2799,77 +2805,72 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               }
             }
           }
-          if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
-            if($ftr_is_cds_or_mp) { 
-              # feature is not truncated on either end, look for stop codons
-              if(($ftr_len % 3) != 0) { 
-                # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
-                # but which could cause weird downstream problems)
-                $alt_str_H{"n_nm3"} = "$ftr_len";
+          if(! $ftr_is_3trunc) { 
+            if($ftr_is_cds) { 
+              # CDS feature is not 3' truncated, look for all valid in-frame stops 
+              my @ftr_nxt_stp_A = ();
+              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
+              # check that final add codon is a valid stop, and add 'n_stp' alert if not
+              if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
+                $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
+                                              substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                              $ftr2org_pos_A[$ftr_len], $ftr_strand);
               }
-              else { 
-                # feature length is a multiple of 3, look for all valid in-frame stops 
-                my @ftr_nxt_stp_A = ();
-                sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
-                
-                if($ftr_is_cds) { 
-                  # check that final add codon is a valid stop, and add 'n_stp' alert if not
-                  if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
-                    $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
-                                                  substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
-                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
-                  }
-                  if($ftr_nxt_stp_A[1] != $ftr_len) { 
-                    # first stop codon 3' of $ftr_start is not $ftr_stop
-                    # We will need to add an alert, (exactly) one of:
-                    # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                    # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                    # 'n_trc': an early stop exists in $ftr_sqstring
-                    if($ftr_nxt_stp_A[1] == 0) { 
-                      # there are no valid in-frame stops in $ftr_sqstring
-                      # we have a 'n_nst' or 'n_ext' alert, to find out which 
-                      # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                      if($ftr_stop < $seq_len) { 
-                        # we have some sequence left 3' of ftr_stop
-                        my $ext_sqstring = undef;
-                        if($ftr_strand eq "+") { 
-                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
-                        }
-                        else { # negative strand
-                          $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
-                        }
-                        my @ext_nxt_stp_A = ();
-                        sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
-                        if($ext_nxt_stp_A[1] != 0) { 
-                          # there is an in-frame stop codon, n_ext alert
-                          # determine what position it is
-                          $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
-                          $alt_str_H{"n_ext"} = $ftr_stop_c;
-                        }
-                      } # end of 'if($ftr_stop < $seq_len)'
-                      if(! defined $ftr_stop_c) { 
-                        # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
-                        # or we checked the sequence but didn't find any
-                        # either way, we have a n_nst alert:
-                        $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                        $alt_str_H{"n_nst"} = "VADRNULL";
-                      }
-                    } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
-                    else { 
-                      # there is an early stop (n_trc) in $ftr_sqstring
-                      if($ftr_nxt_stp_A[1] > $ftr_len) { 
-                        # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                        ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
-                      }
-                      $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
-                      $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+              if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                # first stop codon 3' of $ftr_start is not $ftr_stop
+                # We will need to add an alert, (exactly) one of:
+                # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                # 'n_trc': an early stop exists in $ftr_sqstring
+                if($ftr_nxt_stp_A[1] == 0) { 
+                  # there are no valid in-frame stops in $ftr_sqstring
+                  # we have a 'n_nst' or 'n_ext' alert, to find out which 
+                  # we need to fetch the sequence ending at $fstop to the end of the sequence 
+                  if($ftr_stop < $seq_len) { 
+                    # we have some sequence left 3' of ftr_stop
+                    my $ext_sqstring = undef;
+                    if($ftr_strand eq "+") { 
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                     }
-                  } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
-                } # end of 'if($ftr_is_cds) {' 
-              } # end of 'else' entered if feature is a multiple of 3
-            } # end of 'if($ftr_is_cds_or_mp)'
-          } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
-
+                    else { # negative strand
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                    }
+                    my @ext_nxt_stp_A = ();
+                    sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
+                    if($ext_nxt_stp_A[1] != 0) { 
+                      # there is an in-frame stop codon, n_ext alert
+                      # determine what position it is
+                      $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                      $alt_str_H{"n_ext"} = $ftr_stop_c;
+                    }
+                  } # end of 'if($ftr_stop < $seq_len)'
+                  if(! defined $ftr_stop_c) { 
+                    # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                    # or we checked the sequence but didn't find any
+                    # either way, we have a n_nst alert:
+                    $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
+                    $alt_str_H{"n_nst"} = "VADRNULL";
+                  }
+                } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
+                else { 
+                  # there is an early stop (n_trc) in $ftr_sqstring
+                  if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                    # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                    ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                  }
+                  $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+                  $alt_str_H{"n_trc"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                }
+              } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+            } # end of 'if($ftr_is_cds) {' 
+          } # end of 'if(! $ftr_is_3trunc)'
+          if(($ftr_is_cds_or_mp) && (! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
+            if(($ftr_len % 3) != 0) { 
+              # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
+              # but which could cause weird downstream problems)
+              $alt_str_H{"n_nm3"} = "$ftr_len";
+            }
+          }
           # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
           my $alt_flag = 0;
           foreach my $alt_code (sort keys %alt_str_H) { 
@@ -2992,6 +2993,16 @@ sub sqstring_check_start {
 #            but currently it is only concerned with 
 #            frame 1.           
 #
+#            We determine what frame each position is
+#            by asserting that the final position is
+#            frame 3 (the frame for the final position 
+#            of a stop codon). We do it this way 
+#            instead of assuming that position 1 is
+#            frame 1 because we may be passed in 
+#            sequences that are 5' truncated, but 
+#            we assume we are not passed in sequences
+#            that are 3' truncated.
+#
 # Arguments:
 #  $sqstring:       the sequence string
 #  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
@@ -3034,10 +3045,8 @@ sub sqstring_find_stops {
   # pass over sequence from right to left, filling @{$nxt_stp_AR}
   $cur_stp = 0;
   for($i = ($sqlen-2); $i >= 1; $i--) { 
-    $frame  = (($i - 1) % 3) + 1; # 1 -> 1; 2 -> 2; 3 -> 3; 
-    $cstart = $i;
-    $codon = $sqstring_A[$cstart] . $sqstring_A[($cstart+1)] . $sqstring_A[($cstart+2)];
-    if($frame == 1) { 
+    if(((($sqlen-2) - $i) % 3) == 0) { # starting position of a codon, frame == 1
+      $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
       if(seq_CodonValidateStopCapDna($codon)) { 
         $cur_stp = $i+2;
       }
@@ -6120,7 +6129,7 @@ sub convert_pp_char_to_pp_avg {
   if($ppchar eq "3") { return 0.30; }
   if($ppchar eq "2") { return 0.20; }
   if($ppchar eq "1") { return 0.10; }
-  if($ppchar eq "0") { return 0.25; }
+  if($ppchar eq "0") { return 0.05; }
 
   ofile_FAIL("ERROR in $sub_name, invalid PP char: $ppchar", 1, $FH_HR); 
 
