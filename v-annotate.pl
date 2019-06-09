@@ -762,15 +762,18 @@ $start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                    \%opt_HH, \%ofile_info_HH);
-
-    parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                         \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-
-    add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
-  }                
+    my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+    if($ncds > 0) { # only run blast for models with >= 1 CDS
+      run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                      \%opt_HH, \%ofile_info_HH);
+      
+      parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                           \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+      
+      add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                        \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+    }                
+  }
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -3561,8 +3564,12 @@ sub run_blastx_and_summarize_output {
   }
 
   # run blastx 
+  my $blastx_options = "";
+  if(defined $mdl_info_HR->{"transl_table"}) { 
+    $blastx_options = " -query_gencode " . $mdl_info_HR->{"transl_table"};
+  }
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file";
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
   utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-out", $blastx_out_file, 0, "blastx output for model $mdl_name");
 
@@ -3610,10 +3617,22 @@ sub parse_blastx_results {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   # create a hash mapping ftr_type_idx strings to ftr_idx:
+  # and check for special case of there only being 1 CDS feature
+  # if so, we don't need to follow the idiom that the blast 
+  # target name is <protein-accession>/<coords-str>
+  # (that is, when the blast db was created it did not
+  # need to have its sequences named this way)
   my %ftr_type_idx2ftr_idx_H = ();
+  my $ftr_idx_lone_cds = undef; # changed to idx of lone CDS only if there is exactly 1
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_type_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
     $ftr_type_idx2ftr_idx_H{$ftr_type_idx} = $ftr_idx;
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      $ftr_idx_lone_cds = (defined $ftr_idx_lone_cds) ? -1 : $ftr_idx; # set to -1 if this is 2nd CDS we've seen
+    }
+  }
+  if(! defined $ftr_idx_lone_cds) { # unable to find a CDS, no need to blast, we shouldn't even be in this subroutine...
+    ofile_FAIL("ERROR in $sub_name, unable to find a CDS in model info, no need for blastx steps...", 1, $FH_HR);
   }
 
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
@@ -3626,7 +3645,8 @@ sub parse_blastx_results {
   my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
   my %cur_H = (); # values for current hit (HSP)
-
+  
+  # 
   # Order of lines in <IN>:
   # -----per-query/target-block---
   # QACC
@@ -3679,10 +3699,13 @@ sub parse_blastx_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
-        # determine what feature it is
-        if($value =~ /(\S+)\/(\S+)/) { 
+        # determine what feature it is, unless we only have 1 CDS in which case we assume it's that 1 CDS
+        if($ftr_idx_lone_cds != -1) { 
+          $t_ftr_idx = $ftr_idx_lone_cds;
+        }
+        elsif($value =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
-          # find it in @{$ftr_info_AHR}
+          # find it in @{$ftr_info_AHR} (or set to lone CDS if there is only 1
           $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
         }
         else {
