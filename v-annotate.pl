@@ -709,6 +709,7 @@ $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
@@ -732,7 +733,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
-    fetch_features_and_add_cds_and_mp_alerts($sqfile, $mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+    fetch_features_and_add_cds_and_mp_alerts($sqfile, $mdl_name, $mdl_tt, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                              \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                              \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
@@ -2661,6 +2662,7 @@ sub cmalign_store_overflow {
 # Arguments:
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
 #  $mdl_name:               name of model these sequences were assigned to
+#  $mdl_tt:                 the translation table ('1' for standard)
 #  $seq_name_AR:            REF to array of sequence names
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
@@ -2679,10 +2681,10 @@ sub cmalign_store_overflow {
 #################################################################
 sub fetch_features_and_add_cds_and_mp_alerts { 
   my $sub_name = "fetch_features_and_add_cds_and_mp_alerts";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($sqfile, $mdl_name, $mdl_tt, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -2812,7 +2814,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             if($ftr_is_cds) { 
               # CDS feature is not 3' truncated, look for all valid in-frame stops 
               my @ftr_nxt_stp_A = ();
-              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
+              sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'n_stp' alert if not
               if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
                 $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
@@ -3008,6 +3010,7 @@ sub sqstring_check_start {
 #
 # Arguments:
 #  $sqstring:       the sequence string
+#  $tt:             the translation table ('1' for standard)
 #  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
 #                   $i in frame 1 on positive strand *ends* at position $x; 
 #                   '0' if there are none.
@@ -3023,10 +3026,10 @@ sub sqstring_check_start {
 #################################################################
 sub sqstring_find_stops { 
   my $sub_name = "sqstring_find_stops";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqstring, $nxt_stp_AR, $FH_HR) = @_;
+  my ($sqstring, $tt, $nxt_stp_AR, $FH_HR) = @_;
   
   @{$nxt_stp_AR} = ();
   $nxt_stp_AR->[0] = -1;
@@ -3050,7 +3053,7 @@ sub sqstring_find_stops {
   for($i = ($sqlen-2); $i >= 1; $i--) { 
     if(((($sqlen-2) - $i) % 3) == 0) { # starting position of a codon, frame == 1
       $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
-      if(seq_CodonValidateStopCapDna($codon)) { 
+      if(seq_CodonValidateStopCapDna($codon, $tt)) { 
         $cur_stp = $i+2;
       }
     }

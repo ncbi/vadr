@@ -225,27 +225,89 @@ sub seq_CodonValidateStartCapDna {
 # 
 # Purpose:    Given an already capitalized DNA codon, return '1' 
 #             if it's a valid stop codon, else return 0.
+#             Any codon with an ambiguous nt will return 0.
 #
 # Args:
 #  $codon:  the codon
+#  $tt:     the translation table ('1' for standard)
 #
 # Returns:    '1' if codon is valid stop, else '0'
 #
+# Ref: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=cgencodes
 #################################################################
 sub seq_CodonValidateStopCapDna {
   my $sub_name = "seq_CodonValidateStopCapDna";
-  my $nargs_exp = 1;
+  my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($codon) = @_;
+  my ($codon, $tt) = @_;
   
-  if($codon eq "TAA" || 
-     $codon eq "TGA" || 
-     $codon eq "TAG" || 
-     $codon eq "TAR") { 
-    return 1;
+  if(($tt == 1) || ($tt == 11) || ($tt == 12) || ($tt == 26) || ($tt == 28)) {
+    if(($codon eq "TAA") ||
+       ($codon eq "TAG") ||
+       ($codon eq "TGA") ||
+       ($codon eq "TAR")) { 
+      return 1;
+    }
   }
-
+  elsif($tt == 2) {
+    if(($codon eq "TAA") ||
+       ($codon eq "TAG") ||
+       ($codon eq "AGA") ||
+       ($codon eq "AGG") || 
+       ($codon eq "TAR") || 
+       ($codon eq "AGR")) {
+      return 1;
+    }
+  }
+  elsif(($tt == 3) || ($tt == 4) || ($tt == 5) || ($tt == 9) || ($tt == 10) || ($tt == 13) || ($tt == 21) || ($tt == 24) || ($tt == 25) || ($tt == 31)) {
+    if(($codon eq "TAA") ||
+       ($codon eq "TAG") ||
+       ($codon eq "TAR")) {
+      return 1;
+    }
+  }
+  elsif(($tt == 6) || ($tt == 27) || ($tt == 29) || ($tt == 30)) {
+    if($codon eq "TGA") {
+      return 1;
+    }
+  }
+  elsif(($tt == 14) || ($tt == 33)) {
+    if($codon eq "TAG") {
+      return 1;
+    }
+  }
+  elsif($tt == 16) { 
+    if(($codon eq "TAA" || 
+        $codon eq "TGA" ||
+        $codon eq "TRA")) { 
+      return 1;
+    }
+  }
+  elsif($tt == 22) { 
+    if(($codon eq "TCA") || 
+       ($codon eq "TAA") ||
+       ($codon eq "TGA") ||
+       ($codon eq "TMA") || 
+       ($codon eq "TSA") || 
+       ($codon eq "TVA")) { 
+      return 1;
+    }
+  }
+  elsif($tt == 23) { 
+    if(($codon eq "TTA") || 
+       ($codon eq "TAA") ||
+       ($codon eq "TGA") || 
+       ($codon eq "TAG") ||
+       ($codon eq "TWA") || 
+       ($codon eq "TKA") || 
+       ($codon eq "TRA") || 
+       ($codon eq "TDA") || 
+       ($codon eq "TAR")) { 
+      return 1;
+    }
+  }
+  
   return 0;
 }
 
