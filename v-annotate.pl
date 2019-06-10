@@ -149,6 +149,7 @@ opt_Add("-m",           "string",  undef,                   $g,    undef, undef,
 opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for specifying classification";
@@ -183,6 +184,8 @@ opt_Add("--xalntol",     "integer",  5,                      $g,     undef, unde
 opt_Add("--xmaxins",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                           "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide deletion length in blastx validation is <n>",                            "max allowed nucleotide deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",            "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmatrix",     "string",   undef,                  $g,     undef, undef,     "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,                     $g,     undef, undef,     "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -226,6 +229,7 @@ my $options_okay =
                 'i=s'           => \$GetOptions_H{"-i"}, 
                 'b=s'           => \$GetOptions_H{"-b"}, 
                 'n=s'           => \$GetOptions_H{"-n"}, 
+                'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
                 'group=s'       => \$GetOptions_H{"--group"},
@@ -252,6 +256,8 @@ my $options_okay =
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
+                'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
+                'xdrop=s'       => \$GetOptions_H{"--xdrop"},
 # options for changing search sensitivity modes
                 'mxsize=s'      => \$GetOptions_H{"--mxsize"},
                 'tau=s'         => \$GetOptions_H{"--tau"},
@@ -276,8 +282,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.96";
-my $releasedate   = "May 2019";
+my $version       = "0.97";
+my $releasedate   = "Jun 2019";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -411,7 +417,7 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 # make sure the sequence, CM, modelinfo, qsubinfo files exist
@@ -577,7 +583,8 @@ my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
 my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
 utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+my $sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, "sorted round 1 search tblout file");
 
@@ -627,7 +634,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # sort the round 2 search results, we concatenate all model's tblout files and sort them
 my $r2_sort_tblout_key  = "search.r2.tblout.sort";
 my $r2_sort_tblout_file = $out_root . "." . $r2_sort_tblout_key;
-$sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
+$sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
+# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
 
@@ -709,6 +717,7 @@ $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
@@ -732,7 +741,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
-    fetch_features_and_add_cds_and_mp_alerts($sqfile, $mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+    fetch_features_and_add_cds_and_mp_alerts($sqfile, $mdl_name, $mdl_tt, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                              \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                              \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
@@ -762,15 +771,18 @@ $start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                    \%opt_HH, \%ofile_info_HH);
-
-    parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                         \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-
-    add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                      \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
-  }                
+    my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+    if($ncds > 0) { # only run blast for models with >= 1 CDS
+      run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                      \%opt_HH, \%ofile_info_HH);
+      
+      parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                           \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+      
+      add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                        \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+    }                
+  }
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -2658,6 +2670,7 @@ sub cmalign_store_overflow {
 # Arguments:
 #  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
 #  $mdl_name:               name of model these sequences were assigned to
+#  $mdl_tt:                 the translation table ('1' for standard)
 #  $seq_name_AR:            REF to array of sequence names
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
@@ -2676,10 +2689,10 @@ sub cmalign_store_overflow {
 #################################################################
 sub fetch_features_and_add_cds_and_mp_alerts { 
   my $sub_name = "fetch_features_and_add_cds_and_mp_alerts";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($sqfile, $mdl_name, $mdl_tt, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -2690,6 +2703,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   # get children info for all features, we'll use this in the loop below
   my @children_AA = ();
   vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
+
+  my $atg_only = opt_Get("--atgonly", $opt_HHR);
 
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
@@ -2800,7 +2815,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           if(! $ftr_is_5trunc) { 
             # feature is not 5' truncated, look for a start codon if it's a CDS
             if($ftr_is_cds) { 
-              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
+              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $mdl_tt, $atg_only, $FH_HR))) { 
                 $alt_str_H{"n_str"} = "VADRNULL";
               }
             }
@@ -2809,7 +2824,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             if($ftr_is_cds) { 
               # CDS feature is not 3' truncated, look for all valid in-frame stops 
               my @ftr_nxt_stp_A = ();
-              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
+              sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'n_stp' alert if not
               if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
                 $alt_str_H{"n_stp"} = sprintf("%s ending at position %d on %s strand", 
@@ -2955,6 +2970,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 #
 # Arguments:
 #  $sqstring: the sequence string
+#  $tt:       the translation table ('1' for standard)
+#  $atg_only: only allow 'ATG' for start, regardless of translation table 
 #  $FH_HR:    REF to hash of file handles
 #  
 # Returns: '1' if $sqstring starts with a valid
@@ -2964,10 +2981,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 #################################################################
 sub sqstring_check_start {
   my $sub_name = "sqstring_check_start";
-  my $nargs_exp = 2;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqstring, $FH_HR) = @_;
+  my ($sqstring, $tt, $atg_only, $FH_HR) = @_;
 
   my $sqlen = length($sqstring);
   if($sqlen < 3) { return 0; } 
@@ -2976,7 +2993,7 @@ sub sqstring_check_start {
   $start_codon =~ tr/a-z/A-Z/; # convert to uppercase
   $start_codon =~ tr/U/T/;     # convert to DNA
 
-  return seq_CodonValidateStartCapDna($start_codon);
+  return seq_CodonValidateStartCapDna($start_codon, $tt, $atg_only);
 
 }
 
@@ -3005,6 +3022,7 @@ sub sqstring_check_start {
 #
 # Arguments:
 #  $sqstring:       the sequence string
+#  $tt:             the translation table ('1' for standard)
 #  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
 #                   $i in frame 1 on positive strand *ends* at position $x; 
 #                   '0' if there are none.
@@ -3020,10 +3038,10 @@ sub sqstring_check_start {
 #################################################################
 sub sqstring_find_stops { 
   my $sub_name = "sqstring_find_stops";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqstring, $nxt_stp_AR, $FH_HR) = @_;
+  my ($sqstring, $tt, $nxt_stp_AR, $FH_HR) = @_;
   
   @{$nxt_stp_AR} = ();
   $nxt_stp_AR->[0] = -1;
@@ -3047,7 +3065,7 @@ sub sqstring_find_stops {
   for($i = ($sqlen-2); $i >= 1; $i--) { 
     if(((($sqlen-2) - $i) % 3) == 0) { # starting position of a codon, frame == 1
       $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
-      if(seq_CodonValidateStopCapDna($codon)) { 
+      if(seq_CodonValidateStopCapDna($codon, $tt)) { 
         $cur_stp = $i+2;
       }
     }
@@ -3561,8 +3579,20 @@ sub run_blastx_and_summarize_output {
   }
 
   # run blastx 
+  my $blastx_options = "";
+  if(defined $mdl_info_HR->{"transl_table"}) { 
+    $blastx_options .= " -query_gencode " . $mdl_info_HR->{"transl_table"};
+  }
+  if(opt_IsUsed("--xmatrix", $opt_HHR)) { 
+    $blastx_options .= " -matrix " . opt_Get("--xmatrix", $opt_HHR); 
+  }
+  if(opt_IsUsed("--xdrop", $opt_HHR)) { 
+    my $xdrop_opt = opt_Get("--xdrop", $opt_HHR);
+    $blastx_options .= " -xdrop_ungap $xdrop_opt -xdrop_gap $xdrop_opt -xdrop_gap_final $xdrop_opt";
+  }
+
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file";
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
   utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-out", $blastx_out_file, 0, "blastx output for model $mdl_name");
 
@@ -3610,10 +3640,22 @@ sub parse_blastx_results {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   # create a hash mapping ftr_type_idx strings to ftr_idx:
+  # and check for special case of there only being 1 CDS feature
+  # if so, we don't need to follow the idiom that the blast 
+  # target name is <protein-accession>/<coords-str>
+  # (that is, when the blast db was created it did not
+  # need to have its sequences named this way)
   my %ftr_type_idx2ftr_idx_H = ();
+  my $ftr_idx_lone_cds = undef; # changed to idx of lone CDS only if there is exactly 1
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_type_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
     $ftr_type_idx2ftr_idx_H{$ftr_type_idx} = $ftr_idx;
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      $ftr_idx_lone_cds = (defined $ftr_idx_lone_cds) ? -1 : $ftr_idx; # set to -1 if this is 2nd CDS we've seen
+    }
+  }
+  if(! defined $ftr_idx_lone_cds) { # unable to find a CDS, no need to blast, we shouldn't even be in this subroutine...
+    ofile_FAIL("ERROR in $sub_name, unable to find a CDS in model info, no need for blastx steps...", 1, $FH_HR);
   }
 
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
@@ -3626,7 +3668,8 @@ sub parse_blastx_results {
   my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
   my %cur_H = (); # values for current hit (HSP)
-
+  
+  # 
   # Order of lines in <IN>:
   # -----per-query/target-block---
   # QACC
@@ -3679,10 +3722,13 @@ sub parse_blastx_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HACC line before QACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
-        # determine what feature it is
-        if($value =~ /(\S+)\/(\S+)/) { 
+        # determine what feature it is, unless we only have 1 CDS in which case we assume it's that 1 CDS
+        if($ftr_idx_lone_cds != -1) { 
+          $t_ftr_idx = $ftr_idx_lone_cds;
+        }
+        elsif($value =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
-          # find it in @{$ftr_info_AHR}
+          # find it in @{$ftr_info_AHR} (or set to lone CDS if there is only 1
           $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
         }
         else {

@@ -1,6 +1,6 @@
-EPN, Wed May 29 14:49:37 2019
+EPN, Mon Jun 10 11:50:34 2019
 
-VADR 0.96 README.txt 
+VADR 0.97 README.txt 
 
 Organization of this file:
 
@@ -75,7 +75,7 @@ INSTALLATION
 
 The file 'install.sh' is an executable file for installing VADR
 and its dependencies. That file is located online at github here:
-https://github.com/nawrockie/dnaorg_scripts/tree/0.93/install.sh
+https://raw.githubusercontent.com/nawrockie/vadr/master/install.sh
 
 Copy that file into the directory in which you want to install
 VADR. You may want to call that 'vadr-install'. Then move into that
@@ -534,22 +534,23 @@ v-annotate.pl options are below:
 > v-annotate.pl -h
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 0.92 (May 2019)
+# VADR 0.97 (Jun 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon May  6 12:56:00 2019
+# date:    Mon Jun 10 11:50:55 2019
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 
 
 basic options:
-  -f     : force; if output dir exists, overwrite it
-  -v     : be verbose; output commands to stdout as they're run
-  -s <n> : seed for random number generator is <n> [181]
-  -m <s> : use CM file <s> instead of default
-  -i <s> : use model info file <s> instead of default
-  -b <s> : specify BLAST dbs are in dir <s>, instead of default
-  -n <n> : use <n> CPUs [0]
-  --keep : do not remove intermediate files, keep them all on disk
+  -f        : force; if output dir exists, overwrite it
+  -v        : be verbose; output commands to stdout as they're run
+  -s <n>    : seed for random number generator is <n> [181]
+  -m <s>    : use CM file <s> instead of default
+  -i <s>    : use model info file <s> instead of default
+  -b <s>    : specify BLAST dbs are in dir <s>, instead of default
+  -n <n>    : use <n> CPUs [0]
+  --atgonly : only consider ATG a valid start codon
+  --keep    : do not remove intermediate files, keep them all on disk
 
 options for specifying classification:
   --group <s>    : set expected classification of all seqs to group <s>
@@ -561,16 +562,17 @@ options for controlling which alerts cause a sequence to FAIL:
   --alt_fail <s> : specify that alert codes in comma-separated <s> DO     cause FAILure
 
 options for tuning classification alerts:
-  --lowcov <x>     : 'Low Coverage' fractional coverage threshold is <x> [0.9]
-  --lowsc <x>      : 'Low Score' bits per nucleotide threshold is <x> [0.3]
-  --lowsimterm <n> : 'Low Similarity at Start/End' minimum length is <n> [5]
-  --lowsimint <n>  : 'Low Similarity' (internal) minimum length is <n> [1]
-  --indefclass <x> : 'Indefinite Classification' bits per nucleotide diff threshold is <x> [0.03]
-  --biasfract <x>  : 'Biased Sequence' fractional threshold is <x> [0.25]
-  --dupreg <n>     : 'Duplicate Regions' minimum model overlap is <n> [20]
-  --indefstr <x>   : 'Indefinite Strand' minimum weaker strand bit score is <x> [20]
-  --indefann <x>   : 'Indefinite Annotation at Start/End' min allowed post probability is <x> [0.8]
-  --incspec <x>    : 'Incorrect Specified {Sub}Group' bits/nt threshold is <x> [0.2]
+  --lowcov <x>      : 'Low Coverage' fractional coverage threshold is <x> [0.9]
+  --lowsc <x>       : 'Low Score' bits per nucleotide threshold is <x> [0.3]
+  --lowsimterm <n>  : 'Low Similarity at Start/End' minimum length is <n> [10]
+  --lowsimint <n>   : 'Low Similarity' (internal) minimum length is <n> [1]
+  --indefclass <x>  : 'Indefinite Classification' bits per nucleotide diff threshold is <x> [0.03]
+  --biasfract <x>   : 'Biased Sequence' fractional threshold is <x> [0.25]
+  --dupreg <n>      : 'Duplicate Regions' minimum model overlap is <n> [20]
+  --indefstr <x>    : 'Indefinite Strand' minimum weaker strand bit score is <x> [20]
+  --indefann <x>    : 'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features [0.8]
+  --indefann_mp <x> : 'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features [0.6]
+  --incspec <x>     : 'Incorrect Specified {Sub}Group' bits/nt threshold is <x> [0.2]
 
 options for tuning protein validation with blastx:
   --xminntlen <n>  : min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n> [30]
@@ -578,6 +580,8 @@ options for tuning protein validation with blastx:
   --xmaxins <n>    : max allowed nucleotide insertion length in blastx validation is <n> [27]
   --xmaxdel <n>    : max allowed nucleotide deletion length in blastx validation is <n> [27]
   --xlonescore <n> : minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n> [80]
+  --xmatrix <s>    : use the matrix <s> with blastx (e.g. BLOSUM45)
+  --xdrop <n>      : set the xdrop value for blastx to <n> [25]
 
 options for modifying cmalign runs:
   --mxsize <n> : set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb [8000]
