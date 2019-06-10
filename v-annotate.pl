@@ -149,6 +149,7 @@ opt_Add("-m",           "string",  undef,                   $g,    undef, undef,
 opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for specifying classification";
@@ -226,6 +227,7 @@ my $options_okay =
                 'i=s'           => \$GetOptions_H{"-i"}, 
                 'b=s'           => \$GetOptions_H{"-b"}, 
                 'n=s'           => \$GetOptions_H{"-n"}, 
+                'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
                 'group=s'       => \$GetOptions_H{"--group"},
@@ -411,7 +413,7 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $progress_w = 60; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 # make sure the sequence, CM, modelinfo, qsubinfo files exist
@@ -577,7 +579,8 @@ my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
 my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
 utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $sort_cmd = "grep -v ^\# $r1_tblout_file | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+my $sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, "sorted round 1 search tblout file");
 
@@ -627,7 +630,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # sort the round 2 search results, we concatenate all model's tblout files and sort them
 my $r2_sort_tblout_key  = "search.r2.tblout.sort";
 my $r2_sort_tblout_file = $out_root . "." . $r2_sort_tblout_key;
-$sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
+$sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
+# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
 
@@ -2696,6 +2700,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   my @children_AA = ();
   vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
 
+  my $atg_only = opt_Get("--atgonly", $opt_HHR);
+
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
   my @ftr_outroot_A  = (); # for describing output files for each feature
@@ -2805,7 +2811,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           if(! $ftr_is_5trunc) { 
             # feature is not 5' truncated, look for a start codon if it's a CDS
             if($ftr_is_cds) { 
-              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
+              if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $mdl_tt, $atg_only, $FH_HR))) { 
                 $alt_str_H{"n_str"} = "VADRNULL";
               }
             }
@@ -2960,6 +2966,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 #
 # Arguments:
 #  $sqstring: the sequence string
+#  $tt:       the translation table ('1' for standard)
+#  $atg_only: only allow 'ATG' for start, regardless of translation table 
 #  $FH_HR:    REF to hash of file handles
 #  
 # Returns: '1' if $sqstring starts with a valid
@@ -2969,10 +2977,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 #################################################################
 sub sqstring_check_start {
   my $sub_name = "sqstring_check_start";
-  my $nargs_exp = 2;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqstring, $FH_HR) = @_;
+  my ($sqstring, $tt, $atg_only, $FH_HR) = @_;
 
   my $sqlen = length($sqstring);
   if($sqlen < 3) { return 0; } 
@@ -2981,7 +2989,7 @@ sub sqstring_check_start {
   $start_codon =~ tr/a-z/A-Z/; # convert to uppercase
   $start_codon =~ tr/U/T/;     # convert to DNA
 
-  return seq_CodonValidateStartCapDna($start_codon);
+  return seq_CodonValidateStartCapDna($start_codon, $tt, $atg_only);
 
 }
 
