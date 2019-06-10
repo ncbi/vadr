@@ -9,9 +9,11 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 use LWP::Simple; 
 
-require "dnaorg.pm"; 
+require "vadr.pm"; 
 require "epn-options.pm";
 require "epn-ofile.pm";
+require "epn-seqfile.pm";
+require "epn-utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -27,12 +29,16 @@ require "epn-ofile.pm";
 # first, determine the paths to all modules, scripts and executables that we'll need
 
 # make sure the DNAORGDIR environment variable is set
-my $env_dnaorgdir      = vdr_VerifyEnvVariableIsValidDir("DNAORGDIR");
-my $env_dnaorgblastdir = vdr_VerifyEnvVariableIsValidDir("DNAORGBLASTDIR");
+my $env_vadr_scripts_dir  = utl_DirEnvVarValid("VADRSCRIPTSDIR");
+my $env_vadr_blast_dir    = utl_DirEnvVarValid("VADRBLASTDIR");
+my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
+my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 
-my $inf_exec_dir      = $env_dnaorgdir . "/infernal-dev/src";
-my $esl_exec_dir      = $env_dnaorgdir . "/infernal-dev/easel/miniapps";
-my $blast_exec_dir    = $env_dnaorgblastdir;
+my %execs_H = (); # hash with paths to all required executables
+$execs_H{"esl-reformat"}  = $env_vadr_easel_dir . "/esl-reformat";
+$execs_H{"esl-translate"} = $env_vadr_easel_dir . "/esl-translate";
+$execs_H{"makeblastdb"}   = $env_vadr_blast_dir . "/makeblastdb";
+utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
 # Command line and option processing using epn-options.pm
@@ -118,8 +124,10 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 my @arg_desc_A = ("input model info file", "input stockholm alignment file", "output root for naming output files");
 my @arg_A      = ($in_minfo_file, $in_stk_file, $out_root);
 my %extra_H    = ();
-$extra_H{"\$DNAORGDIR"}       = $env_dnaorgdir;
-$extra_H{"\$DNAORGBLASTDIR"}  = $env_dnaorgblastdir;
+$extra_H{"\$VADRSCRIPTSDIR"}  = $env_vadr_scripts_dir;
+$extra_H{"\$VADRBLASTDIR"}    = $env_vadr_blast_dir;
+$extra_H{"\$VADRINFERNALDIR"} = $env_vadr_infernal_dir;
+$extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -145,15 +153,6 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # output files are all open, if we exit after this point, we'll need
 # to close these first.
 
-#############################################################
-# make sure the required executables exist and are executable
-#############################################################
-my %execs_H = (); # hash with paths to all required executables
-$execs_H{"esl-reformat"}  = $esl_exec_dir . "/esl-reformat";
-$execs_H{"esl-translate"} = $esl_exec_dir . "/esl-translate";
-$execs_H{"makeblastdb"}   = $blast_exec_dir . "/makeblastdb";
-vdr_ValidateExecutableHash(\%execs_H, $ofile_info_HH{"FH"});
-
 ###########################
 # Parse the model info file
 ###########################
@@ -163,8 +162,10 @@ my %ftr_info_HAH = (); # hash of array of hashes with feature info
 my $progress_w = 50;
 my $start_secs = ofile_OutputProgressPrior("Parsing input model info file", $progress_w, undef, *STDOUT);
 
+my @reqd_mdl_keys_A = ("name", "length");
+my @reqd_ftr_keys_A = ("type", "coords");
 utl_FileValidateExistsAndNonEmpty($in_minfo_file, "model info file", undef, 1, $FH_HR);
-vdr_ModelInfoFileParse($in_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+vdr_ModelInfoFileParse($in_minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 # ensure we read info only a single model from the input file
 if(scalar(@mdl_info_AH) == 0) { ofile_FAIL("ERROR did not read info for any models in $in_minfo_file", 1, $FH_HR); }
 if(scalar(@mdl_info_AH) > 1)  { ofile_FAIL("ERROR read info for multiple models in $in_minfo_file, it must have info for only 1 model", 1, $FH_HR); }
@@ -196,7 +197,7 @@ if($stk_mdl_len != $mdl_len) {
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
   
 $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, undef, *STDOUT);
-vdr_FastaFileWriteFromStockholmFile($execs_H{"esl-reformat"}, $fa_file, $in_stk_file, \%opt_HH, $FH_HR);
+sqf_EslReformatRun($execs_H{"esl-reformat"}, $in_stk_file, $fa_file, "stockholm", "fasta", \%opt_HH, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
@@ -209,7 +210,8 @@ $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progr
 
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeParentIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 
 vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 
@@ -227,11 +229,11 @@ close $ofile_info_HH{"FH"}{"cdsfasta"};
 
 my $protein_fa_file  = $out_root . ".protein.fa";
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
-vdr_CdsTranslateToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
-                        $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
+sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
+                               $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
 close $ofile_info_HH{"FH"}{"proteinfasta"};
 
-vdr_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+sqf_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
 
 # add to mdl_info_AH
 $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
