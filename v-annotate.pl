@@ -184,6 +184,8 @@ opt_Add("--xalntol",     "integer",  5,                      $g,     undef, unde
 opt_Add("--xmaxins",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                           "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide deletion length in blastx validation is <n>",                            "max allowed nucleotide deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",            "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmatrix",     "string",   undef,                  $g,     undef, undef,     "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,                     $g,     undef, undef,     "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for modifying cmalign runs";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -254,6 +256,8 @@ my $options_okay =
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
+                'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
+                'xdrop=s'       => \$GetOptions_H{"--xdrop"},
 # options for changing search sensitivity modes
                 'mxsize=s'      => \$GetOptions_H{"--mxsize"},
                 'tau=s'         => \$GetOptions_H{"--tau"},
@@ -3577,8 +3581,16 @@ sub run_blastx_and_summarize_output {
   # run blastx 
   my $blastx_options = "";
   if(defined $mdl_info_HR->{"transl_table"}) { 
-    $blastx_options = " -query_gencode " . $mdl_info_HR->{"transl_table"};
+    $blastx_options .= " -query_gencode " . $mdl_info_HR->{"transl_table"};
   }
+  if(opt_IsUsed("--xmatrix", $opt_HHR)) { 
+    $blastx_options .= " -matrix " . opt_Get("--xmatrix", $opt_HHR); 
+  }
+  if(opt_IsUsed("--xdrop", $opt_HHR)) { 
+    my $xdrop_opt = opt_Get("--xdrop", $opt_HHR);
+    $blastx_options .= " -xdrop_ungap $xdrop_opt -xdrop_gap $xdrop_opt -xdrop_gap_final $xdrop_opt";
+  }
+
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
   my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
   utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
