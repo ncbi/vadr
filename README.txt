@@ -1,6 +1,6 @@
-EPN, Mon Jun 10 11:50:34 2019
+EPN, Tue Jun 11 15:56:33 2019
 
-VADR 0.97 README.txt 
+VADR 0.971 README.txt 
 
 Organization of this file:
 
@@ -23,7 +23,7 @@ Note: VADR was previously named dnaorg_scripts (version 0.01 to 0.91)
 ##############################################################################
 INTRODUCTION
 
-This is documentation for VADR: Viral Annotation and DefineR, a suite
+This is documentation for VADR: Viral Annotation DefineR, a suite
 of tools for classifying and analyzing viral sequences based on viral
 reference sequences. (It is not able to detect or analyze novel
 viruses.)

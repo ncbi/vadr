@@ -8,7 +8,7 @@
 # for viral sequence classification and annotation.
 #
 VADRINSTALLDIR=$PWD
-VERSION="0.97"
+VERSION="0.971"
 VVERSION="vadr-$VERSION"
 
 # The following line will make the script fail if any commands fail
