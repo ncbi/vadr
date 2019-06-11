@@ -282,7 +282,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.97";
+my $version       = "0.971";
 my $releasedate   = "Jun 2019";
 my $pkgname       = "VADR";
 
@@ -2851,7 +2851,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                       $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                     }
                     my @ext_nxt_stp_A = ();
-                    sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
+                    sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
                     if($ext_nxt_stp_A[1] != 0) { 
                       # there is an in-frame stop codon, n_ext alert
                       # determine what position it is
