@@ -90,6 +90,8 @@ opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be ve
 opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--inft",       "string",  undef,      $g, "--inft", "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--ftfetch1",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfetch2", "fetch feature table with efetch -format ft",      "fetch feature table with efetch -format ft", \%opt_HH, \@opt_order_A);
+opt_Add("--ftfetch2",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfetch1", "fetch feature table with efetch -format gbc | xml2tbl", "fetch feature table with efetch -format gbc | xml2tbl", \%opt_HH, \@opt_order_A);
 opt_Add("--gb",         "boolean", 0,          $g,    undef, undef,       "parse a genbank file, not a feature table file",              "parse a genbank file, not a feature table file", \%opt_HH, \@opt_order_A);
 opt_Add("--ingb",       "string",  undef,      $g,   "--gb", undef,       "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
@@ -149,6 +151,8 @@ my $options_okay =
                 'stk=s'        => \$GetOptions_H{"--stk"},
                 'infa=s'       => \$GetOptions_H{"--infa"},
                 'inft=s'       => \$GetOptions_H{"--inft"},
+                'ftfetch1'     => \$GetOptions_H{"--ftfetch1"},
+                'ftfetch2'     => \$GetOptions_H{"--ftfetch2"},
                 'gb'           => \$GetOptions_H{"--gb"},
                 'ingb=s'       => \$GetOptions_H{"--ingb"},
                 'addminfo=s'   => \$GetOptions_H{"--addminfo"},
@@ -365,8 +369,18 @@ if(! opt_IsUsed("--gb", \%opt_HH)) {
     # --inft not used, create ft file by fetching using eutils
     $start_secs = ofile_OutputProgressPrior("Fetching feature table file", $progress_w, $log_FH, *STDOUT);
     $ft_file = $out_root . ".ft";
-    vdr_EutilsFetchToFile($ft_file, $mdl_name, "nuccore", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name");
+    if(opt_Get("--ftfetch1", \%opt_HH)) { 
+      utl_RunCommand("efetch -db nuccore -id $mdl_name -format ft > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name (--ftfetch1)");
+    }
+    elsif(opt_Get("--ftfetch2", \%opt_HH)) { 
+      utl_RunCommand("efetch -db nuccore -id $mdl_name -format gbc | xml2tbl > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name (--ftfetch2)");
+    }
+    else { # default way of fetching a feature table
+      vdr_EutilsFetchToFile($ft_file, $mdl_name, "nuccore", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name");
+    }
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   # parse the feature table file
@@ -832,6 +846,9 @@ sub fetch_and_parse_cds_protein_feature_tables {
       my $protein_id = $ftr_info_AHR->[$ftr_idx]{"protein_id"};
       my $accver = undef;
       if($protein_id =~ /[^\|]*\|([^\|]+\.\d+)\|/) { 
+        $accver = $1;
+      }
+      elsif($protein_id =~ /([^\|]+\.\d+)/) { 
         $accver = $1;
       }
       else { 

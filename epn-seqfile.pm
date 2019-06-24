@@ -247,7 +247,9 @@ sub sqf_FeatureTableParse {
         $feature = $tmp_feature;
 
         if($start_coord == $stop_coord) { 
-          ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
+          # ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
+          # assume positive strand
+          $coords = "," . $start_coord . ".." . $stop_coord  . ":+"; 
         }
         if ($start_coord <= $stop_coord) { $coords = $start_coord . ".." . $stop_coord  . ":+"; }
         else                             { $coords = $stop_coord .  ".." . $start_coord . ":-"; }
@@ -273,7 +275,9 @@ sub sqf_FeatureTableParse {
           # line order makes sense, keep going...
 
           if($start == $stop) { 
-            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
+            #ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
+            # assume positive strand
+            $coords .= "," . $start . ".." . $stop  . ":+"; 
           }
           if ($start <= $stop) { $coords .= "," . $start . ".." . $stop  . ":+"; }
           else                 { $coords .= "," . $stop .  ".." . $start . ":-"; }
