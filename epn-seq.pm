@@ -200,20 +200,103 @@ sub seq_SqstringDiffSummary {
 #             if it's a valid start codon, else return 0.
 #
 # Args:
-#  $codon:  the codon
+#  $codon:    the codon
+#  $tt:       the translation table ('1' for standard)
+#  $atg_only: return '1' only for 'ATG'
 #
-# Returns:    '1' if $codon is "ATG" else '0'
+# Returns:    '1' if $codon is valid start codon for translation table $tt
+#             else '0'
 #
 #################################################################
 sub seq_CodonValidateStartCapDna {
   my $sub_name = "seq_CodonValidateStartCapDna";
-  my $nargs_exp = 1;
+  my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($codon) = @_;
-  
-  if($codon eq "ATG") { 
-    return 1;
+  my ($codon, $tt, $atg_only) = @_;
+
+  if($atg_only) { 
+    if($codon eq "ATG") {
+      return 1; 
+    }
+    else { 
+      return 0;
+    }
+  }
+  else { 
+    if($tt == 1) { # TTG CTG ATG
+      if($codon =~ m/^[TCAYWMH]TG$/) { 
+        return 1;
+      }
+    }
+    elsif($tt == 2) { # ATT ATC ATA ATG GTG
+      if(($codon =~ m/^AT[ACGTRYSWKMBDHVN]$/) || # ATN
+         ($codon =~ m/^[AGR]TG$/)) { 
+        return 1;
+      }
+    }
+    elsif($tt == 3) { # ATA ATG GTG
+      if(($codon =~ m/^AT[AGR]$/) || 
+         ($codon =~ m/^[AGR]TG$/)) { 
+        return 1;
+      }
+    }
+    elsif($tt == 4) { # TTA TTG CTG ATT ATC ATA ATG GTG
+      if(($codon =~ m/^AT[ACGTRYSWKMBDHVN]$/) || # ATN
+         ($codon =~ m/^TT[AGR]$/) || 
+         ($codon =~ m/^[CGS]TG$/)) { 
+        return 1;
+      }
+    }
+    elsif($tt == 5) { # TTG ATT ATC ATA ATG GTG
+      if(($codon =~ m/^AT[ACGTRYSWKMBDHVN]$/) || # ATN
+         ($codon =~ m/^[TGK]TG$/)) { 
+        return 1;
+      }
+    }
+    elsif(($tt == 6) || ($tt == 10) || ($tt == 14) || ($tt == 16) || ($tt == 22) || ($tt == 27) || ($tt == 28) || ($tt == 29) || ($tt == 30) || ($tt == 31)) { #ATG
+      if(($codon eq "ATG")) {
+        return 1;
+      }
+    }
+    elsif(($tt == 9) || ($tt == 21)) { # ATG GTG
+      if($codon =~ m/^[AGR]TG$/) { 
+        return 1;
+      }
+    }
+    elsif($tt == 11) { # TTG CTG ATT ATC ATA ATG GTG
+      if(($codon =~ m/^AT[ACGTRYSWKMBDHVN]$/) || # ATN
+         ($codon =~ m/^[TCGYKSB]TG$/)) { 
+        return 1;
+      }
+    }
+    elsif(($tt == 12) || ($tt == 26)) { # CTG ATG
+      if($codon =~ m/^[CAM]TG$/) { 
+        return 1;
+      }
+    }
+    elsif($tt == 13) { # TTG ATA ATG GTG
+      if(($codon =~ m/^[TAGWKRD]TG$/) || 
+         ($codon =~ m/^AT[AGR]$/)) { 
+        return 1;
+      }
+    }
+    elsif($tt == 23) { # ATT ATG GTG
+      if(($codon =~ m/^AT[TGK]$/) || 
+         ($codon =~ m/^[AGR]TG$/)) { 
+        return 1;
+      }
+    }
+    elsif(($tt == 24) || ($tt == 33)) { # TTG CTG ATG GTG
+      if($codon =~ m/^[ACGTRYSWKMBDHVN]TG$/) { # NTG
+        return 1;
+      }
+    }
+    elsif($tt == 25) { # TTG ATG GTG
+      if($codon =~ m/^[TAGWKRD]TG$/) { 
+        return 1;
+      }
+    }
   }
 
   return 0;
@@ -225,27 +308,67 @@ sub seq_CodonValidateStartCapDna {
 # 
 # Purpose:    Given an already capitalized DNA codon, return '1' 
 #             if it's a valid stop codon, else return 0.
+#             Any codon with an ambiguous nt will return 0.
 #
 # Args:
 #  $codon:  the codon
+#  $tt:     the translation table ('1' for standard)
 #
 # Returns:    '1' if codon is valid stop, else '0'
 #
+# Ref: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=cgencodes
 #################################################################
 sub seq_CodonValidateStopCapDna {
   my $sub_name = "seq_CodonValidateStopCapDna";
-  my $nargs_exp = 1;
+  my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($codon) = @_;
+  my ($codon, $tt) = @_;
   
-  if($codon eq "TAA" || 
-     $codon eq "TGA" || 
-     $codon eq "TAG" || 
-     $codon eq "TAR") { 
-    return 1;
+  if(($tt == 1) || ($tt == 11) || ($tt == 12) || ($tt == 26) || ($tt == 28)) { # TAA TAG TGA
+    if(($codon =~ m/^TA[AGR]$/) || 
+       ($codon =~ m/^T[AGR]A$/)) { 
+      return 1;
+    }
   }
-
+  elsif($tt == 2) { # TAA TAG AGA AGG
+    if(($codon =~ m/^TA[AGR]$/) || 
+       ($codon =~ m/^AG[AGR]$/)) { 
+      return 1;
+    }
+  }
+  elsif(($tt == 3) || ($tt == 4) || ($tt == 5) || ($tt == 9) || ($tt == 10) || ($tt == 13) || ($tt == 21) || ($tt == 24) || ($tt == 25) || ($tt == 31)) { # TAA TAG
+    if($codon =~ m/^TA[AGR]$/) {
+      return 1;
+    }
+  }
+  elsif(($tt == 6) || ($tt == 27) || ($tt == 29) || ($tt == 30)) { # TGA
+    if($codon eq "TGA") { 
+      return 1;
+    }
+  }
+  elsif(($tt == 14) || ($tt == 33)) { # TAG
+    if($codon eq "TAG") { 
+      return 1;
+    }
+  }
+  elsif($tt == 16) { # TAA TGA
+    if($codon =~ m/^T[AGR]A$/) { 
+      return 1;
+    }
+  }
+  elsif($tt == 22) { # TCA TAA TGA
+    if($codon =~ m/^T[ACGMSRV]A$/) { 
+      return 1;
+    }
+  }
+  elsif($tt == 23) { # TTA TAA TAG TGA
+    if(($codon =~ m/^T[TAGWKRD]A$/) || 
+       ($codon =~ m/^TA[AGR]$/)) { 
+      return 1;
+    }
+  }
+  
   return 0;
 }
 

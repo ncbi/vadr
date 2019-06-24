@@ -8,7 +8,7 @@
 # for viral sequence classification and annotation.
 #
 VADRINSTALLDIR=$PWD
-VERSION="0.91"
+VERSION="0.971"
 VVERSION="vadr-$VERSION"
 
 # The following line will make the script fail if any commands fail
@@ -31,8 +31,11 @@ echo "------------------------------------------------"
 # Clone what we need from GitHub (these are all public)
 
 # vadr
-echo "Installing vadr ... "
-curl -k -L -o vadr-$VERSION.zip https://github.com/nawrockie/vadr/archive/$VERSION.zip; unzip vadr-$VERSION.zip; mv vadr-$VERSION vadr; rm vadr-$VERSION.zip
+# ONLY DIFFERENCE BETWEEN THIS SCRIPT AND install.sh IS THAT WE USE GIT CLONE TO GET vadr INSTEAD OF INSTALLING A SET VERSION
+#echo "Installing vadr ... "
+#curl -k -L -o vadr-$VERSION.zip https://github.com/nawrockie/vadr/archive/$VERSION.zip; unzip vadr-$VERSION.zip; mv vadr-$VERSION vadr; rm vadr-$VERSION.zip
+echo "Installing 'git pull'-updatable copy of vadr ... "
+git clone https://github.com/nawrockie/vadr.git
 
 # epn-options, epn-ofile, and Bio-Easel
 for m in epn-options epn-ofile Bio-Easel; do 
