@@ -51,7 +51,7 @@ use LWP::Simple;
 # Subroutines related to features or segments:
 # vdr_FeatureInfoImputeCoords()
 # vdr_FeatureInfoImputeLength()
-# vdr_FeatureInfoSetUndefinedParentIndices()
+# vdr_FeatureInfoInitializeParentIndexStrings()
 # vdr_FeatureInfoImputeOutname()
 # vdr_FeatureInfoImpute3paFtrIdx()
 # vdr_FeatureInfoImputeByOverlap()
@@ -182,12 +182,11 @@ sub vdr_FeatureInfoImputeLength {
   return;
 }
 
-
 #################################################################
-# Subroutine: vdr_FeatureInfoSetUndefinedParentIndices
+# Subroutine: vdr_FeatureInfoInitializeParentIndexStrings
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Set "parent_idx" value to -1 for any feature 
+# Purpose:    Set "parent_idx_str" value to "" for any feature 
 #             in which it is not already defined in @{$ftr_info_AHR}
 # 
 # Arguments:
@@ -199,8 +198,8 @@ sub vdr_FeatureInfoImputeLength {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub vdr_FeatureInfoSetUndefinedParentIndices {
-  my $sub_name = "vdr_FeatureInfoImputeParentIndices";
+sub vdr_FeatureInfoInitializeParentIndexStrings {
+  my $sub_name = "vdr_FeatureInfoInitializeParentIndexStrings";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -208,8 +207,8 @@ sub vdr_FeatureInfoSetUndefinedParentIndices {
 
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"parent_idx"} = -1;
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
+      $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = "";
     }
   }
 
@@ -570,7 +569,8 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
 
   # fill
   for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
-    if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx"} != -1) {
+    my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+    foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
       push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
     }
   }
@@ -2726,7 +2726,7 @@ sub vdr_ModelInfoFileWrite {
     my %ftr_key_ignore_H = ();
     $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, just so it goes first
     $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, just so it goes second
-    $ftr_key_ignore_H{"parent_idx"}     = 1; # this automatically gets added to @key_order_A, just so it goes third
+    $ftr_key_ignore_H{"parent_idx_str"} = 1; # this automatically gets added to @key_order_A, just so it goes third
     $ftr_key_ignore_H{"length"}         = 1; # will be inferred from coords
     $ftr_key_ignore_H{"3pa_ftr_idx"}    = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"outname"}        = 1; # will be inferred from product and gene (or lack of)
@@ -2736,7 +2736,7 @@ sub vdr_ModelInfoFileWrite {
 
     $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
     # determine order of keys for this feature
-    my @ftr_key_order_A  = ("type", "coords", "parent_idx");
+    my @ftr_key_order_A  = ("type", "coords", "parent_idx_str");
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       foreach $key (sort keys %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]}) { 
         if(! exists $ftr_key_ignore_H{$key}) { 

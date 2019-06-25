@@ -442,7 +442,7 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
@@ -570,7 +570,7 @@ if(opt_Get("--gb", \%opt_HH)) { # we only need to derive 'coords' if we parsed t
   vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoSetUndefinedParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 # add 'gene' qualifiers to 'CDS' features
 if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
@@ -861,25 +861,64 @@ sub fetch_and_parse_cds_protein_feature_tables {
       # parse the file
       sqf_FeatureTableParse($ft_file, \%prot_ftr_info_HAH, $FH_HR);
     }
-    # copy info from \%prot_ftr_info_HAH to %ftr_info_AHR
+    # copy info from \%prot_ftr_info_HAH to %ftr_info_AHR,
+    # but only if we don't already have that feature in %ftr_info_AHR
     foreach my $prot_accver (sort keys %prot_ftr_info_HAH) { 
       my $prot_nftr = utl_AHValidate(\@{$prot_ftr_info_HAH{$prot_accver}}, \@keys_A, "ERROR in $sub_name for accver $prot_accver", $FH_HR);
       for(my $prot_ftr_idx = 0; $prot_ftr_idx < $prot_nftr; $prot_ftr_idx++) { 
-        # copy only if it is not the same type as the parent (e.g. CDS)
-        if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne $ftr_info_AHR->[$ftr_idx]{"type"}) { 
-          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"parent_idx"} = $ftr_idx;
-          my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
-          %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
-          foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
-            $ftr_info_AHR->[$nxt_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+        # for non-CDS features, check to see if we already have a
+        # feature with the same type and coords, if so, make sure all
+        # data is consistent and skip it (if not all data is
+        # consistent: die in error) if no other feature with same type
+        # and coords exists, add it
+        # (We skip all CDS because we should already have them from the nucleotide
+        #  record, and because our check to see if an existing feature exists doesn't
+        #  word because the coords will differ by 3 and the 3' end due to the stop
+        #  codon coords being included in the nucleotide CDS record, but not the
+        #  protein one.)
+        # first, convert protein coords to nucleotide coords (before
+        # checking if it already exists or not)
+        if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") { 
+          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} = vdr_CoordsProtToNuc($ftr_info_AHR->[$ftr_idx]{"coords"}, $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}, $FH_HR);
+          my $found_ftr_idx = -1;
+          for(my $chk_ftr_idx = 0; $chk_ftr_idx < scalar(@{$ftr_info_AHR}); $chk_ftr_idx++) { 
+            if($found_ftr_idx == -1) { 
+              if(($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"}   eq $ftr_info_AHR->[$chk_ftr_idx]{"type"}) && 
+                 ($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} eq $ftr_info_AHR->[$chk_ftr_idx]{"coords"})) { 
+                # make sure all elements are identical
+                my $hash_diff_str = utl_HCompare(\%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]}, \%{$ftr_info_AHR->[$chk_ftr_idx]}, "protein feature table for $prot_accver", "nucleotide feature table");
+                if($hash_diff_str ne "") { 
+                  ofile_FAIL("ERROR in $sub_name, read feature from protein $prot_accver feature table that matches type/coords with nucleotide feature, but differs:\n$hash_diff_str\n");
+                }
+                else { 
+                  $found_ftr_idx = $chk_ftr_idx;
+                  printf("HEYA found feature type " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"}  . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}  . " already in the hash\n");
+                }
+              }
+            }
           }
-          # convert protein coordinates to nucleotide coordinates
-          $ftr_info_AHR->[$nxt_ftr_idx]{"coords"} = vdr_CoordsProtToNuc($ftr_info_AHR->[$ftr_idx]{"coords"}, $ftr_info_AHR->[$nxt_ftr_idx]{"coords"}, $FH_HR);
-        }
+          if($found_ftr_idx != -1) { # the feature already exists update its parent string
+            if((! defined $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"}) || 
+               ($ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} eq "")) { 
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} = $ftr_idx;
+            }
+            else { 
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "," . $ftr_idx;
+            }
+          }
+          else { # we didn't find this feature already in the feature info hash, add it
+            printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
+            my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
+            %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
+            foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
+              $ftr_info_AHR->[$nxt_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+            }
+            $ftr_info_AHR->[$nxt_ftr_idx]{"parent_idx_str"} = $ftr_idx; # set parent
+          }
+        } # end of 'if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") {'
       }
     }
   }
-
   return;
 }
 
