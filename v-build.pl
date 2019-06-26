@@ -427,7 +427,7 @@ if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) {
 # Prune data read from %ftr_info_HAH, only keeping what
 # we want to output to the eventual model info file
 #######################################################
-$start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank file", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank", $progress_w, $log_FH, *STDOUT);
 
 # determine what types of features we will store based on cmdline options
 # --fall is incompatible with --fadd
@@ -442,14 +442,13 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,5p_trunc,3p_trunc", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
 
 # remove all features types we don't want
 my $ftr_idx;
-my @ftr_idx_to_remove_A = ();
 for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
   my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
   # we skip this type and remove it from ftr_info_HAH
@@ -463,6 +462,25 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
       (! defined $fadd_H{$ftype})    && # (A2)
       (! opt_Get("--fall", \%opt_HH)))  # (A3)
      || (defined $fskip_H{$ftype})) {   # (B)
+    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
+    $ftr_idx--; # this is about to be incremented
+  }
+}
+
+# deal with special case: remove any CDS features that have "trunc5"
+# or "trunc3" keys set as 1 we can't deal with these because we
+# don't know how to translate them in v-build.pl and (even if we did
+# handle that based on codon_start) v-annotate.pl can't deal with
+# these because a start/stop codon is not expected and all complete
+# CDS are validated by looking for a start/stop
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+  if(($ftype eq "CDS") && 
+     (((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"}) && 
+       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"} == 1)) || 
+      ((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"}) && 
+       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"} == 1)))) { 
+    ofile_OutputString($log_FH, 1, "\n# WARNING: not modelling CDS feature with coords " . $ftr_info_HAH{$mdl_name}[$ftr_idx]{"coords"} . " because it is 5' and/or 3' truncated\n#          (e.g. incomplete, with a \"<\" or \">\" in its coordinates in the feature table.\n#\n# ");
     splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
     $ftr_idx--; # this is about to be incremented
   }
@@ -885,14 +903,17 @@ sub fetch_and_parse_cds_protein_feature_tables {
             if($found_ftr_idx == -1) { 
               if(($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"}   eq $ftr_info_AHR->[$chk_ftr_idx]{"type"}) && 
                  ($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} eq $ftr_info_AHR->[$chk_ftr_idx]{"coords"})) { 
-                # make sure all elements are identical
-                my $hash_diff_str = utl_HCompare(\%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]}, \%{$ftr_info_AHR->[$chk_ftr_idx]}, "protein feature table for $prot_accver", "nucleotide feature table");
-                if($hash_diff_str ne "") { 
-                  ofile_FAIL("ERROR in $sub_name, read feature of type " . $ftr_info_AHR->[$chk_ftr_idx]{"type"} . " from protein $prot_accver feature table that matches type/coords with nucleotide feature, but differs:\n$hash_diff_str\n", 1, $FH_HR);
-                }
-                else { 
-                  $found_ftr_idx = $chk_ftr_idx;
-                  printf("HEYA found feature type " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"}  . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}  . " already in the hash\n");
+                # add data from $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx] to ftr_info_AHR->[$chk_ftr_idx]
+                foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
+                  if(! defined $ftr_info_AHR->[$chk_ftr_idx]{$prot_key}) { 
+                    $ftr_info_AHR->[$chk_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+                  }
+                  else { 
+                    if($ftr_info_AHR->[$chk_ftr_idx]{$prot_key} ne $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key}) { 
+                      # not equivalent, append 
+                      $ftr_info_AHR->[$chk_ftr_idx]{$prot_key} .= ":GBSEP:" . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+                    }
+                  }
                 }
               }
             }
@@ -907,7 +928,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
             }
           }
           else { # we didn't find this feature already in the feature info hash, add it
-            printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
+            # printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
             my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
             %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
             foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 

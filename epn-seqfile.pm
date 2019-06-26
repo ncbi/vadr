@@ -160,16 +160,17 @@ sub sqf_FastaFileRemoveDescriptions {
 # Synopsis: Parse a INSDC feature table format file.
 #
 # Arguments:
-#  $infile:        feature table file to parse
-#  $ftr_info_HAHR: feature information, filled here
-#                  1D key: accession
-#                  2D:     feature index
-#                  3D key: qualifer, value: qualifier value
-#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#  $infile:         feature table file to parse
+#  $ftr_info_HAHR:  feature information, filled here
+#                   1D key: accession
+#                   2D:     feature index
+#                   3D key: qualifer, value: qualifier value
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
 # Dies:       if we have trouble parsing the file
+#             if $allow_incomplete is '1' and we read an incomplete feature
 #
 # Reference: https://www.ncbi.nlm.nih.gov/Sequin/table.html
 #################################################################
@@ -182,17 +183,17 @@ sub sqf_FeatureTableParse {
 
   open(IN, $infile) || ofile_FileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
 
-  my $long_accver     = undef;   # full accession, e.g. ref|NC_000883.2|
-  my $acc             = undef;   # accession, e.g. 'NC_000883.2'
-  my $ver             = undef;   # version, e.g. '2'
-  my $start           = undef;   # start position
-  my $stop            = undef;   # stop position
-  my $qname           = undef;   # a qualifier name,  e.g. 'organism'
-  my $qval            = undef;   # a qualifier value, e.g. 'Paramecia bursaria Chlorella virus 1'
-  my $feature         = undef;   # a feature name, e.g. "CDS", or "gene"
-  my $ftr_idx         = -1;      # number of features read for current sequence
-  my $coords          = undef;   # coordinates
-  my $line_idx        = 0;       # count of number of lines read in ftable
+  my $long_accver = undef;   # full accession, e.g. ref|NC_000883.2|
+  my $acc         = undef;   # accession, e.g. 'NC_000883.2'
+  my $ver         = undef;   # version, e.g. '2'
+  my $qname       = undef;   # a qualifier name,  e.g. 'organism'
+  my $qval        = undef;   # a qualifier value, e.g. 'Paramecia bursaria Chlorella virus 1'
+  my $feature     = undef;   # a feature name, e.g. "CDS", or "gene"
+  my $ftr_idx     = -1;      # number of features read for current sequence
+  my $coords      = undef;   # coordinates
+  my $trunc5      = undef;   # '1' if current feature is 5' truncated (start carrot, e.g. NC_031327:"<3281..4207")
+  my $trunc3      = undef;   # '1' if current feature is 5' truncated (start carrot, e.g. "3281..>4207")
+  my $line_idx    = 0;       # count of number of lines read in ftable
   my $prv_was_accn           = 0; # set to '1' if previous line was an accession line
   my $prv_was_coords_feature = 0; # set to '1' if previous line was a coordinates line with a feature name
   my $prv_was_coords_only    = 0; # set to '1' if previous line was a coordinates line without a feature name
@@ -220,8 +221,10 @@ sub sqf_FeatureTableParse {
         else { 
           ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to parse header line:\n$line\n", 1, $FH_HR);
         }
-        $feature = undef; 
-        $coords  = undef;
+        $feature  = undef; 
+        $coords   = undef;
+        $trunc5 = undef;
+        $trunc3 = undef;
         
         # update '$prv_*' values that we use to make sure line order makes sense
         $prv_was_accn           = 1;
@@ -243,8 +246,12 @@ sub sqf_FeatureTableParse {
           $ftr_idx++;
           sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
           sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
+          if($trunc5) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc5", 1, $FH_HR); }
+          if($trunc3) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc3", 1, $FH_HR); }
         }
         $feature = $tmp_feature;
+        $trunc5 = ($start_carrot eq "<") ? 1 : 0;
+        $trunc3 = ($stop_carrot  eq ">") ? 1 : 0;
 
         if($start_coord == $stop_coord) { 
           # ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
@@ -252,7 +259,7 @@ sub sqf_FeatureTableParse {
           $coords = "," . $start_coord . ".." . $stop_coord  . ":+"; 
         }
         if ($start_coord <= $stop_coord) { $coords = $start_coord . ".." . $stop_coord  . ":+"; }
-        else                             { $coords = $stop_coord .  ".." . $start_coord . ":-"; }
+        else                             { $coords = $stop_coord  . ".." . $start_coord . ":-"; }
 
         # update '$prv_*' values that we use to make sure line order makes sense
         $prv_was_accn           = 0;
@@ -262,11 +269,11 @@ sub sqf_FeatureTableParse {
         #printf("set prv_was_coords_feature\n");
       }
       # -------------------------------------------------------
-      elsif($line =~ /^(\<?\d+)\t(\>?\d+)$/) {  
+      elsif($line =~ /^(\<?)(\d+)\t(\>?)(\d+)$/) {  
         # COORDINATES LINE WITHOUT A FEATURE NAME (coords_only) 
         # example:
         # 154   183
-        ($start, $stop) = ($1, $2);
+        my ($start_carrot, $start_coord, $stop_carrot, $stop_coord) = ($1, $2, $3, $4);
 
         # a coords_only line can only occur after a coords_feature line or coords_only line, 
         # check to make sure that's the case
@@ -274,13 +281,18 @@ sub sqf_FeatureTableParse {
            $prv_was_coords_only) {    # previous line was a coords line without a feature (common)
           # line order makes sense, keep going...
 
-          if($start == $stop) { 
+          if($start_carrot ne "") { 
+            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read start_carrot indicating 5' truncated feature from coordinate line that wasn't the first coordinate line for the feature, line:\n$line\n", 1, $FH_HR);
+          }
+          $trunc3 = ($stop_carrot eq ">") ? 1 : 0;
+
+          if($start_coord == $stop_coord) { 
             #ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
             # assume positive strand
-            $coords .= "," . $start . ".." . $stop  . ":+"; 
+            $coords .= "," . $start_coord . ".." . $stop_coord  . ":+"; 
           }
-          if ($start <= $stop) { $coords .= "," . $start . ".." . $stop  . ":+"; }
-          else                 { $coords .= "," . $stop .  ".." . $start . ":-"; }
+          if ($start_coord <= $stop_coord) { $coords .= "," . $start_coord . ".." . $stop_coord  . ":+"; }
+          else                             { $coords .= "," . $stop_coord  . ".." . $start_coord . ":-"; }
 
           # update '$prv_*' values that we use to make sure line order makes sense
           $prv_was_accn           = 0;
@@ -318,6 +330,8 @@ sub sqf_FeatureTableParse {
             $ftr_idx++;
             sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
             sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
+            if($trunc5) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc5", 1, $FH_HR); }
+            if($trunc3) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc3", 1, $FH_HR); }
           }
           # parse the line
           if($line =~ /^\t\t\t([^\t]+)\t([^\t]+)$/) { 
@@ -358,6 +372,8 @@ sub sqf_FeatureTableParse {
     $ftr_idx++;
     sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
     sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
+    if($trunc5) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc5", 1, $FH_HR); }
+    if($trunc3) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc3", 1, $FH_HR); }
   }
 
   return;
