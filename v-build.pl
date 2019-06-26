@@ -888,7 +888,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
                 # make sure all elements are identical
                 my $hash_diff_str = utl_HCompare(\%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]}, \%{$ftr_info_AHR->[$chk_ftr_idx]}, "protein feature table for $prot_accver", "nucleotide feature table");
                 if($hash_diff_str ne "") { 
-                  ofile_FAIL("ERROR in $sub_name, read feature from protein $prot_accver feature table that matches type/coords with nucleotide feature, but differs:\n$hash_diff_str\n");
+                  ofile_FAIL("ERROR in $sub_name, read feature of type " . $ftr_info_AHR->[$chk_ftr_idx]{"type"} . " from protein $prot_accver feature table that matches type/coords with nucleotide feature, but differs:\n$hash_diff_str\n", 1, $FH_HR);
                 }
                 else { 
                   $found_ftr_idx = $chk_ftr_idx;

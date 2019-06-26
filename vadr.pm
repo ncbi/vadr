@@ -369,14 +369,17 @@ sub vdr_FeatureInfoImputeByOverlap {
   my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
-  # - go through all features and find F1 of type $src_type
-  #    - look for other features F2 of type $dst_type that overlap with F1
-  #      where overlap means every position in F2 also exists in F1 
-  #      - if F2 does not yet have $dst_key, set $dst_key to value in F1 for $src_key
+  # - go through all features and find F1 of type $dst_type
+  #    - if F1 does not have a value for $dst_key
+  #      find other features F2 of type $src_type that 'span' F1
+  #      where spans means every position in F1 also exists in F2
+  #      - set F1 $dst_key to value in F2 for $src_key
   # 
-  # if more than one F2 exist for an F1:
-  #     if all F2's already have key $dst_key: do nothing
-  #     else: die
+  # if more than one F2 exists for an F1 that meet criteria above:
+  #     - set F1 $dst_key to value in F2 for $src_key for shortest F2
+  #       
+  # if more than one F2 exists with identical coords for an F1 that meet criteria above
+  #     - die
   #
   my ($dst_ftr_idx, $src_ftr_idx); # feature indices
   for($dst_ftr_idx = 0; $dst_ftr_idx < $nftr; $dst_ftr_idx++) { 
@@ -391,12 +394,26 @@ sub vdr_FeatureInfoImputeByOverlap {
           # printf("checking overlap between src " . $ftr_info_AHR->[$src_ftr_idx]{"coords"} . " and dst " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n");
           if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$src_ftr_idx]{"coords"}, $ftr_info_AHR->[$dst_ftr_idx]{"coords"}, $FH_HR)) { 
             # $src_ftr_idx completely spans $dst_ftr_idx
+            my $do_update = 1; # set to '0' below if $found_src_ftr_idx is defined and is shorter than $src_ftr_idx
             if(defined $found_src_ftr_idx) { 
-              ofile_FAIL("ERROR in $sub_name, more than one feature of type $src_type (with key $src_key) spans feature idx $dst_ftr_idx of type $dst_type with coords " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n1: idx: $found_src_ftr_idx, value: " . $ftr_info_AHR->[$src_ftr_idx]{$src_key} . "\n2: idx: $src_ftr_idx, value: " . $ftr_info_AHR->[$dst_ftr_idx]{$dst_key} . "\n", 1, $FH_HR);
+              # this is okay, pick the shorter of the two
+              # (but if they have identical coords values --> die)
+              my $existing_coords = $ftr_info_AHR->[$found_src_ftr_idx]{"coords"};
+              my $current_coords  = $ftr_info_AHR->[$src_ftr_idx]{"coords"};
+              if($existing_coords eq $current_coords) { 
+                ofile_FAIL("ERROR in $sub_name, more than one feature of type $src_type (with key $src_key) of identical coords ($existing_coords) spans feature idx $dst_ftr_idx of type $dst_type with coords " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n1: idx: $found_src_ftr_idx, value: " . $ftr_info_AHR->[$found_src_ftr_idx]{$src_key} . "\n2: idx: $src_ftr_idx, value: " . $ftr_info_AHR->[$src_ftr_idx]{$src_key} . "\n", 1, $FH_HR);
+              }
+              # if we get here, the coords differ, only update if current is smaller than existing
+              if((vdr_CoordsLength($current_coords, $FH_HR)) >= (vdr_CoordsLength($existing_coords, $FH_HR))) { 
+                # printf("in $sub_name, skipping update of ftr_info_AHR->[$dst_ftr_idx]{$dst_key} of type $dst_type to feature idx $src_ftr_idx with value $ftr_info_AHR->[$src_ftr_idx]{$src_key} and coords " . $ftr_info_AHR->[$src_ftr_idx]{"coords"} . "\nbecause shorter overlap exists: feature $found_src_ftr_idx with value $ftr_info_AHR->[$found_src_ftr_idx]{$src_key} and coords . " . $ftr_info_AHR->[$found_src_ftr_idx]{"coords"} . "\n");
+                $do_update = 0;
+              }
+            } # end of 'if(defined $found_src_ftr_idx)'
+            if($do_update) { # will be '1' if (! defined $found_src_ftr_idx) or if $src_ftr_idx is shorter than $found_src_ftr_idx
+              # printf("in $sub_name, setting ftr_info_AHR->[$dst_ftr_idx]{$dst_key} of type $dst_type to $ftr_info_AHR->[$src_ftr_idx]{$src_key}\n");
+              $ftr_info_AHR->[$dst_ftr_idx]{$dst_key} = $ftr_info_AHR->[$src_ftr_idx]{$src_key};
+              $found_src_ftr_idx = $src_ftr_idx;
             }
-            # printf("in $sub_name, setting ftr_info_AHR->[$dst_ftr_idx]{$dst_key} of type $dst_type to $ftr_info_AHR->[$src_ftr_idx]{$src_key}\n");
-            $ftr_info_AHR->[$dst_ftr_idx]{$dst_key} = $ftr_info_AHR->[$src_ftr_idx]{$src_key};
-            $found_src_ftr_idx = $src_ftr_idx;
           }
         }
       }
@@ -1915,7 +1932,7 @@ sub vdr_CoordsTokenCreate {
 #  $coords:  coordinate string
 #  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void
+# Returns:   total length of segments in $coords
 #
 # Dies: if unable to parse $coords
 #
