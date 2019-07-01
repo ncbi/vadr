@@ -615,6 +615,7 @@ populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%
 
 # for each model, fetch the sequences classified to it and perform the round 2 search to get sequence coverage
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
+my $nr2 = 0; # number of models round 2 is called for
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
@@ -627,20 +628,23 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
+    $nr2++;
   }
 }
 
 # sort the round 2 search results, we concatenate all model's tblout files and sort them
 my $r2_sort_tblout_key  = "search.r2.tblout.sort";
 my $r2_sort_tblout_file = $out_root . "." . $r2_sort_tblout_key;
-$sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
-# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
-utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
+if($nr2 > 0) { # only sort output if we ran round 2 for at least one model
+  $sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
+  # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
+  utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
 
-# parse cmsearch round 2 tblout data
-cmsearch_or_cmscan_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
-                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+  # parse cmsearch round 2 tblout data
+  cmsearch_or_cmscan_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
+                                         \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+}
 
 ############################
 # Add classification alerts
@@ -2813,7 +2817,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         if(! $ftr_is_5trunc) { 
           # feature is not 5' truncated, look for a start codon if it's a CDS
           if($ftr_is_cds) { 
-            if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $FH_HR))) { 
+            if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $mdl_tt, $atg_only, $FH_HR))) { 
               $alt_str_H{"n_str"} = "VADRNULL";
             }
           }
@@ -2829,7 +2833,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             else { 
               # feature length is a multiple of 3, look for all valid in-frame stops 
               my @ftr_nxt_stp_A = ();
-              sqstring_find_stops($ftr_sqstring, \@ftr_nxt_stp_A, $FH_HR);
+              sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               
               if($ftr_is_cds) { 
                 # check that final add codon is a valid stop, and add 'n_stp' alert if not
@@ -2858,7 +2862,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                         $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                       }
                       my @ext_nxt_stp_A = ();
-                      sqstring_find_stops($ftr_sqstring, \@ext_nxt_stp_A, $FH_HR);
+                      sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
                       if($ext_nxt_stp_A[1] != 0) { 
                         # there is an in-frame stop codon, n_ext alert
                         # determine what position it is
