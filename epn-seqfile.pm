@@ -154,14 +154,247 @@ sub sqf_FastaFileRemoveDescriptions {
 }
 
 #################################################################
+# Subroutine: sqf_FeatureTableParse()
+# Incept:     EPN, Mon May 20 09:36:09 2019
+#
+# Synopsis: Parse a INSDC feature table format file.
+#
+# Arguments:
+#  $infile:         feature table file to parse
+#  $ftr_info_HAHR:  feature information, filled here
+#                   1D key: accession
+#                   2D:     feature index
+#                   3D key: qualifer, value: qualifier value
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if we have trouble parsing the file
+#             if $allow_incomplete is '1' and we read an incomplete feature
+#
+# Reference: https://www.ncbi.nlm.nih.gov/Sequin/table.html
+#################################################################
+sub sqf_FeatureTableParse { 
+  my $sub_name = "sqf_FeatureTableParse";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $ftr_info_HAHR, $FH_HR) = @_;
+
+  open(IN, $infile) || ofile_FileOpenFailure($infile, $sub_name, $!, "reading", $FH_HR);
+
+  my $long_accver = undef;   # full accession, e.g. ref|NC_000883.2|
+  my $acc         = undef;   # accession, e.g. 'NC_000883.2'
+  my $ver         = undef;   # version, e.g. '2'
+  my $qname       = undef;   # a qualifier name,  e.g. 'organism'
+  my $qval        = undef;   # a qualifier value, e.g. 'Paramecia bursaria Chlorella virus 1'
+  my $feature     = undef;   # a feature name, e.g. "CDS", or "gene"
+  my $ftr_idx     = -1;      # number of features read for current sequence
+  my $coords      = undef;   # coordinates
+  my $trunc5      = undef;   # '1' if current feature is 5' truncated (start carrot, e.g. NC_031327:"<3281..4207")
+  my $trunc3      = undef;   # '1' if current feature is 5' truncated (start carrot, e.g. "3281..>4207")
+  my $line_idx    = 0;       # count of number of lines read in ftable
+  my $prv_was_accn           = 0; # set to '1' if previous line was an accession line
+  my $prv_was_coords_feature = 0; # set to '1' if previous line was a coordinates line with a feature name
+  my $prv_was_coords_only    = 0; # set to '1' if previous line was a coordinates line without a feature name
+  my $prv_was_quals          = 0; # set to '1' if previous line was a qualifier_name qualifier value line
+
+  while(my $line = <IN>) { 
+    $line_idx++;
+    chomp $line;
+    if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+    if($line =~ m/\w/) { 
+      # parse each of the 4 line types differently
+      # -------------------------------------------------------
+      if($line =~ /^\>Feature\s+(\S+)$/) { 
+        # ACCESSION LINE
+        # example:
+        #>Feature ref|NC_001359.1|    
+        $long_accver = $1;
+        # accession line can occur after any other line type, so we don't have to check if line order makes sense for this case
+
+        # determine accession and version, e.g. NC_001359.1 in above example
+        if($long_accver =~ /[^\|]*\|([^\|]+)\.(\d+)\|/) { 
+          $acc = $1;
+          $ver = $2;
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to parse header line:\n$line\n", 1, $FH_HR);
+        }
+        $feature  = undef; 
+        $coords   = undef;
+        $trunc5 = undef;
+        $trunc3 = undef;
+        
+        # update '$prv_*' values that we use to make sure line order makes sense
+        $prv_was_accn           = 1;
+        $prv_was_coords_feature = 0;
+        $prv_was_coords_only    = 0;
+        $prv_was_quals          = 0;
+        #printf("set prv_was_accn\n");
+      }
+      # -------------------------------------------------------
+      elsif($line =~ /^(\<?)(\d+\^?)\t(\>?)(\d+)\t(\S+)$/) { 
+        # COORDINATES LINE WITH A FEATURE NAME (coords_feature)
+        # example:
+        # 230   985     gene
+        my ($start_carrot, $start_coord, $stop_carrot, $stop_coord, $tmp_feature) = ($1, $2, $3, $4, $5);
+        # coords_feature line can occur after any other line type, so we don't have to check if line order makes sense for this case
+
+        # if our previous line was coords_feature or coords_only, we need to store the feature from that previous line
+        if(($prv_was_coords_feature) || ($prv_was_coords_only)) { 
+          $ftr_idx++;
+          sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
+          sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
+          if($trunc5) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc5", 1, $FH_HR); }
+          if($trunc3) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc3", 1, $FH_HR); }
+        }
+        $feature = $tmp_feature;
+        $trunc5 = ($start_carrot eq "<") ? 1 : 0;
+        $trunc3 = ($stop_carrot  eq ">") ? 1 : 0;
+
+        if($start_coord == $stop_coord) { 
+          # ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
+          # assume positive strand
+          $coords = "," . $start_coord . ".." . $stop_coord  . ":+"; 
+        }
+        if ($start_coord <= $stop_coord) { $coords = $start_coord . ".." . $stop_coord  . ":+"; }
+        else                             { $coords = $stop_coord  . ".." . $start_coord . ":-"; }
+
+        # update '$prv_*' values that we use to make sure line order makes sense
+        $prv_was_accn           = 0;
+        $prv_was_coords_feature = 1;
+        $prv_was_coords_only    = 0;
+        $prv_was_quals          = 0;
+        #printf("set prv_was_coords_feature\n");
+      }
+      # -------------------------------------------------------
+      elsif($line =~ /^(\<?)(\d+)\t(\>?)(\d+)$/) {  
+        # COORDINATES LINE WITHOUT A FEATURE NAME (coords_only) 
+        # example:
+        # 154   183
+        my ($start_carrot, $start_coord, $stop_carrot, $stop_coord) = ($1, $2, $3, $4);
+
+        # a coords_only line can only occur after a coords_feature line or coords_only line, 
+        # check to make sure that's the case
+        if($prv_was_coords_feature || # previous line was a coords line with a feature (common)
+           $prv_was_coords_only) {    # previous line was a coords line without a feature (common)
+          # line order makes sense, keep going...
+
+          if($start_carrot ne "") { 
+            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read start_carrot indicating 5' truncated feature from coordinate line that wasn't the first coordinate line for the feature, line:\n$line\n", 1, $FH_HR);
+          }
+          $trunc3 = ($stop_carrot eq ">") ? 1 : 0;
+
+          if($start_coord == $stop_coord) { 
+            #ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to determine strand for single nucleotide span, line:\n$line\n", 1, $FH_HR);
+            # assume positive strand
+            $coords .= "," . $start_coord . ".." . $stop_coord  . ":+"; 
+          }
+          if ($start_coord <= $stop_coord) { $coords .= "," . $start_coord . ".." . $stop_coord  . ":+"; }
+          else                             { $coords .= "," . $stop_coord  . ".." . $start_coord . ":-"; }
+
+          # update '$prv_*' values that we use to make sure line order makes sense
+          $prv_was_accn           = 0;
+          $prv_was_coords_feature = 0;
+          $prv_was_coords_only    = 1;
+          $prv_was_quals          = 0;
+          #printf("set prv_was_coords_only\n");
+        }
+        else { # line order is unexpected
+          ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unexpected line order (coords_only line), line:\n$line\n", 1, $FH_HR);
+        }
+      }
+      # -------------------------------------------------------
+      elsif(($line =~ /^\t\t\t[^\t]+\t[^\t]+$/) || 
+            ($line =~ /^\t\t\t[^\t]+$/)) { 
+        # QUALIFIER LINE
+        # examples:
+        #gene       AR1
+        #locus_tag  PhyvvsAgp1
+
+        # before parsing it, do two sanity checks
+        if(! defined $coords)  { 
+          ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read qualifier line but coords is not yet defined, line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $feature)  { 
+          ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, read qualifier line but feature is not yet defined, line:\n$line\n", 1, $FH_HR);
+        }
+        # does line order make sense?
+        if($prv_was_coords_feature || 
+           $prv_was_coords_only    ||
+           $prv_was_quals) { 
+          # line order makes sense, keep going...
+          if(! $prv_was_quals) { 
+            # first quals line for this feature, store the feature
+            $ftr_idx++;
+            sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
+            sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
+            if($trunc5) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc5", 1, $FH_HR); }
+            if($trunc3) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc3", 1, $FH_HR); }
+          }
+          # parse the line
+          if($line =~ /^\t\t\t([^\t]+)\t([^\t]+)$/) { 
+            ($qname, $qval) = ($1, $2);
+          }
+          elsif($line =~ /^\t\t\t([^\t]+)$/) { 
+            ($qname, $qval) = ($1, "");
+          }
+          else { 
+            ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to parse qualifier line, line:\n$line\n", 1, $FH_HR);
+          }
+          sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qname, $qval, $FH_HR);
+        } # end of 'if() that checks line order makes sense
+        else { # unexpected line order
+          ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unexpected line order (quals line), line:\n$line\n", 1, $FH_HR);
+        }          
+
+        # update '$prv_*' values that we use to make sure line order makes sense
+        $prv_was_accn           = 0;
+        $prv_was_coords_feature = 0;
+        $prv_was_coords_only    = 0;
+        $prv_was_quals          = 1;
+        #printf("set prv_was_quals\n");
+      }
+      # -------------------------------------------------------
+      else { 
+        ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, unable to parse line, line:\n$line\n", 1, $FH_HR);
+      }
+      # -------------------------------------------------------
+    }
+  }
+  if(! defined $acc) { 
+    ofile_FAIL("ERROR in $sub_name, problem parsing $infile, did not read any accession lines\n", 1, $FH_HR);
+  }
+
+  # add the final feature, if we haven't already, we can tell based on previous line type
+  if(($prv_was_coords_feature) || ($prv_was_coords_only)) { 
+    $ftr_idx++;
+    sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",   $feature, $FH_HR);
+    sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "coords", $coords,  $FH_HR);
+    if($trunc5) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc5", 1, $FH_HR); }
+    if($trunc3) { sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "trunc3", 1, $FH_HR); }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: sqf_GenbankParse()
 # Incept:     EPN, Tue Mar 12 14:04:14 2019
 #
 # Synopsis: Parse a GenBank format file.
 #
 # Arguments:
-#  $infile:   GenBank file to parse
-#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#  $infile:        GenBank file to parse
+#  $seq_info_HHR:  sequence info, filled here, can be undef
+#                  1D key: accession
+#                  2D key: "len", "ver", "def", "seq"
+#  $ftr_info_HAHR: feature information, filled here
+#                  1D key: accession
+#                  2D:     feature index
+#                  3D key: qualifer, value: qualifier value
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
@@ -337,14 +570,14 @@ sub sqf_GenbankParse {
             ofile_FAIL("ERROR in $sub_name, problem parsing $infile at line $line_idx, in FEATURES section read unparseable qualifier value line:\n$line\n", 1, $FH_HR);
           }
           if(defined $value) { # we are finished with previous value
-            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
           }
           ($qualifier, $value) = ($save_qualifier, $save_value);
         }
         elsif($line =~ /^\s+\/([^\s\=]+)$/) { # first token must start with '/'
           my ($save_qualifier, $save_value) = ($1, "");
           if(defined $value) { # we are finished with previous value
-            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
             ($qualifier, $value) = (undef, undef);
           }
           # qualifier, no value, single line
@@ -353,15 +586,15 @@ sub sqf_GenbankParse {
         }
         elsif($line =~ /^\s+(\S+)\s+(\S+)$/) { 
           if(defined $value) { # we are finished with previous value
-            sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
+            sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, $qualifier, $value, $FH_HR);
             ($qualifier, $value) = (undef, undef);
           }
           # feature/location line, examples:
           #   gene            5..5104
           ($feature, $location) = ($1, $2);
           $ftr_idx++;
-          sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
-          sqf_GenbankStoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
+          sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "type",     $feature,  $FH_HR);
+          sqf_StoreQualifierValue(\@{$ftr_info_HAHR->{$acc}}, $ftr_idx, "location", $location, $FH_HR);
         }
         $line = <IN>;
       }
@@ -371,7 +604,7 @@ sub sqf_GenbankParse {
       # if we get here we just read the ORIGIN line
       # first store final qualifier/value
       if(defined $value) { 
-        sqf_GenbankStoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
+        sqf_StoreQualifierValue($ftr_info_HAHR->{$acc}, $ftr_idx, $qualifier, $value, $FH_HR);
       }
       # parse the ORIGIN sequence
       $line = <IN>;
@@ -405,11 +638,13 @@ sub sqf_GenbankParse {
       if(! defined $seq) { ofile_FAIL(sprintf("ERROR in $sub_name, failed to read sequence (accn: %s), line: $line_idx\n", (defined $acc ? $acc : "undef")), 1, $FH_HR); }
 
       # store sequence info
-      %{$seq_info_HHR->{$acc}} = ();
-      $seq_info_HHR->{$acc}{"len"} = $len;
-      $seq_info_HHR->{$acc}{"ver"} = $ver;
-      $seq_info_HHR->{$acc}{"def"} = $def;
-      $seq_info_HHR->{$acc}{"seq"} = $seq;
+      if(defined $seq_info_HHR) { 
+        %{$seq_info_HHR->{$acc}} = ();
+        $seq_info_HHR->{$acc}{"len"} = $len;
+        $seq_info_HHR->{$acc}{"ver"} = $ver;
+        $seq_info_HHR->{$acc}{"def"} = $def;
+        $seq_info_HHR->{$acc}{"seq"} = $seq;
+      }
 
       # reset variables
       $seq = undef;
@@ -440,7 +675,7 @@ sub sqf_GenbankParse {
 }
 
 #################################################################
-# Subroutine: sqf_GenbankStoreQualifierValue()
+# Subroutine: sqf_StoreQualifierValue()
 # Incept:     EPN, Wed Mar 13 09:42:22 2019
 #
 # Synopsis: Store a genbank qualifier and value.
@@ -459,8 +694,8 @@ sub sqf_GenbankParse {
 #             to separate multiple qualifier values for the same qualifier.
 #             
 #################################################################
-sub sqf_GenbankStoreQualifierValue { 
-  my $sub_name = "sqf_GenbankStoreQualifierValue";
+sub sqf_StoreQualifierValue { 
+  my $sub_name = "sqf_StoreQualifierValue";
   my $nargs_expected = 5;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 

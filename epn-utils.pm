@@ -965,7 +965,7 @@ sub utl_Min {
 # Subroutine:  utl_Swap()
 # Incept:      EPN, Wed Apr  3 06:37:38 2019
 # 
-# Purpose:     Swaps $$xR} and $$yR in place.
+# Purpose:     Swaps $$xR and $$yR in place.
 # Arguments:
 # $xR:         ref to first scalar
 # $yR:         ref to second scalar
@@ -1876,6 +1876,54 @@ sub utl_ExecHValidate {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine:  utl_HCompare()
+# Incept:      EPN, Mon Jun 24 15:35:19 2019
+#
+# Purpose:     Compare two single dimension hashes for equality.
+#              
+# Arguments: 
+#   $H1R:      ref to hash 1
+#   $H2R:      ref to hash 2
+#   $name1:    name for hash 1, for return string
+#   $name2:    name for hash 2, for return string
+# 
+# Returns:     string explaining differences between the two hashes
+#              empty string if hashes are equal (same set of 
+#              keys and values)
+# 
+################################################################# 
+sub utl_HCompare { 
+  my $sub_name = "utl_HCompare()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($H1R, $H2R, $name1, $name2) = (@_);
+
+  my @A1 = keys (%{$H1R});
+  my @A2 = keys (%{$H1R});
+
+  my $ret_str = "";
+  foreach my $key1 (@A1) { 
+    if(! exists $H2R->{$key1}) { 
+      $ret_str .= "$key1 exists as a key in $name1 hash but not in $name2 hash\n";
+    }
+    else { 
+      if($H1R->{$key1} ne $H2R->{$key1}) { 
+        $ret_str .= "values differ for key $key1 ($name1 hash value: " . $H1R->{$key1} . "; $name2 hash value: " . $H2R->{$key1} . ")\n";
+      }
+    }
+  }
+  foreach my $key2 (@A2) { 
+    if(! exists $H1R->{$key2}) { 
+      $ret_str .= "$key2 exists as a key in $name2 hash but not in $name1 hash\n";
+    }
+    # already checked all keys that exist in both above
+  } 
+
+  return $ret_str; 
 }
 
 ####################################################################

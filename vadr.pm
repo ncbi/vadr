@@ -49,15 +49,15 @@ use LWP::Simple;
 #########################################################################################
 #
 # Subroutines related to features or segments:
-# vdr_FeatureInfoImputeCoords
-# vdr_FeatureInfoImputeLength
-# vdr_FeatureInfoImputeSourceIdx
-# vdr_FeatureInfoImputeParentIndices
+# vdr_FeatureInfoImputeCoords()
+# vdr_FeatureInfoImputeLength()
+# vdr_FeatureInfoInitializeParentIndexStrings()
 # vdr_FeatureInfoImputeOutname()
-# vdr_FeatureInfoImpute3paFtrIdx
+# vdr_FeatureInfoImpute3paFtrIdx()
+# vdr_FeatureInfoImputeByOverlap()
 # vdr_FeatureInfoStartStopStrandArrays()
-# vdr_FeatureInfoCountType
-# vdr_FeatureInfoValidateCoords
+# vdr_FeatureInfoCountType()
+# vdr_FeatureInfoValidateCoords()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 #
 # vdr_SegmentInfoPopulate()
@@ -70,7 +70,6 @@ use LWP::Simple;
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureChildrenArray()
 # vdr_FeatureNumSegments()
-# vdr_FeatureIsDuplicate()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
@@ -98,6 +97,9 @@ use LWP::Simple;
 # vdr_CoordsMin()
 # vdr_CoordsMax()
 # vdr_CoordsMissing()
+# vdr_CoordsCheckIfSpans()
+# vdr_CoordsTokenOverlap()
+# vdr_CoordsProtToNuc
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -161,7 +163,7 @@ sub vdr_FeatureInfoImputeCoords {
 #
 #################################################################
 sub vdr_FeatureInfoImputeLength { 
-  my $sub_name = "vdr_FeatureInfoImputeSourceIdx";
+  my $sub_name = "vdr_FeatureInfoImputeLength";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -181,10 +183,11 @@ sub vdr_FeatureInfoImputeLength {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoImputeSourceIdx
-# Incept:     EPN, Wed Mar 13 13:20:01 2019
+# Subroutine: vdr_FeatureInfoInitializeParentIndexStrings
+# Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Fill "source_idx" values in @{$ftr_info_AHR}
+# Purpose:    Set "parent_idx_str" value to "" for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
@@ -195,130 +198,21 @@ sub vdr_FeatureInfoImputeLength {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub vdr_FeatureInfoImputeSourceIdx { 
-  my $sub_name = "vdr_FeatureInfoImputeSourceIdx";
+sub vdr_FeatureInfoInitializeParentIndexStrings {
+  my $sub_name = "vdr_FeatureInfoInitializeParentIndexStrings";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
   my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
-  # go through all features and determine duplicates (set 'source_idx')
-  # 
-  # $ftr_info_AHR->{"source_idx"}[$ftr_idx] set to $ftr_idx2 if
-  # - $ftr_idx type is gene
-  # - $ftr_idx2 type is CDS
-  # - $ftr_idx and $ftr_idx2 have identical coords (for all segments)
-  #
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # dies if more than one $ftr_idx2 satisfies above
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx; # initialize
-    for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-      if($ftr_idx != $ftr_idx2) {
-        if(($ftr_info_AHR->[$ftr_idx]{"type"}  eq "gene") && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
-           ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
-          if($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) { 
-            ofile_FAIL(sprintf("ERROR in $sub_name, unable to determine source (two choices) for duplicate feature of type %s and coords %s\n", 
-                                $ftr_info_AHR->[$ftr_idx]{"type"}, $ftr_info_AHR->[$ftr_idx]{"coords"}), 1, $FH_HR);
-          }
-          $ftr_info_AHR->[$ftr_idx]{"source_idx"} = $ftr_idx2;
-        }
-      }
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
+      $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = "";
     }
   }
 
   return;
-}
-
-#################################################################
-# Subroutine: vdr_FeatureInfoImputeParentIndices
-# Incept:     EPN, Wed Mar 13 13:33:33 2019
-# 
-# Purpose:    Fill "parent_idx_str" values in @{$ftr_info_AHR}
-# 
-# Arguments:
-#   $ftr_info_AHR:  REF to feature information, added to here
-#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if $ftr_info_AHR is invalid upon entry
-#
-#################################################################
-sub vdr_FeatureInfoImputeParentIndices {
-  my $sub_name = "vdr_FeatureInfoImputeParentIndices";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($ftr_info_AHR, $FH_HR) = @_;
-  
-  # ftr_info_AHR should already have array data for keys "type", "coords"
-  my @keys_A = ("type", "coords");
-  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
-
-  # go through all features and determine parents (set 'parent_idx_str')
-  # 
-  # $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
-  #   a comma separated string of >= 1 $ftr_idx2 if:
-  # - $ftr_idx type is mat_peptide
-  # - $ftr_idx2 type is CDS
-  # - start of $ftr_idx2 is 5' of or equal to start of $ftr_idx
-  # - stop  of $ftr_idx2 is 3' of or equal to stop of $ftr_idx
-  # - $ftr_idx and $ftr_idx2 are both "+" or both "-" strands
-  # 
-  # else "-1" if no $ftr_idx2 exists for $ftr_idx that satisfies above
-  #
-  # note: more than one $ftr_idx2 can satisfy above, in which
-  # case $ftr_info_AHR->{"parent_idx_str"}[$ftr_idx] set to 
-  # comma separated string of > 1 $ftr_idx2
-  my ($ftr_idx, $ftr_idx2); # feature indices
-  my $ftr_5p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_3p_pos;  # 3'-most position for feature $ftr_idx
-  my $ftr_5p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_3p_pos2; # 5'-most position for feature $ftr_idx2
-  my $ftr_strand;  # strand for feature $ftr_idx
-  my $ftr_strand2; # strand for feature $ftr_idx2
-  my $found_parent; # flag for if we found a parent or not
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = ""; # initialize
-    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") { 
-      $ftr_5p_pos = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_3p_pos = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-      for($ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-        $ftr_5p_pos2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_3p_pos2 = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, $FH_HR);
-        $ftr_strand2 = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
-        $found_parent = 0;
-        if(($ftr_idx != $ftr_idx2) && 
-           ($ftr_info_AHR->[$ftr_idx2]{"type"} eq "CDS") && 
-           ($ftr_strand eq $ftr_strand2)) { 
-          if(($ftr_strand eq "+") && 
-             ($ftr_5p_pos2 <= $ftr_5p_pos) &&
-             ($ftr_3p_pos2 >= $ftr_3p_pos)) { 
-            $found_parent = 1;
-          }
-          if(($ftr_strand eq "-") && 
-             ($ftr_5p_pos2 >= $ftr_5p_pos) &&
-             ($ftr_3p_pos2 <= $ftr_3p_pos)) { 
-            $found_parent = 1;
-          }
-          if($found_parent) { 
-            if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "") { $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= ","; }
-            $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} .= "$ftr_idx2";
-          }
-        }
-      }
-    }
-  }   
-  return 0;
 }
       
 #################################################################
@@ -434,6 +328,98 @@ sub vdr_FeatureInfoImpute3paFtrIdx {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoImputeByOverlap
+# Incept:     EPN, Tue May 21 06:28:07 2019
+# 
+# Purpose:    Add a qualifier and value to instances of one feature
+#             type based on qualifier and values of another feature
+#             type and overlap of nucleotides
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $src_type:      source feature type
+#   $src_key:       source feature key (value in %{$ftr_info_AH[$src_idx]})
+#   $dst_type:      destination feature type
+#   $dst_key:       destination feature key (value in %{$ftr_info_AH[$dst_idx]})
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoImputeByOverlap {
+  my $sub_name = "vdr_FeatureInfoImputeByOverlap";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $src_type, $src_key, $dst_type, $dst_key, $FH_HR) = @_;
+
+  # printf("in $sub_name, src_type: $src_type, src_key: $src_key, dst_type: $dst_type, dst_key: $dst_key\n");
+  # contract check
+  if($src_type eq $dst_type) { 
+    ofile_FAIL("ERROR in $sub_name, source type and destination type are equal ($src_type)\n", 1, $FH_HR);
+  }
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  # - go through all features and find F1 of type $dst_type
+  #    - if F1 does not have a value for $dst_key
+  #      find other features F2 of type $src_type that 'span' F1
+  #      where spans means every position in F1 also exists in F2
+  #      - set F1 $dst_key to value in F2 for $src_key
+  # 
+  # if more than one F2 exists for an F1 that meet criteria above:
+  #     - set F1 $dst_key to value in F2 for $src_key for shortest F2
+  #       
+  # if more than one F2 exists with identical coords for an F1 that meet criteria above
+  #     - die
+  #
+  my ($dst_ftr_idx, $src_ftr_idx); # feature indices
+  for($dst_ftr_idx = 0; $dst_ftr_idx < $nftr; $dst_ftr_idx++) { 
+    if(($ftr_info_AHR->[$dst_ftr_idx]{"type"} eq $dst_type) && 
+       (! defined $ftr_info_AHR->[$dst_ftr_idx]{$dst_key})) { 
+      my $found_src_ftr_idx = undef;
+      for($src_ftr_idx = 0; $src_ftr_idx < $nftr; $src_ftr_idx++) { 
+        if(($dst_ftr_idx != $src_ftr_idx) && 
+           ($ftr_info_AHR->[$src_ftr_idx]{"type"} eq $src_type) && 
+           (defined $ftr_info_AHR->[$src_ftr_idx]{$src_key})) { 
+          # determine if $dst_ftr_idx is completely spanned by $src_ftr_idx overlap completely
+          # printf("checking overlap between src " . $ftr_info_AHR->[$src_ftr_idx]{"coords"} . " and dst " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n");
+          if(vdr_CoordsCheckIfSpans($ftr_info_AHR->[$src_ftr_idx]{"coords"}, $ftr_info_AHR->[$dst_ftr_idx]{"coords"}, $FH_HR)) { 
+            # $src_ftr_idx completely spans $dst_ftr_idx
+            my $do_update = 1; # set to '0' below if $found_src_ftr_idx is defined and is shorter than $src_ftr_idx
+            if(defined $found_src_ftr_idx) { 
+              # this is okay, pick the shorter of the two
+              # (but if they have identical coords values --> die)
+              my $existing_coords = $ftr_info_AHR->[$found_src_ftr_idx]{"coords"};
+              my $current_coords  = $ftr_info_AHR->[$src_ftr_idx]{"coords"};
+              if($existing_coords eq $current_coords) { 
+                ofile_FAIL("ERROR in $sub_name, more than one feature of type $src_type (with key $src_key) of identical coords ($existing_coords) spans feature idx $dst_ftr_idx of type $dst_type with coords " . $ftr_info_AHR->[$dst_ftr_idx]{"coords"} . "\n1: idx: $found_src_ftr_idx, value: " . $ftr_info_AHR->[$found_src_ftr_idx]{$src_key} . "\n2: idx: $src_ftr_idx, value: " . $ftr_info_AHR->[$src_ftr_idx]{$src_key} . "\n", 1, $FH_HR);
+              }
+              # if we get here, the coords differ, only update if current is smaller than existing
+              if((vdr_CoordsLength($current_coords, $FH_HR)) >= (vdr_CoordsLength($existing_coords, $FH_HR))) { 
+                # printf("in $sub_name, skipping update of ftr_info_AHR->[$dst_ftr_idx]{$dst_key} of type $dst_type to feature idx $src_ftr_idx with value $ftr_info_AHR->[$src_ftr_idx]{$src_key} and coords " . $ftr_info_AHR->[$src_ftr_idx]{"coords"} . "\nbecause shorter overlap exists: feature $found_src_ftr_idx with value $ftr_info_AHR->[$found_src_ftr_idx]{$src_key} and coords . " . $ftr_info_AHR->[$found_src_ftr_idx]{"coords"} . "\n");
+                $do_update = 0;
+              }
+            } # end of 'if(defined $found_src_ftr_idx)'
+            if($do_update) { # will be '1' if (! defined $found_src_ftr_idx) or if $src_ftr_idx is shorter than $found_src_ftr_idx
+              # printf("in $sub_name, setting ftr_info_AHR->[$dst_ftr_idx]{$dst_key} of type $dst_type to $ftr_info_AHR->[$src_ftr_idx]{$src_key}\n");
+              $ftr_info_AHR->[$dst_ftr_idx]{$dst_key} = $ftr_info_AHR->[$src_ftr_idx]{$src_key};
+              $found_src_ftr_idx = $src_ftr_idx;
+            }
+          }
+        }
+      }
+    }
+  }
+  
   return;
 }
 
@@ -649,8 +635,8 @@ sub vdr_SegmentInfoPopulate {
 
   my ($sgm_info_AHR, $ftr_info_AHR, $FH_HR) = @_;
 
-  # ftr_info_AHR should already have array data for keys "type", "coords", "source_idx"
-  my @keys_A = ("type", "coords", "source_idx");
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   # initialize new %{$ftr_info_AHR} values
@@ -658,39 +644,36 @@ sub vdr_SegmentInfoPopulate {
   my ($sgm_start, $sgm_stop, $sgm_strand); # start, stop and strand for a segment
   my $nseg = 0; 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; # remains -1 if $ftr_idxs_dup
-    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; # remains -2 if $ftr_idxs_dup
+    $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = -1; 
+    $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = -2; 
     my $ftr_type   = $ftr_info_AHR->[$ftr_idx]{"type"};
-    my $ftr_is_dup = ($ftr_info_AHR->[$ftr_idx]{"source_idx"} == $ftr_idx) ? 0 : 1;
 
-    if(! $ftr_is_dup) { 
-      # determine start and stop positions of all segments
-      my @sgm_start_A  = (); # array of starts, one per segment
-      my @sgm_stop_A   = (); # array of stops, one per segment
-      my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
-      vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
-      my $cur_nseg = scalar(@sgm_start_A);
-      for(my $s = 0; $s < $cur_nseg; $s++) { 
-        $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
-        $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
-        $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
-        $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
-        if($s == 0) { 
-          $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
-        }
-        else { 
-          $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
-        }
-        if($s == ($cur_nseg-1)) { 
-          $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
-          $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
-        }
-        else { 
-          $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
-        }
-        $nseg++;
+    # determine start and stop positions of all segments
+    my @sgm_start_A  = (); # array of starts, one per segment
+    my @sgm_stop_A   = (); # array of stops, one per segment
+    my @sgm_strand_A = (); # array of strands ("+", "-"), one per segment
+    vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@sgm_start_A, \@sgm_stop_A, \@sgm_strand_A, $FH_HR);
+    my $cur_nseg = scalar(@sgm_start_A);
+    for(my $s = 0; $s < $cur_nseg; $s++) { 
+      $sgm_info_AHR->[$nseg]{"start"}   = $sgm_start_A[$s];
+      $sgm_info_AHR->[$nseg]{"stop"}    = $sgm_stop_A[$s];
+      $sgm_info_AHR->[$nseg]{"strand"}  = $sgm_strand_A[$s];
+      $sgm_info_AHR->[$nseg]{"map_ftr"} = $ftr_idx;
+      if($s == 0) { 
+        $sgm_info_AHR->[$nseg]{"is_5p"} = 1;
+        $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} = $nseg; 
       }
+      else { 
+        $sgm_info_AHR->[$nseg]{"is_5p"} = 0;
+      }
+      if($s == ($cur_nseg-1)) { 
+        $sgm_info_AHR->[$nseg]{"is_3p"} = 1;
+        $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} = $nseg;
+      }
+      else { 
+        $sgm_info_AHR->[$nseg]{"is_3p"} = 0;
+      }
+      $nseg++;
     }
   }
 
@@ -882,31 +865,6 @@ sub vdr_FeatureNumSegments {
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
 }
 
-#################################################################
-# Subroutine: vdr_FeatureIsDuplicate()
-# Incept:      EPN, Sun Mar 10 07:04:24 2019
-#
-# Purpose:    Is feature $ftr_idx a duplicate of another feature?
-#             This is true if $ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx
-#
-# Arguments: 
-#  $ftr_info_AHR:   ref to the feature info array of hashes 
-#  $ftr_idx:        feature index
-#
-# Returns:    1 or 0 
-# 
-# Dies:       never; does not validate anything.
-#
-################################################################# 
-sub vdr_FeatureIsDuplicate { 
-  my $sub_name = "vdr_FeatureIsDuplicate";
-  my $nargs_exp = 2;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($ftr_info_AHR, $ftr_idx) = @_;
-
-  return(($ftr_info_AHR->[$ftr_idx]{"source_idx"} != $ftr_idx) ? 1 : 0);
-}
 
 #################################################################
 # Subroutine: vdr_Feature5pMostPosition()
@@ -1343,7 +1301,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "b_per", "feature",
                    "Peptide Translation Problem", # short description
-                   "mat_peptide may not be translated because a CDS that spans it has a problem", # long description
+                   "mat_peptide may not be translated because its parent CDS has a problem", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -1942,7 +1900,7 @@ sub vdr_CoordsTokenParse {
 #  $start:    start position
 #  $stop:     stop position
 #  $strand:   strand ("+" or "-")
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    coordinate token <start>..<stop>:<strand>
 #
@@ -1974,7 +1932,7 @@ sub vdr_CoordsTokenCreate {
 #  $coords:  coordinate string
 #  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void
+# Returns:   total length of segments in $coords
 #
 # Dies: if unable to parse $coords
 #
@@ -2435,6 +2393,207 @@ sub vdr_CoordsMissing {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsCheckIfSpans()
+# Incept:     EPN, Tue May 21 09:59:24 2019
+#
+# Synopsis: Check if coords value $coords1 completely spans
+#           $coords2. This occurs if every segment in $coords2
+#           is spanned completely by at least 1 segment in 
+#           $coords2.
+# 
+# Arguments:
+#  $coords1: coordinate string 1
+#  $coords2: coordinate string 2
+#  $FH_HR:   REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   '1' if $coords1 completely spans $coords2
+#            '0' if not
+#
+# Dies: if unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsCheckIfSpans {
+  my $sub_name = "vdr_CoordsCheckIfSpans";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords1, $coords2, $FH_HR) = @_;
+  if(! defined $coords1) { ofile_FAIL("ERROR in $sub_name, coords1 is undefined", 1, $FH_HR); }
+  if(! defined $coords2) { ofile_FAIL("ERROR in $sub_name, coords2 is undefined", 1, $FH_HR); }
+
+  my @coords1_A = split(",", $coords1);
+  my @coords2_A = split(",", $coords2);
+
+  foreach my $coords2_tok (@coords2_A) { 
+    my $found_overlap = 0;
+    my $coords2_tok_len = vdr_CoordsLength($coords2_tok, $FH_HR);
+    foreach my $coords1_tok (@coords1_A) { 
+      if(! $found_overlap) { 
+        my ($noverlap, undef) = vdr_CoordsTokenOverlap($coords2_tok, $coords1_tok, $FH_HR);
+        if($noverlap == $coords2_tok_len) { 
+          $found_overlap = 1;
+        }
+      }
+    }
+    if(! $found_overlap) { # no token in $coords2 completely contains $coords1_tok
+      # printf("in $sub_name, coords1: $coords1 coords2: $coords2, returning 0\n");
+      return 0;
+    }
+  }
+
+  # if we get here, there exists a token in $coords2 that completely 
+  # spans each token in $coords1 
+  # printf("in $sub_name, coords1: $coords1 coords2: $coords2, returning 1\n");
+  return 1;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsTokenOverlap()
+# Incept:     EPN, Tue May 21 10:06:26 2019
+#
+# Synopsis: Return number of positions of overlap between 
+#           <$coords_tok1> and <$coords_tok2> on the same 
+#           strand.
+# 
+# Arguments:
+#  $coords_tok1: coordinate token 1
+#  $coords_tok2: coordinate token 2
+#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Number of positions of overap between <$coords1_tok>
+#            and <$coords2_tok> on the same strand.
+#            '0' if no overlap or the two tokens are on opposite strands.
+#
+# Dies: if unable to parse $coords_tok1 or $coords_tok2
+#
+#################################################################
+sub vdr_CoordsTokenOverlap { 
+  my $sub_name = "vdr_CoordsTokenOverlap";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords_tok1, $coords_tok2, $FH_HR) = @_;
+  if(! defined $coords_tok1) { ofile_FAIL("ERROR in $sub_name, coords_tok1 is undefined", 1, $FH_HR); }
+  if(! defined $coords_tok2) { ofile_FAIL("ERROR in $sub_name, coords_tok2 is undefined", 1, $FH_HR); }
+
+  my ($start1, $stop1, $strand1) = vdr_CoordsTokenParse($coords_tok1, $FH_HR);
+  my ($start2, $stop2, $strand2) = vdr_CoordsTokenParse($coords_tok2, $FH_HR);
+
+  if($strand1 ne $strand2) { # strand mismatch
+    return 0;
+  }
+
+  if($strand1 eq "-") { # $strand2 must be "-" too
+    utl_Swap(\$start1, \$stop1); 
+    utl_Swap(\$start2, \$stop2);
+  }
+
+  return seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsProtToNuc()
+# Incept:     EPN, Wed May 22 09:49:30 2019
+#
+# Synopsis: Return nucleotide coordinates that correspond to the 
+#           protein coordinates in the coords string <$pt_coords>
+#           for a protein that is encoded by the the nucleotide
+#           coordinates in the coords string <$nt_coords>.
+#  
+#           Examples:
+#           nt_coords             pt_coords          returns
+#           "11..100:+"            "2..11:+"         "14..43:+"     
+#           "100..11:-"            "2..11:+"         "97..68:-"
+#           "11..40:+,42..101:+"   "2..11:+"         "14..40:+,42..44:+"
+#           "11..100:+"            "2..3:+,5..11:+"  "14..19:+,23..43:+"
+#           "100..11:-"            "2..3:+,5..11:+"  "97..92:-,88..68:-"
+#           "11..40:+,42..101:+"   "2..3:+,5..11:+"  "14..19:+,23..40:+,42..44:+"
+#
+# Arguments:
+#  $nt_coords:  nucleotide coordinates
+#  $pt_coords: protein coordinates to convert to nucleotide coordinates
+#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $pt_coords in nucleotide 
+#            coordinates relative to $nt_coords.
+#            '0' if no overlap or the two tokens are on opposite strands.
+#
+# Dies: if protein coordinates imply positions outside nucleotide coordinates
+#       (protein is too long)
+#       if protein coordinates have a segment on the negative strand
+#
+#################################################################
+sub vdr_CoordsProtToNuc { 
+  my $sub_name = "vdr_CoordsProtToNuc";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($nt_coords, $pt_coords, $FH_HR) = @_;
+  if(! defined $nt_coords) { ofile_FAIL("ERROR in $sub_name, nt_coords is undefined", 1, $FH_HR); }
+  if(! defined $pt_coords) { ofile_FAIL("ERROR in $sub_name, pt_coords is undefined", 1, $FH_HR); }
+
+  my @nt_coords_tok_A = split(",", $nt_coords);
+  my @pt_coords_tok_A = split(",", $pt_coords);
+  my $nt_len = vdr_CoordsLength($nt_coords, $FH_HR);
+  my $pt_len = vdr_CoordsLength($pt_coords, $FH_HR);
+  if(($pt_len * 3) > $nt_len) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, protein length * 3 (%d) exceeds nucleotide length (%d) for protein coords: $pt_coords and nucleotide coords: $nt_coords", (3 * $pt_len), $nt_len), 1, $FH_HR); }
+
+  my $ret_coords = "";
+
+  # printf("in $sub_name, nt_coords: $nt_coords, pt_coords: $pt_coords\n");
+  foreach my $pt_coords_tok (@pt_coords_tok_A) { 
+    # printf("pt_coords_tok: $pt_coords_tok\n");
+    my ($pt_start, $pt_stop, $pt_strand) = vdr_CoordsTokenParse($pt_coords_tok, $FH_HR);
+    if($pt_strand ne "+")      { ofile_FAIL("ERROR in $sub_name, protein strand is not + for token $pt_coords_tok in coords string $pt_coords", 1, $FH_HR); }
+    if($pt_start > $pt_stop) { ofile_FAIL("ERROR in $sub_name, protein strand is + but start coordinate is after stop coordinate ($pt_start > $pt_stop)", 1, $FH_HR); }
+
+    my $pt_tok_len = 
+    my $remaining_conv_tok_nt_len = (($pt_stop - $pt_start) + 1) * 3; # number of nucleotide positions left to convert from protein coords to nt coords
+    my $cur_nt_offset = ($pt_start - 1) * 3; # number of nucleotides to skip from start of $nt_coords_tok when converting protein coords
+    # 
+    foreach my $nt_coords_tok (@nt_coords_tok_A) { 
+      if($remaining_conv_tok_nt_len > 0) { # only need to look at this token if we still have sequence left to convert
+        my ($nt_start, $nt_stop, $nt_strand) = vdr_CoordsTokenParse($nt_coords_tok, $FH_HR);
+        my $nt_coords_tok_len = abs($nt_start - $nt_stop) + 1;
+        my ($conv_start, $conv_stop) = (undef, undef); 
+        if($cur_nt_offset <= $nt_coords_tok_len) { # this nt token has >= 1 nt corresponding to $pt_coords_tok
+          if($nt_strand eq "+") { 
+            $conv_start = $nt_start + $cur_nt_offset;
+            $conv_stop  = $conv_start + $remaining_conv_tok_nt_len - 1;
+            # make sure we didn't go off the end of the nt token
+            if($conv_stop > $nt_stop) { $conv_stop = $nt_stop; }
+          }
+          elsif($nt_strand eq "-") { 
+            $conv_start = $nt_start - $cur_nt_offset;
+            $conv_stop  = $conv_start - $remaining_conv_tok_nt_len + 1;
+            # make sure we didn't go off the end of the nt token
+            if($conv_stop < $nt_stop) { $conv_stop = $nt_stop; }
+          }          
+          else { 
+            ofile_FAIL("ERROR in $sub_name, nt_coords token $nt_coords_tok has strand $nt_strand that is not either + or -", 1, $FH_HR); 
+          }
+          # determine how many more nt we have to cover for this protein coord token
+          $remaining_conv_tok_nt_len -= abs($conv_stop - $conv_start) + 1;
+          
+          # append converted token to return coords string
+          if($ret_coords ne "") { $ret_coords .= ","; }
+          $ret_coords .= vdr_CoordsTokenCreate($conv_start, $conv_stop, $nt_strand, $FH_HR);
+        }   
+        # adjust nt offset so that for next nt coords token we start at the proper position
+        $cur_nt_offset -= $nt_coords_tok_len;
+        if($cur_nt_offset < 0) { 
+          $cur_nt_offset = 0;
+        }
+      }
+    }
+  }
+
+  # printf("in $sub_name, returning $ret_coords\n");
+  return $ret_coords;
+}
+
+#################################################################
 # Subroutine: vdr_EutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
@@ -2443,6 +2602,7 @@ sub vdr_CoordsMissing {
 # Arguments:
 #  $out_file:  output file to create
 #  $accn:      accession to fetch
+#  $db:        database to fetch from (e.g. "nuccore", "protein")
 #  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
 #  $nattempts: number of times to retry 
 #  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
@@ -2453,20 +2613,21 @@ sub vdr_CoordsMissing {
 #################################################################
 sub vdr_EutilsFetchToFile { 
   my $sub_name = "vdr_EutilsFetchToFile";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($out_file, $accn, $format, $nattempts, $FH_HR) = @_;
+  my ($out_file, $accn, $db, $format, $nattempts, $FH_HR) = @_;
   if((! defined $nattempts) || ($nattempts < 1)) { $nattempts = 1; }
 
-  my $url = vdr_EutilsFetchUrl($accn, $format);
+  my $url = vdr_EutilsFetchUrl($accn, $db, $format);
 
   my $n = 0;
   my $fetched_str = undef;
+
   while(($n < $nattempts) && (! defined $fetched_str)) { 
     $fetched_str = get($url);
     $n++;
-    sleep(1);
+    sleep(3);
   }
   if(! defined $fetched_str) { 
     ofile_FAIL("ERROR in $sub_name, problem fetching $accn (undefined)", 1, $FH_HR); 
@@ -2487,6 +2648,7 @@ sub vdr_EutilsFetchToFile {
 #
 # Arguments:
 #  $accn:      accession to fetch
+#  $db:        database to fetch from (e.g. "nuccore", "protein")
 #  $format:    format to fetch (e.g. "gpc", "ft", "fasta")
 #
 # Returns:    void
@@ -2495,12 +2657,12 @@ sub vdr_EutilsFetchToFile {
 #################################################################
 sub vdr_EutilsFetchUrl { 
   my $sub_name = "vdr_EutilsFetchUrl";
-  my $nargs_expected = 2;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($accn, $format) = @_;
+  my ($accn, $db, $format) = @_;
 
-  return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=%s&rettype=%s&retmode=text", $accn, $format);
+  return sprintf("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=%s&id=%s&rettype=%s&retmode=text", $db, $accn, $format);
 }
 
 
@@ -2579,11 +2741,10 @@ sub vdr_ModelInfoFileWrite {
 
     # define feature keys to ignore
     my %ftr_key_ignore_H = ();
-    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, so it goes first
-    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, so it goes second
+    $ftr_key_ignore_H{"type"}           = 1; # this automatically gets added to @key_order_A, just so it goes first
+    $ftr_key_ignore_H{"coords"}         = 1; # this automatically gets added to @key_order_A, just so it goes second
+    $ftr_key_ignore_H{"parent_idx_str"} = 1; # this automatically gets added to @key_order_A, just so it goes third
     $ftr_key_ignore_H{"length"}         = 1; # will be inferred from coords
-    $ftr_key_ignore_H{"source_idx"}     = 1; # will be inferred from coords and type
-    $ftr_key_ignore_H{"parent_idx_str"} = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"3pa_ftr_idx"}    = 1; # will be inferred from coords and type
     $ftr_key_ignore_H{"outname"}        = 1; # will be inferred from product and gene (or lack of)
     $ftr_key_ignore_H{"5p_sgm_idx"}     = 1; # will be inferred from coords, when sgm_info_HA is created
@@ -2592,7 +2753,7 @@ sub vdr_ModelInfoFileWrite {
 
     $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
     # determine order of keys for this feature
-    my @ftr_key_order_A  = ("type", "coords");
+    my @ftr_key_order_A  = ("type", "coords", "parent_idx_str");
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       foreach $key (sort keys %{$ftr_info_HAHR->{$mdl_name}[$ftr_idx]}) { 
         if(! exists $ftr_key_ignore_H{$key}) { 
@@ -2930,12 +3091,6 @@ sub vdr_SplitNumSeqFiles {
 #             fetch all the CDS for all sequences in the Stockholm alignment
 #             and create a new output fasta file with just the CDS features.
 #
-#             We don't really need both the stockholm and fasta file 
-#             if there are no gaps in the stockholm alignment (as is the
-#             case in vadr-build.pl (which requires a single sequence 
-#             'alignment' with no gaps), but this implemenation works for
-#             alignments with gaps too.
-#
 # Arguments:
 #   $out_FH:         output file handle
 #   $stk_file:       stockholm file with aligned full length sequences
@@ -3052,6 +3207,41 @@ sub vdr_CmalignCheckStdOutput {
   }
     
   return -1; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: vdr_ParseSeqFileToSeqHash()
+# Incept:     EPN, Mon May 20 12:19:29 2019
+# 
+# Purpose:    Parse an input sequence file using Bio::Easel::SqFile
+#             and fill %{$seq_HR}. 
+#
+# Arguments:
+#   $infile:   input file
+#   $seq_HR:   sequence hash, key is sequence name, value is string of sequence
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns: void
+#
+# Dies:    if we have trouble parsing the file
+#
+#################################################################
+sub vdr_ParseSeqFileToSeqHash { 
+  my $sub_name = "vdr_ParseSeqFileToSeqHash";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $seq_HR, $FH_HR) = @_;
+
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infile }); # the sequence file object
+  my $nseq = $sqfile->nseq_ssi;
+
+  for(my $sidx = 0; $sidx < $nseq; $sidx++) {
+    my ($sqname, undef) = $sqfile->fetch_seq_name_and_length_given_ssi_number($sidx);
+    $seq_HR->{$sqname} = $sqfile->fetch_next_seq_to_sqstring();
+  }
+  
+  return;
 }
 
 ###########################################################################
