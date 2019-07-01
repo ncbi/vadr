@@ -920,7 +920,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
           }
           if($found_ftr_idx != -1) { # the feature already exists update its parent string
             if((! defined $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"}) || 
-               ($ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} eq "")) { 
+               ($ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} eq "GBNULL")) { 
               $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} = $ftr_idx;
             }
             else { 

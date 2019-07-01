@@ -186,7 +186,7 @@ sub vdr_FeatureInfoImputeLength {
 # Subroutine: vdr_FeatureInfoInitializeParentIndexStrings
 # Incept:     EPN, Wed Mar 13 13:33:33 2019
 # 
-# Purpose:    Set "parent_idx_str" value to "" for any feature 
+# Purpose:    Set "parent_idx_str" value to "GBNULL" for any feature 
 #             in which it is not already defined in @{$ftr_info_AHR}
 # 
 # Arguments:
@@ -208,7 +208,7 @@ sub vdr_FeatureInfoInitializeParentIndexStrings {
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
-      $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = "";
+      $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = "GBNULL";
     }
   }
 
@@ -586,9 +586,11 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
 
   # fill
   for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
-    my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
-    foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
-      push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+    if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
+      my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+      foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+        push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+      }
     }
   }
 
