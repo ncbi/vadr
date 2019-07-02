@@ -1413,10 +1413,10 @@ sub vdr_AlertInfoInitialize {
   # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
 
-  # n_trc, n_ext and n_nst are preferred to n_stp
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "n_trc,n_ext,n_nst", $FH_HR); 
+  # unexpstpn, mutendex, mutendns are preferred to mutendcd
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "unexstpn,mutendex,mutendns", $FH_HR); 
 
-  # n_div is preferred to b_zft
+  # unexdivg is preferred to noftrann
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);
 
   # validate the alert info hash

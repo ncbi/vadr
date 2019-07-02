@@ -68,27 +68,27 @@ require "epn-utils.pm";
 # 
 # List of subroutines in which errors are detected and added:
 # 1. add_classification_alerts()
-#    c_noa, c_los, c_idc, c_qsg, c_qgr, c_isg, c_igr, c_mst, c_loc, c_hbi (10)
+#    noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, minusstr, lowcovrg, biasdseq (10)
 #
-# 2. alert_add_n_div()
-#    n_div (1)
+# 2. alert_add_unexdivg()
+#    unexdivg (1)
 #
 # 3. cmalign_parse_stk_and_add_alignment_alerts()
-#    n_gp5, n_lp5, n_gp3, n_lp3 (4)
+#    indf5gap, indf5loc, indf3gap, indf3loc (4)
 #
 # 4. fetch_features_and_add_cds_and_mp_alerts()
-#    n_str, n_nm3, n_stp, n_ext, n_nst, n_trc, b_per* (7)
+#    mutstart, unexleng, mutendcd, mutendex, mutendns, unexstpn, peptrans* (7)
 #
 # 5. add_blastx_alerts()
-#    b_nop, b_cst, b_p5l, b_p5s, b_p3l, b_p3s, p_lin, p_lde, p_trc, b_non, b_per* (11)
+#    indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, unexstpp, indfantp, peptrans* (11)
 #
-# 6. alert_add_b_zft()
-#    b_zft (1)
+# 6. alert_add_noftrann()
+#    noftrann (1)
 # 
 # 7. add_low_similarity_alerts()
-#    x_fss, x_fse, x_fsi, c_lss, c_lse, c_lsi, b_per* (7)
+#    lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis, peptrans* (7)
 # 
-# * b_per errors can be added in multiple places, and are only added once per feature
+# * peptrans errors can be added in multiple places, and are only added once per feature
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -703,7 +703,7 @@ add_classification_alerts(\%alt_seq_instances_HH, \%seq_len_H, \@mdl_info_AH, \%
 # Align sequences
 ##################
 # create per-model files again, because some classification alerts can cause sequences not to be annotated 
-# (e.g. c_mst (minus strand))
+# (e.g. minusstr (minus strand))
 # zero out %mdl_seq_name_HA and %mdl_seq_len_H, we'll refill them 
 %mdl_seq_name_HA = ();
 %mdl_seq_len_H = ();
@@ -729,7 +729,7 @@ my %sgm_results_HHAH  = ();     # 1st dim: hash, keys are model names
                                 # 4th dim: hash, keys are "sstart", "sstop", "mstart", "mstop", "strand", "5seqflush", "3seqflush", "5trunc", "3trunc"
 my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
                                 # key1: sequence name, key2: feature index, key3: alert code, value: alert message
-my %mdl_n_div_H = ();           # key is model name, value is number of n_div alerts thrown for that model in alignment stage
+my %mdl_unexdivg_H = ();           # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
 
 # for each model with seqs to align to, create the sequence file and run cmalign
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -749,10 +749,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                     $mdl_seq_len_H{$mdl_name}, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
-    # add n_div errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
-    $mdl_n_div_H{$mdl_name} = scalar(@overflow_seq_A);
-    if($mdl_n_div_H{$mdl_name} > 0) { 
-      alert_add_n_div(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+    # add unexdivg errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
+    $mdl_unexdivg_H{$mdl_name} = scalar(@overflow_seq_A);
+    if($mdl_unexdivg_H{$mdl_name} > 0) { 
+      alert_add_unexdivg(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
     }
   }
 }
@@ -774,7 +774,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $cmalign_ifile_file  = $out_root . "." . $mdl_name . ".align.ifile";
 
     # parse the cmalign --ifile file
-    if($mdl_nseq > $mdl_n_div_H{$mdl_name}) { # at least 1 sequence was aligned
+    if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
       cmalign_parse_ifile($cmalign_ifile_file, \%seq_inserts_HH, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($cmalign_stdout_file, $cmalign_ifile_file));
     }
@@ -840,13 +840,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##############################################################
-# Add b_zft errors for sequences with zero annotated features
+# Add noftrann errors for sequences with zero annotated features
 ##############################################################
-# add per-sequence 'b_zft' errors (zero annotated features)
+# add per-sequence 'noftrann' errors (zero annotated features)
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    alert_add_b_zft(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
+    alert_add_noftrann(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
                     \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
   }
 }
@@ -996,8 +996,8 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 # alert_feature_instance_add 
 # alert_sequence_instance_fetch
 # alert_feature_instance_fetch
-# alert_add_b_zft 
-# alert_add_n_div 
+# alert_add_noftrann 
+# alert_add_unexdivg 
 # alert_instances_check_prevents_annot
 #
 # Subroutines for creating output:
@@ -1542,7 +1542,7 @@ sub add_classification_alerts {
     my $alt_str = "";
     %{$cls_output_HHR->{$seq_name}} = ();
 
-    # check for c_noa alert: no hits in round 1 search
+    # check for noannotn alert: no hits in round 1 search
     # or >=1 hits in round 1 search but 0 hits in round 2 search (should be rare)
     if((! defined $cls_results_HHHR->{$seq_name}) || 
        ((defined $cls_results_HHHR->{$seq_name}) &&
@@ -1568,12 +1568,12 @@ sub add_classification_alerts {
       $cls_output_HHR->{$seq_name}{"scpnt"} = $scpnt2print;
       $cls_output_HHR->{$seq_name}{"score"} = sprintf("%.1f", $score_H{"r1.1"});
 
-      # low score (c_los)
+      # low score (lowscore)
       if($scpnt_H{"r1.1"} < $lowsc_opt) { 
         alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR,  "lowscore", $seq_name, $scpnt2print . "<" . $lowsc_opt2print . " bits/nt", $FH_HR);
       }
 
-      # indefinite classification (c_idc))
+      # indefinite classification (indfclas))
       if(defined $scpnt_H{"r1.2"}) { 
         my $diffpnt = $scpnt_H{"r1.1"} - $scpnt_H{"r1.2"};
         my $diffpnt2print = sprintf("%.3f", $diffpnt);
@@ -1589,17 +1589,17 @@ sub add_classification_alerts {
         }
       }
 
-      # incorrect group (c_igr) 
+      # incorrect group (incgroup) 
       # - $exp_group must be defined 
-      # - no hits in r1.eg (no hits to group) (c_igr)
+      # - no hits in r1.eg (no hits to group) (incgroup)
       # OR 
       # - hit(s) in r1.eg but scpernt diff between
-      #   r1.eg and r1.1 exceeds incspec_opt (c_igr)
+      #   r1.eg and r1.1 exceeds incspec_opt (incgroup)
       #
-      # questionable group (c_qgr)
+      # questionable group (qstgroup)
       # - $exp_group must be defined 
       # - hit(s) in r1.eg but scpernt diff between
-      #   r1.eg and r1.1 does not exceed incspec_opt (c_qgr)
+      #   r1.eg and r1.1 does not exceed incspec_opt (qstgroup)
       #
       my $igr_flag = 0;
       my $qgr_flag = 0;
@@ -1628,18 +1628,18 @@ sub add_classification_alerts {
 
       # incorrect subgroup (c_sgr) 
       # - $exp_subgroup must be defined 
-      # - c_igr not already reported
-      # - no hits in r1.esg (no hits to group) (c_isg)
+      # - incgroup not already reported
+      # - no hits in r1.esg (no hits to group) (incsbgrp)
       # OR 
       # - hit(s) in r1.esg but scpernt diff between
-      #   r1.esg and r1.1 exceeds incspec_opt (c_isg)
+      #   r1.esg and r1.1 exceeds incspec_opt (incsbgrp)
       #
-      # questionable subgroup (c_qsg)
+      # questionable subgroup (qstsbgrp)
       # - $exp_subgroup must be defined 
       # - i_qgr not already reported
-      # - c_qgr not already reported
+      # - qstgroup not already reported
       # - hit(s) in r1.esg but scpernt diff between
-      #   r1.esg and r1.1 does not exceed incspec_opt (c_qsg)
+      #   r1.esg and r1.1 does not exceed incspec_opt (qstsbgrp)
       #
       if((! $igr_flag) && (defined $exp_subgroup)) { 
         if(! defined $scpnt_H{"r1.esg"}) { 
@@ -1676,23 +1676,23 @@ sub add_classification_alerts {
         $cls_output_HHR->{$seq_name}{"scov"} = $scov2print;
         $cls_output_HHR->{$seq_name}{"mcov"} = $mcov2print;
       
-        # minus strand (c_mst)
+        # minus strand (minusstr)
         if($cls_results_HHHR->{$seq_name}{"r2.bs"}{"bstrand"} eq "-") { 
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "minusstr", $seq_name, "VADRNULL", $FH_HR);
         }
 
-        # low coverage (c_loc)
+        # low coverage (lowcovrg)
         if($scov < $lowcov_opt) { 
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowcovrg", $seq_name, $scov2print . "<" . $lowcov_opt2print, $FH_HR);
         }
 
-        # high bias (c_hbi) 
+        # high bias (biasdseq) 
         if($bias_fract > $biasfract_opt) { 
           my $bias_fract2print = sprintf("%.3f", $bias_fract);
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . "<" . $biasfract_opt2print, $FH_HR);
         }
 
-        # inconsistent hits: multiple strands (c_bst) 
+        # inconsistent hits: multiple strands (indfstrn) 
         if(defined $cls_results_HHHR->{$seq_name}{"r2.os"}) { 
           my @ostrand_score_A = split(",", $cls_results_HHHR->{$seq_name}{"r2.os"}{"score"});
           my $top_ostrand_score = $ostrand_score_A[0];
@@ -1709,7 +1709,7 @@ sub add_classification_alerts {
           }
         }
 
-        # inconsistent hits: duplicate regions (c_dpr) 
+        # inconsistent hits: duplicate regions (dupregin) 
         $alt_str = "";
         if($nhits > 1) { 
           my @m_start_A = ();
@@ -1737,7 +1737,7 @@ sub add_classification_alerts {
           }
         }
       
-        # inconsistent hits: wrong hit order (c_dcs)
+        # inconsistent hits: wrong hit order (discontg)
         if($nhits > 1) { 
           my $i;
           my @seq_hit_order_A = (); # array of sequence boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
@@ -1787,7 +1787,7 @@ sub add_classification_alerts {
         $cls_output_HHR->{$seq_name}{"group2"}    = $cls_results_HHHR->{$seq_name}{"r1.2"}{"group"};    # can be undef
         $cls_output_HHR->{$seq_name}{"subgroup2"} = $cls_results_HHHR->{$seq_name}{"r1.2"}{"subgroup"}; # can be undef
       }
-    } # else entered if we didn't report a c_noa alert
+    } # else entered if we didn't report a noannotn alert
   } # end of foreach seq loop
 
   return;
@@ -2375,10 +2375,10 @@ sub cmalign_parse_ifile {
 #             
 #             Detects and adds the following alerts to 
 #             @{$alt_ftr_instances_AAHR}:
-#             n_gp5: gap at 5' boundary of model span for a feature segment
-#             n_gp3: gap at 5' boundary of model span for a feature segment
-#             n_lp5: low posterior prob at 5' boundary of model span for a feature segment
-#             n_lp3: low posterior prob at 5' boundary of model span for a feature segment
+#             indf5gap: gap at 5' boundary of model span for a feature segment
+#             indf3gap: gap at 5' boundary of model span for a feature segment
+#             indf5loc: low posterior prob at 5' boundary of model span for a feature segment
+#             indf3loc: low posterior prob at 5' boundary of model span for a feature segment
 #
 # Arguments: 
 #  $stk_file:               stockholm alignment file to parse
@@ -2743,8 +2743,8 @@ sub cmalign_store_overflow {
 # Incept:     EPN, Fri Feb 22 14:25:49 2019
 #
 # Purpose:   For each sequence, fetch each feature sequence, and 
-#            detect n_str, n_trc, n_stp, n_nst, n_ext, and n_nm3 alerts 
-#            where appropriate. For n_trc alerts, correct the predictions
+#            detect mutstart, unexstpn, mutendcd, mutendns, mutendex, and unexleng alerts 
+#            where appropriate. For unexstpn alerts, correct the predictions
 #            and fetch the corrected feature.
 #
 # Arguments:
@@ -2822,7 +2822,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
 
       my %alt_str_H = (); # added to as we find alerts below
-      # n_str, n_nm3, n_stp, n_ext, n_nst, n_trc
+      # mutstart, unexleng, mutendcd, mutendex, mutendns, unexstpn
       my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
       
       for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
@@ -2913,7 +2913,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               
               if($ftr_is_cds) { 
-                # check that final add codon is a valid stop, and add 'n_stp' alert if not
+                # check that final add codon is a valid stop, and add 'mutendcd' alert if not
                 if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
                   $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
                                                 substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
@@ -2922,12 +2922,12 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                 if($ftr_nxt_stp_A[1] != $ftr_len) { 
                   # first stop codon 3' of $ftr_start is not $ftr_stop
                   # We will need to add an alert, (exactly) one of:
-                  # 'n_ext': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                  # 'n_nst': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                  # 'n_trc': an early stop exists in $ftr_sqstring
+                  # 'mutendex': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                  # 'mutendns': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                  # 'unexstpn': an early stop exists in $ftr_sqstring
                   if($ftr_nxt_stp_A[1] == 0) { 
                     # there are no valid in-frame stops in $ftr_sqstring
-                    # we have a 'n_nst' or 'n_ext' alert, to find out which 
+                    # we have a 'mutendns' or 'mutendex' alert, to find out which 
                     # we need to fetch the sequence ending at $fstop to the end of the sequence 
                     if($ftr_stop < $seq_len) { 
                       # we have some sequence left 3' of ftr_stop
@@ -2941,7 +2941,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                       my @ext_nxt_stp_A = ();
                       sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
                       if($ext_nxt_stp_A[1] != 0) { 
-                        # there is an in-frame stop codon, n_ext alert
+                        # there is an in-frame stop codon, mutendex alert
                         # determine what position it is
                         $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
                         $alt_str_H{"mutendex"} = $ftr_stop_c;
@@ -2950,13 +2950,13 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                     if(! defined $ftr_stop_c) { 
                       # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
                       # or we checked the sequence but didn't find any
-                      # either way, we have a n_nst alert:
+                      # either way, we have a mutendns alert:
                       $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                       $alt_str_H{"mutendns"} = "VADRNULL";
                     }
                   } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
                   else { 
-                    # there is an early stop (n_trc) in $ftr_sqstring
+                    # there is an early stop (unexstpn) in $ftr_sqstring
                     if($ftr_nxt_stp_A[1] > $ftr_len) { 
                       # this shouldn't happen, it means there's a bug in sqstring_find_stops()
                       ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
@@ -2970,7 +2970,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           } # end of 'if($ftr_is_cds_or_mp)'
         } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
 
-        # if we added an alert for a CDS, step through all children of this feature (if any) and add b_per
+        # if we added an alert for a CDS, step through all children of this feature (if any) and add peptrans
         my $alt_flag = 0;
         foreach my $alt_code (sort keys %alt_str_H) { 
           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
@@ -3007,7 +3007,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           my $stop_5p  = ($sgm_5p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"sstop"}  : undef;
           my $start_3p = ($sgm_3p_valid) ? $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"sstart"} : undef;
           
-          # Three ways we can get a 'n_adj' alert: 
+          # Three ways we can get a 'pepadjcy' alert: 
           if($sgm_5p_valid && $sgm_3p_valid) { # both are valid 
             if((abs($stop_5p - $start_3p)) != 1) { # they're not adjacent
               # 1) both mature peptides are annotated but not adjacent, alert on $ftr_idx
@@ -3158,7 +3158,7 @@ sub sqstring_find_stops {
   $nxt_stp_AR->[$sqlen]     = 0;
 
 #  for($i = 1; $i <= $sqlen; $i++) { 
-#    printf("HEYA position $i: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
+#    printf("position $i: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
 #  }
 
   return;
@@ -3170,8 +3170,8 @@ sub sqstring_find_stops {
 #
 # Purpose:   For each sequence with >1 hits in the sequence coverage
 #            determine stage (r2 search stage), report any 
-#            low similarity per-sequence alerts (c_lss, c_lse, c_lsi) and
-#            low similarity per-feature alerts (x_fss, x_fse, x_fsi). 
+#            low similarity per-sequence alerts (lowsim5s, lowsim3s, lowsimis) and
+#            low similarity per-feature alerts (lowsim5f, lowsim3f, lowsimif). 
 #
 # Arguments:
 #  $mdl_name:               name of model these sequences were assigned to
@@ -3288,7 +3288,7 @@ sub add_low_similarity_alerts {
                   }
                 }
               }
-              if($nftr_overlap == 0) { # no features overlapped, throw c_lss, c_lse, or c_lsi
+              if($nftr_overlap == 0) { # no features overlapped, throw lowsim5s, lowsim3s, or lowsimis
                 my $alt_str = "low similarity region of length $length ($start..$stop)";
                 if($is_start) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
@@ -3465,7 +3465,7 @@ sub add_blastx_alerts {
             }
 
             # add alerts as needed:
-            # check for b_non
+            # check for indfantp
             if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
               # no nucleotide-based prediction but there is a protein-based blastx prediction
               # only add this if length meets our minimum
@@ -3474,14 +3474,14 @@ sub add_blastx_alerts {
               }
             }
             if(defined $n_start) { 
-              # check for b_nop
+              # check for indfantn
               if(! defined $p_start) { 
                 $alt_str_H{"indfantn"} = "VADRNULL";
               }
               else { 
                 # we have both $n_start and $p_start, we can compare CM and blastx predictions
 
-                # check for b_cst: strand mismatch failure, differently depending on $p_feature_flag
+                # check for indfstrp: strand mismatch failure, differently depending on $p_feature_flag
                 if(((  $p_feature_flag) && ($p_strand eq "-")) || 
                    ((! $p_feature_flag) && ($n_strand ne $p_strand))) { 
                   $alt_str_H{"indfstrp"} = "";
@@ -3503,25 +3503,25 @@ sub add_blastx_alerts {
                     $p_start2print = $p_start;
                     $p_stop2print  = $p_stop;
                   }
-                  # check for 'b_p5l': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
+                  # check for 'indf5plg': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
                   if((! $p_feature_flag) && 
                      ((($n_strand eq "+") && ($p_start < $n_start)) || 
                       (($n_strand eq "-") && ($p_start > $n_start)))) { 
                     $alt_str_H{"indf5plg"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
                   }
-                  # check for 'b_p5s': blastx 5' end too short, not within $aln_tol nucleotides
-                  if(! exists $alt_str_H{"indf5plg"}) { # only add b_p5s if b_p5l does not exist
+                  # check for 'indf5pst': blastx 5' end too short, not within $aln_tol nucleotides
+                  if(! exists $alt_str_H{"indf5plg"}) { # only add indf5pst if indf5plg does not exist
                     if($start_diff > $aln_tol) { 
                       $alt_str_H{"indf5pst"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
                     }                
                   }
-                  # check for 'b_p3l': blastx alignment extends outside of nucleotide/CM alignment on 3' end
+                  # check for 'indf3plg': blastx alignment extends outside of nucleotide/CM alignment on 3' end
                   if((! $p_feature_flag) && 
                      ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
                       (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
                     $alt_str_H{"indf3plg"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
                   }
-                  # check for 'b_p3s': blastx 3' end too short, not within $aln_tol nucleotides
+                  # check for 'indf3pst': blastx 3' end too short, not within $aln_tol nucleotides
                   # for the stop coordinates, we do this differently if the nucleotide prediction 
                   # includes the stop codon or not, if it does, we allow 3 more positions different
                   my $cur_aln_tol = undef;
@@ -3539,12 +3539,12 @@ sub add_blastx_alerts {
                     $cur_aln_tol  = $aln_tol;
                     $cur_stop_str = "no valid stop codon";
                   }
-                  if(! exists $alt_str_H{"indf3plg"}) { # only add b_p3s if b_p3l does not exist
+                  if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
                     if($stop_diff > $cur_aln_tol) { 
                       $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
                     }
                   }
-                  # check for 'p_lin': too long of an insert
+                  # check for 'insertnp': too long of an insert
                   if(defined $p_ins) { 
                     my @p_ins_qpos_A = ();
                     my @p_ins_spos_A = ();
@@ -3558,7 +3558,7 @@ sub add_blastx_alerts {
                       }
                     }
                   }
-                  # check for 'p_lde': too long of a deletion
+                  # check for 'deletinp': too long of a deletion
                   if(defined $p_del) { 
                     my @p_del_qpos_A = ();
                     my @p_del_spos_A = ();
@@ -3572,7 +3572,7 @@ sub add_blastx_alerts {
                       }
                     }
                   }
-                  # check for 'p_trc': blast predicted truncation
+                  # check for 'unexstpp': blast predicted truncation
                   if(defined $p_trcstop) { 
                     $alt_str_H{"unexstpp"} = "stop codon(s) end at position(s) $p_trcstop";
                   }
@@ -4048,7 +4048,7 @@ sub helper_blastx_breakdown_max_indel_str {
   
   my ($in_str, $qpos_AR, $spos_AR, $len_AR, $FH_HR) = (@_);
 
-  # printf("in $sub_name, in_str: $in_str\n");
+  # printf("in $sub_name, imutstart: $in_str\n");
 
   my @str_A = split(";", $in_str); 
   foreach my $str (@str_A) { 
@@ -4127,8 +4127,8 @@ sub helper_blastx_db_seqname_to_ftr_idx {
 # alert_list_option
 # alert_feature_instance_add 
 # alert_sequence_instance_add 
-# alert_add_b_zft 
-# alert_add_n_div 
+# alert_add_noftrann 
+# alert_add_unexdivg 
 # alert_instances_check_prevents_annot
 #
 #################################################################
@@ -4563,9 +4563,9 @@ sub alert_feature_instance_fetch {
 }
 
 #################################################################
-# Subroutine: alert_add_b_zft()
+# Subroutine: alert_add_noftrann()
 # Incept:     EPN, Thu Jan 24 12:31:16 2019
-# Purpose:    Adds b_zft alerts for sequences with 0 predicted features.
+# Purpose:    Adds noftrann alerts for sequences with 0 predicted features.
 #
 # Arguments:
 #  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
@@ -4582,8 +4582,8 @@ sub alert_feature_instance_fetch {
 # Dies:     never
 #
 #################################################################
-sub alert_add_b_zft { 
-  my $sub_name = "alert_add_b_zft";
+sub alert_add_noftrann { 
+  my $sub_name = "alert_add_noftrann";
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -4619,9 +4619,9 @@ sub alert_add_b_zft {
 }
 
 #################################################################
-# Subroutine: alert_add_n_div()
+# Subroutine: alert_add_unexdivg()
 # Incept:     EPN, Thu Feb  7 11:54:56 2019
-# Purpose:    Adds n_div alerts for sequences listed in the array @overflow_seq_A, if any.
+# Purpose:    Adds unexdivg alerts for sequences listed in the array @overflow_seq_A, if any.
 #
 # Arguments:
 #  $overflow_seq_AR:         REF to array of sequences that failed due to matrix overflows, pre-filled
@@ -4636,8 +4636,8 @@ sub alert_add_b_zft {
 # Dies:     never
 #
 #################################################################
-sub alert_add_n_div { 
-  my $sub_name = "alert_add_n_div";
+sub alert_add_unexdivg { 
+  my $sub_name = "alert_add_unexdivg";
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -5630,7 +5630,7 @@ sub helper_ftable_coords_from_nt_prediction {
 # Purpose:    Given a sequence name and feature index, construct
 #             a feature table coordinate string, possibly of 
 #             multiple lines, one per segment, for the special
-#             case that this feature has a 'b_non' alert: blastx 
+#             case that this feature has a 'indfantp' alert: blastx 
 #             prediction but no CM prediction.
 #
 # Arguments: 
@@ -5654,7 +5654,7 @@ sub helper_ftable_coords_prot_only_prediction {
 
   my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_results_HAHR, $FH_HR) = @_;
 
-  # NOTE: for 'b_non' alerts, the x_start and x_stop are always set at the feature level
+  # NOTE: for 'indfantp' alerts, the x_start and x_stop are always set at the feature level
   if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ||
      (! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"})) { 
     ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
@@ -6003,7 +6003,7 @@ sub helper_ftable_process_feature_alerts {
     return 0; 
   }
 
-  # printf("HEYA in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
+  # printf("in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
 
   # create a hash of all alerts in the input $alt_str
   my %input_alt_code_H = (); # $input_slt_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
