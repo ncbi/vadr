@@ -11,11 +11,11 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm"; 
-require "epn-options.pm";
-require "epn-ofile.pm";
-require "epn-seq.pm";
-require "epn-seqfile.pm";
-require "epn-utils.pm";
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seq.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -111,7 +111,7 @@ $execs_H{"parse_blastx"}      = $env_vadr_scripts_dir  . "/parse_blastx.pl";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
-# Command line and option processing using epn-options.pm
+# Command line and option processing using sqp_opts.pm
 #
 # opt_HH: 2D hash:
 #         1D key: option name (e.g. "-h")
@@ -1050,7 +1050,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #  $nseq:            number of sequences in $seq_file
 #  $tot_len_nt:      total length of all nucleotides in $seq_file
 #  $progress_w:      width for outputProgressPrior output
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information
 #
 # Returns:     void, updates $$nfa_created_R with number of
@@ -1184,7 +1184,7 @@ sub cmsearch_or_cmscan_wrapper {
 #  $opt_str:          option string for cmsearch run
 #  $out_file_HR:      ref to hash of output files to create
 #                     required keys: "stdout", "tblout", "err"
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information
 # 
 # Returns:     void
@@ -1484,7 +1484,7 @@ sub cmsearch_or_cmscan_store_hit {
 #  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
 #  $cls_results_HHHR:        REF to 3D hash with classification search results, PRE-FILLED
 #  $cls_output_HHR:          REF to 2D hash of classification output info, FILLED HERE 
-#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
 # Returns:  void
@@ -1923,7 +1923,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #  $stk_file_AR:           ref to array of stockholm files created here, FILLED HERE
 #  $overflow_seq_AR:       ref to array of sequences that failed due to matrix overflows, FILLED HERE
 #  $overflow_mxsize_AR:    ref to array of required matrix sizes for each sequence that failed due to matrix overflows, FILLED HERE
-#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information
 #
 # Returns:     void, updates $$nfa_created_R with number of
@@ -2095,7 +2095,7 @@ sub cmalign_wrapper {
 #  $mxsize_AR:             ref to array of required matrix sizes, can be undef if $executable is "cmsearch"
 #                          $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
 #                                           else set to '0'
-#  $opt_HHR:               REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information
 #
 # Returns:     void
@@ -2203,7 +2203,7 @@ sub cmalign_wrapper_helper {
 #  $out_file_HR:      ref to hash of output files to create
 #                     required keys: "stdout", "ifile", "tfile", "stk", "err"
 #  $ret_mxsize_R:     REF to required matrix size, only filled if return value is '0'
-#  $opt_HHR:          REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information
 # 
 # Returns:     '1' upon success, which occurs if
@@ -2759,7 +2759,7 @@ sub cmalign_store_overflow {
 #  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
 #  $ftr_results_HAHR:       REF to feature results HAH, added to here
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
 #             
 # Returns:  void
@@ -3185,7 +3185,7 @@ sub sqstring_find_stops {
 #  $ftr_results_HAHR:       REF to feature results HAH, added to here
 #  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:         REF to the 2D hash of output file information
 #             
 # Returns:  void
@@ -3357,7 +3357,7 @@ sub add_low_similarity_alerts {
 #  $alt_info_HHR:           REF to array of hashes with information on the alerts, PRE-FILLED
 #  $ftr_results_HAHR:       REF to feature results HAH, PRE-FILLED
 #  $alt_ftr_instances_HHHR: REF to alert instances HAH, ADDED TO HERE
-#  $opt_HHR:                REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:                  REF to hash of file handles
 #
 # Returns:    void
@@ -3619,7 +3619,7 @@ sub add_blastx_alerts {
 #  $out_root:          output root for the file names
 #  $mdl_info_HR:       REF to hash of model info
 #  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
-#  $opt_HHR:           REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
@@ -3702,7 +3702,7 @@ sub run_blastx_and_summarize_output {
 #  $seq_len_HR:          REF to hash of sequence lengths
 #  $ftr_info_AHR:        REF to array of hashes with feature info 
 #  $ftr_results_HAHR:    REF to feature results HAH, ADDED TO HERE
-#  $opt_HHR:             REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
@@ -4574,7 +4574,7 @@ sub alert_feature_instance_fetch {
 #  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, ADDED TO HERE
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $FH_HR:                   REF to hash of file handles, including 'log'
 #             
 # Returns:  void
@@ -4628,7 +4628,7 @@ sub alert_add_noftrann {
 #  $overflow_mxsize_AR:      REF to array of required matrix sizes for each sequence that failed due to matrix overflows, pre-filled
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_info_HHR:            REF to the alert info hash of arrays, PRE-FILLED
-#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
 # Returns:  void
@@ -4721,7 +4721,7 @@ sub alert_instances_check_prevents_annot {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
 # Returns:  Two values:
@@ -5327,7 +5327,7 @@ sub helper_tabular_replace_spaces {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                 REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
 # Returns:  Number of sequences that 'pass'.

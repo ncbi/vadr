@@ -11,11 +11,11 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm";
-require "epn-options.pm";
-require "epn-ofile.pm";
-require "epn-seq.pm";
-require "epn-seqfile.pm";
-require "epn-utils.pm";
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seq.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -55,7 +55,7 @@ $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
-# Command line and option processing using epn-options.pm
+# Command line and option processing using sqp_opts.pm
 #
 # opt_HH: 2D hash:
 #         1D key: option name (e.g. "-h")
@@ -741,7 +741,7 @@ exit 0;
 # Arguments:
 #  $in_stk_file:  input stockholm file to validate
 #  $exp_sqstring: sequence we expect to be in the stockholm alignment
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $opt_HHR:      REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    '1' if Stockholm file has SS_cons annotation, else '0'

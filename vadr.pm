@@ -46,6 +46,12 @@ use warnings;
 use Cwd;
 use LWP::Simple; 
 
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seq.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
+
 #########################################################################################
 #
 # Subroutines related to features or segments:
@@ -1725,7 +1731,7 @@ sub vdr_ParseQsubFile {
 #   $err_file:       name of err file to create, can be "/dev/null"
 #   $mem_gb:         number of Gb of memory required
 #   $nsecs:          maximum number of seconds to allow jobs to take
-#   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#   $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
 #   $ofile_info_HHR: REF to the 2D hash of output file information, ADDED TO HERE 
 #
 # Returns:    amount of time the command took, in seconds
@@ -3072,7 +3078,7 @@ sub vdr_FeatureInfoMerge {
 #  $esl_ssplit:      path to the esl-ssplit.pl script to use
 #  $fasta_file:      fasta file to split up
 #  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
-#  $opt_HHR:         REF to 2D hash of option values, see top of epn-options.pm for description
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information
 # 
 # Returns:    Number of files actually created (can differ from requested
