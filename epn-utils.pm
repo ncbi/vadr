@@ -1488,6 +1488,44 @@ sub utl_FileLinesToArray {
 }
 
 #################################################################
+# Subroutine:  utl_FileLinesToHash()
+# Incept:      EPN, Tue Jul  2 09:20:13 2019
+#
+# Purpose:     Store each non-blank line in a file as an key
+#              in an array, after removing newline. Values for
+#              all keys will be '1'.
+#
+# Arguments: 
+#   $filename:                   file that we are parsing
+#   $remove_trailing_whitespace: '1' to remove trailing whitespace in each line, '0' not to
+#   $HR:                         ref to array to add to
+#   $FH_HR:                      ref to hash of file handles
+# 
+# Returns:     Nothing.
+# 
+# Dies:        If $filename does not exist or cannot be opened for reading.
+#
+################################################################# 
+sub utl_FileLinesToHash { 
+  my $nargs_expected = 4;
+  my $sub_name = "utl_FileLinesToHash()";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($filename, $remove_trailing_whitespace, $HR, $FH_HR) = @_;
+
+  open(IN, $filename) || ofile_FileOpenFailure($filename, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line =~ /\S/) { 
+      chomp $line;
+      if($remove_trailing_whitespace) { $line =~ s/\s*$//; }
+      $HR->{$line} = 1;
+    }
+  }
+  close(IN);
+
+  return;
+}
+
+#################################################################
 # Subroutine:  utl_FileRemoveList()
 # Incept:      EPN, Fri Oct 19 12:44:05 2018 [ribovore]
 #

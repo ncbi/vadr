@@ -532,6 +532,20 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
   }
 }
 
+# make sure $cm_file includes CMs for all models we just read in $modelinfo_file
+my $cm_name_file = $out_root . ".cm.namelist";
+my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
+utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+my %cm_name_H = ();
+utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(! exists $cm_name_H{$mdl_name}) { 
+    ofile_FAIL("ERROR, read model named $mdl_name in model info file ($modelinfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
+  }
+}
+push(@to_remove_A, $cm_name_file);
+    
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
