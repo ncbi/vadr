@@ -34,8 +34,8 @@ echo "------------------------------------------------"
 echo "Installing vadr ... "
 curl -k -L -o vadr-$VERSION.zip https://github.com/nawrockie/vadr/archive/$VERSION.zip; unzip vadr-$VERSION.zip; mv vadr-$VERSION vadr; rm vadr-$VERSION.zip
 
-# epn-options, epn-ofile, and Bio-Easel
-for m in epn-options epn-ofile Bio-Easel; do 
+# sequip and Bio-Easel
+for m in sequip Bio-Easel; do 
     echo "Installing $m ... "
     curl -k -L -o $m-$VVERSION.zip https://github.com/nawrockie/$m/archive/$VVERSION.zip; unzip $m-$VVERSION.zip; mv $m-$VVERSION $m; rm $m-$VVERSION.zip
     # we can't leave these directories with $VVERSION because vadr scripts expect non-versioned names
@@ -107,8 +107,9 @@ echo "export VADRMODELDIR=\"$VADRINSTALLDIR/vadr-models\""
 echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal-dev/src\""
 echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal-dev/easel/miniapps\""
 echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
+echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
 echo "export VADRBLASTDIR=\"/usr/bin\""
-echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRINSTALLDIR/epn-options\":\"\$VADRINSTALLDIR/epn-ofile\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
+echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "export PATH=\"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""
 echo "After adding the export lines to your .bashrc file, source that file"
@@ -127,8 +128,9 @@ echo "setenv VADRMODELDIR \"$VADRINSTALLDIR/vadr-models\""
 echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal-dev/src\""
 echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal-dev/easel/miniapps\""
 echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
+echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
 echo "setenv VADRBLASTDIR \"/usr/bin\""
-echo "setenv PERL5LIB \"\$VADRSCRIPTSDIR\":\"\$VADRINSTALLDIR/epn-options\":\"\$VADRINSTALLDIR/epn-ofile\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
+echo "setenv PERL5LIB \"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "setenv PATH \"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""
 echo "After adding the setenv lines to your .cshrc file, source that file"
