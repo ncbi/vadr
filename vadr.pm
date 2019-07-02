@@ -83,6 +83,7 @@ use LWP::Simple;
 # vdr_AlertInfoSetFTableInvalidatedBy
 # 
 # Subroutines related to parallelization on the compute farm:
+# vdr_
 # vdr_SubmitJob()
 # vdr_WaitForFarmJobsToFinish()
 #
@@ -1655,6 +1656,62 @@ sub vdr_AlertInfoDump {
 }
 
 #################################################################
+# Subroutine : vdr_ParseQsubFile()
+# Incept:      EPN, Mon Jul  9 10:30:41 2018 [ribovore:ribo.pm]
+#
+# Purpose:     Parse a file that specifies the qsub command to use
+#              when submitting jobs to the farm. The file should 
+#              have exactly 2 non-'#' prefixed lines. Chomp each
+#              and return them.
+#              
+# Arguments: 
+#   $qsub_file:  file to parse
+#   $FH_HR:      REF to hash of file handles
+#
+# Returns:     2 values:
+#              $qsub_prefix: string that is the qsub command prior to the 
+#                            actual cmsearch/cmalign command
+#              $qsub_suffix: string that is the qsub command after the 
+#                            actual cmsearch/cmalign command
+# 
+# Dies:        If we can't parse the qsub file because it is not
+#              in the correct format.
+#
+################################################################# 
+sub vdr_ParseQsubFile { 
+  my $nargs_expected = 2;
+  my $sub_name = "vdr_ParseQsubFile";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($qsub_file, $FH_HR) = @_;
+
+  open(IN, $qsub_file) || ofile_FileOpenFailure($qsub_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $qsub_prefix_line = undef;
+  my $qsub_suffix_line = undef;
+  while(my $line = <IN>) { 
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      if   (! defined $qsub_prefix_line) { $qsub_prefix_line = $line; }
+      elsif(! defined $qsub_suffix_line) { $qsub_suffix_line = $line; }
+      else { # both $qsub_prefix_line and $qsub_suffix_line are defined, this shouldn't happen
+        ofile_FAIL("ERROR in $sub_name, read more than 2 non-# prefixed lines in file $qsub_file:\n$line\n", 1, $FH_HR);
+      }
+    }
+  }
+  close(IN);
+  
+  if(! defined $qsub_prefix_line) { 
+    ofile_FAIL("ERROR in $sub_name, read zero non-# prefixed lines in file $qsub_file, but expected 2", 1, $FH_HR);
+  }
+  if(! defined $qsub_suffix_line) { 
+    ofile_FAIL("ERROR in $sub_name, read only one non-# prefixed lines in file $qsub_file, but expected 2", 1, $FH_HR);
+  }
+
+  return($qsub_prefix_line, $qsub_suffix_line);
+}
+
+#################################################################
 # Subroutine: vdr_SubmitJob()
 # Incept:      EPN, Wed Feb  6 12:35:04 2019
 #
@@ -1662,8 +1719,10 @@ sub vdr_AlertInfoDump {
 #
 # Arguments:
 #   $cmd:            command to run
+#   $qsub_prefix:    qsub command prefix to use when submitting to farm, undef if running locally
+#   $qsub_suffix:    qsub command suffix to use when submitting to farm, undef if running locally
 #   $job_name:       name for job
-#   $alt_file:       name of err file to create, can be "/dev/null"
+#   $err_file:       name of err file to create, can be "/dev/null"
 #   $mem_gb:         number of Gb of memory required
 #   $nsecs:          maximum number of seconds to allow jobs to take
 #   $opt_HHR:        REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
@@ -1675,17 +1734,22 @@ sub vdr_AlertInfoDump {
 #################################################################
 sub vdr_SubmitJob {
   my $sub_name = "vdr_SubmitJob()";
-  my $nargs_expected = 7;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($cmd, $job_name, $alt_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($alt_file ne "/dev/null") && (-e $alt_file)) { 
-    utl_FileRemoveUsingSystemRm($alt_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
+  if(($err_file ne "/dev/null") && (-e $err_file)) { 
+    utl_FileRemoveUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
   }
-  my $submit_cmd = sprintf("qsub -N $job_name -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e $alt_file -m n -l h_rt=%d,h_vmem=%dG,mem_free=%dG,reserve_mem=%dG,m_mem_free=%dG " . "\"" . $cmd . "\" > /dev/null\n", $nsecs, $mem_gb, $mem_gb, $mem_gb, $mem_gb);
+  my $submit_cmd = $qsub_prefix . $cmd . $qsub_suffix;
+  # replace changeable parts of qsub suffix and prefix
+  $submit_cmd =~ s/\!\[jobname\]\!/$job_name/g;
+  $submit_cmd =~ s/\!\[errfile\]\!/$err_file/g;
+  $submit_cmd =~ s/\!\[memgb\]\!/$mem_gb/g;
+  $submit_cmd =~ s/\!\[nsecs\]\!/$nsecs/g;
 
   utl_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 

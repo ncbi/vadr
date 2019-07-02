@@ -462,6 +462,8 @@ else { # -i used on the command line
 
 my $qsubinfo_file    = undef;
 my $df_qsubinfo_file = $env_vadr_scripts_dir . "/" . "vadr.qsubinfo";
+my $qsub_prefix      = undef; # qsub prefix for submitting jobs to the farm
+my $qsub_suffix      = undef; # qsub suffix for submitting jobs to the farm
 if(! opt_IsUsed("-q", \%opt_HH)) { $qsubinfo_file = $df_qsubinfo_file; }
 else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
 
@@ -473,6 +475,8 @@ if(opt_IsUsed("-p", \%opt_HH)) {
   else { # -q used on the command line
     utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, \%{$ofile_info_HH{"FH"}}); # 1 says: die if it doesn't exist or is empty
   }
+  # parse the qsubinfo file
+  ($qsub_prefix, $qsub_suffix) = vdr_ParseQsubFile($qsubinfo_file, $ofile_info_HH{"FH"});
 }
 # make sure the blastdb directory exists
 my $blastdb_dir = (opt_IsUsed("-b", \%opt_HH)) ? opt_Get("-b", \%opt_HH) : $df_model_dir;
@@ -483,6 +487,7 @@ if(! -d $blastdb_dir) {
                      opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), 1, $FH_HR);
 }
 # we check for existence of blast DB files after we parse the model info file
+
 
 my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
 my $do_keep = opt_Get("--keep", \%opt_HH);
@@ -576,7 +581,10 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Classification: cmsearch round 1
 ####################################
 my $r1_cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
-cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmscan_opts, $out_root, 1, $nseq, $tot_len_nt, $progress_w, \%opt_HH, \%ofile_info_HH);
+cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+                           $cm_file, undef, $fa_file, $r1_cmscan_opts, 
+                           $out_root, 1, $nseq, $tot_len_nt, 
+                           $progress_w, \%opt_HH, \%ofile_info_HH);
 
 # sort into a new file by score
 my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
@@ -634,7 +642,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
 
     # now run cmsearch against this file
-    cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+    cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+                               $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, 
+                               $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
                                $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
     my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
     my $r2_stdout_key = "search.r2.$mdl_name.stdout"; # set in cmsearch_or_cmscan_wrapper()
@@ -720,7 +730,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
-    cmalign_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $out_root, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+    cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
+                    $cm_file, $mdl_name, $mdl_fa_file, $out_root, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
                     $mdl_seq_len_H{$mdl_name}, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
 
@@ -1019,6 +1030,8 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 # Arguments: 
 #  $execs_HR:        ref to executables with "esl-ssplit" and "cmsearch"
 #                    defined as keys
+#  $qsub_prefix:     qsub command prefix to use when submitting to farm, undef if running locally
+#  $qsub_suffix:     qsub command suffix to use when submitting to farm, undef if running locally
 #  $mdl_file:        name of model file to use
 #  $mdl_name:        name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:        name of sequence file with all sequences to run against
@@ -1039,11 +1052,13 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 ################################################################# 
 sub cmsearch_or_cmscan_wrapper { 
   my $sub_name = "cmsearch_or_cmscan_wrapper";
-  my $nargs_expected = 12;
+  my $nargs_expected = 14;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $opt_str, 
-      $out_root, $round, $nseq, $tot_len_nt, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $qsub_prefix, $qsub_suffix, 
+      $mdl_file, $mdl_name, $seq_file, $opt_str, 
+      $out_root, $round, $nseq, $tot_len_nt, 
+      $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel = opt_Get("-p",     $opt_HHR);
@@ -1104,7 +1119,7 @@ sub cmsearch_or_cmscan_wrapper {
     foreach my $out_key (@out_keys_A) { 
       $out_file_AH[$s]{$out_key} = $out_root . "." . $round_str . ".s" . $s . "." . $out_key;
     }
-    cmsearch_or_cmscan_run($execs_HR, $mdl_file, $mdl_name, $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
+    cmsearch_or_cmscan_run($execs_HR, $qsub_prefix, $qsub_suffix, $mdl_file, $mdl_name, $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
   }
 
   if($do_parallel) { 
@@ -1152,6 +1167,8 @@ sub cmsearch_or_cmscan_wrapper {
 #
 # Arguments: 
 #  $execs_HR:         hash with paths to cmsearch, cmscan and cmfetch
+#  $qsub_prefix:      qsub command prefix to use when submitting to farm, undef if running locally
+#  $qsub_suffix:      qsub command suffix to use when submitting to farm, undef if running locally
 #  $mdl_file:         path to the CM file
 #  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch and run cmscan instead of cmsearch)
 #  $seq_file:         path to the sequence file
@@ -1166,10 +1183,12 @@ sub cmsearch_or_cmscan_wrapper {
 ################################################################# 
 sub cmsearch_or_cmscan_run {
   my $sub_name = "cmsearch_or_cmscan_run()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $opt_str, $out_file_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $qsub_prefix, $qsub_suffix, 
+      $mdl_file, $mdl_name, $seq_file, $opt_str, 
+      $out_file_HR, $opt_HHR, $ofile_info_HHR) = @_;
   
   my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
@@ -1200,9 +1219,9 @@ sub cmsearch_or_cmscan_run {
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 2; # multiply --mxsize Gb by 2 to be safe
-    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
-    vdr_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.); # use --mxsize * 1000 (8 Gb by default)
+    if($mem_gb < 1.) { $mem_gb = 1.; } # set minimum of 1 Gb
+    vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
   else { 
     utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -1883,6 +1902,8 @@ sub populate_per_model_data_structures_given_classification_results {
 # Arguments: 
 #  $execs_HR:              ref to executables with "esl-ssplit" and "cmalign"
 #                          defined as keys
+#  $qsub_prefix:           qsub command prefix to use when submitting to farm, undef if running locally
+#  $qsub_suffix:           qsub command suffix to use when submitting to farm, undef if running locally
 #  $mdl_file:              name of model file to use
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:              name of sequence file with all sequences to run against
@@ -1904,10 +1925,11 @@ sub populate_per_model_data_structures_given_classification_results {
 ################################################################# 
 sub cmalign_wrapper { 
   my $sub_name = "cmalign_wrapper";
-  my $nargs_expected = 13;
+  my $nargs_expected = 15;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $out_root,
+  my ($execs_HR, $qsub_prefix, $qsub_suffix, 
+      $mdl_file, $mdl_name, $seq_file, $out_root,
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -2108,7 +2130,8 @@ sub cmalign_wrapper_helper {
     foreach $key (@out_keys_A) { 
       $out_file_AHR->[$s]{$key} = $out_root . "." . $mdl_name . ".align.r" . $round . ".s" . $s . "." . $key;
     }
-    $success_AR->[$s] = cmalign_run($execs_HR, $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
+    $success_AR->[$s] = cmalign_run($execs_HR, $qsub_prefix, $qsub_suffix, 
+                                    $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
                                     (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
                                     $opt_HHR, $ofile_info_HHR);   
     # if we are running parallel, ignore the return values from the run{Cmalign,Cmsearch} subroutines
@@ -2163,6 +2186,8 @@ sub cmalign_wrapper_helper {
 #              
 # Arguments: 
 #  $execs_HR:         ref to hash with paths to cmalign and cmfetch
+#  $qsub_prefix:      qsub command prefix to use when submitting to farm, undef if running locally
+#  $qsub_suffix:      qsub command suffix to use when submitting to farm, undef if running locally
 #  $mdl_file:         path to the CM file
 #  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
@@ -2185,10 +2210,12 @@ sub cmalign_wrapper_helper {
 ################################################################# 
 sub cmalign_run { 
   my $sub_name = "cmalign_run()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $mdl_file, $mdl_name, $seq_file, $out_file_HR, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $qsub_prefix, $qsub_suffix, 
+      $mdl_file, $mdl_name, $seq_file, 
+      $out_file_HR, $ret_mxsize_R, $opt_HHR, $ofile_info_HHR) = @_;
 
   if(defined $ret_mxsize_R) { 
     $$ret_mxsize_R = 0; # overwritten below if nec
@@ -2248,9 +2275,9 @@ sub cmalign_run {
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
-    if($mem_gb < 8.) { $mem_gb = 8.; } # set minimum of 8 Gb
+    if($mem_gb < 1.) { $mem_gb = 1.; } # set minimum of 1 Gb
     if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
-      vdr_SubmitJob($cmd, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+      vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
   }
   else { 
