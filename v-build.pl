@@ -276,9 +276,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",      1, 1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",      1, 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".filelist", 1, 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -287,10 +287,10 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 
 # open optional output files
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
 }
 if(opt_Get("--sgminfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Segment information (created due to --sgminfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, 1, "Segment information (created due to --sgminfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -333,7 +333,7 @@ if(opt_IsUsed("--infa", \%opt_HH)) {
 else { 
   $start_secs = ofile_OutputProgressPrior("Fetching FASTA file", $progress_w, $log_FH, *STDOUT);
   vdr_EutilsFetchToFile($fa_file, $mdl_name, "nuccore", "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, 1, "fasta file for $mdl_name");
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 $start_secs = ofile_OutputProgressPrior("Parsing FASTA file", $progress_w, $log_FH, *STDOUT);
@@ -371,15 +371,15 @@ if(! opt_IsUsed("--gb", \%opt_HH)) {
     $ft_file = $out_root . ".ft";
     if(opt_Get("--ftfetch1", \%opt_HH)) { 
       utl_RunCommand("efetch -db nuccore -id $mdl_name -format ft > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name (--ftfetch1)");
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name (--ftfetch1)");
     }
     elsif(opt_Get("--ftfetch2", \%opt_HH)) { 
       utl_RunCommand("efetch -db nuccore -id $mdl_name -format gbc | xml2tbl > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name (--ftfetch2)");
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name (--ftfetch2)");
     }
     else { # default way of fetching a feature table
       vdr_EutilsFetchToFile($ft_file, $mdl_name, "nuccore", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, "feature table format file for $mdl_name");
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name");
     }
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -407,7 +407,7 @@ else {
     
     $gb_file = $out_root . ".gb";
     vdr_EutilsFetchToFile($gb_file, $mdl_name, "nuccore", "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, 1, "GenBank format file for $mdl_name");
     
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
@@ -574,7 +574,7 @@ else {
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
   sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -612,12 +612,12 @@ if($ncds > 0) {
   $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 
   $cds_fa_file  = $out_root . ".cds.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, 1, "fasta sequence file for CDS from $mdl_name");
   vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, 1, "fasta sequence file for translated CDS from $mdl_name");
   sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                                  $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
@@ -659,8 +659,8 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   utl_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, "CM file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, 1, "CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, 1, "cmbuild output file");
 
   # press the file we just created 
   $start_secs = ofile_OutputProgressPrior("Pressing CM file", $progress_w, $log_FH, *STDOUT);
@@ -669,11 +669,11 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   utl_RunCommand($cmpress_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1m",     $cm_file . ".i1m", 1, "binary CM and p7 HMM filter file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1i",     $cm_file . ".i1i", 1, "SSI index for binary CM file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, "optimized p7 HMM filters (MSV part)");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, "optimized p7 HMM filters (remainder)");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, "cmpress output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1m",     $cm_file . ".i1m", 1, 1, "binary CM and p7 HMM filter file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1i",     $cm_file . ".i1i", 1, 1, "SSI index for binary CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, 1, "optimized p7 HMM filters (MSV part)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, 1, "optimized p7 HMM filters (remainder)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, 1, "cmpress output file");
 }
 
 ########################
@@ -705,7 +705,7 @@ if(opt_IsUsed("--group", \%opt_HH)) {
 }
 my $modelinfo_file  = $out_root . ".minfo";
 vdr_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, "VADR 'model info' format file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, 1, "VADR 'model info' format file for $mdl_name");
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -874,7 +874,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
       }
       my $ft_file = $out_root . "." . $accver . ".ft";
       vdr_EutilsFetchToFile($ft_file, $accver, "protein", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft." . $accver, $ft_file, 1, "feature table format file for $accver");
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft." . $accver, $ft_file, 1, 1, "feature table format file for $accver");
 
       # parse the file
       sqf_FeatureTableParse($ft_file, \%prot_ftr_info_HAH, $FH_HR);

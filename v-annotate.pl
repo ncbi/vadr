@@ -388,9 +388,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "list": file with list of all output files created
 
 # open the log and command files 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",      1, 1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",      1, 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".filelist", 1, 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -399,13 +399,13 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 
 # open optional output files
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
 }
 if(opt_Get("--sgminfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Segment information (created due to --sgminfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, 1, "Segment information (created due to --sgminfo)");
 }
 if(opt_Get("--altinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altinfo", $out_root . ".altinfo", 1, "Alert information (created due to --altinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altinfo", $out_root . ".altinfo", 1, 1, "Alert information (created due to --altinfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -484,6 +484,9 @@ if(! -d $blastdb_dir) {
 }
 # we check for existence of blast DB files after we parse the model info file
 
+my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
+my $do_keep = opt_Get("--keep", \%opt_HH);
+
 ###########################
 # Parse the model info file
 ###########################
@@ -561,7 +564,7 @@ my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
 my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
 utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
 if(-e $fa_file . ".ssi") { unlink $fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 0, "esl-seqstat -a output for input fasta file");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 my $tot_len_nt = sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 my $nseq = scalar(@seq_name_A);
 #my %seq_idx_H = ();  # key: sequence name <sqname>, value index [0..$nseq-1] of <sqname> in @seq_name_A
@@ -577,6 +580,8 @@ cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, undef, $fa_file, $r1_cmscan_opts
 
 # sort into a new file by score
 my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
+my $r1_stdout_key  = "scan.r1.stdout"; # set in cmsearch_or_cmscan_wrapper()
+my $r1_err_key     = "scan.r1.err"; # set in cmsearch_or_cmscan_wrapper()
 my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
 my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
 my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
@@ -585,7 +590,12 @@ utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output
 my $sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
 # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
 utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, "sorted round 1 search tblout file");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, $do_keep, "sorted round 1 search tblout file");
+push(@to_remove_A, 
+     ($r1_tblout_file, 
+      $ofile_info_HH{"fullpath"}{$r1_stdout_key},
+      $ofile_info_HH{"fullpath"}{$r1_err_key}, 
+      $r1_sort_tblout_file));
 
 # parse the round 1 sorted tblout file
 my %cls_results_HHH = (); # key 1: sequence name, 
@@ -620,14 +630,21 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
+    push(@to_remove_A, $mdl_fa_file);
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
 
     # now run cmsearch against this file
     cmsearch_or_cmscan_wrapper(\%execs_H, $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
                                $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
     my $r2_tblout_key = "search.r2.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
+    my $r2_stdout_key = "search.r2.$mdl_name.stdout"; # set in cmsearch_or_cmscan_wrapper()
+    my $r2_err_key    = "search.r2.$mdl_name.err";    # set in cmsearch_or_cmscan_wrapper()
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
+    push(@to_remove_A, 
+         ($ofile_info_HH{"fullpath"}{$r2_tblout_key}, 
+          $ofile_info_HH{"fullpath"}{$r2_stdout_key}, 
+          $ofile_info_HH{"fullpath"}{$r2_err_key}));
     $nr2++;
   }
 }
@@ -639,7 +656,8 @@ if($nr2 > 0) { # only sort output if we ran round 2 for at least one model
   $sort_cmd = "cat " . join(" ", @r2_tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $r2_sort_tblout_file"; 
   # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
   utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r2_sort_tblout_key, $r2_sort_tblout_file, 0, "sorted round 2 search tblout file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r2_sort_tblout_key, $r2_sort_tblout_file, 0, $do_keep, "sorted round 2 search tblout file");
+  push(@to_remove_A, $r2_sort_tblout_file);
 
   # parse cmsearch round 2 tblout data
   cmsearch_or_cmscan_parse_sorted_tblout($r2_sort_tblout_file, 2, # 2: round 2
@@ -698,6 +716,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     my $mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
+    push(@to_remove_A, $mdl_fa_file);
 
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
@@ -732,6 +751,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # parse the cmalign --ifile file
     if($mdl_nseq > $mdl_n_div_H{$mdl_name}) { # at least 1 sequence was aligned
       cmalign_parse_ifile($cmalign_ifile_file, \%seq_inserts_HH, \%{$ofile_info_HH{"FH"}});
+      push(@to_remove_A, ($cmalign_stdout_file, $cmalign_ifile_file));
     }
 
     # parse the cmalign alignments
@@ -740,6 +760,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$sgm_results_HHAH{$mdl_name}},
                                                    \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
     }
 
@@ -778,6 +799,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     if($ncds > 0) { # only run blast for models with >= 1 CDS
       run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
                                       \%opt_HH, \%ofile_info_HH);
+      push(@to_remove_A, 
+           ($ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-fasta"},
+            $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
+            $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
       
       parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                            \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
@@ -805,19 +830,19 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # Output annotations and alerts
 ################################
 # open files for writing
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant_tbl",      $out_root . ".sqa.tbl", 1, "per-sequence tabular annotation summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cls_tbl",      $out_root . ".sqc.tbl", 1, "per-sequence tabular classification summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftr_tbl",      $out_root . ".ftr.tbl", 1, "per-feature tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm_tbl",      $out_root . ".sgm.tbl", 1, "per-model-segment tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl_tbl",      $out_root . ".mdl.tbl", 1, "per-model tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt_tbl",      $out_root . ".alt.tbl", 1, "per-alert tabular summary file");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc_tbl",      $out_root . ".alc.tbl", 1, "alert count tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant_tbl",      $out_root . ".sqa.tbl", 1, 1, "per-sequence tabular annotation summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cls_tbl",      $out_root . ".sqc.tbl", 1, 1, "per-sequence tabular classification summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftr_tbl",      $out_root . ".ftr.tbl", 1, 1, "per-feature tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm_tbl",      $out_root . ".sgm.tbl", 1, 1, "per-model-segment tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl_tbl",      $out_root . ".mdl.tbl", 1, 1, "per-model tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt_tbl",      $out_root . ".alt.tbl", 1, 1, "per-alert tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc_tbl",      $out_root . ".alc.tbl", 1, 1, "alert count tabular summary file");
 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".pass.ft",        1, "Sequin feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".fail.ft",        1, "Sequin feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, "list of failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, "list of alerts in the feature tables");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_ftbl",      $out_root . ".pass.ft",        1, 1, "Sequin feature table output for passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_ftbl",      $out_root . ".fail.ft",        1, 1, "Sequin feature table output for failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
 
 ########################
 # tabular output files #
@@ -861,7 +886,7 @@ if(exists $ofile_info_HH{"FH"}{"altinfo"}) {
 # close the two files we may output to stdout and the log
 close($ofile_info_HH{"FH"}{"mdl_tbl"}); 
 close($ofile_info_HH{"FH"}{"alc_tbl"}); 
-
+    
 my @conclude_A = ();
 push(@conclude_A, "#");
 if($zero_cls) { 
@@ -888,6 +913,15 @@ else {
 
 foreach my $line (@conclude_A) { 
   ofile_OutputString($log_FH, 1, $line . "\n");
+}
+
+# remove unwanted files, unless --keep
+if(! opt_Get("--keep", \%opt_HH)) { 
+  my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
+  foreach my $to_remove_file (@to_remove_A) { 
+    if((defined $to_remove_file) && (-e $to_remove_file)) { push(@to_actually_remove_A, $to_remove_file); }
+  }
+  utl_FileRemoveList(\@to_actually_remove_A, "v-annotate.pl:main()", \%opt_HH, $FH_HR);
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
@@ -1012,7 +1046,8 @@ sub cmsearch_or_cmscan_wrapper {
       $out_root, $round, $nseq, $tot_len_nt, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
-  my $do_parallel = opt_Get("-p", $opt_HHR);
+  my $do_parallel = opt_Get("-p",     $opt_HHR);
+  my $do_keep     = opt_Get("--keep", $opt_HHR);
 
   # set up output file names
   my @seq_file_A  = (); # [0..$nr-1]: name of sequence file for this run
@@ -1093,7 +1128,7 @@ sub cmsearch_or_cmscan_wrapper {
       utl_ArrayOfHashesToArray(\@out_file_AH, \@concat_A, $out_key);
       utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
       # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $concat_key, $concat_file, 0, sprintf("round $round scan/search $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $concat_key, $concat_file, 0, $do_keep, sprintf("round $round scan/search $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
     }
   }
 
@@ -1880,6 +1915,7 @@ sub cmalign_wrapper {
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $start_secs; # timing start
   my $do_parallel = opt_Get("-p", $opt_HHR);
+  my $do_keep     = opt_Get("--keep", $opt_HHR);
   @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
                             # the matrix required to align them is too big
 
@@ -1887,8 +1923,9 @@ sub cmalign_wrapper {
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
-  @concat_keys_A = ("stdout", "ifile", "tfile"); 
-  if($do_parallel) { push(@concat_keys_A, "err"); }
+  @concat_keys_A = ("stdout", "ifile"); 
+  if($do_parallel) { push(@concat_keys_A, "err");   }
+  if($do_keep)     { push(@concat_keys_A, "tfile"); }
   foreach $out_key (@concat_keys_A) { 
     @{$concat_HA{$out_key}} = ();
   }    
@@ -1992,7 +2029,7 @@ sub cmalign_wrapper {
     utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
     # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
     my $out_root_key = sprintf(".concat.%salign.$out_key", (defined $mdl_name) ? $mdl_name . "." : "");
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
   }
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
@@ -2181,7 +2218,11 @@ sub cmalign_run {
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   # determine cmalign options based on command line options
-  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file --tfile $tfile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  # add --tfile $tfile_file, only if --keep 
+  if(opt_Get("--keep", $opt_HHR)) { 
+    $opts .= " --tfile $tfile_file"; 
+  }
   # add --sub and --notrunc unless --nosub used
   if(! opt_Get("--nosub", $opt_HHR)) { 
     $opts .= " --sub --notrunc"; 
@@ -2810,7 +2851,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
         
@@ -3556,7 +3597,8 @@ sub run_blastx_and_summarize_output {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
-  
+
+  my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
   my $mdl_name = $mdl_info_HR->{"name"};
   my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
@@ -3581,6 +3623,7 @@ sub run_blastx_and_summarize_output {
       }
     }
   }
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-fasta", $blastx_query_file, 0, $do_keep, "blastx query file for model $mdl_name");
 
   # run blastx 
   my $blastx_options = "";
@@ -3598,13 +3641,13 @@ sub run_blastx_and_summarize_output {
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
   my $blastx_cmd = $execs_HR->{"blastx"} . " -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
   utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-out", $blastx_out_file, 0, "blastx output for model $mdl_name");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-out", $blastx_out_file, 0, $do_keep, "blastx output for model $mdl_name");
 
   # now summarize its output
   my $blastx_summary_file = $out_root . "." . $mdl_name . ".blastx.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
   utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-summary", $blastx_summary_file, 0, "parsed (summarized) blastx output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-summary", $blastx_summary_file, 0, $do_keep, "parsed (summarized) blastx output");
 
   return;
 }
