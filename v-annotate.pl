@@ -900,16 +900,11 @@ close($ofile_info_HH{"FH"}{"alc_tbl"});
     
 my @conclude_A = ();
 push(@conclude_A, "#");
-if($zero_cls) { 
-  push(@conclude_A, "# Zero sequences were classified.");
-}
-else { 
-  push(@conclude_A, "# Summary of classified sequences:");
-  push(@conclude_A, "#");
-  my @file_A = ();
-  utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"mdl_tbl"}, 1, \@file_A, $FH_HR);
-  push(@conclude_A, @file_A);
-}
+push(@conclude_A, "# Summary of classified sequences:");
+push(@conclude_A, "#");
+my @file_A = ();
+utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"mdl_tbl"}, 1, \@file_A, $FH_HR);
+push(@conclude_A, @file_A);
 push(@conclude_A, "#");
 if($zero_alt) { 
   push(@conclude_A, "# Zero alerts were reported.");
@@ -4803,9 +4798,9 @@ sub output_tabular {
 
   my @head_mdl_AA = ();
   my @data_mdl_AA = ();
-  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num",  "num");
-  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail", "notannot");
-  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0,      0);
+  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
+  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
+  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
 
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
@@ -5086,7 +5081,6 @@ sub output_tabular {
   # add data to the model table
   my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
   my $mdl_tbl_idx = 0;
-  my $zero_classifications = 1; # set to '0' below if we have >=1 classifications
   my $sum_mdl_cls_ct     = 0;
   my $sum_mdl_pass_ct    = 0;
   my $sum_mdl_fail_ct    = 0;
@@ -5101,25 +5095,25 @@ sub output_tabular {
                           (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
                           $mdl_cls_ct_HR->{$mdl_name},
                           $mdl_pass_ct_H{$mdl_name}, 
-                          $mdl_fail_ct_H{$mdl_name}, 
-                          ($mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct)]);
+                          $mdl_fail_ct_H{$mdl_name}]); 
       $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
       $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
       $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
       $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct;
-      $zero_classifications = 0;
     }
   }
   # add mdl summary line
-  if(! $zero_classifications) { 
-    push(@data_mdl_AA, []); # separator line
-    push(@data_mdl_AA, ["-", "*all*", "-", "-", 
-                        $sum_mdl_cls_ct, 
-                        $sum_mdl_pass_ct, 
-                        $sum_mdl_fail_ct, 
-                        $sum_mdl_noannot_ct]);
-    push(@data_mdl_AA, []); # separator line
-  }
+  push(@data_mdl_AA, []); # separator line
+  push(@data_mdl_AA, ["-", "*all*", "-", "-", 
+                      $sum_mdl_cls_ct, 
+                      $sum_mdl_pass_ct, 
+                      $sum_mdl_fail_ct]);
+  # add no-model line (sequences that were not classified)
+  push(@data_mdl_AA, ["-", "*none*", "-", "-", 
+                      $nseq - $sum_mdl_cls_ct, 
+                      0, 
+                      $nseq - $sum_mdl_cls_ct]);
+  push(@data_mdl_AA, []); # separator line
 
   # output the tables:
   ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant_tbl"}, undef, $FH_HR);
@@ -5130,7 +5124,7 @@ sub output_tabular {
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc_tbl"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl_tbl"}, undef, $FH_HR);
 
-  return ($zero_classifications, $zero_alerts);
+  return $zero_alerts;
 }
     
 #################################################################
