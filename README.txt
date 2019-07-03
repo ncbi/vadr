@@ -1,6 +1,6 @@
-EPN, Tue Jun 11 15:56:33 2019
+EPN, Wed Jul  3 16:04:12 2019
 
-VADR 0.971 README.txt 
+VADR 0.98 README.txt 
 
 Organization of this file:
 
@@ -83,7 +83,7 @@ directory and run the command './install.sh'. That will create several
 directories in the current directory.
 
 'install.sh' will download and install the software packages VADR, and
-Infernal, and the required perl modules epn-options, epn-ofile and
+Infernal, and the required perl module libraries sequip and
 Bio-Easel.
 
 When install.sh is finished running it will print important
@@ -125,8 +125,9 @@ export VADRMODELDIR="$VADRINSTALLDIR/vadr-models"
 export VADRINFERNALDIR="$VADRINSTALLDIR/infernal-dev/src"
 export VADREASELDIR="$VADRINSTALLDIR/infernal-dev/easel/miniapps"
 export VADRBIOEASELDIR="$VADRINSTALLDIR/Bio-Easel"
+export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="/usr/bin"
-export PERL5LIB="$VADRSCRIPTSDIR":"$VADRINSTALLDIR/epn-options":"$VADRINSTALLDIR/epn-ofile":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
+export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
 After adding the export lines to your .bashrc file, source that file
@@ -144,8 +145,9 @@ setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models"
 setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal-dev/src"
 setenv VADREASELDIR "$VADRINSTALLDIR/infernal-dev/easel/miniapps"
 setenv VADRBIOEASELDIR "$VADRINSTALLDIR/Bio-Easel"
+setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
 setenv VADRBLASTDIR "/usr/bin"
-setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRINSTALLDIR/epn-options":"$VADRINSTALLDIR/epn-ofile":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
+setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 setenv PATH "$VADRSCRIPTSDIR":"$PATH"
 
 
@@ -162,9 +164,9 @@ source ~/.cshrc
 
 If you get an error about PERL5LIB being undefined, change the PERL5LIB
 line to add to:
-export PERL5LIB="$VADRSCRIPTSDIR":"$VADRINSTALLDIR/epn-options":"$VADRINSTALLDIR/epn-ofile":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
+export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
 for .bashrc, OR
-setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRINSTALLDIR/epn-options":"$VADRINSTALLDIR/epn-ofile":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
+setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
 for .cshrc. And then do
 > source ~/.bashrc
 or

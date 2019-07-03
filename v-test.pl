@@ -9,12 +9,12 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm";
-require "epn-options.pm";
-require "epn-ofile.pm";
-require "epn-utils.pm";
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_utils.pm";
 
 #########################################################
-# Command line and option processing using epn-options.pm
+# Command line and option processing using sqp_opts.pm
 #
 # opt_HH: 2D hash:
 #         1D key: option name (e.g. "-h")
@@ -70,8 +70,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.971";
-my $releasedate   = "Jun 2019";
+my $version       = "0.98";
+my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -248,7 +248,7 @@ exit 0;
 #   $outfile_AAR: ref to 2D array of output files to fill here
 #   $expfile_AAR: ref to 2D array of expected files to fill here
 #   $rmdir_AAR:   ref to 2D array of directories to remove after calling each command
-#   $opt_HHR:     ref to 2D hash of option values, see top of epn-options.pm for description
+#   $opt_HHR:     ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $FH_HR:       ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    number of commands read in $testfile
@@ -391,7 +391,7 @@ sub parse_test_file {
 #   $out_file:    name of output file
 #   $exp_file:    name of expected file
 #   $diff_file:   output file for diff command
-#   $opt_HHR:     REF to 2D hash of option values, see top of epn-options.pm for description
+#   $opt_HHR:     REF to 2D hash of option values, see top of sqp_opts.pm for description
 #   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    '1' if $outfile is identical to $expfile as determined by diff
@@ -476,7 +476,7 @@ sub diff_two_files {
 #   $out_file:    name of output sqtable file
 #   $exp_file:    name of expected sqtable file
 #   $diff_file:   name of file to create with differences
-#   $opt_HHR:     ref to 2D hash of option values, see top of epn-options.pm for description
+#   $opt_HHR:     ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void

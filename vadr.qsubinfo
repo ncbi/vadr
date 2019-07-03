@@ -1,18 +1,24 @@
-# ribo.0p20.qsubinfo
+# vadr.qsubinfo
 # This file must have exactly 2 non-'#' prefixed
 # lines. 
 #
 # Line 1: a string that is the qsub command and flags for submitting
 # jobs to the compute farm *prior* to the actual cmsearch/cmalign command.
 #
-# This line may have up to two special values that will be
+# This line may have up to four special values that will be
 # replaced: 
 # (a) "![errfile]!": will be replaced by an error file name
-#     automatically determined by the ribotyper script(s)
+#     automatically determined by VADR
 # (b) "![jobname]!": will be replaced by a job name
-#     automatically determined by the ribotyper script(s)
+#     automatically determined by VADR
+# (c) "![memgb]!": will be replaced by number of Gb of required memory
+#     automatically determined by VADR
+#     changeable via the --mxsize option to v-annotate.pl    
+# (d) "![nsecs]!": will be replaced by number of seconds of run time
+#     to allow for the job, automatically determined by VADR,
+#     changeable via the --wait option to v-annotate.pl    
 #
 # Line 2: the remainder of the qsub cmsearch/cmalign command 
 #
-qsub -N ![jobname]! -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e /dev/null -m n -l h_rt=288000,h_vmem=16G,mem_free=16G,reserve_mem=16G,m_mem_free=16G "
-"
+qsub -N ![jobname]! -b y -v SGE_FACILITIES -P unified -S /bin/bash -cwd -V -j n -o /dev/null -e ![errfile]! -m n -l h_rt=![nsecs]!,h_vmem=![memgb]!G,mem_free=![memgb]!G,reserve_mem=![memgb]!G,m_mem_free=![memgb]!G "
+" > /dev/null

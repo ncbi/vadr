@@ -11,11 +11,11 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm";
-require "epn-options.pm";
-require "epn-ofile.pm";
-require "epn-seq.pm";
-require "epn-seqfile.pm";
-require "epn-utils.pm";
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seq.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -55,7 +55,7 @@ $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
-# Command line and option processing using epn-options.pm
+# Command line and option processing using sqp_opts.pm
 #
 # opt_HH: 2D hash:
 #         1D key: option name (e.g. "-h")
@@ -87,9 +87,14 @@ $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--stk",        "string",  undef,      $g,    undef,  undef,      "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--gb",         "string",  undef,      $g,    undef,  undef,      "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
-opt_Add("--addminfo",   "string",  undef,      $g,    undef,  undef,      "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--infa",       "string",  undef,      $g,    undef, undef,       "read single sequence fasta file from <s>, don't fetch it",    "read single sequence fasta file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--inft",       "string",  undef,      $g, "--inft", "--gb",      "read feature table file from <s>, don't fetch it",            "read feature table file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--ftfetch1",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfetch2", "fetch feature table with efetch -format ft",      "fetch feature table with efetch -format ft", \%opt_HH, \@opt_order_A);
+opt_Add("--ftfetch2",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfetch1", "fetch feature table with efetch -format gbc | xml2tbl", "fetch feature table with efetch -format gbc | xml2tbl", \%opt_HH, \@opt_order_A);
+opt_Add("--gb",         "boolean", 0,          $g,    undef, undef,       "parse a genbank file, not a feature table file",              "parse a genbank file, not a feature table file", \%opt_HH, \@opt_order_A);
+opt_Add("--ingb",       "string",  undef,      $g,   "--gb", undef,       "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
+opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
@@ -104,6 +109,7 @@ opt_Add("--qall",       "boolean",  0,        $g,    undef,  undef,       "store
 opt_Add("--qadd",       "string",   undef,    $g,    undef,"--qall",      "also store info for qualifiers in comma separated string <s>",             "also store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--qftradd",    "string",   undef,    $g,"--qadd",    undef,      "--qadd <s2> only applies for feature types in comma separated string <s>", "--qadd <s2> only applies for feature types in comma separated string <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--qskip",      "string",   undef,    $g,    undef,  undef,       "do not store info for qualifiers in comma separated string <s>",           "do not store info for qualifiers in comma separated string <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--noaddgene", "boolean",  0,        $g,    undef,  undef,       "do not add gene qualifiers from gene features to overlapping features",     "do not add gene qualifiers from gene features to overlapping features", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for including additional model attributes";
 #     option           type       default    group   requires    incompat   preamble-output                       help-output    
@@ -124,7 +130,7 @@ opt_Add("--cmeset",   "real",    0,           $g,   undef,  "--skipbuild", "set 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #       option             type       default     group requires   incompat  preamble-output                                    help-output    
 opt_Add("--skipbuild",     "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
-opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--gb",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
+opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--ingb,--inft",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default     group  requires     incompat  preamble-output                          help-output    
@@ -143,7 +149,12 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
-                'gb=s'         => \$GetOptions_H{"--gb"},
+                'infa=s'       => \$GetOptions_H{"--infa"},
+                'inft=s'       => \$GetOptions_H{"--inft"},
+                'ftfetch1'     => \$GetOptions_H{"--ftfetch1"},
+                'ftfetch2'     => \$GetOptions_H{"--ftfetch2"},
+                'gb'           => \$GetOptions_H{"--gb"},
+                'ingb=s'       => \$GetOptions_H{"--ingb"},
                 'addminfo=s'   => \$GetOptions_H{"--addminfo"},
                 'keep'         => \$GetOptions_H{"--keep"},
 # options for controlling what feature types are stored in model info file
@@ -155,6 +166,7 @@ my $options_okay =
                 'qadd=s'       => \$GetOptions_H{"--qadd"},
                 'qftradd=s'    => \$GetOptions_H{"--qftradd"},
                 'qskip=s'      => \$GetOptions_H{"--qskip"},
+                'noaddgene'    => \$GetOptions_H{"--noaddgene"},
 # options for including additional model attributes
                 'group=s'      => \$GetOptions_H{"--group"},
                 'subgroup=s'   => \$GetOptions_H{"--subgroup"},
@@ -175,8 +187,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.971";
-my $releasedate   = "Jun 2019";
+my $version       = "0.98";
+my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -206,7 +218,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # if --onlyurl used, output the url and exit
 ############################################
 if(opt_Get("--onlyurl", \%opt_HH)) { 
-  print vdr_EutilsFetchUrl($mdl_name, "gb") . "\n";
+  print vdr_EutilsFetchUrl($mdl_name, "nuccore", "gb") . "\n";
   exit 0;
 }
 
@@ -264,9 +276,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
 # open the log and command files 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",      1, 1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",      1, 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".filelist", 1, 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -275,10 +287,10 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 
 # open optional output files
 if(opt_Get("--ftrinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, "Feature information (created due to --ftrinfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
 }
 if(opt_Get("--sgminfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, "Segment information (created due to --sgminfo)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, 1, "Segment information (created due to --sgminfo)");
 }
 
 # now we have the log file open, output the banner there too
@@ -310,46 +322,112 @@ if(defined $addminfo_file) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-###########################################
-# Fetch the genbank file (if --gb not used)
-###########################################
-my $gb_file = undef;
-if(opt_IsUsed("--gb", \%opt_HH)) { 
-  $gb_file = opt_Get("--gb", \%opt_HH);
+###################################################
+# Fetch the fasta file (if necessary) and parse it
+###################################################
+my $fa_file = $out_root . ".fa";
+my %seq_H = ();
+if(opt_IsUsed("--infa", \%opt_HH)) { 
+  utl_RunCommand("cp " . opt_Get("--infa", \%opt_HH) . " $fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
 }
 else { 
-  # --gb not used, create gb file by fetching using eutils
-  $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
-
-  $gb_file = $out_root . ".gb";
-  vdr_EutilsFetchToFile($gb_file, $mdl_name, "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, "GenBank format file for $mdl_name");
-
+  $start_secs = ofile_OutputProgressPrior("Fetching FASTA file", $progress_w, $log_FH, *STDOUT);
+  vdr_EutilsFetchToFile($fa_file, $mdl_name, "nuccore", "fasta", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, 1, "fasta file for $mdl_name");
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-
-########################
-# Parse the genbank file
-########################
-$start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
-
-my %ftr_info_HAH = (); # the feature info 
-my %seq_info_HH  = (); # the sequence info 
-sqf_GenbankParse($gb_file, \%seq_info_HH, \%ftr_info_HAH, $FH_HR);
-if((! exists $seq_info_HH{$mdl_name}) || (! defined $seq_info_HH{$mdl_name}{"seq"})) { 
-  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read sequence for reference accession $mdl_name\n", 1, $FH_HR);
+$start_secs = ofile_OutputProgressPrior("Parsing FASTA file", $progress_w, $log_FH, *STDOUT);
+vdr_ParseSeqFileToSeqHash($fa_file, \%seq_H, $FH_HR);
+my @fetched_seq_A = (sort keys %seq_H);
+if(scalar(@fetched_seq_A) != 1) { 
+  ofile_FAIL("ERROR did not fetch exactly 1 sequence from fasta file $fa_file\n", 1, $FH_HR);
 }
-if(! exists $ftr_info_HAH{$mdl_name}) { 
-  ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
+my $mdl_name_ver = $fetched_seq_A[0];
+# make sure it's the right sequence
+if($mdl_name_ver =~ /(\S+)\.\d+/) { 
+  if($1 ne $mdl_name) { 
+    ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
+  }
 }
-
+else {
+  ofile_FAIL("ERROR did not fetch correct sequence from fasta file $fa_file (expected accession.version starting with $mdl_name, got $mdl_name_ver)\n", 1, $FH_HR);
+}
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+###################################################################
+# Fetch the feature table (ft) or GenBank (gb) file (if necessary)
+# and parse it.
+###################################################################
+my $ft_file = undef;
+my $gb_file = undef;
+my %ftr_info_HAH = (); # the feature info 
+if(! opt_IsUsed("--gb", \%opt_HH)) { 
+  if(opt_IsUsed("--inft", \%opt_HH)) { 
+    $ft_file = opt_Get("--inft", \%opt_HH);
+  }
+  else { 
+    # --inft not used, create ft file by fetching using eutils
+    $start_secs = ofile_OutputProgressPrior("Fetching feature table file", $progress_w, $log_FH, *STDOUT);
+    $ft_file = $out_root . ".ft";
+    if(opt_Get("--ftfetch1", \%opt_HH)) { 
+      utl_RunCommand("efetch -db nuccore -id $mdl_name -format ft > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name (--ftfetch1)");
+    }
+    elsif(opt_Get("--ftfetch2", \%opt_HH)) { 
+      utl_RunCommand("efetch -db nuccore -id $mdl_name -format gbc | xml2tbl > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name (--ftfetch2)");
+    }
+    else { # default way of fetching a feature table
+      vdr_EutilsFetchToFile($ft_file, $mdl_name, "nuccore", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name");
+    }
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  # parse the feature table file
+  $start_secs = ofile_OutputProgressPrior("Parsing feature table file", $progress_w, $log_FH, *STDOUT);
+  sqf_FeatureTableParse($ft_file, \%ftr_info_HAH, $FH_HR);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  # if we have any CDS features with protein_id qualifiers, fetch and parse those
+  $start_secs = ofile_OutputProgressPrior("Fetching and parsing protein feature table file(s)", $progress_w, $log_FH, *STDOUT);
+  fetch_and_parse_cds_protein_feature_tables(\@{$ftr_info_HAH{$mdl_name}}, $out_root, $FH_HR);
+  if(! exists $ftr_info_HAH{$mdl_name}) { 
+    ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+} # end of 'if(! opt_IsUsed("--gb", \%opt_HH))' { 
+else { 
+# If --gb (and not --ingb) used: fetch the genbank file 
+  if(opt_IsUsed("--ingb", \%opt_HH)) { 
+    $gb_file = opt_Get("--ingb", \%opt_HH);
+  }
+  else { 
+    # --ingb not used, create gb file by fetching using eutils
+    $start_secs = ofile_OutputProgressPrior("Fetching GenBank file", $progress_w, $log_FH, *STDOUT);
+    
+    $gb_file = $out_root . ".gb";
+    vdr_EutilsFetchToFile($gb_file, $mdl_name, "nuccore", "gb", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "gb", $gb_file, 1, 1, "GenBank format file for $mdl_name");
+    
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  }
+  # parse the genbank file
+  $start_secs = ofile_OutputProgressPrior("Parsing GenBank file", $progress_w, $log_FH, *STDOUT);
+  sqf_GenbankParse($gb_file, undef, \%ftr_info_HAH, $FH_HR);
+  if(! exists $ftr_info_HAH{$mdl_name}) { 
+    ofile_FAIL("ERROR parsing GenBank file $gb_file, did not read info for reference accession $mdl_name\n", 1, $FH_HR);
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
+  utl_AHDump("Feature information", \@{$ftr_info_HAH{$mdl_name}}, $ofile_info_HH{"FH"}{"ftrinfo"});
+}
 
 #######################################################
 # Prune data read from %ftr_info_HAH, only keeping what
 # we want to output to the eventual model info file
 #######################################################
-$start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank file", $progress_w, $log_FH, *STDOUT);
+$start_secs = ofile_OutputProgressPrior("Pruning data read from GenBank", $progress_w, $log_FH, *STDOUT);
 
 # determine what types of features we will store based on cmdline options
 # --fall is incompatible with --fadd
@@ -364,14 +442,13 @@ my %qdf_H      = (); # default qualifiers to keep
 my %qadd_H     = (); # qualifiers to add
 my %qskip_H    = (); # qualifiers to skip
 my %qftr_add_H = (); # if --qftradd, subset of features to add qualifiers in --qadd option for
-process_add_and_skip_options("type,location,product,gene,exception,ribosomal_slippage", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
+process_add_and_skip_options("type,coords,location,product,gene,exception,parent_idx_str,5p_trunc,3p_trunc", "--qadd", "--qskip", "--qftradd", \%qdf_H, \%qadd_H, \%qskip_H, \%qftr_add_H, \%opt_HH, $FH_HR); 
 # we only need ribosomal_slippage above so we can get the exception:ribosomal slippage 
 # qualifier, if we switch to parsing feature tables instead of GenBank files, then
 # "ribosomal_slippage" should be removed from the list.
 
 # remove all features types we don't want
 my $ftr_idx;
-my @ftr_idx_to_remove_A = ();
 for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
   my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
   # we skip this type and remove it from ftr_info_HAH
@@ -385,6 +462,25 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
       (! defined $fadd_H{$ftype})    && # (A2)
       (! opt_Get("--fall", \%opt_HH)))  # (A3)
      || (defined $fskip_H{$ftype})) {   # (B)
+    splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
+    $ftr_idx--; # this is about to be incremented
+  }
+}
+
+# deal with special case: remove any CDS features that have "trunc5"
+# or "trunc3" keys set as 1 we can't deal with these because we
+# don't know how to translate them in v-build.pl and (even if we did
+# handle that based on codon_start) v-annotate.pl can't deal with
+# these because a start/stop codon is not expected and all complete
+# CDS are validated by looking for a start/stop
+for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+  my $ftype = $ftr_info_HAH{$mdl_name}[$ftr_idx]{"type"};
+  if(($ftype eq "CDS") && 
+     (((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"}) && 
+       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc5"} == 1)) || 
+      ((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"}) && 
+       ($ftr_info_HAH{$mdl_name}[$ftr_idx]{"trunc3"} == 1)))) { 
+    ofile_OutputString($log_FH, 1, "\n# WARNING: not modelling CDS feature with coords " . $ftr_info_HAH{$mdl_name}[$ftr_idx]{"coords"} . " because it is 5' and/or 3' truncated\n#          (e.g. incomplete, with a \"<\" or \">\" in its coordinates in the feature table.\n#\n# ");
     splice(@{$ftr_info_HAH{$mdl_name}}, $ftr_idx, 1);
     $ftr_idx--; # this is about to be incremented
   }
@@ -413,32 +509,34 @@ for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) {
   }
 }
 
-# Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
-# existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
-# at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
-# qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
-# only 'exception:ribosomal slippage' qualifier/values are desired in the 
-# output feature table. If we switch to parsing Entrez feature tables as input then
-# the need for this should go away because 'exception:ribosomal slippage' is in that
-# feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
-# we can just ignore). 
-# 
-# If ribosomal_slippage qualifier exists: create a new "exception" 
-# qualifier with value of "ribosomal slippage"
-# 
-for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
-  if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
-     (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
-    if(defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"}) { 
-      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} .= ":GBSEP:" . "ribosomal slippage";
-    }
-    else { 
-      $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
-    }
-    # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
-    if((! opt_Get("--qall", \%opt_HH)) &&
-       (! defined $qadd_H{"ribosomal_slippage"})) { 
-      delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
+if(opt_Get("--gb", \%opt_HH)) { 
+  # Deal with special case: we purposefully added 'ribosomal_slippage' qualifiers if they 
+  # existed just so we could now add 'exception' qualifiers with 'ribosomal slippage' values
+  # at this stage. This is ONLY to get around problem that GenBank format includes 'ribosomal_slippage'
+  # qualifiers but not 'exception' qualifiers with 'ribosomal slippage' values, but 
+  # only 'exception:ribosomal slippage' qualifier/values are desired in the 
+  # output feature table. If we switch to parsing Entrez feature tables as input then
+  # the need for this should go away because 'exception:ribosomal slippage' is in that
+  # feature table file (along with the unwanted 'ribosomal_slippage' qualifier which
+  # we can just ignore). 
+  # 
+  # If ribosomal_slippage qualifier exists: create a new "exception" 
+  # qualifier with value of "ribosomal slippage"
+  # 
+  for($ftr_idx = 0; $ftr_idx < scalar(@{$ftr_info_HAH{$mdl_name}}); $ftr_idx++) { 
+    if((defined $ftr_info_HAH{$mdl_name}[$ftr_idx]) && 
+       (defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"})) {
+      if(defined $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"}) { 
+        $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} .= ":GBSEP:" . "ribosomal slippage";
+      }
+      else { 
+        $ftr_info_HAH{$mdl_name}[$ftr_idx]{"exception"} = "ribosomal slippage";
+      }
+      # now remove the "ribosomal_slippage" qualifier UNLESS --qall used or $qadd_H{"ribosomal_slippage"} exists
+      if((! opt_Get("--qall", \%opt_HH)) &&
+         (! defined $qadd_H{"ribosomal_slippage"})) { 
+        delete $ftr_info_HAH{$mdl_name}[$ftr_idx]{"ribosomal_slippage"};
+      }
     }
   }
 }
@@ -457,47 +555,26 @@ if(defined $addminfo_file) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
-
 #####################################################################
 # Parse the input stockholm file (if --stk) or create it (if ! --stk)
 #####################################################################
 my $stk_file = $out_root . ".stk";
-my $fa_file  = $out_root . ".fa";
 my $stk_has_ss = undef;
 my $in_stk_file = opt_Get("--stk", \%opt_HH);
 if(defined $in_stk_file) { 
   $start_secs = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_info_HH{$mdl_name}{"seq"}, \%opt_HH, $FH_HR);
+  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_H{$mdl_name_ver}, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-  
-  $start_secs = ofile_OutputProgressPrior("Reformatting Stockholm file to FASTA file", $progress_w, $log_FH, *STDOUT);
-
   utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  sqf_EslReformatRun($execs_H{"esl-reformat"}, $stk_file, $fa_file, "stockholm", "fasta", \%opt_HH, $FH_HR);
-
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 else { 
-  # --stk not used, we create it by first making a fasta file of the model
-  # model sequence read from the gb file, then converting that fasta file 
-  # to a stockholm file
-  $start_secs = ofile_OutputProgressPrior("Creating FASTA sequence file", $progress_w, $log_FH, *STDOUT);
-
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fasta", $fa_file, 1, "fasta sequence file for $mdl_name");
-  sqf_FastaWriteSequence($ofile_info_HH{"FH"}{"fasta"}, 
-                         $seq_info_HH{$mdl_name}{"ver"}, 
-                         $seq_info_HH{$mdl_name}{"def"}, 
-                         $seq_info_HH{$mdl_name}{"seq"}, $FH_HR);
-  close $ofile_info_HH{"FH"}{"fasta"};
-
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+  # --stk not used, we create it from the fasta file we read
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
   sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, "Stockholm alignment file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -507,11 +584,18 @@ else {
 ######################################################################
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, $log_FH, *STDOUT);
 
-vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+if(opt_Get("--gb", \%opt_HH)) { # we only need to derive 'coords' if we parsed the GenBank file
+  vdr_FeatureInfoImputeCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+}
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+# add 'gene' qualifiers to 'CDS' features
+if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
+  vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAH{$mdl_name}}, "gene", "gene", "CDS",        "gene", $FH_HR);
+  vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAH{$mdl_name}}, "gene", "gene", "mRNA",       "gene", $FH_HR);
+  vdr_FeatureInfoImputeByOverlap(\@{$ftr_info_HAH{$mdl_name}}, "gene", "gene", "regulatory", "gene", $FH_HR);
+}
 
 my @sgm_info_AH = (); # segment info, inferred from feature info
 vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -528,17 +612,20 @@ if($ncds > 0) {
   $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
 
   $cds_fa_file  = $out_root . ".cds.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, 1, "fasta sequence file for CDS from $mdl_name");
   vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   close $ofile_info_HH{"FH"}{"cdsfasta"};
   
   $protein_fa_file = $out_root . ".protein.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, 1, "fasta sequence file for translated CDS from $mdl_name");
   sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                                  $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
 
   sqf_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-phr", $protein_fa_file . ".phr", 1, 1, "BLAST db .phr file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pin", $protein_fa_file . ".pin", 1, 1, "BLAST db .pin file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-psq", $protein_fa_file . ".psq", 1, 1, "BLAST db .psq file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -549,7 +636,7 @@ if($ncds > 0) {
 my $cm_file = undef;
 if(! opt_Get("--skipbuild", \%opt_HH)) { 
   my $cmbuild_str = undef;
-  my $clen_times_cmn = $seq_info_HH{$mdl_name}{"len"} * 200;
+  my $clen_times_cmn = length($seq_H{$mdl_name_ver}) * 200;
   if(opt_IsUsed("--cmn", \%opt_HH)) { 
     $clen_times_cmn *= (opt_Get("--cmn", \%opt_HH) / 200);
   }
@@ -575,8 +662,8 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   utl_RunCommand($cmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, "CM file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, "cmbuild output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cm",      $cm_file, 1, 1, "CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmbuild", $cmbuild_file, 1, 1, "cmbuild output file");
 
   # press the file we just created 
   $start_secs = ofile_OutputProgressPrior("Pressing CM file", $progress_w, $log_FH, *STDOUT);
@@ -585,11 +672,11 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   utl_RunCommand($cmpress_cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
   ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1m",     $cm_file . ".i1m", 1, "binary CM and p7 HMM filter file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1i",     $cm_file . ".i1i", 1, "SSI index for binary CM file");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, "optimized p7 HMM filters (MSV part)");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, "optimized p7 HMM filters (remainder)");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, "cmpress output file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1m",     $cm_file . ".i1m", 1, 1, "binary CM and p7 HMM filter file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1i",     $cm_file . ".i1i", 1, 1, "SSI index for binary CM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, 1, "optimized p7 HMM filters (MSV part)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, 1, "optimized p7 HMM filters (remainder)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, 1, "cmpress output file");
 }
 
 ########################
@@ -603,7 +690,7 @@ $start_secs = ofile_OutputProgressPrior("Creating model info file", $progress_w,
 my @mdl_info_AH = (); 
 %{$mdl_info_AH[0]} = ();
 $mdl_info_AH[0]{"name"}   = $mdl_name;
-$mdl_info_AH[0]{"length"} = $seq_info_HH{$mdl_name}{"len"};
+$mdl_info_AH[0]{"length"} = length($seq_H{$mdl_name_ver});
 if(defined $cm_file) { 
   $mdl_info_AH[0]{"cmfile"} = utl_RemoveDirPath($cm_file);
 }
@@ -621,7 +708,7 @@ if(opt_IsUsed("--group", \%opt_HH)) {
 }
 my $modelinfo_file  = $out_root . ".minfo";
 vdr_ModelInfoFileWrite($modelinfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, "VADR 'model info' format file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "modelinfo", $modelinfo_file, 1, 1, "VADR 'model info' format file for $mdl_name");
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -654,7 +741,7 @@ exit 0;
 # Arguments:
 #  $in_stk_file:  input stockholm file to validate
 #  $exp_sqstring: sequence we expect to be in the stockholm alignment
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $opt_HHR:      REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    '1' if Stockholm file has SS_cons annotation, else '0'
@@ -738,6 +825,124 @@ sub process_add_and_skip_options {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: fetch_and_parse_cds_protein_feature_tables()
+# Incept:     EPN, Tue May 21 20:49:40 2019
+#
+# Synopsis: Fetch and parse feature tables for proteins stored
+#           as qualifier values for the "protein_id" qualifier
+#           of "CDS" features in @{$ftr_info_AHR}. Features
+#           and qualifiers read from these feature tables are
+#           added to @{$ftr_info_AHR} after converting the
+#           coordinates as necessary.
+#
+# Arguments:
+#  $ftr_info_AHR:  ref to the feature info array of hashes
+#  $out_root:      output root for the file names
+#  $FH_HR:         ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if there's a problem fetching of parsing any
+#             protein feature tables
+#################################################################
+sub fetch_and_parse_cds_protein_feature_tables { 
+  my $sub_name = "fetch_and_parse_cds_protein_feature_tables()";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($ftr_info_AHR, $out_root, $FH_HR) = @_;
+
+  # ftr_info_AHR should already have array data for keys "type", "coords"
+  my @keys_A = ("type", "coords");
+  my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my %prot_ftr_info_HAH = ();
+    if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") && 
+       (defined $ftr_info_AHR->[$ftr_idx]{"protein_id"})) { 
+      my $protein_id = $ftr_info_AHR->[$ftr_idx]{"protein_id"};
+      my $accver = undef;
+      if($protein_id =~ /[^\|]*\|([^\|]+\.\d+)\|/) { 
+        $accver = $1;
+      }
+      elsif($protein_id =~ /([^\|]+\.\d+)/) { 
+        $accver = $1;
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, unable to parse protein_id $protein_id to get accession.version\n", 1, $FH_HR);
+      }
+      my $ft_file = $out_root . "." . $accver . ".ft";
+      vdr_EutilsFetchToFile($ft_file, $accver, "protein", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft." . $accver, $ft_file, 1, 1, "feature table format file for $accver");
+
+      # parse the file
+      sqf_FeatureTableParse($ft_file, \%prot_ftr_info_HAH, $FH_HR);
+    }
+    # copy info from \%prot_ftr_info_HAH to %ftr_info_AHR,
+    # but only if we don't already have that feature in %ftr_info_AHR
+    foreach my $prot_accver (sort keys %prot_ftr_info_HAH) { 
+      my $prot_nftr = utl_AHValidate(\@{$prot_ftr_info_HAH{$prot_accver}}, \@keys_A, "ERROR in $sub_name for accver $prot_accver", $FH_HR);
+      for(my $prot_ftr_idx = 0; $prot_ftr_idx < $prot_nftr; $prot_ftr_idx++) { 
+        # for non-CDS features, check to see if we already have a
+        # feature with the same type and coords, if so, make sure all
+        # data is consistent and skip it (if not all data is
+        # consistent: die in error) if no other feature with same type
+        # and coords exists, add it
+        # (We skip all CDS because we should already have them from the nucleotide
+        #  record, and because our check to see if an existing feature exists doesn't
+        #  word because the coords will differ by 3 and the 3' end due to the stop
+        #  codon coords being included in the nucleotide CDS record, but not the
+        #  protein one.)
+        # first, convert protein coords to nucleotide coords (before
+        # checking if it already exists or not)
+        if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") { 
+          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} = vdr_CoordsProtToNuc($ftr_info_AHR->[$ftr_idx]{"coords"}, $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}, $FH_HR);
+          my $found_ftr_idx = -1;
+          for(my $chk_ftr_idx = 0; $chk_ftr_idx < scalar(@{$ftr_info_AHR}); $chk_ftr_idx++) { 
+            if($found_ftr_idx == -1) { 
+              if(($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"}   eq $ftr_info_AHR->[$chk_ftr_idx]{"type"}) && 
+                 ($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} eq $ftr_info_AHR->[$chk_ftr_idx]{"coords"})) { 
+                # add data from $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx] to ftr_info_AHR->[$chk_ftr_idx]
+                foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
+                  if(! defined $ftr_info_AHR->[$chk_ftr_idx]{$prot_key}) { 
+                    $ftr_info_AHR->[$chk_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+                  }
+                  else { 
+                    if($ftr_info_AHR->[$chk_ftr_idx]{$prot_key} ne $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key}) { 
+                      # not equivalent, append 
+                      $ftr_info_AHR->[$chk_ftr_idx]{$prot_key} .= ":GBSEP:" . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if($found_ftr_idx != -1) { # the feature already exists update its parent string
+            if((! defined $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"}) || 
+               ($ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} eq "GBNULL")) { 
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} = $ftr_idx;
+            }
+            else { 
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "," . $ftr_idx;
+            }
+          }
+          else { # we didn't find this feature already in the feature info hash, add it
+            # printf("adding feature " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} . " with coords " . $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} . "\n");
+            my $nxt_ftr_idx = scalar(@{$ftr_info_AHR});
+            %{$ftr_info_AHR->[$nxt_ftr_idx]} = ();
+            foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
+              $ftr_info_AHR->[$nxt_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
+            }
+            $ftr_info_AHR->[$nxt_ftr_idx]{"parent_idx_str"} = $ftr_idx; # set parent
+          }
+        } # end of 'if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") {'
+      }
+    }
+  }
   return;
 }
 

@@ -10,10 +10,10 @@ use Bio::Easel::SqFile;
 use LWP::Simple; 
 
 require "vadr.pm"; 
-require "epn-options.pm";
-require "epn-ofile.pm";
-require "epn-seqfile.pm";
-require "epn-utils.pm";
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
 
 #######################################################################################
 # What this script does: 
@@ -41,7 +41,7 @@ $execs_H{"makeblastdb"}   = $env_vadr_blast_dir . "/makeblastdb";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
-# Command line and option processing using epn-options.pm
+# Command line and option processing using sqp_opts.pm
 #
 # opt_HH: 2D hash:
 #         1D key: option name (e.g. "-h")
@@ -90,8 +90,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.93";
-my $releasedate   = "May 2019";
+my $version       = "0.98";
+my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -116,6 +116,10 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+if($out_root !~ m/\.vadr$/) { 
+  $out_root .= ".vadr";
+}
 
 #############################################
 # output program banner and open output files
@@ -144,9 +148,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "cmd": command file with list of all commands executed
 
  # open the log and command files 
-#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, "Output printed to screen");
-#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, "List of executed commands");
-#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log", $out_root . ".log", 1, 1, "Output printed to screen");
+#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd", $out_root . ".cmd", 1, 1, "List of executed commands");
+#ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".filelist", 1, 1, "List and description of all output files");
 #my $log_FH = $ofile_info_HH{"FH"}{"log"};
 #my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
@@ -209,8 +213,7 @@ my @sgm_info_AH = (); # segment info, inferred from feature info
 $start_secs = ofile_OutputProgressPrior("Finalizing feature information", $progress_w, undef, *STDOUT);
 
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeSourceIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-vdr_FeatureInfoImputeParentIndices(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 
 vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -223,17 +226,22 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, undef, *STDOUT);
 
 my $cds_fa_file  = $out_root . ".cds.fa";
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, "fasta sequence file for CDS from $mdl_name");
+if(-e ($cds_fa_file . ".ssi")) { unlink ($cds_fa_file . ".ssi"); }
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, 1, "fasta sequence file for CDS from $mdl_name");
 vdr_CdsFetchStockholmToFasta($ofile_info_HH{"FH"}{"cdsfasta"}, $in_stk_file, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 close $ofile_info_HH{"FH"}{"cdsfasta"};
 
 my $protein_fa_file  = $out_root . ".protein.fa";
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, "fasta sequence file for translated CDS from $mdl_name");
+if(-e ($protein_fa_file . ".ssi")) { unlink ($protein_fa_file . ".ssi"); }
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "proteinfasta", $protein_fa_file, 1, 1, "fasta sequence file for translated CDS from $mdl_name");
 sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                                $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
 close $ofile_info_HH{"FH"}{"proteinfasta"};
 
 sqf_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-phr", $protein_fa_file . ".phr", 1, 1, "BLAST db .phr file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pin", $protein_fa_file . ".pin", 1, 1, "BLAST db .pin file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-psq", $protein_fa_file . ".psq", 1, 1, "BLAST db .psq file for $mdl_name");
 
 # add to mdl_info_AH
 $mdl_info_AH[0]{"blastdb"} = $protein_fa_file;
@@ -252,10 +260,10 @@ my $out_minfo_file   = $out_root . ".modelinfo";
 if($in_minfo_file eq $out_minfo_file) { 
   my $old_minfo_file = $in_minfo_file . ".old";
   vdr_RunCommand("cp $in_minfo_file " . $in_minfo_file . ".old", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "oldminfo", $old_minfo_file, 1, "Copy of input model info file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "oldminfo", $old_minfo_file, 1, 1, "Copy of input model info file");
 }  
 vdr_ModelInfoFileWrite($out_minfo_file, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "outminfo", $out_minfo_file, 1, "Output model info file with blastdb added");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "outminfo", $out_minfo_file, 1, 1, "Output model info file with blastdb added");
 
 ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 
@@ -276,7 +284,7 @@ exit 0;
 #
 # Arguments:
 #  $in_stk_file:  input stockholm file to validate
-#  $opt_HHR:      REF to 2D hash of option values, see top of epn-options.pm for description, PRE-FILLED
+#  $opt_HHR:      REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    Length of the model that will be built from this alignment.

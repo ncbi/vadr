@@ -218,7 +218,8 @@ while($keep_going) {
       if ($DEBUG) {
         print "set state to $State_SeenDefline $nextline\n";
       }
-      ($hdef) = ($nextline =~ m/>\s*([A-Z]\S+.*)/);
+#      ($hdef) = ($nextline =~ m/>\s*([A-Z]\S+.*)/);
+      ($hdef) = ($nextline =~ m/>\s*(\S+.*)/);
       ($hacc) = ($hdef =~ m/^(\S+)/);
       $nhsp = 0;        #number of alignments for one match initialized to 0
       if ($processing_alignment) {
@@ -522,7 +523,8 @@ sub determineLineType {
     if($line =~ m/^\d/)                                  { return $Linetype_position;    }
     if($line =~ m/^Query=/)                              { return $Linetype_query_name;  }
     if($line =~ m/^Length=\d+/)                          { return $Linetype_length;      }
-    if($line =~ m/^>\s*[A-Z]/)                           { return $Linetype_subject_name; }
+#    if($line =~ m/^>\s*[A-Z]/)                           { return $Linetype_subject_name; }
+    if($line =~ m/^>\s*\S+/)                           { return $Linetype_subject_name; }
     if(($line =~ m/^\s*Score\s*=\s+\S+\s+bits\s+\(\d+\)/) && ($line =~m/Expect/))
       { return $Linetype_score;       }
     if($line =~ m/^\s*Identities\s*=\s+\S+/)             { return $Linetype_identities;  }    
