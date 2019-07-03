@@ -8,7 +8,7 @@
 # for viral sequence classification and annotation.
 #
 VADRINSTALLDIR=$PWD
-VERSION="0.91"
+VERSION="0.98"
 VVERSION="vadr-$VERSION"
 
 # The following line will make the script fail if any commands fail
@@ -44,7 +44,7 @@ echo "------------------------------------------------"
 
 # download vadr-models 
 echo "Downloading latest VADR models ... "
-curl -k -L -o vadr-models.tar.gz http://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-0.94.2.tar.gz
+curl -k -L -o vadr-models.tar.gz http://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-0.98.1.tar.gz
 gunzip vadr-models.tar.gz
 tar xf vadr-models.tar
 rm vadr-models.tar
