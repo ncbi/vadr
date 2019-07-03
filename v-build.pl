@@ -187,8 +187,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.971";
-my $releasedate   = "Jun 2019";
+my $version       = "0.98";
+my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -564,7 +564,7 @@ my $in_stk_file = opt_Get("--stk", \%opt_HH);
 if(defined $in_stk_file) { 
   $start_secs = ofile_OutputProgressPrior("Validating input Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_H{$mdl_name}{"seq"}, \%opt_HH, $FH_HR);
+  $stk_has_ss = stockholm_validate_single_sequence_input($in_stk_file, $seq_H{$mdl_name_ver}, \%opt_HH, $FH_HR);
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   utl_RunCommand("cp $in_stk_file $stk_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);

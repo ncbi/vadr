@@ -286,8 +286,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.971";
-my $releasedate   = "Jun 2019";
+my $version       = "0.98";
+my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -421,7 +421,7 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $progress_w = 80; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 83; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 # make sure the sequence, CM, modelinfo, qsubinfo files exist
@@ -2891,7 +2891,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "predicted hits to model $mdl_name for feature " . $ftr_outroot_A[$ftr_idx]);
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
         
@@ -5124,8 +5124,8 @@ sub output_tabular {
                           (defined $mdl_info_AHR->[$mdl_idx]{"group"})    ? $mdl_info_AHR->[$mdl_idx]{"group"}    : "-", 
                           (defined $mdl_info_AHR->[$mdl_idx]{"subgroup"}) ? $mdl_info_AHR->[$mdl_idx]{"subgroup"} : "-", 
                           $mdl_cls_ct_HR->{$mdl_name},
-                          $mdl_pass_ct_H{$mdl_name}, 
-                          $mdl_fail_ct_H{$mdl_name}]); 
+                          (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0, 
+                          (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0]); 
       $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
       $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
       $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
