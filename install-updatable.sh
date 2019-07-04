@@ -31,14 +31,20 @@ echo "------------------------------------------------"
 # Clone what we need from GitHub (these are all public)
 
 # vadr
-# ONLY DIFFERENCE BETWEEN THIS SCRIPT AND install.sh IS THAT WE USE GIT CLONE TO GET vadr INSTEAD OF INSTALLING A SET VERSION
+# 1 OF 3 DIFFERENCES BETWEEN THIS SCRIPT AND install.sh IS THAT WE USE GIT CLONE TO GET vadr INSTEAD OF INSTALLING A SET VERSION
 #echo "Installing vadr ... "
 #curl -k -L -o vadr-$VERSION.zip https://github.com/nawrockie/vadr/archive/$VERSION.zip; unzip vadr-$VERSION.zip; mv vadr-$VERSION vadr; rm vadr-$VERSION.zip
 echo "Installing 'git pull'-updatable copy of vadr ... "
 git clone https://github.com/nawrockie/vadr.git
 
-# sequip and Bio-Easel
-for m in sequip Bio-Easel; do 
+# 2 OF 3 DIFFERENCES BETWEEN THIS SCRIPT AND install.sh: install updatable version of sequip
+# sequip 
+echo "Installing 'git pull'-updatable copy of sequip ... "
+git clone https://github.com/nawrockie/sequip.git
+
+# 3 OF 3 DIFFERENCES BETWEEN THIS SCRIPT AND install.sh ONLY INSTALL Bio-Easel via curl not both Bio-Easel and sequip
+#for m in sequip Bio-Easel; do 
+for m in Bio-Easel; do 
     echo "Installing $m ... "
     curl -k -L -o $m-$VVERSION.zip https://github.com/nawrockie/$m/archive/$VVERSION.zip; unzip $m-$VVERSION.zip; mv $m-$VVERSION $m; rm $m-$VVERSION.zip
     # we can't leave these directories with $VVERSION because vadr scripts expect non-versioned names
