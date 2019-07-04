@@ -70,7 +70,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.98";
+my $version       = "0.981";
 my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
@@ -148,9 +148,9 @@ my %ofile_info_HH = ();  # hash of information on output files we created,
                          #  "list": file with list of all output files created
 
 # open the log and command files 
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, "Output printed to screen");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, "List of executed commands");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, "List and description of all output files");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "log",  $out_root . ".log",  1, 1, "Output printed to screen");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cmd",  $out_root . ".cmd",  1, 1, "List of executed commands");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "list", $out_root . ".list", 1, 1, "List and description of all output files");
 my $log_FH = $ofile_info_HH{"FH"}{"log"};
 my $cmd_FH = $ofile_info_HH{"FH"}{"cmd"};
 my $FH_HR  = $ofile_info_HH{"FH"};
