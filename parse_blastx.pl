@@ -15,7 +15,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 
-require "epn-options.pm";
+require "sqp_opts.pm";
 
 # different possible states for the finite automaton used to help parse the input file
 my $State_Naive                    = 0;
@@ -96,7 +96,7 @@ my $DEBUG = 0;                                  #are we in debugging mode?
 
 
 
-# variables related to command line options, see epn-options.pm
+# variables related to command line options, see sqp_opts.pm
 my %opt_HH = ();
 my @opt_order_A = ();
 my %opt_group_desc_H = ();
