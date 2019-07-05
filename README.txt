@@ -180,17 +180,22 @@ The VADR package includes some tests you can run to make sure that
 your installation was successful and that your environment variables
 are set-up correctly.
 
-There are 2 shell scripts for running tests:
+There are 2 shell scripts for running tests; with respect to the
+installation directory they are:
 
-     1	do-install-tests-local.sh
-     2	do-install-tests-parallel.sh
+     1	vadr/testfiles/do-install-tests-local.sh
+     2	vadr/testfiles/do-install-tests-parallel.sh
+
+You can run them like this:
+> sh $VADRSCRIPTSDIR/testfiles/do-install-tests-local.sh
+> sh $VADRSCRIPTSDIR/testfiles/do-install-tests-parallel.sh
 
 The VADR scripts can be run locally on your computer or in parallel
 on a compute farm. These two test files test each of those modes. 
 If you plan to run the scripts at locally at least some of the time,
 then run 'do-install-tests-local.sh'. If you plan to run the scripts
 on a compute farm at least some of the time, then run
-'do-install-tests-parallel.sh' 
+'do-install-tests-parallel.sh'. 
 
 These scripts can take up to several minutes to run. Please be patient.
 If something goes wrong the 'local' script will exit quickly. If the 
