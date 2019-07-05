@@ -5127,8 +5127,8 @@ sub output_tabular {
                           (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0, 
                           (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0]); 
       $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
-      $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
-      $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
+      $sum_mdl_pass_ct    += (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0;
+      $sum_mdl_fail_ct    += (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0;
       $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct;
     }
   }
