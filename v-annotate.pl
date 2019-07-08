@@ -286,7 +286,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.982";
+my $version       = "0.983";
 my $releasedate   = "Jul 2019";
 my $pkgname       = "VADR";
 
@@ -5127,8 +5127,8 @@ sub output_tabular {
                           (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0, 
                           (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0]); 
       $sum_mdl_cls_ct     += $mdl_cls_ct_HR->{$mdl_name};
-      $sum_mdl_pass_ct    += $mdl_pass_ct_H{$mdl_name};
-      $sum_mdl_fail_ct    += $mdl_fail_ct_H{$mdl_name};
+      $sum_mdl_pass_ct    += (defined $mdl_pass_ct_H{$mdl_name}) ? $mdl_pass_ct_H{$mdl_name} : 0;
+      $sum_mdl_fail_ct    += (defined $mdl_fail_ct_H{$mdl_name}) ? $mdl_fail_ct_H{$mdl_name} : 0;
       $sum_mdl_noannot_ct += $mdl_cls_ct_HR->{$mdl_name} - $mdl_ant_ct;
     }
   }
