@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 0.982 [Jul 2019]
+# version: 0.983 [Jul 2019]
 #
 # vadr.pm
 # Eric Nawrocki
