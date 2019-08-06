@@ -277,9 +277,10 @@ sub parse_test_file {
     if(($line !~ m/^\#/) && ($line =~ m/\w/)) { 
       # example input file:
       # # comment line (ignored)
-      # command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --infasta testfiles/noro.9.fa --dirbuild /panfs/pan1/dnaorg/virseqannot/dnaorg-build-directories/norovirus-builds --dirout test-noro.9
-      # out: test-noro.9/test-noro.9-NC_001959.dnaorg_annotate.sqtable 
-      # exp: testfiles/testout.1/test-noro.9/test-noro.9-NC_001959.dnaorg_annotate.sqtable 
+      #command: perl $VADRSCRIPTSDIR/v-annotate.pl -f $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue.r5 > va-dengue.r5.out
+      #desc: annotate-dengue-5-local
+      #out: va-dengue.r5/va-dengue.r5.vadr.pass.ft 
+      #exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.ft 
       chomp $line;
       if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
 

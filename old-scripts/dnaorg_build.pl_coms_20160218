@@ -30,7 +30,7 @@ require "dnaorg.pm";
 
 # hard-coded-paths:
 my $inf_exec_dir   = "/usr/local/infernal/1.1.1/bin/";
-my $esl_fetch_cds  = "/panfs/pan1/dnaorg/programs/esl-fetch-cds.pl";
+my $esl_fetch_cds  = "esl-fetch-cds.pl";
 
 # The definition of $usage explains the script and usage:
 my $usage = "\ndnaorg_build.pl <reference accession>\n";
