@@ -1,6 +1,6 @@
-EPN, Fri Jul  5 09:50:18 2019
+EPN, Wed Aug  7 12:38:13 2019
 
-VADR 0.983 README.txt 
+VADR 0.99 README.txt 
 
 Organization of this file:
 
@@ -102,14 +102,14 @@ actual path to where you ran install.sh (below it is replaced with
 "<full path to directory in which you ran install.sh>")
 
 **********************NOTE TO INTERNAL NCBI USERS***********************
-If you are internal to NCBI, VADR is installed in a central location
-here: 
-/panfs/pan1/dnaorg/virseqannot/code/vadr-install
-To set up your environment variables follow the instructions below but
-replace:
+Contact Eric Nawrocki (nawrocke@ncbi.nlm.nih.gov) to find out the
+path to the centrally installed copy of VADR at NCBI (<ncbi-vadr-dir>)
+
+Then, to set up your environment variables follow the instructions
+below but replace:
 <full path to directory in which you ran install.sh>
 with
-/panfs/pan1/dnaorg/virseqannot/code/vadr-install
+<ncbi-vadr-dir>
 ***********************************************************************
 
 ********************************************************
@@ -210,7 +210,7 @@ Below is example output for do-install-tests-local.sh:
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Mon May  6 12:12:22 2019
 #
-# test file:                    /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr/testfiles/noro.r10.local.testin
+# test file:                    vadr/testfiles/noro.r10.local.testin
 # output directory:             n10-local
 # forcing directory overwrite:  yes [-f]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -246,7 +246,7 @@ Below is example output for do-install-tests-local.sh:
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Mon May  6 12:12:46 2019
 #
-# test file:                    /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr/testfiles/dengue.r5.local.testin
+# test file:                    vadr/testfiles/dengue.r5.local.testin
 # output directory:             d5-local
 # forcing directory overwrite:  yes [-f]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -328,14 +328,14 @@ Here is the output from the above command (without the --subgroup option):
 # VADR 0.92 (May 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:              Mon May  6 12:27:22 2019
-# $VADRBIOEASELDIR:  /panfs/pan1/dnaorg/virseqannot/code/vadr-install/Bio-Easel
+# $VADRBIOEASELDIR:  Bio-Easel
 # $VADRBLASTDIR:     /usr/bin
-# $VADREASELDIR:     /panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps
-# $VADRINFERNALDIR:  /panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src
-# $VADRMODELDIR:     /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr-models
-# $VADRSCRIPTSDIR:   /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr
+# $VADREASELDIR:     infernal-dev/easel/miniapps
+# $VADRINFERNALDIR:  infernal-dev/src
+# $VADRMODELDIR:     vadr-models
+# $VADRSCRIPTSDIR:   vadr
 #
-# sequence file:                                         /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr/testfiles/noro.9.fa
+# sequence file:                                         vadr/testfiles/noro.9.fa
 # output directory:                                      va-noro.9
 # set expected classification of all seqs to group <s>:  Norovirus [--group]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
