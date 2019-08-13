@@ -1159,259 +1159,259 @@ sub vdr_AlertInfoInitialize {
   # with how we try to add it (args to vdr_AlertInfoAdd don't pass the contract check)
 
   vdr_AlertInfoAdd($alt_info_HHR, "noannotn", "sequence",
-                   "No Annotation", # short description
+                   "NO_ANNOTATION", # short description
                    "no significant similarity detected", # long  description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  vdr_AlertInfoAdd($alt_info_HHR, "minusstr", "sequence",
-                   "Minus Strand", # short description
+  vdr_AlertInfoAdd($alt_info_HHR, "revcompl", "sequence",
+                   "REVCOMPLEM", # short description
                    "sequence appears to be reverse complemented", # long description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "qstsbgrp", "sequence",
-                   "Questionable Specified Subgroup", # short description
+                   "QUESTIONABLE_SPECIFIED_SUBGROUP", # short description
                    "best overall model is not from specified subgroup", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "qstgroup", "sequence",
-                   "Questionable Specified Group", # short description
+                   "QUESTIONABLE_SPECIFIED_GROUP", # short description
                    "best overall model is not from specified group", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "incsbgrp", "sequence",
-                   "Incorrect Specified Subgroup", # short description
+                   "INCORRECT_SPECIFIED_SUBGROUP", # short description
                    "score difference too large between best overall model and best specified subgroup model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "incgroup", "sequence",
-                   "Incorrect Specified Group", # short description
+                   "INCORRECT_SPECIFIED_GROUP", # short description
                    "score difference too large between best overall model and best specified group model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowcovrg", "sequence",
-                   "Low Coverage", # short description, 
+                   "LOW_COVERAGE", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfclas", "sequence",
-                   "Indefinite Classification", # short description
+                   "INDEFINITE_CLASSIFICATION", # short description
                    "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowscore", "sequence",
-                   "Low Score", # short description
+                   "LOW_SCORE", # short description
                    "score to homology model below low threshold", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "biasdseq", "sequence",
-                   "Biased Sequence", # short description
+                   "BIASED_SEQUENCE", # short description
                    "high fraction of score attributed to biased sequence composition", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "dupregin", "sequence",
-                   "Duplicate Regions", # short description
+                   "DUPLICATE_REGIONS", # short description
                    "similarity to a model region occurs more than once", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "discontg", "sequence",
-                   "Discontiguous Similarity", # short description
+  vdr_AlertInfoAdd($alt_info_HHR, "discontn", "sequence",
+                   "DISCONTINUOUS_SIMILARITY", # short description
                    "not all hits are in the same order in the sequence and the homology model", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfstrn", "sequence",
-                   "Indefinite Strand", # short description
+                   "INDEFINITE_STRAND", # short description
                    "significant similarity detected on both strands", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5s", "sequence",
-                   "Low Similarity at Start", # short description
+                   "LOW_SIMILARITY_START", # short description
                    "significant similarity not detected at 5' end of the sequence", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3s", "sequence",
-                   "Low Similarity at End", # short description
+                   "LOW_SIMILARITY_END", # short description
                    "significant similarity not detected at 3' end of the sequence", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimis", "sequence",
-                   "Low Similarity", # short description
+                   "LOW_SIMILARITY", # short description
                    "internal region without significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "unexdivg", "sequence",
-                   "Unexpected Divergence", # short description
+                   "UNEXPECTED_DIVERGENCE", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "noftrann", "sequence",
-                   "No Features Annotated", # short description
+                   "NO_FEATURES_ANNOTATED", # short description
                    "sequence similarity to homology model does not overlap with any features", # long description
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
-                   "Mutation at Start", # short description
+                   "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendcd", "feature",
-                   "Mutation at End", # short description
+                   "MUTATION_AT_END", # short description
                    "expected stop codon could not be identified, predicted CDS stop by homology is invalid", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendns", "feature",  
-                   "Mutation at End", # short description
+                   "MUTATION_AT_END", # short description
                    "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendex", "feature",
-                   "Mutation at End", # short description
+                   "MUTATION_AT_END", # short description
                    "expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "unexleng", "feature",  
-                   "Unexpected Length", # short description
+                   "UNEXPECTED_LENGTH", # short description
                    "length of complete coding (CDS or mat_peptide) feature is not a multiple of 3", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "unexstpn", "feature",
-                   "Unexpected Stop Codon", # short description
+  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopn", "feature",
+                   "CDS_HAS_STOP_CODON", # short description
                    "in-frame stop codon exists 5' of stop position predicted by homology to reference", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "unexstpp", "feature",
-                   "Unexpected Stop Codon", # short description
+  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
+                   "CDS_HAS_STOP_CODON", # short description
                    "stop codon in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",
-                   "Peptide Translation Problem", # short description
+                   "PEPTIDE_TRANSLATION_PROBLEM", # short description
                    "mat_peptide may not be translated because its parent CDS has a problem", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "pepadjcy", "feature",
-                   "Peptide Adjacency Problem", # short description
+                   "PEPTIDE_ADJACENCY_PROBLEM", # short description
                    "predictions of two mat_peptides expected to be adjacent are not adjacent", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfantp", "feature",
-                   "Indefinite Annotation", # short description
+                   "INDEFINITE_ANNOTATION", # short description
                    "protein-based search identifies CDS not identified in nucleotide-based search", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfantn", "feature",
-                   "Indefinite Annotation", # short description
+                   "INDEFINITE_ANNOTATION", # short description
                    "nucleotide-based search identifies CDS not identified in protein-based search", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5gap", "feature",
-                   "Indefinite Annotation at Start", # short description
+                   "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model is a gap at 5' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5loc", "feature",
-                   "Indefinite Annotation at Start", # short description
+                   "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model has low confidence at 5' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5plg", "feature",
-                   "Indefinite Annotation at Start", # short description
+                   "INDEFINITE_ANNOTATION_START", # short description
                    "protein-based alignment extends past nucleotide-based alignment at 5' end", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5pst", "feature",
-                   "Indefinite Annotation at Start", , # short description
+                   "INDEFINITE_ANNOTATION_START", # short description
                    "protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3gap", "feature",
-                   "Indefinite Annotation at End", # short description
+                   "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model is a gap at 3' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3loc", "feature",
-                   "Indefinite Annotation at End", # short description
+                   "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model has low confidence at 3' boundary", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3plg", "feature",
-                   "Indefinite Annotation at End", # short description
+                   "INDEFINITE_ANNOTATION_END", # short description
                    "protein-based alignment extends past nucleotide-based alignment at 3' end", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3pst", "feature",
-                   "Indefinite Annotation at End", # short description
+                   "INDEFINITE_ANNOTATION_END", # short description
                    "protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfstrp", "feature",
-                   "Indefinite Strand", # short description
+                   "INDEFINITE_STRAND", # short description
                    "strand mismatch between protein-based and nucleotide-based predictions", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "insertnp", "feature",
-                   "Insertion of Nucleotides", # short description
+                   "INSERTION_OF_NT", # short description
                    "too large of an insertion in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
-                   "Deletion of Nucleotides", # short description
+                   "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
-                   "Low Feature Similarity at Start", # short description
+                   "LOW_FEATURE_SIMILARITY_START", # short description
                    "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3f", "feature",
-                   "Low Feature Similarity at End", # short description
+                   "LOW_FEATURE_SIMILARITY_END", # short description
                    "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimif", "feature",
-                   "Low Feature Similarity", # short description
+                   "LOW_FEATURE_SIMILARITY", # short description
                    "region within annotated feature lacks significant similarity", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
@@ -1419,8 +1419,8 @@ sub vdr_AlertInfoInitialize {
   # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
   # 3rd argument invalidates the 2nd argument error code, but not vice versa
 
-  # unexpstpn, mutendex, mutendns are preferred to mutendcd
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "unexstpn,mutendex,mutendns", $FH_HR); 
+  # cdsstopn, mutendex, mutendns are preferred to mutendcd
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "cdsstopn,mutendex,mutendns", $FH_HR); 
 
   # unexdivg is preferred to noftrann
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);
