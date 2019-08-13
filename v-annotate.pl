@@ -286,7 +286,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.99";
+my $version       = "0.991";
 my $releasedate   = "Aug 2019";
 my $pkgname       = "VADR";
 
@@ -4186,8 +4186,8 @@ sub alert_list_option {
   my @head_AA  = ();
   my @bcom_A   = ();
 
-  @{$head_AA[0]} = ("",    "alert",  "short",       "long");
-  @{$head_AA[1]} = ("idx", "code",   "description", "description");
+  @{$head_AA[0]} = ("",    "alert",  "",    "short",       "long");
+  @{$head_AA[1]} = ("idx", "code",   "S/F", "description", "description");
 
   push(@bcom_A, $div_line);
   push(@bcom_A, "#\n");
@@ -4199,7 +4199,9 @@ sub alert_list_option {
   foreach $code (@code_A) { 
     if($alt_info_HHR->{$code}{"always_fails"}) { 
       $idx++;
-      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+      push(@data_AA, [$idx, $code, 
+                      ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
@@ -4218,7 +4220,9 @@ sub alert_list_option {
     if(($alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
-      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+      push(@data_AA, [$idx, $code, 
+                      ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
@@ -4237,7 +4241,9 @@ sub alert_list_option {
     if((! $alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
-      push(@data_AA, [$idx, $code, helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+      push(@data_AA, [$idx, $code, 
+                      ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
   }
