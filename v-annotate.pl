@@ -3603,7 +3603,6 @@ sub add_blastx_alerts {
               }
             }
             # if we added an alert, step through all children of this feature (if any) and add peptrans
-            printf("HEYA in $sub_name, alt_flag: $alt_flag, ftr_nchildren: $ftr_nchildren\n");
             if(($alt_flag) && ($ftr_nchildren > 0)) { 
               for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
                 my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
