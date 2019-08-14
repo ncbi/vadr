@@ -589,6 +589,13 @@ if(opt_Get("--gb", \%opt_HH)) { # we only need to derive 'coords' if we parsed t
 }
 vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+
+# A special step only needed in v-build.pl (not needed in v-annotate.pl): 
+# Convert parent_index_str values from the strings they were set to in
+# fetch_and_parse_cds_protein_feature_tables to integers, now that all
+# feature pruning is complete
+integerize_parent_index_strings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+
 vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
 # add 'gene' qualifiers to 'CDS' features
 if((! opt_Get("--noaddgene", \%opt_HH)) && (! defined $qskip_H{"gene"})) { 
@@ -862,6 +869,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my %prot_ftr_info_HAH = ();
+    my $tmp_parent_idx_str = $ftr_info_AHR->[$ftr_idx]{"type"} . ":GBSEP:" . $ftr_info_AHR->[$ftr_idx]{"coords"}; # we will add this to any child's parent_idx_str value
     if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") && 
        (defined $ftr_info_AHR->[$ftr_idx]{"protein_id"})) { 
       my $protein_id = $ftr_info_AHR->[$ftr_idx]{"protein_id"};
@@ -924,10 +932,13 @@ sub fetch_and_parse_cds_protein_feature_tables {
           if($found_ftr_idx != -1) { # the feature already exists update its parent string
             if((! defined $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"}) || 
                ($ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} eq "GBNULL")) { 
-              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} = $ftr_idx;
+              # set parent_idx_str to "parent's type" . ":GBSEP:" . "parent's coords", we need to do this because parent's ftr_idx may change when we prune unwanted features
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} = $tmp_parent_idx_str;
             }
             else { 
-              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "," . $ftr_idx;
+              # $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "," . $ftr_idx;
+              # set parent_idx_str to "parent's type" . ":GBSEP:" . "parent's coords", we need to do this because parent's ftr_idx may change when we prune unwanted features
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= $tmp_parent_idx_str;
             }
           }
           else { # we didn't find this feature already in the feature info hash, add it
@@ -937,7 +948,8 @@ sub fetch_and_parse_cds_protein_feature_tables {
             foreach my $prot_key (sort keys (%{$prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]})) { 
               $ftr_info_AHR->[$nxt_ftr_idx]{$prot_key} = $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{$prot_key};
             }
-            $ftr_info_AHR->[$nxt_ftr_idx]{"parent_idx_str"} = $ftr_idx; # set parent
+            # set parent_idx_str to "parent's type" . ":GBSEP:" . "parent's coords", we need to do this because parent's ftr_idx may change when we prune unwanted features
+            $ftr_info_AHR->[$nxt_ftr_idx]{"parent_idx_str"} = $tmp_parent_idx_str;
           }
         } # end of 'if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") {'
       }
@@ -946,4 +958,73 @@ sub fetch_and_parse_cds_protein_feature_tables {
   return;
 }
 
+#################################################################
+# Subroutine: integerize_parent_index_strings
+# Incept:     EPN, Wed Aug 14 06:38:00 2019
+# 
+# Purpose:    Update "parent_idx_str" values that are set as 
+#             N >= 1 comma separated tokens of: 
+#             <parent's type> . ":GBSEP:" . <parent's coords> to
+#             a string of N integers separated by comma's where
+#             the integers are the parent's feature indices.
+#             This is necessary because v-build.pl::fetch_and_parse_cds_protein_feature_tables
+#             has to set them as "type:GBSEP:coords" instead of
+#             just the feature indices because later steps in
+#             v-build.pl may remove some features, thus making the
+#             feature indices invalid, and because v-annotate.pl
+#             expects feature index integers not "type:GBSEP:coords".
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub integerize_parent_index_strings { 
+  my $sub_name = "integerize_parent_index_strings";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && 
+       ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) { 
+      my @parent_type_coords_A = split(",", $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
+      my $new_parent_idx_str = "";
+      foreach my $parent_type_coords_str (@parent_type_coords_A) { 
+        my @el_A = split(":GBSEP:", $parent_type_coords_str);
+        if(scalar(@el_A) != 2) { 
+          ofile_FAIL("ERROR in $sub_name, unable to parse temporary parent_idx_str $parent_type_coords_str\n", 1, $FH_HR);
+        }
+        my ($parent_type, $parent_coords) = ($el_A[0], $el_A[1]);
+        my $parent_ftr_idx = undef;
+        # find parent idx in ftr_info_AHR, if it exists
+        for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+          if($ftr_idx2 ne $ftr_idx) { # a feature can't be the parent of itself
+            if(($ftr_info_AHR->[$ftr_idx2]{"type"}   eq $parent_type) && 
+               ($ftr_info_AHR->[$ftr_idx2]{"coords"} eq $parent_coords)) { 
+              if(defined $parent_ftr_idx) { 
+                ofile_FAIL("ERROR in $sub_name, found two features that qualify as parents of feature $ftr_idx with type $parent_type and coords $parent_coords: $parent_ftr_idx and $ftr_idx2", 1, $FH_HR);
+              }
+              $parent_ftr_idx = $ftr_idx2;
+            }
+          }
+        }
+        if(! defined $parent_ftr_idx) { 
+          ofile_FAIL("ERROR in $sub_name, unable to find a feature parent of $ftr_idx, expected a parent feature with type $parent_type and coords $parent_coords", 1, $FH_HR);
+        }
+        if($new_parent_idx_str ne "") { $new_parent_idx_str .= ","; }
+        $new_parent_idx_str .= $parent_ftr_idx;
+      }
+      $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} = $new_parent_idx_str;
+    }
+  }
+
+  return;
+}
 
