@@ -936,9 +936,8 @@ sub fetch_and_parse_cds_protein_feature_tables {
               $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} = $tmp_parent_idx_str;
             }
             else { 
-              # $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "," . $ftr_idx;
               # set parent_idx_str to "parent's type" . ":GBSEP:" . "parent's coords", we need to do this because parent's ftr_idx may change when we prune unwanted features
-              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= $tmp_parent_idx_str;
+              $ftr_info_AHR->[$found_ftr_idx]{"parent_idx_str"} .= "!GBSEP!" . $tmp_parent_idx_str;
             }
           }
           else { # we didn't find this feature already in the feature info hash, add it
@@ -963,9 +962,9 @@ sub fetch_and_parse_cds_protein_feature_tables {
 # Incept:     EPN, Wed Aug 14 06:38:00 2019
 # 
 # Purpose:    Update "parent_idx_str" values that are set as 
-#             N >= 1 comma separated tokens of: 
+#             N >= 1 "!GBSEP!" separated tokens of: 
 #             <parent's type> . ":GBSEP:" . <parent's coords> to
-#             a string of N integers separated by comma's where
+#             a string of N integers separated by commas where
 #             the integers are the parent's feature indices.
 #             This is necessary because v-build.pl::fetch_and_parse_cds_protein_feature_tables
 #             has to set them as "type:GBSEP:coords" instead of
@@ -994,7 +993,7 @@ sub integerize_parent_index_strings {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && 
        ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) { 
-      my @parent_type_coords_A = split(",", $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
+      my @parent_type_coords_A = split("!GBSEP!", $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"});
       my $new_parent_idx_str = "";
       foreach my $parent_type_coords_str (@parent_type_coords_A) { 
         my @el_A = split(":GBSEP:", $parent_type_coords_str);
