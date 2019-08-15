@@ -3258,7 +3258,7 @@ sub add_low_similarity_alerts {
               # does this overlap with a feature? 
               my $nftr_overlap = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                my $ftr_is_or_isidentical_to_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+                my $ftr_is_or_is_identical_to_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
                 if(! $ftr_is_or_is_identical_to_cds_or_mp) { 
                   # check if a CDS or mp exists that has same coords as this feature
                   # e.g. if feature is a gene and there is an identical CDS, we rely on blastx to validate
