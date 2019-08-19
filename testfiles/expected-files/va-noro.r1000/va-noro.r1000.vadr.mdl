@@ -1,0 +1,17 @@
+#                                      num   num   num
+#idx  model      group      subgroup  seqs  pass  fail
+#---  ---------  ---------  --------  ----  ----  ----
+1     NC_039477  Norovirus  GII        368   354    14
+2     NC_029646  Norovirus  GII        200   186    14
+3     NC_039475  Norovirus  GII        160   149    11
+4     NC_039476  Norovirus  GII        109   107     2
+5     NC_001959  Norovirus  GI          84    79     5
+6     NC_031324  Norovirus  GI          42    38     4
+7     NC_008311  Norovirus  GV          15    14     1
+8     NC_029645  Norovirus  GIII        12    12     0
+9     NC_029647  Norovirus  GIV          5     5     0
+10    NC_006875  -          -            1     0     1
+#---  ---------  ---------  --------  ----  ----  ----
+-     *all*      -          -          996   944    52
+-     *none*     -          -            4     0     4
+#---  ---------  ---------  --------  ----  ----  ----

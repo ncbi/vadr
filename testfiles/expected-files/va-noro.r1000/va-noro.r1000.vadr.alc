@@ -1,0 +1,23 @@
+#     alert     causes   short                             per    num   num  long       
+#idx  code      failure  description                      type  cases  seqs  description
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
+1     indfclas  no       INDEFINITE_CLASSIFICATION    sequence      5     5  low score difference between best overall model and second best model (not in best model's subgroup)
+2     lowscore  no       LOW_SCORE                    sequence      7     7  score to homology model below low threshold
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
+3     noannotn  yes      NO_ANNOTATION                sequence      4     4  no significant similarity detected
+4     revcompl  yes      REVCOMPLEM                   sequence      2     2  sequence appears to be reverse complemented
+5     lowcovrg  yes      LOW_COVERAGE                 sequence      6     6  low sequence fraction with significant similarity to homology model
+6     lowsim3s  yes      LOW_SIMILARITY_END           sequence      1     1  significant similarity not detected at 3' end of the sequence
+7     mutstart  yes      MUTATION_AT_START             feature      3     3  expected start codon could not be identified
+8     mutendcd  yes      MUTATION_AT_END               feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+9     cdsstopn  yes      CDS_HAS_STOP_CODON            feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+10    cdsstopp  yes      CDS_HAS_STOP_CODON            feature      2     2  stop codon in protein-based alignment
+11    peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM   feature     10     5  mat_peptide may not be translated because its parent CDS has a problem
+12    indf5loc  yes      INDEFINITE_ANNOTATION_START   feature      4     2  alignment to homology model has low confidence at 5' boundary
+13    indf5pst  yes      INDEFINITE_ANNOTATION_START   feature     26    26  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+14    indf3gap  yes      INDEFINITE_ANNOTATION_END     feature      4     4  alignment to homology model is a gap at 3' boundary
+15    indf3loc  yes      INDEFINITE_ANNOTATION_END     feature      2     1  alignment to homology model has low confidence at 3' boundary
+16    indf3plg  yes      INDEFINITE_ANNOTATION_END     feature      1     1  protein-based alignment extends past nucleotide-based alignment at 3' end
+17    indf3pst  yes      INDEFINITE_ANNOTATION_END     feature     26    26  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+18    insertnp  yes      INSERTION_OF_NT               feature      2     2  too large of an insertion in protein-based alignment
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------

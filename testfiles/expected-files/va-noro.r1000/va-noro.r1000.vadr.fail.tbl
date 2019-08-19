@@ -1,0 +1,665 @@
+>Feature gi|224755322|gb|FJ152440.1|
+1	>282	gene
+			gene	ORF2
+1	>282	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:282 blastx:276, no valid stop codon in CM prediction)]
+>Feature gi|585867704|gb|KC911683.1|
+<1	59	gene
+			gene	ORF1
+<1	59	misc_feature
+			note	similar to nonstructural polyprotein
+<1	56	misc_feature
+			note	similar to RdRp
+40	>439	gene
+			gene	ORF2
+40	>439	CDS
+			product	VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [29 > 5 (strand:+ CM:1 blastx:30)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|194173141|gb|EU794720.1|
+<1	>150	gene
+			gene	ORF1
+<1	>150	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>150	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.840<0.900]
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17 > 5 (strand:+ CM:150 blastx:133, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [22 > 5 (strand:+ CM:1 blastx:23)]
+>Feature gi|925686148|gb|KP995337.1|
+<1	>300	gene
+			gene	ORF2
+<1	>300	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [12 > 5 (strand:+ CM:300 blastx:288, no valid stop codon in CM prediction)]
+>Feature gi|15341402|gb|AF406993.1|AF406993
+<1	>244	gene
+			gene	ORF2
+<1	>244	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [21 > 5 (strand:+ CM:244 blastx:223, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [19 > 5 (strand:+ CM:1 blastx:20)]
+>Feature gi|347802767|gb|JF802508.1|
+<1	531	gene
+			gene	ORF1
+<1	531	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	528	mat_peptide
+			product	RdRp
+515	>796	gene
+			gene	ORF2
+515	>796	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [21 > 5 (strand:+ CM:796 blastx:775, no valid stop codon in CM prediction)]
+>Feature gi|686466559|gb|KM044182.1|
+<1	767	gene
+			gene	ORF1
+<1	767	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	764	mat_peptide
+			product	RdRp
+748	>988	gene
+			gene	ORF2
+748	>988	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:988 blastx:975, no valid stop codon in CM prediction)]
+>Feature gi|381141656|gb|JQ026421.1|
+<1	>292	gene
+			gene	ORF2
+<1	>292	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:292 blastx:279, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [39 > 5 (strand:+ CM:1 blastx:40)]
+>Feature gi|255687986|gb|GQ384454.1|
+<1	104	gene
+			gene	ORF1
+<1	104	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	101	mat_peptide
+			product	RdRp
+85	>250	gene
+			gene	ORF2
+85	>250	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [14 > 5 (strand:+ CM:250 blastx:236, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [26 > 5 (strand:+ CM:85 blastx:111)]
+>Feature gi|255687970|gb|GQ384446.1|
+<1	96	gene
+			gene	ORF1
+<1	96	misc_feature
+			note	similar to nonstructural polyprotein
+<1	93	misc_feature
+			note	similar to RdRp
+77	>300	gene
+			gene	ORF2
+77	>300	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (nonstructural polyprotein) stop codon in protein-based alignment [stop codon(s) end at position(s) 57]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [39 > 5 (strand:+ CM:1 blastx:1 + 39)]
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [56 > 5 (strand:+ CM:300 blastx:244, no valid stop codon in CM prediction)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|29892747|gb|AY247440.1|
+1	1647	gene
+			gene	ORF2
+1	1647	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INSERTION_OF_NT: (VP1) too large of an insertion in protein-based alignment [blastx predicted insert of length 39>27 starting at reference amino acid posn 298]
+>Feature gi|342174984|dbj|HV321546.1|
+
+Additional note(s) to submitter:
+ERROR: NO_ANNOTATION: (*sequence*) no significant similarity detected
+>Feature gi|148839152|dbj|AB287472.1|
+<1	>169	gene
+			gene	ORF2
+<1	>169	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9 > 5 (strand:+ CM:1 blastx:10)]
+>Feature gi|664765839|gb|KJ862516.1|
+<1	>283	gene
+			gene	ORF1
+<1	>283	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>283	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [73 > 5 (strand:+ CM:283 blastx:210, no valid stop codon in CM prediction)]
+>Feature gi|73746914|gb|DQ157111.1|
+<1	>292	gene
+			gene	ORF1
+<1	>292	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>292	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [7 > 5 (strand:+ CM:1 blastx:8)]
+>Feature gi|19168463|dbj|AB071150.1|
+<1	>330	gene
+			gene	ORF1
+<1	>330	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>330	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [24 > 5 (strand:+ CM:1 blastx:25)]
+>Feature gi|583157310|gb|KF854634.1|
+<1	>301	gene
+			gene	ORF2
+<1	>301	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [44 > 5 (strand:+ CM:1 blastx:45)]
+>Feature gi|27873367|dbj|BD167555.1|
+
+Additional note(s) to submitter:
+ERROR: NO_ANNOTATION: (*sequence*) no significant similarity detected
+>Feature gi|1148301738|gb|KY056133.1|
+<1	47	gene
+			gene	ORF1
+<1	47	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	44	mat_peptide
+			product	RdRp
+31	>148	gene
+			gene	ORF2
+31	>148	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [10 > 5 (strand:+ CM:148 blastx:138, no valid stop codon in CM prediction)]
+>Feature gi|558761675|gb|KF556657.1|
+<1	>208	gene
+			gene	ORF2
+<1	>208	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [83 > 5 (strand:+ CM:1 blastx:84)]
+>Feature gi|126507120|gb|EF213633.1|
+11	>307	gene
+			gene	ORF2
+11	>307	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (ORF2) alignment to homology model has low confidence at 5' boundary [0.40 < 0.80, RF position 5085]
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [10 > 5 (strand:+ CM:307 blastx:297, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) alignment to homology model has low confidence at 5' boundary [0.40 < 0.80, RF position 5085]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [38 > 5 (strand:+ CM:11 blastx:49)]
+ERROR: MUTATION_AT_START: (VP1) expected start codon could not be identified
+>Feature gi|1212788607|gb|KX592171.1|
+<1	822	gene
+			gene	ORF1
+<1	822	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	819	mat_peptide
+			product	RdRp
+803	2425	gene
+			gene	ORF2
+803	2425	CDS
+			product	VP1
+2425	3204	gene
+			gene	ORF3
+2425	3204	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+ERROR: LOW_SIMILARITY_END: (*sequence*) significant similarity not detected at 3' end of the sequence [low similarity region of length 27 (3265..3291)]
+>Feature gi|73746964|gb|DQ157136.1|
+<1	>296	gene
+			gene	ORF1
+<1	>296	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>296	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [11 > 5 (strand:+ CM:1 blastx:12)]
+>Feature gi|614245832|gb|KJ415792.1|
+<1	>289	gene
+			gene	ORF2
+<1	>289	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9 > 5 (strand:+ CM:1 blastx:10)]
+>Feature gi|820832312|gb|KJ916203.1|
+<1	>303	gene
+			gene	ORF2
+<1	>303	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:303 blastx:290, no valid stop codon in CM prediction)]
+>Feature gi|384235078|gb|JF715423.1|
+<1	>227	gene
+			gene	ORF2
+<1	>227	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.855<0.900]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [11 > 5 (strand:+ CM:1 blastx:12)]
+>Feature gi|156139889|gb|EU072307.1|
+<1	>274	gene
+			gene	ORF1
+<1	>274	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	>274	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.894<0.900]
+>Feature gi|88656745|gb|DQ386988.1|
+<1	>170	gene
+			gene	ORF2
+<1	>170	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:170 blastx:159, no valid stop codon in CM prediction)]
+>Feature gi|686466382|gb|KM044123.1|
+<1	767	gene
+			gene	ORF1
+<1	767	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	764	mat_peptide
+			product	RdRp
+748	>988	gene
+			gene	ORF2
+748	>988	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:988 blastx:975, no valid stop codon in CM prediction)]
+>Feature gi|301176723|gb|GU120374.1|
+<1	>122	gene
+			gene	ORF1
+<1	>122	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>122	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:122 blastx:111, no valid stop codon in CM prediction)]
+>Feature gi|926457537|dbj|AB933725.1|
+1	5100	gene
+			gene	ORF1
+1	5100	misc_feature
+			note	similar to nonstructural polyprotein
+1	990	misc_feature
+			note	similar to p48
+991	2088	misc_feature
+			note	similar to NTPase
+2089	2625	misc_feature
+			note	similar to p22
+2626	3024	misc_feature
+			note	similar to VPg
+3025	3567	misc_feature
+			note	similar to Pro
+3568	5097	misc_feature
+			note	similar to RdRp
+5081	6703	gene
+			gene	ORF2
+5081	6703	CDS
+			product	VP1
+6703	7509	gene
+			gene	ORF3
+6703	7509	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 1..5097 (stop shifted 3 nt)]
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:5100 blastx:5094, no valid stop codon in CM prediction)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p22) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (VPg) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (Pro) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|357433023|gb|JN975544.1|
+<1	40	gene
+			gene	ORF1
+<1	40	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	37	mat_peptide
+			product	RdRp
+27	>1647	gene
+			gene	ORF2
+27	>1647	misc_feature
+			note	similar to VP1
+40	681	gene
+			gene	ORF4
+40	681	misc_feature
+			note	similar to VF1
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.837<0.900]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [516 > 5 (strand:+ CM:27 blastx:27 + 516)]
+ERROR: INDEFINITE_ANNOTATION_END: (VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [414 > 8 (strand:+ CM:681 blastx:267, valid stop codon in CM prediction)]
+>Feature gi|27873354|dbj|BD167542.1|
+
+Additional note(s) to submitter:
+ERROR: NO_ANNOTATION: (*sequence*) no significant similarity detected
+>Feature gi|1214146709|gb|KX357079.1|
+<1	41	gene
+			gene	ORF1
+<1	41	misc_feature
+			note	similar to nonstructural polyprotein
+<1	38	misc_feature
+			note	similar to RdRp
+22	>305	gene
+			gene	ORF2
+22	>305	CDS
+			product	VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [8 > 5 (strand:+ CM:1 blastx:9)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|1108658088|gb|KX018004.1|
+<1	>290	gene
+			gene	ORF2
+<1	>290	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:290 blastx:277, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [19 > 5 (strand:+ CM:1 blastx:20)]
+>Feature gi|291211304|dbj|FV536856.1|
+
+Additional note(s) to submitter:
+ERROR: REVCOMPLEM: (*sequence*) sequence appears to be reverse complemented
+>Feature gi|189187681|gb|EU449145.1|
+<1	>597	gene
+			gene	ORF2
+<1	>597	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INSERTION_OF_NT: (VP1) too large of an insertion in protein-based alignment [blastx predicted insert of length 39>36 starting at reference amino acid posn 297]
+>Feature gi|393690723|gb|JQ944696.1|
+
+Additional note(s) to submitter:
+ERROR: REVCOMPLEM: (*sequence*) sequence appears to be reverse complemented
+>Feature gi|381141651|gb|JQ026414.1|
+<1	58	gene
+			gene	ORF1
+<1	58	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	55	mat_peptide
+			product	RdRp
+39	>281	gene
+			gene	ORF2
+39	>281	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (VP1) stop codon in protein-based alignment [stop codon(s) end at position(s) 245]
+>Feature gi|1233824360|gb|MF401939.1|
+<1	>254	gene
+			gene	ORF2
+<1	>254	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [8 > 5 (strand:+ CM:254 blastx:246, no valid stop codon in CM prediction)]
+>Feature gi|583157338|gb|KF854648.1|
+<1	>301	gene
+			gene	ORF2
+<1	>301	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [11 > 5 (strand:+ CM:1 blastx:12)]
+>Feature gi|1120690351|gb|GU138224.2|
+<1	825	gene
+			gene	ORF1
+<1	825	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+<1	822	mat_peptide
+			product	RdRp
+806	>2404	gene
+			gene	ORF2
+806	>2404	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.683<0.900]
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1002 > 5 (strand:+ CM:2404 blastx:1402, no valid stop codon in CM prediction)]
+>Feature gi|507437087|dbj|HW066097.1|
+
+Additional note(s) to submitter:
+ERROR: NO_ANNOTATION: (*sequence*) no significant similarity detected
+>Feature gi|565419528|gb|KF289332.1|
+<1	54	gene
+			gene	ORF1
+<1	54	misc_feature
+			note	similar to nonstructural polyprotein
+<1	51	misc_feature
+			note	similar to RdRp
+37	>339	gene
+			gene	ORF2
+37	>339	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [34 > 8 (strand:+ CM:54 blastx:54 - 34, valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [16 > 5 (strand:+ CM:37 blastx:53)]
+ERROR: MUTATION_AT_START: (VP1) expected start codon could not be identified
+ERROR: INDEFINITE_ANNOTATION_END: (RdRp) alignment to homology model is a gap at 3' boundary [RF position 5101]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|669175764|gb|KM198493.1|
+<1	5088	gene
+			gene	ORF1
+<1	5088	misc_feature
+			note	similar to nonstructural polyprotein
+<1	978	mat_peptide
+			product	p48
+979	2076	mat_peptide
+			product	NTPase
+2077	2613	mat_peptide
+			product	p22
+2614	3012	mat_peptide
+			product	VPg
+3013	3555	mat_peptide
+			product	Pro
+3556	5085	mat_peptide
+			product	RdRp
+5069	6715	gene
+			gene	ORF2
+5069	6715	CDS
+			product	VP1
+6715	>7413	gene
+			gene	ORF3
+6715	>7413	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [48 > 5 (strand:+ CM:1 blastx:49)]
+>Feature gi|1043349872|gb|KX171415.1|
+<1	76	gene
+			gene	ORF1
+<1	76	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	73	mat_peptide
+			product	RdRp
+57	1673	gene
+			gene	ORF2
+57	1673	CDS
+			product	VP1
+1673	>2183	gene
+			gene	ORF3
+1673	>2183	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [22 > 5 (strand:+ CM:2183 blastx:2161, no valid stop codon in CM prediction)]
+>Feature gi|189187800|gb|EU449206.1|
+<1	>597	gene
+			gene	ORF2
+<1	>597	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:597 blastx:591, no valid stop codon in CM prediction)]
+>Feature gi|156789054|gb|EU056672.1|
+<1	>282	gene
+			gene	ORF1
+<1	>282	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>282	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [25 > 5 (strand:+ CM:282 blastx:257, no valid stop codon in CM prediction)]
+>Feature gi|189187907|gb|EU449263.1|
+<1	>597	gene
+			gene	ORF2
+<1	>597	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:597 blastx:591, no valid stop codon in CM prediction)]
+>Feature gi|257223216|gb|GQ166483.1|
+<1	>212	gene
+			gene	ORF1
+<1	>212	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>212	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [8 > 5 (strand:+ CM:1 blastx:9)]
+>Feature gi|1237971682|gb|KX671914.1|
+<1	>285	gene
+			gene	ORF2
+<1	>285	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [6 > 5 (strand:+ CM:1 blastx:7)]
+>Feature gi|530693085|gb|KC464498.1|
+1	5109	gene
+			gene	ORF1
+1	5109	misc_feature
+			note	similar to nonstructural polyprotein
+1	999	mat_peptide
+			product	p48
+1000	2097	mat_peptide
+			product	NTPase
+2098	2634	mat_peptide
+			product	p22
+2635	3033	mat_peptide
+			product	VPg
+3034	3576	mat_peptide
+			product	Pro
+3577	5106	mat_peptide
+			product	RdRp
+5090	6697	gene
+			gene	ORF2
+5090	6697	CDS
+			product	VP1
+6697	7476	gene
+			gene	ORF3
+6697	7476	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [63 > 5 (strand:+ CM:1 blastx:64)]
+>Feature gi|74099992|gb|DQ104049.1|
+<1	>228	gene
+			gene	ORF1
+<1	>228	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>228	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [19 > 5 (strand:+ CM:1 blastx:20)]
+>Feature gi|155966084|gb|EF543756.1|
+<1	>237	gene
+			gene	ORF1
+<1	>237	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+<1	>237	mat_peptide
+			product	RdRp
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.895<0.900]
+>Feature gi|1212591209|dbj|LC279243.1|
+<1	1700	gene
+			gene	ORF1
+<1	1700	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+<1	167	mat_peptide
+			product	Pro
+168	1697	mat_peptide
+			product	RdRp
+1681	3309	gene
+			gene	ORF2
+1681	3309	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (ORF2) alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 6713]
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 6713]
+>Feature gi|340341635|dbj|HV042515.1|
+<1	33	gene
+			gene	ORF1
+<1	33	misc_feature
+			note	similar to nonstructural polyprotein
+<1	30	mat_peptide
+			product	RdRp
+17	1609	gene
+			gene	ORF2
+17	1609	CDS
+			product	VP1
+1609	2247	gene
+			gene	ORF3
+1609	2247	CDS
+			product	VP2
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment extends past nucleotide-based alignment at 3' end [(strand:+ CM:33 blastx:37)]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [16 > 5 (strand:+ CM:1 blastx:17)]

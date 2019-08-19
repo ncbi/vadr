@@ -12,42 +12,24 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/noro.r1000.fa --dirbuild !dirbuild! --dirout dt-noro.r1000.p > dt-noro.r1000.p.out
-desc: classify-noro-1000-parallel
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_001959/dt-noro.r1000.p-NC_001959.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_001959/dt-noro.r1000.p-NC_001959.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_008311/dt-noro.r1000.p-NC_008311.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_008311/dt-noro.r1000.p-NC_008311.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_029645/dt-noro.r1000.p-NC_029645.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_029645/dt-noro.r1000.p-NC_029645.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_029646/dt-noro.r1000.p-NC_029646.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_029646/dt-noro.r1000.p-NC_029646.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_029647/dt-noro.r1000.p-NC_029647.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_029647/dt-noro.r1000.p-NC_029647.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_031324/dt-noro.r1000.p-NC_031324.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_031324/dt-noro.r1000.p-NC_031324.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_039475/dt-noro.r1000.p-NC_039475.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_039475/dt-noro.r1000.p-NC_039475.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_039476/dt-noro.r1000.p-NC_039476.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_039476/dt-noro.r1000.p-NC_039476.dnaorg_annotate.af.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_039477/dt-noro.r1000.p-NC_039477.dnaorg_annotate.ap.sqtable 
-out: dt-noro.r1000.p/dt-noro.r1000.p-NC_039477/dt-noro.r1000.p-NC_039477.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_001959.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_001959.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_008311.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_008311.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_029645.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_029645.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_029646.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_029646.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_029647.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_029647.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_031324.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_031324.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_039475.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_039475.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_039476.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_039476.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_039477.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-noro.r1000/dt-noro.r1000-NC_039477.dnaorg_annotate.af.sqtable 
-rmdir: dt-noro.r1000.p
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -p -f $VADRSCRIPTSDIR/testfiles/noro.r1000.fa va-noro.r1000 > va-noro.r1000.out
+desc: annotate-noro-1000-parallel
+out: va-noro.r1000/va-noro.r1000.vadr.pass.tbl 
+out: va-noro.r1000/va-noro.r1000.vadr.fail.tbl
+out: va-noro.r1000/va-noro.r1000.vadr.sqa
+out: va-noro.r1000/va-noro.r1000.vadr.sqc
+out: va-noro.r1000/va-noro.r1000.vadr.ftr
+out: va-noro.r1000/va-noro.r1000.vadr.sgm
+out: va-noro.r1000/va-noro.r1000.vadr.mdl
+out: va-noro.r1000/va-noro.r1000.vadr.alt
+out: va-noro.r1000/va-noro.r1000.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r1000/va-noro.r1000.vadr.alc
+rmdir: va-noro.r1000
