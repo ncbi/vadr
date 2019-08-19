@@ -1,0 +1,62 @@
+>Feature gi|770146038|gb|KM031079.1|
+<1	>515	gene
+			gene	POLY
+<1	>515	CDS
+			product	polyprotein
+			codon_start	2
+<1	>515	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
+>Feature gi|1126644957|gb|KX577695.1|
+1	342	mat_peptide
+			product	anchored capsid protein ancC
+1	300	mat_peptide
+			product	capsid protein C
+1	>2325	gene
+			gene	POLY
+1	>2325	CDS
+			product	polyprotein
+20	36	stem_loop
+			note	capsid region hairpin (cHP)
+343	840	mat_peptide
+			product	membrane glycoprotein precursor prM
+343	615	mat_peptide
+			product	protein pr
+616	840	mat_peptide
+			product	membrane glycoprotein M
+841	2325	mat_peptide
+			product	envelope protein E
+>Feature gi|1044891200|gb|KU550333.1|
+1	342	mat_peptide
+			product	anchored capsid protein ancC
+1	300	mat_peptide
+			product	capsid protein C
+1	>2325	gene
+			gene	POLY
+1	>2325	CDS
+			product	polyprotein
+20	36	stem_loop
+			note	capsid region hairpin (cHP)
+343	840	mat_peptide
+			product	membrane glycoprotein precursor prM
+343	615	mat_peptide
+			product	protein pr
+616	840	mat_peptide
+			product	membrane glycoprotein M
+841	2325	mat_peptide
+			product	envelope protein E
+>Feature gi|1447973732|gb|MH680297.1|
+<1	>1485	gene
+			gene	POLY
+<1	>1485	CDS
+			product	polyprotein
+			codon_start	1
+1	1485	mat_peptide
+			product	envelope protein E
+>Feature gi|281314094|gb|GU211727.1|
+<1	>87	gene
+			gene	POLY
+<1	>87	CDS
+			product	polyprotein
+			codon_start	1
+<1	>87	mat_peptide
+			product	RNA-dependent RNA polymerase NS5
