@@ -12,22 +12,24 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $DNAORGDIR/dnaorg_scripts/dnaorg_classify.pl -f -A !dirbuild! --infasta $DNAORGDIR/dnaorg_scripts/testfiles/dengue.r1000.fa --dirbuild !dirbuild! --dirout dt-dengue.r1000.p > dt-dengue.r1000.p.out
-desc: classify-dengue-1000-parallel
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_001474/dt-dengue.r1000.p-NC_001474.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_001474/dt-dengue.r1000.p-NC_001474.dnaorg_annotate.af.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_001475/dt-dengue.r1000.p-NC_001475.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_001475/dt-dengue.r1000.p-NC_001475.dnaorg_annotate.af.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_001477/dt-dengue.r1000.p-NC_001477.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_001477/dt-dengue.r1000.p-NC_001477.dnaorg_annotate.af.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_002640/dt-dengue.r1000.p-NC_002640.dnaorg_annotate.ap.sqtable 
-out: dt-dengue.r1000.p/dt-dengue.r1000.p-NC_002640/dt-dengue.r1000.p-NC_002640.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_001474.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_001474.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_001475.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_001475.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_001477.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_001477.dnaorg_annotate.af.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_002640.dnaorg_annotate.ap.sqtable 
-exp: @DNAORGDIR@/dnaorg_scripts/testfiles/expected-files/dt-dengue.r1000/dt-dengue.r1000-NC_002640.dnaorg_annotate.af.sqtable 
-rmdir: dt-dengue.r1000.p
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -p -f $VADRSCRIPTSDIR/testfiles/dengue.r1000.fa va-dengue.r1000 > va-dengue.r1000.out
+desc: annotate-dengue-1000-parallel
+out: va-dengue.r1000/va-dengue.r1000.vadr.pass.tbl 
+out: va-dengue.r1000/va-dengue.r1000.vadr.fail.tbl
+out: va-dengue.r1000/va-dengue.r1000.vadr.sqa
+out: va-dengue.r1000/va-dengue.r1000.vadr.sqc
+out: va-dengue.r1000/va-dengue.r1000.vadr.ftr
+out: va-dengue.r1000/va-dengue.r1000.vadr.sgm
+out: va-dengue.r1000/va-dengue.r1000.vadr.mdl
+out: va-dengue.r1000/va-dengue.r1000.vadr.alt
+out: va-dengue.r1000/va-dengue.r1000.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r1000/va-dengue.r1000.vadr.alc
+rmdir: va-dengue.r1000

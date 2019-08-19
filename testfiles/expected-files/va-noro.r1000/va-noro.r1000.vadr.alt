@@ -1,0 +1,174 @@
+#        seq                                            ftr          ftr                        ftr  alert           alert                        alert 
+#idx     name                                model      type         name                       idx  code      fail  desc                         detail
+#------  ----------------------------------  ---------  -----------  -------------------------  ---  --------  ----  ---------------------------  ------
+69.1.1   gi|224755322|gb|FJ152440.1|         NC_039475  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:282 blastx:276, no valid stop codon in CM prediction)]
+#
+111.1.1  gi|585867704|gb|KC911683.1|         NC_039477  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [29 > 5 (strand:+ CM:1 blastx:30)]
+111.2.1  gi|585867704|gb|KC911683.1|         NC_039477  mat_peptide  RdRp                        12  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+#
+120.1.1  gi|194173141|gb|EU794720.1|         NC_001959  -            -                            -  lowcovrg  yes   LOW_COVERAGE                 low sequence fraction with significant similarity to homology model [0.840<0.900]
+120.2.1  gi|194173141|gb|EU794720.1|         NC_001959  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [22 > 5 (strand:+ CM:1 blastx:23)]
+120.2.2  gi|194173141|gb|EU794720.1|         NC_001959  CDS          nonstructural_polyprotein    2  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17 > 5 (strand:+ CM:150 blastx:133, no valid stop codon in CM prediction)]
+#
+134.1.1  gi|925686148|gb|KP995337.1|         NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [12 > 5 (strand:+ CM:300 blastx:288, no valid stop codon in CM prediction)]
+#
+151.1.1  gi|15341402|gb|AF406993.1|AF406993  NC_031324  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [19 > 5 (strand:+ CM:1 blastx:20)]
+151.1.2  gi|15341402|gb|AF406993.1|AF406993  NC_031324  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [21 > 5 (strand:+ CM:244 blastx:223, no valid stop codon in CM prediction)]
+#
+161.1.1  gi|347802767|gb|JF802508.1|         NC_031324  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [21 > 5 (strand:+ CM:796 blastx:775, no valid stop codon in CM prediction)]
+#
+163.1.1  gi|686466559|gb|KM044182.1|         NC_029646  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:988 blastx:975, no valid stop codon in CM prediction)]
+#
+164.1.1  gi|381141656|gb|JQ026421.1|         NC_039477  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [39 > 5 (strand:+ CM:1 blastx:40)]
+164.1.2  gi|381141656|gb|JQ026421.1|         NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:292 blastx:279, no valid stop codon in CM prediction)]
+#
+169.1.1  gi|255687986|gb|GQ384454.1|         NC_039477  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [26 > 5 (strand:+ CM:85 blastx:111)]
+169.1.2  gi|255687986|gb|GQ384454.1|         NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [14 > 5 (strand:+ CM:250 blastx:236, no valid stop codon in CM prediction)]
+#
+172.1.1  gi|255687970|gb|GQ384446.1|         NC_039477  CDS          nonstructural_polyprotein    2  cdsstopp  yes   CDS_HAS_STOP_CODON           stop codon in protein-based alignment [stop codon(s) end at position(s) 57]
+172.1.2  gi|255687970|gb|GQ384446.1|         NC_039477  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [39 > 5 (strand:+ CM:1 blastx:1 + 39)]
+172.2.1  gi|255687970|gb|GQ384446.1|         NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [56 > 5 (strand:+ CM:300 blastx:244, no valid stop codon in CM prediction)]
+172.3.1  gi|255687970|gb|GQ384446.1|         NC_039477  mat_peptide  RdRp                        12  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+#
+242.1.1  gi|29892747|gb|AY247440.1|          NC_039475  CDS          VP1                          4  insertnp  yes   INSERTION_OF_NT              too large of an insertion in protein-based alignment [blastx predicted insert of length 39>27 starting at reference amino acid posn 298]
+#
+247.1.1  gi|342174984|dbj|HV321546.1|        -          -            -                            -  noannotn  yes   NO_ANNOTATION                no significant similarity detected
+#
+263.1.1  gi|148839152|dbj|AB287472.1|        NC_039477  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9 > 5 (strand:+ CM:1 blastx:10)]
+263.2.1  gi|148839152|dbj|AB287472.1|        NC_039477  mat_peptide  RdRp                        12  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 5101]
+#
+279.1.1  gi|664765839|gb|KJ862516.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [73 > 5 (strand:+ CM:283 blastx:210, no valid stop codon in CM prediction)]
+#
+282.1.1  gi|73746914|gb|DQ157111.1|          NC_029646  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [7 > 5 (strand:+ CM:1 blastx:8)]
+#
+309.1.1  gi|19168463|dbj|AB071150.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [24 > 5 (strand:+ CM:1 blastx:25)]
+#
+325.1.1  gi|583157310|gb|KF854634.1|         NC_001959  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [44 > 5 (strand:+ CM:1 blastx:45)]
+#
+340.1.1  gi|27873367|dbj|BD167555.1|         -          -            -                            -  noannotn  yes   NO_ANNOTATION                no significant similarity detected
+#
+365.1.1  gi|1148301738|gb|KY056133.1|        NC_031324  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [10 > 5 (strand:+ CM:148 blastx:138, no valid stop codon in CM prediction)]
+#
+370.1.1  gi|558761675|gb|KF556657.1|         NC_039477  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [83 > 5 (strand:+ CM:1 blastx:84)]
+#
+372.1.1  gi|126507120|gb|EF213633.1|         NC_039477  gene         ORF2                         3  indf5loc  yes   INDEFINITE_ANNOTATION_START  alignment to homology model has low confidence at 5' boundary [0.40 < 0.80, RF position 5085]
+372.2.1  gi|126507120|gb|EF213633.1|         NC_039477  CDS          VP1                          4  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified
+372.2.2  gi|126507120|gb|EF213633.1|         NC_039477  CDS          VP1                          4  indf5loc  yes   INDEFINITE_ANNOTATION_START  alignment to homology model has low confidence at 5' boundary [0.40 < 0.80, RF position 5085]
+372.2.3  gi|126507120|gb|EF213633.1|         NC_039477  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [38 > 5 (strand:+ CM:11 blastx:49)]
+372.2.4  gi|126507120|gb|EF213633.1|         NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [10 > 5 (strand:+ CM:307 blastx:297, no valid stop codon in CM prediction)]
+372.3.1  gi|126507120|gb|EF213633.1|         NC_039477  mat_peptide  RdRp                        12  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 5101]
+#
+410.1.1  gi|1212788607|gb|KX592171.1|        NC_039475  -            -                            -  lowsim3s  yes   LOW_SIMILARITY_END           significant similarity not detected at 3' end of the sequence [low similarity region of length 27 (3265..3291)]
+#
+412.1.1  gi|73746964|gb|DQ157136.1|          NC_029646  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [11 > 5 (strand:+ CM:1 blastx:12)]
+#
+422.1.1  gi|614245832|gb|KJ415792.1|         NC_039476  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9 > 5 (strand:+ CM:1 blastx:10)]
+422.2.1  gi|614245832|gb|KJ415792.1|         NC_039476  mat_peptide  RdRp                        12  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 5101]
+#
+431.1.1  gi|820832312|gb|KJ916203.1|         NC_039475  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:303 blastx:290, no valid stop codon in CM prediction)]
+#
+437.1.1  gi|157420087|gb|EU138877.1|         NC_029647  -            -                            -  indfclas  no    INDEFINITE_CLASSIFICATION    low score difference between best overall model and second best model (not in best model's subgroup) [0.027<0.030 bits/nt, best group/subgroup: Norovirus/GIV, second group/subgroup: Norovirus/GII]
+#
+455.1.1  gi|384235078|gb|JF715423.1|         NC_029646  -            -                            -  lowcovrg  yes   LOW_COVERAGE                 low sequence fraction with significant similarity to homology model [0.855<0.900]
+455.2.1  gi|384235078|gb|JF715423.1|         NC_029646  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [11 > 5 (strand:+ CM:1 blastx:12)]
+#
+498.1.1  gi|156139889|gb|EU072307.1|         NC_039475  -            -                            -  lowcovrg  yes   LOW_COVERAGE                 low sequence fraction with significant similarity to homology model [0.894<0.900]
+#
+504.1.1  gi|1214146700|gb|KX357076.1|        NC_039475  -            -                            -  indfclas  no    INDEFINITE_CLASSIFICATION    low score difference between best overall model and second best model (not in best model's subgroup) [0.025<0.030 bits/nt, best group/subgroup: Norovirus/GII, second group/subgroup: Norovirus/GIV]
+#
+506.1.1  gi|88656745|gb|DQ386988.1|          NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:170 blastx:159, no valid stop codon in CM prediction)]
+#
+515.1.1  gi|686466382|gb|KM044123.1|         NC_029646  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:988 blastx:975, no valid stop codon in CM prediction)]
+#
+527.1.1  gi|301176723|gb|GU120374.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:122 blastx:111, no valid stop codon in CM prediction)]
+#
+571.1.1  gi|926457537|dbj|AB933725.1|        NC_039477  CDS          nonstructural_polyprotein    2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [CGA ending at position 5100 on + strand]
+571.1.2  gi|926457537|dbj|AB933725.1|        NC_039477  CDS          nonstructural_polyprotein    2  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 1..5097 (stop shifted 3 nt)]
+571.1.3  gi|926457537|dbj|AB933725.1|        NC_039477  CDS          nonstructural_polyprotein    2  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:5100 blastx:5094, no valid stop codon in CM prediction)]
+571.2.1  gi|926457537|dbj|AB933725.1|        NC_039477  mat_peptide  p48                          7  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+571.3.1  gi|926457537|dbj|AB933725.1|        NC_039477  mat_peptide  NTPase                       8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+571.4.1  gi|926457537|dbj|AB933725.1|        NC_039477  mat_peptide  p22                          9  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+571.5.1  gi|926457537|dbj|AB933725.1|        NC_039477  mat_peptide  VPg                         10  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+571.6.1  gi|926457537|dbj|AB933725.1|        NC_039477  mat_peptide  Pro                         11  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+571.7.1  gi|926457537|dbj|AB933725.1|        NC_039477  mat_peptide  RdRp                        12  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+#
+575.1.1  gi|357433023|gb|JN975544.1|         NC_008311  -            -                            -  lowcovrg  yes   LOW_COVERAGE                 low sequence fraction with significant similarity to homology model [0.837<0.900]
+575.2.1  gi|357433023|gb|JN975544.1|         NC_008311  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [516 > 5 (strand:+ CM:27 blastx:27 + 516)]
+575.3.1  gi|357433023|gb|JN975544.1|         NC_008311  CDS          VF1                          6  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [414 > 8 (strand:+ CM:681 blastx:267, valid stop codon in CM prediction)]
+#
+577.1.1  gi|27873354|dbj|BD167542.1|         -          -            -                            -  noannotn  yes   NO_ANNOTATION                no significant similarity detected
+#
+578.1.1  gi|1214146709|gb|KX357079.1|        NC_039475  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [8 > 5 (strand:+ CM:1 blastx:9)]
+578.2.1  gi|1214146709|gb|KX357079.1|        NC_039475  mat_peptide  RdRp                        12  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+#
+583.1.1  gi|1108658088|gb|KX018004.1|        NC_039475  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [19 > 5 (strand:+ CM:1 blastx:20)]
+583.1.2  gi|1108658088|gb|KX018004.1|        NC_039475  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [13 > 5 (strand:+ CM:290 blastx:277, no valid stop codon in CM prediction)]
+#
+595.1.1  gi|291211304|dbj|FV536856.1|        NC_006875  -            -                            -  revcompl  yes   REVCOMPLEM                   sequence appears to be reverse complemented
+#
+597.1.1  gi|685845222|gb|KJ179756.1|         NC_039477  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.243<0.300 bits/nt]
+#
+599.1.1  gi|189187681|gb|EU449145.1|         NC_029646  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.248<0.300 bits/nt]
+599.2.1  gi|189187681|gb|EU449145.1|         NC_029646  CDS          VP1                          4  insertnp  yes   INSERTION_OF_NT              too large of an insertion in protein-based alignment [blastx predicted insert of length 39>36 starting at reference amino acid posn 297]
+#
+607.1.1  gi|393690723|gb|JQ944696.1|         NC_029646  -            -                            -  revcompl  yes   REVCOMPLEM                   sequence appears to be reverse complemented
+#
+612.1.1  gi|165967994|gb|EU363866.1|         NC_029647  -            -                            -  indfclas  no    INDEFINITE_CLASSIFICATION    low score difference between best overall model and second best model (not in best model's subgroup) [0.002<0.030 bits/nt, best group/subgroup: Norovirus/GIV, second group/subgroup: Norovirus/GII]
+#
+613.1.1  gi|381141651|gb|JQ026414.1|         NC_039477  CDS          VP1                          4  cdsstopp  yes   CDS_HAS_STOP_CODON           stop codon in protein-based alignment [stop codon(s) end at position(s) 245]
+#
+623.1.1  gi|1233824360|gb|MF401939.1|        NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [8 > 5 (strand:+ CM:254 blastx:246, no valid stop codon in CM prediction)]
+#
+631.1.1  gi|1220257618|emb|LT628547.2|       NC_039476  -            -                            -  indfclas  no    INDEFINITE_CLASSIFICATION    low score difference between best overall model and second best model (not in best model's subgroup) [0.026<0.030 bits/nt, best group/subgroup: Norovirus/GII, second group/subgroup: Norovirus/GIV]
+#
+652.1.1  gi|583157338|gb|KF854648.1|         NC_001959  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [11 > 5 (strand:+ CM:1 blastx:12)]
+#
+680.1.1  gi|1120690351|gb|GU138224.2|        NC_039477  -            -                            -  lowcovrg  yes   LOW_COVERAGE                 low sequence fraction with significant similarity to homology model [0.683<0.900]
+680.2.1  gi|1120690351|gb|GU138224.2|        NC_039477  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1002 > 5 (strand:+ CM:2404 blastx:1402, no valid stop codon in CM prediction)]
+#
+721.1.1  gi|76556040|emb|AJ865537.1|         NC_039476  -            -                            -  indfclas  no    INDEFINITE_CLASSIFICATION    low score difference between best overall model and second best model (not in best model's subgroup) [0.027<0.030 bits/nt, best group/subgroup: Norovirus/GII, second group/subgroup: Norovirus/GIV]
+#
+784.1.1  gi|507437087|dbj|HW066097.1|        -          -            -                            -  noannotn  yes   NO_ANNOTATION                no significant similarity detected
+#
+789.1.1  gi|565419528|gb|KF289332.1|         NC_039477  CDS          nonstructural_polyprotein    2  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [34 > 8 (strand:+ CM:54 blastx:54 - 34, valid stop codon in CM prediction)]
+789.2.1  gi|565419528|gb|KF289332.1|         NC_039477  CDS          VP1                          4  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified
+789.2.2  gi|565419528|gb|KF289332.1|         NC_039477  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [16 > 5 (strand:+ CM:37 blastx:53)]
+789.3.1  gi|565419528|gb|KF289332.1|         NC_039477  mat_peptide  RdRp                        12  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+789.3.2  gi|565419528|gb|KF289332.1|         NC_039477  mat_peptide  RdRp                        12  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 5101]
+#
+790.1.1  gi|669175764|gb|KM198493.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [48 > 5 (strand:+ CM:1 blastx:49)]
+#
+804.1.1  gi|1043349872|gb|KX171415.1|        NC_039475  CDS          VP2                          6  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [22 > 5 (strand:+ CM:2183 blastx:2161, no valid stop codon in CM prediction)]
+#
+806.1.1  gi|189187800|gb|EU449206.1|         NC_039475  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.251<0.300 bits/nt]
+806.2.1  gi|189187800|gb|EU449206.1|         NC_039475  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:597 blastx:591, no valid stop codon in CM prediction)]
+#
+811.1.1  gi|156789054|gb|EU056672.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [25 > 5 (strand:+ CM:282 blastx:257, no valid stop codon in CM prediction)]
+#
+838.1.1  gi|685845220|gb|KJ179755.1|         NC_029646  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.235<0.300 bits/nt]
+#
+853.1.1  gi|189187907|gb|EU449263.1|         NC_039475  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.254<0.300 bits/nt]
+853.2.1  gi|189187907|gb|EU449263.1|         NC_039475  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [6 > 5 (strand:+ CM:597 blastx:591, no valid stop codon in CM prediction)]
+#
+857.1.1  gi|257223216|gb|GQ166483.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [8 > 5 (strand:+ CM:1 blastx:9)]
+#
+858.1.1  gi|1237971682|gb|KX671914.1|        NC_031324  CDS          VP1                          4  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [6 > 5 (strand:+ CM:1 blastx:7)]
+#
+866.1.1  gi|530693085|gb|KC464498.1|         NC_029646  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [63 > 5 (strand:+ CM:1 blastx:64)]
+#
+912.1.1  gi|333392845|gb|HM172497.1|         NC_039475  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.253<0.300 bits/nt]
+#
+934.1.1  gi|74099992|gb|DQ104049.1|          NC_001959  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [19 > 5 (strand:+ CM:1 blastx:20)]
+#
+943.1.1  gi|155966084|gb|EF543756.1|         NC_039475  -            -                            -  lowcovrg  yes   LOW_COVERAGE                 low sequence fraction with significant similarity to homology model [0.895<0.900]
+#
+966.1.1  gi|375334083|gb|JQ417305.1|         NC_039475  -            -                            -  lowscore  no    LOW_SCORE                    score to homology model below low threshold [0.244<0.300 bits/nt]
+#
+977.1.1  gi|1212591209|dbj|LC279243.1|       NC_039476  gene         ORF2                         3  indf3loc  yes   INDEFINITE_ANNOTATION_END    alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 6713]
+977.2.1  gi|1212591209|dbj|LC279243.1|       NC_039476  CDS          VP1                          4  indf3loc  yes   INDEFINITE_ANNOTATION_END    alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 6713]
+977.3.1  gi|1212591209|dbj|LC279243.1|       NC_039476  gene         ORF3                         5  indf5loc  yes   INDEFINITE_ANNOTATION_START  alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 6713]
+977.4.1  gi|1212591209|dbj|LC279243.1|       NC_039476  CDS          VP2                          6  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified
+977.4.2  gi|1212591209|dbj|LC279243.1|       NC_039476  CDS          VP2                          6  indf5loc  yes   INDEFINITE_ANNOTATION_START  alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 6713]
+#
+999.1.1  gi|340341635|dbj|HV042515.1|        NC_001959  CDS          nonstructural_polyprotein    2  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [16 > 5 (strand:+ CM:1 blastx:17)]
+999.1.2  gi|340341635|dbj|HV042515.1|        NC_001959  CDS          nonstructural_polyprotein    2  indf3plg  yes   INDEFINITE_ANNOTATION_END    protein-based alignment extends past nucleotide-based alignment at 3' end [(strand:+ CM:33 blastx:37)]

@@ -1,0 +1,252 @@
+#         seq                                       ftr          ftr                                  ftr  alert           alert                         alert 
+#idx      name                           model      type         name                                 idx  code      fail  desc                          detail
+#-------  -----------------------------  ---------  -----------  -----------------------------------  ---  --------  ----  ----------------------------  ------
+56.1.1    gi|284432056|gb|GU318315.1|    NC_002640  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.383<0.900]
+56.2.1    gi|284432056|gb|GU318315.1|    NC_002640  CDS          polyprotein                            4  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10163]
+56.2.2    gi|284432056|gb|GU318315.1|    NC_002640  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [7613 > 8 (strand:+ CM:10163 blastx:2550, valid stop codon in CM prediction)]
+56.3.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS1             18  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 3479]
+56.4.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS2A            19  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 3480]
+56.5.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS2B            20  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 4523]
+56.6.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS3             21  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 4524]
+56.6.2    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS3             21  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6377]
+56.7.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS4A            22  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6378]
+56.7.2    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS4A            22  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 6758]
+56.8.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  protein_2K                            23  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 6759]
+56.8.2    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  protein_2K                            23  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 6827]
+56.9.1    gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  nonstructural_protein_NS4B            24  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 6828]
+56.10.1   gi|284432056|gb|GU318315.1|    NC_002640  mat_peptide  RNA-dependent_RNA_polymerase_NS5      25  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [2699]
+#
+62.1.1    gi|288223059|gb|GU371922.1|    NC_001474  -            -                                      -  revcompl  yes   REVCOMPLEM                    sequence appears to be reverse complemented
+#
+70.1.1    gi|316983418|gb|HQ541789.1|    NC_001475  ncRNA        sfRNA1                                 6  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [1 nt overlap b/t low similarity region (10680..10718) and annotated feature (10263..10680), strand: +]
+70.2.1    gi|316983418|gb|HQ541789.1|    NC_001475  stem_loop    stem_loop.9                           12  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [1 nt overlap b/t low similarity region (10680..10718) and annotated feature (10602..10680), strand: +]
+#
+72.1.1    gi|81301984|gb|DQ265157.1|     NC_001477  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 744]
+#
+79.1.1    gi|380003821|gb|JQ045672.1|    NC_001474  CDS          polyprotein                            4  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10105]
+79.1.2    gi|380003821|gb|JQ045672.1|    NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [5332 > 8 (strand:+ CM:10179 blastx:4847, valid stop codon in CM prediction)]
+79.2.1    gi|380003821|gb|JQ045672.1|    NC_001474  mat_peptide  nonstructural_protein_NS3             22  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1799]
+79.3.1    gi|380003821|gb|JQ045672.1|    NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [2684]
+#
+122.1.1   gi|507457909|dbj|HW099975.1|   -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+145.1.1   gi|1201294793|gb|KY575252.1|   NC_001474  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [22 > 5 (strand:+ CM:1 blastx:23)]
+145.1.2   gi|1201294793|gb|KY575252.1|   NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [45 > 5 (strand:+ CM:409 blastx:364, no valid stop codon in CM prediction)]
+#
+154.1.1   gi|1074131760|emb|LQ465499.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+171.1.1   gi|75706468|gb|DQ109103.1|     NC_001475  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 387]
+#
+183.1.1   gi|62821628|emb|CS069960.1|    -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+189.1.1   gi|32693423|emb|AX775704.1|    NC_001474  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [81 > 5 (strand:+ CM:1 blastx:82)]
+#
+190.1.1   gi|281324856|gb|GU131973.1|    NC_001477  ncRNA        sfRNA1                                 6  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [50 nt overlap b/t low similarity region (10511..10560) and annotated feature (10298..10560), strand: +]
+190.2.1   gi|281324856|gb|GU131973.1|    NC_001477  stem_loop    stem_loop.6                            9  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [20 nt overlap b/t low similarity region (10511..10560) and annotated feature (10445..10530), strand: +]
+190.3.1   gi|281324856|gb|GU131973.1|    NC_001477  stem_loop    stem_loop.7                           10  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [29 nt overlap b/t low similarity region (10511..10560) and annotated feature (10532..10560), strand: +]
+#
+201.1.1   gi|323467|gb|M36806.1|DENAAA   -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+245.1.1   gi|21899917|emb|AX465641.1|    -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+258.1.1   gi|81301979|gb|DQ265154.1|     NC_001477  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 744]
+#
+273.1.1   gi|4926943|gb|AF100467.1|      NC_001474  ncRNA        sfRNA1                                 6  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.60 < 0.80, RF position 10299]
+#
+283.1.1   gi|288223058|gb|GU371921.1|    NC_001474  -            -                                      -  revcompl  yes   REVCOMPLEM                    sequence appears to be reverse complemented
+#
+300.1.1   gi|583075152|emb|JC303433.1|   NC_001477  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.809<0.900]
+300.2.1   gi|583075152|emb|JC303433.1|   NC_001477  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [38 > 5 (strand:+ CM:1 blastx:39)]
+300.2.2   gi|583075152|emb|JC303433.1|   NC_001477  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [39 > 5 (strand:+ CM:404 blastx:365, no valid stop codon in CM prediction)]
+#
+304.1.1   gi|1229246881|gb|KY937188.1|   NC_001474  gene         POLY                                   3  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 97]
+304.2.1   gi|1229246881|gb|KY937188.1|   NC_001474  CDS          polyprotein                            4  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10195]
+304.2.2   gi|1229246881|gb|KY937188.1|   NC_001474  CDS          polyprotein                            4  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 97]
+304.2.3   gi|1229246881|gb|KY937188.1|   NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [19 > 8 (strand:+ CM:10291 blastx:10272, valid stop codon in CM prediction)]
+304.3.1   gi|1229246881|gb|KY937188.1|   NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [2716]
+#
+311.1.1   gi|571350602|gb|KF921935.1|    NC_001477  ncRNA        sfRNA1                                 6  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [81 nt overlap b/t low similarity region (10448..10528) and annotated feature (10304..10528), strand: +]
+311.2.1   gi|571350602|gb|KF921935.1|    NC_001477  stem_loop    stem_loop.6                            9  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [75 nt overlap b/t low similarity region (10448..10528) and annotated feature (10450..10524), strand: +]
+311.3.1   gi|571350602|gb|KF921935.1|    NC_001477  stem_loop    stem_loop.7                           10  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [3 nt overlap b/t low similarity region (10448..10528) and annotated feature (10526..10528), strand: +]
+#
+316.1.1   gi|1500130457|dbj|MA400770.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+345.1.1   gi|1384806841|emb|LP889494.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+350.1.1   gi|763477784|gb|KM222448.1|    NC_001475  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.854<0.900]
+350.2.1   gi|763477784|gb|KM222448.1|    NC_001475  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [191 > 5 (strand:+ CM:1 blastx:192)]
+350.3.1   gi|763477784|gb|KM222448.1|    NC_001475  mat_peptide  envelope_protein_E                    18  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1151]
+#
+353.1.1   gi|239714564|emb|HB384174.1|   -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+364.1.1   gi|906348106|gb|KP757176.1|    NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [190 > 5 (strand:+ CM:496 blastx:306, no valid stop codon in CM prediction)]
+364.2.1   gi|906348106|gb|KP757176.1|    NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [496]
+364.3.1   gi|906348106|gb|KP757176.1|    NC_001474  mat_peptide  membrane_glycoprotein_M               17  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [223]
+#
+386.1.1   gi|1120600917|gb|KX082950.1|   NC_001477  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [8 > 5 (strand:+ CM:1571 blastx:1563, no valid stop codon in CM prediction)]
+#
+392.1.1   gi|910269829|gb|KT345610.1|    -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+418.1.1   gi|1371008783|dbj|LY511427.1|  NC_001477  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.345<0.900]
+418.1.2   gi|1371008783|dbj|LY511427.1|  NC_001477  -            -                                      -  discontn  yes   DISCONTINUOUS_SIMILARITY      not all hits are in the same order in the sequence and the homology model [seq order: 1,2,3(1140..3177:+,4740..4932:+,5766..5919:+), model order: 2,1,3(395..2432:+,71..261:+,4365..4530:+)]
+418.2.1   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.1                            1  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.40 < 0.80, RF position 2]
+418.2.2   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.1                            1  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.40 < 0.80, RF position 69]
+418.2.3   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.1                            1  lowsim5f  yes   LOW_FEATURE_SIMILARITY_START  region within annotated feature at 5' end of sequence lacks significant similarity [107 nt overlap b/t low similarity region (1..1139) and annotated feature (2..108), strand: +]
+418.3.1   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.2                            2  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.60 < 0.80, RF position 79]
+418.3.2   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.2                            2  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 93]
+418.3.3   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.2                            2  lowsim5f  yes   LOW_FEATURE_SIMILARITY_START  region within annotated feature at 5' end of sequence lacks significant similarity [39 nt overlap b/t low similarity region (1..1139) and annotated feature (118..156), strand: +]
+418.4.1   gi|1371008783|dbj|LY511427.1|  NC_001477  CDS          polyprotein                            4  mutstart  yes   MUTATION_AT_START             expected start codon could not be identified
+418.4.2   gi|1371008783|dbj|LY511427.1|  NC_001477  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [982 > 5 (strand:+ CM:158 blastx:1140)]
+418.4.3   gi|1371008783|dbj|LY511427.1|  NC_001477  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [3746 > 5 (strand:+ CM:6910 blastx:3164, no valid stop codon in CM prediction)]
+418.5.1   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.3                            5  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.30 < 0.80, RF position 130]
+418.5.2   gi|1371008783|dbj|LY511427.1|  NC_001477  stem_loop    stem_loop.3                            5  lowsim5f  yes   LOW_FEATURE_SIMILARITY_START  region within annotated feature at 5' end of sequence lacks significant similarity [37 nt overlap b/t low similarity region (1..1139) and annotated feature (177..213), strand: +]
+418.6.1   gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1024]
+418.7.1   gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  capsid_protein_C                      14  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.40 < 0.60 (mat_peptide feature), RF position 394]
+418.8.1   gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS1             19  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1013]
+418.8.2   gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS1             19  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.50 < 0.60 (mat_peptide feature), RF position 3475]
+418.9.1   gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS2A            20  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [658]
+418.9.2   gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS2A            20  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.50 < 0.60 (mat_peptide feature), RF position 3476]
+418.10.1  gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS2B            21  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [308]
+418.10.2  gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS2B            21  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.40 < 0.60 (mat_peptide feature), RF position 4519]
+418.11.1  gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS3             22  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1627]
+418.11.2  gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS3             22  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.40 < 0.60 (mat_peptide feature), RF position 4520]
+418.11.3  gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS3             22  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.50 < 0.60 (mat_peptide feature), RF position 6376]
+418.12.1  gi|1371008783|dbj|LY511427.1|  NC_001477  mat_peptide  nonstructural_protein_NS4A            23  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.50 < 0.60 (mat_peptide feature), RF position 6377]
+#
+428.1.1   gi|342349400|gb|JN106400.1|    NC_001474  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.897<0.900]
+428.2.1   gi|342349400|gb|JN106400.1|    NC_001474  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [12 > 5 (strand:+ CM:1 blastx:13)]
+428.2.2   gi|342349400|gb|JN106400.1|    NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [38 > 5 (strand:+ CM:455 blastx:417, no valid stop codon in CM prediction)]
+#
+433.1.1   gi|406717467|gb|JQ390287.1|    NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [8 > 5 (strand:+ CM:329 blastx:321, no valid stop codon in CM prediction)]
+#
+444.1.1   gi|81301898|gb|DQ265097.1|     NC_001477  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 6]
+#
+469.1.1   gi|1351745559|dbj|LZ245631.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+480.1.1   gi|1015635088|gb|AH012009.2|   NC_002640  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1764 > 5 (strand:+ CM:4314 blastx:2550, no valid stop codon in CM prediction)]
+480.2.1   gi|1015635088|gb|AH012009.2|   NC_002640  mat_peptide  nonstructural_protein_NS1             18  indf3gap  yes   INDEFINITE_ANNOTATION_END     alignment to homology model is a gap at 3' boundary [RF position 3479]
+480.3.1   gi|1015635088|gb|AH012009.2|   NC_002640  mat_peptide  nonstructural_protein_NS2A            19  indf5gap  yes   INDEFINITE_ANNOTATION_START   alignment to homology model is a gap at 5' boundary [RF position 3480]
+480.4.1   gi|1015635088|gb|AH012009.2|   NC_002640  mat_peptide  nonstructural_protein_NS2B            20  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [305]
+480.4.2   gi|1015635088|gb|AH012009.2|   NC_002640  mat_peptide  nonstructural_protein_NS2B            20  indf3gap  yes   INDEFINITE_ANNOTATION_END     alignment to homology model is a gap at 3' boundary [RF position 4523]
+480.5.1   gi|1015635088|gb|AH012009.2|   NC_002640  mat_peptide  nonstructural_protein_NS3             21  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.40 < 0.60 (mat_peptide feature), RF position 4524]
+#
+487.1.1   gi|81301722|gb|DQ264992.1|     NC_001477  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 348;1374]
+#
+511.1.1   gi|1384795687|emb|LP885297.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+517.1.1   gi|332959445|gb|JF937599.1|    NC_001477  ncRNA        sfRNA1                                 6  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [303 nt overlap b/t low similarity region (10411..10713) and annotated feature (10252..10713), strand: +]
+517.2.1   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.6                            9  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 10467]
+517.2.2   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.6                            9  indf3gap  yes   INDEFINITE_ANNOTATION_END     alignment to homology model is a gap at 3' boundary [RF position 10549]
+517.2.3   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.6                            9  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [99 nt overlap b/t low similarity region (10411..10713) and annotated feature (10399..10509), strand: +]
+517.3.1   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.7                           10  indf5gap  yes   INDEFINITE_ANNOTATION_START   alignment to homology model is a gap at 5' boundary [RF position 10551]
+517.3.2   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.7                           10  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 10633]
+517.3.3   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.7                           10  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [105 nt overlap b/t low similarity region (10411..10713) and annotated feature (10510..10614), strand: +]
+517.4.1   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.8                           11  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 10643]
+517.4.2   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.8                           11  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 10656]
+517.4.3   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.8                           11  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [13 nt overlap b/t low similarity region (10411..10713) and annotated feature (10624..10636), strand: +]
+517.5.1   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.9                           12  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 10657]
+517.5.2   gi|332959445|gb|JF937599.1|    NC_001477  stem_loop    stem_loop.9                           12  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END    region within annotated feature at 3' end of sequence lacks significant similarity [77 nt overlap b/t low similarity region (10411..10713) and annotated feature (10637..10713), strand: +]
+#
+548.1.1   gi|75705824|gb|DQ109386.1|     NC_001475  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [197 > 5 (strand:+ CM:1 blastx:198)]
+#
+568.1.1   gi|1189919646|gb|KX452068.1|   NC_001477  -            -                                      -  indfstrn  yes   INDEFINITE_STRAND             significant similarity detected on both strands [best hit is on + strand, but hit on - strand from 93 to 1 has score 42.9 > 25.0]
+568.2.1   gi|1189919646|gb|KX452068.1|   NC_001477  stem_loop    stem_loop.1                            1  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.40 < 0.80, RF position 2]
+568.2.2   gi|1189919646|gb|KX452068.1|   NC_001477  stem_loop    stem_loop.1                            1  lowsim5f  yes   LOW_FEATURE_SIMILARITY_START  region within annotated feature at 5' end of sequence lacks significant similarity [50 nt overlap b/t low similarity region (1..52) and annotated feature (3..95), strand: +]
+#
+581.1.1   gi|668731267|gb|KJ830750.1|    NC_001474  -            -                                      -  lowsim5s  yes   LOW_SIMILARITY_START          significant similarity not detected at 5' end of the sequence [low similarity region of length 18 (1..18)]
+581.2.1   gi|668731267|gb|KJ830750.1|    NC_001474  stem_loop    stem_loop.1                            1  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.60 < 0.80, RF position 2]
+#
+603.1.1   gi|1351745557|dbj|LZ245629.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+615.1.1   gi|237511730|gb|FJ904789.1|    NC_001477  -            -                                      -  revcompl  yes   REVCOMPLEM                    sequence appears to be reverse complemented
+#
+617.1.1   gi|568131591|gb|KF971711.1|    NC_001475  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.829<0.900]
+617.2.1   gi|568131591|gb|KF971711.1|    NC_001475  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [4533 > 8 (strand:+ CM:10250 blastx:5717, valid stop codon in CM prediction)]
+617.3.1   gi|568131591|gb|KF971711.1|    NC_001475  mat_peptide  nonstructural_protein_NS3             22  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6370]
+617.4.1   gi|568131591|gb|KF971711.1|    NC_001475  mat_peptide  nonstructural_protein_NS4A            23  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6371]
+617.4.2   gi|568131591|gb|KF971711.1|    NC_001475  mat_peptide  nonstructural_protein_NS4A            23  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6751]
+617.5.1   gi|568131591|gb|KF971711.1|    NC_001475  mat_peptide  protein_2K                            24  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6752]
+617.5.2   gi|568131591|gb|KF971711.1|    NC_001475  mat_peptide  protein_2K                            24  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6820]
+617.6.1   gi|568131591|gb|KF971711.1|    NC_001475  mat_peptide  nonstructural_protein_NS4B            25  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6821]
+#
+656.1.1   gi|1384796422|emb|LP885461.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+669.1.1   gi|1015635056|gb|AH011977.2|   NC_002640  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1763 > 5 (strand:+ CM:4313 blastx:2550, no valid stop codon in CM prediction)]
+669.2.1   gi|1015635056|gb|AH011977.2|   NC_002640  mat_peptide  nonstructural_protein_NS1             18  indf3gap  yes   INDEFINITE_ANNOTATION_END     alignment to homology model is a gap at 3' boundary [RF position 3479]
+669.3.1   gi|1015635056|gb|AH011977.2|   NC_002640  mat_peptide  nonstructural_protein_NS2A            19  indf5gap  yes   INDEFINITE_ANNOTATION_START   alignment to homology model is a gap at 5' boundary [RF position 3480]
+669.4.1   gi|1015635056|gb|AH011977.2|   NC_002640  mat_peptide  nonstructural_protein_NS2B            20  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [415]
+#
+701.1.1   gi|55418453|gb|AY762080.1|     NC_001477  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 272;317;389]
+701.1.2   gi|55418453|gb|AY762080.1|     NC_001477  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:490 blastx:479, no valid stop codon in CM prediction)]
+#
+711.1.1   gi|1015635081|gb|AH012002.2|   NC_002640  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1764 > 5 (strand:+ CM:4314 blastx:2550, no valid stop codon in CM prediction)]
+711.2.1   gi|1015635081|gb|AH012002.2|   NC_002640  mat_peptide  nonstructural_protein_NS1             18  indf3gap  yes   INDEFINITE_ANNOTATION_END     alignment to homology model is a gap at 3' boundary [RF position 3479]
+711.3.1   gi|1015635081|gb|AH012002.2|   NC_002640  mat_peptide  nonstructural_protein_NS2A            19  indf5gap  yes   INDEFINITE_ANNOTATION_START   alignment to homology model is a gap at 5' boundary [RF position 3480]
+711.4.1   gi|1015635081|gb|AH012002.2|   NC_002640  mat_peptide  nonstructural_protein_NS2B            20  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [304]
+711.4.2   gi|1015635081|gb|AH012002.2|   NC_002640  mat_peptide  nonstructural_protein_NS2B            20  indf3gap  yes   INDEFINITE_ANNOTATION_END     alignment to homology model is a gap at 3' boundary [RF position 4523]
+711.5.1   gi|1015635081|gb|AH012002.2|   NC_002640  mat_peptide  nonstructural_protein_NS3             21  indf5gap  yes   INDEFINITE_ANNOTATION_START   alignment to homology model is a gap at 5' boundary [RF position 4524]
+#
+722.1.1   gi|359307950|gb|JF923866.1|    NC_002640  CDS          polyprotein                            4  mutstart  yes   MUTATION_AT_START             expected start codon could not be identified
+722.1.2   gi|359307950|gb|JF923866.1|    NC_002640  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [28 > 5 (strand:+ CM:4 blastx:32)]
+722.1.3   gi|359307950|gb|JF923866.1|    NC_002640  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [22 > 5 (strand:+ CM:389 blastx:367, no valid stop codon in CM prediction)]
+722.2.1   gi|359307950|gb|JF923866.1|    NC_002640  mat_peptide  anchored_capsid_protein_ancC          12  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [334]
+722.3.1   gi|359307950|gb|JF923866.1|    NC_002640  mat_peptide  capsid_protein_C                      13  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [292]
+#
+728.1.1   gi|568131577|gb|KF971704.1|    NC_001475  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.776<0.900]
+728.2.1   gi|568131577|gb|KF971704.1|    NC_001475  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [4335 > 5 (strand:+ CM:10053 blastx:5718, no valid stop codon in CM prediction)]
+728.3.1   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  nonstructural_protein_NS3             22  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6370]
+728.4.1   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  nonstructural_protein_NS4A            23  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6371]
+728.4.2   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  nonstructural_protein_NS4A            23  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6751]
+728.5.1   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  protein_2K                            24  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6752]
+728.5.2   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  protein_2K                            24  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6820]
+728.6.1   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  nonstructural_protein_NS4B            25  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6821]
+728.6.2   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  nonstructural_protein_NS4B            25  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 7564]
+728.7.1   gi|568131577|gb|KF971704.1|    NC_001475  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 7565]
+#
+743.1.1   gi|541905374|gb|KF053040.1|    NC_001474  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [6 > 5 (strand:+ CM:1 blastx:7)]
+743.1.2   gi|541905374|gb|KF053040.1|    NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [33 > 5 (strand:+ CM:300 blastx:267, no valid stop codon in CM prediction)]
+#
+764.1.1   gi|237511734|gb|FJ904793.1|    NC_001477  -            -                                      -  revcompl  yes   REVCOMPLEM                    sequence appears to be reverse complemented
+#
+768.1.1   gi|81301732|gb|DQ265000.1|     NC_001477  CDS          polyprotein                            4  cdsstopp  yes   CDS_HAS_STOP_CODON            stop codon in protein-based alignment [stop codon(s) end at position(s) 744]
+#
+780.1.1   gi|237511736|gb|FJ904795.1|    NC_001477  -            -                                      -  revcompl  yes   REVCOMPLEM                    sequence appears to be reverse complemented
+#
+832.1.1   gi|939462757|gb|KT327912.1|    NC_001477  -            -                                      -  lowscore  no    LOW_SCORE                     score to homology model below low threshold [0.062<0.300 bits/nt]
+832.1.2   gi|939462757|gb|KT327912.1|    NC_001477  -            -                                      -  revcompl  yes   REVCOMPLEM                    sequence appears to be reverse complemented
+832.1.3   gi|939462757|gb|KT327912.1|    NC_001477  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.572<0.900]
+832.1.4   gi|939462757|gb|KT327912.1|    NC_001477  -            -                                      -  biasdseq  yes   BIASED_SEQUENCE               high fraction of score attributed to biased sequence composition [0.300<0.250]
+#
+834.1.1   gi|568131561|gb|KF971696.1|    NC_001475  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.863<0.900]
+834.2.1   gi|568131561|gb|KF971696.1|    NC_001475  stem_loop    stem_loop.2                            2  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.60 < 0.80, RF position 79]
+834.3.1   gi|568131561|gb|KF971696.1|    NC_001475  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [4650 > 5 (strand:+ CM:79 blastx:4729)]
+834.4.1   gi|568131561|gb|KF971696.1|    NC_001475  mat_peptide  nonstructural_protein_NS1             19  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 3469]
+834.5.1   gi|568131561|gb|KF971696.1|    NC_001475  mat_peptide  nonstructural_protein_NS2A            20  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 3470]
+834.5.2   gi|568131561|gb|KF971696.1|    NC_001475  mat_peptide  nonstructural_protein_NS2A            20  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 4123]
+834.6.1   gi|568131561|gb|KF971696.1|    NC_001475  mat_peptide  nonstructural_protein_NS2B            21  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 4124]
+834.6.2   gi|568131561|gb|KF971696.1|    NC_001475  mat_peptide  nonstructural_protein_NS2B            21  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.10 < 0.60 (mat_peptide feature), RF position 4513]
+834.7.1   gi|568131561|gb|KF971696.1|    NC_001475  mat_peptide  nonstructural_protein_NS3             22  indf5loc  yes   INDEFINITE_ANNOTATION_START   alignment to homology model has low confidence at 5' boundary [0.10 < 0.60 (mat_peptide feature), RF position 4514]
+#
+854.1.1   gi|406717537|gb|JQ390268.1|    NC_001474  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [6 > 5 (strand:+ CM:1 blastx:7)]
+#
+865.1.1   gi|1189919645|gb|KX452067.1|   NC_001477  CDS          polyprotein                            4  mutstart  yes   MUTATION_AT_START             expected start codon could not be identified
+#
+870.1.1   gi|1201294746|gb|KY550234.1|   NC_001474  CDS          polyprotein                            4  indf5pst  yes   INDEFINITE_ANNOTATION_START   protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [22 > 5 (strand:+ CM:1 blastx:23)]
+#
+876.1.1   gi|1351745560|dbj|LZ245632.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+896.1.1   gi|1073748347|emb|LQ305552.1|  -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+897.1.1   gi|1683484|gb|AH004735.1|      NC_001474  -            -                                      -  lowscore  no    LOW_SCORE                     score to homology model below low threshold [0.221<0.300 bits/nt]
+897.1.2   gi|1683484|gb|AH004735.1|      NC_001474  -            -                                      -  lowcovrg  yes   LOW_COVERAGE                  low sequence fraction with significant similarity to homology model [0.255<0.900]
+897.2.1   gi|1683484|gb|AH004735.1|      NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1300 > 5 (strand:+ CM:1501 blastx:201, no valid stop codon in CM prediction)]
+#
+898.1.1   gi|662632180|dbj|DI357072.1|   -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+911.1.1   gi|186948306|dbj|DJ359506.1|   -          -            -                                      -  noannotn  yes   NO_ANNOTATION                 no significant similarity detected
+#
+933.1.1   gi|221070476|gb|FJ639827.1|    NC_001475  gene         POLY                                   3  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.50 < 0.80, RF position 10267]
+933.2.1   gi|221070476|gb|FJ639827.1|    NC_001475  CDS          polyprotein                            4  unexleng  yes   UNEXPECTED_LENGTH             length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10174]
+933.2.2   gi|221070476|gb|FJ639827.1|    NC_001475  CDS          polyprotein                            4  indf3loc  yes   INDEFINITE_ANNOTATION_END     alignment to homology model has low confidence at 3' boundary [0.50 < 0.80, RF position 10267]
+#
+964.1.1   gi|406717485|gb|JQ390227.1|    NC_001474  CDS          polyprotein                            4  indf3pst  yes   INDEFINITE_ANNOTATION_END     protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [8 > 5 (strand:+ CM:371 blastx:363, no valid stop codon in CM prediction)]

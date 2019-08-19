@@ -9,7 +9,7 @@
 
 # Usage: parse_blastx.pl --input <input file>
 
-# dnaorg_scripts 0.9 Apr 2019
+# dnaorg_scripts 0.991 Aug 2019
 
 use strict;
 use warnings;
