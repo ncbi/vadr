@@ -286,7 +286,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.991";
+my $version       = "0.991+";
 my $releasedate   = "Aug 2019";
 my $pkgname       = "VADR";
 
@@ -1233,7 +1233,7 @@ sub cmsearch_or_cmscan_run {
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.); # use --mxsize * 1000 (8 Gb by default)
-    if($mem_gb < 1.) { $mem_gb = 1.; } # set minimum of 1 Gb
+    if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
   else { 
@@ -2274,7 +2274,7 @@ sub cmalign_run {
   if(! opt_Get("--nofixedtau", $opt_HHR)) { 
     $opts .= " --fixedtau"; 
   }
-
+ 
   my $cmd = undef;
   if(defined $mdl_name) { 
     $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
@@ -2288,7 +2288,7 @@ sub cmalign_run {
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
-    if($mem_gb < 1.) { $mem_gb = 1.; } # set minimum of 1 Gb
+    if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
       vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
