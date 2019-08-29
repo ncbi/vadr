@@ -2943,7 +2943,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                         $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                       }
                       my @ext_nxt_stp_A = ();
-                      sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
+                      sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
                       if($ext_nxt_stp_A[1] != 0) { 
                         # there is an in-frame stop codon, mutendex alert
                         # determine what position it is
