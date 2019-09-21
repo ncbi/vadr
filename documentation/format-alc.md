@@ -16,5 +16,5 @@ Those fields are:
 |--------|-----------|
 | `idx`  | index of alert code |
 | `alert code` | 8 character VADR alert code |
-| `causes failure`  | `yes` if this code is fatal and causes the |associated sequence to `fail` |
+| `causes failure`  | `yes` if this code is fatal and causes the associated sequence to `fail` `yes` if this code is fatal and causes the associated sequence to `fail` `yes` if this code is fatal and causes the associated sequence to `fail` `yes` if this code is fatal and causes the associated sequence to `fail` `yes` if this code is fatal and causes the associated sequence to `fail` |
 
