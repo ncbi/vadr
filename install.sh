@@ -82,11 +82,11 @@ echo "Installing Infernal (develop branch) ... "
 git clone https://github.com/EddyRivasLab/infernal.git infernal-dev
 cd infernal-dev
 #git checkout 7d93882
-git checkout 76f771f
+git checkout 1ad8d0c
 rm -rf .git
 git clone https://github.com/EddyRivasLab/hmmer
 #(cd hmmer; git checkout 498ec7c; rm -rf .git)
-(cd hmmer; git checkout 5e98c5c; rm -rf .git)
+(cd hmmer; git checkout e325efc; rm -rf .git)
 git clone https://github.com/EddyRivasLab/easel
 #(cd easel; git checkout 5288a95; rm -rf git)
 (cd easel; git checkout 951891e; rm -rf git)
