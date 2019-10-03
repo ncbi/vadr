@@ -3568,8 +3568,9 @@ sub add_blastx_alerts {
                     for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
                       my $local_xmaxins = defined ($maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
                       if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
-                        if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; }
-                        $alt_str_H{"insertnp"} = "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                        if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
+                        else                               { $alt_str_H{"insertnp"}  = ""; } # initialize
+                        $alt_str_H{"insertnp"} .= "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
                       }
                     }
                   }
@@ -3582,8 +3583,9 @@ sub add_blastx_alerts {
                     for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
                       my $local_xmaxdel = defined ($maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
                       if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
-                        if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; }
-                        $alt_str_H{"deletinp"} = "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
+                        if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
+                        else                               { $alt_str_H{"deletinp"} = ""; }           # initialize
+                        $alt_str_H{"deletinp"} .= "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
                       }
                     }
                   }
@@ -4075,7 +4077,7 @@ sub helper_blastx_breakdown_max_indel_str {
   
   my ($in_str, $qpos_AR, $spos_AR, $len_AR, $FH_HR) = (@_);
 
-  # printf("in $sub_name, imutstart: $in_str\n");
+  # printf("in $sub_name, in_str: $in_str\n");
 
   my @str_A = split(";", $in_str); 
   foreach my $str (@str_A) { 
