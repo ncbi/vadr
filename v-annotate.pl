@@ -3556,7 +3556,11 @@ sub add_blastx_alerts {
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
                     if($stop_diff > $cur_aln_tol) { 
-                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
+                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print"; 
+                      if(! defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "unexleng"))) { 
+                        $alt_str_H{"indf3pst"} .= ", $cur_stop_str in CM prediction";
+                      }
+                      $alt_str_H{"indf3pst"} .= ")";
                     }
                   }
                   # check for 'insertnp': too long of an insert
