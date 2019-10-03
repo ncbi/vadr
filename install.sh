@@ -58,6 +58,7 @@ echo "Building Bio-Easel ... "
 # TEMP UNTIL Bio-Easel 0.09 is out
 cd $VADRINSTALLDIR
 git clone https://github.com/nawrockie/Bio-Easel.git Bio-Easel
+cd Bio-Easel
 git checkout develop
 # end of TEMP
 # clone Easel subdir
