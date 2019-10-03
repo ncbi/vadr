@@ -1693,7 +1693,7 @@ sub add_classification_alerts {
         # high bias (biasdseq) 
         if($bias_fract > $biasfract_opt) { 
           my $bias_fract2print = sprintf("%.3f", $bias_fract);
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . "<" . $biasfract_opt2print, $FH_HR);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . ">" . $biasfract_opt2print, $FH_HR);
         }
 
         # inconsistent hits: multiple strands (indfstrn) 
