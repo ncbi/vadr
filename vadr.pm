@@ -1215,7 +1215,7 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "biasdseq", "sequence",
                    "BIASED_SEQUENCE", # short description
                    "high fraction of score attributed to biased sequence composition", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "dupregin", "sequence",
