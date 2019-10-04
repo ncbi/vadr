@@ -2911,10 +2911,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               $alt_str_H{"unexleng"} = "$ftr_len";
             }
 
-            # look for all valid in-frame stops 
-            my @ftr_nxt_stp_A = ();
-            sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
+            # if CDS: look for all valid in-frame stops 
             if($ftr_is_cds) { 
+              my @ftr_nxt_stp_A = ();
+              sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'mutendcd' alert if not
               if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
                 $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
