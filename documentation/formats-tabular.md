@@ -5,6 +5,7 @@ types are discussed below.
 
 ### Tabular output files 
 
+TEST! 
 There are seven types of `v-annotate.pl` tabular output files with
 fields separated by one or more spaces, that are meant to be easily
 parseable. These files will be named `<outdir>.vadr.<suffix>` where
