@@ -35,7 +35,8 @@ echo "Installing vadr ... "
 curl -k -L -o vadr-$VERSION.zip https://github.com/nawrockie/vadr/archive/$VERSION.zip; unzip vadr-$VERSION.zip; mv vadr-$VERSION vadr; rm vadr-$VERSION.zip
 
 # sequip and Bio-Easel
-for m in sequip Bio-Easel; do 
+#for m in sequip Bio-Easel; do 
+for m in sequip; do
     echo "Installing $m ... "
     curl -k -L -o $m-$VVERSION.zip https://github.com/nawrockie/$m/archive/$VVERSION.zip; unzip $m-$VVERSION.zip; mv $m-$VVERSION $m; rm $m-$VVERSION.zip
     # we can't leave these directories with $VVERSION because vadr scripts expect non-versioned names
@@ -53,11 +54,18 @@ echo "------------------------------------------------"
 ########## BUILD BIO-EASEL ###############
 # Build Bio-Easel:
 echo "Building Bio-Easel ... "
-cd $VADRINSTALLDIR/Bio-Easel
+#cd $VADRINSTALLDIR/Bio-Easel
+# TEMP UNTIL Bio-Easel 0.09 is out
+cd $VADRINSTALLDIR
+git clone https://github.com/nawrockie/Bio-Easel.git Bio-Easel
+cd Bio-Easel
+git checkout develop
+# end of TEMP
 # clone Easel subdir
 mkdir src
 (cd src; git clone https://github.com/EddyRivasLab/easel.git easel)
-(cd src/easel; git checkout tags/Bio-Easel-0.08; rm -rf .git)
+#(cd src/easel; git checkout tags/Bio-Easel-0.08; rm -rf .git)
+(cd src/easel; git checkout 951891e; rm -rf .git)
 perl Makefile.PL
 make
 make test
@@ -73,12 +81,15 @@ cd $VADRINSTALLDIR
 echo "Installing Infernal (develop branch) ... "
 git clone https://github.com/EddyRivasLab/infernal.git infernal-dev
 cd infernal-dev
-git checkout 7d93882
+#git checkout 7d93882
+git checkout 1ad8d0c
 rm -rf .git
 git clone https://github.com/EddyRivasLab/hmmer
-(cd hmmer; git checkout 498ec7c; rm -rf .git)
+#(cd hmmer; git checkout 498ec7c; rm -rf .git)
+(cd hmmer; git checkout e325efc; rm -rf .git)
 git clone https://github.com/EddyRivasLab/easel
-(cd easel; git checkout 5288a95; rm -rf git)
+#(cd easel; git checkout 5288a95; rm -rf git)
+(cd easel; git checkout 951891e; rm -rf git)
 autoconf
 sh ./configure 
 make

@@ -1693,7 +1693,7 @@ sub add_classification_alerts {
         # high bias (biasdseq) 
         if($bias_fract > $biasfract_opt) { 
           my $bias_fract2print = sprintf("%.3f", $bias_fract);
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . "<" . $biasfract_opt2print, $FH_HR);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . ">" . $biasfract_opt2print, $FH_HR);
         }
 
         # inconsistent hits: multiple strands (indfstrn) 
@@ -2907,70 +2907,67 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           if($ftr_is_cds_or_mp) { 
             # feature is not truncated on either end, look for stop codons
             if(($ftr_len % 3) != 0) { 
-              # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
-              # but which could cause weird downstream problems)
+              # not a multiple of 3, unexleng alert 
               $alt_str_H{"unexleng"} = "$ftr_len";
             }
-            else { 
-              # feature length is a multiple of 3, look for all valid in-frame stops 
+
+            # if CDS: look for all valid in-frame stops 
+            if($ftr_is_cds) { 
               my @ftr_nxt_stp_A = ();
               sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-              
-              if($ftr_is_cds) { 
-                # check that final add codon is a valid stop, and add 'mutendcd' alert if not
-                if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
-                  $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
-                                                substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
-                                                $ftr2org_pos_A[$ftr_len], $ftr_strand);
-                }
-                if($ftr_nxt_stp_A[1] != $ftr_len) { 
-                  # first stop codon 3' of $ftr_start is not $ftr_stop
-                  # We will need to add an alert, (exactly) one of:
-                  # 'mutendex': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                  # 'mutendns': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                  # 'cdsstopn': an early stop exists in $ftr_sqstring
-                  if($ftr_nxt_stp_A[1] == 0) { 
-                    # there are no valid in-frame stops in $ftr_sqstring
-                    # we have a 'mutendns' or 'mutendex' alert, to find out which 
-                    # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                    if($ftr_stop < $seq_len) { 
-                      # we have some sequence left 3' of ftr_stop
-                      my $ext_sqstring = undef;
-                      if($ftr_strand eq "+") { 
-                        $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
-                      }
-                      else { # negative strand
-                        $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
-                      }
-                      my @ext_nxt_stp_A = ();
-                      sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
-                      if($ext_nxt_stp_A[1] != 0) { 
-                        # there is an in-frame stop codon, mutendex alert
-                        # determine what position it is
-                        $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
-                        $alt_str_H{"mutendex"} = $ftr_stop_c;
-                      }
-                    } # end of 'if($ftr_stop < $seq_len)'
-                    if(! defined $ftr_stop_c) { 
-                      # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
-                      # or we checked the sequence but didn't find any
-                      # either way, we have a mutendns alert:
-                      $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                      $alt_str_H{"mutendns"} = "VADRNULL";
+              # check that final add codon is a valid stop, and add 'mutendcd' alert if not
+              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
+                $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
+                                                 substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                                 $ftr2org_pos_A[$ftr_len], $ftr_strand);
+              }
+              if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                # first stop codon 3' of $ftr_start is not $ftr_stop
+                # We will need to add an alert, (exactly) one of:
+                # 'mutendex': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                # 'mutendns': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                # 'cdsstopn': an early stop exists in $ftr_sqstring
+                if($ftr_nxt_stp_A[1] == 0) { 
+                  # there are no valid in-frame stops in $ftr_sqstring
+                  # we have a 'mutendns' or 'mutendex' alert, to find out which 
+                  # we need to fetch the sequence ending at $fstop to the end of the sequence 
+                  if($ftr_stop < $seq_len) { 
+                    # we have some sequence left 3' of ftr_stop
+                    my $ext_sqstring = undef;
+                    if($ftr_strand eq "+") { 
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                     }
-                  } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
-                  else { 
-                    # there is an early stop (cdsstopn) in $ftr_sqstring
-                    if($ftr_nxt_stp_A[1] > $ftr_len) { 
-                      # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                      ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                    else { # negative strand
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                     }
-                    $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
-                    $alt_str_H{"cdsstopn"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                    my @ext_nxt_stp_A = ();
+                    sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
+                    if($ext_nxt_stp_A[1] != 0) { 
+                      # there is an in-frame stop codon, mutendex alert
+                      # determine what position it is
+                      $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                      $alt_str_H{"mutendex"} = $ftr_stop_c;
+                    }
+                  } # end of 'if($ftr_stop < $seq_len)'
+                  if(! defined $ftr_stop_c) { 
+                    # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                    # or we checked the sequence but didn't find any
+                    # either way, we have a mutendns alert:
+                    $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
+                    $alt_str_H{"mutendns"} = "VADRNULL";
                   }
-                } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
-              } # end of 'if($ftr_is_cds) {' 
-            } # end of 'else' entered if feature is a multiple of 3
+                } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
+                else { 
+                  # there is an early stop (cdsstopn) in $ftr_sqstring
+                  if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                    # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                    ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                  }
+                  $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+                  $alt_str_H{"cdsstopn"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                }
+              } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+            } # end of 'if($ftr_is_cds) {' 
           } # end of 'if($ftr_is_cds_or_mp)'
         } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
 
@@ -3556,7 +3553,11 @@ sub add_blastx_alerts {
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
                     if($stop_diff > $cur_aln_tol) { 
-                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
+                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print"; 
+                      if(! defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "unexleng"))) { 
+                        $alt_str_H{"indf3pst"} .= ", $cur_stop_str in CM prediction";
+                      }
+                      $alt_str_H{"indf3pst"} .= ")";
                     }
                   }
                   # check for 'insertnp': too long of an insert
@@ -3568,8 +3569,9 @@ sub add_blastx_alerts {
                     for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
                       my $local_xmaxins = defined ($maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
                       if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
-                        if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; }
-                        $alt_str_H{"insertnp"} = "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                        if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
+                        else                               { $alt_str_H{"insertnp"}  = ""; } # initialize
+                        $alt_str_H{"insertnp"} .= "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
                       }
                     }
                   }
@@ -3582,8 +3584,9 @@ sub add_blastx_alerts {
                     for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
                       my $local_xmaxdel = defined ($maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
                       if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
-                        if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; }
-                        $alt_str_H{"deletinp"} = "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
+                        if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
+                        else                               { $alt_str_H{"deletinp"} = ""; }           # initialize
+                        $alt_str_H{"deletinp"} .= "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
                       }
                     }
                   }
@@ -4075,7 +4078,7 @@ sub helper_blastx_breakdown_max_indel_str {
   
   my ($in_str, $qpos_AR, $spos_AR, $len_AR, $FH_HR) = (@_);
 
-  # printf("in $sub_name, imutstart: $in_str\n");
+  # printf("in $sub_name, in_str: $in_str\n");
 
   my @str_A = split(";", $in_str); 
   foreach my $str (@str_A) { 
