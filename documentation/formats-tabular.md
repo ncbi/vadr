@@ -18,7 +18,7 @@ parseable. These files will be named `<outdir>.vadr.<suffix>` where
 | [`.ftr`](#ftrformat) | per-feature information |
 | [`.mdl`](#mdlformat) | per-model information |
 | [`.sgm`](#sgmformat) | per-segment information |
-| `.sqa` | per-sequence annotation information |
+| [`.sqa`](#sqaformat) | per-sequence annotation information |
 | `.sqc` | per-sequence classification information |
 
 All seven types of tabular output files share the following
@@ -60,7 +60,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `idx`                 | index of alert instance in format `<d1>.<d2>.<d3>`, where `<d1>` is the index of the sequence this alert instance pertains to in the input sequence file, `<d2>` is the index of the feature this alert instance pertains to (range 1..`<n>`, where `<n>` is the number of features in this sequence with at least 1 alert instance) and `<d3>` is the index of the alert instance for this sequence/feature pair |
-|   2 | `seq name`            | sequence name 8 character VADR alert code |
+|   2 | `seq name`            | sequence name | 
 |   3 | `model`               | name of the best-matching model for this sequence |
 |   4 | `ftr type`            | type of the feature this alert instance pertains to (e.g. CDS) |
 |   5 | `ftr name`            | name of the feature this alert instance pertains to |
@@ -178,8 +178,64 @@ file.
 |  20 | `5' gap`              | `yes` if the 5' boundary of the segment is a gap (possibly due to a 5' truncation), else `no` }
 |  21 | `3' gap`              | `yes` if the 3' boundary of the segment is a gap (possibly due to a 3' truncation), else `no` }
 
-TODO:
-`modelinfo` file explanation
-`coords` field in modelinfo explanation
-`posterior probability` explanation
+### Explanation of `.sqa`-suffixed output files<a name="sqaformat"></a>
 
+`.sqa` data lines have 14 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**sequence** in the input sequence file file that `v-annotate.pl`
+processed. `.sqa` files include **annotation** information for each
+sequence. `.sqc` files include **classification** information for each
+sequence. 
+
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
+|   6 | `best model`          | name of the best-matching model for this sequence |
+|   7 | `grp`                 | group of model `best model`, defined in model info file, or `-` if none |
+|   8 | `subgp`               | subgroup of model `best model`, defined in model info file, or `-`' if none | 
+|   9 | `nfa`                 | number of features annotated for this sequence |
+|  10 | `nfn`                 | number of features in model `best model` that are not annotated for this sequence |
+|  11 | `nf5`                 | number of annotated features that are 5' truncated |
+|  12 | `nf3`                 | number of annotated features that are 3' truncated |
+|  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
+|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+
+### Explanation of `.sqc`-suffixed output files<a name="sqaformat"></a>
+
+`.sqc` data lines have 21 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**sequence** in the input sequence file file that `v-annotate.pl`
+processed. `.sqc` files include **classification** information for
+each sequence.  `.sqa` files include **annotation** information for
+each sequence.
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
+|   6 | `model1`              | name of the best-matching model for this sequence |
+|   7 | `grp1`                | group of model `model1`, defined in model info file, or `-` if none |
+|   8 | `subgrp1`             | subgroup of model `model1`, defined in model info file, or `-`' if none | 
+HERE HERE 
+|   6 | `model2`              | name of the second best-matching model for this sequence |
+|   7 | `grp2`                | group of model `model2`, defined in model info file, or `-` if none |
+|   8 | `subgrp2`             | subgroup of model `model2`, defined in model info file, or `-`' if none | 
+|   9 | `nfa`                 | number of features annotated for this sequence |
+|  10 | `nfn`                 | number of features in model `best model` that are not annotated for this sequence |
+|  11 | `nf5`                 | number of annotated features that are 5' truncated |
+|  12 | `nf3`                 | number of annotated features that are 3' truncated |
+|  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
+|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+
+TODO:
+* `v-build.pl` output formats (including `modelinfo`)
+* `coords` field in modelinfo explanation
+* `posterior probability` explanation
