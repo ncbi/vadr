@@ -18,7 +18,7 @@ generate-vadr-environment-commands.sh
 Step 1. Checkout source with 'checkout-vadr-source.sh' supplying 3
 command line arguments: <vadr version> <vadr model version> <blast+ version>
 
-$ checkout-vadr-source.sh 0.991 0.991-1 2.9.0
+$ checkout-vadr-source.sh 0.991 0.991.1 2.9.0
 
 Step 2. Build binaries with 'build-vadr-binaries.sh'
 
@@ -30,26 +30,6 @@ SETTING ENVIRONMENT VARIABLES
 
 Before you can use VADR you need to set specific environment
 variables. 
-
-----------------------------------------------
-Setting environment for current shell session:
-----------------------------------------------
-This can be done for the current shell with the script
-'set-vadr-environment.sh'. You need to supply the path to the current
-directory (where you performed steps 1 and 2).
-
-First, determine current directory:
-
-$ pwd
-<path-to-current-directory>
-
-Then run 'set-vadr-environment.sh' with that path, like:
-
-$ set-vadr-environment.sh <path-to-current-directory>.
-
--------------------------------------------
-Setting environment for all shell sessions: 
--------------------------------------------
 
 To set the environment automatically whenever you login to your home
 directory, you can add lines to the .bashrc or .cshrc files in your
@@ -74,5 +54,24 @@ Example command if you use C shell or tcsh:
 $ generate-environment-commands.sh <path-to-current-directory> csh
 
 The output of this command will be a bunch of lines like this:
+
+export VADRMODELDIR="$VADRINSTALLDIR/vadr-models"
+
+OR
+
+setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models"
+
+Take all of these lines and add them to your .bashrc or .cshrc
+file. Then do 'source ~/.bashrc' or 'source ~/.cshrc'. After that, you
+should be able to run the vadr scripts.
+
+To test this, do:
+
+$ which v-build.pl
+
+The output should be:
+
+<path-to-current-directory>/vadr/v-build.pl
+
 
 
