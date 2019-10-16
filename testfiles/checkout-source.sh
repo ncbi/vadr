@@ -26,7 +26,7 @@ VERSION=$1
 VVERSION="vadr-$VERSION"
 MVERSION=$2
 BVERSION=$3
-# TEMPORARY, 
+# TEMPORARY 
 BEVERSION=Bio-Easel-0.08
 
 # vadr
@@ -44,8 +44,7 @@ mkdir src
 cd ..
 echo "------------------------------------------------"
 
-# download Infernal
-# Install Infernal (develop branch, specific commit)
+# download Infernal (TEMPORARY: develop branch, specific commit, will be v1.1.3 once that is released)
 # UPDATE THIS TO USE curl TO DOWNLOAD 1.1.3 WHEN IT IS AVAILABLE
 echo "Downloading Infernal (develop branch) ... "
 git clone https://github.com/EddyRivasLab/infernal.git infernal-dev
