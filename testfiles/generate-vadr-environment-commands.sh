@@ -14,7 +14,7 @@ set -e
 
 # make sure correct number of cmdline arguments were used, exit if not
 if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 <directory where checkout-source.sh and build-binaries.sh were run from> <your shell: 'bash' or 'csh'"
+  echo "Usage: $0 <directory where checkout-vadr-source.sh and build-vadr-binaries.sh were run from> <your shell: 'bash' or 'csh'"
   exit 1
 fi
 
@@ -32,7 +32,7 @@ if [ $2 == "csh" ]; then
     INPUTSHELL="csh";
 fi
 if [ $INPUTSHELL == "?" ]; then 
-  echo "Usage: $0 <directory where checkout-source.sh and build-binaries.sh were run from> <your shell: 'bash' or 'csh'"
+  echo "Usage: $0 <directory where checkout-vadr-source.sh and build-vadr-binaries.sh were run from> <your shell: 'bash' or 'csh'"
   exit 1
 fi
 

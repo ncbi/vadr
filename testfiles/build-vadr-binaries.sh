@@ -4,18 +4,17 @@
 #
 # EPN, Tue Oct 15 14:44:22 2019
 #
-# build-binaries.sh
+# build-vadr-binaries.sh
 # A shell script for building VADR dependencies. 
 # To be run after 'checkout-source.sh' in the same directory that
 # 'checkout-source.sh' was run in.
 # 
 # usage: 
-# build-binaries.sh
+# build-vadr-binaries.sh
 # 
 # for example:
-# build-binaries.sh
+# build-vadr-binaries.sh
 #
-
 # The following line will make the script fail if any commands fail
 set -e
 #

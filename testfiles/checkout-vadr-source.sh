@@ -4,14 +4,14 @@
 #
 # EPN, Tue Oct 15 14:38:57 2019
 #
-# checkout-source.sh 
+# checkout-vadr-source.sh 
 # A shell script for downloading VADR and its dependencies.
 # 
 # usage: 
-# checkout-source.sh <vadr version (e.g. 0.991)> <vadr model version (e.g. 0.991.1)> <blast version (e.g. 2.9.0)>"
+# checkout-vadr-source.sh <vadr version (e.g. 0.991)> <vadr model version (e.g. 0.991.1)> <blast version (e.g. 2.9.0)>"
 # 
 # for example:
-# checkout-source.sh 0.991 0.991.1 2.9.0+
+# checkout-vadr-source.sh 0.991 0.991.1 2.9.0+
 #
 # The following line will make the script fail if any commands fail
 set -e
