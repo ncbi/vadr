@@ -5,7 +5,6 @@ types are discussed below.
 
 ### Tabular output files 
 
-TEST! 
 There are seven types of `v-annotate.pl` tabular output files with
 fields separated by one or more spaces, that are meant to be easily
 parseable. These files will be named `<outdir>.vadr.<suffix>` where
@@ -18,7 +17,7 @@ parseable. These files will be named `<outdir>.vadr.<suffix>` where
 | [`.alt`](#altformat) | per-alert instance information |
 | [`.ftr`](#ftrformat) | per-feature information |
 | [`.mdl`](#mdlformat) | per-model information |
-| `.sgm` | per-segment information |
+| [`.sgm`](#sgmformat) | per-segment information |
 | `.sqa` | per-sequence annotation information |
 | `.sqc` | per-sequence classification information |
 
@@ -101,7 +100,7 @@ the model info file.
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
-|   1 | `idx`                 | index of feature in format `<d1>.<d2>`, where `<d1>` is the index of the sequence in which this feature is annotated to in the input sequence file, `<d2>` is the index of the feature (range 1..`<n>`, where `<n>` is the number of features annotated for this sequence |
+|   1 | `idx`                 | index of feature in format `<d1>.<d2>`, where `<d1>` is the index of the sequence in which this feature is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n>`, where `<n>` is the number of features annotated for this sequence |
 |   2 | `seq name`            | sequence name in which this feature is annotated |
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
 |   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
@@ -114,7 +113,7 @@ the model info file.
 |  11 | `n_from`              | nucleotide start position for this feature in input sequence |
 |  12 | `n_to`                | nucleotide end position for this feature in input sequence |
 |  13 | `n_instp`             | nucleotide position of stop codon not at `n_to`, or `-` if none, will be 5' of `n_to` if early stop (`cdsstopn` alert), or 3' of `n_to` if first stop is 3' of `n_to` (`mutendex` alert), or `?` if no in-frame stop exists 3' of `n_from`; will always be `-` if `trunc` is not `no`; |
-|  14 | `trc`                 | indicates whether the feature is truncated or not, where one or both ends of the feature is missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
+|  14 | `trc`                 | indicates whether the feature is truncated or not, where one or both ends of the feature are missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
 |  15 | `p_from`              | nucleotide start position for this feature based on the blastx protein-validation step | 
 |  16 | `p_to`                | nucleotide stop position for this feature based on the blastx protein-validation step | 
 |  17 | `p_instp`             | nucleotide position of stop codon 5' of `p_to` if an in-frame stop exists before `p_to` |
@@ -146,7 +145,41 @@ included in the `.log` output file.
 |   6 | `num pass`            | number of sequences from `num seqs` that passed with 0 fatal alerts | 
 |   7 | `num fail`            | number of sequences from `num seqs` that failed with >= 1 fatal alerts | 
 
+### Explanation of `.sgm`-suffixed output files<a name="sgmformat"></a>
 
+`.sgm` data lines have 21 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**segment** of a feature that is annotated for each input sequence
+file that `v-annotate.pl` processed. Each feature is composed of
+1 or more segments, as defined by the `coords` field in the model info
+file. 
 
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `idx`                 | index of segment in format `<d1>.<d2>.<d3> where `<d1>` is the index of the sequence in which this segment is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n1>`, where `<n1>` is the number of features annotated for this sequence) and `<d3>` is the index of the segment annotated within that feature (range 1..`<n2>` where `<n2>` is the number of segments annotated for this feature | 
+|   2 | `seq name`            | sequence name in which this feature is annotated |
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   5 | `model`               | name of the best-matching model for this sequence |
+|   6 | `ftr type`            | type of the feature (e.g. CDS) |
+|   7 | `ftr name`            | name of the feature |
+|   8 | `ftr idx`             | index (in input model info file) of this feature |
+|   9 | `num sgm`             | number of segments annotated for this sequence/feature pair |
+|  10 | `sgm idx`             | index (in feature) of this segment |
+|  11 | `seq from`            | nucleotide start position for this segment in input sequence, will be <= `seq to` if strand (`str`) `-` |
+|  12 | `seq to`              | nucleotide end position for this segment in input sequence, will be >= `seq from` if strand (`str`) `-` |
+|  13 | `mdl from`            | model start position for this segment, will be <= `mdl to` if strand (`str`) `-` | |
+|  14 | `mdl to`              | model end position for this segment, will be >= `mdl from` if strand (`str`) `-` | |
+|  15 | `sgm len`             | length, in nucleotides, for this annotated segment in the input sequence |
+|  16 | `str`                 | strand (`+` or `-`) for this segment in the input sequence |
+|  17 | `trc`                 | indicates whether the segment is truncated or not, where one or both ends of the segment are missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
+|  18 | `5' pp`               | posterior probability of the aligned nucleotide at the 5' boundary of the segment, or `-` if 5' boundary aligns to a gap (possibly due to a 5' truncation) }
+|  19 | `3' pp`               | posterior probability of the aligned nucleotide at the 3' boundary of the segment, or `-` if 3' boundary aligns to a gap (possibly due to a 3' truncation) }
+|  20 | `5' gap`              | `yes` if the 5' boundary of the segment is a gap (possibly due to a 5' truncation), else `no` }
+|  21 | `3' gap`              | `yes` if the 3' boundary of the segment is a gap (possibly due to a 3' truncation), else `no` }
 
+TODO:
+`modelinfo` file explanation
+`coords` field in modelinfo explanation
+`posterior probability` explanation
 
