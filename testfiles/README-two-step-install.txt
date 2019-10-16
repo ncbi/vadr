@@ -1,6 +1,6 @@
 EPN, Wed Oct 16 10:45:13 2019
 
-Instructions for installing VADR in two steps.
+Instructions for installing VADR in multiple steps.
 
 ============
 INSTALLATION
@@ -19,6 +19,12 @@ Step 1. Checkout source with 'checkout-vadr-source.sh' supplying 3
 command line arguments: <vadr version> <vadr model version> <blast+ version>
 
 $ checkout-vadr-source.sh 0.991 0.991.1 2.9.0
+
+Step 3. Download VADR cox1 models (if desired) with
+'download-vadr-cox1-models.sh' with 1 command line argument: <vadr
+cox1 model version (e.g. 0.971.1)> 
+
+$ download-vadr-cox1-models.sh 0.971.1
 
 Step 2. Build binaries with 'build-vadr-binaries.sh'
 
