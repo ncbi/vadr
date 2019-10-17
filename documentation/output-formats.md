@@ -1,13 +1,175 @@
-# Format of `v-annotate.pl` output files
+# VADR output file formats
+
+VADR creates many different types of output files. You can find an explanation
+of these formats below divided into three categories:
+
+| category | description |
+|--------|-----------------------|
+| [generic VADR output files](#generic-formats) | files created by all VADR scripts (`v-annotate.pl` and `v-build.pl`) |
+| [`v-build.pl` output files](#build-formats) | files created only by `v-build.pl` |
+| [`v-annotate.pl` output files](#annotate-formats) | files created only by `v-annotate.pl` |
+
+# Format of generic VADR output files created by all VADR scripts
+
+All VADR scripts (e.g. `v-build.pl` and `v-annotate.pl`) create a
+common set of three output files. These files are named
+`<outdir>.vadr.<suffix>` where `<outdir>` is the command line argument
+that specifies the name of the output directory to create.
+
+| suffix | description |
+|--------|-----------------------|
+| [`.log`](#logformat) | log of steps taken by the VADR script (this is identical to the standard output of the program) |
+| [`.cmd`](#cmdformat) | list of the commands run using Perl's `system` command internally by the VADR script |
+| [`.filelist`](#filelistformat) | list of output files created by the VADR script | 
+
+Each format is explained in more detail below.
+
+## Explanation of `.log`-suffixed output files<a name="logformat"></a>
+
+The `.log` files include the same text that is printed to standard output. 
+Log files have five or six sections: [banner](#log-banner), [input
+information](#log-inputinformation), [stage
+list](#log-stagelist), [summary](#log-summary) (optional), [output
+file list](#log-outputfilelist), and [timing]. 
+
+The banner section <a name="log-banner"> lists the name of the VADR
+script being run and the version and date. For example:
+
+```
+# v-build.pl :: build homology model of a single sequence for feature annotation
+# VADR 0.991 (Aug 2019)
+```
+
+The input information section <a name="log-inputinformation"> includes
+information on the time and date of execution, any relevant
+environment variables, the command line arguments used and any command
+line options used. For example:
+
+```
+# date:              Fri Oct  4 13:11:22 2019
+# $VADRBLASTDIR:     /usr/bin
+# $VADREASELDIR:     /panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps
+# $VADRINFERNALDIR:  /panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src
+# $VADRSCRIPTSDIR:   /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr
+#
+# accession/model name:           NC_039897
+# output directory:               NC_039897
+# forcing directory overwrite:    yes [-f]
+# specify model group is <s>:     Norovirus [--group]
+# specify model subgroup is <s>:  GI [--subgroup]
+```
+
+Next is the stage list section <a name="log-stagelist"> which lists
+each stage the script proceeds through, along with the time that
+elapsed during that stage. For example:
+
+```
+# Fetching FASTA file                                          ... done. [    3.9 seconds]
+# Parsing FASTA file                                           ... done. [    0.0 seconds]
+# Fetching feature table file                                  ... done. [    3.1 seconds]
+# Parsing feature table file                                   ... done. [    0.0 seconds]
+# Fetching and parsing protein feature table file(s)           ... done. [   13.5 seconds]
+# Pruning data read from GenBank                               ... done. [    0.0 seconds]
+# Reformatting FASTA file to Stockholm file                    ... done. [    0.2 seconds]
+# Finalizing feature information                               ... done. [    0.0 seconds]
+# Translating CDS and building BLAST DB                        ... done. [    0.2 seconds]
+# Building model (should take roughly 10-30 minutes)           ... done. [  818.7 seconds]
+# Pressing CM file                                             ... done. [    0.6 seconds]
+# Creating model info file                                     ... done. [    0.0 seconds]
+```
+
+The summary section <a name=log-summary> is optional in that
+`v-annotate.pl` log files will have a summary section, but
+`v-build.pl` output files do not. `v-annotate.pl` log files include
+information on the number of sequences classified to each model (this
+is identical to the information output to the `.mdl`(#mdlformat)
+output file) and the number of each type of reported alert (this is
+identical to the information output to the `.alc`(#alcformat) output
+file). For example:
+
+```
+# Summary of classified sequences:
+#
+#                                      num   num   num
+#idx  model      group      subgroup  seqs  pass  fail
+#---  ---------  ---------  --------  ----  ----  ----
+1     NC_008311  Norovirus  GV           2     1     1
+2     NC_001959  Norovirus  GI           2     2     0
+3     NC_039477  Norovirus  GII          2     2     0
+4     NC_029645  Norovirus  GIII         2     2     0
+5     NC_031324  Norovirus  GI           1     1     0
+#---  ---------  ---------  --------  ----  ----  ----
+-     *all*      -          -            9     8     1
+-     *none*     -          -            0     0     0
+#---  ---------  ---------  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                            per    num   num  long
+#idx  code      failure  description                     type  cases  seqs  description
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+1     mutendcd  yes      MUTATION_AT_END              feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+2     cdsstopn  yes      CDS_HAS_STOP_CODON           feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+3     cdsstopp  yes      CDS_HAS_STOP_CODON           feature      1     1  stop codon in protein-based alignment
+4     indf5pst  yes      INDEFINITE_ANNOTATION_START  feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+5     indf3pst  yes      INDEFINITE_ANNOTATION_END    feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+```
+
+The summary section is followed by the output file list <a
+name="log-outputfilelist> which lists all the files that were created
+by the script. This information is identical to what is output to the
+`filelist` output file <a name="filelistformat>. For example:
+
+```
+# Output printed to screen saved in:                                NC_039897.vadr.log
+# List of executed commands saved in:                               NC_039897.vadr.cmd
+# List and description of all output files saved in:                NC_039897.vadr.filelist
+# fasta file for NC_039897 saved in:                                NC_039897.vadr.fa
+# feature table format file for NC_039897 saved in:                 NC_039897.vadr.ft
+# feature table format file for YP_009538340.1 saved in:            NC_039897.vadr.YP_009538340.1.ft
+# feature table format file for YP_009538341.1 saved in:            NC_039897.vadr.YP_009538341.1.ft
+# feature table format file for YP_009538342.1 saved in:            NC_039897.vadr.YP_009538342.1.ft
+# Stockholm alignment file for NC_039897 saved in:                  NC_039897.vadr.stk
+# fasta sequence file for CDS from NC_039897 saved in:              NC_039897.vadr.cds.fa
+# fasta sequence file for translated CDS from NC_039897 saved in:   NC_039897.vadr.protein.fa
+# BLAST db .phr file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.phr
+# BLAST db .pin file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.pin
+# BLAST db .psq file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.psq
+# CM file saved in:                                                 NC_039897.vadr.cm
+# cmbuild output file saved in:                                     NC_039897.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                        NC_039897.vadr.cm.i1m
+# SSI index for binary CM file saved in:                            NC_039897.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                     NC_039897.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                    NC_039897.vadr.cm.i1p
+# cmpress output file saved in:                                     NC_039897.vadr.cmpress
+# VADR 'model info' format file for NC_039897 saved in:             NC_039897.vadr.minfo
+```
+
+The final section <a name="log-timing> lists how much time elapsed
+while the script was executing. The final line of the output is either
+`[ok]` if the script finished successfully without any unexpected
+runtime errors. This final line will be `[fail]` if the script did not finish successfully
+due to a runtime error. In the latter case, an error message will
+occur just prior to the `[fail]` line. It may also be helpful to look
+at the `.cmd`<a name=cmdformat>' output file to see what the final
+command was prior to failure.
+
+# Format of `v-build.pl` output files<a name="build-formats"></a>
+
+`v-build.pl` creates many output files. The formats of many of these file
+types are discussed below.
+
+# Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
 
 `v-annotate.pl` creates many output files. The formats of many of these file
 types are discussed below.
 
-### Tabular output files 
+## `v-annotate.pl` tabular output files 
 
 There are seven types of `v-annotate.pl` tabular output files with
 fields separated by one or more spaces, that are meant to be easily
-parseable. These files will be named `<outdir>.vadr.<suffix>` where
+parseable. These files are named `<outdir>.vadr.<suffix>` where
 `<outdir>` is the second command line argument given to
 `v-annotate.pl`. The seven suffixes are:
 
@@ -103,7 +265,7 @@ the model info file.
 |   1 | `idx`                 | index of feature in format `<d1>.<d2>`, where `<d1>` is the index of the sequence in which this feature is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n>`, where `<n>` is the number of features annotated for this sequence |
 |   2 | `seq name`            | sequence name in which this feature is annotated |
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `model`               | name of the best-matching model for this sequence |
 |   6 | `ftr type`            | type of the feature (e.g. CDS) |
 |   7 | `ftr name`            | name of the feature |
@@ -159,7 +321,7 @@ file.
 |   1 | `idx`                 | index of segment in format `<d1>.<d2>.<d3> where `<d1>` is the index of the sequence in which this segment is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n1>`, where `<n1>` is the number of features annotated for this sequence) and `<d3>` is the index of the segment annotated within that feature (range 1..`<n2>` where `<n2>` is the number of segments annotated for this feature | 
 |   2 | `seq name`            | sequence name in which this feature is annotated |
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `model`               | name of the best-matching model for this sequence |
 |   6 | `ftr type`            | type of the feature (e.g. CDS) |
 |   7 | `ftr name`            | name of the feature |
@@ -193,7 +355,7 @@ sequence.
 |   1 | `seq idx`             | index of sequence in the input file |
 |   2 | `seq name`            | sequence name | 
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
 |   6 | `best model`          | name of the best-matching model for this sequence |
 |   7 | `grp`                 | group of model `best model`, defined in model info file, or `-` if none |
@@ -220,7 +382,7 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |   1 | `seq idx`             | index of sequence in the input file |
 |   2 | `seq name`            | sequence name | 
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
 |   6 | `model1`              | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
 |   7 | `grp1`                | group of model `model1`, defined in model info file, or `-` if none |
