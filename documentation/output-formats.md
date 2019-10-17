@@ -17,6 +17,9 @@ common set of three output files. These files are named
 `<outdir>.vadr.<suffix>` where `<suffix>` is either `log`, `cmd` or
 `filelist` and `<outdir>` is the command line argument
 that specifies the name of the output directory to create.
+These files are the three types of generic files that are supported by
+the [Sequip]:https://github.com/nawrockie/sequip 
+ofile Perl module.
 
 | suffix | description |
 |--------|-----------------------|
@@ -133,10 +136,10 @@ user. Switching back to the above `v-build.pl` command example output:
 # List of executed commands saved in:                               NC_039897.vadr.cmd
 # List and description of all output files saved in:                NC_039897.vadr.filelist
 # fasta file for NC_039897 saved in:                                NC_039897.vadr.fa
-# feature table format file for NC_039897 saved in:                 NC_039897.vadr.ft
-# feature table format file for YP_009538340.1 saved in:            NC_039897.vadr.YP_009538340.1.ft
-# feature table format file for YP_009538341.1 saved in:            NC_039897.vadr.YP_009538341.1.ft
-# feature table format file for YP_009538342.1 saved in:            NC_039897.vadr.YP_009538342.1.ft
+# feature table format file for NC_039897 saved in:                 NC_039897.vadr.tbl
+# feature table format file for YP_009538340.1 saved in:            NC_039897.vadr.YP_009538340.1.tbl
+# feature table format file for YP_009538341.1 saved in:            NC_039897.vadr.YP_009538341.1.tbl
+# feature table format file for YP_009538342.1 saved in:            NC_039897.vadr.YP_009538342.1.tbl
 # Stockholm alignment file for NC_039897 saved in:                  NC_039897.vadr.stk
 # fasta sequence file for CDS from NC_039897 saved in:              NC_039897.vadr.cds.fa
 # fasta sequence file for translated CDS from NC_039897 saved in:   NC_039897.vadr.protein.fa
@@ -214,10 +217,10 @@ is:
 
 ```
 # fasta file for NC_039897 saved in:                                               NC_039897.vadr.fa
-# feature table format file for NC_039897 saved in:                                NC_039897.vadr.ft
-# feature table format file for YP_009538340.1 saved in:                           NC_039897.vadr.YP_009538340.1.ft
-# feature table format file for YP_009538341.1 saved in:                           NC_039897.vadr.YP_009538341.1.ft
-# feature table format file for YP_009538342.1 saved in:                           NC_039897.vadr.YP_009538342.1.ft
+# feature table format file for NC_039897 saved in:                                NC_039897.vadr.tbl
+# feature table format file for YP_009538340.1 saved in:                           NC_039897.vadr.YP_009538340.1.tbl
+# feature table format file for YP_009538341.1 saved in:                           NC_039897.vadr.YP_009538341.1.tbl
+# feature table format file for YP_009538342.1 saved in:                           NC_039897.vadr.YP_009538342.1.tbl
 # Stockholm alignment file for NC_039897 saved in:                                 NC_039897.vadr.stk
 # fasta sequence file for CDS from NC_039897 saved in:                             NC_039897.vadr.cds.fa
 # fasta sequence file for translated CDS from NC_039897 saved in:                  NC_039897.vadr.protein.fa
@@ -236,8 +239,15 @@ is:
 
 ## Format of `v-build.pl` output files<a name="build-formats"></a>
 
-`v-build.pl` creates many output files. The formats of many of these file
-types are discussed below.
+`v-build.pl` creates many output files. The following table lists many
+of the output files with a brief description and in some cases further
+references on the file type/format. The `.minfo` file format is documented
+further below. 
+
+| file suffix | description | reference |
+|--------|-----------------------|
+| `.tbl`  | 5 column tab-delimited `feature table` | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+
 
 ---
 ## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
