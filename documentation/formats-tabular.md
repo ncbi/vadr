@@ -205,7 +205,7 @@ sequence.
 |  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
 |  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
-### Explanation of `.sqc`-suffixed output files<a name="sqaformat"></a>
+### Explanation of `.sqc`-suffixed output files<a name="sqcformat"></a>
 
 `.sqc` data lines have 21 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
