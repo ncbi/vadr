@@ -245,9 +245,8 @@ references on the file type/format. The `.minfo` file format is documented
 further below. 
 
 | file suffix | description | reference |
-|--------|-----------------------|
+|--------|-----------------------|-------------|
 | `.tbl`  | 5 column tab-delimited `feature table` | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-
 
 ---
 ## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
