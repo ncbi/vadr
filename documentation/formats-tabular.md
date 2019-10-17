@@ -19,7 +19,7 @@ parseable. These files will be named `<outdir>.vadr.<suffix>` where
 | [`.mdl`](#mdlformat) | per-model information |
 | [`.sgm`](#sgmformat) | per-segment information |
 | [`.sqa`](#sqaformat) | per-sequence annotation information |
-| `.sqc` | per-sequence classification information |
+| [`.sqc`](#sqcformat) | per-sequence classification information |
 
 All seven types of tabular output files share the following
 characteristics: 
