@@ -9,11 +9,13 @@ of these formats below divided into three categories:
 | [`v-build.pl` output files](#build-formats) | files created only by `v-build.pl` |
 | [`v-annotate.pl` output files](#annotate-formats) | files created only by `v-annotate.pl` |
 
-# Format of generic VADR output files created by all VADR scripts
+---
+## Format of generic VADR output files created by all VADR scripts<a name="generic-formats></a>
 
 All VADR scripts (e.g. `v-build.pl` and `v-annotate.pl`) create a
 common set of three output files. These files are named
-`<outdir>.vadr.<suffix>` where `<outdir>` is the command line argument
+`<outdir>.vadr.<suffix>` where `<suffix>` is either `log`, `cmd` or
+`filelist` and `<outdir>` is the command line argument
 that specifies the name of the output directory to create.
 
 | suffix | description |
@@ -24,26 +26,28 @@ that specifies the name of the output directory to create.
 
 Each format is explained in more detail below.
 
-## Explanation of `.log`-suffixed output files<a name="logformat"></a>
+---
+### Explanation of `.log`-suffixed output files<a name="logformat"></a>
 
 The `.log` files include the same text that is printed to standard output. 
 Log files have five or six sections: [banner](#log-banner), [input
 information](#log-inputinformation), [stage
 list](#log-stagelist), [summary](#log-summary) (optional), [output
-file list](#log-outputfilelist), and [timing]. 
+file list](#log-outputfilelist), and [timing](#log-timing). 
 
-The banner section <a name="log-banner"> lists the name of the VADR
-script being run and the version and date. For example:
+The banner section <a name="log-banner"></a> lists the name of the VADR
+script being run and the version and date. An example of this section
+from the command `v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.991 is:
 
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
 # VADR 0.991 (Aug 2019)
 ```
 
-The input information section <a name="log-inputinformation"> includes
+The input information section <a name="log-inputinformation"></a> includes
 information on the time and date of execution, any relevant
 environment variables, the command line arguments used and any command
-line options used. For example:
+line options used: 
 
 ```
 # date:              Fri Oct  4 13:11:22 2019
@@ -59,9 +63,9 @@ line options used. For example:
 # specify model subgroup is <s>:  GI [--subgroup]
 ```
 
-Next is the stage list section <a name="log-stagelist"> which lists
+Next is the stage list section <a name="log-stagelist"></a> which lists
 each stage the script proceeds through, along with the time that
-elapsed during that stage. For example:
+elapsed during that stage: 
 
 ```
 # Fetching FASTA file                                          ... done. [    3.9 seconds]
@@ -78,14 +82,16 @@ elapsed during that stage. For example:
 # Creating model info file                                     ... done. [    0.0 seconds]
 ```
 
-The summary section <a name=log-summary> is optional in that
+The summary section <a name=log-summary></a> is optional.
 `v-annotate.pl` log files will have a summary section, but
-`v-build.pl` output files do not. `v-annotate.pl` log files include
-information on the number of sequences classified to each model (this
-is identical to the information output to the `.mdl`(#mdlformat)
-output file) and the number of each type of reported alert (this is
-identical to the information output to the `.alc`(#alcformat) output
-file). For example:
+`v-build.pl` output files do not. In this section, `v-annotate.pl` log
+files include information on the number of sequences classified to
+each model (this is identical to the information output to the
+`.mdl`(#mdlformat) output file) and the number of each type of
+reported alert (this is identical to the information output to the
+`.alc`(#alcformat) output file). An example of this section from the
+command `v-annotate.pl $VADRSCRIPTSDIR/testfiles/noro.9.fa va-noro9`
+is:
 
 ```
 # Summary of classified sequences:
@@ -117,9 +123,10 @@ file). For example:
 ```
 
 The summary section is followed by the output file list <a
-name="log-outputfilelist> which lists all the files that were created
-by the script. This information is identical to what is output to the
-`filelist` output file <a name="filelistformat>. For example:
+name="log-outputfilelist></a> which lists many (but not necessarily
+all of) the files that were created by the script. This list is meant
+to contain the files that are most relevant to the typical
+user. Switching back to the above `v-build.pl` command example output: 
 
 ```
 # Output printed to screen saved in:                                NC_039897.vadr.log
@@ -144,27 +151,101 @@ by the script. This information is identical to what is output to the
 # optimized p7 HMM filters (remainder) saved in:                    NC_039897.vadr.cm.i1p
 # cmpress output file saved in:                                     NC_039897.vadr.cmpress
 # VADR 'model info' format file for NC_039897 saved in:             NC_039897.vadr.minfo
+#
+# All output files created in directory ./NC_039897/
 ```
 
-The final section <a name="log-timing> lists how much time elapsed
+The final section <a name="log-timing></a> lists how much time elapsed
 while the script was executing. The final line of the output is either
 `[ok]` if the script finished successfully without any unexpected
 runtime errors. This final line will be `[fail]` if the script did not finish successfully
 due to a runtime error. In the latter case, an error message will
 occur just prior to the `[fail]` line. It may also be helpful to look
-at the `.cmd`<a name=cmdformat>' output file to see what the final
-command was prior to failure.
+at the `.cmd`<a name=cmdformat></a>' output file to see what the final
+command was prior to failure. For the `v-build.pl` command this
+section is:
 
-# Format of `v-build.pl` output files<a name="build-formats"></a>
+```
+# Elapsed time:  00:14:00.24
+#                hh:mm:ss
+# 
+[ok]
+```
+
+---
+### Explanation of `.cmd`-suffixed output files<a name="cmdformat"></a>
+
+The `.cmd` files simply list all the commands run by the Perl `system`
+function internally by the VADR script, each separated by a newline. 
+The final three lines are special. The third-to-last line lists the
+date and time just before the script completed execution. The
+second-to-last line lists system info (output by the `uname -a` unix
+command). The final line is either `[ok]` or `[fail]`, depending on if
+the script ended successfully (zero return status) or did not
+(non-zero return status), respectively. If this line is
+`[fail]` it will be followed by an error message. An example `.cmd`
+output file for the example command `v-build.pl -f --group Norovirus
+--subgroup GI NC_039897 NC_039897` is:
+
+```
+mkdir NC_039897
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps/esl-reformat --informat afa stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
+rm NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
+rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa
+rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa.ssi
+/usr/bin/makeblastdb -in NC_039897/NC_039897.vadr.protein.fa -dbtype prot > /dev/null
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src/cmbuild -n NC_039897 --verbose  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
+# Fri Oct  4 13:25:23 EDT 2019
+# Darwin ericsmac 18.7.0 Darwin Kernel Version 18.7.0: Tue Aug 20 16:57:14 PDT 2019; root:xnu-3273.123.2~2/RELEASE_X86_64 x86_64
+[ok]
+```
+---
+### Explanation of `.filelist`-suffixed output files<a name="filelistformat"></a>
+
+The `.filelist` files list the output files created by the VADR
+script. This list will typically include at least those files printed
+in the file output file list section[log-outputfilelist] of the `.log`
+file, and sometimes more. Each line includes a brief description of
+each file. An example `.filelist` output file for the example command
+`v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897`
+is:
+
+```
+# fasta file for NC_039897 saved in:                                               NC_039897.vadr.fa
+# feature table format file for NC_039897 saved in:                                NC_039897.vadr.ft
+# feature table format file for YP_009538340.1 saved in:                           NC_039897.vadr.YP_009538340.1.ft
+# feature table format file for YP_009538341.1 saved in:                           NC_039897.vadr.YP_009538341.1.ft
+# feature table format file for YP_009538342.1 saved in:                           NC_039897.vadr.YP_009538342.1.ft
+# Stockholm alignment file for NC_039897 saved in:                                 NC_039897.vadr.stk
+# fasta sequence file for CDS from NC_039897 saved in:                             NC_039897.vadr.cds.fa
+# fasta sequence file for translated CDS from NC_039897 saved in:                  NC_039897.vadr.protein.fa
+# BLAST db .phr file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.phr
+# BLAST db .pin file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pin
+# BLAST db .psq file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.psq
+# CM file saved in:                                                                NC_039897.vadr.cm
+# cmbuild output file saved in:                                                    NC_039897.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                                       NC_039897.vadr.cm.i1m
+# SSI index for binary CM file saved in:                                           NC_039897.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                                    NC_039897.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                                   NC_039897.vadr.cm.i1p
+# cmpress output file saved in:                                                    NC_039897.vadr.cmpress
+# VADR 'model info' format file for NC_039897 saved in:                            NC_039897.vadr.minfo
+```
+
+## Format of `v-build.pl` output files<a name="build-formats"></a>
 
 `v-build.pl` creates many output files. The formats of many of these file
 types are discussed below.
 
-# Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
+---
+## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
 
 `v-annotate.pl` creates many output files. The formats of many of these file
 types are discussed below.
 
+---
 ## `v-annotate.pl` tabular output files 
 
 There are seven types of `v-annotate.pl` tabular output files with
@@ -194,6 +275,7 @@ characteristics:
 
 Each format is explained in more detail below.
 
+---
 ### Explanation of `.alc`-suffixed output files<a name="alcformat"></a>
 
 `.alc` data lines have 8 or more fields, the names of which appear in the first two
@@ -213,6 +295,7 @@ that occurs at least once in the input sequence file that
 |   7 | `num seqs`            | number of input sequences with at least one instance of this alert |
 |   8 to end | `long description`    |longer description of the alert, specific to each alert type; **this field contains whitespace** |
 
+---
 ### Explanation of `.alt`-suffixed output files<a name="altformat"></a>
 
 `.alt` data lines have 10 or more fields, the names of which appear in the first two
@@ -232,6 +315,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 |   9 | `alert desc`          | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
 | 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; **this field contains whitespace** |
 
+---
 ### Explanation of `.alt`-suffixed output files<a name="altformat"></a>
 
 `.alt` data lines have 10 or more fields, the names of which appear in the first two
@@ -251,6 +335,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 |   9 | `alert desc`          | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
 | 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; **this field contains whitespace** |
 
+---
 ### Explanation of `.ftr`-suffixed output files<a name="ftrformat"></a>
 
 `.ftr` data lines have 23 fields, the names of which appear in the first two
@@ -286,6 +371,7 @@ the model info file.
 |  22 | `mdl coords`          | model coordinates of feature, see [`format of coordinate strings`(#coordformat)] |
 |  23 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
+---
 ### Explanation of `.mdl`-suffixed output files<a name="mdlformat"></a>
 
 `.mdl` data lines have 7 fields, the names of which appear in the
@@ -340,6 +426,7 @@ file.
 |  20 | `5' gap`              | `yes` if the 5' boundary of the segment is a gap (possibly due to a 5' truncation), else `no` }
 |  21 | `3' gap`              | `yes` if the 3' boundary of the segment is a gap (possibly due to a 3' truncation), else `no` }
 
+---
 ### Explanation of `.sqa`-suffixed output files<a name="sqaformat"></a>
 
 `.sqa` data lines have 14 fields, the names of which appear in the
@@ -367,6 +454,7 @@ sequence.
 |  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
 |  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
+---
 ### Explanation of `.sqc`-suffixed output files<a name="sqcformat"></a>
 
 `.sqc` data lines have 21 fields, the names of which appear in the
@@ -401,6 +489,7 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |  20 | `diff/nt`             | bit score difference per nucleotide; `sc/nt` minus sc2/nt where sc2/nt is summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
 |  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
+---
 TODO:
 * `v-build.pl` output formats (including `modelinfo`)
 * `coords` field in modelinfo explanation
