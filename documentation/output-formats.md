@@ -246,7 +246,9 @@ further below.
 
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
-| `.tbl`  | 5 column tab-delimited `feature table` | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
+| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format http://eddylab.org/infernal/Userguide.pdf |
 
 ---
 ## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
