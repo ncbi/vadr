@@ -212,7 +212,8 @@ first two comment lines in each file. There is one data line for each
 **sequence** in the input sequence file file that `v-annotate.pl`
 processed. `.sqc` files include **classification** information for
 each sequence.  `.sqa` files include **annotation** information for
-each sequence.
+each sequence. For more information on bit scores and `bias` see the Infernal User's Guide
+(http://eddylab.org/infernal/Userguide.pdf)
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -221,19 +222,22 @@ each sequence.
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
 |   4 | `p/f`                 | `PASS` if this sequence PASSes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
-|   6 | `model1`              | name of the best-matching model for this sequence |
+|   6 | `model1`              | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
 |   7 | `grp1`                | group of model `model1`, defined in model info file, or `-` if none |
-|   8 | `subgrp1`             | subgroup of model `model1`, defined in model info file, or `-`' if none | 
-HERE HERE 
-|   6 | `model2`              | name of the second best-matching model for this sequence |
-|   7 | `grp2`                | group of model `model2`, defined in model info file, or `-` if none |
-|   8 | `subgrp2`             | subgroup of model `model2`, defined in model info file, or `-`' if none | 
-|   9 | `nfa`                 | number of features annotated for this sequence |
-|  10 | `nfn`                 | number of features in model `best model` that are not annotated for this sequence |
-|  11 | `nf5`                 | number of annotated features that are 5' truncated |
-|  12 | `nf3`                 | number of annotated features that are 3' truncated |
-|  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
-|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+|   8 | `subgrp1`             | subgroup of model `model1`, defined in model info file, or `-` if none |
+|   9 | `score`               | summed bit score for all hits on strand `str` to model `model1` for this sequence in the classification stage |
+|  10 | `sc/nt`               | bit score per nucleotide; `score` divided by total length (in sequence positions) of all hits to model `model1` on strand `str` in the classification stage |
+|  11 | `seq cov`             | fraction of sequence positions (`seq len`) covered by any hit to model `model1` on strand `str` in the coverage determination stage | 
+|  12 | `mdl cov`             | fraction of model positions (model length - the number of reference positions in `model1`) covered by any hit to model `model1` on strand `str` in the coverage determination stage | 
+|  13 | `bias`                | summed bit score due to biased composition (deviation from expected nucleotide frequencies) of all hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
+|  14 | `num hits`            | number of hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
+|  15 | `str`                 | strand with the top-scoring hit to `model1` for this sequence in the classification stage |
+|  16 | `model2`              | name of the second best-matching model for this sequence, this is the model with the top-scoring hit for this sequence across all hits that are not to `model1` in the classification stage |
+|  17 | `grp2`                | group of model `model2`, defined in model info file, or `-` if none |
+|  18 | `subgrp2`             | subgroup of model `model2`, defined in model info file, or `-`' if none | 
+|  19 | `score diff`          | bit score difference between summed bit score for all hits to `model1` on strand `str` and summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
+|  20 | `diff/nt`             | bit score difference per nucleotide; `sc/nt` minus sc2/nt where sc2/nt is summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
+|  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 TODO:
 * `v-build.pl` output formats (including `modelinfo`)
