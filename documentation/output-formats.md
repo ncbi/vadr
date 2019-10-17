@@ -248,6 +248,9 @@ further below.
 |--------|-----------------------|-------------|
 | `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
+| `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
+| `.cm` | HERE HERE HERE FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
 | `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format http://eddylab.org/infernal/Userguide.pdf |
 
 ---
