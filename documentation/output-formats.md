@@ -246,7 +246,7 @@ further below.
 
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
-| `.minfo`  | VADR model info file | [description of format](#minfoformat) |
+| `.minfo`  | VADR model info file | [description of format in this document](#minfoformat) |
 | `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
@@ -257,6 +257,10 @@ further below.
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
 | `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
 | `.cmpress` | Infernal `cmpress` output file | no further documentation |
+
+| `.<model-name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model-name> from the `.minfo` file | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions in this file  |
+
+
 
 ---
 ### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfoformat"></a>
@@ -316,7 +320,7 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 | \<key\> | \<value\> | required? | relevance | 
 |--------|---------|-------------------|---|
 | `type`  | feature type, e.g. `CDS` | **yes** | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
-| `coords` | coordinate string that defines model positions and strand for this feature in this format(#coords-format) | **yes** | used to map/annotate features on sequences via alignment to model |
+| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords-format) | **yes** | used to map/annotate features on sequences via alignment to model |
 | `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
@@ -336,8 +340,25 @@ alternative `.minfo` files  `.cm` files and BLAST database directories.
 ---
 ## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
 
-`v-annotate.pl` creates many output files. The formats of many of these file
-types are discussed below.
+`v-annotate.pl` creates many output files. The following table lists many
+of the output files with a brief description and in some cases further
+references on the file type/format. The `.minfo` file format is documented
+further below. 
+
+| file suffix | description | reference |
+|--------|-----------------------|-------------|
+| `.minfo`  | VADR model info file | [description of format in this document](#minfoformat) |
+| `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
+| `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
+| `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
+| `.cmpress` | Infernal `cmpress` output file | no further documentation |
+
 
 ---
 ## `v-annotate.pl` tabular output files 
