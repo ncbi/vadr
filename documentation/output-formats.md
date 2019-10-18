@@ -654,8 +654,8 @@ sometimes will add an additional string that defines the feature being
 annotated. Here are some examples:
 
 
-| Original sequence name | subsequence start | subsequence end | subsequence strand | subsequence name | notes | 
+| Original sequence name | subsequence name | subseq start | subseq end | subseq strand | notes | 
 |------------------------|-------------------|-----------------|--------------------|------------------|-------|
-| `NC_039897.1`          | `7025`            | `7672`          | `+`                | `NC_039897.1/7025..7672:+` | Typical of `v-build.pl` `.cds.fa` output files | 
-| `JN975492.1`           | `1001`            | `2092`          | `+`                | `JN975492.1/mat_peptide.2/1001-2092:+` | Typical of `v-annotate.pl` `.<model-name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
+| `NC_039897.1`          | `NC_039897.1/7025..7672:+` | `7025`            | `7672`          | `+`                |  Typical of `v-build.pl` `.cds.fa` output files | 
+| `JN975492.1`           | `JN975492.1/mat_peptide.2/1001-2092:+` | `1001`            | `2092`          | `+`    |  Typical of `v-annotate.pl` `.<model-name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
 
