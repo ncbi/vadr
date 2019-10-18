@@ -1,5 +1,3 @@
-% Reference:
-% https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 # VADR output file formats
 
 VADR creates many different types of output files. You can find an explanation
@@ -20,8 +18,8 @@ common set of three output files. These files are named
 `filelist` and `<outdir>` is the command line argument
 that specifies the name of the output directory to create.
 These files are the three types of generic files that are supported by
-the [Sequip]:https://github.com/nawrockie/sequip 
-ofile Perl module.
+the [Sequip](https://github.com/nawrockie/sequip)
+`ofile` Perl module.
 
 | suffix | description |
 |--------|-----------------------|
@@ -250,12 +248,12 @@ further below.
 |--------|-----------------------|-------------|
 | `.minfo`  | VADR model info file | [description of format](#minfoformat) |
 | `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format http://eddylab.org/infernal/Userguide.pdf, section 9 |
+| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
 | `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
 | `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
 | `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf, section 9 |
+| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
 | `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
 | `.cmpress` | Infernal `cmpress` output file | no further documentation |
@@ -265,7 +263,7 @@ further below.
 
 VADR `.minfo` model info files are created by `v-build.pl` and read by `v-annotate.pl`. 
 They can also be created manually. An example model info file created by the command: 
-``v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.991 is:
+`v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.991 is:
 
 ```
 MODEL NC_039897 blastdb:"NC_039897.vadr.protein.fa" cmfile:"NC_039897.vadr.cm" group:"Norovirus" length:"7745" subgroup:"GI"
@@ -284,7 +282,7 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 ```
 
 Model info files have two types of lines: 
-1. Model lines begin with `MODEL` 
+1. Model lines begin with `MODEL`. 
 2. Feature lines begin with `FEATURE`. 
 
 (A third type of line is allowed: comment lines prefixed with `#` are allowed, and ignored.)
@@ -294,16 +292,17 @@ characters and then the model name `<modelname>` which cannot include
 whitespace.  `FEATURE` lines for model `<modelname>` must occur after
 the `MODEL` line for `<modelname>`
 
-On each line after `<modelname>`, both model and feature lines 
+After `<modelname>`, both model and feature lines 
 contain 0 or more `<key>:<value>` pairs meeting the following criteria:
-..* `<key>` must not include any whitespace or `:` characters
-..* `<value>` must start **and** end with `\"` but include no other `\"` characters (but `<value>` may include whitespace characters).
-..* `<key>:<value>` pairs must be separated by one or more whitespace characters.
-..* `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
+
+* `<key>` must not include any whitespace or `:` characters
+* `<value>` must start **and** end with `\"` but include no other `\"` characters (but `<value>` may include whitespace characters).
+* `<key>:<value>` pairs must be separated by one or more whitespace characters.
+* `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
 
 Common MODEL line `<key>:<value>` pairs:
 
-|  <key> | <value> | required? | relevance |
+| \<key\> | \<value\> | required? | relevance |
 |--------|---------|-------------------|---|
 | `length`  | reference/consensus length of the covariance model (CM) for this model (`CLEN` lines in CM file) | yes | required internally |
 | `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
@@ -313,7 +312,7 @@ Common MODEL line `<key>:<value>` pairs:
 
 Common FEATURE line `<key>:<value>` pairs:
 
-|  <key> | <value> | required? | relevance | 
+| \<key\> | \<value\> | required? | relevance | 
 |--------|---------|-------------------|
 | `type`  | feature type, e.g. `CDS` | yes | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
 | `coords` | coordinate string that defines model positions and strand for this feature in this format(#coords-format) | used to map/annotate features on sequences via alignment to model |
