@@ -1,3 +1,5 @@
+% Reference:
+% https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 # VADR output file formats
 
 VADR creates many different types of output files. You can find an explanation
@@ -246,12 +248,90 @@ further below.
 
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
+| `.minfo`  | VADR model info file | [description of format](#minfoformat) |
 | `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format http://eddylab.org/infernal/Userguide.pdf, section 9 |
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
 | `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
 | `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
-| `.cm` | HERE HERE HERE FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
-| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format http://eddylab.org/infernal/Userguide.pdf |
+| `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf, section 9 |
+| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
+| `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
+| `.cmpress` | Infernal `cmpress` output file | no further documentation |
+
+---
+### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfoformat"></a>
+
+VADR `.minfo` model info files are created by `v-build.pl` and read by `v-annotate.pl`. 
+They can also be created manually. An example model info file created by the command: 
+``v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.991 is:
+
+```
+MODEL NC_039897 blastdb:"NC_039897.vadr.protein.fa" cmfile:"NC_039897.vadr.cm" group:"Norovirus" length:"7745" subgroup:"GI"
+FEATURE NC_039897 type:"gene" coords:"5..5404:+" parent_idx_str:"GBNULL" gene:"ORF1"
+FEATURE NC_039897 type:"CDS" coords:"5..5404:+" parent_idx_str:"GBNULL" gene:"ORF1" product:"nonstructural polyprotein"
+FEATURE NC_039897 type:"gene" coords:"5388..7025:+" parent_idx_str:"GBNULL" gene:"ORF2"
+FEATURE NC_039897 type:"CDS" coords:"5388..7025:+" parent_idx_str:"GBNULL" gene:"ORF2" product:"VP1"
+FEATURE NC_039897 type:"gene" coords:"7025..7672:+" parent_idx_str:"GBNULL" gene:"ORF3"
+FEATURE NC_039897 type:"CDS" coords:"7025..7672:+" parent_idx_str:"GBNULL" gene:"ORF3" product:"VP2"
+FEATURE NC_039897 type:"mat_peptide" coords:"5..1219:+" parent_idx_str:"1" product:"p48"
+FEATURE NC_039897 type:"mat_peptide" coords:"1220..2308:+" parent_idx_str:"1" product:"NTPase"
+FEATURE NC_039897 type:"mat_peptide" coords:"2309..2908:+" parent_idx_str:"1" product:"p22"
+FEATURE NC_039897 type:"mat_peptide" coords:"2909..3328:+" parent_idx_str:"1" product:"VPg"
+FEATURE NC_039897 type:"mat_peptide" coords:"3329..3871:+" parent_idx_str:"1" product:"Pro"
+FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" product:"RdRp"
+```
+
+Model info files have two types of lines: 
+1. Model lines begin with `MODEL` 
+2. Feature lines begin with `FEATURE`. 
+
+(A third type of line is allowed: comment lines prefixed with `#` are allowed, and ignored.)
+
+`MODEL` or `FEATURE` is always followed by one or more whitespace
+characters and then the model name `<modelname>` which cannot include
+whitespace.  `FEATURE` lines for model `<modelname>` must occur after
+the `MODEL` line for `<modelname>`
+
+On each line after `<modelname>`, both model and feature lines 
+contain 0 or more `<key>:<value>` pairs meeting the following criteria:
+..* `<key>` must not include any whitespace or `:` characters
+..* `<value>` must start **and** end with `\"` but include no other `\"` characters (but `<value>` may include whitespace characters).
+..* `<key>:<value>` pairs must be separated by one or more whitespace characters.
+..* `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
+
+Common MODEL line `<key>:<value>` pairs:
+
+|  <key> | <value> | required? | relevance |
+|--------|---------|-------------------|---|
+| `length`  | reference/consensus length of the covariance model (CM) for this model (`CLEN` lines in CM file) | yes | required internally |
+| `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
+| `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and included in output | 
+| `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and included in output | 
+| `cmfile` | file name for CM file | no |
+
+Common FEATURE line `<key>:<value>` pairs:
+
+|  <key> | <value> | required? | relevance | 
+|--------|---------|-------------------|
+| `type`  | feature type, e.g. `CDS` | yes | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
+| `coords` | coordinate string that defines model positions and strand for this feature in this format(#coords-format) | used to map/annotate features on sequences via alignment to model |
+| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range [0..<nftr-1>]) for this feature | no | some alerts are propagated from parent features to children | 
+| `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
+| `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
+
+#### VADR model library (more than one model) `.minfo` files are just individual model `.minfo` files concatenated together
+
+`v-annotate.pl` will use as many models as exist in the input `.minfo`
+file and input `.cm` files. The default set of models is 197
+*Caliciviridae* and *Flaviviridae* viral genome RefSeq models. This
+`.minfo` and `.cm` files for this library we created by concatenating
+the individual `.minfo` and `.cm` files output from the corresponding
+197 `v-build.pl` commands for each RefSeq. Additionally, all BLAST
+database files must be in the same directory in order to use a VADR library.
+Use the `v-annotate.pl` `-m`, `-i` and `-b` options to specify paths to
+alternative `.minfo` files  `.cm` files and BLAST database directories.
 
 ---
 ## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
