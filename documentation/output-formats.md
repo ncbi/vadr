@@ -320,7 +320,7 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 |--------|---------|-------------------|---|
 | `type`  | feature type, e.g. `CDS` | **yes** | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
 | `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords-format) | **yes** | used to map/annotate features on sequences via alignment to model |
-| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature | no | some alerts are propagated from parent features to children | 
+| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
 
@@ -529,7 +529,7 @@ file.
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
-|   1 | `idx`                 | index of segment in format `<d1>.<d2>.<d3> where `<d1>` is the index of the sequence in which this segment is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n1>`, where `<n1>` is the number of features annotated for this sequence) and `<d3>` is the index of the segment annotated within that feature (range 1..`<n2>` where `<n2>` is the number of segments annotated for this feature | 
+|   1 | `idx`                 | index of segment in format `<d1>.<d2>.<d3>` where `<d1>` is the index of the sequence in which this segment is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n1>`, where `<n1>` is the number of features annotated for this sequence) and `<d3>` is the index of the segment annotated within that feature (range 1..`<n2>` where `<n2>` is the number of segments annotated for this feature | 
 |   2 | `seq name`            | sequence name in which this feature is annotated |
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
 |   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
@@ -615,7 +615,48 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
-TODO:
-* `v-build.pl` output formats (including `modelinfo`)
-* `coords` field in modelinfo explanation
-* `posterior probability` explanation
+### Explanation of VADR `coords` coordinate strings <a name="coords-format"></a>
+
+VADR using its own format for specifying coordinates for features and for naming subsequences in some output fasta files.
+These `coords` strings occur as the `<value> in `<key>:<value>` pairs in `v-build.pl` output model info (`.minfo`) files for FEATURE lines.
+
+VADR coordinate strings are made up of one or more tokens with format
+`<d1>..<d2>:<s>`, where `<d1>` is the start position, `<d2>` is the
+end position, and `<s>` is the strand, either `+` or `-`, or rarely
+`?` if unknown/uncertain. An example is `5..5404:+` for a feature that
+spans from position 5 to 5404 on the positive (top (Watson))
+strand. It is *not* necessarily true that the start position must be
+<= the end position. In fact, when strand is `-` start is usually >=
+end. An example is `5404..5:-` for a feature that spans from position
+5404 to 5 on the negative (bottom (Crick)) strand.
+
+If a VADR coordinate string contains more than 1 token they will be separated by a `,`. 
+
+VADR code and output refers to each of the spans represented by a different token in a 
+coords string of one or more coords tokens as a `segment` of the feature. Features may
+have 1 or more segments, and each segment can be on either strand.
+
+### Explanation of sequence naming in output VADR fasta files
+
+FASTA format sequence files output by VADR use a specific naming
+convention for naming sequences that are subsequences of sequences
+from input sequence files. Specifically, VADR scripts will append a
+`/` character followed by a [VADR coordinates string](#coords-format)
+to sequence names to indicate the coordinates (and strand) of the
+original sequence that are contained in the sequence with that name.
+
+For example, when executed for the RefSeq `NC_039897` `v-build.pl`
+might create a file with the suffix `.vadr.cds.fa` which includes a
+sequence named `NC_039897.1/7025..7672:+`. This sequence will contain
+the subsequence from 7025 to 7672 (on the positive strand) from the
+full NC_039897 sequence.
+
+`v-annotate.pl` will create names in a similar manner, but sometimes will
+add an additional string that defines the feature being annotated. For example,
+`v-annotate.pl` may predict that the second mature peptide for a sequence `JN975492.1` 
+may span from positions `1001` to `2092` based on annotation using the `NC_008311` 
+model, and create a file with the suffix `.vadr.NC_008311.mat_peptide.2.fa`
+that includes a sequence named: `JN975492.1/mat_peptide.2/1001..2092:+` that includes
+the predicted second mature peptide in `JN975492.1`, which is the subsequence
+from `1001` to `2092` on the positive strand.
+
