@@ -305,7 +305,7 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 
 | \<key\> | \<value\> | required? | relevance |
 |--------|---------|-------------------|---|
-| `length`  | reference/consensus length of the covariance model (CM) for this model (`CLEN` lines in CM file) | yes | required internally |
+| `length`  | reference/consensus length of the covariance model (CM) for this model (`CLEN` lines in CM file) | **yes** | required internally |
 | `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
 | `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and also included in output | 
 | `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and also included in output | 
@@ -315,9 +315,9 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 
 | \<key\> | \<value\> | required? | relevance | 
 |--------|---------|-------------------|---|
-| `type`  | feature type, e.g. `CDS` | yes | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
-| `coords` | coordinate string that defines model positions and strand for this feature in this format(#coords-format) | used to map/annotate features on sequences via alignment to model |
-| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range [0..<nftr-1>]) for this feature | no | some alerts are propagated from parent features to children | 
+| `type`  | feature type, e.g. `CDS` | **yes** | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
+| `coords` | coordinate string that defines model positions and strand for this feature in this format(#coords-format) | **yes** | used to map/annotate features on sequences via alignment to model |
+| `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
 
