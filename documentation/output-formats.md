@@ -296,34 +296,35 @@ After `<modelname>`, both model and feature lines
 contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 
 * `<key>` must not include any whitespace or `:` characters
-* `<value>` must start **and** end with `\"` but include no other `\"` characters (but `<value>` may include whitespace characters).
+* `<value>` must start **and** end with `"` but include no other `"` characters, 
+* `<value>` may include whitespace characters
 * `<key>:<value>` pairs must be separated by one or more whitespace characters.
 * `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
 
-Common MODEL line `<key>:<value>` pairs:
+#### Common MODEL line `<key>:<value>` pairs:
 
 | \<key\> | \<value\> | required? | relevance |
 |--------|---------|-------------------|---|
 | `length`  | reference/consensus length of the covariance model (CM) for this model (`CLEN` lines in CM file) | yes | required internally |
 | `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
-| `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and included in output | 
-| `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and included in output | 
-| `cmfile` | file name for CM file | no |
+| `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and also included in output | 
+| `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and also included in output | 
+| `cmfile` | file name for CM file | no | for user reference only | 
 
-Common FEATURE line `<key>:<value>` pairs:
+#### Common FEATURE line `<key>:<value>` pairs:
 
 | \<key\> | \<value\> | required? | relevance | 
-|--------|---------|-------------------|
+|--------|---------|-------------------|---|
 | `type`  | feature type, e.g. `CDS` | yes | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
 | `coords` | coordinate string that defines model positions and strand for this feature in this format(#coords-format) | used to map/annotate features on sequences via alignment to model |
 | `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range [0..<nftr-1>]) for this feature | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
 
-#### VADR model library (more than one model) `.minfo` files are just individual model `.minfo` files concatenated together
+#### VADR model library `.minfo` files are just individual model `.minfo` files concatenated together
 
 `v-annotate.pl` will use as many models as exist in the input `.minfo`
-file and input `.cm` files. The default set of models is 197
+file and input `.cm` files. The default VADR v1.0 set of models is 197
 *Caliciviridae* and *Flaviviridae* viral genome RefSeq models. This
 `.minfo` and `.cm` files for this library we created by concatenating
 the individual `.minfo` and `.cm` files output from the corresponding
