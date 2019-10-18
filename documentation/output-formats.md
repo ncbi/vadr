@@ -492,8 +492,8 @@ the model info file.
 |  18 | `p_sc`                | raw score of best blastx alignment |
 |  19 | `nsa`                 | number of segments annotated for this feature |
 |  20 | `nsn`                 | number of segments not annotated for this feature |
-|  21 | `seq coords`          | sequence coordinates of feature, see [`format of coordinate strings`(#coordformat)] |
-|  22 | `mdl coords`          | model coordinates of feature, see [`format of coordinate strings`(#coordformat)] |
+|  21 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings(#coords-format)] |
+|  22 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings(#coords-format)] |
 |  23 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
@@ -617,46 +617,45 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 ---
 ### Explanation of VADR `coords` coordinate strings <a name="coords-format"></a>
 
-VADR using its own format for specifying coordinates for features and for naming subsequences in some output fasta files.
-These `coords` strings occur as the `<value> in `<key>:<value>` pairs in `v-build.pl` output model info (`.minfo`) files for FEATURE lines.
+VADR using its own format for specifying coordinates for features and
+for naming subsequences in some output fasta files. 
 
 VADR coordinate strings are made up of one or more tokens with format
 `<d1>..<d2>:<s>`, where `<d1>` is the start position, `<d2>` is the
 end position, and `<s>` is the strand, either `+` or `-`, or rarely
-`?` if unknown/uncertain. An example is `5..5404:+` for a feature that
-spans from position 5 to 5404 on the positive (top (Watson))
-strand. It is *not* necessarily true that the start position must be
-<= the end position. In fact, when strand is `-` start is usually >=
-end. An example is `5404..5:-` for a feature that spans from position
-5404 to 5 on the negative (bottom (Crick)) strand.
+`?` if unknown/uncertain. Tokens are separated by a `,`. Each token is
+defines what VADR code and output refers to as a `segment`.
 
-If a VADR coordinate string contains more than 1 token they will be separated by a `,`. 
+Here are some examples:
 
-VADR code and output refers to each of the spans represented by a different token in a 
-coords string of one or more coords tokens as a `segment` of the feature. Features may
-have 1 or more segments, and each segment can be on either strand.
+| VADR coords string | #segments | meaning | corresponding GenBank format `location` string |
+|--------------------|-----------| ---------|------------------------------------------------|
+| `1..200:+`           | 1 | positions `1` to `200` on positive strand | `1..200` | 
+| `200..1:-`           | 1 | positions `200` to `1` on negative strand | `complement(1..200)` | 
+| `1..200:+,300..400:+`| 2 | positions `1` to `200` on positive strand (segment #1) followed by positions `300` to `400` on positive strand (segment #2) | `join(1..200,300..400)` | 
+| `400..300:-,200..1:-` | 2 | positions `400` to `300` on negative strand (segment #1) followed by positions `200` to `1` on negative strand (segment #2) | `complement(join(1..200,300..400))` | 
+| `1..200:+,400..300:-` | 2 | positions `1` to `200` on positive strand (segment #1) followed by positions `400` to `300` on negative strand (segment #2) | `join(1..200,complement(300..400))` | 
+
+These `coords` strings appear in `.ftr` output files and as the
+`<value>` in `<key>:<value>` pairs in `v-build.pl` output model info
+(`.minfo`) files for FEATURE lines.
 
 ### Explanation of sequence naming in output VADR fasta files
 
 FASTA format sequence files output by VADR use a specific naming
-convention for naming sequences that are subsequences of sequences
-from input sequence files. Specifically, VADR scripts will append a
-`/` character followed by a [VADR coordinates string](#coords-format)
-to sequence names to indicate the coordinates (and strand) of the
-original sequence that are contained in the sequence with that name.
+convention for naming sequences.
 
-For example, when executed for the RefSeq `NC_039897` `v-build.pl`
-might create a file with the suffix `.vadr.cds.fa` which includes a
-sequence named `NC_039897.1/7025..7672:+`. This sequence will contain
-the subsequence from 7025 to 7672 (on the positive strand) from the
-full NC_039897 sequence.
+Specifically, when naming a new subsequence, VADR scripts will append
+a `/` character followed by a [VADR coordinates
+string](#coords-format) to sequence names to indicate the positions
+(and strand) of the original sequence the new subsequence derives
+from. `v-annotate.pl` will create names in a similar manner, but
+sometimes will add an additional string that defines the feature being
+annotated. Here are some examples:
 
-`v-annotate.pl` will create names in a similar manner, but sometimes will
-add an additional string that defines the feature being annotated. For example,
-`v-annotate.pl` may predict that the second mature peptide for a sequence `JN975492.1` 
-may span from positions `1001` to `2092` based on annotation using the `NC_008311` 
-model, and create a file with the suffix `.vadr.NC_008311.mat_peptide.2.fa`
-that includes a sequence named: `JN975492.1/mat_peptide.2/1001..2092:+` that includes
-the predicted second mature peptide in `JN975492.1`, which is the subsequence
-from `1001` to `2092` on the positive strand.
+
+| Original sequence name | subsequence start | subsequence end | subsequence strand | subsequence name | notes | 
+|------------------------|-------------------|-----------------|--------------------|------------------|-------|
+| `NC_039897.1`          | `7025`            | `7672`          | `+`                | `NC_039897.1/7025..7672:+` | Typical of `v-build.pl` `.cds.fa` output files | 
+| `JN975492.1`           | `1001`            | `2092`          | `+`                | `JN975492.1/mat_peptide.2/1001-2092:+` | Typical of `v-annotate.pl` `.<model-name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
 
