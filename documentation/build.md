@@ -165,16 +165,19 @@ These files include the FASTA and and their formats are described more
 Only some of these files will be used by `v-annotate.pl`. These are
 the files with the following suffixes:
 
-* `vadr.cm`: the covariance model (CM) file
-* `.vadr.cm.i1{i,m,f,p}`: the CM index files
-* `.vadr.protein.fa.p{hr,in,sq}`: the BLAST DB files 
-* `.vadr.minfo`: the VADR model info file that specifies locations and attributes of features 
 
-You can use only this model for `NC_039897` when annotating sequences
-with `v-annotate.pl`, by using the `-m`, `-b` and `-i` options as
-explained in the [`v-annotate.pl` documentation](annotate.md), or you
-can combine these files together with analogous files from additional
-`v-build.pl` runs for other accessions to create a VADR model library,
+| file suffix | description | reference |
+|--------|-----------------------|-------------|
+| `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
+| `.minfo`  | VADR model info file | [description of format](formats.md#minfo-format) |
+
+You can use only this model to annotate sequences
+with `v-annotate.pl` that are similar to `NC_039897` by using the `-m`, `-b` and `-i` options as
+explained in the [`v-annotate.pl` documentation](annotate.md). Alternatively,
+you can combine these files together with analogous files from additional
+`v-build.pl` runs for other accessions to create a VADR model library
 and then use `v-annotate.pl` `-m`, `-b` and `-i` options to 
 specify that library be used. This is explained in more detail 
 [below](#library). The VADR 1.0 library was created in
@@ -484,4 +487,4 @@ to reproduce the library exactly.
 
 After completing the steps above to make the 197 models, you can make
 the VADR 1.0 library by following the instructions for creating a VADR
-library [here](#library).
+library starting at step 2 [here](#library).

@@ -1,13 +1,26 @@
 # VADR output file formats
 
 VADR creates many different types of output files. You can find an explanation
-of these formats below divided into three categories:
+of these formats below.
 
-| category | description |
-|--------|-----------------------|
-| [generic VADR output files](#generic-formats) | files created by all VADR scripts (`v-annotate.pl` and `v-build.pl`) |
-| [`v-build.pl` output files](#build-formats) | files created only by `v-build.pl` |
-| [`v-annotate.pl` output files](#annotate-formats) | files created only by `v-annotate.pl` |
+* [generic VADR output files created by all VADR scripts](#generic-formats)
+  * [`.log` files](#log-format)
+  * [`.cmd` files](#cmd-format)
+  * [`.filelist` files](#filelist-format)
+* [`v-build.pl` output files](#build-formats)
+  * [`.minfo files](#minfo-format)
+* [`v-annotate.pl` output files](#annotate-formats)
+  * [`.alt.list` files](#altlist-format)
+  * [`.alc` files](#alc-format)
+  * [`.alt` files](#alt-format)
+  * [`.ftr` files](#ftr-format)
+  * [`.mdl` files](#mdl-format)
+  * [`.sgm` files](#sgm-format)
+  * [`.sqa` files](#sqa-format)
+  * [`.sqc` files](#sqc-format)
+  * [Extra output files saved with the `--keep` option](#annotate-keep)
+* [VADR `coords` coordinate string format](#coords-format)
+* [VADR sequence naming conventions](#seqnames)
 
 ---
 ## Format of generic VADR output files created by all VADR scripts<a name="generic-formats"></a>
@@ -33,7 +46,7 @@ Each format is explained in more detail below.
 ### Explanation of `.log`-suffixed output files<a name="log-format"></a>
 
 The `.log` files include the same text that is printed to standard output. 
-The documentation on [`v-annotate.pl`](annotate.md) and [`v-build.pl`]
+The documentation on [`v-annotate.pl`](annotate.md#exampleusage) and [`v-build.pl`](build.md#exampleusage)
 usage go over this output in more detail. 
 
 
@@ -98,7 +111,7 @@ is:
 # cmpress output file saved in:                                                    NC_039897.vadr.cmpress
 # VADR 'model info' format file for NC_039897 saved in:                            NC_039897.vadr.minfo
 ```
-
+---
 ## Format of `v-build.pl` output files<a name="build-formats"></a>
 
 `v-build.pl` creates many output files. 
@@ -216,7 +229,7 @@ references on the file type/format.
 | `.pass.tbl` | 5 column tab-delimited feature table of sequences that pass | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.fail.list` | list of sequences that fail, one line per sequence | no further documentation | 
 | `.fail.tbl` | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.alt.list` | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [description of format in this document](#minfo-format) |
+| `.alt.list` | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [description of format in this document](#altlist-format) |
 | `.seqstat` | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | no further documentation |
 
 ---
@@ -247,7 +260,7 @@ characteristics:
 Each of these seven tabular formats are explained in more detail below.
 
 ---
-### Additional files created by `v-annotate.pl` when the `--keep` option is used
+### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
 
 When run with the `--keep` option, `v-annotate.pl` will create additional files:
 
@@ -502,7 +515,7 @@ These `coords` strings appear in `.ftr` output files and as the
 `<value>` in `<key>:<value>` pairs in `v-build.pl` output model info
 (`.minfo`) files for FEATURE lines.
 
-### Explanation of sequence naming in output VADR fasta files
+### Explanation of sequence naming in output VADR fasta files <a name="seqnames"></a>
 
 FASTA format sequence files output by VADR use a specific naming
 convention for naming sequences.
