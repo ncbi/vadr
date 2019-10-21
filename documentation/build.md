@@ -160,6 +160,7 @@ specify that library be used. This is explained in more detail
 [below](#library). The VADR 1.0 library was created in
 this manner, as explained in [another section](#1.0library).
 
+---
 ## `v-build.pl` command-line options
 
 To get a list of command-line options, execute:
@@ -172,7 +173,7 @@ of these options can be found below.
 For `v-build.pl` the available options are split into 8 different categories, 
 each explained in their own subsection below.
 
-#### `v-build.pl` basic options
+### `v-build.pl` basic options
 
 The first category of options are the *basic* options:
 
@@ -190,7 +191,7 @@ The first category of options are the *basic* options:
 | `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
 | `--keep` | keep additional output files that are normally removed |
 
-#### `v-build.pl` options for controlling what feature types are stored in the output model info file
+### `v-build.pl` options for controlling what feature types are stored in the output model info file
 
 By default, only `CDS`, `gene` and `mat_peptide` feature types read from the GenBank feature table file
 will be stored in the output `.minfo` file. This default set can be changed using the following three
@@ -204,7 +205,7 @@ RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
 | `--fskip <s>`  | do not store information for feature types listed in `<s>`, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace; <s> may contain feature types from the default set, or from other features (if `--fall` also used) |
 
 
-#### `v-build.pl` options for controlling what qualifiers are stored in the output model info file 
+### `v-build.pl` options for controlling what qualifiers are stored in the output model info file 
 
 By default, only `product`, `gene` and `exception` qualifiers read
 from the GenBank feature table file will be stored in the output
@@ -223,8 +224,7 @@ model library [here](#1.0library-dengue").
 | `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; <s> may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
 | `--noaddgene`  | do not automatically add `gene` qualifiers from `gene` features to any overlapping non-gene features | 
 
-
-#### `v-build.pl` options for including additional model attributes
+### `v-build.pl` options for including additional model attributes
 
 Besides qualifiers read from GenBank and information included in the input
 `.minfo` file with the `--addminfo` option, two additional attributes
@@ -237,8 +237,51 @@ construction of the Norovirus VADR 1.0 library model files [here](#1.0library-no
 | `--group <s>`   | specify that the model `group` attribute is `<s>`, e.g. `Norovirus` |
 | `--subgroup <s>`   | specify that the model `subgroup` attribute is `<s>`, e.g. `GI`, requires `--group` |
 
+### `v-build.pl` options for controlling the CDS translation step
 
+By default, the NCBI translation table 1 is used to translate CDS
+sequences into proteins. This can be changed to use translation table
+`<s>` with the `--ttbl` option. A non-1 translation table will be
+stored in the output `.minfo` file so that `v-annotate.pl` is aware of
+the translation table to use when analyzing CDS predictions.
 
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--tt <s>`   | specify that NCBI translation table `<s>` be used instead of `1` |
+
+Reference on NCBI translation tables:
+https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=cgencodes
+
+### `v-build.pl` options for controlling the `cmbuild` step
+
+Several options exist for controlling the command-line options that will be passed
+to Infernal's `cmbuild` program. For more information on these options and how 
+they control `cmbuild`, see the Infernal 
+User's Guide (http://eddylab.org/infernal/Userguide.pdf).
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--cmn <n>` | set the number of seqs for glocal forward profile HMM filter calibration to `<n>` (sets the `cmbuild --EgfN` option), default is to use default `cmbuild` value | 
+| `--cmp7ml` | set CM's filter profile HMM as the maximum likelihood profile HMM (sets the `cmbuild --p7ml` option) |
+| `--cmere` | set CM relative entropy target bits to position to `<x>` (sets the `cmbuild --ere <x>` option), default is to use default `cmbuild` value |
+| `--cmemaxseq` | set CM maximum allowed effective sequence # for CM to `<x>` (sets the `cmbuild --emaxseq <x>` option) | 
+| `--cminfile` | read `cmbuild` options from an input file `<s>`, the contents of the file (after removing newlines) will be supplied directly to `cmbuild` as an options string (possibly with more than one option separated by whitespace) |
+
+### `v-build.pl` options for skipping stages
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--skipbuild` | skip the `cmbuild` step; this is mostly useful for debugging purposes, but also possibly for creating a different `.minfo` file using options like `--fadd` and/or `--qadd` for an already created model without the need to wait for the slow `cmbuild` step | 
+| `--onlyurl` | output the url for the GenBank feature table file (or GenBank-format file if `--gb` also used, and exit; possibly helpful if `v-build.pl` is having trouble fetching from GenBank, you can manually download the feature table file from a browswer with the output url and use the downloaded file with `--inft` | 
+
+### `v-build.pl` options for optional output files 
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
+| `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
+
+---
 ## Building a VADR model library <a name="library"></a>
 
 Follow these steps to build a VADR model library:
@@ -268,7 +311,8 @@ the four `cmpress` output index files (`my.vadr.cm.i1i`, `my.vadr.cm.i1m`,
 `my.vadr.cm.i1f` and `my.vadr.cm.i1p`) into
 the same directory. 
 
-## How the VADR 1.0 model library was constructed<a name="1.0library-noro"></a>
+---
+## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
 The VADR 1.0 model library consists of 197 VADR models. Nine of these
 are Norovirus RefSeq models, listed in
@@ -281,7 +325,7 @@ The remaining 173 are additional *Caliciviridae* and *Flaviviridae*
 RefSeq models, listed in
 [vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list).
 
-#### Building the VADR 1.0 library Norovirus models
+### Building the VADR 1.0 library Norovirus models <a name="1.0library-noro"></a>
 
 To build models for each of the nine norovirus RefSeqs listed in 
 [vadr/documentation/build-files/norovirus.9.list](build-files/norovirus.9.list),
@@ -336,7 +380,7 @@ indexers observed a common biologically valid insertion at these
 positions of length 36 nucleotides (nt), which exceeds the default
 maximum of 27 nt.
 
-#### Building the VADR 1.0 library Dengue virus models<a name="1.0library-dengue"></a>
+### Building the VADR 1.0 library Dengue virus models <a name="1.0library-dengue"></a>
 
 The four Dengue RefSeq models are built using the `--stk` option 
 to specify the secondary structure of structured regions of the 
@@ -366,7 +410,7 @@ for these `stem_loop` and `ncRNA` features.
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
 
-#### Building the VADR 1.0 library Hepatitis C virus models
+### Building the VADR 1.0 library Hepatitis C virus models
 
 To build models for each of the eight Hepatitis C RefSeqs listed in 
 [vadr/documentation/build-files/hcv.8.list](build-files/hcv.8.list),
@@ -390,7 +434,7 @@ contains these commands.)
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
 
-#### Building the VADR 1.0 library models for the 173 other RefSeqs
+### Building the VADR 1.0 library models for the 173 other RefSeqs
 
 To build models for the other 173 *Caliciviridae* and *Flaviviridae* models listed in
 [vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list)
@@ -416,7 +460,7 @@ annotation data from GenBank when it is run. If necessary, contact
 Eric Nawrocki at nawrocke@ncbi.nlm.nih.gov for additional files needed
 to reproduce the library exactly.
 
-#### Concatenating files for the 197 models to create the VADR library
+### Concatenating files for the 197 models to create the VADR library
 
 After completing the steps above to make the 197 models, you can make
 the VADR 1.0 library by following the instructions for creating a VADR
