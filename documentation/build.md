@@ -190,7 +190,7 @@ basic options:
   --keep         : do not remove intermediate files, keep them all on disk
 ```
 
-| ...option... | explanation | 
+| command-line-option | explanation | 
 |--------|-------------|
 | `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
