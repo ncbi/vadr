@@ -103,6 +103,7 @@ this step will take.  When that completes the cm file is pressed with
 `cmpress` to prepare it for use with `v-annotate.pl` and the final
 step is to create the model info file:
 
+```
 # Building model (should take roughly 10-30 minutes)           ... done. [  818.7 seconds]
 # Pressing CM file                                             ... done. [    0.6 seconds]
 # Creating model info file                                     ... done. [    0.0 seconds]
