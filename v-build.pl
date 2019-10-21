@@ -122,12 +122,12 @@ opt_Add("--ttbl",     "integer", 1,            $g,  undef,         undef,  "use 
 
 $opt_group_desc_H{++$g} = "options for controlling cmbuild step";
 #     option          type       default    group   requires    incompat              preamble-output                                             help-output    
-opt_Add("--cmn",      "integer", 0,           $g,   undef, "--skipbuild,--cminfile",  "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--cmn",      "integer", undef,       $g,   undef, "--skipbuild,--cminfile",  "set number of seqs for glocal fwd HMM calibration to <n>", "set number of seqs for glocal fwd HMM calibration to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--cmp7ml",   "boolean", 0,           $g,   undef, "--skipbuild,--cminfile",  "set CM's filter p7 HMM as the ML p7 HMM",                  "set CM's filter p7 HMM as the ML p7 HMM",                  \%opt_HH, \@opt_order_A);
-opt_Add("--cmere",    "real",    0,           $g,   undef,  "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
-opt_Add("--cmeset",   "real",    0,           $g,   undef,  "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
-opt_Add("--cmemaxseq","real",    0,           $g,   undef,  "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
-opt_Add("--cminfile", "string",  0,           $g,   undef,  "--skipbuild",            "read cmbuild options from file <s>",                       "read cmbuild options from file <s>",                       \%opt_HH, \@opt_order_A);
+opt_Add("--cmere",    "real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM relative entropy target to <x>",                    "set CM relative entropy target to <x>",                    \%opt_HH, \@opt_order_A);
+opt_Add("--cmeset",   "real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM eff seq # for CM to <x>",                           "set CM eff seq # for CM to <x>",                           \%opt_HH, \@opt_order_A);
+opt_Add("--cmemaxseq","real",    undef,       $g,   undef,  "--skipbuild,--cminfile", "set CM maximum allowed eff seq # for CM to <x>",           "set CM maximum alowed eff seq # for CM to <x>",            \%opt_HH, \@opt_order_A);
+opt_Add("--cminfile", "string",  undef,       $g,   undef,  "--skipbuild",            "read cmbuild options from file <s>",                       "read cmbuild options from file <s>",                       \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #       option             type       default     group requires   incompat  preamble-output                                    help-output    
@@ -222,7 +222,12 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # if --onlyurl used, output the url and exit
 ############################################
 if(opt_Get("--onlyurl", \%opt_HH)) { 
-  print vdr_EutilsFetchUrl($mdl_name, "nuccore", "gb") . "\n";
+  if(opt_Get("--gb", \%opt_HH)) { 
+    print vdr_EutilsFetchUrl($mdl_name, "nuccore", "gb") . "\n";
+  }
+  else { 
+    print vdr_EutilsFetchUrl($mdl_name, "nuccore", "ft") . "\n";
+  }
   exit 0;
 }
 
@@ -372,7 +377,7 @@ if(! opt_IsUsed("--gb", \%opt_HH)) {
   else { 
     # --inft not used, create ft file by fetching using eutils
     $start_secs = ofile_OutputProgressPrior("Fetching feature table file", $progress_w, $log_FH, *STDOUT);
-    $ft_file = $out_root . ".ft";
+    $ft_file = $out_root . ".tbl";
     if(opt_Get("--ftfetch1", \%opt_HH)) { 
       utl_RunCommand("efetch -db nuccore -id $mdl_name -format ft > $ft_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft", $ft_file, 1, 1, "feature table format file for $mdl_name (--ftfetch1)");
@@ -896,7 +901,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
       else { 
         ofile_FAIL("ERROR in $sub_name, unable to parse protein_id $protein_id to get accession.version\n", 1, $FH_HR);
       }
-      my $ft_file = $out_root . "." . $accver . ".ft";
+      my $ft_file = $out_root . "." . $accver . ".tbl";
       vdr_EutilsFetchToFile($ft_file, $accver, "protein", "ft", 5, $ofile_info_HH{"FH"});  # number of attempts to fetch to make before dying
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "ft." . $accver, $ft_file, 1, 1, "feature table format file for $accver");
 
