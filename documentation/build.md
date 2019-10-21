@@ -166,8 +166,8 @@ Follow these steps to build a VADR model library:
 
 1. Run `v-build.pl` multiple (`N>1`) times for different accessions.
 2. Concatenate all resulting `N` `.vadr.minfo` files into a single file, call it `my.vadr.minfo`, for example.
-3. Concatenate all resultsing `N` `.vadr.cm` files into a single file, call it `my.vadr.cm`, for example.
-4. Run `cmpress` on the file created in step 3 like this:
+3. Concatenate all resulting `N` `.vadr.cm` files into a single file, call it `my.vadr.cm`, for example.
+4. Run `cmpress` on the `my.vadr.cm` file created in step 3 like this:
 ```
 $VADRINFERNALDIR/cmpress my.vadr.cm
 ```
@@ -185,13 +185,161 @@ BLAST DB directory if they are not in the current directory you are
 running `v-annotate.pl` from.
 
 If you move `my.vadr.cm` into a new directory, make sure you also move
-the four `my.vadr.cm.i1{i,m,f,p}` files that were created `cmpress` into
+the four `cmpress` output index files (`my.vadr.cm.i1i`, `my.vadr.cm.i1m`, 
+`my.vadr.cm.i1f` and `my.vadr.cm.i1p`) into
 the same directory. 
 
 ## How the VADR 1.0 model library was constructed
 
-The VADR 1.0 model library consists of 197 VADR models. Nine of these are
-Norovirus models, listed in [norovirus.9.list](build-files/norovirus.9.list).
+The VADR 1.0 model library consists of 197 VADR models. Nine of these
+are Norovirus RefSeq models, listed in
+[vadr/documentation/build-files/norovirus.9.list](build-files/norovirus.9.list).
+Four of these are Dengue virus RefSeq models, listed in
+[vadr/documentation/build-files/dengue.4.list](build-files/dengue.4.list).
+Eight of these are Hepatitis C virus Refseq models, listed in
+[vadr/documentation/build-files/hcv.8.list](build-files/hcv.8.list).
+The remaining 173 are additional *Caliciviridae* and *Flaviviridae*
+RefSeq models, listed in
+[vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list).
+
+#### Building the VADR 1.0 library Norovirus models
+
+To build models for each of the nine norovirus RefSeqs listed in 
+[vadr/documentation/build-files/norovirus.9.list](build-files/norovirus.9.list),
+run `v-build.pl` nine separate times as follows: 
+
+```
+v-build.pl --group Norovirus --subgroup GI NC_001959 NC_001959
+v-build.pl --group Norovirus --subgroup GV NC_008311 NC_008311
+v-build.pl --group Norovirus --subgroup GIII NC_029645 NC_029645
+v-build.pl --group Norovirus --subgroup GII --addminfo NC_029646.addminfo NC_029646 NC_029646
+v-build.pl --group Norovirus --subgroup GIV NC_029647 NC_029647
+v-build.pl --group Norovirus --subgroup GI NC_031324 NC_031324
+v-build.pl --group Norovirus --subgroup GII --addminfo NC_039475.addminfo NC_039475 NC_039475
+v-build.pl --group Norovirus --subgroup GII NC_039476 NC_039476
+v-build.pl --group Norovirus --subgroup GII NC_039477 NC_039477
+```
+
+(The shell script
+[vadr/documentation/build-files/norovirus.9.build.sh](build-files/norovirus.9.build.sh)
+contains these commands.)
+
+The `--group` and `--subgroup` options specify the group and subgroup
+values that will be added to the output `.minfo` file. These will
+enable `v-annotate.pl` to label sequences classified to these models
+with the corresponding group and subgroup, as well as to fail
+sequences users expect are norovirus sequences that actually are
+classified best to a non-norovirus model.
+
+The `--addminfo` options specify an input file that contains information
+on additional feature attributes not from GenBank that are desired in the output
+`.minfo` file. Those input files are located here:
+[vadr/documentation/build-files/NC_029646.addminfo](build-files/NC_029646.addminfo)
+and 
+[vadr/documentation/build-files/NC_039475.addminfo](build-files/NC_039475.addminfo).
+The `NC_029646.addminfo` file is in the [`.minfo` format](formats.md#minfo-format) and looks like this:
+
+```
+MODEL NC_029646 
+FEATURE NC_029646 type:"CDS" coords:"5085..6692:+" xmaxins_exc:"297:36"
+```
+
+This file specifies that the additional `<key>:<value>` pair of
+`xmaxins_exc:"297:36"` be added to the CDS feature with coordinates
+`5085..6692:+`. (The VADR coordinate string format is described
+[here](formats.md#coords-format). The `NC_039475.addminfo` file is
+similar except with the value `"295:36"`. 
+These two additions allow the corresponding CDS features to have an
+exception to the default maximum allowed insert length, setting it as
+36 after position 297 in `NC_029646` and after position 295 in
+`NC_039475`.  This change to the default was allowed after GenBank
+indexers observed a common biologically valid insertion at these
+positions of length 36 nucleotides (nt), which exceeds the default
+maximum of 27 nt.
+
+#### Building the VADR 1.0 library Dengue virus models
+
+The four Dengue RefSeq models are built using the `--stk` option 
+to specify the secondary structure of structured regions of the 
+genome at the 5' and 3' ends, as well as some additional options.
+To build models for each of these RefSeqs, run
+run `v-build.pl` from VADR v1.0 four separate times as follows: 
+
+```
+v-build.pl --stk NC_001477.v1.stk --qftradd stem_loop,ncRNA --qadd note,ncRNA_class --fadd stem_loop,ncRNA --group Dengue --subgroup 1 NC_001477 NC_001477
+v-build.pl --stk NC_001474.v1.stk --qftradd stem_loop,ncRNA --qadd note,ncRNA_class --fadd stem_loop,ncRNA --group Dengue --subgroup 2 NC_001474 NC_001474
+v-build.pl --stk NC_001475.v1.stk --qftradd stem_loop,ncRNA --qadd note,ncRNA_class --fadd stem_loop,ncRNA --group Dengue --subgroup 3 NC_001475 NC_001475
+v-build.pl --stk NC_002640.v1.stk --qftradd stem_loop,ncRNA --qadd note,ncRNA_class --fadd stem_loop,ncRNA --group Dengue --subgroup 4 NC_002640 NC_002640
+```
+
+(The shell script
+[vadr/documentation/build-files/dengue.4.build.sh](build-files/dengue.4.build.sh)
+contains these commands.)
+
+The `--qftradd`, `--qadd`, and `--fadd` options all take comma-separated strings
+as arguments. For example, `--qftradd` takes the argument `stem_loop,ncRNA`.
+These options specify that `v-build.pl` should include GenBank feature information for 
+`stem_loop` and `ncRNA` features in addition to its default set of `CDS`, `gene`, and 
+mat_peptide` features. Further, the `note` and `ncRNA_class` GenBank qualifiers should
+be included in addition to the default set of `product`, `gene` and `exception` qualifiers
+for these `stem_loop` and `ncRNA` features.
+
+The `--group` and `--subgroup` options are used in a similar way to how they were used
+to build the norovirus models.
+
+#### Building the VADR 1.0 library Hepatitis C virus models
+
+To build models for each of the eight Hepatitis C RefSeqs listed in 
+[vadr/documentation/build-files/hcv.8.list](build-files/hcv.8.list),
+run `v-build.pl` eight separate times as follows: 
+
+```
+v-build.pl --group HCV --subgroup 1 NC_004102 NC_004102
+v-build.pl --group HCV --subgroup 1 NC_038882 NC_038882
+v-build.pl --group HCV --subgroup 2 NC_009823 NC_009823
+v-build.pl --group HCV --subgroup 3 NC_009824 NC_009824
+v-build.pl --group HCV --subgroup 4 NC_009825 NC_009825
+v-build.pl --group HCV --subgroup 5 NC_009826 NC_009826
+v-build.pl --group HCV --subgroup 6 NC_009827 NC_009827
+v-build.pl --group HCV --subgroup 7 NC_030791 NC_030791
+```
+
+(The shell script
+[vadr/documentation/build-files/hcv.8.build.sh](build-files/hcv.8.build.sh)
+contains these commands.)
+
+The `--group` and `--subgroup` options are used in a similar way to how they were used
+to build the norovirus models.
+
+#### Building the VADR 1.0 library models for the 173 other RefSeqs
+
+To build models for the other 173 *Caliciviridae* and *Flaviviridae* models listed in
+[vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list)
+
+Simply run `v-build.pl` from VADR v1.0 using default parameters for each accession.
+For example:
+
+```
+  v-build.pl NC_034444 NC_034444 
+```
+
+(The shell script
+[vadr/documentation/build-files/non-noro-dengue.hcv.173.build.sh](build-files/non-noro-dengue.hcv.173.build.sh)
+will execute these 173 commands.)
+
+Each of these commands takes roughtly between 10 minutes and an hour. 
+
+Note: if the RefSeq annotation for any of these 197 VADR models has
+changed since October 2019, then it may not be able to identically
+reproduce the VADR 1.0 model library using the steps outlined
+above. This is because `v-build.pl` fetches the current RefSeq
+annotation data from GenBank when it is run. If necessary, contact
+Eric Nawrocki at nawrocke@ncbi.nlm.nih.gov for additional files needed
+to reproduce the library exactly.
+
+
+
+
 
 
 
