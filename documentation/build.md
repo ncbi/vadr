@@ -197,7 +197,7 @@ each explained in their own subsection below.
 
 The first category of options are the *basic* options:
 
-| .......option....... | explanation | 
+| ........option........ | explanation | 
 |--------|-------------|
 | `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
@@ -236,7 +236,7 @@ For an example of using the `--qadd` and `--qftradd` options, see
 the construction of the dengue virus RefSeq models for the VADR 1.0
 model library [here](#1.0library-dengue").
 
-| ......option...... | explanation | 
+| .......option....... | explanation | 
 |--------|-------------| 
 | `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
 | `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
