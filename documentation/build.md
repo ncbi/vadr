@@ -1,10 +1,23 @@
 # `v-build.pl` example usage and command-line options
 
+Contents:
 * [`v-build.pl` example usage](#exampleusage)
 * [`v-build.pl` command-line options](#options)
   * [basic options](#options-basic)
   * [options for controlling what feature types are stored in the output model info file](#options-featuretypes) 
-
+  * [options for controlling what qualifiers are stored in the output model info file](#options-qualifiers)
+  * [options for including additional model attributes (`group` and `subgroup`)](#options-attributes) 
+  * [options for controlling the CDS translation step (translation tables)](#options-tt) 
+  * [options for controlling the `cmbuild` step](#options-cmbuild)
+  * [options for skipping stages](#options-skip)
+  * [options for additional output files](#options-output)
+* [Building a VADR model library](#library)
+* [How the VADR 1.0 model library was constructed](#1.0library)
+  * [Norovirus models](#1.0library-noro)
+  * [Dengue virus models](#1.0library-dengue)
+  * [Hepatitis C virus (HCV) models](#1.0library-hcv)
+  * [Other 173 *Caliciviridae* and *Flaviviridae* models](#1.0library-173)
+  * [Concatenating files for 197 models to make library](#1.0library-concat)
 
 ## `v-build.pl` example usage<a name="exampleusage"></a>
 
@@ -210,10 +223,10 @@ RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
 |--------|-------------| 
 | `--fall`   | specify that all feature types (except those in `<s>` from `--fskip <s>`)  be added to the `.minfo` output file |
 | `--fadd <s>`  | add feature types listed in `<s>` to the default set, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace |
-| `--fskip <s>`  | do not store information for feature types listed in `<s>`, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace; <s> may contain feature types from the default set, or from other features (if `--fall` also used) |
+| `--fskip <s>`  | do not store information for feature types listed in `<s>`, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace; `<s>` may contain feature types from the default set, or from other features (if `--fall` also used) |
 
 
-### `v-build.pl` options for controlling what qualifiers are stored in the output model info file 
+### `v-build.pl` options for controlling what qualifiers are stored in the output model info file<a name="options-qualifiers"></a>
 
 By default, only `product`, `gene` and `exception` qualifiers read
 from the GenBank feature table file will be stored in the output
@@ -229,10 +242,10 @@ model library [here](#1.0library-dengue").
 | `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
 | `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
 | `--qftradd <s>`  | specify that the qualifiers listed in `<s2>` from `qadd <s2>` only apply for feature types in the string `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
-| `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; <s> may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
+| `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; `<s>` may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
 | `--noaddgene`  | do not automatically add `gene` qualifiers from `gene` features to any overlapping non-gene features | 
 
-### `v-build.pl` options for including additional model attributes
+### `v-build.pl` options for including additional model attributes<a name="options-attributes"></a>
 
 Besides qualifiers read from GenBank and information included in the input
 `.minfo` file with the `--addminfo` option, two additional attributes
@@ -245,7 +258,7 @@ construction of the Norovirus VADR 1.0 library model files [here](#1.0library-no
 | `--group <s>`   | specify that the model `group` attribute is `<s>`, e.g. `Norovirus` |
 | `--subgroup <s>`   | specify that the model `subgroup` attribute is `<s>`, e.g. `GI`, requires `--group` |
 
-### `v-build.pl` options for controlling the CDS translation step
+### `v-build.pl` options for controlling the CDS translation step<a name="options-tt"></a>
 
 By default, the NCBI translation table 1 is used to translate CDS
 sequences into proteins. This can be changed to use translation table
@@ -260,7 +273,7 @@ the translation table to use when analyzing CDS predictions.
 Reference on NCBI translation tables:
 https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=cgencodes
 
-### `v-build.pl` options for controlling the `cmbuild` step
+### `v-build.pl` options for controlling the `cmbuild` step<a name="options-cmbuild"></a>
 
 Several options exist for controlling the command-line options that will be passed
 to Infernal's `cmbuild` program. For more information on these options and how 
@@ -275,14 +288,14 @@ User's Guide (http://eddylab.org/infernal/Userguide.pdf).
 | `--cmemaxseq` | set CM maximum allowed effective sequence # for CM to `<x>` (sets the `cmbuild --emaxseq <x>` option) | 
 | `--cminfile` | read `cmbuild` options from an input file `<s>`, the contents of the file (after removing newlines) will be supplied directly to `cmbuild` as an options string (possibly with more than one option separated by whitespace) |
 
-### `v-build.pl` options for skipping stages
+### `v-build.pl` options for skipping stages<a name="options-skip"></a>
 
 | .....option..... | explanation | 
 |--------|-------------| 
 | `--skipbuild` | skip the `cmbuild` step; this is mostly useful for debugging purposes, but also possibly for creating a different `.minfo` file using options like `--fadd` and/or `--qadd` for an already created model without the need to wait for the slow `cmbuild` step | 
 | `--onlyurl` | output the url for the GenBank feature table file (or GenBank-format file if `--gb` also used, and exit; possibly helpful if `v-build.pl` is having trouble fetching from GenBank, you can manually download the feature table file from a browswer with the output url and use the downloaded file with `--inft` | 
 
-### `v-build.pl` options for optional output files 
+### `v-build.pl` options for optional output files<a name="options-output"></a>
 
 | .....option..... | explanation | 
 |--------|-------------| 
@@ -290,7 +303,7 @@ User's Guide (http://eddylab.org/infernal/Userguide.pdf).
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
 
 ---
-## Building a VADR model library <a name="library"></a>
+## Building a VADR model library<a name="library"></a>
 
 Follow these steps to build a VADR model library:
 
@@ -378,15 +391,15 @@ FEATURE NC_029646 type:"CDS" coords:"5085..6692:+" xmaxins_exc:"297:36"
 This file specifies that the additional `<key>:<value>` pair of
 `xmaxins_exc:"297:36"` be added to the CDS feature with coordinates
 `5085..6692:+`. (The VADR coordinate string format is described
-[here](formats.md#coords-format). The `NC_039475.addminfo` file is
-similar except with the value `"295:36"`. 
-These two additions allow the corresponding CDS features to have an
-exception to the default maximum allowed insert length, setting it as
-36 after position 297 in `NC_029646` and after position 295 in
-`NC_039475`.  This change to the default was allowed after GenBank
-indexers observed a common biologically valid insertion at these
-positions of length 36 nucleotides (nt), which exceeds the default
-maximum of 27 nt.
+[here](formats.md#coords-format)). The `NC_039475.addminfo` file is
+similar except with the value `"295:36"`.  These two additions allow
+the corresponding CDS features to have an exception to the default
+maximum allowed insert length by `v-annotate.pl` without causing an
+*insertnp* alert, setting it as 36 after position 297 in `NC_029646`
+and after position 295 in `NC_039475`.  This change to the default was
+allowed after GenBank indexers observed a common biologically valid
+insertion at these positions of length 36 nucleotides (nt), which
+exceeds the default maximum of 27 nt.
 
 ### Building the VADR 1.0 library Dengue virus models <a name="1.0library-dengue"></a>
 
@@ -418,7 +431,7 @@ for these `stem_loop` and `ncRNA` features.
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
 
-### Building the VADR 1.0 library Hepatitis C virus models
+### Building the VADR 1.0 library Hepatitis C virus models <a name="1.0library-hcv"></a>
 
 To build models for each of the eight Hepatitis C RefSeqs listed in 
 [vadr/documentation/build-files/hcv.8.list](build-files/hcv.8.list),
@@ -442,7 +455,7 @@ contains these commands.)
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
 
-### Building the VADR 1.0 library models for the 173 other RefSeqs
+### Building the VADR 1.0 library models for the 173 other RefSeqs <a name="1.0library-173"></a>
 
 To build models for the other 173 *Caliciviridae* and *Flaviviridae* models listed in
 [vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list)
@@ -468,18 +481,8 @@ annotation data from GenBank when it is run. If necessary, contact
 Eric Nawrocki at nawrocke@ncbi.nlm.nih.gov for additional files needed
 to reproduce the library exactly.
 
-### Concatenating files for the 197 models to create the VADR library
+### Concatenating files for the 197 models to create the VADR library <a name="1.0library-concat"></a>
 
 After completing the steps above to make the 197 models, you can make
 the VADR 1.0 library by following the instructions for creating a VADR
 library [here](#library).
-
-
-
-
-
-
-
-
-
-
