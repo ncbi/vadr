@@ -157,10 +157,10 @@ can combine these files together with analogous files from additional
 `v-build.pl` runs for other accessions to create a VADR model library,
 and then use `v-annotate.pl` `-m`, `-b` and `-i` options to 
 specify that library be used. This is explained in more detail in the
-[next section](#general-library). The VADR 1.0 library was created in
-this manner, as explained in [another section](#1p0-library).
+[next section](#library). The VADR 1.0 library was created in
+this manner, as explained in [another section](#1.0library).
 
-## Building a VADR model library
+## Building a VADR model library <a name="library"></a>
 
 Follow these steps to build a VADR model library:
 
@@ -188,6 +188,7 @@ If you move `my.vadr.cm` into a new directory, make sure you also move
 the four `cmpress` output index files (`my.vadr.cm.i1i`, `my.vadr.cm.i1m`, 
 `my.vadr.cm.i1f` and `my.vadr.cm.i1p`) into
 the same directory. 
+
 
 ## How the VADR 1.0 model library was constructed
 
@@ -336,6 +337,15 @@ above. This is because `v-build.pl` fetches the current RefSeq
 annotation data from GenBank when it is run. If necessary, contact
 Eric Nawrocki at nawrocke@ncbi.nlm.nih.gov for additional files needed
 to reproduce the library exactly.
+
+#### Concatenating files for the 197 models to create the VADR library
+
+After completing the steps above to make the 197 models, you can make
+the VADR 1.0 library by following the instructions for creating a VADR
+library [here](#library).
+
+
+
 
 
 
