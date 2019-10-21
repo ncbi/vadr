@@ -143,16 +143,55 @@ These files include the FASTA and and their formats are described more
 [here](formats.md).
 
 Only some of these files will be used by `v-annotate.pl`. These are
-the files that end with the suffixes `.vadr.cm`,
-`.vadr.cm.i1{i,m,f,p}`, `.vadr.protein.fa.p{hr,in,sq}`, and
-`.vadr.minfo`. You can either specify that `v-annotate.pl` use only
-this model when annotating sequences, by using the `-m`, `-b` and `-i`
-options to `v-annotate.pl` as explained in the [`v-annotate.pl`
-documentation] (annotate.md), or you can combine these files together
-with analogous files from additional `v-build.pl` runs for other
-accessions to create a VADR model library, and then use the `-m`, `-b`
-and `-i` options to `v-annotate.pl` to specify that library be
-used. This is explained in more detail in the [next
-section](#general-library). The VADR 1.0 library was created in this
-manner, as explained in [another section](#1p0-library).
+the files with the following suffixes:
+
+* `vadr.cm`: the covariance model (CM) file
+* `.vadr.cm.i1{i,m,f,p}`: the CM index files
+* `.vadr.protein.fa.p{hr,in,sq}`: the BLAST DB files 
+* `.vadr.minfo`: the VADR model info file that specifies locations and attributes of features 
+
+You can use only this model for `NC_039897` when annotating sequences
+with `v-annotate.pl`, by using the `-m`, `-b` and `-i` options to
+explained in the [`v-annotate.pl` documentation](annotate.md), or you
+can combine these files together with analogous files from additional
+`v-build.pl` runs for other accessions to create a VADR model library,
+and then use `v-annotate.pl` `-m`, `-b` and `-i` options to 
+specify that library be used. This is explained in more detail in the
+[next section](#general-library). The VADR 1.0 library was created in
+this manner, as explained in [another section](#1p0-library).
+
+## Building a VADR model library
+
+Follow these steps to build a VADR model library:
+
+1. Run `v-build.pl` multiple (`N>1`) times for different accessions.
+2. Concatenate all resulting `N` `.vadr.minfo` files into a single file, call it `my.vadr.minfo`, for example.
+3. Concatenate all resultsing `N` `.vadr.cm` files into a single file, call it `my.vadr.cm`, for example.
+4. Run `cmpress` on the file created in step 3 like this:
+```
+$VADRINFERNALDIR/cmpress my.vadr.cm
+```
+5. Move all BLAST DB files (`vadr.protein.fa.phr`, `vadr.protein.fa.pin`, and
+`vadr.protein.fa.psq`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
+for example.
+
+You can then use this library with `v-annotate.pl` as follows:
+```
+v-annotate.pl -m my.vadr.cm -i my.vadr.minfo -b my-vadr-blastdb-dir
+```
+
+Or substitute the full paths to the CM and minfo files and to the
+BLAST DB directory if they are not in the current directory you are
+running `v-annotate.pl` from.
+
+If you move `my.vadr.cm` into a new directory, make sure you also move
+the four `my.vadr.cm.i1{i,m,f,p}` files that were created `cmpress` into
+the same directory. 
+
+## How the VADR 1.0 model library was constructed
+
+The VADR 1.0 model library consists of 197 VADR models. Nine of these are
+Norovirus models, listed in [norovirus.9.list](build-files/norovirus.9.list).
+
+
 
