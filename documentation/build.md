@@ -156,9 +156,55 @@ explained in the [`v-annotate.pl` documentation](annotate.md), or you
 can combine these files together with analogous files from additional
 `v-build.pl` runs for other accessions to create a VADR model library,
 and then use `v-annotate.pl` `-m`, `-b` and `-i` options to 
-specify that library be used. This is explained in more detail in the
-[next section](#library). The VADR 1.0 library was created in
+specify that library be used. This is explained in more detail 
+[below](#library). The VADR 1.0 library was created in
 this manner, as explained in [another section](#1.0library).
+
+## `v-build.pl` command-line options
+
+To get a list of command-line options, execute:
+
+`v-build.pl h`
+
+This will output the usage and available command-line options. 
+Each option has a short description, but additional information on many 
+of these options can be found below.
+For `v-build.pl` the available options are split into 8 different categories, 
+each explained in their own subsection below.
+
+#### `v-build.pl` basic options
+
+The first category of options are the *basic* options:
+```
+basic options:
+  -f             : force; if dir <output directory> exists, overwrite it
+  -v             : be verbose; output commands to stdout as they're run
+  --stk <s>      : read single sequence stockholm 'alignment' from <s>
+  --infa <s>     : read single sequence fasta file from <s>, don't fetch it
+  --inft <s>     : read feature table file from <s>, don't fetch it
+  --ftfetch1     : fetch feature table with efetch -format ft
+  --ftfetch2     : fetch feature table with efetch -format gbc | xml2tbl
+  --gb           : parse a genbank file, not a feature table file
+  --ingb <s>     : read genbank file from <s>, don't fetch it
+  --addminfo <s> : add feature info from model info file <s>
+  --keep         : do not remove intermediate files, keep them all on disk
+```
+
+| option | explanation | 
+|--------|-------------|
+| `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
+| `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
+| `--stk <s>` | single sequence stockholm alignment will be read from `<s>`, possibly with secondary structure annotation |
+| `--infa <s>` | instead of fetching the FASTA for this sequence from GenBank, use the sequence in file <s> |
+| `--inft <s>` | instead of fetching the feature table for this sequence from GenBank, use the feature table in file <s> |
+| `--ftfetch1` | use `efetch` program (must be in your `PATH`) to fetch feature table with `efetch -format ft` instead of default method of fetching from an `eutils` URL | 
+| `--ftfetch2` | use `efetch` program (must be in your `PATH`) to fetch feature table with `efetch -format gbc | xml2tbl` instead of default method of fetching from an `eutils` URL | 
+| `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
+| `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
+| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file | 
+| `--keep` | keep additional output files that are normally removed |
+
+
 
 ## Building a VADR model library <a name="library"></a>
 
@@ -167,13 +213,13 @@ Follow these steps to build a VADR model library:
 1. Run `v-build.pl` multiple (`N>1`) times for different accessions.
 2. Concatenate all resulting `N` `.vadr.minfo` files into a single file, call it `my.vadr.minfo`, for example.
 3. Concatenate all resulting `N` `.vadr.cm` files into a single file, call it `my.vadr.cm`, for example.
-4. Run `cmpress` on the `my.vadr.cm` file created in step 3 like this:
+4. Move all resulting BLAST DB files (`.vadr.protein.fa.phr`, `.vadr.protein.fa.pin`, and
+`.vadr.protein.fa.psq`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
+for example.
+5. Run `cmpress` on the `my.vadr.cm` file created in step 3 like this:
 ```
 $VADRINFERNALDIR/cmpress my.vadr.cm
 ```
-5. Move all BLAST DB files (`vadr.protein.fa.phr`, `vadr.protein.fa.pin`, and
-`vadr.protein.fa.psq`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
-for example.
 
 You can then use this library with `v-annotate.pl` as follows:
 ```
@@ -188,7 +234,6 @@ If you move `my.vadr.cm` into a new directory, make sure you also move
 the four `cmpress` output index files (`my.vadr.cm.i1i`, `my.vadr.cm.i1m`, 
 `my.vadr.cm.i1f` and `my.vadr.cm.i1p`) into
 the same directory. 
-
 
 ## How the VADR 1.0 model library was constructed
 
