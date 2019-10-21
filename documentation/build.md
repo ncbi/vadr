@@ -197,7 +197,7 @@ each explained in their own subsection below.
 
 The first category of options are the *basic* options:
 
-| ......option...... | explanation | 
+| .......option....... | explanation | 
 |--------|-------------|
 | `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
@@ -296,7 +296,7 @@ User's Guide (http://eddylab.org/infernal/Userguide.pdf).
 
 ### `v-build.pl` options for optional output files<a name="options-output"></a>
 
-| ......option...... | explanation | 
+| .......option....... | explanation | 
 |--------|-------------| 
 | `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
