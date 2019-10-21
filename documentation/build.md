@@ -1,5 +1,13 @@
 # `v-build.pl` example usage and command-line options
 
+* [`v-build.pl` example usage](#exampleusage)
+* [`v-build.pl` command-line options](#options)
+  * [basic options](#options-basic)
+  * [options for controlling what feature types are stored in the output model info file](#options-featuretypes) 
+
+
+## `v-build.pl` example usage<a name="exampleusage"></a>
+
 `v-build.pl` creates the VADR model files for a specified reference
 GenBank (typically RefSeq) sequence necessary for running
 `v-annotate.pl` to validate and annotate sequences similar to that
@@ -151,7 +159,7 @@ the files with the following suffixes:
 * `.vadr.minfo`: the VADR model info file that specifies locations and attributes of features 
 
 You can use only this model for `NC_039897` when annotating sequences
-with `v-annotate.pl`, by using the `-m`, `-b` and `-i` options to
+with `v-annotate.pl`, by using the `-m`, `-b` and `-i` options as
 explained in the [`v-annotate.pl` documentation](annotate.md), or you
 can combine these files together with analogous files from additional
 `v-build.pl` runs for other accessions to create a VADR model library,
@@ -161,7 +169,7 @@ specify that library be used. This is explained in more detail
 this manner, as explained in [another section](#1.0library).
 
 ---
-## `v-build.pl` command-line options
+## `v-build.pl` command-line options<a name="options"></a>
 
 To get a list of command-line options, execute:
 
@@ -173,7 +181,7 @@ of these options can be found below.
 For `v-build.pl` the available options are split into 8 different categories, 
 each explained in their own subsection below.
 
-### `v-build.pl` basic options
+### `v-build.pl` basic options<a name="options-basic"></a>
 
 The first category of options are the *basic* options:
 
@@ -191,7 +199,7 @@ The first category of options are the *basic* options:
 | `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
 | `--keep` | keep additional output files that are normally removed |
 
-### `v-build.pl` options for controlling what feature types are stored in the output model info file
+### `v-build.pl` options for controlling what feature types are stored in the output model info file<a name="options-featuretypes"></a>
 
 By default, only `CDS`, `gene` and `mat_peptide` feature types read from the GenBank feature table file
 will be stored in the output `.minfo` file. This default set can be changed using the following three
@@ -230,7 +238,7 @@ Besides qualifiers read from GenBank and information included in the input
 `.minfo` file with the `--addminfo` option, two additional attributes
 can be added using the command line options `--group` and
 `--subgroup`. For an example of using these options see
-construction of the Norovirus VADR 1.0 library model files [here](#1.0library-noro").
+construction of the Norovirus VADR 1.0 library model files [here](#1.0library-noro).
 
 | .....option..... | explanation | 
 |--------|-------------| 
