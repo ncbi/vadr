@@ -175,22 +175,8 @@ each explained in their own subsection below.
 #### `v-build.pl` basic options
 
 The first category of options are the *basic* options:
-```
-basic options:
-  -f             : force; if dir <output directory> exists, overwrite it
-  -v             : be verbose; output commands to stdout as they're run
-  --stk <s>      : read single sequence stockholm 'alignment' from <s>
-  --infa <s>     : read single sequence fasta file from <s>, don't fetch it
-  --inft <s>     : read feature table file from <s>, don't fetch it
-  --ftfetch1     : fetch feature table with efetch -format ft
-  --ftfetch2     : fetch feature table with efetch -format gbc | xml2tbl
-  --gb           : parse a genbank file, not a feature table file
-  --ingb <s>     : read genbank file from <s>, don't fetch it
-  --addminfo <s> : add feature info from model info file <s>
-  --keep         : do not remove intermediate files, keep them all on disk
-```
 
-| command-line-option | explanation | 
+| .....option..... | explanation | 
 |--------|-------------|
 | `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
@@ -201,8 +187,55 @@ basic options:
 | `--ftfetch2` | use `efetch` program (must be in your `PATH`) to fetch feature table with `efetch -format gbc | xml2tbl` instead of default method of fetching from an `eutils` URL | 
 | `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
 | `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
-| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file | 
+| `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
 | `--keep` | keep additional output files that are normally removed |
+
+#### `v-build.pl` options for controlling what feature types are stored in the output model info file
+
+By default, only `CDS`, `gene` and `mat_peptide` feature types read from the GenBank feature table file
+will be stored in the output `.minfo` file. This default set can be changed using the following three
+command line options. For an example of using the `--fadd` option, see the construction of the dengue virus
+RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--fall`   | specify that all feature types (except those in `<s>` from `--fskip <s>`)  be added to the `.minfo` output file |
+| `--fadd <s>`  | add feature types listed in `<s>` to the default set, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace |
+| `--fskip <s>`  | do not store information for feature types listed in `<s>`, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace; <s> may contain feature types from the default set, or from other features (if `--fall` also used) |
+
+
+#### `v-build.pl` options for controlling what qualifiers are stored in the output model info file 
+
+By default, only `product`, `gene` and `exception` qualifiers read
+from the GenBank feature table file will be stored in the output
+`.minfo` file, and then only for the feature types that will be
+stored. This default set can be changed using the following five
+command line options. 
+For an example of using the `--qadd` and `--qftradd` options, see
+the construction of the dengue virus RefSeq models for the VADR 1.0
+model library [here](#1.0library-dengue").
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
+| `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
+| `--qftradd <s>`  | specify that the qualifiers listed in `<s2>` from `qadd <s2>` only apply for feature types in the string `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
+| `--qskip <s>`  | do not store information for qualifiers listed in `<s>`, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace; <s> may contain qualifiers from the default set, or from other qualifiers (if `--qall` also used) |
+| `--noaddgene`  | do not automatically add `gene` qualifiers from `gene` features to any overlapping non-gene features | 
+
+
+#### `v-build.pl` options for including additional model attributes
+
+Besides qualifiers read from GenBank and information included in the input
+`.minfo` file with the `--addminfo` option, two additional attributes
+can be added using the command line options `--group` and
+`--subgroup`. For an example of using these options see
+construction of the Norovirus VADR 1.0 library model files [here](#1.0library-noro").
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--group <s>`   | specify that the model `group` attribute is `<s>`, e.g. `Norovirus` |
+| `--subgroup <s>`   | specify that the model `subgroup` attribute is `<s>`, e.g. `GI`, requires `--group` |
 
 
 
@@ -235,7 +268,7 @@ the four `cmpress` output index files (`my.vadr.cm.i1i`, `my.vadr.cm.i1m`,
 `my.vadr.cm.i1f` and `my.vadr.cm.i1p`) into
 the same directory. 
 
-## How the VADR 1.0 model library was constructed
+## How the VADR 1.0 model library was constructed<a name="1.0library-noro"></a>
 
 The VADR 1.0 model library consists of 197 VADR models. Nine of these
 are Norovirus RefSeq models, listed in
@@ -303,7 +336,7 @@ indexers observed a common biologically valid insertion at these
 positions of length 36 nucleotides (nt), which exceeds the default
 maximum of 27 nt.
 
-#### Building the VADR 1.0 library Dengue virus models
+#### Building the VADR 1.0 library Dengue virus models<a name="1.0library-dengue"></a>
 
 The four Dengue RefSeq models are built using the `--stk` option 
 to specify the secondary structure of structured regions of the 
