@@ -1,6 +1,5 @@
 # `v-build.pl` example usage and command-line options
 
-Contents:
 * [`v-build.pl` example usage](#exampleusage)
 * [`v-build.pl` command-line options](#options)
   * [basic options](#options-basic)
@@ -17,7 +16,7 @@ Contents:
   * [Dengue virus models](#1.0library-dengue)
   * [Hepatitis C virus (HCV) models](#1.0library-hcv)
   * [Other 173 *Caliciviridae* and *Flaviviridae* models](#1.0library-173)
-  * [Concatenating files for 197 models to make library](#1.0library-concat)
+  * [Concatenating files for 197 models to make the library](#1.0library-concat)
 
 ## `v-build.pl` example usage<a name="exampleusage"></a>
 
@@ -186,7 +185,7 @@ this manner, as explained in [another section](#1.0library).
 
 To get a list of command-line options, execute:
 
-`v-build.pl h`
+`v-build.pl -h`
 
 This will output the usage and available command-line options. 
 Each option has a short description, but additional information on many 
@@ -198,7 +197,7 @@ each explained in their own subsection below.
 
 The first category of options are the *basic* options:
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------|
 | `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
@@ -219,7 +218,7 @@ will be stored in the output `.minfo` file. This default set can be changed usin
 command line options. For an example of using the `--fadd` option, see the construction of the dengue virus
 RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------| 
 | `--fall`   | specify that all feature types (except those in `<s>` from `--fskip <s>`)  be added to the `.minfo` output file |
 | `--fadd <s>`  | add feature types listed in `<s>` to the default set, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace |
@@ -237,7 +236,7 @@ For an example of using the `--qadd` and `--qftradd` options, see
 the construction of the dengue virus RefSeq models for the VADR 1.0
 model library [here](#1.0library-dengue").
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------| 
 | `--qall`   | specify that all qualifiers (except those in `<s> from `--qskip <s>`) be added to the `.minfo` output file |
 | `--qadd <s>`  | add qualifiers listed in `<s>` to the default set, where `<s>` is a comma-separated string with each qualifier separated by a comma with no whitespace |
@@ -266,7 +265,7 @@ sequences into proteins. This can be changed to use translation table
 stored in the output `.minfo` file so that `v-annotate.pl` is aware of
 the translation table to use when analyzing CDS predictions.
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------| 
 | `--tt <s>`   | specify that NCBI translation table `<s>` be used instead of `1` |
 
@@ -280,7 +279,7 @@ to Infernal's `cmbuild` program. For more information on these options and how
 they control `cmbuild`, see the Infernal 
 User's Guide (http://eddylab.org/infernal/Userguide.pdf).
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------| 
 | `--cmn <n>` | set the number of seqs for glocal forward profile HMM filter calibration to `<n>` (sets the `cmbuild --EgfN` option), default is to use default `cmbuild` value | 
 | `--cmp7ml` | set CM's filter profile HMM as the maximum likelihood profile HMM (sets the `cmbuild --p7ml` option) |
@@ -290,14 +289,14 @@ User's Guide (http://eddylab.org/infernal/Userguide.pdf).
 
 ### `v-build.pl` options for skipping stages<a name="options-skip"></a>
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------| 
 | `--skipbuild` | skip the `cmbuild` step; this is mostly useful for debugging purposes, but also possibly for creating a different `.minfo` file using options like `--fadd` and/or `--qadd` for an already created model without the need to wait for the slow `cmbuild` step | 
 | `--onlyurl` | output the url for the GenBank feature table file (or GenBank-format file if `--gb` also used, and exit; possibly helpful if `v-build.pl` is having trouble fetching from GenBank, you can manually download the feature table file from a browswer with the output url and use the downloaded file with `--inft` | 
 
 ### `v-build.pl` options for optional output files<a name="options-output"></a>
 
-| .....option..... | explanation | 
+| ......option...... | explanation | 
 |--------|-------------| 
 | `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
