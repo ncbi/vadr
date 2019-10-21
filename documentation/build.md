@@ -1,14 +1,13 @@
 # `v-build.pl` example usage and command-line options
 
-`v-build.pl` takes as input two command line arguments, the name
-of a GenBank accession (typically a RefSeq accession) 
-and the name of the output directory you
-want it to create and populate with output files.
-To see the usage of `v-build.pl` or any VADR script, use the
-`-h` option:
+`v-build.pl` creates the VADR model files for a specified reference
+GenBank (typically RefSeq) sequence necessary for running
+`v-annotate.pl` to validate and annotate sequences similar to that
+reference sequence. To determine the command-line usage of 
+`v-build.pl` (or any VADR script), use the `-h` option, like this:
 
 ```
-`v-build.pl -h 
+v-build.pl -h 
 ```
 
 You'll see something like the following output:
@@ -21,13 +20,18 @@ You'll see something like the following output:
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
 
-The first two lines are the banner which show the name of the VADR
-script being run along with the version and release date. Next comes
-the usage which explains two command line arguments are expected, the
-sequence accession for which to build the model to (`<accession>`) and
-the name of the output directory to create (`<path to output directory
-to create>`). After that comes a list of all available command-line
-options. These are explained in more detail below.
+The first few lines are the banner which show the name of the VADR
+script being run along with the version and release date. This is
+followed by the time and date the command was executed.  The `Usage:`
+line details the expected command line arguments.  `v-build.pl` takes
+as input two command line arguments, the name of the reference
+accession (`<accession>`) and the name of the output directory you
+want it to create (`<path to output directory to create>`) and
+populate with output files, including model files for the accession to
+use with `v-annotate.pl`.  
+
+After that comes a list of all available
+command-line options. These are explained in more detail [below](#build-options).
 
 Here is an example `v-build.pl` command using the RefSeq
 accession `NC_039897` a Norovirus GI complete genome sequence, and creating
