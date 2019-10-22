@@ -191,9 +191,9 @@ To get a list of command-line options, execute:
 `v-build.pl -h`
 
 This will output the usage and available command-line options. 
-Each option has a short description, but additional information on many 
+Each option has a short description, but additional information on some
 of these options can be found below.
-For `v-build.pl` the available options are split into 8 different categories, 
+For `v-build.pl` the available options are split into eight different categories, 
 each explained in their own subsection below.
 
 ### `v-build.pl` basic options<a name="options-basic"></a>

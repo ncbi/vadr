@@ -327,6 +327,7 @@ information on the classification of each sequence:
 7     AB713840.1   347  PASS  yes  NC_008311  Norovirus  GV     330.6  0.953  1.000  0.047   0.2     1    +  NC_029645  Norovirus  GIII   244.6  0.705  -     
 8     JN585032.1   286  PASS  yes  NC_029645  Norovirus  GIII   242.3  0.847  0.997  0.039   0.1     1    +  NC_031324  Norovirus  GI     157.4  0.550  -     
 9     JN975492.1  7286  FAIL  yes  NC_008311  Norovirus  GV    4666.2  0.640  1.000  0.987  16.8     1    +  NC_039475  Norovirus  GII   3478.9  0.477  -   ```
+```
 
 This file includes per-sequence information on whether each sequence
 passed or failed, its best and second-best matching model, and scores
@@ -481,6 +482,61 @@ JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not exte
 
 ---
 ## `v-annotate.pl` command-line options<a name="options"></a>
+
+To get a list of command-line options, execute:
+
+`v-annotate.pl -h`
+
+This will output the usage and available command-line options. 
+Each option has a short description, but additional information on some
+of these options can be found below.
+For `v-annotate.pl` the available options are split into nine different categories, 
+each explained in their own subsection below.
+
+### `v-annotate.pl` basic options<a name="options-basic"></a>
+
+| ........option........ | explanation | 
+|--------|-------------|
+| `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
+| `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
+| `-m <s>` | use the CM file `<s>`, instead of the default CM file ($VADRMODELDIR/vadr.cm) |
+| `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
+| `-b <s>` | specify that the BLAST database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
+| `--atgonly` | only consider ATG as a valid start codon, regardless of model's translation table |
+| `--keep` | keep [additional output files](formats.db#annotate-keep) that are normally removed ( |
+
+### `v-annotate.pl` options for specifying expected sequence classification<a name="options-expclassification"></a>
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--group <s>`    | specify that the expected classification of all sequences is group `<s>`, sequences determined to *not* be in this group will trigger an *incgroup* alert |
+| `--subgroup <s2>` | specify that the expected classification of all sequences is subgroup `<s>` within group `<s2>` from `--group <s2>`, sequences determined to *not* be in this group will trigger an *incsubgrp* alert; requires `--group` |
+
+### `v-annotate.pl` options for controlling which alerts are *fatal* and cause a sequence to FAIL <a name="options-fatal"></a>
+
+| .....option..... | explanation | 
+|--------|-------------| 
+| `--alt_list`     | output [summary of all alerts](#alertlist) and then exit | 
+| `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
+| `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
+
+### `v-annotate.pl` options for tuning alerts reported in the classification stage<a name="options-alertclassification"></a>
+
+These options allow the user to control the thresholds for various alerts in the classification stage
+
+| .....option..... | relevant alert code | relevant error | default value | explanation |
+|--------|-------------|-------|-----|
+| `--lowcov <x>` | lowcovrg | LOW_COVERAGE | < 0.9 | set fractional coverage threshold for alert to `<x>` |
+| `--lowsc <x>`  | lowscore | LOW_SCORE    | < 0.3 | set bits/nt threshold for alert to `<x>` | 
+| `--lowsimterm <n>`  | lowsim{5s,3s} | LOW_SIMILARITY_{START,END} | >= 15 | set length (nt) threshold to `<n>` |
+| `--lowsimint <n>`   | lowsimis      | LOW_SIMILARITY | >= 1 | set length (nt) threshold to `<n>` |
+| `--indefclass <x>`  | indfclas      | INDEFINITE_CLASSIFICATION | < 0.03 | set bits per nt difference threshold to `<x>` |
+| `--biasfrac <x>`    | biasdseq      | BIASED_SEQUENCE | >= 0.25 | set fractional bit score threshold for biased score/total score to `<x>` |
+| `--dupreg <n>`      | dupregin      | DUPLICATE_REGIONS | >= 20 | set number of model position overlap to `<n>` positions | 
+| `--indefstr <x>`    | indfstrn      | INDEFINITE_STRAND | >= 25.0 | set bit score of weaker strand hit to `<x>` |
+| `--indefann <x>`    | indf{5,3}loc  | INDEFINITE_ANNOTATION_{START,END} | < 0.8 | set posterior probability threshold for non-mat_peptide features to `<x>` |
+| `--indefann_mp <x>` | indf{5,3}loc  | INDEFINITE_ANNOTATION_{START,END} | < 0.6 | set posterior probability threshold for mat_peptide features to `<x>` |
+| `--incspec <x>` | inc{group,subgrp} | INCORRECT_{GROUP,SUBGROUP}        | < 0.2 | set bits per nt difference between best model and highest-scoring model in {group,subgroup} to |
 
 ---
 OTHER SECTIONS TODO :
