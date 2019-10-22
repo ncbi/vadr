@@ -51,7 +51,7 @@ populate with output files, including model files for the accession to
 use with `v-annotate.pl`.  
 
 After that comes a list of all available
-command-line options. These are explained in more detail [below](#build-options).
+command-line options. These are explained in more detail [below](#options).
 
 Here is an example `v-build.pl` command using the RefSeq
 accession `NC_039897` a Norovirus GI complete genome sequence, and creating
@@ -171,7 +171,7 @@ the files with the following suffixes:
 | `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
-| `.minfo`  | VADR model info file | [description of format](formats.md#minfo-format) |
+| `.minfo`  | VADR model info file | [description of format](formats.md#minfo) |
 
 You can use only this model to annotate sequences
 with `v-annotate.pl` that are similar to `NC_039897` by using the `-m`, `-b` and `-i` options as
@@ -383,7 +383,7 @@ on additional feature attributes not from GenBank that are desired in the output
 [vadr/documentation/build-files/NC_029646.addminfo](build-files/NC_029646.addminfo)
 and 
 [vadr/documentation/build-files/NC_039475.addminfo](build-files/NC_039475.addminfo).
-The `NC_029646.addminfo` file is in the [`.minfo` format](formats.md#minfo-format) and looks like this:
+The `NC_029646.addminfo` file is in the [`.minfo` format](formats.md#minfo) and looks like this:
 
 ```
 MODEL NC_029646 
@@ -393,7 +393,7 @@ FEATURE NC_029646 type:"CDS" coords:"5085..6692:+" xmaxins_exc:"297:36"
 This file specifies that the additional `<key>:<value>` pair of
 `xmaxins_exc:"297:36"` be added to the CDS feature with coordinates
 `5085..6692:+`. (The VADR coordinate string format is described
-[here](formats.md#coords-format)). The `NC_039475.addminfo` file is
+[here](formats.md#coords)). The `NC_039475.addminfo` file is
 similar except with the value `"295:36"`.  These two additions allow
 the corresponding CDS features to have an exception to the default
 maximum allowed insert length by `v-annotate.pl` without causing an
