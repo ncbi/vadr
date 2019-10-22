@@ -147,7 +147,7 @@ opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,
 opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+#opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
@@ -228,7 +228,7 @@ my $options_okay =
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'i=s'           => \$GetOptions_H{"-i"}, 
                 'b=s'           => \$GetOptions_H{"-b"}, 
-                'n=s'           => \$GetOptions_H{"-n"}, 
+#                'n=s'           => \$GetOptions_H{"-n"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
