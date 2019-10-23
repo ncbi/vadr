@@ -520,9 +520,9 @@ each explained in their own subsection below.
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
 | `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
 
-### `v-annotate.pl` options for controlling the thresholds for alerts detected in the classification, coverage determination, and alignment stages <a name="options-alerts"></a>
+### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 
-| ........option......... | relevant alert code | relevant error | default value that triggers alert | explanation |
+| ........option........ | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | lowscore          | LOW_SCORE                           | < 0.3   | set bits per nt threshold for alert to `<x>` | 
 | `--indefclass <x>`  | indfclas          | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
@@ -538,8 +538,43 @@ each explained in their own subsection below.
 | `--xalntol <n>`     | indf5st, indf5lg, indf3st, indf3lg | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` |
 | `--xmaxins <n>`     | insertnp | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` |
 | `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
+| `--xlonescore <n>`  | indfantp | INDEFINITE_ANNOTATION | >= 80 | set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
+
+### `v-annotate.pl` options for controlling cmalign alignment stage
+
+Several options exist for controlling the command-line options that will be passed
+to Infernal's `cmalign` program in the alignment stage. For more information on these options and how 
+they control `cmalign`, see the Infernal 
+User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal/Userguide.pdf)
+
+| ......option...... | explanation |
+|---------------------|--------------------|
+| `--mxsize <n>`      | set maximum allowed DP matrix size to `<n>` Mb before triggering an unexpdivg alert (sets the `cmalign --mxsize` option), default `<n>` is `8000` | 
+| `--tau <x>`         | set the initial tau (probability loss) value to `<x>` (sets the `cmalign --tau` option), default `<x>` is `0.001` | 
+| `--nofixedtau`      | do not fix the tau value, allow it to increase if necessary (removes the `cmalign --fixedtau` option), default is to fix tau with `cmalign --fixedtau` |
+| `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
+| `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
+---
+
+### `v-annotate.pl` options for controlling blastx protein validation stage
+
+Below is a list of options for controlling the blastx protein
+validaation stage. Several of these control command-line options that
+will be passed to `blastx`. For more information on these options and
+how they control `blastx`, see the NCBI BLAST documentation
+(tables C1 and C4 of https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+| ......option...... | explanation |
+|---------------------|--------------------|
+| `--xmatrix <s>`     | use the substitution matrix `<s>` (sets the `blastx -matrix <s>` option), default is to use the default `blastx` matrix | 
+| `--xdrop <n>`       | set the xdrop options to `<n>` (sets the `blastx` `-xdrop_ungap <n>`, `-xdrop_gap <n>` and `-xdrop_gap_final <n>` with the same `<n>`), default is to use default `blastx` values |
+| `--xnumali <n>`     | specify that the top `<n>` alignments are output by `blastx`, mostly relevant in combination with `--xlongest` (sets the `blastx -num_alignments <n>` option), default `<n>` is 20 | 
+| `--xlongest`        | use the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to use the highest scoring alignment | 
+| `--xminntlen <n>`   | set the minimum lenght in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for blastx analysis to `<n>`, default `<n>` is 30 |
 
 ---
+
+
 OTHER SECTIONS TODO :
 1. alert table, with extra columns: options that control, default thresholds, notes (xmaxins_exc, xmaxdel_exc) 
 2. example showing how to make alert non-fatal

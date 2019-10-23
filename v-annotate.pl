@@ -166,7 +166,7 @@ $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts"
 #       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
 opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                  \%opt_HH, \@opt_order_A);
 opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "indfclas/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",    "indfcls/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",  \%opt_HH, \@opt_order_A);
-opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",           "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",             \%opt_HH, \@opt_order_A);
+opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",          "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",             \%opt_HH, \@opt_order_A);
 opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",               \%opt_HH, \@opt_order_A);
 opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--indefstr",   "real",      25,                   $g,   undef,   undef,      "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
@@ -178,23 +178,23 @@ opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,
 opt_Add("--xalntol",    "integer",   5,                    $g,   undef,   undef,      "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,   undef,      "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,   undef,      "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                   $g,   undef,   undef,      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for tuning blastx protein validation stage";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,     "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",            "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmatrix",     "string",   undef,                  $g,     undef, undef,     "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,                     $g,     undef, undef,     "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,                      $g,     undef, undef,     "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,                     $g,     undef, undef,     "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for modifying cmalign runs";
+$opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-3,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "fix the tau value when running cmalign, allow it to increase if nec",          "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
+#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
+opt_Add("--xmatrix",     "string",   undef,                  $g,     undef, undef,     "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,                     $g,     undef, undef,     "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,                     $g,     undef, undef,   "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,                      $g,     undef, undef,     "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,     "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -238,34 +238,34 @@ my $options_okay =
                 "alt_list"      => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
-# options for tuning classification alerts
-                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
+# options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
-                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
-                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
-                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
+                'incspec=s'     => \$GetOptions_H{"--incspec"},  
+                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
                 'dupreg=s'      => \$GetOptions_H{"--dupreg"},  
                 'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
+                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
+                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
+                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'incspec=s'     => \$GetOptions_H{"--incspec"},  
-# options for tuning protein validation with blastx
-                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
-                'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
-                'xdrop=s'       => \$GetOptions_H{"--xdrop"},
-                'xlongest'      => \$GetOptions_H{"--xlongest"},
-                'xnumali=s'     => \$GetOptions_H{"--xnumali"},
-# options for changing search sensitivity modes
+# options for controlling cmalign alignment stage 
                 'mxsize=s'      => \$GetOptions_H{"--mxsize"},
                 'tau=s'         => \$GetOptions_H{"--tau"},
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
+# options for controlling protein blastx protein validation stage
+                'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
+                'xdrop=s'       => \$GetOptions_H{"--xdrop"},
+                'xnumali=s'     => \$GetOptions_H{"--xnumali"},
+                'xlongest'      => \$GetOptions_H{"--xlongest"},
+                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
