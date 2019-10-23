@@ -373,7 +373,7 @@ in the VADR coordinate string format, described
 [here](formats.md#coords). 
 The final column lists any alerts
 pertaining to each feature. For the features in this sequence there
-are none, but for the final sequence, some alerts are listed for the
+are no alerts, but for the final sequence, some alerts are listed for the
 second CDS. An explanation of all fields in the `.ftr`
 file type is [here](formats.md#ftr).
 
@@ -495,7 +495,7 @@ each explained in their own subsection below.
 
 ### `v-annotate.pl` basic options<a name="options-basic"></a>
 
-| ........option........ | explanation | 
+| ......option...... | explanation | 
 |--------|-------------|
 | `-f`   | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`   | *verbose* mode: all commands will be output to standard output as they are run | 
@@ -507,14 +507,14 @@ each explained in their own subsection below.
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-expclassification"></a>
 
-| .....option..... | explanation | 
+| .......option....... | explanation | 
 |--------|-------------| 
 | `--group <s>`    | specify that the expected classification of all sequences is group `<s>`, sequences determined to *not* be in this group will trigger an *incgroup* alert |
 | `--subgroup <s2>` | specify that the expected classification of all sequences is subgroup `<s>` within group `<s2>` from `--group <s2>`, sequences determined to *not* be in this group will trigger an *incsubgrp* alert; requires `--group` |
 
 ### `v-annotate.pl` options for controlling which alerts are *fatal* and cause a sequence to FAIL <a name="options-fatal"></a>
 
-| .....option..... | explanation | 
+| .......option....... | explanation | 
 |--------|-------------| 
 | `--alt_list`     | output [summary of all alerts](#alertlist) and then exit | 
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
@@ -525,7 +525,7 @@ each explained in their own subsection below.
 These options allow the user to control the thresholds for various alerts in the classification stage
 
 | .....option..... | relevant alert code | relevant error | default value | explanation |
-|--------|-------------|-------|-----|
+|--------|-------------|-------|-----|---|
 | `--lowcov <x>` | lowcovrg | LOW_COVERAGE | < 0.9 | set fractional coverage threshold for alert to `<x>` |
 | `--lowsc <x>`  | lowscore | LOW_SCORE    | < 0.3 | set bits/nt threshold for alert to `<x>` | 
 | `--lowsimterm <n>`  | lowsim{5s,3s} | LOW_SIMILARITY_{START,END} | >= 15 | set length (nt) threshold to `<n>` |
