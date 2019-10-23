@@ -520,27 +520,28 @@ each explained in their own subsection below.
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
 | `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
 
-### `v-annotate.pl` options for tuning alerts reported in the classification stage<a name="options-alertclassification"></a>
+### `v-annotate.pl` options for controlling the thresholds for alerts detected in the classification, coverage determination, and alignment stages <a name="options-alerts"></a>
 
-These options allow the user to control the thresholds for various alerts in the classification stage
-
-| .....option..... | relevant alert code | relevant error | default value | explanation |
-|--------|-------------|-------|-----|---|
-| `--lowcov <x>` | lowcovrg | LOW_COVERAGE | < 0.9 | set fractional coverage threshold for alert to `<x>` |
-| `--lowsc <x>`  | lowscore | LOW_SCORE    | < 0.3 | set bits/nt threshold for alert to `<x>` | 
-| `--lowsimterm <n>`  | lowsim{5s,3s} | LOW_SIMILARITY_{START,END} | >= 15 | set length (nt) threshold to `<n>` |
-| `--lowsimint <n>`   | lowsimis      | LOW_SIMILARITY | >= 1 | set length (nt) threshold to `<n>` |
-| `--indefclass <x>`  | indfclas      | INDEFINITE_CLASSIFICATION | < 0.03 | set bits per nt difference threshold to `<x>` |
-| `--biasfrac <x>`    | biasdseq      | BIASED_SEQUENCE | >= 0.25 | set fractional bit score threshold for biased score/total score to `<x>` |
-| `--dupreg <n>`      | dupregin      | DUPLICATE_REGIONS | >= 20 | set number of model position overlap to `<n>` positions | 
-| `--indefstr <x>`    | indfstrn      | INDEFINITE_STRAND | >= 25.0 | set bit score of weaker strand hit to `<x>` |
-| `--indefann <x>`    | indf{5,3}loc  | INDEFINITE_ANNOTATION_{START,END} | < 0.8 | set posterior probability threshold for non-mat_peptide features to `<x>` |
-| `--indefann_mp <x>` | indf{5,3}loc  | INDEFINITE_ANNOTATION_{START,END} | < 0.6 | set posterior probability threshold for mat_peptide features to `<x>` |
-| `--incspec <x>` | inc{group,subgrp} | INCORRECT_{GROUP,SUBGROUP}        | < 0.2 | set bits per nt difference between best model and highest-scoring model in {group,subgroup} to |
+| .....option......   | relevant alert code | relevant error | default value that triggers alert | explanation |
+|---------------------|---------------------|----------------|-----------------------------------|-------------|
+| `--lowsc <x>`       | lowscore            | LOW_SCORE                           | < 0.3   | set bits/nt threshold for alert to `<x>` | 
+| `--indefclass <x>`  | indfclas            | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold to `<x>` |
+| `--incspec <x>`     | incgroup, incsubgrp | INCORRECT_GROUP, INCORRECT_SUBGROUP | < 0.2   | set bits per nt difference between best model and highest-scoring model in {group,subgroup} to |
+| `--lowcov <x>`      | lowcovrg            | LOW_COVERAGE                        | < 0.9   | set fractional coverage threshold for alert to `<x>` |
+| `--dupreg <n>`      | dupregin            | DUPLICATE_REGIONS                   | >= 20   | set number of model position overlap to `<n>` positions | 
+| `--biasfrac <x>`    | biasdseq            | BIASED_SEQUENCE                     | >= 0.25 | set fractional bit score threshold for biased score/total score to `<x>` |
+| `--indefstr <x>`    | indfstrn            | INDEFINITE_STRAND                   | >= 25.0 | set bit score of weaker strand hit to `<x>` |
+| `--lowsimterm <n>`  | lowsim5s, lowsim3s, lowsim5f, lowsim3f | LOW_SIMILARITY_START, LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_START, LOW_FEATURE_SIMILARITY_END | >= 15   | set length (nt) threshold to `<n>` |
+| `--lowsimint <n>`   | lowsimis, lowsimif  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold to `<n>` |
+| `--indefann <x>`    | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features to `<x>` |
+| `--indefann_mp <x>` | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features to `<x>` |
+| `--xalntol <n>`     | indf5st, indf5lg, indf3st, indf3lg | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end to `<n>` |
+| `--xmaxins <n>`     | insertnp | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment to `<n>` |
+| `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment to `<n>` |
 
 ---
 OTHER SECTIONS TODO :
-1. alert table
+1. alert table, with extra columns: options that control, default thresholds, notes (xmaxins_exc, xmaxdel_exc) 
 2. example showing how to make alert non-fatal
 3. invalidated alerts not in .tbl and .alt.list files.
 4. -p
