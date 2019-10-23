@@ -2,6 +2,15 @@
 
 * [`v-annotate.pl` example usage](#exampleusage)
 * [`v-annotate.pl` command-line options](#options)
+  * [basic options](#options-basic)
+  * [options for specifying expected sequence classification](#options-classification)
+  * [options for controlling which alerts are fatal](#options-fatal)
+  * [options for controlling alert thresholds](#options-alerts)
+  * [options for controlling the alignment stage](#options-align)
+  * [options for controlling the blastx protein validation stage](#options-blastx)
+  * [options related to parallelization on a compute farm/cluster](#options-parallel)
+  * [options for skipping stages](#options-skip)
+  * [options for additional output files](#options-output)
 
 ## `v-annotate.pl` example usage<a name="exampleusage"></a>
 
