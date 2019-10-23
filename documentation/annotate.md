@@ -522,7 +522,7 @@ each explained in their own subsection below.
 
 ### `v-annotate.pl` options for controlling the thresholds for alerts detected in the classification, coverage determination, and alignment stages <a name="options-alerts"></a>
 
-| .....option......   | relevant alert code | relevant error | default value that triggers alert | explanation |
+| .......option........ | relevant alert code | relevant error | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | lowscore            | LOW_SCORE                           | < 0.3   | set bits/nt threshold for alert to `<x>` | 
 | `--indefclass <x>`  | indfclas            | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold to `<x>` |
