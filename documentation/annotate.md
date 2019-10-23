@@ -12,6 +12,8 @@
   * [options for skipping stages](#options-skip)
   * [options for additional output files](#options-output)
 
+---
+
 ## `v-annotate.pl` example usage<a name="exampleusage"></a>
 
 `v-annotate.pl` uses previously created VADR models from `v-build.pl`
@@ -467,11 +469,12 @@ file above listed five alerts. **Not all** fatal alerts will be
 printed to this `.fail.tbl` file, because when specific pairs of
 alerts occur, only one is output to reduce the number of overlapping
 or redundant problems reported to the submitter/user. In this case the
-`mutendcd` (`MUTATION_AT_END`) alert is not reported in the
-`.fail.tbl` file because it occurs in combination with a `cdsstopn`
-(`CDS_HAS_STOP_CODON`) alert.  More information on pairs of alerts
-that cause one to be unreported in `.fail.tbl` and `.fail.list` files
-is [below](#invalidated).
+`mutendcd` (`MUTATION_AT_END`) alert is omitted in the `.fail.tbl`
+file because it occurs in combination with a `cdsstopn`
+(`CDS_HAS_STOP_CODON`) alert. Only alerts output to the `.fail.tbl`
+table are output to the `.alt.list` file. The [alert
+table](#alertlist) includes more information on which alerts are
+omitted in combination with other alerts.
 
 The final three output files all end in `.list`. The `.pass.list` and
 `.fail.list` files are simply lists of all passing and failing
@@ -535,7 +538,7 @@ each explained in their own subsection below.
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | lowscore          | LOW_SCORE                           | < 0.3   | set bits per nt threshold for alert to `<x>` | 
 | `--indefclass <x>`  | indfclas          | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
-| `--incspec <x>`     | incgroup, incsubgrp | INCORRECT_GROUP, INCORRECT_SUBGROUP | < 0.2   | set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
+| `--incspec <x>`     | incgroup, incsubgrp | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
 | `--lowcov <x>`      | lowcovrg            | LOW_COVERAGE                        | < 0.9   | set fractional coverage threshold for alert to `<x>` |
 | `--dupreg <n>`      | dupregin            | DUPLICATE_REGIONS                   | >= 20   | set min number of model position overlap for alert to  `<n>` positions | 
 | `--biasfrac <x>`    | biasdseq            | BIASED_SEQUENCE                     | >= 0.25 | set fractional bit score threshold for biased score/total score for alert to `<x>` |
@@ -544,7 +547,7 @@ each explained in their own subsection below.
 | `--lowsimint <n>`   | lowsimis, lowsimif  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold for alert to `<n>` |
 | `--indefann <x>`    | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
 | `--indefann_mp <x>` | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features for alert to `<x>` |
-| `--xalntol <n>`     | indf5st, indf5lg, indf3st, indf3lg | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` |
+| `--xalntol <n>`     | indf5pst, indf3pst  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) |
 | `--xmaxins <n>`     | insertnp | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` |
 | `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
 | `--xlonescore <n>`  | indfantp | INDEFINITE_ANNOTATION | >= 80 | set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
@@ -620,6 +623,79 @@ The following options are related to parallel mode.
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
 | `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 | `--altinfo <s>` | output information on the internal data structure used to keep track of alerts to `<s>`, mainly useful for debugging |
+
+## Information on `v-annotate.pl` alerts <a name="alertlist"></a>
+
+To see a table with information on alerts, use the `v-annotate.pl --alt_list` option, like this:
+
+```
+v-annotate.pl --alt_list 
+```
+
+The table below has the information in the `--alt_list` output along
+with additional information for some alerts, such as relevant
+command-line options. The **fatal** column shows which alerts are
+fatal by default ("yes"), non-fatal by default ("no") or always fatal
+("always"). Alerts that are not always fatal can be modified to be
+fatal or non-fatal using the `--alt_pass` and `--alt_fail` options as
+described [here](#options-fatal). The **type** column reports if each
+alert pertains to an entire `sequence` or a specific annotated
+`feature` within a sequence. The **relevant feature types** column
+shows which feature types each alert can be reported for.  The
+**omitted in `.tbl` and `.alt.list` by** column lists other alerts
+that, if present, will cause this alert to be omitted in the `.tbl`
+and `.alt.list` files to reduce redundant information reported to
+user, if "-", then this alert is never omitted from those files.
+
+| alert code | fatal | type | short description/error name | long description | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
+|------------|-------|------|------------------------------|------------------|------------------|------------------------|--------------------------------------|
+| noannotn   | always| sequence | NO_ANNOTATION                   |  no significant similarity detected | none | - | - |
+| revcompl   | always| sequence | REVCOMPLEM                      | sequence appears to be reverse complemented | none | - | - | 
+| unexdivg   | always| sequence | UNEXPECTED_DIVERGENCE           | sequence is too divergent to confidently assign nucleotide-based annotation | none | - | - | 
+| noftrann   | always| sequence | NO_FEATURES_ANNOTATED           | sequence similarity to homology model does not overlap with any features | none | - | unexdivg | 
+| incsbgrp   | yes   | sequence | INCORRECT_SPECIFIED_SUBGROUP    | score difference too large between best overall model and best specified subgroup model | [`--incspec`](#options-alerts) | - | - | 
+| incgroup   | yes   | sequence | INCORRECT_SPECIFIED_GROUP       | score difference too large between best overall model and best specified group model | [`--incspec`](#options-alerts) | - | - |
+| lowcovrg   | yes   | sequence | LOW_COVERAGE                    | low sequence fraction with significant similarity to homology model | [`--lowcov`](#options-alerts) | - | - | 
+| dupregin   | yes   | sequence | DUPLICATE_REGIONS               | similarity to a model region occurs more than once | [`--dupreg`](#options-alerts) | - | - | 
+| discontn   | yes   | sequence | DISCONTINUOUS_SIMILARITY        | not all hits are in the same order in the sequence and the homology model | none | - | - | 
+| indfstrn   | yes   | sequence | INDEFINITE_STRAND               | significant similarity detected on both strands | [`--indefstr`](#options-alerts) | - | - | 
+| lowsim5s   | yes   | sequence | LOW_SIMILARITY_START            | significant similarity not detected at 5' end of the sequence | [`--lowsimterm`](#options-alerts) | - | - | 
+| lowsim3s   | yes   | sequence | LOW_SIMILARITY_END              | significant similarity not detected at 3' end of the sequence | [`--lowsimterm`](#options-alerts) | - | - | 
+| lowsimis   | yes   | sequence | LOW_SIMILARITY                  | internal region without significant similarity | [`--lowsimint`](#options-alerts) | - | - |
+| mutstart   | yes   | feature  | MUTATION_AT_START               | expected start codon could not be identified | [`--atgonly`](#options-basic) | CDS | - | 
+| mutendcd   | yes   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, predicted CDS stop by homology is invalid | none | CDS | cdsstopn, mutendex, mutendns | 
+| mutendns   | yes   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | none | CDS | - | 
+| mutendex   | yes   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | none | CDS | - | 
+| unexleng   | yes   | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | none | CDS, mat_peptide | - | 
+| cdsstopn   | yes   | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference | none | CDS | - | 
+| cdsstopp   | yes   | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment | none | CDS | - | 
+| peptrans   | yes   | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem | none | mat_peptide | - | 
+| pepadjcy   | yes   | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent | none | mat_peptide | - | 
+| indfantp   | yes   | feature  | INDEFINITE_ANNOTATION           | protein-based search identifies CDS not identified in nucleotide-based search | [`--xlonescore`(#options-alerts) | CDS | - | 
+| indfantn   | yes   | feature  | INDEFINITE_ANNOTATION           | nucleotide-based search identifies CDS not identified in protein-based search | none | CDS | - | 
+| indf5gap   | yes   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model is a gap at 5' boundary | none | all | - | 
+| indf5loc   | yes   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model has low confidence at 5' boundary | [`--indefann`, `--indefann_mp](#options-alerts) | all | - | 
+| indf5plg   | yes   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment extends past nucleotide-based alignment at 5' end | none | CDS | - | 
+| indf5pst   | yes   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint | [`--xalntol`](#options-alerts) | CDS | - | 
+| indf3gap   | yes   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model is a gap at 3' boundary | none | all | - |  
+| indf3loc   | yes   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model has low confidence at 3' boundary | [`--indefann`, `--indefann_mp](#options-alerts) | all | - | 
+| indf3plg   | yes   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment extends past nucleotide-based alignment at 3' end | none | CDS | - | 
+| indf3pst   | yes   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | [`--xalntol`](#options-alerts) | CDS | - | 
+| indfstrp   | yes   | feature  | INDEFINITE_STRAND               | strand mismatch between protein-based and nucleotide-based predictions | none | CDS | - | 
+| insertnp   | yes   | feature  | INSERTION_OF_NT                 | too large of an insertion in protein-based alignment | [`--xmaxins`](#options-alerts) | CDS | - | 
+| deletinp   | yes   | feature  | DELETION_OF_NT                  | too large of a deletion in protein-based alignment | [`--xmaxdel`](#options-alerts) | CDS | - | 
+| lowsim5f   | yes   | feature  | LOW_FEATURE_SIMILARITY_START    | region within annotated feature at 5' end of sequence lacks significant similarity | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+| lowsim3f   | yes   | feature  | LOW_FEATURE_SIMILARITY_END      | region within annotated feature at 3' end of sequence lacks significant similarity | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+| lowsimif   | yes   | feature  | LOW_FEATURE_SIMILARITY          | region within annotated feature lacks significant similarity | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+| qstsbgrp   | no    | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup | none | - | - | 
+| qstgroup   | no    | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group | none | - | - | 
+| indfclas   | no    | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) | [`--indefclas`](#options-alerts) | - | - | 
+| lowscore   | no    | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) | - | - | 
+| biasdseq   | no    | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition | [`--biasfrac`](#options-alerts) | - | - | 
+
+
+
+
 
 OTHER SECTIONS TODO :
 1. alert table, with extra columns: options that control, default thresholds, notes (xmaxins_exc, xmaxdel_exc) 
