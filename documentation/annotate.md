@@ -522,22 +522,22 @@ each explained in their own subsection below.
 
 ### `v-annotate.pl` options for controlling the thresholds for alerts detected in the classification, coverage determination, and alignment stages <a name="options-alerts"></a>
 
-| .......option........ | relevant alert code | relevant error | default value that triggers alert | explanation |
+| ........option......... | relevant alert code | relevant error | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
-| `--lowsc <x>`       | lowscore            | LOW_SCORE                           | < 0.3   | set bits/nt threshold for alert to `<x>` | 
-| `--indefclass <x>`  | indfclas            | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold to `<x>` |
-| `--incspec <x>`     | incgroup, incsubgrp | INCORRECT_GROUP, INCORRECT_SUBGROUP | < 0.2   | set bits per nt difference between best model and highest-scoring model in {group,subgroup} to |
+| `--lowsc <x>`       | lowscore          | LOW_SCORE                           | < 0.3   | set bits per nt threshold for alert to `<x>` | 
+| `--indefclass <x>`  | indfclas          | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
+| `--incspec <x>`     | incgroup, incsubgrp | INCORRECT_GROUP, INCORRECT_SUBGROUP | < 0.2   | set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
 | `--lowcov <x>`      | lowcovrg            | LOW_COVERAGE                        | < 0.9   | set fractional coverage threshold for alert to `<x>` |
-| `--dupreg <n>`      | dupregin            | DUPLICATE_REGIONS                   | >= 20   | set number of model position overlap to `<n>` positions | 
-| `--biasfrac <x>`    | biasdseq            | BIASED_SEQUENCE                     | >= 0.25 | set fractional bit score threshold for biased score/total score to `<x>` |
-| `--indefstr <x>`    | indfstrn            | INDEFINITE_STRAND                   | >= 25.0 | set bit score of weaker strand hit to `<x>` |
-| `--lowsimterm <n>`  | lowsim5s, lowsim3s, lowsim5f, lowsim3f | LOW_SIMILARITY_START, LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_START, LOW_FEATURE_SIMILARITY_END | >= 15   | set length (nt) threshold to `<n>` |
-| `--lowsimint <n>`   | lowsimis, lowsimif  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold to `<n>` |
-| `--indefann <x>`    | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features to `<x>` |
-| `--indefann_mp <x>` | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features to `<x>` |
-| `--xalntol <n>`     | indf5st, indf5lg, indf3st, indf3lg | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end to `<n>` |
-| `--xmaxins <n>`     | insertnp | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment to `<n>` |
-| `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment to `<n>` |
+| `--dupreg <n>`      | dupregin            | DUPLICATE_REGIONS                   | >= 20   | set min number of model position overlap for alert to  `<n>` positions | 
+| `--biasfrac <x>`    | biasdseq            | BIASED_SEQUENCE                     | >= 0.25 | set fractional bit score threshold for biased score/total score for alert to `<x>` |
+| `--indefstr <x>`    | indfstrn            | INDEFINITE_STRAND                   | >= 25.0 | set bit score of weaker strand hit for alert to `<x>` |
+| `--lowsimterm <n>`  | lowsim5s, lowsim3s, lowsim5f, lowsim3f | LOW_SIMILARITY_START, LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_START, LOW_FEATURE_SIMILARITY_END | >= 15   | set length (nt) threshold for alert to `<n>` |
+| `--lowsimint <n>`   | lowsimis, lowsimif  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold for alert to `<n>` |
+| `--indefann <x>`    | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
+| `--indefann_mp <x>` | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features for alert to `<x>` |
+| `--xalntol <n>`     | indf5st, indf5lg, indf3st, indf3lg | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` |
+| `--xmaxins <n>`     | insertnp | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` |
+| `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
 
 ---
 OTHER SECTIONS TODO :
