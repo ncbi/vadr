@@ -2104,6 +2104,12 @@ sub vdr_CoordsFromLocation {
   elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
     $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
   }
+  elsif($location =~ /^\<?(\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  elsif($location =~ /^\>?(\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
   else { 
     ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
   }
@@ -2179,6 +2185,12 @@ sub vdr_CoordsFromLocationWithCarrots {
   }
   elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
     $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  elsif($location =~ /^(\<?\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  elsif($location =~ /^(\>?\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
   }
   else { 
     ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
