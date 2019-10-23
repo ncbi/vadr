@@ -503,7 +503,7 @@ each explained in their own subsection below.
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-b <s>` | specify that the BLAST database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
 | `--atgonly` | only consider ATG as a valid start codon, regardless of model's translation table |
-| `--keep` | keep [additional output files](formats.db#annotate-keep) that are normally removed ( |
+| `--keep` | keep [additional output files](formats.db#annotate-keep) that are normally removed |
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-expclassification"></a>
 
@@ -557,6 +557,48 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 ---
 
 ### `v-annotate.pl` options for controlling blastx protein validation stage
+
+Below is a list of options for controlling the blastx protein
+validaation stage. Several of these control command-line options that
+will be passed to `blastx`. For more information on these options and
+how they control `blastx`, see the NCBI BLAST documentation
+(tables C1 and C4 of https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+
+| ......option...... | explanation |
+|---------------------|--------------------|
+| `--xmatrix <s>`     | use the substitution matrix `<s>` (sets the `blastx -matrix <s>` option), default is to use the default `blastx` matrix | 
+| `--xdrop <n>`       | set the xdrop options to `<n>` (sets the `blastx` `-xdrop_ungap <n>`, `-xdrop_gap <n>` and `-xdrop_gap_final <n>` with the same `<n>`), default is to use default `blastx` values |
+| `--xnumali <n>`     | specify that the top `<n>` alignments are output by `blastx`, mostly relevant in combination with `--xlongest` (sets the `blastx -num_alignments <n>` option), default `<n>` is 20 | 
+| `--xlongest`        | use the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to use the highest scoring alignment | 
+| `--xminntlen <n>`   | set the minimum lenght in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for blastx analysis to `<n>`, default `<n>` is 30 |
+
+### `v-annotate.pl` options related to parallelization on a compute farm/cluster
+
+The most time-consuming stages of `v-annotate.pl` (classification,
+coverage determination and alignment) can be parallelized on a cluster
+by splitting up the input sequence file randomly into multiple files,
+and running each as a separate job. This is most beneficial for large
+input sequence files. Parallel mode is invoked with the `-p` option.
+By default, `v-annotate.pl` will consult the file
+`$VADRSCRIPTSDIR/vadr.qsubinfo` to read the command prefix and suffix
+for submitting jobs to the cluster.  Currently this is set up to use
+Univa Grid Engine (UGE 8.5.5), but you can either modify this file to
+work with your own cluster or create a new file `<s>` and use the
+option `-q <s>` to read that file.  The
+`$VADRSCRIPTSDIR/vadr.qsubinfo` has comments at the top that explain
+the format of the file. Email eric.nawrocki@nih.gov for help.
+The following options are related to parallel mode.
+
+| ......option...... | explanation |
+|---------------------|--------------------|
+| `-p`           | run in parallel mode so that classification, and each per-model coverage determination and alignment step is split into multiple jobs and run in parallel on a cluster | 
+| `-q <s>`       | read cluster information file from file `<s>` instead of from the default file `$VADRSCRIPTSDIR/vadr.qsubinfo` |
+| `--nkb <n>`    | set the target size for split-up sequence files to `<n>` Kb (thousand nucleotides), higher values will result in fewer parallel jobs and slower total run times, default `<n>` is `10` |
+| `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
+| `--errcheck`   | consider any output to STDERR from a parallel job as an indication the job has failed, this will cause `v-annotate.pl` to exit, default is to ignore output to STDERR | 
+| `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
+
+
 
 Below is a list of options for controlling the blastx protein
 validaation stage. Several of these control command-line options that
