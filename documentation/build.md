@@ -227,7 +227,6 @@ RefSeq models for the VADR 1.0 model library [here](#1.0library-dengue").
 | `--fadd <s>`  | add feature types listed in `<s>` to the default set, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace |
 | `--fskip <s>`  | do not store information for feature types listed in `<s>`, where `<s>` is a comma-separated string with each feature type separated by a comma with no whitespace; `<s>` may contain feature types from the default set, or from other features (if `--fall` also used) |
 
-
 ### `v-build.pl` options for controlling what qualifiers are stored in the output model info file<a name="options-qualifiers"></a>
 
 By default, only `product`, `gene` and `exception` qualifiers read
@@ -280,7 +279,7 @@ https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=cgenco
 Several options exist for controlling the command-line options that will be passed
 to Infernal's `cmbuild` program. For more information on these options and how 
 they control `cmbuild`, see the Infernal 
-User's Guide (http://eddylab.org/infernal/Userguide.pdf).
+User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal/Userguide.pdf) .
 
 | ......option...... | explanation | 
 |--------|-------------| 

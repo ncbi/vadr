@@ -505,7 +505,7 @@ each explained in their own subsection below.
 | `--atgonly` | only consider ATG as a valid start codon, regardless of model's translation table |
 | `--keep` | keep [additional output files](formats.db#annotate-keep) that are normally removed |
 
-### `v-annotate.pl` options for specifying expected sequence classification<a name="options-expclassification"></a>
+### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
 
 | .......option....... | explanation | 
 |--------|-------------| 
@@ -540,7 +540,7 @@ each explained in their own subsection below.
 | `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
 | `--xlonescore <n>`  | indfantp | INDEFINITE_ANNOTATION | >= 80 | set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
 
-### `v-annotate.pl` options for controlling cmalign alignment stage
+### `v-annotate.pl` options for controlling cmalign alignment stage <a name="options-align"></a>
 
 Several options exist for controlling the command-line options that will be passed
 to Infernal's `cmalign` program in the alignment stage. For more information on these options and how 
@@ -556,7 +556,7 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 | `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
 ---
 
-### `v-annotate.pl` options for controlling blastx protein validation stage
+### `v-annotate.pl` options for controlling blastx protein validation stage <a name="options-blastx"></a>
 
 Below is a list of options for controlling the blastx protein
 validaation stage. Several of these control command-line options that
@@ -572,7 +572,7 @@ how they control `blastx`, see the NCBI BLAST documentation
 | `--xlongest`        | use the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to use the highest scoring alignment | 
 | `--xminntlen <n>`   | set the minimum lenght in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for blastx analysis to `<n>`, default `<n>` is 30 |
 
-### `v-annotate.pl` options related to parallelization on a compute farm/cluster
+### `v-annotate.pl` options related to parallelization on a compute farm/cluster <a name="options-parallel"></a>
 
 The most time-consuming stages of `v-annotate.pl` (classification,
 coverage determination and alignment) can be parallelized on a cluster
@@ -598,24 +598,19 @@ The following options are related to parallel mode.
 | `--errcheck`   | consider any output to STDERR from a parallel job as an indication the job has failed, this will cause `v-annotate.pl` to exit, default is to ignore output to STDERR | 
 | `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
 
+### `v-annotate.pl` options for skipping stages<a name="options-skip"></a>
 
+| ......option...... | explanation | 
+|--------|-------------| 
+| `--skipalign` | skip the `cmalign` stage, use results from previous run, this is mostly useful for debugging purposes | 
 
-Below is a list of options for controlling the blastx protein
-validaation stage. Several of these control command-line options that
-will be passed to `blastx`. For more information on these options and
-how they control `blastx`, see the NCBI BLAST documentation
-(tables C1 and C4 of https://www.ncbi.nlm.nih.gov/books/NBK279684/).
+### `v-annotate.pl` options for optional output files<a name="options-output"></a>
 
-| ......option...... | explanation |
-|---------------------|--------------------|
-| `--xmatrix <s>`     | use the substitution matrix `<s>` (sets the `blastx -matrix <s>` option), default is to use the default `blastx` matrix | 
-| `--xdrop <n>`       | set the xdrop options to `<n>` (sets the `blastx` `-xdrop_ungap <n>`, `-xdrop_gap <n>` and `-xdrop_gap_final <n>` with the same `<n>`), default is to use default `blastx` values |
-| `--xnumali <n>`     | specify that the top `<n>` alignments are output by `blastx`, mostly relevant in combination with `--xlongest` (sets the `blastx -num_alignments <n>` option), default `<n>` is 20 | 
-| `--xlongest`        | use the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to use the highest scoring alignment | 
-| `--xminntlen <n>`   | set the minimum lenght in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for blastx analysis to `<n>`, default `<n>` is 30 |
-
----
-
+| .......option....... | explanation | 
+|--------|-------------| 
+| `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
+| `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
+| `--altinfo <s>` | output information on the internal data structure used to keep track of alerts to `<s>`, mainly useful for debugging |
 
 OTHER SECTIONS TODO :
 1. alert table, with extra columns: options that control, default thresholds, notes (xmaxins_exc, xmaxdel_exc) 

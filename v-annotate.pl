@@ -205,15 +205,15 @@ opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef
 opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+#     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
+opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                         help-output    
 opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
 opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
-#     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -273,13 +273,13 @@ my $options_okay =
                 'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
+# options for skipping stages, using earlier results
+                'skipalign'     => \$GetOptions_H{"--skipalign"});
 # optional output files
                 'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
                 'altinfo'       => \$GetOptions_H{"--altinfo"},
-# options for skipping stages, using earlier results
-                'skipalign'     => \$GetOptions_H{"--skipalign"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
