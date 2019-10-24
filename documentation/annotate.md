@@ -646,57 +646,57 @@ In the table below, the **type** column reports if each alert pertains to an ent
 #### Description of *always fatal* alert codes 
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| noannotn   | sequence | NO_ANNOTATION                   | no significant similarity detected |
-| revcompl   | sequence | REVCOMPLEM                      | sequence appears to be reverse complemented |
-| unexdivg   | sequence | UNEXPECTED_DIVERGENCE           | sequence is too divergent to confidently assign nucleotide-based annotation |
-| noftrann   | sequence | NO_FEATURES_ANNOTATED           | sequence similarity to homology model does not overlap with any features |
+| *noannotn*   | sequence | NO_ANNOTATION                   | no significant similarity detected |
+| *revcompl*   | sequence | REVCOMPLEM                      | sequence appears to be reverse complemented |
+| *unexdivg*   | sequence | UNEXPECTED_DIVERGENCE           | sequence is too divergent to confidently assign nucleotide-based annotation |
+| *noftrann*   | sequence | NO_FEATURES_ANNOTATED           | sequence similarity to homology model does not overlap with any features |
 
 #### Description of alerts that are *fatal* by default
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| incsbgrp   | sequence | INCORRECT_SPECIFIED_SUBGROUP    | score difference too large between best overall model and best specified subgroup model |
-| incgroup   | sequence | INCORRECT_SPECIFIED_GROUP       | score difference too large between best overall model and best specified group model |
-| lowcovrg   | sequence | LOW_COVERAGE                    | low sequence fraction with significant similarity to homology model |
-| dupregin   | sequence | DUPLICATE_REGIONS               | similarity to a model region occurs more than once |
-| discontn   | sequence | DISCONTINUOUS_SIMILARITY        | not all hits are in the same order in the sequence and the homology model |
-| indfstrn   | sequence | INDEFINITE_STRAND               | significant similarity detected on both strands |
-| lowsim5s   | sequence | LOW_SIMILARITY_START            | significant similarity not detected at 5' end of the sequence |
-| lowsim3s   | sequence | LOW_SIMILARITY_END              | significant similarity not detected at 3' end of the sequence |
-| lowsimis   | sequence | LOW_SIMILARITY                  | internal region without significant similarity |
-| mutstart   | feature  | MUTATION_AT_START               | expected start codon could not be identified |
-| mutendcd   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, predicted CDS stop by homology is invalid |
-| mutendns   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon |
-| mutendex   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position |
-| unexleng   | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 |
-| cdsstopn   | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference |
-| cdsstopp   | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment |
-| peptrans   | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem |
-| pepadjcy   | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent |
-| indfantp   | feature  | INDEFINITE_ANNOTATION           | protein-based search identifies CDS not identified in nucleotide-based search |
-| indfantn   | feature  | INDEFINITE_ANNOTATION           | nucleotide-based search identifies CDS not identified in protein-based search |
-| indf5gap   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model is a gap at 5' boundary |
-| indf5loc   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model has low confidence at 5' boundary |
-| indf5plg   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment extends past nucleotide-based alignment at 5' end |
-| indf5pst   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint |
-| indf3gap   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model is a gap at 3' boundary |
-| indf3loc   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model has low confidence at 3' boundary |
-| indf3plg   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment extends past nucleotide-based alignment at 3' end |
-| indf3pst   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint |
-| indfstrp   | feature  | INDEFINITE_STRAND               | strand mismatch between protein-based and nucleotide-based predictions |
-| insertnp   | feature  | INSERTION_OF_NT                 | too large of an insertion in protein-based alignment |
-| deletinp   | feature  | DELETION_OF_NT                  | too large of a deletion in protein-based alignment |
-| lowsim5f   | feature  | LOW_FEATURE_SIMILARITY_START    | region within annotated feature at 5' end of sequence lacks significant similarity |
-| lowsim3f   | feature  | LOW_FEATURE_SIMILARITY_END      | region within annotated feature at 3' end of sequence lacks significant similarity |
-| lowsimif   | feature  | LOW_FEATURE_SIMILARITY          | region within annotated feature lacks significant similarity |
+| *incsbgrp*   | sequence | INCORRECT_SPECIFIED_SUBGROUP    | score difference too large between best overall model and best specified subgroup model |
+| *incgroup*   | sequence | INCORRECT_SPECIFIED_GROUP       | score difference too large between best overall model and best specified group model |
+| *lowcovrg*   | sequence | LOW_COVERAGE                    | low sequence fraction with significant similarity to homology model |
+| *dupregin*   | sequence | DUPLICATE_REGIONS               | similarity to a model region occurs more than once |
+| *discontn*   | sequence | DISCONTINUOUS_SIMILARITY        | not all hits are in the same order in the sequence and the homology model |
+| *indfstrn*   | sequence | INDEFINITE_STRAND               | significant similarity detected on both strands |
+| *lowsim5s*   | sequence | LOW_SIMILARITY_START            | significant similarity not detected at 5' end of the sequence |
+| *lowsim3s*   | sequence | LOW_SIMILARITY_END              | significant similarity not detected at 3' end of the sequence |
+| *lowsimis*   | sequence | LOW_SIMILARITY                  | internal region without significant similarity |
+| *mutstart*   | feature  | MUTATION_AT_START               | expected start codon could not be identified |
+| *mutendcd*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, predicted CDS stop by homology is invalid |
+| *mutendns*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon |
+| *mutendex*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position |
+| *unexleng*   | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 |
+| [*cdsstopn*](#cdsstopn2)   | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference | <a name="cdsstopn1"></a>
+| *cdsstopp*   | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment |
+| *peptrans*   | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem |
+| *pepadjcy*   | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent |
+| *indfantp*   | feature  | INDEFINITE_ANNOTATION           | protein-based search identifies CDS not identified in nucleotide-based search |
+| *indfantn*   | feature  | INDEFINITE_ANNOTATION           | nucleotide-based search identifies CDS not identified in protein-based search |
+| *indf5gap*   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model is a gap at 5' boundary |
+| *indf5loc*   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model has low confidence at 5' boundary |
+| *indf5plg*   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment extends past nucleotide-based alignment at 5' end |
+| *indf5pst*   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint |
+| *indf3gap*   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model is a gap at 3' boundary |
+| *indf3loc*   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model has low confidence at 3' boundary |
+| *indf3plg*   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment extends past nucleotide-based alignment at 3' end |
+| *indf3pst*   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint |
+| *indfstrp*   | feature  | INDEFINITE_STRAND               | strand mismatch between protein-based and nucleotide-based predictions |
+| *insertnp*   | feature  | INSERTION_OF_NT                 | too large of an insertion in protein-based alignment |
+| *deletinp*   | feature  | DELETION_OF_NT                  | too large of a deletion in protein-based alignment |
+| *lowsim5f*   | feature  | LOW_FEATURE_SIMILARITY_START    | region within annotated feature at 5' end of sequence lacks significant similarity |
+| *lowsim3f*   | feature  | LOW_FEATURE_SIMILARITY_END      | region within annotated feature at 3' end of sequence lacks significant similarity |
+| *lowsimif*   | feature  | LOW_FEATURE_SIMILARITY          | region within annotated feature lacks significant similarity |
 
 #### Description of alerts that are *non-fatal* by default
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| qstsbgrp   | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup |
-| qstgroup   | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group |
-| indfclas   | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) |
-| lowscore   | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) |
-| biasdseq   | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition |
+| *qstsbgrp*   | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup |
+| *qstgroup*   | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group |
+| *indfclas*   | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) |
+| *lowscore*   | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) |
+| *biasdseq*   | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition |
 
 
 ### Additional information on alerts
@@ -712,51 +712,56 @@ that, if present, will cause this alert to be omitted in the `.tbl`
 and `.alt.list` files to reduce redundant information reported to
 user, this is "-" for alerts that are never omitted from those files.
 
+#### More information on *always fatal* alert codes 
 | alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
 |------------|------------------------------|------------------|------------------------|--------------------------------------|
-| noannotn   | NO_ANNOTATION                | none | - | - |
-| revcompl   | REVCOMPLEM                   | none | - | - | 
-| unexdivg   | UNEXPECTED_DIVERGENCE        | none | - | - | 
-| noftrann   | NO_FEATURES_ANNOTATED        | none | - | unexdivg | 
-| incsbgrp   | INCORRECT_SPECIFIED_SUBGROUP    | [`--incspec`](#options-alerts) | - | - | 
-| incgroup   | INCORRECT_SPECIFIED_GROUP       | [`--incspec`](#options-alerts) | - | - |
-| lowcovrg   | LOW_COVERAGE                    | [`--lowcov`](#options-alerts) | - | - | 
-| dupregin   | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts) | - | - | 
-| discontn   | DISCONTINUOUS_SIMILARITY        | none | - | - | 
-| indfstrn   | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts) | - | - | 
-| lowsim5s   | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts) | - | - | 
-| lowsim3s   | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts) | - | - | 
-| lowsimis   | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts) | - | - |
-| mutstart   | MUTATION_AT_START               | [`--atgonly`](#options-basic) | CDS | - | 
-| mutendcd   | MUTATION_AT_END                 | none | CDS | cdsstopn, mutendex, mutendns | 
-| mutendns   | MUTATION_AT_END                 | none | CDS | - | 
-| mutendex   | MUTATION_AT_END                 | none | CDS | - | 
-| unexleng   | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - | 
-| cdsstopn   | CDS_HAS_STOP_CODON              | none | CDS | - | 
-| cdsstopp   | CDS_HAS_STOP_CODON              | none | CDS | - | 
-| peptrans   | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - | 
-| pepadjcy   | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - | 
-| indfantp   | INDEFINITE_ANNOTATION           | [`--xlonescore`(#options-alerts) | CDS | - | 
-| indfantn   | INDEFINITE_ANNOTATION           | none | CDS | - | 
-| indf5gap   | INDEFINITE_ANNOTATION_START     | none | all | - | 
-| indf5loc   | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp](#options-alerts) | all | - | 
-| indf5plg   | INDEFINITE_ANNOTATION_START     | none | CDS | - | 
-| indf5pst   | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts) | CDS | - | 
-| indf3gap   | INDEFINITE_ANNOTATION_END       | none | all | - |  
-| indf3loc   | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp](#options-alerts) | all | - | 
-| indf3plg   | INDEFINITE_ANNOTATION_END       | none | CDS | - | 
-| indf3pst   | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts) | CDS | - | 
-| indfstrp   | INDEFINITE_STRAND               | none | CDS | - | 
-| insertnp   | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts) | CDS | - | 
-| deletinp   | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts) | CDS | - | 
-| lowsim5f   | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
-| lowsim3f   | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
-| lowsimif   | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
-| qstsbgrp   | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - | 
-| qstgroup   | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - | 
-| indfclas   | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts) | - | - | 
-| lowscore   | LOW_SCORE                       | [`--lowsc`](#options-alerts) | - | - | 
-| biasdseq   | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts) | - | - | 
+| *noannotn*   | NO_ANNOTATION                | none | - | - |
+| *revcompl*   | REVCOMPLEM                   | none | - | - | 
+| *unexdivg*   | UNEXPECTED_DIVERGENCE        | none | - | - | 
+| *noftrann*   | NO_FEATURES_ANNOTATED        | none | - | unexdivg | 
+
+#### More information on alerts that are *fatal* by default
+| *incsbgrp*   | INCORRECT_SPECIFIED_SUBGROUP    | [`--incspec`](#options-alerts) | - | - | 
+| *incgroup*   | INCORRECT_SPECIFIED_GROUP       | [`--incspec`](#options-alerts) | - | - |
+| *lowcovrg*   | LOW_COVERAGE                    | [`--lowcov`](#options-alerts) | - | - | 
+| *dupregin*   | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts) | - | - | 
+| *discontn*   | DISCONTINUOUS_SIMILARITY        | none | - | - | 
+| *indfstrn*   | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts) | - | - | 
+| *lowsim5s*   | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts) | - | - | 
+| *lowsim3s*   | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts) | - | - | 
+| *lowsimis*   | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts) | - | - |
+| *mutstart*   | MUTATION_AT_START               | [`--atgonly`](#options-basic) | CDS | - | 
+| *mutendcd*   | MUTATION_AT_END                 | none | CDS | cdsstopn, mutendex, mutendns | 
+| *mutendns*   | MUTATION_AT_END                 | none | CDS | - | 
+| *mutendex*   | MUTATION_AT_END                 | none | CDS | - | 
+| *unexleng*   | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - | 
+| [*cdsstopn*](#cdsstopn1)   | CDS_HAS_STOP_CODON              | none | CDS | - | <a name="cdsstopn2"></a>
+| *cdsstopp*   | CDS_HAS_STOP_CODON              | none | CDS | - | 
+| *peptrans*   | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - | 
+| *pepadjcy*   | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - | 
+| *indfantp*   | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts) | CDS | - | 
+| *indfantn*   | INDEFINITE_ANNOTATION           | none | CDS | - | 
+| *indf5gap*   | INDEFINITE_ANNOTATION_START     | none | all | - | 
+| *indf5loc*   | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts) | all | - | 
+| *indf5plg*   | INDEFINITE_ANNOTATION_START     | none | CDS | - | 
+| *indf5pst*   | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts) | CDS | - | 
+| *indf3gap*   | INDEFINITE_ANNOTATION_END       | none | all | - |  
+| *indf3loc*   | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts) | all | - | 
+| *indf3plg*   | INDEFINITE_ANNOTATION_END       | none | CDS | - | 
+| *indf3pst*   | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts) | CDS | - | 
+| *indfstrp*   | INDEFINITE_STRAND               | none | CDS | - | 
+| *insertnp*   | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts) | CDS | - | 
+| *deletinp*   | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts) | CDS | - | 
+| *lowsim5f*   | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+| *lowsim3f*   | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+| *lowsimif*   | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+
+#### More information on alerts that are *non-fatal* by default
+| *qstsbgrp*   | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - | 
+| *qstgroup*   | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - | 
+| *indfclas*   | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts) | - | - | 
+| *lowscore*   | LOW_SCORE                       | [`--lowsc`](#options-alerts) | - | - | 
+| *biasdseq*   | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts) | - | - | 
 
 
 ## Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
