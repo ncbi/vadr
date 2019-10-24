@@ -718,9 +718,11 @@ user, this is "-" for alerts that are never omitted from those files.
 | *noannotn*   | NO_ANNOTATION                | none | - | - |
 | *revcompl*   | REVCOMPLEM                   | none | - | - | 
 | *unexdivg*   | UNEXPECTED_DIVERGENCE        | none | - | - | 
-| *noftrann*   | NO_FEATURES_ANNOTATED        | none | - | unexdivg | 
+| *noftrann*   | NO_FEATURES_ANNOTATED        | none | - | *unexdivg* | 
 
 #### More information on alerts that are *fatal* by default
+| alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
+|------------|------------------------------|------------------|------------------------|--------------------------------------|
 | *incsbgrp*   | INCORRECT_SPECIFIED_SUBGROUP    | [`--incspec`](#options-alerts) | - | - | 
 | *incgroup*   | INCORRECT_SPECIFIED_GROUP       | [`--incspec`](#options-alerts) | - | - |
 | *lowcovrg*   | LOW_COVERAGE                    | [`--lowcov`](#options-alerts) | - | - | 
@@ -731,7 +733,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | *lowsim3s*   | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts) | - | - | 
 | *lowsimis*   | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts) | - | - |
 | *mutstart*   | MUTATION_AT_START               | [`--atgonly`](#options-basic) | CDS | - | 
-| *mutendcd*   | MUTATION_AT_END                 | none | CDS | cdsstopn, mutendex, mutendns | 
+| *mutendcd*   | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* | 
 | *mutendns*   | MUTATION_AT_END                 | none | CDS | - | 
 | *mutendex*   | MUTATION_AT_END                 | none | CDS | - | 
 | *unexleng*   | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - | 
@@ -757,6 +759,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | *lowsimif*   | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
 
 #### More information on alerts that are *non-fatal* by default
+| alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
+|------------|------------------------------|------------------|------------------------|--------------------------------------|
 | *qstsbgrp*   | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - | 
 | *qstgroup*   | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - | 
 | *indfclas*   | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts) | - | - | 
