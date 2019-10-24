@@ -1,9 +1,6 @@
 # VADR output file formats
 
-VADR creates many different types of output files. You can find an explanation
-of these formats below.
-
-* [generic VADR output files created by all VADR scripts](#generic)
+* [VADR output files created by all VADR scripts](#generic)
   * [`.log` files](#log)
   * [`.cmd` files](#cmd)
   * [`.filelist` files](#filelist)
@@ -18,7 +15,7 @@ of these formats below.
   * [`.sgm` files](#sgm)
   * [`.sqa` files](#sqa)
   * [`.sqc` files](#sqc)
-  * [Extra output files saved with the `--keep` option](#annotate-keep)
+  * [extra output files saved with the `--keep` option](#annotate-keep)
 * [VADR `coords` coordinate string format](#coords)
 * [VADR sequence naming conventions](#seqnames)
 
@@ -533,3 +530,5 @@ annotated. Here are some examples:
 | `NC_039897.1`          | `NC_039897.1/7025..7672:+` | `7025`            | `7672`          | `+`                |  Typical of `v-build.pl` `.cds.fa` output files | 
 | `JN975492.1`           | `JN975492.1/mat_peptide.2/1001-2092:+` | `1001`            | `2092`          | `+`    |  Typical of `v-annotate.pl` `.<model-name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
 
+---
+#### For help email eric.nawrocki@nih.gov

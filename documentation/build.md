@@ -489,3 +489,6 @@ to reproduce the library exactly.
 After completing the steps above to make the 197 models, you can make
 the VADR 1.0 library by following the instructions for creating a VADR
 library starting at step 2 [here](#library).
+
+---
+#### For help email eric.nawrocki@nih.gov

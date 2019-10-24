@@ -1,7 +1,9 @@
-# `v-annotate.pl` usage and command-line options
+# `v-annotate.pl` example usage, command-line options and alert information
 
 * [`v-annotate.pl` example usage](#exampleusage)
-  * 
+  * [example annotation of norovirus sequences](#examplebasic)
+  * [example of using `--alt_pass` to change alerts from fatal to non-fatal](#examplealtpass)
+  * [example of using `-p` to run in parallel mode](#exampleparallel)
 * [`v-annotate.pl` command-line options](#options)
   * [basic options](#options-basic)
   * [options for specifying expected sequence classification](#options-classification)
@@ -12,8 +14,8 @@
   * [options related to parallelization on a compute farm/cluster](#options-parallel)
   * [options for skipping stages](#options-skip)
   * [options for additional output files](#options-output)
-* Information on `v-annotate.pl` alerts <a name="alerts"></a>
-* Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> |
+* [Basic Information on `v-annotate.pl` alerts](#alerts)
+* [Additional information on `v-annotate.pl` alerts](#alerts2)
 
 ---
 
@@ -857,6 +859,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 
+---
 #### For help email eric.nawrocki@nih.gov
 
 
