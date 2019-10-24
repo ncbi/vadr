@@ -159,8 +159,8 @@ opt_Add("--subgroup",      "string",  undef,                  $g, "--group", und
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
 #        option               type   default                group  requires incompat    preamble-output                                                     help-output    
 opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
-opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO     cause FAILure",             "specify that alert codes in comma-separated <s> DO NOT cause FAILure", \%opt_HH, \@opt_order_A);
-opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO NOT cause FAILure",             "specify that alert codes in comma-separated <s> DO     cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
@@ -274,12 +274,12 @@ my $options_okay =
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages, using earlier results
-                'skipalign'     => \$GetOptions_H{"--skipalign"});
+                'skipalign'     => \$GetOptions_H{"--skipalign"},
 # optional output files
                 'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'       => \$GetOptions_H{"--altinfo"},
+                'altinfo'       => \$GetOptions_H{"--altinfo"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;

@@ -1,6 +1,7 @@
 # `v-annotate.pl` usage and command-line options
 
 * [`v-annotate.pl` example usage](#exampleusage)
+  * 
 * [`v-annotate.pl` command-line options](#options)
   * [basic options](#options-basic)
   * [options for specifying expected sequence classification](#options-classification)
@@ -11,10 +12,12 @@
   * [options related to parallelization on a compute farm/cluster](#options-parallel)
   * [options for skipping stages](#options-skip)
   * [options for additional output files](#options-output)
+* Information on `v-annotate.pl` alerts <a name="alerts"></a>
+* Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> |
 
 ---
 
-## `v-annotate.pl` example usage<a name="exampleusage"></a>
+## `v-annotate.pl` example usage <a name="exampleusage"></a>
 
 `v-annotate.pl` uses previously created VADR models from `v-build.pl`
 and uses them to analyze and annotate sequences in an input sequence
@@ -492,6 +495,106 @@ JN975492.1	INDEFINITE_ANNOTATION_END	VF1	protein-based alignment does not extend
 JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
 ```
 
+## Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa <a name="examplealtpass"></a>
+
+One way to change the behavior of `v-annotate.pl` is to change which
+alerts are fatal or non-fatal.  Most alerts are fatal by default, but
+some are not, as shown in the [alert table](#alerts).  Some alerts are
+*always fatal* in that they cannot be changed, but all others can be
+toggled between fatal or non-fatal using the `--alt_pass` and `--alt_fail` options.
+
+For example, we can make the `JN976492.1` sequence above pass by
+making the five observed alerts (*mutendcd*, *cdsstopn*, *cdsstopp*,
+*indf3pst*, and *indf5pst*) by rerunning the `v-annotate.pl` above with this command: 
+
+```
+v-annotate.pl --alt_pass mutendcd,cdsstopn,cdsstopp,indf3pst,indf5pst $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-pass-noro.9
+```
+
+To supply multiple alerts with `--alt_pass` or `--alt_fail`, separate them by a `,` without any whitespace:
+
+The output will look very similar to the above run, but the summary information printed 
+at the end will show that no sequences fail this time, despite the same alerts being
+reported. 
+
+```
+# Summary of classified sequences:
+#
+#                                      num   num   num
+#idx  model      group      subgroup  seqs  pass  fail
+#---  ---------  ---------  --------  ----  ----  ----
+1     NC_008311  Norovirus  GV           2     2     0
+2     NC_001959  Norovirus  GI           2     2     0
+3     NC_039477  Norovirus  GII          2     2     0
+4     NC_029645  Norovirus  GIII         2     2     0
+5     NC_031324  Norovirus  GI           1     1     0
+#---  ---------  ---------  --------  ----  ----  ----
+-     *all*      -          -            9     9     0
+-     *none*     -          -            0     0     0
+#---  ---------  ---------  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                            per    num   num  long
+#idx  code      failure  description                     type  cases  seqs  description
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+1     mutendcd  no       MUTATION_AT_END              feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+2     cdsstopn  no       CDS_HAS_STOP_CODON           feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+3     cdsstopp  no       CDS_HAS_STOP_CODON           feature      1     1  stop codon in protein-based alignment
+4     indf5pst  no       INDEFINITE_ANNOTATION_START  feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+5     indf3pst  no       INDEFINITE_ANNOTATION_END    feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+```
+
+The `--alt_fail <s>` option works the same way as `alt_pass <s>` but alert codes
+in `<s>` should be [non-fatal by default](#nonfatal1).
+
+---
+## Example of using the `-p` option to parallelize `v-annotate.pl`<a name="exampleparallel"></a>
+
+The most time-consuming stages of `v-annotate.pl` (classification,
+coverage determination and alignment) can be parallelized on a cluster
+by splitting up the input sequence file randomly into multiple files,
+and running each as a separate job. This is most beneficial for large
+input sequence files. Parallel mode is invoked with the `-p` option.
+By default, `v-annotate.pl` will consult the file
+`$VADRSCRIPTSDIR/vadr.qsubinfo` to read the command prefix and suffix
+for submitting jobs to the cluster.  This file is set up to use
+Univa Grid Engine (UGE 8.5.5), but you can either modify this file to
+work with your own cluster or create a new file `<s>` and use the
+option `-q <s>` to read that file.  The
+`$VADRSCRIPTSDIR/vadr.qsubinfo` has comments at the top that explain
+the format of the file. Email eric.nawrocki@nih.gov for help.
+
+To repeat the above `v-annotate.pl` run in parallel mode, use this command: 
+
+```
+v-annotate.pl -p $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-parallel-noro.9
+```
+
+The output will look very similar to the run without `-p`, but with additional lines of 
+output explaining that jobs have been submitted and are running on the compute farm:
+
+```
+# Submitting 1 cmscan classification job(s) to the farm                               ... 
+# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
+#	   0 of    1 jobs finished (0.2 minutes spent waiting)
+#	   0 of    1 jobs finished (0.5 minutes spent waiting)
+#	   0 of    1 jobs finished (0.8 minutes spent waiting)
+#	   0 of    1 jobs finished (1.0 minutes spent waiting)
+#	   1 of    1 jobs finished (1.2 minutes spent waiting)
+# done. [   75.7 seconds]
+# Submitting 1 cmsearch coverage determination job(s) (NC_001959: 2 seqs) to the farm ... 
+# Waiting a maximum of 500 minutes for all farm jobs to finish                        ... 
+#	   1 of    1 jobs finished (0.2 minutes spent waiting)
+# done. [   15.2 seconds]
+```
+
+Usage of `-p` will not affect the output of `v-annotate.pl` other than
+these lines about the status of jobs, but it can make processing of
+large sequence files significantly faster depending on how busy the
+cluster is.
+
 ---
 ## `v-annotate.pl` command-line options<a name="options"></a>
 
@@ -514,7 +617,7 @@ each explained in their own subsection below.
 | `-m <s>` | use the CM file `<s>`, instead of the default CM file ($VADRMODELDIR/vadr.cm) |
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-b <s>` | specify that the BLAST database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
-| `--atgonly` | only consider ATG as a valid start codon, regardless of model's translation table |
+| `--atgonly` | only consider ATG as a valid start codon, regardless of model's translation table <a name="options-basic-atgonly"></a> |
 | `--keep` | keep [additional output files](formats.db#annotate-keep) that are normally removed |
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
@@ -536,21 +639,21 @@ each explained in their own subsection below.
 
 | ........option........ | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
-| `--lowsc <x>`       | lowscore          | LOW_SCORE                           | < 0.3   | set bits per nt threshold for alert to `<x>` | 
-| `--indefclass <x>`  | indfclas          | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` |
-| `--incspec <x>`     | incgroup, incsubgrp | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` |
-| `--lowcov <x>`      | lowcovrg            | LOW_COVERAGE                        | < 0.9   | set fractional coverage threshold for alert to `<x>` |
-| `--dupreg <n>`      | dupregin            | DUPLICATE_REGIONS                   | >= 20   | set min number of model position overlap for alert to  `<n>` positions | 
-| `--biasfrac <x>`    | biasdseq            | BIASED_SEQUENCE                     | >= 0.25 | set fractional bit score threshold for biased score/total score for alert to `<x>` |
-| `--indefstr <x>`    | indfstrn            | INDEFINITE_STRAND                   | >= 25.0 | set bit score of weaker strand hit for alert to `<x>` |
-| `--lowsimterm <n>`  | lowsim5s, lowsim3s, lowsim5f, lowsim3f | LOW_SIMILARITY_START, LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_START, LOW_FEATURE_SIMILARITY_END | >= 15   | set length (nt) threshold for alert to `<n>` |
-| `--lowsimint <n>`   | lowsimis, lowsimif  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold for alert to `<n>` |
-| `--indefann <x>`    | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
-| `--indefann_mp <x>` | indf5loc, indf3loc  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features for alert to `<x>` |
-| `--xalntol <n>`     | indf5pst, indf3pst  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) |
-| `--xmaxins <n>`     | insertnp | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` |
-| `--xmaxdel <n>`     | deletinp | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` |
-| `--xlonescore <n>`  | indfantp | INDEFINITE_ANNOTATION | >= 80 | set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` | 
+| `--lowsc <x>`       | [*lowscore*](#lowscore1)          | LOW_SCORE                           | < 0.3   | set bits per nt threshold for alert to `<x>` <a name="options-alerts-lowsc"></a> | 
+| `--indefclass <x>`  | [*indfclas*](#indfclas1)          | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` <a name="options-alerts-indefclas"></a> |
+| `--incspec <x>`     | [*incgroup*](#incgroup), [*incsubgrp*](#incsubgrp) | INCORRECT_SPECIFIED_GROUP, INCORRECT_SPECIFIED_SUBGROUP | < 0.2   | set bits per nt difference threshold for alert between best-matching model `<m>` and highest-scoring model in specified group `<s1>` (from `--group <s1>`) or subgroup `<s2>` (from `--subgroup <s2>`), where `<m>` is not in group/subgroup `<s1>`/`<s2>` to `<x>` <a name="options-alerts-incspec"></a> |
+| `--lowcov <x>`      | [*lowcovrg*](#lowcovrg)            | LOW_COVERAGE                        | < 0.9   | set fractional coverage threshold for alert to `<x>` <a name="options-alerts-lowcov"></a> |
+| `--dupreg <n>`      | [*dupregin*](#dupregin)            | DUPLICATE_REGIONS                   | >= 20   | set min number of model position overlap for alert to  `<n>` positions <a name="options-alerts-dupreg"></a> | 
+| `--biasfrac <x>`    | [*biasdseq*](#biasdseq)            | BIASED_SEQUENCE                     | >= 0.25 | set fractional bit score threshold for biased score/total score for alert to `<x>` <a name="options-alerts-biasfrac"></a> |
+| `--indefstr <x>`    | [*indfstrn*](#indfstrn)            | INDEFINITE_STRAND                   | >= 25.0 | set bit score of weaker strand hit for alert to `<x>` <a name="options-alerts-indefstr"></a> |
+| `--lowsimterm <n>`  | [*lowsim5s*](#lowsim5s), [*lowsim3s*](#lowsim3s), [*lowsim5f*](#lowsim5f), [*lowsim3f*](#lowsim3f) | LOW_SIMILARITY_START, LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_START, LOW_FEATURE_SIMILARITY_END | >= 15   | set length (nt) threshold for alert to `<n>` <a name="options-alerts-lowsimterm"></a> |
+| `--lowsimint <n>`   | [*lowsimis*](#lowsimis), [*lowsimif*](#lowsimif)  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold for alert to `<n>` <a name="options-alerts-lowsimint"></a> |
+| `--indefann <x>`    | [*indf5loc*](#indf5loc), [*indf3loc*](#indf3loc)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features for alert to `<x>` <a name="options-alerts-indefann"></a> |
+| `--indefann_mp <x>` | [*indf5loc*](#indf5loc), [*indf3loc*](#indf3loc)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features for alert to `<x>` <a name="options-alerts-indefann_mp"></a> |
+| `--xalntol <n>`     | [*indf5pst*](#indf5pst), [*indf3pst*](#indf3pst)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) <a name="options-alerts-xalntol"></a> |
+| `--xmaxins <n>`     | [*insertnp*](#insertnp) | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` <a name="options-alerts-xmaxins"></a> |
+| `--xmaxdel <n>`     | [*deletinp*](#deletinp) | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` <a name="options-alerts-xmaxdel"></a> |
+| `--xlonescore <n>`  | [*indfantp*](#indfantp) | INDEFINITE_ANNOTATION | >= 80 | set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` <a name="options-alerts-xlonescore"></a> | 
 
 ### `v-annotate.pl` options for controlling cmalign alignment stage <a name="options-align"></a>
 
@@ -586,19 +689,7 @@ how they control `blastx`, see the NCBI BLAST documentation
 
 ### `v-annotate.pl` options related to parallelization on a compute farm/cluster <a name="options-parallel"></a>
 
-The most time-consuming stages of `v-annotate.pl` (classification,
-coverage determination and alignment) can be parallelized on a cluster
-by splitting up the input sequence file randomly into multiple files,
-and running each as a separate job. This is most beneficial for large
-input sequence files. Parallel mode is invoked with the `-p` option.
-By default, `v-annotate.pl` will consult the file
-`$VADRSCRIPTSDIR/vadr.qsubinfo` to read the command prefix and suffix
-for submitting jobs to the cluster.  Currently this is set up to use
-Univa Grid Engine (UGE 8.5.5), but you can either modify this file to
-work with your own cluster or create a new file `<s>` and use the
-option `-q <s>` to read that file.  The
-`$VADRSCRIPTSDIR/vadr.qsubinfo` has comments at the top that explain
-the format of the file. Email eric.nawrocki@nih.gov for help.
+The `-p` option specifies that `v-annotate.pl` should be run in [parallel mode](#exampleparallel).
 The following options are related to parallel mode.
 
 | ......option...... | explanation |
@@ -643,68 +734,67 @@ In the table below, the **type** column reports if each alert pertains to an ent
 `sequence` or a specific annotated `feature` within a sequence. The
 **relevant feature types** column
 
-#### Description of *always fatal* alert codes 
+#### Description of *always fatal* alert codes <a name="always1"></a>
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| *noannotn*   | sequence | NO_ANNOTATION                   | no significant similarity detected |
-| *revcompl*   | sequence | REVCOMPLEM                      | sequence appears to be reverse complemented |
-| *unexdivg*   | sequence | UNEXPECTED_DIVERGENCE           | sequence is too divergent to confidently assign nucleotide-based annotation |
-| *noftrann*   | sequence | NO_FEATURES_ANNOTATED           | sequence similarity to homology model does not overlap with any features |
+| [*noannotn*](#noannotn2)  | sequence | NO_ANNOTATION                   | no significant similarity detected <a name="noannotn1"></a> |
+| [*revcompl*](#revcompl2)  | sequence | REVCOMPLEM                      | sequence appears to be reverse complemented <a name="revcompl1"></a> |
+| [*unexdivg*](#unexdivg2)  | sequence | UNEXPECTED_DIVERGENCE           | sequence is too divergent to confidently assign nucleotide-based annotation <a name="unexdivg1"></a> |
+| [*noftrann*](#noftrann2)  | sequence | NO_FEATURES_ANNOTATED           | sequence similarity to homology model does not overlap with any features <a name="noftrann1"></a> |
 
-#### Description of alerts that are *fatal* by default
+#### Description of alerts that are *fatal* by default <a name="fatal1"></a>
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| *incsbgrp*   | sequence | INCORRECT_SPECIFIED_SUBGROUP    | score difference too large between best overall model and best specified subgroup model |
-| *incgroup*   | sequence | INCORRECT_SPECIFIED_GROUP       | score difference too large between best overall model and best specified group model |
-| *lowcovrg*   | sequence | LOW_COVERAGE                    | low sequence fraction with significant similarity to homology model |
-| *dupregin*   | sequence | DUPLICATE_REGIONS               | similarity to a model region occurs more than once |
-| *discontn*   | sequence | DISCONTINUOUS_SIMILARITY        | not all hits are in the same order in the sequence and the homology model |
-| *indfstrn*   | sequence | INDEFINITE_STRAND               | significant similarity detected on both strands |
-| *lowsim5s*   | sequence | LOW_SIMILARITY_START            | significant similarity not detected at 5' end of the sequence |
-| *lowsim3s*   | sequence | LOW_SIMILARITY_END              | significant similarity not detected at 3' end of the sequence |
-| *lowsimis*   | sequence | LOW_SIMILARITY                  | internal region without significant similarity |
-| *mutstart*   | feature  | MUTATION_AT_START               | expected start codon could not be identified |
-| *mutendcd*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, predicted CDS stop by homology is invalid |
-| *mutendns*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon |
-| *mutendex*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position |
-| *unexleng*   | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 |
-| [*cdsstopn*](#cdsstopn2)   | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference <a name="cdsstopn1"></a> | 
-| *cdsstopp*   | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment |
-| *peptrans*   | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem |
-| *pepadjcy*   | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent |
-| *indfantp*   | feature  | INDEFINITE_ANNOTATION           | protein-based search identifies CDS not identified in nucleotide-based search |
-| *indfantn*   | feature  | INDEFINITE_ANNOTATION           | nucleotide-based search identifies CDS not identified in protein-based search |
-| *indf5gap*   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model is a gap at 5' boundary |
-| *indf5loc*   | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model has low confidence at 5' boundary |
-| *indf5plg*   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment extends past nucleotide-based alignment at 5' end |
-| *indf5pst*   | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint |
-| *indf3gap*   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model is a gap at 3' boundary |
-| *indf3loc*   | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model has low confidence at 3' boundary |
-| *indf3plg*   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment extends past nucleotide-based alignment at 3' end |
-| *indf3pst*   | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint |
-| *indfstrp*   | feature  | INDEFINITE_STRAND               | strand mismatch between protein-based and nucleotide-based predictions |
-| *insertnp*   | feature  | INSERTION_OF_NT                 | too large of an insertion in protein-based alignment |
-| *deletinp*   | feature  | DELETION_OF_NT                  | too large of a deletion in protein-based alignment |
-| *lowsim5f*   | feature  | LOW_FEATURE_SIMILARITY_START    | region within annotated feature at 5' end of sequence lacks significant similarity |
-| *lowsim3f*   | feature  | LOW_FEATURE_SIMILARITY_END      | region within annotated feature at 3' end of sequence lacks significant similarity |
-| *lowsimif*   | feature  | LOW_FEATURE_SIMILARITY          | region within annotated feature lacks significant similarity |
+| [*incsbgrp*](#incsbgrp2)  | sequence | INCORRECT_SPECIFIED_SUBGROUP    | score difference too large between best overall model and best specified subgroup model <a name="incsbgrp1"></a> |
+| [*incgroup*](#incgroup2)  | sequence | INCORRECT_SPECIFIED_GROUP       | score difference too large between best overall model and best specified group model <a name="incgroup1"></a> |
+| [*lowcovrg*](#lowcovrg2)  | sequence | LOW_COVERAGE                    | low sequence fraction with significant similarity to homology model <a name="lowcovrg1"></a> |
+| [*dupregin*](#dupregin2)  | sequence | DUPLICATE_REGIONS               | similarity to a model region occurs more than once <a name="dupregin1"></a> |
+| [*discontn*](#discontn2)  | sequence | DISCONTINUOUS_SIMILARITY        | not all hits are in the same order in the sequence and the homology model <a name="discontn1"></a> |
+| [*indfstrn*](#indfstrn2)  | sequence | INDEFINITE_STRAND               | significant similarity detected on both strands <a name="indfstrn1"></a> |
+| [*lowsim5s*](#lowsim5s2)  | sequence | LOW_SIMILARITY_START            | significant similarity not detected at 5' end of the sequence <a name="lowsim5s1"></a> |
+| [*lowsim3s*](#lowsim3s2)  | sequence | LOW_SIMILARITY_END              | significant similarity not detected at 3' end of the sequence <a name="lowsim3s1"></a> |
+| [*lowsimis*](#lowsimis2)  | sequence | LOW_SIMILARITY                  | internal region without significant similarity <a name="lowsimis1"></a> |
+| [*mutstart*](#mutstart2)  | feature  | MUTATION_AT_START               | expected start codon could not be identified <a name="mutstart1"></a> |
+| [*mutendcd*](#mutendcd2)  | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, predicted CDS stop by homology is invalid <a name="mutendcd1"></a> |
+| [*mutendns*](#mutendns2)  | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon <a name="mutendns1"></a> |
+| [*mutendex*](#mutendex2)  | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position <a name="mutendex1"></a> |
+| [*unexleng*](#unexleng2)  | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 <a name="unexleng1"></a> |
+| [*cdsstopn*](#cdsstopn2)  | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference <a name="cdsstopn1"></a> | 
+| [*cdsstopp*](#cdsstopp2)  | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment <a name="cdsstopp1"></a> |
+| [*peptrans*](#peptrans2)  | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem <a name="peptrans1"></a> |
+| [*pepadjcy*](#pepadjcy2)  | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent <a name="pepadjcy1"></a> |
+| [*indfantp*](#indfantp2)  | feature  | INDEFINITE_ANNOTATION           | protein-based search identifies CDS not identified in nucleotide-based search <a name="indfantp1"></a> |
+| [*indfantn*](#indfantn2)  | feature  | INDEFINITE_ANNOTATION           | nucleotide-based search identifies CDS not identified in protein-based search <a name="indfantn1"></a> |
+| [*indf5gap*](#indf5gap2)  | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model is a gap at 5' boundary <a name="indf5gap1"></a> |
+| [*indf5loc*](#indf5loc2)  | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model has low confidence at 5' boundary <a name="indf5loc1"></a> |
+| [*indf5plg*](#indf5plg2)  | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment extends past nucleotide-based alignment at 5' end <a name="indf5plg1"></a> |
+| [*indf5pst*](#indf5pst2)  | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint <a name="indf5pst1"></a> |
+| [*indf3gap*](#indf3gap2)  | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model is a gap at 3' boundary <a name="indf3gap1"></a> |
+| [*indf3loc*](#indf3loc2)  | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model has low confidence at 3' boundary <a name="indf3loc1"></a> |
+| [*indf3plg*](#indf3plg2)  | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment extends past nucleotide-based alignment at 3' end <a name="indf3plg1"></a> |
+| [*indf3pst*](#indf3pst2)  | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint <a name="indf3pst1"></a> |
+| [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | strand mismatch between protein-based and nucleotide-based predictions <a name="indfstrp1"></a> |
+| [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | too large of an insertion in protein-based alignment <a name="insertnp1"></a> |
+| [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | too large of a deletion in protein-based alignment <a name="deletinp1"></a> |
+| [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | region within annotated feature at 5' end of sequence lacks significant similarity <a name="lowsim5s1"></a> |
+| [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | region within annotated feature at 3' end of sequence lacks significant similarity <a name="lowsim3s1"></a> |
+| [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | region within annotated feature lacks significant similarity <a name="lowsimif1"></a> |
 
-#### Description of alerts that are *non-fatal* by default
+#### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| *qstsbgrp*   | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup |
-| *qstgroup*   | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group |
-| *indfclas*   | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) |
-| *lowscore*   | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) |
-| *biasdseq*   | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition |
+| [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup <a name="qstsbgrp1"></a> |
+| [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group <a name="qstgroup1"></a> |
+| [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) <a name="indfclas1"></a> |
+| [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) <a name="lowscore1"></a> |
+| [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition <a name="biasdseq1"></a> |
 
-
-### Additional information on alerts
+### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
 The table below has additional information on the alerts 
 not contained in the `--alt_list` output.
-The "relevant options" column lists command-line options that 
-pertain to each alert. The **relevant feature types** column
+The "relevant_options" column lists command-line options that 
+pertain to each alert. The [**relevant feature types** column
 shows which feature types each alert can be reported for (this field is "-" for 
 alerts that pertain to a sequence instead of a feature).  The
 **omitted in `.tbl` and `.alt.list` by** column lists other alerts
@@ -712,84 +802,61 @@ that, if present, will cause this alert to be omitted in the `.tbl`
 and `.alt.list` files to reduce redundant information reported to
 user, this is "-" for alerts that are never omitted from those files.
 
-#### More information on *always fatal* alert codes 
+#### More information on *always fatal* alert codes <a name="always2"></a>
 | alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
 |------------|------------------------------|------------------|------------------------|--------------------------------------|
-| *noannotn*   | NO_ANNOTATION                | none | - | - |
-| *revcompl*   | REVCOMPLEM                   | none | - | - | 
-| *unexdivg*   | UNEXPECTED_DIVERGENCE        | none | - | - | 
-| *noftrann*   | NO_FEATURES_ANNOTATED        | none | - | *unexdivg* | 
+| [*noannotn*](#noannotn1)  | NO_ANNOTATION                | none | - | - <a name="noannotn2"></a> | 
+| [*revcompl*](#revcompl1)  | REVCOMPLEM                   | none | - | - <a name="revcompl2"></a> |  
+| [*unexdivg*](#unexdivg1)  | UNEXPECTED_DIVERGENCE        | none | - | - <a name="unexdivg2"></a> |  
+| [*noftrann*](#noftrann1)  | NO_FEATURES_ANNOTATED        | none | - | *unexdivg* <a name="noftrann2"></a> | 
 
-#### More information on alerts that are *fatal* by default
-| alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
+#### More information on alerts that are *fatal* by default <a name="fatal2"></a>
+| alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
 |------------|------------------------------|------------------|------------------------|--------------------------------------|
-| *incsbgrp*   | INCORRECT_SPECIFIED_SUBGROUP    | [`--incspec`](#options-alerts) | - | - | 
-| *incgroup*   | INCORRECT_SPECIFIED_GROUP       | [`--incspec`](#options-alerts) | - | - |
-| *lowcovrg*   | LOW_COVERAGE                    | [`--lowcov`](#options-alerts) | - | - | 
-| *dupregin*   | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts) | - | - | 
-| *discontn*   | DISCONTINUOUS_SIMILARITY        | none | - | - | 
-| *indfstrn*   | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts) | - | - | 
-| *lowsim5s*   | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts) | - | - | 
-| *lowsim3s*   | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts) | - | - | 
-| *lowsimis*   | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts) | - | - |
-| *mutstart*   | MUTATION_AT_START               | [`--atgonly`](#options-basic) | CDS | - | 
-| *mutendcd*   | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* | 
-| *mutendns*   | MUTATION_AT_END                 | none | CDS | - | 
-| *mutendex*   | MUTATION_AT_END                 | none | CDS | - | 
-| *unexleng*   | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - | 
-| [*cdsstopn*](#cdsstopn1)   | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopn2"></a> | 
-| *cdsstopp*   | CDS_HAS_STOP_CODON              | none | CDS | - | 
-| *peptrans*   | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - | 
-| *pepadjcy*   | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - | 
-| *indfantp*   | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts) | CDS | - | 
-| *indfantn*   | INDEFINITE_ANNOTATION           | none | CDS | - | 
-| *indf5gap*   | INDEFINITE_ANNOTATION_START     | none | all | - | 
-| *indf5loc*   | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts) | all | - | 
-| *indf5plg*   | INDEFINITE_ANNOTATION_START     | none | CDS | - | 
-| *indf5pst*   | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts) | CDS | - | 
-| *indf3gap*   | INDEFINITE_ANNOTATION_END       | none | all | - |  
-| *indf3loc*   | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts) | all | - | 
-| *indf3plg*   | INDEFINITE_ANNOTATION_END       | none | CDS | - | 
-| *indf3pst*   | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts) | CDS | - | 
-| *indfstrp*   | INDEFINITE_STRAND               | none | CDS | - | 
-| *insertnp*   | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts) | CDS | - | 
-| *deletinp*   | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts) | CDS | - | 
-| *lowsim5f*   | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
-| *lowsim3f*   | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
-| *lowsimif*   | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - | 
+| [*incsbgrp*](#incsbgrp1)  | INCORRECT_SPECIFIED_SUBGROUP    | [`--incspec`](#options-alerts-incspec) | - | - <a name="incsbgrp2"></a> | 
+| [*incgroup*](#incgroup1)  | INCORRECT_SPECIFIED_GROUP       | [`--incspec`](#options-alerts-incspec) | - | - <a name="incgroup2"></a> |
+| [*lowcovrg*](#lowcovrg1)  | LOW_COVERAGE                    | [`--lowcov`](#options-alerts-lowcov) | - | - <a name="lowcovrg2"></a> | 
+| [*dupregin*](#dupregin1)  | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts-dupreg) | - | - <a name="dupregin2"></a> | 
+| [*discontn*](#discontn1)  | DISCONTINUOUS_SIMILARITY        | none | - | - <a name="discontn2"></a> | 
+| [*indfstrn*](#indfstrn1)  | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts-indefstr) | - | - <a name="indfstrn2"></a> | 
+| [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim5s2"></a> | 
+| [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim3s2"></a> | 
+| [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
+| [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
+| [*mutendcd*](#mutendcd1)  | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* <a name="mutendcd2"></a> | 
+| [*mutendns*](#mutendns1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendns2"></a> | 
+| [*mutendex*](#mutendex1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendex2"></a> | 
+| [*unexleng*](#unexleng1)  | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - <a name="unexleng2"></a> | 
+| [*cdsstopn*](#cdsstopn1)   | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
+| [*cdsstopp*](#cdsstopp1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopp2"></a> | 
+| [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
+| [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
+| [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
+| [*indfantn*](#indfantn1)  | INDEFINITE_ANNOTATION           | none | CDS | - <a name="indfantn2"></a> | 
+| [*indf5gap*](#indf5gap1)  | INDEFINITE_ANNOTATION_START     | none | all | - <a name="indf5gap2"></a> | 
+| [*indf5loc*](#indf5loc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all | - <a name="indf5loc2"></a> | 
+| [*indf5plg*](#indf5plg1)  | INDEFINITE_ANNOTATION_START     | none | CDS | - <a name="indf5plg2"></a> | 
+| [*indf5pst*](#indf5pst1)  | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf5pst2"></a> | 
+| [*indf3gap*](#indf3gap1)  | INDEFINITE_ANNOTATION_END       | none | all | - <a name="indf3gap2"></a> |  
+| [*indf3loc*](#indf3loc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all | - <a name="indf3loc2"></a> | 
+| [*indf3plg*](#indf3plg1)  | INDEFINITE_ANNOTATION_END       | none | CDS | - <a name="indf3plg2"></a> | 
+| [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf3pst2"></a> | 
+| [*indfstrp*](#indfstrp1)  | INDEFINITE_STRAND               | none | CDS | - <a name="indfstrp2"></a> | 
+| [*insertnp*](#insertnp1)  | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts-xmaxins) | CDS | - <a name="insertnp2"></a> | 
+| [*deletinp*](#deletinp1)  | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts-xmaxdel) | CDS | - <a name="deletinp2"></a> | 
+| [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
+| [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
+| [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
 
-#### More information on alerts that are *non-fatal* by default
-| alert code | short description/error name | relevant options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
+#### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
+| alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
 |------------|------------------------------|------------------|------------------------|--------------------------------------|
-| *qstsbgrp*   | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - | 
-| *qstgroup*   | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - | 
-| *indfclas*   | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts) | - | - | 
-| *lowscore*   | LOW_SCORE                       | [`--lowsc`](#options-alerts) | - | - | 
-| *biasdseq*   | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts) | - | - | 
+| [*qstsbgrp*](#qstsbgrp1)  | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - <a name="qstsubgrp2"></a> | 
+| [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
+| [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
+| [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
+| [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 
-
-## Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
-
-For example, to make the lowscore alert fatal and the indf5gap and indf3gap alerts non-fatal
-run:
-
-```
-v-annotate.pl --alt_pass indf5gap,indf3gap --alt_fail lowscore <fasta file> <output dir>
-```
-
-## Example of using the `-p` option to parallelize `v-annotate.pl`
-
-
-```
-v-annotate.pl -p $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9
-```
-
-
-OTHER SECTIONS TODO :
-1. alert table, with extra columns: options that control, default thresholds, notes (xmaxins_exc, xmaxdel_exc) 
-2. example showing how to make alert non-fatal
-3. invalidated alerts not in .tbl and .alt.list files.
-4. -p
-
+#### For help email eric.nawrocki@nih.gov
 
 
