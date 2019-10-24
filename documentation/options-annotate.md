@@ -1,27 +1,16 @@
 # VADR output file formats
 
-* [VADR output files created by all VADR scripts](#generic)
-  * [`.log` files](#log)
-  * [`.cmd` files](#cmd)
-  * [`.filelist` files](#filelist)
-* [`v-build.pl` output files](#build)
-  * [`.minfo files](#minfo)
-* [`v-annotate.pl` output files](#annotate)
-  * [basic output files](#annotate)
-  * [`.alc` files](#alc)
-  * [`.alt` files](#alt)
-  * [`.ftr` files](#ftr)
-  * [`.mdl` files](#mdl)
-  * [`.sgm` files](#sgm)
-  * [`.sqa` files](#sqa)
-  * [`.sqc` files](#sqc)
-  * [`.alt.list` files](#altlist)
-  * [extra output files saved with the `--keep` option](#annotate-keep)
-* [VADR `coords` coordinate string format](#coords)
-* [VADR sequence naming conventions](#seqnames)
+VADR creates many different types of output files. You can find an explanation
+of these formats below divided into three categories:
+
+| category | description |
+|--------|-----------------------|
+| [generic VADR output files](#generic-formats) | files created by all VADR scripts (`v-annotate.pl` and `v-build.pl`) |
+| [`v-build.pl` output files](#build-formats) | files created only by `v-build.pl` |
+| [`v-annotate.pl` output files](#annotate-formats) | files created only by `v-annotate.pl` |
 
 ---
-## Format of generic VADR output files created by all VADR scripts<a name="generic"></a>
+## Format of generic VADR output files created by all VADR scripts<a name="generic-formats"></a>
 
 All VADR scripts (e.g. `v-build.pl` and `v-annotate.pl`) create a
 common set of three output files. These files are named
@@ -34,22 +23,160 @@ the [Sequip](https://github.com/nawrockie/sequip)
 
 | suffix | description |
 |--------|-----------------------|
-| [`.log`](#log) | log of steps taken by the VADR script (this is identical to the standard output of the program) |
-| [`.cmd`](#cmd) | list of the commands run using Perl's `system` command internally by the VADR script |
-| [`.filelist`](#filelist) | list of output files created by the VADR script | 
+| [`.log`](#log-format) | log of steps taken by the VADR script (this is identical to the standard output of the program) |
+| [`.cmd`](#cmd-format) | list of the commands run using Perl's `system` command internally by the VADR script |
+| [`.filelist`](#filelist-format) | list of output files created by the VADR script | 
 
 Each format is explained in more detail below.
 
 ---
-### Explanation of `.log`-suffixed output files<a name="log"></a>
+### Explanation of `.log`-suffixed output files<a name="log-format"></a>
 
 The `.log` files include the same text that is printed to standard output. 
-The documentation on [`v-annotate.pl`](annotate.md#exampleusage) and [`v-build.pl`](build.md#exampleusage)
-usage go over this output in more detail. 
+Log files have five or six sections: [banner](#log-banner), [input
+information](#log-inputinformation), [stage
+list](#log-stagelist), [summary](#log-summary) (optional), [output
+file list](#log-outputfilelist), and [timing](#log-timing). 
 
+The banner section <a name="log-banner"></a> lists the name of the VADR
+script being run and the version and date. An example of this section
+from the command `v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.991 is:
+
+```
+# v-build.pl :: build homology model of a single sequence for feature annotation
+# VADR 0.991 (Aug 2019)
+```
+
+The input information section <a name="log-inputinformation"></a> includes
+information on the time and date of execution, any relevant
+environment variables, the command line arguments used and any command
+line options used: 
+
+```
+# date:              Fri Oct  4 13:11:22 2019
+# $VADRBLASTDIR:     /usr/bin
+# $VADREASELDIR:     /panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps
+# $VADRINFERNALDIR:  /panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src
+# $VADRSCRIPTSDIR:   /panfs/pan1/dnaorg/virseqannot/code/vadr-install/vadr
+#
+# accession/model name:           NC_039897
+# output directory:               NC_039897
+# forcing directory overwrite:    yes [-f]
+# specify model group is <s>:     Norovirus [--group]
+# specify model subgroup is <s>:  GI [--subgroup]
+```
+
+Next is the stage list section <a name="log-stagelist"></a> which lists
+each stage the script proceeds through, along with the time that
+elapsed during that stage: 
+
+```
+# Fetching FASTA file                                          ... done. [    3.9 seconds]
+# Parsing FASTA file                                           ... done. [    0.0 seconds]
+# Fetching feature table file                                  ... done. [    3.1 seconds]
+# Parsing feature table file                                   ... done. [    0.0 seconds]
+# Fetching and parsing protein feature table file(s)           ... done. [   13.5 seconds]
+# Pruning data read from GenBank                               ... done. [    0.0 seconds]
+# Reformatting FASTA file to Stockholm file                    ... done. [    0.2 seconds]
+# Finalizing feature information                               ... done. [    0.0 seconds]
+# Translating CDS and building BLAST DB                        ... done. [    0.2 seconds]
+# Building model (should take roughly 10-30 minutes)           ... done. [  818.7 seconds]
+# Pressing CM file                                             ... done. [    0.6 seconds]
+# Creating model info file                                     ... done. [    0.0 seconds]
+```
+
+The summary section <a name="log-summary"></a> is optional.
+`v-annotate.pl` log files will have a summary section, but
+`v-build.pl` output files do not. In this section, `v-annotate.pl` log
+files include information on the number of sequences classified to
+each model (this is identical to the information output to the
+`.mdl`(#mdl-format) output file) and the number of each type of
+reported alert (this is identical to the information output to the
+`.alc`(#alc-format) output file). An example of this section from the
+command `v-annotate.pl $VADRSCRIPTSDIR/testfiles/noro.9.fa va-noro9`
+is:
+
+```
+# Summary of classified sequences:
+#
+#                                      num   num   num
+#idx  model      group      subgroup  seqs  pass  fail
+#---  ---------  ---------  --------  ----  ----  ----
+1     NC_008311  Norovirus  GV           2     1     1
+2     NC_001959  Norovirus  GI           2     2     0
+3     NC_039477  Norovirus  GII          2     2     0
+4     NC_029645  Norovirus  GIII         2     2     0
+5     NC_031324  Norovirus  GI           1     1     0
+#---  ---------  ---------  --------  ----  ----  ----
+-     *all*      -          -            9     8     1
+-     *none*     -          -            0     0     0
+#---  ---------  ---------  --------  ----  ----  ----
+#
+# Summary of reported alerts:
+#
+#     alert     causes   short                            per    num   num  long
+#idx  code      failure  description                     type  cases  seqs  description
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+1     mutendcd  yes      MUTATION_AT_END              feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+2     cdsstopn  yes      CDS_HAS_STOP_CODON           feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+3     cdsstopp  yes      CDS_HAS_STOP_CODON           feature      1     1  stop codon in protein-based alignment
+4     indf5pst  yes      INDEFINITE_ANNOTATION_START  feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+5     indf3pst  yes      INDEFINITE_ANNOTATION_END    feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+```
+
+The summary section is followed by the output file list <a
+name="log-outputfilelist"></a> which lists many (but not necessarily
+all of) the files that were created by the script. This list is meant
+to contain the files that are most relevant to the typical
+user. Switching back to the above `v-build.pl` command example output: 
+
+```
+# Output printed to screen saved in:                                NC_039897.vadr.log
+# List of executed commands saved in:                               NC_039897.vadr.cmd
+# List and description of all output files saved in:                NC_039897.vadr.filelist
+# fasta file for NC_039897 saved in:                                NC_039897.vadr.fa
+# feature table format file for NC_039897 saved in:                 NC_039897.vadr.tbl
+# feature table format file for YP_009538340.1 saved in:            NC_039897.vadr.YP_009538340.1.tbl
+# feature table format file for YP_009538341.1 saved in:            NC_039897.vadr.YP_009538341.1.tbl
+# feature table format file for YP_009538342.1 saved in:            NC_039897.vadr.YP_009538342.1.tbl
+# Stockholm alignment file for NC_039897 saved in:                  NC_039897.vadr.stk
+# fasta sequence file for CDS from NC_039897 saved in:              NC_039897.vadr.cds.fa
+# fasta sequence file for translated CDS from NC_039897 saved in:   NC_039897.vadr.protein.fa
+# BLAST db .phr file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.phr
+# BLAST db .pin file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.pin
+# BLAST db .psq file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.psq
+# CM file saved in:                                                 NC_039897.vadr.cm
+# cmbuild output file saved in:                                     NC_039897.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                        NC_039897.vadr.cm.i1m
+# SSI index for binary CM file saved in:                            NC_039897.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                     NC_039897.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                    NC_039897.vadr.cm.i1p
+# cmpress output file saved in:                                     NC_039897.vadr.cmpress
+# VADR 'model info' format file for NC_039897 saved in:             NC_039897.vadr.minfo
+#
+# All output files created in directory ./NC_039897/
+```
+
+The final section <a name="log-timing"></a> lists how much time elapsed
+while the script was executing. The final line of the output is either
+`[ok]` if the script finished successfully without any unexpected
+runtime errors. This final line will be `[fail]` if the script did not finish successfully
+due to a runtime error. In the latter case, an error message will
+occur just prior to the `[fail]` line. It may also be helpful to look
+at the `.cmd`<a name="cmd-format"></a>' output file to see what the final
+command was prior to failure. For the `v-build.pl` command this
+section is:
+
+```
+# Elapsed time:  00:14:00.24
+#                hh:mm:ss
+# 
+[ok]
+```
 
 ---
-### Explanation of `.cmd`-suffixed output files<a name="cmd"></a>
+### Explanation of `.cmd`-suffixed output files<a name="cmd-format"></a>
 
 The `.cmd` files simply list all the commands run by the Perl `system`
 function internally by the VADR script, each separated by a newline. 
@@ -65,20 +192,20 @@ output file for the example command `v-build.pl -f --group Norovirus
 
 ```
 mkdir NC_039897
-/home/nawrocki/vadr-install/infernal-dev/easel/miniapps/esl-reformat --informat afa stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
-/home/nawrocki/vadr-install/infernal-dev/easel/miniapps/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps/esl-reformat --informat afa stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/easel/miniapps/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa.ssi
 /usr/bin/makeblastdb -in NC_039897/NC_039897.vadr.protein.fa -dbtype prot > /dev/null
-/home/nawrocki/vadr-install/infernal-dev/src/cmbuild -n NC_039897 --verbose  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
-/home/nawrocki/vadr-install/infernal-dev/src/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src/cmbuild -n NC_039897 --verbose  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
+/panfs/pan1/dnaorg/virseqannot/code/vadr-install/infernal-dev/src/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
 # Fri Oct  4 13:25:23 EDT 2019
 # Darwin ericsmac 18.7.0 Darwin Kernel Version 18.7.0: Tue Aug 20 16:57:14 PDT 2019; root:xnu-3273.123.2~2/RELEASE_X86_64 x86_64
 [ok]
 ```
 ---
-### Explanation of `.filelist`-suffixed output files<a name="filelist"></a>
+### Explanation of `.filelist`-suffixed output files<a name="filelist-format"></a>
 
 The `.filelist` files list the output files created by the VADR
 script. This list will typically include at least those files printed
@@ -109,8 +236,8 @@ is:
 # cmpress output file saved in:                                                    NC_039897.vadr.cmpress
 # VADR 'model info' format file for NC_039897 saved in:                            NC_039897.vadr.minfo
 ```
----
-## Format of `v-build.pl` output files<a name="build"></a>
+
+## Format of `v-build.pl` output files<a name="build-formats"></a>
 
 `v-build.pl` creates many output files. 
 These files are named `<outdir>.vadr.<suffix>` where
@@ -122,7 +249,7 @@ further below.
 
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
-| `.minfo`  | VADR model info file | [description of format in this document](#minfo) |
+| `.minfo`  | VADR model info file | [description of format in this document](#minfo-format) |
 | `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
@@ -135,7 +262,7 @@ further below.
 | `.cmpress` | Infernal `cmpress` output file | no further documentation |
 
 ---
-### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo"></a>
+### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo-format"></a>
 
 VADR `.minfo` model info files are created by `v-build.pl` and read by `v-annotate.pl`. 
 They can also be created manually. An example model info file created by the command: 
@@ -192,7 +319,7 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 | \<key\> | \<value\> | required? | relevance | 
 |--------|---------|-------------------|---|
 | `type`  | feature type, e.g. `CDS` | **yes** | some alerts are type-specific and some types are handled differently than others; e.g. coding potential of `CDS` and `mat_peptide` features is verified |
-| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords) | **yes** | used to map/annotate features on sequences via alignment to model |
+| `coords` | coordinate string that defines model positions and strand for this feature in [this format](#coords-format) | **yes** | used to map/annotate features on sequences via alignment to model |
 | `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
@@ -210,7 +337,7 @@ Use the `v-annotate.pl` `-m`, `-i` and `-b` options to specify paths to
 alternative `.minfo` files  `.cm` files and BLAST database directories.
 
 ---
-## Format of `v-annotate.pl` output files<a name="annotate"></a>
+## Format of `v-annotate.pl` output files<a name="annotate-formats"></a>
 
 `v-annotate.pl` creates many output files. 
 These files are named `<outdir>.vadr.<suffix>` where
@@ -221,12 +348,13 @@ references on the file type/format.
 
 | suffix | description | reference |
 |--------|-----------------------|-------------|
-| `.<model_name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model_name> from the `.minfo` file | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
+| `.<model-name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model-name> from the `.minfo` file | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions in this file  |
+| `.tbl`  | 
 | `.pass.list` | list of sequences that pass, one line per sequence | no further documentation | 
 | `.pass.tbl` | 5 column tab-delimited feature table of sequences that pass | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.fail.list` | list of sequences that fail, one line per sequence | no further documentation | 
 | `.fail.tbl` | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.alt.list` | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [description of format in this document](#altlist) |
+| `.alt.list` | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [description of format in this document](#minfo-format) |
 | `.seqstat` | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | no further documentation |
 
 ---
@@ -237,13 +365,13 @@ These files are listed in the table below
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
-| `.alc` | per-alert code information (counts)     | [description of format in this document](#alc) |
-| `.alt` | per-alert instance information          | [description of format in this document](#alt) |
-| `.ftr` | per-feature information                 | [description of format in this document](#ftr) |
-| `.mdl` | per-model information                   | [description of format in this document](#mdl) |
-| `.sgm` | per-segment information                 | [description of format in this document](#sgm) |
-| `.sqa` | per-sequence annotation information     | [description of format in this document](#sqa) |
-| `.sqc` | per-sequence classification information | [description of format in this document](#sqc) |
+| `.alc` | per-alert code information (counts)     | [description of format in this document](#alc-format) |
+| `.alt` | per-alert instance information          | [description of format in this document](#alt-format) |
+| `.ftr` | per-feature information                 | [description of format in this document](#ftr-format) |
+| `.mdl` | per-model information                   | [description of format in this document](#mdl-format) |
+| `.sgm` | per-segment information                 | [description of format in this document](#sgm-format) |
+| `.sqa` | per-sequence annotation information     | [description of format in this document](#sqa-format) |
+| `.sqc` | per-sequence classification information | [description of format in this document](#sqc-format) |
 
 All seven types of tabular output files share the following
 characteristics: 
@@ -257,7 +385,43 @@ characteristics:
 Each of these seven tabular formats are explained in more detail below.
 
 ---
-### Explanation of `.alc`-suffixed output files<a name="alc"></a>
+### Additional files created by `v-annotate.pl` when the `--keep` option is used
+
+When run with the `--keep` option, `v-annotate.pl` will create additional files:
+
+| suffix | description | reference | 
+|--------|-------------|-----------|
+| `.cm.namelist` | file with list of names of all models in model library | 
+| `.scan.r1.tblout` | tabular output from `cmscan` in classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.scan.r1.stdout` | standard output from `cmscan` in classification stage | no further documentation | 
+| `.search.r2.<model-name>.tblout` | tabular output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.search.r2.<model-name>.stdout` | standard output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 3: "Tutorial") | 
+| `.<model-name>.fa` | fasta file of sequences classified to `<model-name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.<model-name>.a.fa` | fasta file of sequences classified to `<model-name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.<model-name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model-name>` | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.<model-name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model-name>` | description of fields at top of file, no further documentation |
+| `.<model-name>.align.*.tfile` | `cmalign` parsetree output file, created with `--tfile` option for 1 or more sequences classified to `<model-name>` | no further documentation |
+| `.<model-name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model-name>` | no further documentation |
+| `.<model-name>.a.blastx.fa` | query fasta file used for `blastx` for sequences classified to `<model-name>`, with full input sequences and predicted CDS subsequences | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions in this file  |
+| `.<model-name>.blastx.out` | `blastx` output for for sequences classified to `<model-name>` | https://www.ncbi.nlm.nih.gov/books/NBK279684/ |
+| `.<model-name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
+
+---
+
+### Explanation of `.alt.list`-suffixed output files<a name="altlist-format"></a>
+
+`.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
+lines with 4 tab-delimited fields:
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `sequence`            | name of sequence this alert pertains to |
+|   2 | `error`               | short description of the alert/error |
+|   3 | `feature`             | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
+|   4 | `error-description`   | longer description of the alert/error, specific to each alert/error type; **this field contains whitespace** |
+
+---
+### Explanation of `.alc`-suffixed output files<a name="alc-format"></a>
 
 `.alc` data lines have 8 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each alert code
@@ -277,7 +441,7 @@ that occurs at least once in the input sequence file that
 |   8 to end | `long description`    |longer description of the alert, specific to each alert type; **this field contains whitespace** |
 
 ---
-### Explanation of `.alt`-suffixed output files<a name="alt"></a>
+### Explanation of `.alt`-suffixed output files<a name="alt-format"></a>
 
 `.alt` data lines have 10 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
@@ -297,7 +461,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 | 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; **this field contains whitespace** |
 
 ---
-### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
+### Explanation of `.ftr`-suffixed output files<a name="ftr-format"></a>
 
 `.ftr` data lines have 23 fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each
@@ -308,10 +472,10 @@ the model info file.
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
-|   1 | `idx`                 | index of feature in format `<d1>.<d2>`, where `<d1>` is the index of the sequence in which this feature is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n>`, where `<n>` is the number of features annotated for this sequence) |
+|   1 | `idx`                 | index of feature in format `<d1>.<d2>`, where `<d1>` is the index of the sequence in which this feature is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n>`, where `<n>` is the number of features annotated for this sequence |
 |   2 | `seq name`            | sequence name in which this feature is annotated |
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `model`               | name of the best-matching model for this sequence |
 |   6 | `ftr type`            | type of the feature (e.g. CDS) |
 |   7 | `ftr name`            | name of the feature |
@@ -328,12 +492,12 @@ the model info file.
 |  18 | `p_sc`                | raw score of best blastx alignment |
 |  19 | `nsa`                 | number of segments annotated for this feature |
 |  20 | `nsn`                 | number of segments not annotated for this feature |
-|  21 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings(#coords)] |
-|  22 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings(#coords)] |
+|  21 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings(#coords-format)] |
+|  22 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings(#coords-format)] |
 |  23 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
-### Explanation of `.mdl`-suffixed output files<a name="mdl"></a>
+### Explanation of `.mdl`-suffixed output files<a name="mdl-format"></a>
 
 `.mdl` data lines have 7 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
@@ -354,7 +518,7 @@ included in the `.log` output file.
 |   6 | `num pass`            | number of sequences from `num seqs` that passed with 0 fatal alerts | 
 |   7 | `num fail`            | number of sequences from `num seqs` that failed with >= 1 fatal alerts | 
 
-### Explanation of `.sgm`-suffixed output files<a name="sgm"></a>
+### Explanation of `.sgm`-suffixed output files<a name="sgm-format"></a>
 
 `.sgm` data lines have 21 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
@@ -365,10 +529,10 @@ file.
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
-|   1 | `idx`                 | index of segment in format `<d1>.<d2>.<d3>` where `<d1>` is the index of the sequence in which this segment is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n1>`, where `<n1>` is the number of features annotated for this sequence) and `<d3>` is the index of the segment annotated within that feature (range 1..`<n2>` where `<n2>` is the number of segments annotated for this feature) | 
+|   1 | `idx`                 | index of segment in format `<d1>.<d2>.<d3>` where `<d1>` is the index of the sequence in which this segment is annotated in the input sequence file, `<d2>` is the index of the feature (range 1..`<n1>`, where `<n1>` is the number of features annotated for this sequence) and `<d3>` is the index of the segment annotated within that feature (range 1..`<n2>` where `<n2>` is the number of segments annotated for this feature | 
 |   2 | `seq name`            | sequence name in which this feature is annotated |
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `model`               | name of the best-matching model for this sequence |
 |   6 | `ftr type`            | type of the feature (e.g. CDS) |
 |   7 | `ftr name`            | name of the feature |
@@ -388,7 +552,7 @@ file.
 |  21 | `3' gap`              | `yes` if the 3' boundary of the segment is a gap (possibly due to a 3' truncation), else `no` }
 
 ---
-### Explanation of `.sqa`-suffixed output files<a name="sqa"></a>
+### Explanation of `.sqa`-suffixed output files<a name="sqa-format"></a>
 
 `.sqa` data lines have 14 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
@@ -403,7 +567,7 @@ sequence.
 |   1 | `seq idx`             | index of sequence in the input file |
 |   2 | `seq name`            | sequence name | 
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
 |   6 | `best model`          | name of the best-matching model for this sequence |
 |   7 | `grp`                 | group of model `best model`, defined in model info file, or `-` if none |
@@ -416,7 +580,7 @@ sequence.
 |  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
-### Explanation of `.sqc`-suffixed output files<a name="sqc"></a>
+### Explanation of `.sqc`-suffixed output files<a name="sqc-format"></a>
 
 `.sqc` data lines have 21 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
@@ -431,7 +595,7 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |   1 | `seq idx`             | index of sequence in the input file |
 |   2 | `seq name`            | sequence name | 
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alert instances) |
 |   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
 |   6 | `model1`              | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
 |   7 | `grp1`                | group of model `model1`, defined in model info file, or `-` if none |
@@ -451,43 +615,7 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
-
-### Explanation of `.alt.list`-suffixed output files<a name="altlist"></a>
-
-`.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
-lines with 4 tab-delimited fields:
-
-| idx | field                 | description |
-|-----|-----------------------|-------------|
-|   1 | `sequence`            | name of sequence this alert pertains to |
-|   2 | `error`               | short description of the alert/error |
-|   3 | `feature`             | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
-|   4 | `error-description`   | longer description of the alert/error, specific to each alert/error type; **this field contains whitespace** |
-
----
-### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
-
-When run with the `--keep` option, `v-annotate.pl` will create additional files:
-
-| suffix | description | reference | 
-|--------|-------------|-----------|
-| `.cm.namelist` | file with list of names of all models in model library | no further documentation | 
-| `.scan.r1.tblout` | tabular output from `cmscan` in classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.scan.r1.stdout` | standard output from `cmscan` in classification stage | no further documentation | 
-| `.search.r2.<model_name>.tblout` | tabular output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.search.r2.<model_name>.stdout` | standard output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 3: "Tutorial") | 
-| `.<model_name>.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
-| `.<model_name>.a.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
-| `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.<model_name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model_name>` | description of fields at top of file, no further documentation |
-| `.<model_name>.align.*.tfile` | `cmalign` parsetree output file, created with `--tfile` option for 1 or more sequences classified to `<model_name>` | no further documentation |
-| `.<model_name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model_name>` | no further documentation |
-| `.<model_name>.a.blastx.fa` | query fasta file used for `blastx` for sequences classified to `<model_name>`, with full input sequences and predicted CDS subsequences | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames)  |
-| `.<model_name>.blastx.out` | `blastx` output for for sequences classified to `<model_name>` | https://www.ncbi.nlm.nih.gov/books/NBK279684/ |
-| `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
-
----
-### Explanation of VADR `coords` coordinate strings <a name="coords"></a>
+### Explanation of VADR `coords` coordinate strings <a name="coords-format"></a>
 
 VADR using its own format for specifying coordinates for features and
 for naming subsequences in some output fasta files. 
@@ -512,14 +640,14 @@ These `coords` strings appear in `.ftr` output files and as the
 `<value>` in `<key>:<value>` pairs in `v-build.pl` output model info
 (`.minfo`) files for FEATURE lines.
 
-### Explanation of sequence naming in output VADR fasta files <a name="seqnames"></a>
+### Explanation of sequence naming in output VADR fasta files
 
 FASTA format sequence files output by VADR use a specific naming
 convention for naming sequences.
 
 Specifically, when naming a new subsequence, VADR scripts will append
 a `/` character followed by a [VADR coordinates
-string](#coords) to sequence names to indicate the positions
+string](#coords-format) to sequence names to indicate the positions
 (and strand) of the original sequence the new subsequence derives
 from. `v-annotate.pl` will create names in a similar manner, but
 sometimes will add an additional string that defines the feature being
@@ -529,7 +657,5 @@ annotated. Here are some examples:
 | Original sequence name | subsequence name | subseq start | subseq end | subseq strand | notes | 
 |------------------------|-------------------|-----------------|--------------------|------------------|-------|
 | `NC_039897.1`          | `NC_039897.1/7025..7672:+` | `7025`            | `7672`          | `+`                |  Typical of `v-build.pl` `.cds.fa` output files | 
-| `JN975492.1`           | `JN975492.1/mat_peptide.2/1001-2092:+` | `1001`            | `2092`          | `+`    |  Typical of `v-annotate.pl` `.<model_name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
+| `JN975492.1`           | `JN975492.1/mat_peptide.2/1001-2092:+` | `1001`            | `2092`          | `+`    |  Typical of `v-annotate.pl` `.<model-name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
 
----
-#### For help email eric.nawrocki@nih.gov

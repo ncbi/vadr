@@ -860,6 +860,6 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 
 ---
-#### For help email eric.nawrocki@nih.gov
+#### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
 

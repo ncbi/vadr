@@ -491,4 +491,5 @@ the VADR 1.0 library by following the instructions for creating a VADR
 library starting at step 2 [here](#library).
 
 ---
-#### For help email eric.nawrocki@nih.gov
+#### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
+
