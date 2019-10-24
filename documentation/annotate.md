@@ -668,7 +668,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | *mutendns*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon |
 | *mutendex*   | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position |
 | *unexleng*   | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 |
-| [*cdsstopn*](#cdsstopn2)   | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference | <a name="cdsstopn1"></a>
+| [*cdsstopn*](#cdsstopn2)   | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference <a name="cdsstopn1"></a> | 
 | *cdsstopp*   | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment |
 | *peptrans*   | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem |
 | *pepadjcy*   | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent |
@@ -737,7 +737,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | *mutendns*   | MUTATION_AT_END                 | none | CDS | - | 
 | *mutendex*   | MUTATION_AT_END                 | none | CDS | - | 
 | *unexleng*   | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - | 
-| [*cdsstopn*](#cdsstopn1)   | CDS_HAS_STOP_CODON              | none | CDS | - | <a name="cdsstopn2"></a>
+| [*cdsstopn*](#cdsstopn1)   | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopn2"></a> | 
 | *cdsstopp*   | CDS_HAS_STOP_CODON              | none | CDS | - | 
 | *peptrans*   | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - | 
 | *pepadjcy*   | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - | 
