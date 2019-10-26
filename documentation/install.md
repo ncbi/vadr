@@ -1,4 +1,4 @@
-# VADR installation instructions
+# VADR installation instructions <a name="top"></a>
 
 * [Installation using `vadr-install.sh`](#install.sh)
 * [Setting environment variables](#environment)
@@ -51,8 +51,6 @@ When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
-If you have trouble with installation, email eric.nawrocki@nih.gov.
-
 ---
 ## Setting VADR environment variables <a name="environment"></a>
 
@@ -65,17 +63,19 @@ vadr-install.sh>`)
 
 ---
 ### **Note to internal NCBI users**
-Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
-path to the centrally installed copy of VADR at NCBI (`<ncbi-vadr-install-dir>`)
 
-Then, to set up your environment variables follow the instructions
-below but replace:
-`<full path to directory in which you ran vadr-install.sh>`
-with
-`<ncbi-vadr-install-dir>`
+Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
+path to the centrally installed copy of VADR at NCBI
+(`<ncbi-vadr-install-dir>`).
+
+Then, to set up your environment variables, follow the instructions
+below but replace: `<full path to directory in which you ran
+vadr-install.sh>` with `<ncbi-vadr-install-dir>`
+
 ---
 
 ### Instructions for setting environment variables output by `vadr-install.sh`
+
 ```
 The final step is to update your environment variables.
 (See vadr/README.txt for more information.)
@@ -125,8 +125,9 @@ source ~/.cshrc
 ```
 ---
 
-### If you get an error about `PERL5LIB` being undefined, change the PERL5LIB
-line to add to:
+### If you get an error about `PERL5LIB` being undefined...
+
+Change the PERL5LIB line to add to:
 
 ```
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
@@ -147,7 +148,7 @@ The VADR package includes some tests you can run to make sure that
 your installation was successful and that your environment variables
 are set-up correctly.
 
-There are 2 shell scripts for running tests; with respect to the
+There are two shell scripts for running tests; with respect to the
 installation directory they are:
 
 1. `vadr/testfiles/do-install-tests-local.sh`
@@ -176,7 +177,7 @@ If something goes wrong, the `local` script will exit quickly. If the
 compute farm is busy, the `parallel` script make take longer as the
 relevant jobs wait to run.
 
-Below is example output for do-install-tests-local.sh:
+Below is example output for `do-install-tests-local.sh`:
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
@@ -267,9 +268,9 @@ figuring out why, email me at eric.nawrocki@nih.gov.
 ---
 ## Further information
 
-* [`v-annotate.pl` example usage and command-line options](annotate.md)
-* [`v-build.pl` example usage and command-line options](build.md)
-* [VADR output formats](formats.md)
+* [`v-annotate.pl` example usage and command-line options](annotate.md#top)
+* [`v-build.pl` example usage and command-line options](build.md#top)
+* [VADR output formats](formats.md#top)
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
