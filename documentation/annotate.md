@@ -748,57 +748,57 @@ In the table below, the **type** column reports if each alert pertains to an ent
 #### Description of *always fatal* alert codes <a name="always1"></a>
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| [*noannotn*](#noannotn2)  | sequence | NO_ANNOTATION                   | no significant similarity detected <a name="noannotn1"></a> |
-| [*revcompl*](#revcompl2)  | sequence | REVCOMPLEM                      | sequence appears to be reverse complemented <a name="revcompl1"></a> |
-| [*unexdivg*](#unexdivg2)  | sequence | UNEXPECTED_DIVERGENCE           | sequence is too divergent to confidently assign nucleotide-based annotation <a name="unexdivg1"></a> |
-| [*noftrann*](#noftrann2)  | sequence | NO_FEATURES_ANNOTATED           | sequence similarity to homology model does not overlap with any features <a name="noftrann1"></a> |
+| [*noannotn*](#noannotn2)  | sequence | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  |
+| [*revcompl*](#revcompl2)  | sequence | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
+| [*unexdivg*](#unexdivg2)  | sequence | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
+| [*noftrann*](#noftrann2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| [*incsbgrp*](#incsbgrp2)  | sequence | INCORRECT_SPECIFIED_SUBGROUP    | score difference too large between best overall model and best specified subgroup model <a name="incsbgrp1"></a> |
-| [*incgroup*](#incgroup2)  | sequence | INCORRECT_SPECIFIED_GROUP       | score difference too large between best overall model and best specified group model <a name="incgroup1"></a> |
-| [*lowcovrg*](#lowcovrg2)  | sequence | LOW_COVERAGE                    | low sequence fraction with significant similarity to homology model <a name="lowcovrg1"></a> |
-| [*dupregin*](#dupregin2)  | sequence | DUPLICATE_REGIONS               | similarity to a model region occurs more than once <a name="dupregin1"></a> |
-| [*discontn*](#discontn2)  | sequence | DISCONTINUOUS_SIMILARITY        | not all hits are in the same order in the sequence and the homology model <a name="discontn1"></a> |
-| [*indfstrn*](#indfstrn2)  | sequence | INDEFINITE_STRAND               | significant similarity detected on both strands <a name="indfstrn1"></a> |
-| [*lowsim5s*](#lowsim5s2)  | sequence | LOW_SIMILARITY_START            | significant similarity not detected at 5' end of the sequence <a name="lowsim5s1"></a> |
-| [*lowsim3s*](#lowsim3s2)  | sequence | LOW_SIMILARITY_END              | significant similarity not detected at 3' end of the sequence <a name="lowsim3s1"></a> |
-| [*lowsimis*](#lowsimis2)  | sequence | LOW_SIMILARITY                  | internal region without significant similarity <a name="lowsimis1"></a> |
-| [*mutstart*](#mutstart2)  | feature  | MUTATION_AT_START               | expected start codon could not be identified <a name="mutstart1"></a> |
-| [*mutendcd*](#mutendcd2)  | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, predicted CDS stop by homology is invalid <a name="mutendcd1"></a> |
-| [*mutendns*](#mutendns2)  | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon <a name="mutendns1"></a> |
-| [*mutendex*](#mutendex2)  | feature  | MUTATION_AT_END                 | expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position <a name="mutendex1"></a> |
-| [*unexleng*](#unexleng2)  | feature  | UNEXPECTED_LENGTH               | length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 <a name="unexleng1"></a> |
-| [*cdsstopn*](#cdsstopn2)  | feature  | CDS_HAS_STOP_CODON              | in-frame stop codon exists 5' of stop position predicted by homology to reference <a name="cdsstopn1"></a> | 
-| [*cdsstopp*](#cdsstopp2)  | feature  | CDS_HAS_STOP_CODON              | stop codon in protein-based alignment <a name="cdsstopp1"></a> |
-| [*peptrans*](#peptrans2)  | feature  | PEPTIDE_TRANSLATION_PROBLEM     | mat_peptide may not be translated because its parent CDS has a problem <a name="peptrans1"></a> |
-| [*pepadjcy*](#pepadjcy2)  | feature  | PEPTIDE_ADJACENCY_PROBLEM       | predictions of two mat_peptides expected to be adjacent are not adjacent <a name="pepadjcy1"></a> |
-| [*indfantp*](#indfantp2)  | feature  | INDEFINITE_ANNOTATION           | protein-based search identifies CDS not identified in nucleotide-based search <a name="indfantp1"></a> |
-| [*indfantn*](#indfantn2)  | feature  | INDEFINITE_ANNOTATION           | nucleotide-based search identifies CDS not identified in protein-based search <a name="indfantn1"></a> |
-| [*indf5gap*](#indf5gap2)  | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model is a gap at 5' boundary <a name="indf5gap1"></a> |
-| [*indf5loc*](#indf5loc2)  | feature  | INDEFINITE_ANNOTATION_START     | alignment to homology model has low confidence at 5' boundary <a name="indf5loc1"></a> |
-| [*indf5plg*](#indf5plg2)  | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment extends past nucleotide-based alignment at 5' end <a name="indf5plg1"></a> |
-| [*indf5pst*](#indf5pst2)  | feature  | INDEFINITE_ANNOTATION_START     | protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint <a name="indf5pst1"></a> |
-| [*indf3gap*](#indf3gap2)  | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model is a gap at 3' boundary <a name="indf3gap1"></a> |
-| [*indf3loc*](#indf3loc2)  | feature  | INDEFINITE_ANNOTATION_END       | alignment to homology model has low confidence at 3' boundary <a name="indf3loc1"></a> |
-| [*indf3plg*](#indf3plg2)  | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment extends past nucleotide-based alignment at 3' end <a name="indf3plg1"></a> |
-| [*indf3pst*](#indf3pst2)  | feature  | INDEFINITE_ANNOTATION_END       | protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint <a name="indf3pst1"></a> |
-| [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | strand mismatch between protein-based and nucleotide-based predictions <a name="indfstrp1"></a> |
-| [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | too large of an insertion in protein-based alignment <a name="insertnp1"></a> |
-| [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | too large of a deletion in protein-based alignment <a name="deletinp1"></a> |
-| [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | region within annotated feature at 5' end of sequence lacks significant similarity <a name="lowsim5s1"></a> |
-| [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | region within annotated feature at 3' end of sequence lacks significant similarity <a name="lowsim3s1"></a> |
-| [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | region within annotated feature lacks significant similarity <a name="lowsimif1"></a> |
+| [*incsbgrp*](#incsbgrp2)  | sequence | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |
+| [*incgroup*](#incgroup2)  | sequence | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model |
+| [*lowcovrg*](#lowcovrg2)  | sequence | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model |
+| [*dupregin*](#dupregin2)  | sequence | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once |
+| [*discontn*](#discontn2)  | sequence | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model |
+| [*indfstrn*](#indfstrn2)  | sequence | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands |
+| [*lowsim5s*](#lowsim5s2)  | sequence | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
+| [*lowsim3s*](#lowsim3s2)  | sequence | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
+| [*lowsimis*](#lowsimis2)  | sequence | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
+| [*mutstart*](#mutstart2)  | feature  | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
+| [*mutendcd*](#mutendcd2)  | feature  | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid | 
+| [*mutendns*](#mutendns2)  | feature  | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | 
+| [*mutendex*](#mutendex2)  | feature  | MUTATION_AT_END                 | <a name="mutendex1"></a> expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | <a name="mutendex1"></a> |
+| [*unexleng*](#unexleng2)  | feature  | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
+| [*cdsstopn*](#cdsstopn2)  | feature  | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
+| [*cdsstopp*](#cdsstopp2)  | feature  | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
+| [*peptrans*](#peptrans2)  | feature  | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
+| [*pepadjcy*](#pepadjcy2)  | feature  | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
+| [*indfantp*](#indfantp2)  | feature  | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
+| [*indfantn*](#indfantn2)  | feature  | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search | 
+| [*indf5gap*](#indf5gap2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary |
+| [*indf5loc*](#indf5loc2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5loc1"></a> alignment to homology model has low confidence at 5' boundary |
+| [*indf5plg*](#indf5plg2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end | 
+| [*indf5pst*](#indf5pst2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint | 
+| [*indf3gap*](#indf3gap2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary | 
+| [*indf3loc*](#indf3loc2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3loc1"></a> alignment to homology model has low confidence at 3' boundary | 
+| [*indf3plg*](#indf3plg2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end | 
+| [*indf3pst*](#indf3pst2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
+| [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
+| [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
+| [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
+| [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5s1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |        <a name="lowsim5s1"></a> |
+| [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3s1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
+| [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type | short description/error name | long description |
 |------------|-------|------------------------------|------------------|
-| [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup <a name="qstsbgrp1"></a> |
-| [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group <a name="qstgroup1"></a> |
-| [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) <a name="indfclas1"></a> |
+| [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  |
+| [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  |
+| [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
 | [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
-| [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition <a name="biasdseq1"></a> |
+| [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
