@@ -787,8 +787,8 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
 | [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
 | [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
-| [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5s1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |        <a name="lowsim5s1"></a> |
-| [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3s1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
+| [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
+| [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
 | [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
