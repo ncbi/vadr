@@ -15,18 +15,17 @@ To install the latest version of VADR download this file:
 https://raw.githubusercontent.com/nawrockie/vadr/master/vadr-install.sh
 
 To download any specific release/version, for example `1.0` download
-the corresponding `vadr-install.sh` file for that release/version:
-(Prior to version 1.0, the name of the installation script was
-`install.sh`, not `vadr-install.sh`.)
+the corresponding `vadr-install.sh` file for that release/version
+(prior to version 1.0, the name of the installation script was
+`install.sh`, not `vadr-install.sh`):
 
 https://raw.githubusercontent.com/nawrockie/vadr/1.0/vadr-install.sh
 
 Copy the `vadr-install.sh` file into the directory in which you want
-to install VADR. You may want to call that `vadr-install-dir`. Then
-move into that directory and run one of the following two commands
-depending on whether you are installing on a linux or macosx
-system. (Only the blast executable files that will be installed differ
-depending on the system type).
+to install VADR. A good name for that directory is
+`vadr-install-dir`. Then move into that directory and run one of the
+following two commands depending on whether you are installing on a
+Linux or Mac/OSX system:
 
 ```
 ./vadr-install.sh linux
@@ -37,15 +36,17 @@ OR
 ```
 ./vadr-install.sh macosx
 ```
+The `linux` or `macosx` argument controls (only) the type of blast
+executable files that will be installed.
 
-That will create several directories in the current directory.
+That command will create several directories in the current directory.
 
 `vadr-install.sh` will download and install the software packages
 VADR, and [Infernal](http://eddylab.org/infernal/), the required perl
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
-binary executables of the NCBI BLAST package, for either Linux or
-Mac/OSX depending on the command-line argument that you use. 
+binary executables of the NCBI BLAST package (for either Linux or
+Mac/OSX).
 
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
@@ -59,20 +60,23 @@ If you have trouble with installation, email eric.nawrocki@nih.gov.
 As mentioned above, when you run 'vadr-install.sh', instructions will be
 output about how to change your environment variables so that you can
 run the VADR scripts. Those instructions are also included below for
-reference, but without the actual path to where you ran install.sh
+reference, but without the actual path to where you ran `vadr-install.sh`
 (below it is replaced with `<full path to directory in which you ran
-install.sh>`)
+vadr-install.sh>`)
 
+---
 ### **Note to internal NCBI users**
 Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
-path to the centrally installed copy of VADR at NCBI (<ncbi-vadr-dir>)
+path to the centrally installed copy of VADR at NCBI (<ncbi-vadr-install-dir>)
 
 Then, to set up your environment variables follow the instructions
 below but replace:
-`<full path to directory in which you ran install.sh>`
+`<full path to directory in which you ran vadr-install.sh>`
 with
-`<ncbi-vadr-dir>`
+`<ncbi-vadr-install-dir>`
+---
 
+### Instructions for setting environment variables output by `vadr-install.sh`
 ```
 The final step is to update your environment variables.
 (See vadr/README.txt for more information.)
@@ -122,7 +126,7 @@ source ~/.cshrc
 ```
 ---
 
-#### If you get an error about `PERL5LIB` being undefined, change the PERL5LIB
+### If you get an error about `PERL5LIB` being undefined, change the PERL5LIB
 line to add to:
 
 ```
@@ -264,9 +268,9 @@ figuring out why, email me at eric.nawrocki@nih.gov.
 ---
 ## Further information
 
-Additional documentation with example usage and explanation of
-command-line options exists for [`v-annotate.pl](annotate.md) and
-[`v-build.pl](build.md), and for [VADR output formats](formats.md)
+* [`v-annotate.pl` example usage and command-line options](annotate.md)
+* [`v-build.pl` example usage and command-line options](build.md)
+* [VADR output formats](formats.md)
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
