@@ -154,10 +154,10 @@ installation directory they are:
 1. `vadr/testfiles/do-install-tests-local.sh`
 2. `vadr/testfiles/do-install-tests-parallel.sh`
 
-As explained [here](annotate.md#exampleparallel), the VADR scripts can
-be run locally on your computer or in parallel on a compute
-farm. These two test files test each of those modes.  If you plan to
-run the scripts locally at least some of the time, then run
+The VADR `v-annotate.pl` script can be run locally on your computer or
+in [parallel](annotate.md#exampleparallel) on a compute farm. These
+two test files test each of those modes.  If you plan to run the
+scripts locally at least some of the time, then run
 `do-install-tests-local.sh`. If you plan to run the scripts on a
 compute farm at least some of the time, then run
 `do-install-tests-parallel.sh`.
