@@ -797,7 +797,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup <a name="qstsbgrp1"></a> |
 | [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group <a name="qstgroup1"></a> |
 | [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) <a name="indfclas1"></a> |
-| [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) | <a name="lowscore1"></a>
+| [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
 | [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition <a name="biasdseq1"></a> |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
