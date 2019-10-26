@@ -1,4 +1,4 @@
-# VADR installation
+# VADR installation instructions
 
 * [Installation using `vadr-install.sh`](#install.sh)
 * [Setting environment variables](#environment)
@@ -6,7 +6,7 @@
 * [Further information](#further)
 
 ---
-## VADR installation using `vadr-install.sh` script
+## VADR installation using the `vadr-install.sh` script
 
 The file `vadr-install.sh` is an executable file for installing VADR
 and its dependencies. That file is located online at github.
@@ -14,7 +14,7 @@ To install the latest version of VADR download this file:
 
 https://raw.githubusercontent.com/nawrockie/vadr/master/vadr-install.sh
 
-To download any specific release/version, for example `1.0` download
+To download any specific release/version, for example version 1.0 download
 the corresponding `vadr-install.sh` file for that release/version
 (prior to version 1.0, the name of the installation script was
 `install.sh`, not `vadr-install.sh`):
@@ -39,9 +39,8 @@ OR
 The `linux` or `macosx` argument controls (only) the type of blast
 executable files that will be installed.
 
-That command will create several directories in the current directory.
-
-`vadr-install.sh` will download and install the software packages
+The `vadr-install.sh` command will create several directories in the current directory.
+It will download and install the software packages
 VADR, and [Infernal](http://eddylab.org/infernal/), the required perl
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
@@ -57,7 +56,7 @@ If you have trouble with installation, email eric.nawrocki@nih.gov.
 ---
 ## Setting VADR environment variables <a name="environment"></a>
 
-As mentioned above, when you run 'vadr-install.sh', instructions will be
+As mentioned above, when you run `vadr-install.sh`, instructions will be
 output about how to change your environment variables so that you can
 run the VADR scripts. Those instructions are also included below for
 reference, but without the actual path to where you ran `vadr-install.sh`
@@ -67,7 +66,7 @@ vadr-install.sh>`)
 ---
 ### **Note to internal NCBI users**
 Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
-path to the centrally installed copy of VADR at NCBI (<ncbi-vadr-install-dir>)
+path to the centrally installed copy of VADR at NCBI (`<ncbi-vadr-install-dir>`)
 
 Then, to set up your environment variables follow the instructions
 below but replace:
