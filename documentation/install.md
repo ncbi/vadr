@@ -62,7 +62,7 @@ reference, but without the actual path to where you ran `vadr-install.sh`
 vadr-install.sh>`)
 
 ---
-### **Note to internal NCBI users**
+### Note to internal NCBI users <a name="ncbi"></a>
 
 Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
 path to the centrally installed copy of VADR at NCBI
@@ -142,7 +142,7 @@ setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"
 for `.cshrc`. And then execute `source ~/.bashrc` or `source ~/.cshrc` again.
 
 ---
-## Verifying successful installation with test runs
+## Verifying successful installation with test runs<a name="tests"></a>
 
 The VADR package includes some tests you can run to make sure that
 your installation was successful and that your environment variables
