@@ -216,8 +216,8 @@ Next, the alerts reported for the sequences are summarized:
 
 For the nine sequences, there were five different alert codes
 reported, each with one case for a single sequence. This tabular
-summary does not indicate which sequences the alerts were reported
-for. We can find that out from other output files as discussed further
+summary does not indicate to which sequence(s) each alert pertains.
+We can find that out from other output files as discussed further
 below.
 
 Next, the list of output files created by `v-annotate.pl` is
@@ -296,10 +296,10 @@ The first three files are the [`.log` file](formats.md#log), which is
 the same as the standard output printed to the screen currently being
 discussed, the [`.cmd` file](formats.md#cmd), and the [`.filelist`
 file](formats.md#filelist) which lists the output files created by
-`v-annotate.pl`. Next comes a [`.seqstat file](annotate.md#seqstat)
+`v-annotate.pl`. Next comes a [`.seqstat` file](annotate.md#seqstat)
 with lengths for each sequence in the input file.
 
-Then comes about 40 FASTA-formatted sequence files with subsequences
+Then come about 40 FASTA-formatted sequence files with subsequences
 of the predicted features for each sequence, grouped by each
 model. There will be one file for each model/feature pair that is
 annotated in at least one sequence.  Each file will contain all
@@ -476,10 +476,12 @@ alerts occur, only one is output to reduce the number of overlapping
 or redundant problems reported to the submitter/user. In this case the
 `mutendcd` (`MUTATION_AT_END`) alert is omitted in the `.fail.tbl`
 file because it occurs in combination with a `cdsstopn`
-(`CDS_HAS_STOP_CODON`) alert. Only alerts output to the `.fail.tbl`
-table are output to the `.alt.list` file. The [alert
-table](#alertlist) includes more information on which alerts are
-omitted in combination with other alerts.
+(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only two alerts
+(`noftrann` and `mutendcd`) can possibly be omitted. See the
+far right column of the [this table](#alerts2) for which alerts,
+when present in combination with `noftrann` or `mutendcd` cause them
+to be omitted. Only alerts output to the `.fail.tbl`
+table are output to the `.alt.list` file. 
 
 The final three output files all end in `.list`. The `.pass.list` and
 `.fail.list` files are simply lists of all passing and failing
@@ -610,6 +612,10 @@ of these options can be found below.
 For `v-annotate.pl` the available options are split into nine different categories, 
 each explained in their own subsection below.
 
+In the tables describing options below, `<s>` represents a string,
+`<x>` indicates a floating point number and `<n>` represents an
+integer. 
+
 ### `v-annotate.pl` basic options<a name="options-basic"></a>
 
 | ......option...... | explanation | 
@@ -638,6 +644,9 @@ each explained in their own subsection below.
 | `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
+
+In the table below, `<n>` represents a positive interger argument and
+`<x>` represents a positive floating-point argument. 
 
 | ........option........ | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
@@ -788,7 +797,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | best overall model is not from specified subgroup <a name="qstsbgrp1"></a> |
 | [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | best overall model is not from specified group <a name="qstgroup1"></a> |
 | [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | low score difference between best overall model and second best model (not in best model's subgroup) <a name="indfclas1"></a> |
-| [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) <a name="lowscore1"></a> |
+| [*lowscore*](#lowscore2)  | sequence <a name="lowscore1"></a> | LOW_SCORE                       | score to homology model below low threshold | [`--lowsc`](#options-alerts) |
 | [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | high fraction of score attributed to biased sequence composition <a name="biasdseq1"></a> |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
@@ -853,7 +862,7 @@ user, this is "-" for alerts that are never omitted from those files.
 #### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
 |------------|------------------------------|------------------|------------------------|--------------------------------------|
-| [*qstsbgrp*](#qstsbgrp1)  | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - <a name="qstsubgrp2"></a> | 
+| [*qstsbgrp*](#qstsbgrp1)  | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - <a name="qstsbgrp2"></a> | 
 | [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
 | [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 

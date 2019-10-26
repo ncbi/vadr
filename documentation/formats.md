@@ -274,7 +274,7 @@ that occurs at least once in the input sequence file that
 |   5 | `per type`            | `feature` if this alert pertains to a specific feature in a sequence, `sequence` if it does not |
 |   6 | `num cases`           | number of instances of this alert in the output (number of rows for this alert in `.alt` file), can be more than 1 per sequence |
 |   7 | `num seqs`            | number of input sequences with at least one instance of this alert |
-|   8 to end | `long description`    |longer description of the alert, specific to each alert type; **this field contains whitespace** |
+|   8 to end | `long description`    |longer description of the alert, specific to each alert type; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Explanation of `.alt`-suffixed output files<a name="alt"></a>
@@ -294,7 +294,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 |   7 | `alert code`          | 8 character VADR alert code |
 |   8 | `fail`                | `yes` if this alert code is fatal (automatically causes the sequence to fail), `no` if not |
 |   9 | `alert desc`          | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
-| 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; **this field contains whitespace** |
+| 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
@@ -319,11 +319,11 @@ the model info file.
 |   9 | `ftr idx`             | index (in input model info file) of this feature |
 |  10 | `str`                 | strand on which the feature is annotated: `+` for positive/forward/Watson strand, `-` for negative/reverse/Crick strand |
 |  11 | `n_from`              | nucleotide start position for this feature in input sequence |
-|  12 | `n_to`                | nucleotide end position for this feature in input sequence |
+|  12 | `n_to`                | nucleotide end position for this feature in input sequence, for CDS features this is typically the final position of a stop codon if CDS is not 3' truncated |
 |  13 | `n_instp`             | nucleotide position of stop codon not at `n_to`, or `-` if none, will be 5' of `n_to` if early stop (`cdsstopn` alert), or 3' of `n_to` if first stop is 3' of `n_to` (`mutendex` alert), or `?` if no in-frame stop exists 3' of `n_from`; will always be `-` if `trunc` is not `no`; |
 |  14 | `trc`                 | indicates whether the feature is truncated or not, where one or both ends of the feature are missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
-|  15 | `p_from`              | nucleotide start position for this feature based on the blastx protein-validation step | 
-|  16 | `p_to`                | nucleotide stop position for this feature based on the blastx protein-validation step | 
+|  15 | `p_from`              | if a CDS feature, the nucleotide start position for this feature based on the blastx protein-validation step, this will always be the first position of a codon in the blastx-predicted translated region| 
+|  16 | `p_to`                | if a CDS feature, nucleotide stop position for this feature based on the blastx protein-validation step, this will always be the final position of a codon in the blastx-predicted translated region, typically the final position of the codon *immediately upstream (prior)* of the stop codon if CDS is not 3' truncated | 
 |  17 | `p_instp`             | nucleotide position of stop codon 5' of `p_to` if an in-frame stop exists before `p_to` |
 |  18 | `p_sc`                | raw score of best blastx alignment |
 |  19 | `nsa`                 | number of segments annotated for this feature |
@@ -462,7 +462,7 @@ lines with 4 tab-delimited fields:
 |   1 | `sequence`            | name of sequence this alert pertains to |
 |   2 | `error`               | short description of the alert/error |
 |   3 | `feature`             | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
-|   4 | `error-description`   | longer description of the alert/error, specific to each alert/error type; **this field contains whitespace** |
+|   4 | `error-description`   | longer description of the alert/error, specific to each alert/error type; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
