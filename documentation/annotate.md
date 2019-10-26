@@ -728,7 +728,7 @@ The following options are related to parallel mode.
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
-To see a table with information on alerts, use the `v-annotate.pl --alt_list` option, like this:
+To see a table with information on alerts, use the `--alt_list` option, like this:
 
 ```
 v-annotate.pl --alt_list 
