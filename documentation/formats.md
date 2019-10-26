@@ -532,4 +532,4 @@ annotated. Here are some examples:
 | `JN975492.1`           | `JN975492.1/mat_peptide.2/1001-2092:+` | `1001`            | `2092`          | `+`    |  Typical of `v-annotate.pl` `.<model_name>.mat_peptide.<d>.fa` output files, this is the predicted sequence of the second mature peptide from model `<model-name>` in `JN975492.1` | 
 
 ---
-#### For help email eric.nawrocki@nih.gov
+#### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
