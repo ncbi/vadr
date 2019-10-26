@@ -49,13 +49,12 @@ Mac/OSX depending on the command-line argument that you use.
 
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
-variables so that you can run the VADR scripts.  These are discussed
-[below](#environment).
+variables so that you can run the VADR scripts, as discussed next.
 
 If you have trouble with installation, email eric.nawrocki@nih.gov.
 
 ---
-## Setting VADR environment variables
+## Setting VADR environment variables <a name="environment"></a>
 
 As mentioned above, when you run 'vadr-install.sh', instructions will be
 output about how to change your environment variables so that you can
@@ -64,7 +63,6 @@ reference, but without the actual path to where you ran install.sh
 (below it is replaced with `<full path to directory in which you ran
 install.sh>`)
 
-```
 ### **Note to internal NCBI users**
 Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
 path to the centrally installed copy of VADR at NCBI (<ncbi-vadr-dir>)
