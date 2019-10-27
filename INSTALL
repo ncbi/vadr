@@ -1,0 +1,28 @@
+Brief installation instructions 
+VADR 0.991dev; October 2019
+-------------------------------------------------------------
+
+These are quick installation instructions. For complete documentation,
+including customization and troubleshooting, please see the
+file vadr/documentation/install.md
+
+Copy https://raw.githubusercontent.com/nawrockie/vadr/master/vadr-install.sh
+to a new empty directory where you want to install VADR and execute
+the following command in that directory:
+
+./vadr-install.sh linux
+
+OR
+
+./vadr-install.sh macosx
+
+Depending if you are installing on a Linux or Mac/OSX system.
+
+Set your envirnoment variables as explained at the end of the output
+of the above command.
+
+Run tests to verify that your installation was successful by
+running the command:
+
+$VADRSCRIPTSDIR/testfiles/do-install-tests-local.sh
+
