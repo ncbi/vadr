@@ -639,7 +639,7 @@ integer.
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--alt_list`     | output [summary of all alerts](#alertlist) and then exit | 
+| `--alt_list`     | output [summary of all alerts](#alerts) and then exit | 
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
 | `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
 

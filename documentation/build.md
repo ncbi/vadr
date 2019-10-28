@@ -461,7 +461,7 @@ contains these commands.)
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
 
-### Building the VADR 1.0 library models for the 173 other RefSeqs <a name="1.0library-173"></a>
+### Building the VADR 1.0 library models for the other 173 *Caliciviridae* and *Flaviviridae* viral species <a name="1.0library-173"></a>
 
 To build models for the other 173 *Caliciviridae* and *Flaviviridae* models listed in
 [vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list)
