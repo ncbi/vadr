@@ -626,7 +626,7 @@ integer.
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-b <s>` | specify that the BLAST database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
 | `--atgonly` | only consider ATG as a valid start codon, regardless of model's translation table <a name="options-basic-atgonly"></a> |
-| `--keep` | keep [additional output files](formats.db#annotate-keep) that are normally removed |
+| `--keep` | keep [additional output files](formats.md#annotate-keep) that are normally removed |
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
 
