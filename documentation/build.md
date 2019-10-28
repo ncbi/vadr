@@ -1,4 +1,4 @@
-# `v-build.pl` example usage and command-line options
+# `v-build.pl` example usage and command-line options <a name="top"></a>
 
 * [`v-build.pl` example usage](#exampleusage)
 * [`v-build.pl` command-line options](#options)
@@ -197,6 +197,9 @@ Each option has a short description, but additional information on some
 of these options can be found below.
 For `v-build.pl` the available options are split into eight different categories, 
 each explained in their own subsection below.
+
+In the tables describing options below, `<s>` represents a string
+and `<n>` represents an integer. 
 
 ### `v-build.pl` basic options<a name="options-basic"></a>
 
