@@ -1,5 +1,6 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
 #### Version 0.991dev; October 2019
+#### https://github.com/nawrockie/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
 homologous to a set of reference models of viral genomes or gene
@@ -10,7 +11,7 @@ database.
 The VADR `v-annotate.pl` script is used to classify a sequence, by
 determining which in a set of reference models it is most similar
 to, and then annotate that sequence based on that most similar model.
-Example usage of `v-annotate.pl` can be found [here](annotate.md#top)
+Example usage of `v-annotate.pl` can be found [here](annotate.md#top).
 Another VADR script, `v-build.pl`, is used to create the models from
 NCBI RefSeq sequences or from input multiple sequence alignments,
 potentially with secondary structure annotation. `v-build.pl` stores
@@ -25,7 +26,7 @@ found [here](build.md#top).
 sequences it annotates (e.g. invalid or early stop codons in CDS
 features) and reports them to the user in the form of *alerts*.  A
 subset of alerts are *fatal* and cause a sequence to *fail*. A
-sequence *passes* if 0 alerts from this subset are reported.  VADR is
+sequence *passes* if zero fatal alerts are reported for it.  VADR is
 used by GenBank staff to evaluate incoming sequence submissions of
 some viruses (currently Norovirus and Dengue virus).  Submitted
 sequences that pass `v-annotate.pl` are accepted into GenBank.
@@ -35,9 +36,7 @@ computationally expensive steps, are performed by the Infernal and
 BLAST software packages, which are downloaded and installed with [VADR
 installation](install.md#top).
 
-https://github.com/nawrockie/vadr.git
 ---
-
 ## VADR documentation <a name="documentation"></a>
 
 * [VADR installation instructions](install.md#top)
