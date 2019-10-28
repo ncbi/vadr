@@ -33,12 +33,12 @@ cox1 model version (e.g. 0.971.1)>:
 $ ./download-vadr-cox1-models.sh 0.971.1
 
 Follow the instructions here:
-https://github.com/nawrockie/vadr/blob/master/documentation/install.md#environment
+https://github.com/nawrockie/vadr/blob/develop/documentation/install.md#environment
 
 To set your environment variables.
 
 Then, follow the instructions here:
-https://github.com/nawrockie/vadr/blob/master/documentation/install.md#tests
+https://github.com/nawrockie/vadr/blob/develop/documentation/install.md#tests
 
 To verify that installation was successful. For this step it is only
 necessary to run `do-install-tests-local.sh`, you can skip the
