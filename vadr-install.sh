@@ -156,8 +156,8 @@ if [ $MODE != "build" ]; then
     # download Infernal (TEMPORARY: develop branch, specific commit, will be v1.1.3 once that is released)
     # UPDATE THIS TO USE curl TO DOWNLOAD 1.1.3 WHEN IT IS AVAILABLE
     echo "Downloading Infernal (develop branch) ... "
-    git clone https://github.com/EddyRivasLab/infernal.git infernal-dev
-    cd infernal-dev
+    git clone https://github.com/EddyRivasLab/infernal.git infernal
+    cd infernal
     git checkout 7d93882
     rm -rf .git
     git clone https://github.com/EddyRivasLab/hmmer
@@ -213,8 +213,8 @@ if [ $MODE != "download" ]; then
     echo "Finished building Bio-Easel."
     echo "------------------------------------------------"
 
-    if [ ! -d infernal-dev ]; then
-        echo "ERROR: infernal-dev dir does not exist"
+    if [ ! -d infernal ]; then
+        echo "ERROR: infernal dir does not exist"
         if [ $MODE == "build" ]; then 
             echo "Did you run 'vadr-install.sh <\"linux\" or \"macosx\"> download' first?"
         fi
@@ -222,7 +222,7 @@ if [ $MODE != "download" ]; then
     fi
     # Build Infernal:
     echo "Building Infernal ... "
-    cd infernal-dev
+    cd infernal
     sh ./configure 
     make
     cd ..
@@ -246,8 +246,8 @@ echo ""
 echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
 echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
 echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models\""
-echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal-dev/src\""
-echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal-dev/easel/miniapps\""
+echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/src\""
+echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/easel/miniapps\""
 echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
 echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
 echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
@@ -267,8 +267,8 @@ echo ""
 echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
 echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
 echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models\""
-echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal-dev/src\""
-echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal-dev/easel/miniapps\""
+echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/src\""
+echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/easel/miniapps\""
 echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
 echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
 echo "setenv VADRBLASTDIR \"\$VADRINSTALLDIR/ncbi-blast/bin\""

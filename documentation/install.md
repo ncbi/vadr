@@ -1,4 +1,4 @@
-# VADR installation instructions <a name="top"></a>
+#  <a name="top"></a> VADR installation instructions
 
 * [Installation using `vadr-install.sh`](#install.sh)
 * [Setting environment variables](#environment)

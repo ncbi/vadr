@@ -1,4 +1,4 @@
-# VADR output file formats <a name="top"></a>
+# <a name="top"></a> VADR output file formats
 
 * [VADR output files created by all VADR scripts](#generic)
   * [`.log` files](#log)
