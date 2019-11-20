@@ -77,13 +77,13 @@ vadr-install.sh>` with `<ncbi-vadr-install-dir>`
 
 ```
 The final step is to update your environment variables.
-(See https://github.com/nawrockie/vadr/blob/0.991/documentation/install.md for more information.)
+(See https://github.com/nawrockie/vadr/blob/0.993/documentation/install.md for more information.)
 
 If you are using the bash shell, add the following
 lines to the end of your '.bashrc' file in your home
 directory:
 
-export VADRINSTALLDIR="/panfs/pan1/infernal/notebook/19_1120_vadr_0p993_release/test-install-block1"
+export VADRINSTALLDIR=<full path to directory in which you ran vadr-install.sh>
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
 export VADRMODELDIR="$VADRINSTALLDIR/vadr-models"
 export VADRINFERNALDIR="$VADRINSTALLDIR/infernal/binaries"
@@ -240,7 +240,7 @@ Below is example output for `do-install-tests-local.sh`:
 # 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.0 (Nov 2019)
+# VADR 0.993 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Wed Nov 20 11:20:47 2019
 #
