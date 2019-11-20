@@ -1,5 +1,5 @@
 #!/bin/bash
-# EPN, Thu Oct 24 14:48:19 2019
+# EPN, Wed Nov 20 06:06:22 2019
 #
 # vadr-install.sh
 # A shell script for downloading and installing VADR and its dependencies.
@@ -21,10 +21,16 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="0.991"
-BEVERSION="Bio-Easel-0.08"
+VERSION="0.993"
+# bio-easel
+BEVERSION="Bio-Easel-0.09"
+# blast+
 BVERSION="2.9.0"
+# infernal
+IVERSION="1.1.3"
+# dependency git tag
 VVERSION="vadr-$VERSION"
+# vadr models
 MVERSION="0.991.1"
 
 # set defaults
@@ -71,8 +77,16 @@ echo "Set VADRINSTALLDIR as current directory ($VADRINSTALLDIR)."
 echo "------------------------------------------------"
 # vadr
 echo "Downloading vadr ... "
-curl -k -L -o vadr-$VERSION.zip https://github.com/nawrockie/vadr/archive/$VERSION.zip; unzip vadr-$VERSION.zip; mv vadr-$VERSION vadr; rm vadr-$VERSION.zip
-
+#curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv $VVERSION vadr; rm $VERSION.zip
+# for a test build of a release, comment out above curl and uncomment block below
+# ----------------------------------------------------------------------------
+git clone https://github.com/nawrockie/vadr.git vadr
+cd vadr
+git checkout release-$VERSION
+rm -rf .git
+cd ..
+# ----------------------------------------------------------------------------
+ 
 # sequip and Bio-Easel
 for m in sequip Bio-Easel; do 
     echo "Downloading $m ... "
@@ -84,19 +98,73 @@ mkdir src
 cd ..
 echo "------------------------------------------------"
 
-# download Infernal (TEMPORARY: develop branch, specific commit, will be v1.1.3 once that is released)
-# UPDATE THIS TO USE curl TO DOWNLOAD 1.1.3 WHEN IT IS AVAILABLE
-echo "Downloading Infernal (develop branch) ... "
-git clone https://github.com/EddyRivasLab/infernal.git infernal
-cd infernal
-git checkout 7d93882
-rm -rf .git
-git clone https://github.com/EddyRivasLab/hmmer
-(cd hmmer; git checkout 498ec7c; rm -rf .git)
-git clone https://github.com/EddyRivasLab/easel
-(cd easel; git checkout 5288a95; rm -rf git)
-autoconf
-cd ..
+# download infernal binary distribution
+# - to download source distribution and build, see 'infernal block 2' below
+# - to download a specific infernal develop branch commit and also 
+#   specific commits of infernal dependencies hmmer and easel, see
+#   'infernal block 3' below
+
+# ----- infernal block 1 start  -----
+if [ $INPUTSYSTEM == "linux" ]; then
+    echo "Downloading Infernal version $IVERSION for Linux"
+    curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-linux-intel-gcc.tar.gz
+else
+    echo "Downloading Infernal version $IVERSION for Mac/OSX"
+    curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-macosx-intel.tar.gz
+fi
+tar xfz infernal.tar.gz
+rm infernal.tar.gz
+if [ $INPUTSYSTEM == "linux" ]; then
+    mv infernal-$IVERSION-linux-intel-gcc infernal
+else
+    mv infernal-$IVERSION-macosx-intel
+fi
+# ----- infernal block 1 end -----
+
+# if you'd rather download the source distro and build it yourself
+# (maybe because the binaries aren't working for you for some reason)
+# comment out 'infernal block 1' above and 
+# uncomment 'infernal block 2' below
+# ----- infernal block 2 start  -----
+#echo "Downloading Infernal version $IVERSION src distribution"
+#curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION.tar.gz
+#tar xfz infernal.tar.gz
+#rm infernal.tar.gz
+#echo "Building Infernal ... "
+#mv infernal-$IVERSION infernal
+#cd infernal
+#mkdir binaries
+#sh ./configure --bindir=$PWD/binaries --prefix=$PWD
+#make
+#make install
+#(cd easel/miniapps; make install)
+#cd ..
+#echo "Finished building Infernal "
+# ----- infernal block 2 end -----
+
+# ----- infernal block 3 start -----
+# if vadr depends on a specific commit in infernal develop branch
+# comment out above curl block above and uncomment block below and 
+# specify commits
+# ----- infernal block 3 start  -----
+#echo "Downloading Infernal (develop branch) ... "
+#git clone https://github.com/EddyRivasLab/infernal.git infernal
+#cd infernal
+#git checkout 9457f7d
+#rm -rf .git
+#git clone https://github.com/EddyRivasLab/hmmer
+#(cd hmmer; git checkout 6300662; rm -rf .git)
+#git clone https://github.com/EddyRivasLab/easel
+#(cd easel; git checkout 86ee126; rm -rf git)
+#mkdir binaries
+#autoconf
+#sh ./configure --bindir=$PWD/binaries --prefix=$PWD
+#make
+#make install
+#(cd easel/miniapps; make install)
+#cd ..
+#echo "Finished building Infernal "
+# ----- infernal block 3 end -----
 echo "------------------------------------------------"
 
 # download blast binaries
@@ -109,7 +177,7 @@ curl -k -L -o blast.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$
 fi
 tar xfz blast.tar.gz
 rm blast.tar.gz
-mv ncbi-blast-2.9.0+ ncbi-blast
+mv ncbi-blast-$BVERSION+ ncbi-blast
 echo "------------------------------------------------"
 
 # download vadr-models 
@@ -137,20 +205,6 @@ cd ..
 echo "Finished building Bio-Easel."
 echo "------------------------------------------------"
 
-if [ ! -d infernal ]; then
-   echo "ERROR: infernal dir does not exist"
-   exit 1
-fi
-# Build Infernal:
-echo "Building Infernal ... "
-cd infernal
-sh ./configure 
-make
-cd ..
-echo "Finished building Infernal "
-echo "------------------------------------------------"
-fi
-
 ###############################################
 # Message about setting environment variables
 ###############################################
@@ -167,8 +221,8 @@ echo ""
 echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
 echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
 echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models\""
-echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/src\""
-echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/easel/miniapps\""
+echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
+echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
 echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
 echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
 echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
@@ -188,8 +242,8 @@ echo ""
 echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
 echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
 echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models\""
-echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/src\""
-echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/easel/miniapps\""
+echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
+echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
 echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
 echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
 echo "setenv VADRBLASTDIR \"\$VADRINSTALLDIR/ncbi-blast/bin\""
