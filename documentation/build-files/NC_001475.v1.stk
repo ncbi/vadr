@@ -1,0 +1,166 @@
+# STOCKHOLM 1.0
+
+#=GS NC_001475.2 DE Dengue virus 3, complete genome.
+
+NC_001475.2  AGTTGTTAGTCTACGTGGACCGACAAGAACAGTTTCGACTCGGAAGCTTGCTTAACGTAGTGCTGACAGTTTTTTATTAGAGAGCAGATCTCTGATGAACAACCAACGGAAGAAGACGGGAAAACCGTCTATCAATATGCTGAAACGCGTGAGAAACCGTGTGTCAACTGGATCACAGTTGGCGAAGAGATTCTCAAAAG
+#=GC SS_cons :::((((((-((((((,,,<<<<---<<<____>>>--->>>><<<____>>>,))))))--))))))::::::::::<<<<<_____>>>>>::::::::::::::::::::<<<<<<_____>>>>>>::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GACTGCTGAACGGCCAGGGACCAATGAAATTGGTTATGGCGTTCATAGCTTTCCTCAGATTTCTAGCCATTCCACCAACAGCAGGAGTCTTGGCTAGATGGGGAACCTTCAAGAAGTCGGGGGCCATTAAGGTCCTGAAAGGCTTCAAGAAGGAGATCTCAAACATGCTGAGCATAATCAACCAACGGAAAAAGACATCG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CTCTGTCTCATGATGATATTGCCAGCAGCACTTGCTTTCCACTTGACTTCACGAGATGGAGAGCCGCGCATGATTGTGGGGAAGAATGAAAGAGGTAAATCCCTACTTTTTAAGACAGCCTCTGGAATCAACATGTGCACACTCATAGCCATGGATTTGGGAGAGATGTGTGATGACACGGTCACTTACAAATGCCCCCA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CATTACCGAAGTGGAACCTGAAGACATTGACTGCTGGTGCAACCTTACATCAACATGGGTGACTTATGGAACGTGCAATCAAGCTGGAGAGCATAGACGCGACAAGAGATCAGTGGCGTTAGCTCCCCATGTCGGCATGGGACTGGACACACGCACCCAAACCTGGATGTCGGCTGAAGGAGCTTGGAGACAAGTCGAGA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AGGTAGAGACATGGGCCCTTAGGCACCCAGGGTTCACCATACTAGCCCTATTTCTCGCCCATTACATAGGCACTTCCCTGACCCAGAAGGTGGTTATTTTCATATTATTAATGCTGGTCACCCCATCCATGACAATGAGATGTGTGGGAGTAGGAAACAGAGATTTTGTGGAAGGGCTATCAGGAGCTACGTGGGTTGAC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GTGGTGCTCGAGCACGGGGGGTGTGTGACTACCATGGCTAAGAACAAGCCCACGCTGGATATAGAGCTTCAGAAGACCGAGGCCACCCAACTGGCGACCCTAAGGAAGCTATGCATTGAGGGGAAAATTACCAACATAACAACTGACTCAAGATGTCCTACCCAAGGGGAAGCGGTTTTGCCTGAGGAGCAGGACCAGAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CTACGTGTGTAAGCATACATACGTAGACAGAGGTTGGGGGAACGGTTGTGGTTTGTTTGGCAAAGGAAGCTTGGTAACATGTGCGAAATTTCAATGCCTGGAACCAATAGAGGGAAAAGTGGTGCAATATGAGAACCTCAAATACACCGTCATCATTACAGTGCACACAGGAGACCAACACCAGGTGGGAAATGAAACGC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AAGGAGTCACGGCTGAGATAACACCTCAGGCATCAACCACTGAAGCCATCTTGCCTGAATATGGAACCCTTGGGCTAGAATGCTCACCACGGACAGGTTTGGATTTCAATGAAATGATCTTACTAACAATGAAGAACAAAGCATGGATGGTACATAGACAATGGTTCTTTGACCTACCTCTACCATGGGCATCAGGAGCT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  ACAACAGAAACACCAACCTGGAACAGGAAGGAGCTTCTTGTGACATTCAAAAACGCACATGCGAAAAAACAAGAAGTAGTTGTCCTTGGATCGCAAGAGGGAGCAATGCATACCGCACTGACAGGAGCTACAGAAATCCAAAACTCAGGAGGCACAAGCATTTTCGCGGGGCACTTAAAATGTAGACTTAAGATGGACAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  ATTGGAACTCAAGGGGATGAGCTATGCAATGTGCACGAATACCTTTGTGTTGAAGAAAGAAGTCTCAGAAACGCAGCACGGGACAATACTCATTAAGGTTGAGTACAAAGGGGAAGATGCACCTTGCAAGATTCCCTTTTCCACAGAGGATGGACAAGGGAAAGCTCATAATGGCAGACTGATCACAGCCAACCCTGTGG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGACTAAGAAGGAGGAGCCTGTCAATATTGAGGCTGAACCTCCTTTTGGGGAAAGCAATATAGTAATTGGAATTGGAGACAACGCCTTGAAAATCAACTGGTACAAGAAGGGGAGCTCGATTGGGAAGATGTTCGAGGCCACTGAAAGGGGTGCAAGGCGCATGGCCATCTTGGGAGACACAGCTTGGGACTTTGGATCA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GTGGGTGGTGTTCTGAACTCATTAGGCAAAATGGTGCACCAAATATTTGGAAGTGCTTATACAGCCCTGTTCAGTGGAGTCTCTTGGGTGATGAAAATTGGAATAGGTGTCCTCTTGACTTGGATAGGGTTGAATTCAAAAAACACATCCATGTCATTTTCATGCATTGCGATAGGAATCATTACACTCTATCTGGGAGC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGTGGTACAAGCTGACATGGGGTGTGTCATAAACTGGAAGGGCAAAGAACTCAAATGTGGAAGCGGAATTTTCGTCACCAATGAGGTCCATACCTGGACAGAGCAATACAAATTCCAAGCAGACTCCCCAAAAAGATTGGCAACAGCCATTGCAGGCGCCTGGGAGAATGGAGTGTGTGGAATTAGGTCAACAACCAGAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGGAGAATCTCTTGTGGAAGCAAATAGCCAATGAACTGAACTACATATTATGGGAAAACAATATCAAATTAACGGTAGTTGTGGGCGATACACTTGGGGTCTTAGAGCAAGGGAAAAGAACACTAACACCACAACCCATGGAGCTAAAATACTCATGGAAAACGTGGGGAAAGGCAAAAATAGTGACAGCTGAAACACAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AATTCCTCTTTCATAATAGACGGGCCAAACACACCGGAGTGTCCAAGTGCCTCAAGAGCATGGAATGTGTGGGAGGTGGAAGATTACGGGTTCGGAGTCTTCACAACCAACATATGGCTGAAACTCCGAGAGGTCTACACCCAACTATGTGACCATAGGCTAATGTCGGCAGCTGTCAAGGATGAGAGGGCCGTGCATGC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CGACATGGGCTACTGGATAGAAAGCCAAAAGAATGGAAGTTGGAAGCTAGAAAAAGCATCCCTCATAGAGGTAAAAACCTGCACATGGCCAAAATCACACACTCTCTGGACTAATGGTGTGCTAGAGAGTGACATGATCATCCCAAAGAGTCTAGCTGGTCCTATCTCACAACACAACTACAGGCCCGGGTACCACACCC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AAACGGCAGGACCCTGGCACTTAGGAAAATTGGAGCTGGACTTCAACTACTGTGAAGGAACAACAGTTGTCATCACAGAAAGCTGTGGGACAAGAGGCCCATCATTGAGAACAACAACAGTGTCAGGGAAGTTGATACACGAATGGTGTTGCCGCTCGTGCACACTTCCCCCCCTGCGATACATGGGAGAAGACGGCTGC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGGTATGGCATGGAAATCAGACCCATCAGTGAGAAAGAAGAGAACATGGTAAAGTCTTTAGTCTCAGCGGGAAGTGGAAAGGTGGACAACTTCACAATGGGTGTCTTGTGTTTGGCAATCCTCTTTGAAGAGGTGTTGAGAGGAAAATTTGGGAAGAAACACATGATTGCAGGGGTTTTCTTTACGTTTGTGCTCCTTCT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CTCAGGGCAAATAACATGGAGAGACATGGCGCACACACTAATAATGATCGGGTCCAACGCCTCTGACAGGATGGGAATGGGCGTCACCTACCTAGCTCTAATTGCAACATTTAAAATCCAGCCATTCTTGGCTTTGGGATTTTTCCTAAGAAAGCTGACATCTAGAGAAAATTTATTGTTAGGAGTTGGGTTGGCCATGG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CAACAACGTTACAACTGCCAGAGGACATTGAACAAATGGCAAATGGAGTCGCTCTGGGGCTCATGGCTCTTAAACTGATAACACAATTTGAAACATACCAATTGTGGACGGCATTAGTCTCCTTAACGTGTTCAAACACAATTTTTACGTTGACTGTTGCCTGGAGAACAGCCACTCTGATTTTGGCCGGAGTTTCGCTT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TTACCAGTGTGCCAGTCTTCAAGCATGAGGAAAACAGATTGGCTCCCAATGACAGTGGCAGCTATGGGAGTTCCACCCCTTCCACTTTTTATTTTTAGCTTGAAAGACACACTCAAAAGGAGAAGCTGGCCACTGAATGAAGGGGTGATGGCTGTTGGGCTTGTGAGCATTCTGGCCAGTTCTCTCCTTAGAAATGATGT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GCCCATGGCTGGACCATTAGTGGCCGGGGGCTTGCTGATAGCGTGCTACGTCATAACTGGCACGTCAGCGGACCTCACTGTAGAAAAAGCCCCAGATGTAACATGGGAGGAAGAGGCTGAGCAGACAGGAGTGTCCCACAACTTAATGATCACAGTTGATGATGATGGAACAATGAGAATAAAAGATGATGAGACTGAGA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  ACATCCTAACAGTGCTTTTAAAAACAGCATTACTAATAGTATCAGGCATTTTTCCATACTCCATACCCGCAACATTGTTGGTCTGGCACACTTGGCAAAAACAAACCCAAAGATCCGGCGTTTTATGGGACGTACCCAGCCCCCCAGAGACACAGAAAGCAGAACTGGAAGAAGGGGTTTATAGGATCAAACAGCAAGGA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  ATTTTTGGGAAAACCCAAGTAGGGGTTGGAGTACAGAAAGAAGGAGTCTTCCACACCATGTGGCACGTCACAAGAGGGGCAGTGTTGACACATAATGGGAAAAGACTGGAACCAAACTGGGCTAGTGTGAAAAAAGATCTGATTTCATATGGAGGAGGATGGAGACTGAGCGCACAATGGCAAAAGGGGGAGGAGGTGCA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GGTTATTGCCGTAGAGCCAGGGAAGAACCCAAAGAACTTTCAAACCACGCCAGGCACTTTCCAGACTACTACAGGGGAAATAGGAGCAATTGCACTGGATTTCAAGCCTGGAACTTCAGGATCTCCTATCATAAATAGAGAGGGAAAGGTAGTGGGACTGTATGGCAATGGAGTGGTTACAAAGAATGGTGGCTATGTCA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GCGGAATAGCGCAAACAAATGCAGAACCAGATGGACCGACACCAGAGTTGGAAGAAGAGATGTTCAAAAAGCGAAACCTGACCATAATGGATCTTCATCCTGGGTCAGGAAAGACACGGAAATACCTTCCAGCTATTGTCAGAGAGGCAATCAAGAGACGTTTAAGAACCTTAATTTTGGCACCGACAAGGGTGGTTGCA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GCTGAGATGGAAGAAGCATTGAAAGGGCTCCCAATAAGGTACCAAACAACAGCAACAAAATCTGAACACACAGGAAGAGAGATTGTTGATCTAATGTGCCACGCAACGTTCACAATGCGTTTGCTGTCACCAGTTAGGGTTCCAAATTACAACTTGATAATAATGGATGAGGCCCATTTCACAGACCCAGCCAGTATAGC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GGCTAGAGGGTACATATCAACTCGTGTTGGAATGGGAGAGGCAGCCGCAATCTTCATGACAGCAACACCCCCTGGAACAGCTGATGCCTTTCCTCAGAGCAACGCTCCAATTCAAGATGAAGAAAGGGACATACCAGAACGCTCATGGAATTCAGGCAATGAATGGATTACCGACTTCGCTGGGAAAACGGTGTGGTTTG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TCCCTAGCATTAAAGCCGGAAATGACATAGCAAACTGCTTGCGAAAAAACGGGAAAAAAGTCATTCAACTTAGTAGGAAGACTTTTGACACAGAATATCAGAAGACTAAACTGAATGATTGGGACTTTGTGGTGACAACTGACATTTCAGAAATGGGGGCCAATTTCAAAGCAGATAGAGTGATCGACCCAAGAAGATGT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CTCAAACCAGTGATCTTGACAGATGGACCAGAGCGGGTGATCCTGGCCGGACCAATGCCAGTCACCGCGGCGAGTGCTGCGCAAAGGAGAGGGAGAGTTGGCAGGAACCCACAAAAAGAGAATGACCAGTACATATTCACGGGCCAGCCTCTCAACAATGATGAAGACCATGCTCACTGGACAGAAGCAAAAATGCTGCT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GGACAACATCAACACACCAGAAGGGATTATACCAGCTCTCTTTGAACCAGAAAGGGAGAAGTCAGCCGCCATAGACGGTGAGTATCGCCTGAAGGGTGAGTCCAGGAAGACTTTCGTGGAACTCATGAGGAGGGGTGACCTTCCAGTTTGGTTAGCCCATAAAGTAGCATCAGAAGGAATCAAATACACAGATAGAAAAT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GGTGCTTTGATGGGCAACGCAATAATCAAATTTTAGAGGAGAACATGGATGTGGAAATTTGGACAAAGGAAGGAGAAAAGAAAAAATTGAGACCTAGGTGGCTTGATGCCCGCACTTATTCAGATCCATTGGCACTCAAGGAATTCAAGGACTTTGCGGCTGGCAGAAAGTCAATCGCCCTTGATCTTGTGACAGAAATA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GGAAGAGTGCCTTCACATCTAGCCCACAGAACAAGAAACGCTCTGGACAATCTGGTGATGCTGCATACGTCAGAAGATGGCGGTAGGGCTTACAGGCATGCGGTGGAGGAACTACCAGAAACAATGGAAACACTCCTACTCTTGGGACTAATGATCTTGTTGACAGGTGGAGCAATGCTTTTCTTGATATCAGGTAAAGG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GATTGGAAAGACTTCAATAGGACTCATTTGTGTAATCGCTTCCAGCGGCATGTTGTGGATGGCCGAAGTTCCACTCCAATGGATCGCGTCGGCTATAGTCCTGGAGTTTTTTATGATGGTGTTGCTCATACCAGAACCAGAAAAGCAGAGAACCCCCCAAGACAACCAACTCGCATATGTCGTGATAGGCATACTTACAT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGGCTGCAACAATAGCAGCCAATGAAATGGGACTGCTGGAAACCACAAAGAGAGACTTAGGAATGTCTAAGGAGCCAGGTGTTGTTTCTCCAACCAGCTATTTGGATGTGGACTTGCACCCAGCATCAGCCTGGACATTGTACGCCGTGGCCACTACAGTAATAACACCAATGTTAAGACATACCATAGAGAATTCTACA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GCAAATGTGTCCCTGGCAGCTATAGCCAACCAGGCAGTGGTCCTGATGGGTTTGGACAAAGGATGGCCAATATCAAAAATGGACTTAGGCGTGCCACTACTGGCACTGGGTTGCTATTCACAAGTGAACCCACTGACTCTAACTGCGGCAGTACTTTTGCTAATCACACATTATGCTATCATAGGTCCAGGATTGCAAGC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AAAAGCCACCCGTGAAGCTCAGAAAAGGACAGCTGCTGGAATAATGAAGAATCCAACAGTGGATGGGATAATGACAATAGACCTAGATTCTGTAATATTTGATTCAAAATTTGAAAAACAACTGGGACAGGTTATGCTCCTGGTTTTGTGCGCAGTCCAACTCTTGCTAATGAGAACATCATGGGCCTTGTGTGAAGCTT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TAACTCTAGCTACAGGACCAATAACAACACTCTGGGAAGGATCACCTGGTAAGTTCTGGAACACCACGATAGCTGTTTCCATGGCGAACATTTTTAGAGGGAGCTATTTAGCAGGAGCTGGGCTTGCTTTTTCTATTATGAAATCAGTTGGAACAGGAAAAAGAGGAACAGGCTCACAAGGTGAAACTTTAGGAGAAAAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGGAAAAAGAAATTAAATCAATTATCCCGGAAAGAGTTTGACCTTTACAAGAAATCTGGAATCACTGAAGTGGATAGAACAGAAGCCAAAGAAGGGTTGAAAAGAGGAGAGACAACACATCATGCCGTGTCCCGAGGTAGCGCAAAACTTCAATGGTTTGTGGAAAGAAACATGGTCGTTCCCGAAGGAAGAGTCATAGA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CTTGGGCTGTGGAAGAGGAGGCTGGTCATATTACTGTGCAGGACTGAAAAAAGTCACAGAAGTGCGAGGATACACAAAAGGCGGTCCAGGACACGAAGAACCAGTACCTATGTCTACATATGGATGGAACATAGTTAAGTTAATGAGCGGAAAGGATGTGTTCTATCTCCCACCTGAAAAGTGTGATACCCTGTTGTGTG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  ACATTGGAGAATCTTCACCAAGCCCAACAGTGGAAGAGAGCAGAACTATAAGAGTTTTGAAGATGGTTGAACCATGGCTAAAAAACAACCAGTTTTGCATTAAAGTTTTGAACCCTTACATGCCAACTGTGATTGAGCACCTAGAAAGACTACAAAGGAAACATGGAGGAATGCTTGTGAGAAATCCACTTTCACGAAAC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TCCACGCACGAAATGTACTGGATATCTAATGGCACAGGTAACATTGTCTCTTCAGTCAACATGGTGTCTAGATTGCTACTGAACAGGTTCACGATGACACACAGGAGACCCACCATAGAGAAAGATGTGGATTTAGGAGCAGGAACTCGACATGTTAATGCGGAACCAGAAACACCCAACATGGATGTCATTGGGGAAAG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AATAAAAAGGATCAAGGAGGAGCATAATTCAACATGGCACTATGATGACGAAAACCCCTACAAAACGTGGGCTTACCATGGATCCTATGAAGTCAAAGCCACAGGCTCAGCCTCCTCCATGATAAATGGAGTCGTGAAACTCCTCACCAAACCATGGGATGTGGTGCCCATGGTGACACAGATGGCAATGACAGACACAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CTCCATTTGGCCAGCAGAGAGTCTTTAAAGAGAAAGTGGACACCAGGACGCCCAGGCCCATGCCAGGGACAAGAAAGGCTATGGAGATCACAGCGGAGTGGCTCTGGAGAACCCTGGGAAGGAACAAAAGACCCAGATTATGCACAAGGGAAGAGTTTACAAAAAAGGTCAGAACTAACGCAGCCATGGGCGCCGTTTTC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  ACAGAGGAGAACCAATGGGACAGTGCGAAAGCTGCTGTTGAGGATGAAGAATTTTGGAAACTTGTGGACAGAGAACGTGAACTCCACAAATTGGGCAAATGTGGAAGCTGCGTTTATAACATGATGGGCAAGAGAGAGAAAAAACTTGGAGAGTTTGGCAAAGCAAAAGGCAGTAGAGCTATATGGTACATGTGGTTGGG
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AGCCAGGTACCTTGAGTTCGAAGCCCTTGGATTCTTAAATGAAGACCACTGGTTCTCGCGTGAAAACTCTTACAGTGGAGTAGAAGGAGAAGGACTGCACAAGCTAGGCTACATATTAAGGGACATTTCCAAGATACCCGGAGGAGCCATGTATGCTGATGACACAGCTGGTTGGGACACAAGAATAACAGAAGATGACC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGCACAATGAGGAAAAGATCATACAGCAAATGGACCCTGAACACAGGCAGTTAGCGAACGCTATATTCAAGCTCACATACCAAAACAAAGTGGTCAAAGTTCAACGACCGACTCCAACGGGCACGGTAATGGATATTATATCTAGGAAAGACCAAAGGGGCAGTGGACAACTGGGAACTTATGGCCTGAATACATTCACC
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  AACATGGAAGCCCAGTTAGTCAGACAAATGGAAGGAGAAGGTGTGCTGACAAAGGCAGACCTCGAGAACCCTCATCTGCTAGAGAAGAAAATCACACAATGGTTGGAAACCAAAGGAGTGGAGAGGTTAAAAAGAATGGCCATTAGCGGGGATGATTGCGTGGTGAAACCAATCGATGACAGGTTCGCTAATGCCCTGCT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGCTTTGAACGATATGGGAAAGGTTCGGAAAGACATACCTCAATGGCAGCCATCAAAGGGATGGCATGATTGGCAACAGGTTCCTTTCTGCTCCCACCACTTTCATGAATTGATCATGAAAGATGGAAGAAAGTTGGTGGTTCCCTGCAGACCCCAGGACGAACTAATAGGAAGAGCAAGAATCTCTCAAGGAGCGGGAT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  GGAGCCTTAGAGAAACTGCATGTCTGGGGAAAGCCTACGCCCAAATGTGGAGTCTCATGTATTTTCACAGAAGAGATCTCAGATTAGCATCCAACGCCATATGTTCAGCAGTACCAGTCCACTGGGTTCCCACAAGTAGAACGACATGGTCTATTCATGCTCACCATCAGTGGATGACTACAGAAGACATGCTTACTGTT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  TGGAACAGGGTGTGGATAGAGGAAAATCCATGGATGGAAGACAAAACTCCAGTTACAACTTGGGAAAATGTTCCATATCTAGGAAAGAGAGAAGACCAATGGTGTGGATCACTTATTGGTCTCACTTCCAGAGCAACCTGGGCCCAGAACATACCCACAGCAATTCAACAGGTGAGAAGCCTTATAGGCAATGAAGAGTT
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+NC_001475.2  CCTGGACTACATGCCTTCAATGAAGAGATTCAGGAAGGAAGAGGAGTCGGAGGGAGCCATTTGGTAAACGTAGGAAGTGGAAAAGAGGCTAACTGTCAGGCCACCTTAAGCCACAGTACGGAAGAAGCTGTGCTGCCTGTGAGCCCCGTCCAAGGACGTTAAAAGAAGAAGTCAGGCCCCAAAGCCACGGTTTGAGCAAA
+#=GC SS_cons ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::A:(((((<_______>,<<<<<<__BB_____>>>>>>a,))))):::::bb<<<<____>>>>::::::::::::A:(((((<_____>,<<<<<___BBBB___
+
+NC_001475.2  CCGTGCTGCCTGTAGCTCCGTCGTGGGGACGTAAAACCTGGGAGGCTGCAAACTGTGGAAGCTGTACGCACGGTGTAGCAGACTAGCGGTTAGAGGAGACCCCTCCCATGACACAACGCAGCAGCGGGGCCCGAGCACTGAGGGAAGCTGTACCTCCTTGCAAAGGACTAGAGGTTAGAGGAGACCCCCCGCAAATAAAA
+#=GC SS_cons >>>>>a,)))))::bbbb<<<<_____>>>>::::::::((((((<<<<--<<<<<<___AAAAA___>>>>>>--->>>>,,,,,,<<<<______>>>>))))))::::::::::aaaaa:(((((((<<--<<<--<<<<___AAAAA_>>>>-->>>---->>,,,,,<<<<______>>>>))))))):::::::
+
+NC_001475.2  ACAGCATATTGACGCTGGGAGAGACCAGAGATCCTGCTGTCTCCTCAGCATCATTCCAGGCACAGAACGCCAGAAAATGGAATGGTGCTGTTGAATCAACAGGTTCT
+#=GC SS_cons aaaaa:::::::::<<<<______>>>><<<-<<<<-<<--<<--<<<<<<<<<<<<<<<<_______>>>------>>>>>>>>>>>>>-->>-->>->>>>->>>
+//

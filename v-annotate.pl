@@ -144,11 +144,10 @@ opt_Add("-h",           "boolean", 0,                        0,    undef, undef,
 $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("-s",           "integer", 181,                     $g,    undef,  undef,     "seed for random number generator is <n>",        "seed for random number generator is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+#opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
@@ -160,42 +159,42 @@ opt_Add("--subgroup",      "string",  undef,                  $g, "--group", und
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
 #        option               type   default                group  requires incompat    preamble-output                                                     help-output    
 opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
-opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO     cause FAILure",             "specify that alert codes in comma-separated <s> DO NOT cause FAILure", \%opt_HH, \@opt_order_A);
-opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> DO NOT cause FAILure",             "specify that alert codes in comma-separated <s> DO     cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for tuning classification alerts";
-#       option          type         default            group   requires incompat     preamble-output                                                             help-output    
-opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "'Low Coverage' fractional coverage threshold is <x>",                      "'Low Coverage' fractional coverage threshold is <x>",                      \%opt_HH, \@opt_order_A);
-opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "'Low Score' bits per nucleotide threshold is <x>",                         "'Low Score' bits per nucleotide threshold is <x>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimterm", "integer",   15,                    $g,   undef,   undef,      "'Low Similarity at Start/End' minimum length is <n>",                      "'Low Similarity at Start/End' minimum length is <n>",                      \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,      "'Low Similarity' (internal) minimum length is <n>",                        "'Low Similarity' (internal) minimum length is <n>",                        \%opt_HH, \@opt_order_A);
-opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    "'Indefinite Classification' bits per nucleotide diff threshold is <x>",    \%opt_HH, \@opt_order_A);
-opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "'Biased Sequence' fractional threshold is <x>",                            "'Biased Sequence' fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
-opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "'Duplicate Regions' minimum model overlap is <n>",                         "'Duplicate Regions' minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--indefstr",   "real",      25,                   $g,   undef,   undef,      "'Indefinite Strand' minimum weaker strand bit score is <x>",               "'Indefinite Strand' minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features", "'Indefinite Annotation at Start/End' min allowed post probability is <x> for non-mat_peptide features", \%opt_HH, \@opt_order_A);
-opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features",     "'Indefinite Annotation at Start/End' min allowed post probability is <x> for mat_peptide features", \%opt_HH, \@opt_order_A);
-opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                "'Incorrect Specified {Sub}Group' bits/nt threshold is <x>",                \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
+#       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
+opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "indfclas/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",    "indfcls/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",  \%opt_HH, \@opt_order_A);
+opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",          "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",             \%opt_HH, \@opt_order_A);
+opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",               \%opt_HH, \@opt_order_A);
+opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
+opt_Add("--indefstr",   "real",      25,                   $g,   undef,   undef,      "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimterm", "integer",   15,                   $g,   undef,   undef,      "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",  "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",           \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,      "lowsimi{s,f}/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",          "lowsim{i,f}s/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",                     \%opt_HH, \@opt_order_A);
+opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",     "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",    "integer",   5,                    $g,   undef,   undef,      "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,   undef,      "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,   undef,      "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                   $g,   undef,   undef,      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for tuning protein validation with blastx";
-#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
-opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,     "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xalntol",     "integer",  5,                      $g,     undef, undef,     "max allowed difference in nucleotides b/t nucleotide and blastx start/end predictions is <n>",  "max allowed difference in nucleotides b/t nucleotide and blastx start/end postions is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxins",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide insertion length in blastx validation is <n>",                           "max allowed nucleotide insertion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxdel",     "integer",  27,                     $g,     undef, undef,     "max allowed nucleotide deletion length in blastx validation is <n>",                            "max allowed nucleotide deletion length in blastx validation is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                     $g,     undef, undef,     "minimum score for a lone blastx hit (not supported by a CM hit) to cause an error ",            "minimum score for a lone blastx (not supported by a CM hit) to cause an error is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmatrix",     "string",   undef,                  $g,     undef, undef,     "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,                     $g,     undef, undef,     "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,                      $g,     undef, undef,     "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,                     $g,     undef, undef,     "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for modifying cmalign runs";
+$opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
 opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-3,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "fix the tau value when running cmalign, allow it to increase if nec",          "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
+#        option               type   default                group  requires incompat   preamble-output                                                                                 help-output    
+opt_Add("--xmatrix",     "string",   undef,                  $g,     undef, undef,     "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,                     $g,     undef, undef,     "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,                     $g,     undef, undef,   "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,                      $g,     undef, undef,     "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,     "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -206,15 +205,15 @@ opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef
 opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
+#     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
+opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                         help-output    
 opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
-opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal error information",     "create file with internal error information", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
-#     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -226,11 +225,10 @@ my $options_okay =
 # basic options
                 'f'             => \$GetOptions_H{"-f"},
                 'v'             => \$GetOptions_H{"-v"},
-                's'             => \$GetOptions_H{"-s"}, 
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'i=s'           => \$GetOptions_H{"-i"}, 
                 'b=s'           => \$GetOptions_H{"-b"}, 
-                'n=s'           => \$GetOptions_H{"-n"}, 
+#                'n=s'           => \$GetOptions_H{"-n"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
@@ -240,34 +238,34 @@ my $options_okay =
                 "alt_list"      => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
-# options for tuning classification alerts
-                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
+# options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
-                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
-                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
-                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
+                'incspec=s'     => \$GetOptions_H{"--incspec"},  
+                "lowcov=s"      => \$GetOptions_H{"--lowcov"},
                 'dupreg=s'      => \$GetOptions_H{"--dupreg"},  
                 'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
+                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
+                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
+                'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'incspec=s'     => \$GetOptions_H{"--incspec"},  
-# options for tuning protein validation with blastx
-                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
-                'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
-                'xdrop=s'       => \$GetOptions_H{"--xdrop"},
-                'xlongest'      => \$GetOptions_H{"--xlongest"},
-                'xnumali=s'     => \$GetOptions_H{"--xnumali"},
-# options for changing search sensitivity modes
+# options for controlling cmalign alignment stage 
                 'mxsize=s'      => \$GetOptions_H{"--mxsize"},
                 'tau=s'         => \$GetOptions_H{"--tau"},
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
+# options for controlling protein blastx protein validation stage
+                'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
+                'xdrop=s'       => \$GetOptions_H{"--xdrop"},
+                'xnumali=s'     => \$GetOptions_H{"--xnumali"},
+                'xlongest'      => \$GetOptions_H{"--xlongest"},
+                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -275,19 +273,19 @@ my $options_okay =
                 'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
+# options for skipping stages, using earlier results
+                'skipalign'     => \$GetOptions_H{"--skipalign"},
 # optional output files
                 'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'       => \$GetOptions_H{"--altinfo"},
-# options for skipping stages, using earlier results
-                'skipalign'     => \$GetOptions_H{"--skipalign"});
+                'altinfo'       => \$GetOptions_H{"--altinfo"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.991";
-my $releasedate   = "Aug 2019";
+my $version       = "0.993";
+my $releasedate   = "Nov 2019";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -1233,7 +1231,7 @@ sub cmsearch_or_cmscan_run {
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.); # use --mxsize * 1000 (8 Gb by default)
-    if($mem_gb < 1.) { $mem_gb = 1.; } # set minimum of 1 Gb
+    if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
   else { 
@@ -1693,7 +1691,7 @@ sub add_classification_alerts {
         # high bias (biasdseq) 
         if($bias_fract > $biasfract_opt) { 
           my $bias_fract2print = sprintf("%.3f", $bias_fract);
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . "<" . $biasfract_opt2print, $FH_HR);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "biasdseq", $seq_name, $bias_fract2print . ">" . $biasfract_opt2print, $FH_HR);
         }
 
         # inconsistent hits: multiple strands (indfstrn) 
@@ -2274,7 +2272,7 @@ sub cmalign_run {
   if(! opt_Get("--nofixedtau", $opt_HHR)) { 
     $opts .= " --fixedtau"; 
   }
-
+ 
   my $cmd = undef;
   if(defined $mdl_name) { 
     $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
@@ -2288,7 +2286,7 @@ sub cmalign_run {
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
-    if($mem_gb < 1.) { $mem_gb = 1.; } # set minimum of 1 Gb
+    if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
       vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
@@ -2666,7 +2664,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR);
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR);
         
-        # add errors, if nec
+        # add alerts, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5gap", $seq_name, $ftr_idx,
@@ -2907,70 +2905,67 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           if($ftr_is_cds_or_mp) { 
             # feature is not truncated on either end, look for stop codons
             if(($ftr_len % 3) != 0) { 
-              # not a multiple of 3, this will also catch any feature with length < 3 (which should be very very rare, 
-              # but which could cause weird downstream problems)
+              # not a multiple of 3, unexleng alert 
               $alt_str_H{"unexleng"} = "$ftr_len";
             }
-            else { 
-              # feature length is a multiple of 3, look for all valid in-frame stops 
+
+            # if CDS: look for all valid in-frame stops 
+            if($ftr_is_cds) { 
               my @ftr_nxt_stp_A = ();
               sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-              
-              if($ftr_is_cds) { 
-                # check that final add codon is a valid stop, and add 'mutendcd' alert if not
-                if($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) { 
-                  $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
-                                                substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
-                                                $ftr2org_pos_A[$ftr_len], $ftr_strand);
-                }
-                if($ftr_nxt_stp_A[1] != $ftr_len) { 
-                  # first stop codon 3' of $ftr_start is not $ftr_stop
-                  # We will need to add an alert, (exactly) one of:
-                  # 'mutendex': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                  # 'mutendns': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                  # 'cdsstopn': an early stop exists in $ftr_sqstring
-                  if($ftr_nxt_stp_A[1] == 0) { 
-                    # there are no valid in-frame stops in $ftr_sqstring
-                    # we have a 'mutendns' or 'mutendex' alert, to find out which 
-                    # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                    if($ftr_stop < $seq_len) { 
-                      # we have some sequence left 3' of ftr_stop
-                      my $ext_sqstring = undef;
-                      if($ftr_strand eq "+") { 
-                        $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
-                      }
-                      else { # negative strand
-                        $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
-                      }
-                      my @ext_nxt_stp_A = ();
-                      sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
-                      if($ext_nxt_stp_A[1] != 0) { 
-                        # there is an in-frame stop codon, mutendex alert
-                        # determine what position it is
-                        $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
-                        $alt_str_H{"mutendex"} = $ftr_stop_c;
-                      }
-                    } # end of 'if($ftr_stop < $seq_len)'
-                    if(! defined $ftr_stop_c) { 
-                      # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
-                      # or we checked the sequence but didn't find any
-                      # either way, we have a mutendns alert:
-                      $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                      $alt_str_H{"mutendns"} = "VADRNULL";
+              # check that final add codon is a valid stop, and add 'mutendcd' alert if not
+              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
+                $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
+                                                 substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                                 $ftr2org_pos_A[$ftr_len], $ftr_strand);
+              }
+              if($ftr_nxt_stp_A[1] != $ftr_len) { 
+                # first stop codon 3' of $ftr_start is not $ftr_stop
+                # We will need to add an alert, (exactly) one of:
+                # 'mutendex': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
+                # 'mutendns': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
+                # 'cdsstopn': an early stop exists in $ftr_sqstring
+                if($ftr_nxt_stp_A[1] == 0) { 
+                  # there are no valid in-frame stops in $ftr_sqstring
+                  # we have a 'mutendns' or 'mutendex' alert, to find out which 
+                  # we need to fetch the sequence ending at $fstop to the end of the sequence 
+                  if($ftr_stop < $seq_len) { 
+                    # we have some sequence left 3' of ftr_stop
+                    my $ext_sqstring = undef;
+                    if($ftr_strand eq "+") { 
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                     }
-                  } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
-                  else { 
-                    # there is an early stop (cdsstopn) in $ftr_sqstring
-                    if($ftr_nxt_stp_A[1] > $ftr_len) { 
-                      # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-                      ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                    else { # negative strand
+                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                     }
-                    $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
-                    $alt_str_H{"cdsstopn"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                    my @ext_nxt_stp_A = ();
+                    sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
+                    if($ext_nxt_stp_A[1] != 0) { 
+                      # there is an in-frame stop codon, mutendex alert
+                      # determine what position it is
+                      $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                      $alt_str_H{"mutendex"} = $ftr_stop_c;
+                    }
+                  } # end of 'if($ftr_stop < $seq_len)'
+                  if(! defined $ftr_stop_c) { 
+                    # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                    # or we checked the sequence but didn't find any
+                    # either way, we have a mutendns alert:
+                    $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
+                    $alt_str_H{"mutendns"} = "VADRNULL";
                   }
-                } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
-              } # end of 'if($ftr_is_cds) {' 
-            } # end of 'else' entered if feature is a multiple of 3
+                } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
+                else { 
+                  # there is an early stop (cdsstopn) in $ftr_sqstring
+                  if($ftr_nxt_stp_A[1] > $ftr_len) { 
+                    # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                    ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
+                  }
+                  $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
+                  $alt_str_H{"cdsstopn"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                }
+              } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+            } # end of 'if($ftr_is_cds) {' 
           } # end of 'if($ftr_is_cds_or_mp)'
         } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
 
@@ -3556,7 +3551,11 @@ sub add_blastx_alerts {
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
                     if($stop_diff > $cur_aln_tol) { 
-                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print, $cur_stop_str in CM prediction)";
+                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print"; 
+                      if(! defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "unexleng"))) { 
+                        $alt_str_H{"indf3pst"} .= ", $cur_stop_str in CM prediction";
+                      }
+                      $alt_str_H{"indf3pst"} .= ")";
                     }
                   }
                   # check for 'insertnp': too long of an insert
@@ -3568,8 +3567,9 @@ sub add_blastx_alerts {
                     for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
                       my $local_xmaxins = defined ($maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
                       if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
-                        if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; }
-                        $alt_str_H{"insertnp"} = "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                        if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
+                        else                               { $alt_str_H{"insertnp"}  = ""; } # initialize
+                        $alt_str_H{"insertnp"} .= "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
                       }
                     }
                   }
@@ -3582,8 +3582,9 @@ sub add_blastx_alerts {
                     for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
                       my $local_xmaxdel = defined ($maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
                       if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
-                        if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; }
-                        $alt_str_H{"deletinp"} = "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
+                        if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
+                        else                               { $alt_str_H{"deletinp"} = ""; }           # initialize
+                        $alt_str_H{"deletinp"} .= "blastx predicted delete of length " . $p_del_len_A[$del_idx] . ">$local_xmaxdel starting at reference amino acid posn " . $p_del_spos_A[$del_idx];
                       }
                     }
                   }
@@ -4075,7 +4076,7 @@ sub helper_blastx_breakdown_max_indel_str {
   
   my ($in_str, $qpos_AR, $spos_AR, $len_AR, $FH_HR) = (@_);
 
-  # printf("in $sub_name, imutstart: $in_str\n");
+  # printf("in $sub_name, in_str: $in_str\n");
 
   my @str_A = split(";", $in_str); 
   foreach my $str (@str_A) { 

@@ -70,8 +70,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "0.991";
-my $releasedate   = "Aug 2019";
+my $version       = "0.993";
+my $releasedate   = "Nov 2019";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -186,6 +186,8 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
   my $rmdir_AR   = \@{$rmdir_AA[($i-1)]};
+  my $npass_i    = 0; # number of tests that passed for current cmd
+  my $nfail_i    = 0; # number of tests that failed for current cmd
   if((opt_IsUsed("-s", \%opt_HH)) && (opt_Get("-s", \%opt_HH))) { 
     # -s used, we aren't running commands, just comparing files
     $start_secs = ofile_OutputProgressPrior(sprintf("Skipping command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
@@ -202,11 +204,11 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   for(my $j = 0; $j < $nout; $j++) { 
     my $diff_file = $out_root . "." . $i . "." . ($j+1) . ".diff";
     my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, \%opt_HH, $ofile_info_HH{"FH"});
-    if($pass) { $npass++; }
-    else      { $nfail++; }
+    if($pass) { $npass++; $npass_i++; }
+    else      { $nfail++; $nfail_i++; }
   }
 
-  if(($nfail == 0) && (! opt_Get("--keep", \%opt_HH))) { # only remove dir if no tests failed
+  if(($nfail_i == 0) && (! opt_Get("--keep", \%opt_HH))) { # only remove dir if no tests failed
     my $nrmdir = (defined $rmdir_AR) ? scalar(@{$rmdir_AR}) : 0;
     for(my $k = 0; $k < $nrmdir; $k++) { 
       ofile_OutputString($log_FH, 1, sprintf("#\t%-60s ... ", "removing directory $rmdir_AR->[$k]"));

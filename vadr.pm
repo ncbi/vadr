@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 0.991 [Aug 2019]
+# version: 0.993 [Nov 2019]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -1215,7 +1215,7 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "biasdseq", "sequence",
                    "BIASED_SEQUENCE", # short description
                    "high fraction of score attributed to biased sequence composition", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "dupregin", "sequence",
@@ -2104,6 +2104,12 @@ sub vdr_CoordsFromLocation {
   elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
     $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
   }
+  elsif($location =~ /^\<?(\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  elsif($location =~ /^\>?(\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
   else { 
     ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
   }
@@ -2179,6 +2185,12 @@ sub vdr_CoordsFromLocationWithCarrots {
   }
   elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
     $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  elsif($location =~ /^(\<?\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+  }
+  elsif($location =~ /^(\>?\d+)$/) { # single nucleotide
+    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
   }
   else { 
     ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
@@ -3266,8 +3278,8 @@ sub vdr_CmalignCheckStdOutput {
   else { 
     # job did NOT finish successfully, check for mx overflow error
     my $error_line = `grep ^Error $stdout_file | tail -n 1`;
-    if($error_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-    if($error_line =~ /Error: HMM banded truncated alignment mxes need (\d+\.\d+)/) { 
+    if($error_line =~ m/\r$/) { chop $error_line; } # remove ^M if it exists
+    if($error_line =~ /Error: .+ alignment mxes need (\d+\.\d+)/) { 
       if(defined $ret_mxsize_R) { 
         $$ret_mxsize_R = $1;
       }
