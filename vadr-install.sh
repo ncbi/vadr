@@ -105,16 +105,20 @@ echo "------------------------------------------------"
 #   'infernal block 3' below
 
 # ----- infernal block 1 start  -----
-#if [ $INPUTSYSTEM == "linux" ]; then
-#echo "Downloading Infernal version $IVERSION for Linux"
-#curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-linux-intel-gcc.tar.gz
-#else
-#echo "Downloading Infernal version $IVERSION for Mac/OSX"
-#curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-macosx-intel.tar.gz
-#fi
-#tar xfz infernal.tar.gz
-#rm infernal.tar.gz
-#mv infernal-$IVERSION infernal
+if [ $INPUTSYSTEM == "linux" ]; then
+    echo "Downloading Infernal version $IVERSION for Linux"
+    curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-linux-intel-gcc.tar.gz
+else
+    echo "Downloading Infernal version $IVERSION for Mac/OSX"
+    curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-macosx-intel.tar.gz
+fi
+tar xfz infernal.tar.gz
+rm infernal.tar.gz
+if [ $INPUTSYSTEM == "linux" ]; then
+    mv infernal-$IVERSION-linux-intel-gcc infernal
+else
+    mv infernal-$IVERSION-macosx-intel
+fi
 # ----- infernal block 1 end -----
 
 # if you'd rather download the source distro and build it yourself
@@ -122,22 +126,20 @@ echo "------------------------------------------------"
 # comment out 'infernal block 1' above and 
 # uncomment 'infernal block 2' below
 # ----- infernal block 2 start  -----
-echo "Downloading Infernal version $IVERSION src distribution"
-curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION.tar.gz
-tar xfz infernal.tar.gz
-rm infernal.tar.gz
-echo "Building Infernal ... "
-mv infernal-$IVERSION infernal
-cd infernal
-mkdir binaries
-echo $PWD
-exit 1
-sh ./configure --bindir=$PWD/binaries --prefix=$PWD
-make
-make install
-cd ..
-echo "Finished building Infernal "
-fi
+#echo "Downloading Infernal version $IVERSION src distribution"
+#curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION.tar.gz
+#tar xfz infernal.tar.gz
+#rm infernal.tar.gz
+#echo "Building Infernal ... "
+#mv infernal-$IVERSION infernal
+#cd infernal
+#mkdir binaries
+#sh ./configure --bindir=$PWD/binaries --prefix=$PWD
+#make
+#make install
+#(cd easel/miniapps; make install)
+#cd ..
+#echo "Finished building Infernal "
 # ----- infernal block 2 end -----
 
 # ----- infernal block 3 start -----
@@ -148,17 +150,18 @@ fi
 #echo "Downloading Infernal (develop branch) ... "
 #git clone https://github.com/EddyRivasLab/infernal.git infernal
 #cd infernal
-#git checkout 7d93882
+#git checkout 9457f7d
 #rm -rf .git
 #git clone https://github.com/EddyRivasLab/hmmer
-#(cd hmmer; git checkout 498ec7c; rm -rf .git)
+#(cd hmmer; git checkout 6300662; rm -rf .git)
 #git clone https://github.com/EddyRivasLab/easel
-#(cd easel; git checkout 5288a95; rm -rf git)
+#(cd easel; git checkout 86ee126; rm -rf git)
 #mkdir binaries
 #autoconf
 #sh ./configure --bindir=$PWD/binaries --prefix=$PWD
 #make
 #make install
+#(cd easel/miniapps; make install)
 #cd ..
 #echo "Finished building Infernal "
 # ----- infernal block 3 end -----
