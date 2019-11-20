@@ -139,7 +139,7 @@ further below.
 
 VADR `.minfo` model info files are created by `v-build.pl` and read by `v-annotate.pl`. 
 They can also be created manually. An example model info file created by the command: 
-`v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.991 is:
+`v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897` with VADR 0.993 is:
 
 ```
 MODEL NC_039897 blastdb:"NC_039897.vadr.protein.fa" cmfile:"NC_039897.vadr.cm" group:"Norovirus" length:"7745" subgroup:"GI"

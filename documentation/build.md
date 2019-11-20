@@ -35,9 +35,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 0.991 (Aug 2019)
+# VADR 0.993 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Oct 21 06:18:24 2019
+# date:    Wed Nov 20 11:59:05 2019
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -60,7 +60,7 @@ accession `NC_039897` a Norovirus GI complete genome sequence, and creating
 an output directory with the same name as the accession:
 
 ```
-`v-build.pl NC_039897 NC_039897`
+v-build.pl NC_039897 NC_039897
 ```
 
 The standard output of `v-build.pl` that is printed to the screen
@@ -70,11 +70,11 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Fri Oct  4 13:11:22 2019
-# $VADRBLASTDIR:     /usr/bin
-# $VADREASELDIR:     /home/nawrocki/vadr-install/infernal-dev/easel/miniapps
-# $VADRINFERNALDIR:  /home/nawrocki/vadr-install/infernal-dev/src
-# $VADRSCRIPTSDIR:   /home/nawrocki/vadr-install/vadr
+# date:              EPN, Wed Nov 20 11:59:21 2019
+# $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
+# $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
+# $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries
+# $VADRSCRIPTSDIR:   /home/nawrocki/vadr-install-dir/vadr
 #
 # accession/model name:           NC_039897
 # output directory:               NC_039897

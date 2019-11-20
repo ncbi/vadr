@@ -36,16 +36,15 @@ OR
 ```
 ./vadr-install.sh macosx
 ```
-The `linux` or `macosx` argument controls (only) the type of blast
-executable files that will be installed.
+The `linux` or `macosx` argument controls (only) the type of infernal
+and blast executable files that will be installed.
 
 The `vadr-install.sh` command will create several directories in the current directory.
-It will download and install the software packages
-VADR, and [Infernal](http://eddylab.org/infernal/), the required perl
+It will download and install VADR and the required 
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
-binary executables of the NCBI BLAST package (for either Linux or
-Mac/OSX).
+binary executables of [Infernal](http://eddylab.org/infernal/) and 
+the NCBI BLAST package (for either Linux or Mac/OSX).
 
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
@@ -78,16 +77,17 @@ vadr-install.sh>` with `<ncbi-vadr-install-dir>`
 
 ```
 The final step is to update your environment variables.
-(See vadr/README.txt for more information.)
+(See https://github.com/nawrockie/vadr/blob/0.991/documentation/install.md for more information.)
 
 If you are using the bash shell, add the following
-lines to the '.bashrc' file in your home directory:
+lines to the end of your '.bashrc' file in your home
+directory:
 
-export VADRINSTALLDIR=<full path to directory in which you ran install.sh>
+export VADRINSTALLDIR="/panfs/pan1/infernal/notebook/19_1120_vadr_0p993_release/test-install-block1"
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
 export VADRMODELDIR="$VADRINSTALLDIR/vadr-models"
-export VADRINFERNALDIR="$VADRINSTALLDIR/infernal-dev/src"
-export VADREASELDIR="$VADRINSTALLDIR/infernal-dev/easel/miniapps"
+export VADRINFERNALDIR="$VADRINSTALLDIR/infernal/binaries"
+export VADREASELDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADRBIOEASELDIR="$VADRINSTALLDIR/Bio-Easel"
 export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
@@ -104,7 +104,30 @@ If you are using the C shell, add the following
 lines to the end of your '.cshrc' file in your home
 directory:
 
-setenv VADRINSTALLDIR <full path to directory in which you ran install.sh>
+setenv VADRINSTALLDIR <full path to directory in which you ran vadr-install.sh>
+setenv VADRSCRIPTSDIR "$VADRINSTALLDIR/vadr"
+setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models"
+setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal/binaries"
+setenv VADREASELDIR "$VADRINSTALLDIR/infernal/binaries"
+setenv VADRBIOEASELDIR "$VADRINSTALLDIR/Bio-Easel"
+setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
+setenv VADRBLASTDIR "$VADRINSTALLDIR/ncbi-blast/bin"
+setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
+setenv PATH "$VADRSCRIPTSDIR":"$PATH"
+
+After adding the setenv lines to your .cshrc file, source that file
+to update your current environment with the command:
+
+source ~/.cshrc
+
+(To determine which shell you use, type: 'echo $SHELL')
+
+---
+If you are using the C shell, add the following
+lines to the end of your '.cshrc' file in your home
+directory:
+
+setenv VADRINSTALLDIR <full path to directory in which you ran vadr-install.sh>
 setenv VADRSCRIPTSDIR "$VADRINSTALLDIR/vadr"
 setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models"
 setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal-dev/src"
@@ -181,9 +204,9 @@ Below is example output for `do-install-tests-local.sh`:
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 0.991 (Aug 2019)
+# VADR 0.993 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Sat Oct 26 16:28:18 2019
+# date:    Wed Nov 20 11:20:18 2019
 #
 # test file:                    /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
 # output directory:             n10-local
@@ -217,9 +240,9 @@ Below is example output for `do-install-tests-local.sh`:
 # 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 0.991 (Aug 2019)
+# VADR 1.0 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Sat Oct 26 16:29:05 2019
+# date:    Wed Nov 20 11:20:47 2019
 #
 # test file:                    /usr/local/vadr-install-dir/vadr/testfiles/dengue.r5.local.testin
 # output directory:             d5-local

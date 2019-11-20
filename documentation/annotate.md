@@ -40,9 +40,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 0.991 (Aug 2019)
+# VADR 0.993 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Oct 21 15:14:21 2019
+# date:    Wed Nov 20 11:51:13 2019
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -74,15 +74,15 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Mon Oct 21 15:41:06 2019
-# $VADRBIOEASELDIR:  /home/nawrocki/vadr-install/Bio-Easel
-# $VADRBLASTDIR:     /usr/bin
-# $VADREASELDIR:     /home/nawrocki/vadr-install/infernal-dev/easel/miniapps
-# $VADRINFERNALDIR:  /home/nawrocki/vadr-install/infernal-dev/src
-# $VADRMODELDIR:     /home/nawrocki/vadr-install/vadr-models
-# $VADRSCRIPTSDIR:   /home/nawrocki/vadr-install/vadr
+# date:              Wed Nov 20 11:51:36 2019
+# $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
+# $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
+# $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
+# $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries
+# $VADRMODELDIR:     /home/nawrocki/vadr-install-dir/vadr-models
+# $VADRSCRIPTSDIR:   /home/nawrocki/vadr-install-dir/vadr
 #
-# sequence file:     ../vadr/documentation/annotate-files/noro.9.fa
+# sequence file:     /home/nawrocki/vadr-install-dir/vadr/documentation/annotate-files/noro.9.fa
 # output directory:  va-noro.9
 ```
 
@@ -288,7 +288,7 @@ printed, along with elapsed time:
 ```
 
 All of these files were created in the newly created directory
-`va-noro-9`.  What follows is a brief discussion of some of these
+`va-noro.9`.  What follows is a brief discussion of some of these
 output file types.  More information on these files and their formats
 can be found [here](formats.md#annotate).
 
@@ -327,7 +327,7 @@ three letter suffixes:
 The contents of the `.mdl` and `.alc` files were already output by
 `v-annotate.pl` as covered above. To get more information on each
 sequence, see the `.sqa` and `.sqc` files. The `.sqc` file
-(`va-noro.vadr.sqc`) includes
+(`va-noro.9.vadr.sqc`) includes
 information on the classification of each sequence:
 
 ```
@@ -358,7 +358,7 @@ to fail must have been per-feature alerts. These can be seen in the
 `.ftr` and `.alt` files. An explanation of all fields in the `.sqc`
 file type is [here](formats.md#sqc).
 
-Next, take a look at the first few lines of the `.ftr` file (`va-noro9.vadr.ftr`):
+Next, take a look at the first few lines of the `.ftr` file (`va-noro.9.vadr.ftr`):
 
 ```
 #     seq          seq                   ftr          ftr                         ftr  ftr                                                                                     seq         model  ftr   
