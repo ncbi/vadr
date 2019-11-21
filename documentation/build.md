@@ -38,9 +38,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 0.995 (Nov 2019)
+# VADR 1.0 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed Nov 20 11:59:05 2019
+# date:    Thu Nov 21 14:23:07 2019
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -73,7 +73,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              EPN, Wed Nov 20 11:59:21 2019
+# date:              EPN, Thu Nov 21 14:23:18 2019
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
 # $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries

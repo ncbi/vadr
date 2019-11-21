@@ -77,7 +77,7 @@ vadr-install.sh>` with `<ncbi-vadr-install-dir>`
 
 ```
 The final step is to update your environment variables.
-(See https://github.com/nawrockie/vadr/blob/0.995/documentation/install.md for more information.)
+(See https://github.com/nawrockie/vadr/blob/1.0/documentation/install.md for more information.)
 
 If you are using the bash shell, add the following
 lines to the end of your '.bashrc' file in your home
@@ -204,9 +204,9 @@ Below is example output for `do-install-tests-local.sh`:
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 0.995 (Nov 2019)
+# VADR 1.0 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed Nov 20 11:20:18 2019
+# date:    Thu Nov 21 14:24:20 2019
 #
 # test file:                    /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
 # output directory:             n10-local
@@ -240,9 +240,9 @@ Below is example output for `do-install-tests-local.sh`:
 # 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 0.995 (Nov 2019)
+# VADR 1.0 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed Nov 20 11:20:47 2019
+# date:    Thu Nov 21 14:24:29 2019
 #
 # test file:                    /usr/local/vadr-install-dir/vadr/testfiles/dengue.r5.local.testin
 # output directory:             d5-local

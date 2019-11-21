@@ -40,9 +40,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 0.995 (Nov 2019)
+# VADR 1.0 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed Nov 20 11:51:13 2019
+# date:    Thu Nov 21 14:23:28 2019
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -74,7 +74,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Wed Nov 20 11:51:36 2019
+# date:              Thu Nov 21 14:23:38 2019
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
