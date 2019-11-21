@@ -95,7 +95,7 @@ opt_Add("--ftfetch2",   "boolean", 0,          $g,    undef, "--inft,--gb,--ftfe
 opt_Add("--gb",         "boolean", 0,          $g,    undef, undef,       "parse a genbank file, not a feature table file",              "parse a genbank file, not a feature table file", \%opt_HH, \@opt_order_A);
 opt_Add("--ingb",       "string",  undef,      $g,   "--gb", undef,       "read genbank file from <s>, don't fetch it",                  "read genbank file from <s>, don't fetch it", \%opt_HH, \@opt_order_A);
 opt_Add("--addminfo",   "string",  undef,      $g,    undef, undef,       "add feature info from model info file <s>",                   "add feature info from model info file <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--forcelong",  "boolean", 0,          $g,    undef, undef,       "allow long models > 30Kb in length",                          "allow long models > 30Kb in length", \%opt_HH, \@opt_order_A);
+opt_Add("--forcelong",  "boolean", 0,          $g,    undef, undef,       "allow long models > 25Kb in length",                          "allow long models > 25Kb in length", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,          $g,    undef, undef,       "leave intermediate files on disk",                            "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling what feature types are stored in model info file\n[default set is: CDS,gene,mat_peptide]";
@@ -366,14 +366,14 @@ else {
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 #######################################################################
-# Verify our sequence is not longer than our hard-coded maximum of 30Kb 
+# Verify our sequence is not longer than our hard-coded maximum of 25Kb 
 #######################################################################
 # allow any length if --forcelong
-my $maxlen = 30000;
+my $maxlen = 25000;
 my $mdllen = length($seq_H{$mdl_name_ver});
 if(! opt_Get("--forcelong", \%opt_HH)) { 
-  if($mdllen > 30000) { 
-    ofile_FAIL("ERROR, model length ($mdllen) exceeds maximum allowed length of $maxlen.\nYou can use --forcelong to bypass this at your own risk.\nUse of VADR on models > 30Kb is not recommended.\nModel building will be very slow and\ndownstream v-annotate.pl annotation will have large memory requirements.", 1, $FH_HR);
+  if($mdllen > 25000) { 
+    ofile_FAIL("ERROR, model length ($mdllen) exceeds maximum allowed length of $maxlen.\nYou can use --forcelong to bypass this at your own risk.\nUse of VADR on models > 25Kb is not recommended.\nModel building will be very slow and\ndownstream v-annotate.pl annotation will have large memory requirements.", 1, $FH_HR);
   }
 }
 
@@ -694,7 +694,7 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
       $cmbuild_opts .= " " . $optline . " ";
     }
   }
-  # if model is very big > 0.5 * 30Kb (maxlen), then use the --Egcmult option
+  # if model is big > 0.5 * 25Kb (maxlen), then use the --Egcmult option
   # this avoids problems and slowness with very large sequence lengths for glocal HMM calibration
   if($mdllen > (0.5 * $maxlen)) { 
     $cmbuild_opts .= " --Egcmult " . sprintf("%.5f", ($maxlen / $mdllen));
