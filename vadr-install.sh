@@ -77,14 +77,14 @@ echo "Set VADRINSTALLDIR as current directory ($VADRINSTALLDIR)."
 echo "------------------------------------------------"
 # vadr
 echo "Downloading vadr ... "
-#curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv $VVERSION vadr; rm $VERSION.zip
+curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv $VVERSION vadr; rm $VERSION.zip
 # for a test build of a release, comment out above curl and uncomment block below
 # ----------------------------------------------------------------------------
-git clone https://github.com/nawrockie/vadr.git vadr
-cd vadr
-git checkout release-$VERSION
-rm -rf .git
-cd ..
+#git clone https://github.com/nawrockie/vadr.git vadr
+#cd vadr
+#git checkout release-$VERSION
+#rm -rf .git
+#cd ..
 # ----------------------------------------------------------------------------
  
 # sequip and Bio-Easel
