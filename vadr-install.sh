@@ -107,10 +107,10 @@ echo "------------------------------------------------"
 # ----- infernal block 1 start  -----
 if [ $INPUTSYSTEM == "linux" ]; then
     echo "Downloading Infernal version $IVERSION for Linux"
-    curl -k -L -o infernal.tar.gz https://eddylab.org/infernal/infernal-$IVERSION-linux-intel-gcc.tar.gz
+    curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION-linux-intel-gcc.tar.gz
 else
     echo "Downloading Infernal version $IVERSION for Mac/OSX"
-    curl -k -L -o infernal.tar.gz https://eddylab.org/infernal/infernal-$IVERSION-macosx-intel.tar.gz
+    curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION-macosx-intel.tar.gz
 fi
 tar xfz infernal.tar.gz
 rm infernal.tar.gz
@@ -127,7 +127,7 @@ fi
 # uncomment 'infernal block 2' below
 # ----- infernal block 2 start  -----
 #echo "Downloading Infernal version $IVERSION src distribution"
-#curl -k -L -o infernal.tar.gz https://eddylab.org/infernal/infernal-$IVERSION.tar.gz
+#curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION.tar.gz
 #tar xfz infernal.tar.gz
 #rm infernal.tar.gz
 #echo "Building Infernal ... "
