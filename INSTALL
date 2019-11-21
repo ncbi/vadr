@@ -16,11 +16,11 @@ to a new empty directory where you want to install VADR.
 
 If you are installing on a Linux system, execute the command:
 
-./vadr-install.sh linux
+sh ./vadr-install.sh linux
 
 Alternatively, if you are installing on a Mac/OSX, execute the command:
 
-./vadr-install.sh macosx
+sh ./vadr-install.sh macosx
 
 Next, set your envirnoment variables as explained at the end of the
 output of the above command.
