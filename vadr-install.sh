@@ -21,7 +21,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="0.994"
+VERSION="0.995"
 # bio-easel
 BEVERSION="Bio-Easel-0.09"
 # blast+
@@ -31,7 +31,7 @@ IVERSION="1.1.3"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="0.991.1"
+MVERSION="1.0-1"
 
 # set defaults
 INPUTSYSTEM="?"
@@ -77,7 +77,7 @@ echo "Set VADRINSTALLDIR as current directory ($VADRINSTALLDIR)."
 echo "------------------------------------------------"
 # vadr
 echo "Downloading vadr ... "
-curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv $VVERSION vadr; rm $VERSION.zip
+curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
 # for a test build of a release, comment out above curl and uncomment block below
 # ----------------------------------------------------------------------------
 #git clone https://github.com/nawrockie/vadr.git vadr
@@ -117,7 +117,7 @@ rm infernal.tar.gz
 if [ $INPUTSYSTEM == "linux" ]; then
     mv infernal-$IVERSION-linux-intel-gcc infernal
 else
-    mv infernal-$IVERSION-macosx-intel
+    mv infernal-$IVERSION-macosx-intel infernal
 fi
 # ----- infernal block 1 end -----
 

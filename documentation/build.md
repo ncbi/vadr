@@ -25,8 +25,11 @@
 `v-build.pl` creates the VADR model files for a specified reference
 GenBank (typically RefSeq) sequence necessary for running
 `v-annotate.pl` to validate and annotate sequences similar to that
-reference sequence. To determine the command-line usage of 
-`v-build.pl` (or any VADR script), use the `-h` option, like this:
+reference sequence. `v-build.pl` should only be used on sequences of
+length 25Kb (25,000 nucleotides) or less due to the prohibitively
+large memory requirements of `v-annotate.pl` for larger models. To
+determine the command-line usage of `v-build.pl` (or any VADR script),
+use the `-h` option, like this:
 
 ```
 v-build.pl -h 
@@ -35,7 +38,7 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 0.994 (Nov 2019)
+# VADR 0.995 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Wed Nov 20 11:59:05 2019
 #
@@ -217,6 +220,7 @@ The first category of options are the *basic* options:
 | `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
 | `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
 | `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
+| `--forcelong` | *use at your own risk*; allow long models > 25Kb in length; by default `v-build.pl` will fail for any model more than 25Kb (25,000 nucleotides) because `v-build.pl` will be very slow and the memory requirements of `v-annotate.pl` will be prohibitively large
 | `--keep` | keep additional output files that are normally removed |
 
 ### `v-build.pl` options for controlling what feature types are stored in the output model info file<a name="options-featuretypes"></a>
@@ -436,6 +440,23 @@ for these `stem_loop` and `ncRNA` features.
 
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
+
+#### Manually edit the `.minfo` files for the Dengue models
+
+Not all the annotation in the Dengue RefSeqs as of October 2019 is in
+the VADR 1.0 library. To make your `.minfo` files match those in the
+library exactly do the following:
+
+1. Remove the `ncRNA` features with product names `sfRNA2`, `sfRNA3`,
+   and `sfRNA4` from the `.minfo` files of `NC_001477`, `NC_001474`,
+   and `NC_001475`.
+
+2. Remove the `ncRNA` features with product names `sfRNA3` and
+   `sfRNA4` from the `.minfo` file of `NC_002640`.
+
+3. Remove all occurrences of the substring `gene:"-"` (only) from
+   `FEATURE` lines in the `.minfo` files of `NC_001477`, `NC_001474`,
+   `NC_001475` and `NC_002640`.
 
 ### Building the VADR 1.0 library Hepatitis C virus models <a name="1.0library-hcv"></a>
 
