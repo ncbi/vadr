@@ -27,9 +27,9 @@ GenBank (typically RefSeq) sequence necessary for running
 `v-annotate.pl` to validate and annotate sequences similar to that
 reference sequence. `v-build.pl` should only be used on sequences of
 length 30Kb (30,000 nucleotides) or less due to the prohibitively
-large memory requirements of larger models. To determine the
-command-line usage of `v-build.pl` (or any VADR script), use the `-h`
-option, like this:
+large memory requirements of `v-annotate.pl` for larger models. To
+determine the command-line usage of `v-build.pl` (or any VADR script),
+use the `-h` option, like this:
 
 ```
 v-build.pl -h 
@@ -220,7 +220,7 @@ The first category of options are the *basic* options:
 | `--gb` | fetch and parse a GenBank-format file from GenBank instead of a feature table | 
 | `--ingb <s>` | read the GenBank-format file in `<s>` instead of a feature table file (requires `--gb`)| 
 | `--addminfo <s>` | add arbitrary feature info in file `<s>` to output `.minfo` file, see an example [here](#1.0library-noro") | 
-| `--forcelong` | *use at your own risk*; allow long models > 30Kb in length, by default `v-build.pl` will fail for any model more than 30Kb (30,000 nucleotides). This is because the build step will be very slow and the memory requirements of `v-annotate.pl` will be prohibitively large 
+| `--forcelong` | *use at your own risk*; allow long models > 30Kb in length; by default `v-build.pl` will fail for any model more than 30Kb (30,000 nucleotides) because `v-build.pl` will be very slow and the memory requirements of `v-annotate.pl` will be prohibitively large
 | `--keep` | keep additional output files that are normally removed |
 
 ### `v-build.pl` options for controlling what feature types are stored in the output model info file<a name="options-featuretypes"></a>
