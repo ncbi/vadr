@@ -452,9 +452,11 @@ library exactly do the following:
    and `NC_001475`.
 
 2. Remove the `ncRNA` features with product names `sfRNA3` and
-   `sfRNA4` from the `.minfo` files of `NC_002640`.
+   `sfRNA4` from the `.minfo` file of `NC_002640`.
 
-3. Remove the substring `gene:\"-\"` (only) from all `FEATURE` lines.
+3. Remove all occurrences of the substring `gene:"-"` (only) from
+   `FEATURE` lines in the `.minfo` files of `NC_001477`, `NC_001474`,
+   `NC_001475` and `NC_002640`.
 
 ### Building the VADR 1.0 library Hepatitis C virus models <a name="1.0library-hcv"></a>
 
