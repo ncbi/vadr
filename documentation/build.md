@@ -38,7 +38,7 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 0.994 (Nov 2019)
+# VADR 0.995 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Wed Nov 20 11:59:05 2019
 #
@@ -440,6 +440,21 @@ for these `stem_loop` and `ncRNA` features.
 
 The `--group` and `--subgroup` options are used in a similar way to how they were used
 to build the norovirus models.
+
+#### Manually edit the `.minfo` files for the Dengue models
+
+Not all the annotation in the Dengue RefSeqs as of October 2019 is in
+the VADR 1.0 library. To make your `.minfo` files match those in the
+library exactly do the following:
+
+1. Remove the `ncRNA` features with product names `sfRNA2`, `sfRNA3`,
+   and `sfRNA4` from the `.minfo` files of `NC_001477`, `NC_001474`,
+   and `NC_001475`.
+
+2. Remove the `ncRNA` features with product names `sfRNA3` and
+   `sfRNA4` from the `.minfo` files of `NC_002640`.
+
+3. Remove the substring `gene:\"-\"` (only) from all `FEATURE` lines.
 
 ### Building the VADR 1.0 library Hepatitis C virus models <a name="1.0library-hcv"></a>
 
