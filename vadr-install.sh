@@ -117,7 +117,7 @@ rm infernal.tar.gz
 if [ $INPUTSYSTEM == "linux" ]; then
     mv infernal-$IVERSION-linux-intel-gcc infernal
 else
-    mv infernal-$IVERSION-macosx-intel
+    mv infernal-$IVERSION-macosx-intel infernal
 fi
 # ----- infernal block 1 end -----
 
