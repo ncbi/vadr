@@ -21,7 +21,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="0.993"
+VERSION="0.994"
 # bio-easel
 BEVERSION="Bio-Easel-0.09"
 # blast+
@@ -77,14 +77,14 @@ echo "Set VADRINSTALLDIR as current directory ($VADRINSTALLDIR)."
 echo "------------------------------------------------"
 # vadr
 echo "Downloading vadr ... "
-#curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv $VVERSION vadr; rm $VERSION.zip
+curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv $VVERSION vadr; rm $VERSION.zip
 # for a test build of a release, comment out above curl and uncomment block below
 # ----------------------------------------------------------------------------
-git clone https://github.com/nawrockie/vadr.git vadr
-cd vadr
-git checkout release-$VERSION
-rm -rf .git
-cd ..
+#git clone https://github.com/nawrockie/vadr.git vadr
+#cd vadr
+#git checkout release-$VERSION
+#rm -rf .git
+#cd ..
 # ----------------------------------------------------------------------------
  
 # sequip and Bio-Easel
@@ -107,10 +107,10 @@ echo "------------------------------------------------"
 # ----- infernal block 1 start  -----
 if [ $INPUTSYSTEM == "linux" ]; then
     echo "Downloading Infernal version $IVERSION for Linux"
-    curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-linux-intel-gcc.tar.gz
+    curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION-linux-intel-gcc.tar.gz
 else
     echo "Downloading Infernal version $IVERSION for Mac/OSX"
-    curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION-macosx-intel.tar.gz
+    curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION-macosx-intel.tar.gz
 fi
 tar xfz infernal.tar.gz
 rm infernal.tar.gz
@@ -127,7 +127,7 @@ fi
 # uncomment 'infernal block 2' below
 # ----- infernal block 2 start  -----
 #echo "Downloading Infernal version $IVERSION src distribution"
-#curl -k -L -o infernal.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/infernal-$IVERSION.tar.gz
+#curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION.tar.gz
 #tar xfz infernal.tar.gz
 #rm infernal.tar.gz
 #echo "Building Infernal ... "

@@ -35,7 +35,7 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 0.993 (Nov 2019)
+# VADR 0.994 (Nov 2019)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # date:    Wed Nov 20 11:59:05 2019
 #
