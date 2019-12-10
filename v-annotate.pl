@@ -5462,12 +5462,13 @@ sub output_feature_table {
         if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
 
           # initialize
-          my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
-          my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
-          my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
-          my $ftr_coords_str    = ""; # string of coordinates for this feature
-          my $ftr_out_str       = ""; # output string for this feature
-          my $is_cds_or_mp      = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+          my $is_5trunc               = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_3trunc               = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_misc_feature         = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
+          my $is_skipped_misc_feature = 0;  # '1' if this feature *would be* a misc_feature due to alert(s) but --nomisc prevents it
+          my $ftr_coords_str          = ""; # string of coordinates for this feature
+          my $ftr_out_str             = ""; # output string for this feature
+          my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
           
           my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
           my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
@@ -5491,13 +5492,18 @@ sub output_feature_table {
           my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
           if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
             # hard-coded list of feature types that do NOT become misc_features even if they have fatal alerts
-            if((! $do_nomisc) && # $do_nomisc will be 1 iff --nomisc used
-               ($feature_type ne "gene") && 
+            if(($feature_type ne "gene") && 
                ($feature_type ne "5'UTR") && 
                ($feature_type ne "3'UTR") && 
                ($feature_type ne "operon")) { 
-              $is_misc_feature = 1;
-              $feature_type = "misc_feature";
+              if($do_nomisc) { # --nomisc enabled
+                $is_skipped_misc_feature = 1;
+                # we use this flag *only* to avoid setting $missing_codon_start_flag below
+              }
+              else { 
+                $is_misc_feature = 1;
+                $feature_type = "misc_feature";
+              }
             }
           }
           
@@ -5536,7 +5542,10 @@ sub output_feature_table {
                 # we didn't have a p_frame value for this CDS, so raise a flag
                 # we check later that if the sequence PASSes that this flag 
                 # is *NOT* raised, if it is, something went wrong and we die
-                $missing_codon_start_flag = 1; 
+                if(! $is_skipped_misc_feature) { 
+                  # if $is_skipped_misc_feature, this *would* be a misc_feature but is not due to --nomisc, so we allow missing codon start
+                  $missing_codon_start_flag = 1; 
+                }
                 # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
               } 
               if($is_5trunc) { # only add the codon_start if we are 5' truncated
@@ -5584,7 +5593,7 @@ sub output_feature_table {
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
     # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features
-    if($cur_noutftr > 0 && $cur_nalert == 0 && ($missing_codon_start_flag)) { 
+    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag)) { 
       ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
     # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
