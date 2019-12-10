@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# EPN, Wed May  1 10:18:55 2019 [renamed to vadr-annotate.pl]
+# EPN, Wed May  1 10:18:55 2019 [renamed to v-annotate.pl]
 # EPN, Thu Feb 18 12:48:16 2016 [dnaorg_annotate.pl split off from dnaorg_annotate_genomes.pl]
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
 #
@@ -162,6 +162,10 @@ opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, unde
 opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for controlling output feature table";
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",              "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
 opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                  \%opt_HH, \@opt_order_A);
@@ -238,6 +242,8 @@ my $options_okay =
                 "alt_list"      => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
+# options for controlling output feature tables
+                "nomisc"        => \$GetOptions_H{"--nomisc"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -5391,6 +5397,8 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
+  my $do_nomisc = opt_Get("--nomisc", $opt_HHR); # 1 to never output misc_features
+
   # determine order of alert codes to print
   my $alt_code;
   my @seq_alt_code_A = (); # per-sequence alerts in output order
@@ -5483,7 +5491,8 @@ sub output_feature_table {
           my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
           if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
             # hard-coded list of feature types that do NOT become misc_features even if they have fatal alerts
-            if(($feature_type ne "gene") && 
+            if((! $do_nomisc) && # $do_nomisc will be 1 iff --nomisc used
+               ($feature_type ne "gene") && 
                ($feature_type ne "5'UTR") && 
                ($feature_type ne "3'UTR") && 
                ($feature_type ne "operon")) { 
