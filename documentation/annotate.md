@@ -8,6 +8,7 @@
   * [basic options](#options-basic)
   * [options for specifying expected sequence classification](#options-classification)
   * [options for controlling which alerts are fatal](#options-fatal)
+  * [options for controlling output feature table](#options-featuretable)
   * [options for controlling alert thresholds](#options-alerts)
   * [options for controlling the alignment stage](#options-align)
   * [options for controlling the blastx protein validation stage](#options-blastx)
@@ -642,6 +643,11 @@ integer.
 | `--alt_list`     | output [summary of all alerts](#alerts) and then exit | 
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
 | `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
+
+### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
+| .......option....... | explanation | 
+|--------|-------------| 
+| `--nomisc`     | in feature table, never change feature to `misc_feature` | 
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 

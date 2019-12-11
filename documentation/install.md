@@ -28,13 +28,13 @@ following two commands depending on whether you are installing on a
 Linux or Mac/OSX system:
 
 ```
-./vadr-install.sh linux
+sh ./vadr-install.sh linux
 ```
 
 OR
 
 ```
-./vadr-install.sh macosx
+sh ./vadr-install.sh macosx
 ```
 The `linux` or `macosx` argument controls (only) the type of infernal
 and blast executable files that will be installed.

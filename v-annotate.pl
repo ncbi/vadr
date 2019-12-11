@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# EPN, Wed May  1 10:18:55 2019 [renamed to vadr-annotate.pl]
+# EPN, Wed May  1 10:18:55 2019 [renamed to v-annotate.pl]
 # EPN, Thu Feb 18 12:48:16 2016 [dnaorg_annotate.pl split off from dnaorg_annotate_genomes.pl]
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
 #
@@ -162,6 +162,10 @@ opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, unde
 opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for controlling output feature table";
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",              "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
 opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                  \%opt_HH, \@opt_order_A);
@@ -238,6 +242,8 @@ my $options_okay =
                 "alt_list"      => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
+# options for controlling output feature tables
+                "nomisc"        => \$GetOptions_H{"--nomisc"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -284,8 +290,8 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "1.0";
-my $releasedate   = "Nov 2019";
+my $version       = "1.0.1";
+my $releasedate   = "Dec 2019";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -5391,6 +5397,8 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
+  my $do_nomisc = opt_Get("--nomisc", $opt_HHR); # 1 to never output misc_features
+
   # determine order of alert codes to print
   my $alt_code;
   my @seq_alt_code_A = (); # per-sequence alerts in output order
@@ -5454,12 +5462,13 @@ sub output_feature_table {
         if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
 
           # initialize
-          my $is_5trunc         = 0;  # '1' if this feature is truncated at the 3' end
-          my $is_3trunc         = 0;  # '1' if this feature is truncated at the 3' end
-          my $is_misc_feature   = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
-          my $ftr_coords_str    = ""; # string of coordinates for this feature
-          my $ftr_out_str       = ""; # output string for this feature
-          my $is_cds_or_mp      = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
+          my $is_5trunc               = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_3trunc               = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_misc_feature         = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
+          my $is_skipped_misc_feature = 0;  # '1' if this feature *would be* a misc_feature due to alert(s) but --nomisc prevents it
+          my $ftr_coords_str          = ""; # string of coordinates for this feature
+          my $ftr_out_str             = ""; # output string for this feature
+          my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
           
           my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
           my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
@@ -5487,8 +5496,14 @@ sub output_feature_table {
                ($feature_type ne "5'UTR") && 
                ($feature_type ne "3'UTR") && 
                ($feature_type ne "operon")) { 
-              $is_misc_feature = 1;
-              $feature_type = "misc_feature";
+              if($do_nomisc) { # --nomisc enabled
+                $is_skipped_misc_feature = 1;
+                # we use this flag *only* to avoid setting $missing_codon_start_flag below
+              }
+              else { 
+                $is_misc_feature = 1;
+                $feature_type = "misc_feature";
+              }
             }
           }
           
@@ -5527,7 +5542,10 @@ sub output_feature_table {
                 # we didn't have a p_frame value for this CDS, so raise a flag
                 # we check later that if the sequence PASSes that this flag 
                 # is *NOT* raised, if it is, something went wrong and we die
-                $missing_codon_start_flag = 1; 
+                if(! $is_skipped_misc_feature) { 
+                  # if $is_skipped_misc_feature, this *would* be a misc_feature but is not due to --nomisc, so we allow missing codon start
+                  $missing_codon_start_flag = 1; 
+                }
                 # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
               } 
               if($is_5trunc) { # only add the codon_start if we are 5' truncated
@@ -5575,7 +5593,7 @@ sub output_feature_table {
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
     # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features
-    if($cur_noutftr > 0 && $cur_nalert == 0 && ($missing_codon_start_flag)) { 
+    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag)) { 
       ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
     # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
