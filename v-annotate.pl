@@ -2904,7 +2904,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           # feature is not 5' truncated, look for a start codon if it's a CDS
           if($ftr_is_cds) { 
             if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $mdl_tt, $atg_only, $FH_HR))) { 
-              $alt_str_H{"mutstart"} = "VADRNULL";
+              $alt_str_H{"mutstart"} = sprintf("%s starting at position %d on %s strand is not a valid start", 
+                                               substr($ftr_sqstring, 0, 3), 
+                                               $ftr2org_pos_A[1], $ftr_strand);
             }
           }
         }
@@ -2913,7 +2915,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           # feature is not 3' truncated, but it is 3' truncated, look for a stop codon if it's a CDS
           if($ftr_is_cds) { 
             if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring, $mdl_tt, $FH_HR))) { 
-              $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
+              $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
                                                substr($ftr_sqstring, -3, 3), 
                                                $ftr2org_pos_A[$ftr_len], $ftr_strand);
             }
@@ -2934,7 +2936,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'mutendcd' alert if not
               if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
-                $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
+                $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
                                                  substr($ftr_sqstring, -3, 3),
                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
               }
