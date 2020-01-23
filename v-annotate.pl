@@ -2899,6 +2899,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
         
+        # deal with mutstart for all CDS that are not 5' truncated
         if(! $ftr_is_5trunc) { 
           # feature is not 5' truncated, look for a start codon if it's a CDS
           if($ftr_is_cds) { 
@@ -2907,6 +2908,18 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             }
           }
         }
+        # deal with mutendcd for all CDS that are not 3' truncated BUT are 5' truncated
+        if((! $ftr_is_3trunc) && ($ftr_is_5trunc)) { 
+          # feature is not 3' truncated, but it is 3' truncated, look for a stop codon if it's a CDS
+          if($ftr_is_cds) { 
+            if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring, $mdl_tt, $FH_HR))) { 
+              $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
+                                               substr($ftr_sqstring, -3, 3), 
+                                               $ftr2org_pos_A[$ftr_len], $ftr_strand);
+            }
+          }
+        }
+        # deal with all CDS that are not 5' truncated and not 3' truncated
         if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
           if($ftr_is_cds_or_mp) { 
             # feature is not truncated on either end, look for stop codons
@@ -2922,7 +2935,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               # check that final add codon is a valid stop, and add 'mutendcd' alert if not
               if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
                 $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand", 
-                                                 substr($ftr_sqstring, ($ftr_len-3), 3), # watch off-by-one ($ftr_len-2-1)
+                                                 substr($ftr_sqstring, -3, 3),
                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
               }
               if($ftr_nxt_stp_A[1] != $ftr_len) { 
@@ -3082,6 +3095,38 @@ sub sqstring_check_start {
   $start_codon =~ tr/U/T/;     # convert to DNA
 
   return seq_CodonValidateStartCapDna($start_codon, $tt, $atg_only);
+
+}
+
+#################################################################
+# Subroutine: sqstring_check_stop()
+# Incept:     EPN, Wed Jan 22 14:47:37 2020
+#
+# Arguments:
+#  $sqstring: the sequence string
+#  $tt:       the translation table ('1' for standard)
+#  $FH_HR:    REF to hash of file handles
+#  
+# Returns: '1' if $sqstring ends with a valid
+#           stop codon on the positive strand
+#           '0' if not
+# 
+#################################################################
+sub sqstring_check_stop {
+  my $sub_name = "sqstring_check_stop";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $tt, $FH_HR) = @_;
+
+  my $sqlen = length($sqstring);
+  if($sqlen < 3) { return 0; } 
+
+  my $stop_codon = substr($sqstring, -3, 3);
+  $stop_codon =~ tr/a-z/A-Z/; # convert to uppercase
+  $stop_codon =~ tr/U/T/;     # convert to DNA
+
+  return seq_CodonValidateStopCapDna($stop_codon, $tt);
 
 }
 
