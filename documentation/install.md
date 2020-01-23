@@ -77,7 +77,9 @@ vadr-install.sh>` with `<ncbi-vadr-install-dir>`
 
 ```
 The final step is to update your environment variables.
-(See https://github.com/nawrockie/vadr/blob/1.0/documentation/install.md for more information.)
+(See
+https://github.com/nawrockie/vadr/blob/master/documentation/install.md
+for more information.)
 
 If you are using the bash shell, add the following
 lines to the end of your '.bashrc' file in your home
