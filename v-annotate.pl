@@ -179,6 +179,7 @@ opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",     "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fshifttol",  "integer",   5,                    $g,   undef,   undef,      "cdsfshft/POSSIBLE_FRAMESHIFT max allowed frame disagreement nt length without alert is <n>",         "cdsfshft/POSSIBLE_FRAMESHIFT max allowed frame disagreement nt length without alert is <n>",      \%opt_HH, \@opt_order_A);
 opt_Add("--xalntol",    "integer",   5,                    $g,   undef,   undef,      "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,   undef,      "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,   undef,      "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
@@ -256,6 +257,7 @@ my $options_okay =
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
+                'fshifttol=s'   => \$GetOptions_H{"--fshifttol"},
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
@@ -791,7 +793,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which will exist for any r1 run that fails
         cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
-                                                   \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$sgm_results_HHAH{$mdl_name}},
+                                                   \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                   \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                    \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
@@ -2396,6 +2399,7 @@ sub cmalign_parse_ifile {
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
 #  $sgm_results_HAHR:       REF to results AAH, FILLED HERE
+#  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
 #  $opt_HHR:                REF to 2D hash of option values
 #  $FH_HR:                  REF to hash of file handles
@@ -2407,13 +2411,14 @@ sub cmalign_parse_ifile {
 ################################################################# 
 sub cmalign_parse_stk_and_add_alignment_alerts { 
   my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 10;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
 
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
+  my $fshift_tol       = opt_Get("--fshifttol",   $opt_HHR); # maximum allowed nt length of non-dominant frame without a cdsfshft alert 
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -2711,6 +2716,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
 
     # for each CDS: determine frame 
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $frame_str = "";
+      my @frame_ct_A = (0, 0, 0, 0);
+      my $ftr_strand = undef;
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
@@ -2728,30 +2736,98 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $mstart = $sgm_results_HR->{"mstart"};
             my $mstop  = $sgm_results_HR->{"mstop"};
             my $strand = $sgm_results_HR->{"strand"};
+            if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
+              ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, undef);
+            }
+            $ftr_strand = $strand;
             if($strand ne $sgm_strand) { 
               ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, undef);
             }
             my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1;
-            printf("F_0: $F_0\n");
+            my $F_prv = undef;
+            my $uapos_prv = undef;
             if($strand eq "+") { 
               for($rfpos = $mstart; $rfpos <= $mstop; $rfpos++) { 
                 if($rfpos_pp_A[$rfpos] ne ".") { 
-                  printf("rfpos: $rfpos\n");
+                  # this rfpos is not aligned to a gap in the sequence
+                  #printf("rfpos: $rfpos\n");
                   $uapos = $max_uapos_before_A[$rfpos];
-                  my $rf_diff = ($rfpos - $mstart) + 1;
-                  my $ua_diff = ($uapos - $sstart) + 1;
-                  my $z = $rf_diff - $ua_diff;
-                  printf("\trf_diff: $rfpos - $mstart + 1: $rf_diff\n");
-                  printf("\tua_diff: $uapos - $sstart + 1: $ua_diff\n");
-                  printf("\tz: $z\n");
-                  $z %= 3;
-                  printf("\tz mod 3: $z\n");
-                  my $F_cur = ((($F_0-1) + $z) % 3) + 1;
-                  printf("\tF_cur: $F_cur\n");
+                  my $rf_diff = ($rfpos - $mstart) + 1; # number of RF positions seen since first nt
+                  my $ua_diff = ($uapos - $sstart) + 1; # number of nucleotides seen
+                  my $z = $rf_diff - $ua_diff; 
+                  #printf("\trf_diff: $rfpos - $mstart + 1: $rf_diff\n");
+                  #printf("\tua_diff: $uapos - $sstart + 1: $ua_diff\n");
+                  #printf("\tz: $z\n");
+                  #$z %= 3;
+                  #printf("\tz mod 3: $z\n");
+                  my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt
+                  #printf("\tF_cur: $F_cur\n");
+                  $frame_ct_A[$F_cur]++;
+                  if((! defined $F_prv) || ($F_cur != $F_prv)) { 
+                    if(defined $F_prv) { $frame_str .= $uapos_prv . ";"; }
+                    $frame_str .= $F_cur . ":" . $uapos . "-";
+                  }
+                  $uapos_prv = $uapos;
+                  $F_prv     = $F_cur;
                 }
+              }
+              $frame_str .= $uapos . ";";
+            }
+          }
+        }
+        printf("frame_ct_A[1]: $frame_ct_A[1]\n");
+        printf("frame_ct_A[2]: $frame_ct_A[2]\n");
+        printf("frame_ct_A[3]: $frame_ct_A[3]\n");
+        printf("frame_str: $frame_str\n");
+        # store frame
+        my $winning_frame = utl_AArgMax(\@frame_ct_A);
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"frame"} = $winning_frame;
+
+        # deconstruct $frame_str, looking for potential frameshifts, 
+        # we combine any subseqs not in the dominant frame together and
+        # then check if any (possibly joined) non-dominant frame substrings 
+        # are long enough to trigger an alert
+        my @frame_tok_A = split(";", $frame_str);
+        my $len   = undef;
+        my $start = undef;
+        my $stop  = undef;
+        for(my $f = 0; $f < scalar(@frame_tok_A); $f++) { 
+          my $frame_tok = $frame_tok_A[$f];
+          if($frame_tok =~ /([123])\:(\d+)\-(\d+)/) { 
+            my ($frame, $cur_start, $cur_stop) = ($1, $2, $3); 
+            if($frame == $winning_frame) { 
+              # check if previous subseq triggers an alert
+              if((defined $len) && ($len > $fshift_tol)) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx,
+                                           "nucleotide alignment of positions $start..$stop ($len nt) on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $winning_frame . ")",
+                                           $FH_HR);
+              }
+              $len   = undef;
+              $start = undef;
+              $stop  = undef;
+            }
+            else { # frame_tok is non-dominant frame
+              if(defined $len) { # combine with growing subseq
+                $len += abs($cur_start-$cur_stop)+1; 
+                if($ftr_strand eq "+") { $stop  = $cur_stop; }
+                else                   { $start = $cur_start; }
+              }
+              else { # start new subseq
+                $len = abs($cur_start-$cur_stop)+1;
+                $start = $cur_start;
+                $stop  = $cur_stop;
               }
             }
           }
+          else { 
+            ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok", 1, undef);
+          }
+        }
+        # check if final subseq triggers an alert
+        if((defined $len) && ($len > $fshift_tol)) { 
+          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx,
+                                     "nucleotide alignment of positions $start..$stop ($len nt) on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $winning_frame . ")",
+                                     $FH_HR);
         }
       }
     }

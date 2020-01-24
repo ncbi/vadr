@@ -1302,6 +1302,12 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "cdsfshft", "feature",
+                   "POSSIBLE_FRAMESHIFT", # short description
+                   "potential frameshift in CDS", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
                    "CDS_HAS_STOP_CODON", # short description
                    "stop codon in protein-based alignment", # long description
