@@ -2415,6 +2415,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $small_value = 0.000001; # for checking if PPs are below threshold
+  my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
   # create an ESL_MSA object from the alignment
@@ -2507,6 +2508,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                  #                       '.' if sequence is a gap at that RF position $rfpos
                                  #                       special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
 
+
     $rfpos = 0;    # model positions (nongap RF position)
     my $uapos = 0; # unaligned sequence position (position in actual sequence)
     # initialize
@@ -2575,9 +2577,10 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
       $max_rfpos_before_A[$rfpos] = $max_rfpos;
       $max_uapos_before_A[$rfpos] = $max_uapos;
- #     if($rfpos <= $rflen) { 
- #       printf("rfpos: %5d  apos: %5d  max_rfpos: %5d  max_uapos: %5d\n", $rfpos, $apos, $max_rfpos, $max_uapos);
- #     }
+
+      if($rfpos <= $rflen) { 
+        printf("rfpos: %5d  apos: %5d  max_rfpos: %5d  max_uapos: %5d\n", $rfpos, $apos, $max_rfpos, $max_uapos);
+      }
     }
     if($max_uapos != $seq_len) { 
       ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
@@ -2604,11 +2607,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
     #        hit rf span is from A[rfpos] to B[rfpos]
 
     # now we have all the info we need for this sequence to determine sequence boundaries for each model segment
-    for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
+    my $sgm_idx; 
+    my $ftr_idx;
+    for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
       my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
       my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
       my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
-      my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
+      $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
       my $ftr_pp_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
       my $ftr_pp_msg    = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
 
@@ -2703,7 +2708,55 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         #}
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
+
+    # for each CDS: determine frame 
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+        for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+          if((defined $sgm_results_HAHR->{$seq_name}) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+            if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
+              die "ERROR trying to infer frame for multi-segment CDS, not yet implemented";
+            }
+            my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
+            my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
+            my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
+            my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            my $sstart = $sgm_results_HR->{"sstart"};
+            my $sstop  = $sgm_results_HR->{"sstop"};
+            my $mstart = $sgm_results_HR->{"mstart"};
+            my $mstop  = $sgm_results_HR->{"mstop"};
+            my $strand = $sgm_results_HR->{"strand"};
+            if($strand ne $sgm_strand) { 
+              ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, undef);
+            }
+            my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1;
+            printf("F_0: $F_0\n");
+            if($strand eq "+") { 
+              for($rfpos = $mstart; $rfpos <= $mstop; $rfpos++) { 
+                if($rfpos_pp_A[$rfpos] ne ".") { 
+                  printf("rfpos: $rfpos\n");
+                  $uapos = $max_uapos_before_A[$rfpos];
+                  my $rf_diff = ($rfpos - $mstart) + 1;
+                  my $ua_diff = ($uapos - $sstart) + 1;
+                  my $z = $rf_diff - $ua_diff;
+                  printf("\trf_diff: $rfpos - $mstart + 1: $rf_diff\n");
+                  printf("\tua_diff: $uapos - $sstart + 1: $ua_diff\n");
+                  printf("\tz: $z\n");
+                  $z %= 3;
+                  printf("\tz mod 3: $z\n");
+                  my $F_cur = ((($F_0-1) + $z) % 3) + 1;
+                  printf("\tF_cur: $F_cur\n");
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   } # end of 'for(my $i = 0; $m < $nseq; $m++)'
+
   undef $msa;
 
   return;
@@ -2717,6 +2770,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
 #              a DP matrix memory overflow. 
 #              
 # Arguments: 
+
 #  $seq_file:           the sequence file with the single sequence that failed in it
 #  $mxsize:             matrix size to add to @{$overflow_mxsize_AR}
 #  $overflow_seq_AR:    ref to array of sequences that failed due to matrix overflows, to add to
@@ -2860,7 +2914,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             # mixture of strands on different segments, this shouldn't happen if we're a CDS or mat_peptide
             if($ftr_is_cds_or_mp) { 
               # this 'shouldn't happen' for a CDS or mature peptide, all segments should be the sames strand
-              ofile_FAIL("ERROR, in $sub_name, different model sgements have different strands for a CDS or MP feature $ftr_idx", 1, undef);
+              ofile_FAIL("ERROR, in $sub_name, different model segments have different strands for a CDS or MP feature $ftr_idx", 1, undef);
             }
             # mixture of strands, set to "!" 
             $ftr_strand = "!";
