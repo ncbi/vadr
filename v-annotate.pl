@@ -2746,6 +2746,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1;
             my $F_prv = undef;
             my $uapos_prv = undef;
+            my $rfpos_prv = undef;
             if($strand eq "+") { 
               for($rfpos = $mstart; $rfpos <= $mstop; $rfpos++) { 
                 if($rfpos_pp_A[$rfpos] ne ".") { 
@@ -2764,14 +2765,15 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   #printf("\tF_cur: $F_cur\n");
                   $frame_ct_A[$F_cur]++;
                   if((! defined $F_prv) || ($F_cur != $F_prv)) { 
-                    if(defined $F_prv) { $frame_str .= $uapos_prv . ";"; }
+                    if(defined $F_prv) { $frame_str .= $uapos_prv . "[" . (($rfpos - $rfpos_prv) - 1) . "];"; }
                     $frame_str .= $F_cur . ":" . $uapos . "-";
                   }
                   $uapos_prv = $uapos;
+                  $rfpos_prv = $rfpos;
                   $F_prv     = $F_cur;
                 }
               }
-              $frame_str .= $uapos . ";";
+              $frame_str .= $uapos . "[0];";
             }
           }
         }
@@ -2793,8 +2795,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         my $stop  = undef;
         for(my $f = 0; $f < scalar(@frame_tok_A); $f++) { 
           my $frame_tok = $frame_tok_A[$f];
-          if($frame_tok =~ /([123])\:(\d+)\-(\d+)/) { 
-            my ($frame, $cur_start, $cur_stop) = ($1, $2, $3); 
+          if($frame_tok =~ /([123])\:(\d+)\-(\d+)[(\d+)]/) { 
+            my ($frame, $cur_start, $cur_stop, $cur_ndelete) = ($1, $2, $3, $4); 
             if($frame == $winning_frame) { 
               # check if previous subseq triggers an alert
               if((defined $len) && ($len > $fshift_tol)) { 
