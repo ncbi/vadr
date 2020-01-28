@@ -2585,9 +2585,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       $max_rfpos_before_A[$rfpos] = $max_rfpos;
       $max_uapos_before_A[$rfpos] = $max_uapos;
 
-      if($rfpos <= $rflen) { 
-        printf("rfpos: %5d  apos: %5d  max_rfpos: %5d  max_uapos: %5d\n", $rfpos, $apos, $max_rfpos, $max_uapos);
-      }
+      #if($rfpos <= $rflen) { 
+      #  printf("rfpos: %5d  apos: %5d  max_rfpos: %5d  max_uapos: %5d\n", $rfpos, $apos, $max_rfpos, $max_uapos);
+      #}
     }
     if($max_uapos != $seq_len) { 
       ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
@@ -2716,13 +2716,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
-    # for each CDS: determine frame 
+    # for each CDS: determine frame, and report cdsfshft alerts
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $frame_str = "";
-      my @frame_ct_A = (0, 0, 0, 0);
-      my $ftr_strand = undef;
-      my $ftr_sstart = undef;
-      my $ftr_sstop  = undef;
+      my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
+      my $ftr_strand = undef; # strand for this feature
+      my $ftr_sstart = undef; # starting sequence position of this CDS feature
+      my $ftr_sstop  = undef; # ending   sequence position of this CDS feature
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
@@ -2742,6 +2742,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $strand = $sgm_results_HR->{"strand"};
             if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
             $ftr_sstop = $sstop;
+
+            # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
               ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
             }
@@ -2749,29 +2751,30 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             if($strand ne $sgm_strand) { 
               ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
-            my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1;
-            my $F_prv = undef;
-            my $uapos_prv = undef;
-            my $rfpos_prv = undef;
+
+            my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; # frame of initial nongap RF position for this segment 
+            my $F_prv = undef;     # frame of previous RF position 
+            my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
+            my $rfpos_prv = undef; # previous RF position
             if($strand eq "+") { 
+              # for each RF position covered by the predicted segment
               for($rfpos = $mstart; $rfpos <= $mstop; $rfpos++) { 
                 if($rfpos_pp_A[$rfpos] ne ".") { 
                   # this rfpos is not aligned to a gap in the sequence
-                  #printf("rfpos: $rfpos\n");
-                  $uapos = $max_uapos_before_A[$rfpos];
-                  my $rf_diff = ($rfpos - $mstart) + 1; # number of RF positions seen since first nt
-                  my $ua_diff = ($uapos - $sstart) + 1; # number of nucleotides seen
-                  my $z = $rf_diff - $ua_diff; 
-                  #printf("\trf_diff: $rfpos - $mstart + 1: $rf_diff\n");
-                  #printf("\tua_diff: $uapos - $sstart + 1: $ua_diff\n");
-                  #printf("\tz: $z\n");
-                  #$z %= 3;
-                  #printf("\tz mod 3: $z\n");
-                  my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt
-                  #printf("\tF_cur: $F_cur\n");
+                  $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
+                  my $rf_diff = ($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
+                  my $ua_diff = ($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
+                  my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
+                  my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
                   $frame_ct_A[$F_cur]++;
                   if((! defined $F_prv) || ($F_cur != $F_prv)) { 
-                    if(defined $F_prv) { $frame_str .= $uapos_prv . "[" . (($rfpos - $rfpos_prv) - 1) . "];"; }
+                    # frame changed, 
+                    # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
+                    if(defined $F_prv) { 
+                      $frame_str .= $uapos_prv . "[" . (($rfpos - $rfpos_prv) - 1) . "];"; 
+                      # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
+                    } 
+                    # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
                     $frame_str .= $F_cur . ":" . $uapos . "-";
                   }
                   $uapos_prv = $uapos;
@@ -2779,15 +2782,18 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   $F_prv     = $F_cur;
                 }
               }
+              # complete final frame token
               $frame_str .= $uapos . "[0];";
             }
           }
         }
-        printf("frame_ct_A[1]: $frame_ct_A[1]\n");
-        printf("frame_ct_A[2]: $frame_ct_A[2]\n");
-        printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-        printf("frame_str: $frame_str\n");
-        # store dominant frame
+
+        ### printf("frame_ct_A[1]: $frame_ct_A[1]\n");
+        ### printf("frame_ct_A[2]: $frame_ct_A[2]\n");
+        ### printf("frame_ct_A[3]: $frame_ct_A[3]\n");
+        ### printf("frame_str: $frame_str\n");
+
+        # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"frame"} = $dominant_frame;
 
@@ -2796,23 +2802,45 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         # then check if any (possibly joined) non-dominant frame subseqs
         # are long enough to trigger an alert
         my @frame_tok_A = split(";", $frame_str);
-        my $prv_dom_stop = undef; # last nucleotide in the dominant frame
         my $nframe_tok = scalar(@frame_tok_A); # number of frame tokens
-        my $span_start = undef; # first position of a non-dominant frame subseq
-        my $span_stop  = undef; # final position of a non-dominant frame subseq
-        my $span_len   = undef; # length of a non-dominant frame subseq
         if($nframe_tok > 1) { # if there's only one frame_tok, we can't have a frameshift
+          my $prv_stop   = undef; # last nucleotide in the previous frame token 
+          my $prv_frame  = undef; # frame of previous frame token 
+          my $prv_dom_stop = undef; # last nucleotide in the previous dominant frame token
+          my $span_start = undef; # first position of a non-dominant frame subseq
+          my $span_stop  = undef; # final position of a non-dominant frame subseq
+          my $span_len   = undef; # length of a non-dominant frame subseq
+          my $insert_str = "";    # string of inserts to put in alert string
+          my $delete_str = "";    # string of deletes to put in alert string
           for(my $f = 0; $f < $nframe_tok; $f++) { 
-            my $frame_tok = $frame_tok_A[$f];
-            if($frame_tok =~ /([123])\:(\d+)\-(\d+)\[(\d+)\]/) { 
-              my ($frame, $cur_start, $cur_stop, $cur_ndelete) = ($1, $2, $3, $4); 
+            if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\]/) { 
+              my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete) = ($1, $2, $3, $4); 
+
+              # add to growing list of inserts, if nec
+              # we do this before we report an alert because insert info 
+              # in the current frame token is relevant to the alert we may be about to report
+              # we add to delete info *after* we report an alert because delete
+              # info in this frame token is relevant to the next alert we may report
+              if($f > 0) { 
+                # add any inserted positions between previous frame token and this one to insert_str
+                if(($prv_stop + 1) < ($cur_start)) { # at least one inserted nt
+                  if($insert_str ne "") { $insert_str .= ","; }
+                  if(($prv_stop + 1) == ($cur_start - 1)) { # exactly one inserted nt
+                    $insert_str .= sprintf("%d", ($prv_stop + 1));
+                  }
+                  else { # more than one inserted nt, specify the range
+                    $insert_str .= sprintf("%d-%d", $prv_stop+1, $cur_start-1);
+                  }
+                }
+              }
+
               # Determine if we may have a frameshift alert (cdsfshft)
               # Two possible cases:
-              # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first $frame_tok ($f != 0))
+              # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_tok ($f != 0))
               # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
-              if((($frame == $dominant_frame) && ($f > 0))                ||  # Case 1: this subseq is in dominant frame, but previous was not
-                 (($frame != $dominant_frame) && ($f == ($nframe_tok-1)))) {  # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
-                # determine start and stop of the non-dominant frame subseq
+              if((($cur_frame == $dominant_frame) && ($f > 0))                ||  # Case 1
+                 (($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1)))) {  # Case 2
+                # determine $span_start: the first position of the non-dominant frame subseq
                 if(defined $prv_dom_stop) { 
                   # we've seen at least one dominant frame segment,
                   # start of the non-dominant stretch is 1 nt 3' of that
@@ -2823,7 +2851,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   # span start is first nt of CDS ($ftr_sstart)
                   $span_start = $ftr_sstart; 
                 }
-                if(($frame != $dominant_frame) && ($f == ($nframe_tok-1))) { 
+                # determine $span_stop: the final position of the non-dominant frame subseq
+                if(($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1))) { 
                   # (case 2) this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
                   # so final nt of the non-dominant stretch is the final nt of the CDS ($ftr_sstop) 
                   $span_stop = $ftr_sstop;
@@ -2835,24 +2864,40 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 }
                 $span_len = abs($span_stop - $span_start) + 1;
                 if($span_len > $fshift_tol) { 
+                  # this will be a cdsfshft alert
                   my $span_str = sprintf("%d..%d (%d nt)", $span_start, $span_stop, $span_len);
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx,
-                                             "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ")",
-                                             $FH_HR);
+                  my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                  $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
+                  $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx, $alt_str, $FH_HR);
+                  $insert_str = "";
+                  $delete_str = "";
                 }
               }
-              if($frame == $dominant_frame) { 
+
+              # add to growing list of deletes, if nec
+              if($f != ($nframe_tok-1)) { 
+                if($cur_ndelete > 0) { 
+                  if($delete_str ne "") { $delete_str .= ","; }
+                  $delete_str .= sprintf("%d(%d)", $cur_stop, $cur_ndelete);
+                }
+              }
+
+              # keep track of previous values we may need in next loop iteration
+              if($cur_frame == $dominant_frame) { 
                 $prv_dom_stop = $cur_stop; 
               }
-            }
+              $prv_stop  = $cur_stop;
+              $prv_frame = $cur_frame;
+            } # end if statement that parses $frame_tok_A[$f]
             else { 
-              ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok", 1, $FH_HR);
+              ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok_A[$f]", 1, $FH_HR);
             }
-          }
-        }
-      }
-    }
-  } # end of 'for(my $i = 0; $m < $nseq; $m++)'
+          } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
+        } # end of 'if($nframe_tok > 1)'
+      } # end of 'if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
+    } # end of 'for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
+  } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
   undef $msa;
 
