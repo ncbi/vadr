@@ -2724,6 +2724,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $ftr_sstart = undef; # starting sequence position of this CDS feature
       my $ftr_sstop  = undef; # ending   sequence position of this CDS feature
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+        my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
         for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
@@ -2865,7 +2866,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 $span_len = abs($span_stop - $span_start) + 1;
                 if($span_len > $fshift_tol) { 
                   # this will be a cdsfshft alert
-                  my $span_str = sprintf("%d..%d (%d nt)", $span_start, $span_stop, $span_len);
+                  # determine average posterior probability of non-dominant frame subseq
+                  if(! defined $full_ppstr) { 
+                    $full_ppstr = $msa->get_ppstring_aligned($i); 
+                    $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
+                  }
+                  my $span_ppstr = substr($full_ppstr, $span_start - 1, ($span_len));
+                  my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, Bio::Easel::MSA->get_ppstr_avg($span_ppstr));
                   my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
