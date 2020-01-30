@@ -2430,6 +2430,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   my $msa = Bio::Easel::MSA->new({
     fileLocation => $stk_file,
     isDna => 1});  
+  my $cds_msa = undef;
 
   # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
   my $alen = $msa->alen;
@@ -2723,8 +2724,14 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $ftr_strand = undef; # strand for this feature
       my $ftr_sstart = undef; # starting sequence position of this CDS feature
       my $ftr_sstop  = undef; # ending   sequence position of this CDS feature
+      my $ftr_mstart = undef; # starting model position of this CDS feature
+      my $ftr_mstop  = undef; # ending   sequence position of this CDS feature
+      my $gr_frame_str = "";  # GR annotation of frame per-position, only relevant if a cdsfshft alert occurs
+
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+        if(defined $cds_msa) { undef $cds_msa; }
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
+        my $cdsfshft_flag = 0;
         for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
@@ -2742,7 +2749,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $mstop  = $sgm_results_HR->{"mstop"};
             my $strand = $sgm_results_HR->{"strand"};
             if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
+            if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
             $ftr_sstop = $sstop;
+            $ftr_mstop = $mstop;
 
             # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
@@ -2767,6 +2776,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   my $ua_diff = ($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
                   my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
                   my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
+                  $gr_frame_str .= $F_cur;
                   $frame_ct_A[$F_cur]++;
                   if((! defined $F_prv) || ($F_cur != $F_prv)) { 
                     # frame changed, 
@@ -2781,6 +2791,14 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   $uapos_prv = $uapos;
                   $rfpos_prv = $rfpos;
                   $F_prv     = $F_cur;
+                }
+                else { # rf position is a gap
+                  $gr_frame_str .= ".";
+                }
+                if(($rfpos < $mstop) && ($rf2ilen_A[$rfpos] > 0)) { 
+                  for(my $ipos = 0; $ipos < $rf2ilen_A[$rfpos]; $ipos++) { 
+                    $gr_frame_str .= "*"; 
+                  }
                 }
               }
               # complete final frame token
@@ -2879,6 +2897,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
+                  $cdsfshft_flag = 1;
                 }
               }
 
@@ -2902,11 +2921,27 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             }
           } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
         } # end of 'if($nframe_tok > 1)'
+        if($cdsfshft_flag) { 
+          if(! defined $cds_msa) { 
+            $cds_msa = $msa->clone_msa;
+            my $alen = $msa->alen;
+            my @cds_col_A = ();
+            my $cds_apos_start = ($rf2a_A[$ftr_mstart]) - 1; # -1 puts it into 0..alen-1 coords
+            my $cds_apos_stop  = ($rf2a_A[$ftr_mstop])  - 1; # -1 puts it into 0..alen-1 coords
+            for(my $a = 0;                  $a <  $cds_apos_start; $a++) { $cds_col_A[$a] = 0; } # before CDS
+            for(my $a = $cds_apos_start;    $a <= $cds_apos_stop;  $a++) { $cds_col_A[$a] = 1; } # CDS
+            for(my $a = $cds_apos_stop + 1; $a <  $alen;           $a++) { $cds_col_A[$a] = 0; } # after CDS
+            $cds_msa->column_subset(\@cds_col_A);
+          }
+          $cds_msa->addGR("frame", $i, $gr_frame_str);
+          $cds_msa->write_msa("STDOUT", "stockholm");
+        }
       } # end of 'if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
     } # end of 'for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
   undef $msa;
+  if(defined $cds_msa) { undef $cds_msa; }
 
   return;
 }
