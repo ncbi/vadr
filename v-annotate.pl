@@ -2730,7 +2730,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
 
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
-        my $cdsfshft_flag = 0;
+        my @cds_alt_str_A = ();
         for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
           if((defined $sgm_results_HAHR->{$seq_name}) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
@@ -2897,7 +2897,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
-                  $cdsfshft_flag = 1;
+                  push(@cds_alt_str_A, $alt_str);
                 }
               }
 
@@ -2921,9 +2921,14 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             }
           } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
         } # end of 'if($nframe_tok > 1)'
-        if($cdsfshft_flag) { 
+        if(scalar(@cds_alt_str_A) > 0) { 
           # create and output a MSA of this seq/CDS 
-          my $cds_msa = $msa->clone_msa;
+          # remove all sequences other than the one we want
+          my @cds_seq_A = ();
+          for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_seq_A[$i2] = 0; }
+          $cds_seq_A[$i] = 1; # keep this one seq
+          for(my $i2 = 0; $i2 < $nseq; $i2++) { printf("cds_seq_A[$i2]: $cds_seq_A[$i2]\n"); }
+          my $cds_msa = $msa->sequence_subset(\@cds_seq_A);
           my $alen = $cds_msa->alen;
 
           # remove columns outside the CDS
@@ -2935,21 +2940,18 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           for(my $a = $cds_apos_stop + 1; $a <  $alen;           $a++) { $cds_col_A[$a] = 0; } # after CDS
           $cds_msa->column_subset(\@cds_col_A);
 
-          # remove all sequences other than the one we want
-          my @cds_seq_A = ();
-          for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_seq_A[$i2] = 0; }
-          $cds_seq_A[$i] = 1; # keep this one seq
-          $cds_msa->sequence_subset(\@cds_seq_A);
-
           # remove all gap columns
           $cds_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
 
           # add GR annotation
-          $cds_msa->addGR("frame", 0, $gr_frame_str);
+          $cds_msa->addGR("CS", 0, $gr_frame_str);
 
           # output alignment
           my $stk_file_name = $out_mdl_root . "." . $cds_msa->get_sqname(0) . "." . vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . ".frameshift.stk";
-          $cds_msa->write_msa($stk_file_name,, "stockholm");
+          for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
+            $cds_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+          }
+          $cds_msa->write_msa($stk_file_name, "stockholm");
           
           undef $cds_msa;
         }
