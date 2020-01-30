@@ -795,7 +795,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                    \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                   \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                                                   \%alt_ftr_instances_HHH, $out_root . "." . $mdl_name, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
     }
@@ -2403,6 +2403,7 @@ sub cmalign_parse_ifile {
 #  $sgm_results_HAHR:       REF to results AAH, FILLED HERE
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
+#  $out_mdl_root:           string for naming potential output files
 #  $opt_HHR:                REF to 2D hash of option values
 #  $FH_HR:                  REF to hash of file handles
 #
@@ -2413,10 +2414,10 @@ sub cmalign_parse_ifile {
 ################################################################# 
 sub cmalign_parse_stk_and_add_alignment_alerts { 
   my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 11;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $out_mdl_root, $opt_HHR, $FH_HR) = @_;
 
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
@@ -2430,7 +2431,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   my $msa = Bio::Easel::MSA->new({
     fileLocation => $stk_file,
     isDna => 1});  
-  my $cds_msa = undef;
 
   # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
   my $alen = $msa->alen;
@@ -2729,7 +2729,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $gr_frame_str = "";  # GR annotation of frame per-position, only relevant if a cdsfshft alert occurs
 
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-        if(defined $cds_msa) { undef $cds_msa; }
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
         my $cdsfshft_flag = 0;
         for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
@@ -2792,12 +2791,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   $rfpos_prv = $rfpos;
                   $F_prv     = $F_cur;
                 }
-                else { # rf position is a gap
-                  $gr_frame_str .= ".";
+                else { # rf position is a gap, add 'd' GR frame annotation
+                  $gr_frame_str .= "d";
                 }
+                # add 'i' GR frame annotation for inserts that occur after this rfpos, if any
                 if(($rfpos < $mstop) && ($rf2ilen_A[$rfpos] > 0)) { 
                   for(my $ipos = 0; $ipos < $rf2ilen_A[$rfpos]; $ipos++) { 
-                    $gr_frame_str .= "*"; 
+                    $gr_frame_str .= "i"; 
                   }
                 }
               }
@@ -2922,26 +2922,42 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
         } # end of 'if($nframe_tok > 1)'
         if($cdsfshft_flag) { 
-          if(! defined $cds_msa) { 
-            $cds_msa = $msa->clone_msa;
-            my $alen = $msa->alen;
-            my @cds_col_A = ();
-            my $cds_apos_start = ($rf2a_A[$ftr_mstart]) - 1; # -1 puts it into 0..alen-1 coords
-            my $cds_apos_stop  = ($rf2a_A[$ftr_mstop])  - 1; # -1 puts it into 0..alen-1 coords
-            for(my $a = 0;                  $a <  $cds_apos_start; $a++) { $cds_col_A[$a] = 0; } # before CDS
-            for(my $a = $cds_apos_start;    $a <= $cds_apos_stop;  $a++) { $cds_col_A[$a] = 1; } # CDS
-            for(my $a = $cds_apos_stop + 1; $a <  $alen;           $a++) { $cds_col_A[$a] = 0; } # after CDS
-            $cds_msa->column_subset(\@cds_col_A);
-          }
-          $cds_msa->addGR("frame", $i, $gr_frame_str);
-          $cds_msa->write_msa("STDOUT", "stockholm");
+          # create and output a MSA of this seq/CDS 
+          my $cds_msa = $msa->clone_msa;
+          my $alen = $cds_msa->alen;
+
+          # remove columns outside the CDS
+          my @cds_col_A = (); # [0..$alen-1], 0 to remove this column, 1 to keep (if within CDS) 
+          my $cds_apos_start = ($rf2a_A[$ftr_mstart]) - 1; # -1 puts it into 0..alen-1 coords
+          my $cds_apos_stop  = ($rf2a_A[$ftr_mstop])  - 1; # -1 puts it into 0..alen-1 coords
+          for(my $a = 0;                  $a <  $cds_apos_start; $a++) { $cds_col_A[$a] = 0; } # before CDS
+          for(my $a = $cds_apos_start;    $a <= $cds_apos_stop;  $a++) { $cds_col_A[$a] = 1; } # CDS
+          for(my $a = $cds_apos_stop + 1; $a <  $alen;           $a++) { $cds_col_A[$a] = 0; } # after CDS
+          $cds_msa->column_subset(\@cds_col_A);
+
+          # remove all sequences other than the one we want
+          my @cds_seq_A = ();
+          for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_seq_A[$i2] = 0; }
+          $cds_seq_A[$i] = 1; # keep this one seq
+          $cds_msa->sequence_subset(\@cds_seq_A);
+
+          # remove all gap columns
+          $cds_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
+
+          # add GR annotation
+          $cds_msa->addGR("frame", 0, $gr_frame_str);
+
+          # output alignment
+          my $stk_file_name = $out_mdl_root . "." . $cds_msa->get_sqname(0) . "." . vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . ".frameshift.stk";
+          $cds_msa->write_msa($stk_file_name,, "stockholm");
+          
+          undef $cds_msa;
         }
       } # end of 'if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
     } # end of 'for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
   undef $msa;
-  if(defined $cds_msa) { undef $cds_msa; }
 
   return;
 }
