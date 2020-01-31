@@ -1,0 +1,78 @@
+>Feature NC_001959.2-manually-added-frameshifts-1
+5	5377	gene
+			gene	ORF1
+5	5377	misc_feature
+			note	similar to nonstructural polyprotein
+5	1201	mat_peptide
+			product	p48
+1202	2290	mat_peptide
+			product	NTPase
+2291	2893	mat_peptide
+			product	p22
+2894	3307	mat_peptide
+			product	VPg
+3308	3850	mat_peptide
+			product	Pro
+3851	5374	mat_peptide
+			product	RdRp
+5361	6958	gene
+			gene	ORF2
+5361	6958	misc_feature
+			note	similar to VP1
+6958	7589	gene
+			gene	ORF3
+6958	7589	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 16..65 (50 nt, avgpp: 0.928) on + strand are inconsistent with dominant frame (+1); inserts:16-17,65; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT: (VP1) potential frameshift in CDS [nucleotide alignment of positions 5380..5394 (15 nt, avgpp: 0.627) on + strand are inconsistent with dominant frame (+1); inserts:5380,5388,5394; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT: (VP1) potential frameshift in CDS [nucleotide alignment of positions 6951..6958 (8 nt, avgpp: 0.762) on + strand are inconsistent with dominant frame (+1); inserts:6951-6952; deletes:none;]
+ERROR: CDS_HAS_STOP_CODON: (VP1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5361..5377 (stop shifted 1581 nt)]
+ERROR: UNEXPECTED_LENGTH: (VP1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1598]
+ERROR: POSSIBLE_FRAMESHIFT: (VP2) potential frameshift in CDS [nucleotide alignment of positions 7044..7053 (10 nt, avgpp: 0.890) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7043(1),7053(2);]
+ERROR: POSSIBLE_FRAMESHIFT: (VP2) potential frameshift in CDS [nucleotide alignment of positions 7228..7261 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7227(1),7242(1),7261(1);]
+ERROR: POSSIBLE_FRAMESHIFT: (VP2) potential frameshift in CDS [nucleotide alignment of positions 7452..7589 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7451(1);]
+ERROR: CDS_HAS_STOP_CODON: (VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 6958..7004 (stop shifted 585 nt)]
+ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137 > 8 (strand:+ CM:7589 blastx:7452)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [42 > 5 (strand:+ CM:6958 blastx:7000)]
+ERROR: UNEXPECTED_LENGTH: (VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [632]
+>Feature NC_001959.2-manually-added-frameshifts-2
+5	5374	gene
+			gene	ORF1
+5	5374	misc_feature
+			note	similar to nonstructural polyprotein
+5	1198	mat_peptide
+			product	p48
+1199	2287	mat_peptide
+			product	NTPase
+2288	2890	mat_peptide
+			product	p22
+2891	3304	mat_peptide
+			product	VPg
+3305	3847	mat_peptide
+			product	Pro
+3848	5371	mat_peptide
+			product	RdRp
+5358	6951	gene
+			gene	ORF2
+5358	6951	misc_feature
+			note	similar to VP1
+6951	7588	gene
+			gene	ORF3
+6951	7588	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 53..66 (14 nt, avgpp: 0.775) on + strand are inconsistent with dominant frame (+1); inserts:53-54; deletes:66(2);]
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 992..1012 (21 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+1); inserts:1011-1012; deletes:991(2);]
+ERROR: POSSIBLE_FRAMESHIFT: (VP1) potential frameshift in CDS [nucleotide alignment of positions 5396..5425 (30 nt, avgpp: 0.858) on + strand are inconsistent with dominant frame (+1); inserts:5408-5409,5424-5425; deletes:5395(1);]
+ERROR: POSSIBLE_FRAMESHIFT: (VP1) potential frameshift in CDS [nucleotide alignment of positions 5448..5458 (11 nt, avgpp: 0.845) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:5447(2),5458(1);]
+ERROR: POSSIBLE_FRAMESHIFT: (VP1) potential frameshift in CDS [nucleotide alignment of positions 6877..6951 (75 nt, avgpp: 0.913) on + strand are inconsistent with dominant frame (+1); inserts:6891-6895; deletes:6876(4);]
+ERROR: CDS_HAS_STOP_CODON: (VP1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5358..5361 (stop shifted 1590 nt)]
+ERROR: INDEFINITE_ANNOTATION_END: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [25 > 8 (strand:+ CM:6951 blastx:6926)]
+ERROR: UNEXPECTED_LENGTH: (VP1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1594]
+ERROR: POSSIBLE_FRAMESHIFT: (VP2) potential frameshift in CDS [nucleotide alignment of positions 7438..7588 (151 nt, avgpp: 0.960) on + strand are inconsistent with dominant frame (+1); inserts:7438; deletes:7449(2);]
+ERROR: CDS_HAS_STOP_CODON: (VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 6951..6997 (stop shifted 591 nt)]
+ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [152 > 8 (strand:+ CM:7588 blastx:7436)]
+ERROR: UNEXPECTED_LENGTH: (VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [638]

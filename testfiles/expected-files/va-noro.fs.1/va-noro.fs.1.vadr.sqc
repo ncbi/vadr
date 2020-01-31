@@ -1,0 +1,5 @@
+#seq  seq                                        seq                                   sub                    seq    mdl         num                             sub    score  diff/  seq   
+#idx  name                                       len  p/f   ant  model1     grp1       grp1   score  sc/nt    cov    cov  bias  hits  str  model2     grp2       grp2    diff     nt  alerts
+#---  ----------------------------------------  ----  ----  ---  ---------  ---------  ----  ------  -----  -----  -----  ----  ----  ---  ---------  ---------  ----  ------  -----  ------
+1     NC_001959.2-manually-added-frameshifts-1  7655  FAIL  yes  NC_001959  Norovirus  GI    8303.4  1.085  1.000  1.000   0.7     1    +  NC_029645  Norovirus  GIII  6384.0  0.834  -     
+2     NC_001959.2-manually-added-frameshifts-2  7654  FAIL  yes  NC_001959  Norovirus  GI    8283.9  1.082  1.000  1.000   1.1     1    +  NC_029645  Norovirus  GIII  6371.5  0.832  -     
