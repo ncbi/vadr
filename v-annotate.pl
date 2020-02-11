@@ -2721,7 +2721,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
 
     # for each CDS: determine frame, and report cdsfshft alerts
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      my $frame_str = "";
+      my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
       my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
       my $ftr_strand = undef; # strand for this feature
       my $ftr_sstart = undef; # starting sequence position of this CDS feature
@@ -2730,8 +2730,10 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $ftr_mstop  = undef; # ending   model position of this CDS feature that $ftr_sstop pertains to
       my $ftr_start_rfpos = undef; # start model position of this CDS (regardless of where sequence alignment to the CDS starts)
       my $ftr_stop_rfpos  = undef; # stop  model position of this CDS (regardless of where sequence alignment to the CDS stops)
-      my $gr_frame_str = "";  # GR annotation of frame per-position, only relevant if a cdsfshft alert occurs
       my $ftr_seq_rflen = 0; # number of RF positions covered by alignment of this sequence to this CDS so far
+      my $nsgm = 0; # number of segments for this CDS
+      my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
+      my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
 
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
@@ -2743,6 +2745,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             #if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
             #  die "ERROR trying to infer frame for multi-segment CDS, not yet implemented";
             #}
+            push(@sgm_idx_A, $sgm_idx); # store this segment
+            my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
             my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
@@ -2791,11 +2795,11 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                     # frame changed, 
                     # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
                     if(defined $F_prv) { 
-                      $frame_str .= $uapos_prv . "[" . (($rfpos - $rfpos_prv) - 1) . "];"; 
+                      $frame_tok_str .= $uapos_prv . "[" . (($rfpos - $rfpos_prv) - 1) . "];"; 
                       # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                     } 
                     # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                    $frame_str .= $F_cur . ":" . $uapos . "-";
+                    $frame_tok_str .= $F_cur . ":" . $uapos . "-";
                   }
                   $uapos_prv = $uapos;
                   $rfpos_prv = $rfpos;
@@ -2812,25 +2816,27 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 }
               }
               # complete final frame token
-              $frame_str .= $uapos . "[0];SGM-END;";
+              $frame_tok_str .= $uapos . "[0];SGM-END;";
             }
+            $nsgm++;
+            push(@gr_frame_str_A, $gr_frame_str);
           }
         } # end of for loop over segments
 
         printf("frame_ct_A[1]: $frame_ct_A[1]\n");
         printf("frame_ct_A[2]: $frame_ct_A[2]\n");
         printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-        printf("frame_str: $frame_str\n");
+        printf("frame_str: $frame_tok_str\n");
 
         # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"frame"} = $dominant_frame;
 
-        # deconstruct $frame_str, looking for potential frameshifts, 
+        # deconstruct $frame_tok_str, looking for potential frameshifts, 
         # we combine any subseqs not in the dominant frame together and
         # then check if any (possibly joined) non-dominant frame subseqs
         # are long enough to trigger an alert
-        my @frame_tok_A = split(";", $frame_str);
+        my @frame_tok_A = split(";", $frame_tok_str);
         my $nframe_tok = scalar(@frame_tok_A); # number of frame tokens
         if($nframe_tok > 1) { # if there's only one frame_tok, we can't have a frameshift
           my $prv_stop   = undef; # last nucleotide in the previous frame token 
@@ -2938,43 +2944,61 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
         } # end of 'if($nframe_tok > 1)'
         if(scalar(@cds_alt_str_A) > 0) { 
-          # create and output a MSA of this seq/CDS 
+          # create and output a stockholm file for each segment of this seq/CDS 
           # remove all sequences other than the one we want
-          my @cds_seq_A = ();
-          for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_seq_A[$i2] = 0; }
-          $cds_seq_A[$i] = 1; # keep this one seq
-          for(my $i2 = 0; $i2 < $nseq; $i2++) { printf("cds_seq_A[$i2]: $cds_seq_A[$i2]\n"); }
-          my $cds_msa = $msa->sequence_subset(\@cds_seq_A);
-          my $alen = $cds_msa->alen;
+          for(my $s = 0; $s < $nsgm; $s++) { 
+            my $sgm_idx      = $sgm_idx_A[$s];
+            my $gr_frame_str = $gr_frame_str_A[$s];
+            my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
+            my $mstart = $sgm_results_HR->{"mstart"}; # model RF position this segment starts at
+            my $mstop  = $sgm_results_HR->{"mstop"};  # model RF position this segment stops at
 
-          # remove columns outside the CDS
-          my @cds_col_A = (); # [0..$alen-1], 0 to remove this column, 1 to keep (if within CDS) 
-          my $cds_apos_start = ($rf2a_A[$ftr_mstart]) - 1; # -1 puts it into 0..alen-1 coords
-          my $cds_apos_stop  = ($rf2a_A[$ftr_mstop])  - 1; # -1 puts it into 0..alen-1 coords
-          for(my $a = 0;                  $a <  $cds_apos_start; $a++) { $cds_col_A[$a] = 0; } # before CDS
-          for(my $a = $cds_apos_start;    $a <= $cds_apos_stop;  $a++) { $cds_col_A[$a] = 1; } # CDS
-          for(my $a = $cds_apos_stop + 1; $a <  $alen;           $a++) { $cds_col_A[$a] = 0; } # after CDS
-          $cds_msa->column_subset(\@cds_col_A);
+            my @cds_sgm_seq_A = ();
+            for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_sgm_seq_A[$i2] = 0; }
+            $cds_sgm_seq_A[$i] = 1; # keep this one seq
+            for(my $i2 = 0; $i2 < $nseq; $i2++) { printf("cds_sgm_seq_A[$i2]: $cds_sgm_seq_A[$i2]\n"); }
+            my $cds_sgm_msa = $msa->sequence_subset(\@cds_sgm_seq_A);
+            my $alen = $cds_sgm_msa->alen;
+            
+            # remove columns outside the CDS segment
+            my @cds_sgm_col_A = (); # [0..$alen-1], 0 to remove this column, 1 to keep (if within CDS) 
+            my $cds_sgm_apos_start = ($rf2a_A[$mstart]) - 1; # -1 puts it into 0..alen-1 coords
+            my $cds_sgm_apos_stop  = ($rf2a_A[$mstop])  - 1; # -1 puts it into 0..alen-1 coords
+            for(my $a = 0;                  $a <  $cds_sgm_apos_start; $a++) { $cds_sgm_col_A[$a] = 0; } # before CDS
+            for(my $a = $cds_sgm_apos_start;    $a <= $cds_sgm_apos_stop;  $a++) { $cds_sgm_col_A[$a] = 1; } # CDS
+            for(my $a = $cds_sgm_apos_stop + 1; $a <  $alen;           $a++) { $cds_sgm_col_A[$a] = 0; } # after CDS
+            $cds_sgm_msa->column_subset(\@cds_sgm_col_A);
 
-          # remove all gap columns
-          $cds_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
-
-          # add GR annotation
-          ###$cds_msa->addGR("CS", 0, $gr_frame_str);
-
-          # output alignment
-          my $cds_and_idx     = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
-          my $stk_file_name   = $out_root . "." . $mdl_name . "." . $cds_and_idx . ".frameshift.stk";
-          for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
-            ###$cds_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+            # remove all gap columns
+            $cds_sgm_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
+            
+            # add GR annotation
+            $cds_sgm_msa->addGR("CS", 0, $gr_frame_str);
+            
+            # output alignment
+            my $cds_and_sgm_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . "." . ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
+            my $stk_file_name   = $out_root . "." . $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+            # add comment to stockholm file
+            my $comment = "Alignment of CDS " . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
+            $comment .= " segment " . vdr_FeatureRelativeSegmentIndex($ftr_info_AHR, $ftr_idx, $sgm_idx);
+            $comment .= " of " . vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+            $comment .= " to model $mdl_name for CDS that have at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
+            $cds_sgm_msa->addGF("CC", $comment);
+            $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
+            $cds_sgm_msa->addGF("CC", $comment);
+            $comment  = "Changes from the dominant codon_start value indicate possible frameshifted regions.";
+            $cds_sgm_msa->addGF("CC", $comment);
+            for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
+              $cds_sgm_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+            }
+            # output to potentially already existent alignment file
+            $cds_sgm_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
+            my $stk_file_key = $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+            if(! defined $ofile_info_HHR->{"fullpath"}{$stk_file_key}) { 
+              ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $stk_file_key, $stk_file_name, 1, 1, "Stockholm file for >= 1 possible frameshifts for $cds_and_sgm_idx for model $mdl_name");
+            }
+            undef $cds_sgm_msa;
           }
-          # output to potentially already existent alignment file
-          ###$cds_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
-          my $stk_file_key = $mdl_name . "." . $cds_and_idx . ".frameshift.stk";
-          if(! defined $ofile_info_HHR->{"fullpath"}{$stk_file_key}) { 
-            ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $stk_file_key, $stk_file_name, 1, 1, "Stockholm file for >= 1 possible frameshifts for $cds_and_idx for model $mdl_name");
-          }
-          undef $cds_msa;
         }
       } # end of 'if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
     } # end of 'for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'

@@ -69,6 +69,7 @@ require "sqp_utils.pm";
 # vdr_SegmentInfoPopulate()
 # 
 # vdr_FeatureTypeAndTypeIndexString()
+# vdr_FeatureTypeIndex()
 # vdr_FeatureTypeIsCds()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
@@ -76,6 +77,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureChildrenArray()
 # vdr_FeatureNumSegments()
+# vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
@@ -711,6 +713,30 @@ sub vdr_FeatureTypeAndTypeIndexString {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
 
+  my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
+
+  return $type . $sep_char . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
+}
+
+#################################################################
+# Subroutine:  vdr_FeatureTypeIndex()
+# Incept:      EPN, Tue Feb 11 11:49:05 2020
+#
+# Purpose:     Return the type index for $ftr_idx.
+# 
+# Arguments: 
+#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index we are interested in
+# 
+# Returns:     Type index, string
+#
+################################################################# 
+sub vdr_FeatureTypeIndex { 
+  my $nargs_expected = 2;
+  my $sub_name = "vdr_FeatureTypeIndex";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
   my $nftr = scalar(@{$ftr_info_AHR});
   my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
   my $type_idx = 1;
@@ -718,7 +744,7 @@ sub vdr_FeatureTypeAndTypeIndexString {
     if($ftr_info_AHR->[$ftr_idx2]{"type"} eq $type) { $type_idx++; }
   }
   
-  return $type . $sep_char . $type_idx;
+  return $type_idx;
 }
 
 #################################################################
@@ -865,13 +891,47 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene {
 # 
 #################################################################
 sub vdr_FeatureNumSegments { 
-  my $sub_name  = "featureNumSegments";
+  my $sub_name  = "vdr_FeatureNumSegments";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($ftr_info_AHR, $ftr_idx) = (@_);
 
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
+}
+
+
+#################################################################
+# Subroutine: vdr_FeatureRelativeSegmentIndex()
+# Incept:     EPN, Tue Feb 11 11:53:02 2020
+#
+# Purpose:    Return the relative index of segment $sgm_idx 
+#             in $ftr_idx.
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       feature index we are interested in [0..nftr-1]
+#   $sgm_idx:       segment index we are interested in [0..nsgm-1]
+#
+# Returns:    Index of segment $sgm_idx [1..vdr_FeatureNumSegements($ftr_idx)]
+#             -1 if segment $sgm_idx is not a segment of $ftr_idx.
+# 
+# Dies: Never, nothing is validated.
+# 
+#################################################################
+sub vdr_FeatureRelativeSegmentIndex { 
+  my $sub_name  = "vdr_FeatureRelativeSegmentIndex";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $ftr_idx, $sgm_idx) = (@_);
+
+  if(($sgm_idx >= $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) && 
+     ($sgm_idx >= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})) { 
+    return $sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
+  }
+
+  return -1;
 }
 
 
