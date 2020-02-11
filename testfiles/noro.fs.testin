@@ -33,3 +33,27 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.1/va-noro.fs.1.vadr.md
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.1/va-noro.fs.1.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.1/va-noro.fs.1.vadr.alc
 rmdir: va-noro.fs.1
+## 
+## partial sequences extracted from noro.fs.1.fa
+##
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f $VADRSCRIPTSDIR/testfiles/noro.fs.2.fa va-noro.fs.2 > va-noro.fs.2.out
+desc: annotate-noro-fs.2
+out: va-noro.fs.2/va-noro.fs.2.vadr.pass.tbl 
+out: va-noro.fs.2/va-noro.fs.2.vadr.fail.tbl
+out: va-noro.fs.2/va-noro.fs.2.vadr.sqa
+out: va-noro.fs.2/va-noro.fs.2.vadr.sqc
+out: va-noro.fs.2/va-noro.fs.2.vadr.ftr
+out: va-noro.fs.2/va-noro.fs.2.vadr.sgm
+out: va-noro.fs.2/va-noro.fs.2.vadr.mdl
+out: va-noro.fs.2/va-noro.fs.2.vadr.alt
+out: va-noro.fs.2/va-noro.fs.2.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.2/va-noro.fs.2.vadr.alc
+# rmdir: va-noro.fs.2

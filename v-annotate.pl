@@ -795,7 +795,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                    \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                   \%alt_ftr_instances_HHH, $out_root . "." . $mdl_name, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                                                   \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
     }
@@ -2403,9 +2403,10 @@ sub cmalign_parse_ifile {
 #  $sgm_results_HAHR:       REF to results AAH, FILLED HERE
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
-#  $out_mdl_root:           string for naming potential output files
+#  $mdl_name:               model name this alignment pertains to
+#  $out_root:               string for naming output files
 #  $opt_HHR:                REF to 2D hash of option values
-#  $FH_HR:                  REF to hash of file handles
+#  $ofile_info_HHR:         REF to 2D hash of output file information
 #
 # Returns:    void
 #
@@ -2414,11 +2415,12 @@ sub cmalign_parse_ifile {
 ################################################################# 
 sub cmalign_parse_stk_and_add_alignment_alerts { 
   my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $out_mdl_root, $opt_HHR, $FH_HR) = @_;
+  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
+  my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $fshift_tol       = opt_Get("--fshifttol",   $opt_HHR); # maximum allowed nt length of non-dominant frame without a cdsfshft alert 
@@ -2947,12 +2949,17 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           $cds_msa->addGR("CS", 0, $gr_frame_str);
 
           # output alignment
-          my $stk_file_name = $out_mdl_root . "." . $cds_msa->get_sqname(0) . "." . vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . ".frameshift.stk";
+          my $cds_and_idx     = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+          my $stk_file_name   = $out_root . "." . $mdl_name . "." . $cds_and_idx . ".frameshift.stk";
           for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
             $cds_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
           }
-          $cds_msa->write_msa($stk_file_name, "stockholm");
-          
+          # output to potentially already existent alignment file
+          $cds_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
+          my $stk_file_key = $mdl_name . "." . $cds_and_idx . ".frameshift.stk";
+          if(! defined $ofile_info_HHR->{"fullpath"}{$stk_file_key}) { 
+            ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $stk_file_key, $stk_file_name, 1, 1, "Stockholm file for >= 1 possible frameshifts for $cds_and_idx for model $mdl_name");
+          }
           undef $cds_msa;
         }
       } # end of 'if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
@@ -3985,7 +3992,7 @@ sub run_blastx_and_summarize_output {
     }
   }
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-fasta", $blastx_query_file, 0, $do_keep, "blastx query file for model $mdl_name");
-
+  
   # run blastx 
   my $blastx_options = "";
   if(defined $mdl_info_HR->{"transl_table"}) { 
