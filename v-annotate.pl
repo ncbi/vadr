@@ -2726,9 +2726,12 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $ftr_strand = undef; # strand for this feature
       my $ftr_sstart = undef; # starting sequence position of this CDS feature
       my $ftr_sstop  = undef; # ending   sequence position of this CDS feature
-      my $ftr_mstart = undef; # starting model position of this CDS feature
-      my $ftr_mstop  = undef; # ending   sequence position of this CDS feature
+      my $ftr_mstart = undef; # starting model position of this CDS feature that $ftr_sstart pertains to
+      my $ftr_mstop  = undef; # ending   model position of this CDS feature that $ftr_sstop pertains to
+      my $ftr_start_rfpos = undef; # start model position of this CDS (regardless of where sequence alignment to the CDS starts)
+      my $ftr_stop_rfpos  = undef; # stop  model position of this CDS (regardless of where sequence alignment to the CDS stops)
       my $gr_frame_str = "";  # GR annotation of frame per-position, only relevant if a cdsfshft alert occurs
+      my $ftr_seq_rflen = 0; # number of RF positions covered by alignment of this sequence to this CDS so far
 
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
@@ -2737,17 +2740,19 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           if((defined $sgm_results_HAHR->{$seq_name}) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
-            if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
-              die "ERROR trying to infer frame for multi-segment CDS, not yet implemented";
-            }
+            #if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
+            #  die "ERROR trying to infer frame for multi-segment CDS, not yet implemented";
+            #}
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
             my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
+            if(! defined $ftr_start_rfpos) { $ftr_start_rfpos = $sgm_start_rfpos; }
+            $ftr_stop_rfpos  = $sgm_stop_rfpos;
             my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
-            my $sstart = $sgm_results_HR->{"sstart"};
-            my $sstop  = $sgm_results_HR->{"sstop"};
-            my $mstart = $sgm_results_HR->{"mstart"};
-            my $mstop  = $sgm_results_HR->{"mstop"};
+            my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
+            my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
+            my $mstart = $sgm_results_HR->{"mstart"}; # model RF position this segment starts at
+            my $mstop  = $sgm_results_HR->{"mstop"};  # model RF position this segment stops at
             my $strand = $sgm_results_HR->{"strand"};
             if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
             if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
@@ -2763,7 +2768,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
 
-            my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; # frame of initial nongap RF position for this segment 
+#            my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; # frame of initial nongap RF position for this segment 
+            my $ftr_seq_rflen += abs($mstart - $sgm_start_rfpos);
+            my $F_0 = ($ftr_seq_rflen % 3) + 1; # frame of initial nongap RF position for this segment 
             my $F_prv = undef;     # frame of previous RF position 
             my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
             my $rfpos_prv = undef; # previous RF position
@@ -2779,6 +2786,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
                   $gr_frame_str .= $F_cur;
                   $frame_ct_A[$F_cur]++;
+                  printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx rfpos: $rfpos frame: $F_cur\n");
                   if((! defined $F_prv) || ($F_cur != $F_prv)) { 
                     # frame changed, 
                     # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
@@ -2804,15 +2812,15 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 }
               }
               # complete final frame token
-              $frame_str .= $uapos . "[0];";
+              $frame_str .= $uapos . "[0];SGM-END;";
             }
           }
-        }
+        } # end of for loop over segments
 
-        ### printf("frame_ct_A[1]: $frame_ct_A[1]\n");
-        ### printf("frame_ct_A[2]: $frame_ct_A[2]\n");
-        ### printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-        ### printf("frame_str: $frame_str\n");
+        printf("frame_ct_A[1]: $frame_ct_A[1]\n");
+        printf("frame_ct_A[2]: $frame_ct_A[2]\n");
+        printf("frame_ct_A[3]: $frame_ct_A[3]\n");
+        printf("frame_str: $frame_str\n");
 
         # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
@@ -2833,8 +2841,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           my $span_len   = undef; # length of a non-dominant frame subseq
           my $insert_str = "";    # string of inserts to put in alert string
           my $delete_str = "";    # string of deletes to put in alert string
+          my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
           for(my $f = 0; $f < $nframe_tok; $f++) { 
-            if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\]/) { 
+            if($frame_tok_A[$f] =~ /^SGM-END/) { 
+              # special token indicating the end of a segment
+              $prv_tok_sgm_end_flag = 1;
+            }
+            elsif($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\]/) { 
               my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete) = ($1, $2, $3, $4); 
 
               # add to growing list of inserts, if nec
@@ -2844,7 +2857,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               # info in this frame token is relevant to the next alert we may report
               if($f > 0) { 
                 # add any inserted positions between previous frame token and this one to insert_str
-                if(($prv_stop + 1) < ($cur_start)) { # at least one inserted nt
+                if((($prv_stop + 1) < ($cur_start)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                   if($insert_str ne "") { $insert_str .= ","; }
                   if(($prv_stop + 1) == ($cur_start - 1)) { # exactly one inserted nt
                     $insert_str .= sprintf("%d", ($prv_stop + 1));
@@ -2917,6 +2930,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               }
               $prv_stop  = $cur_stop;
               $prv_frame = $cur_frame;
+              $prv_tok_sgm_end_flag = 0;
             } # end if statement that parses $frame_tok_A[$f]
             else { 
               ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok_A[$f]", 1, $FH_HR);
@@ -2946,16 +2960,16 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           $cds_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
 
           # add GR annotation
-          $cds_msa->addGR("CS", 0, $gr_frame_str);
+          ###$cds_msa->addGR("CS", 0, $gr_frame_str);
 
           # output alignment
           my $cds_and_idx     = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
           my $stk_file_name   = $out_root . "." . $mdl_name . "." . $cds_and_idx . ".frameshift.stk";
           for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
-            $cds_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+            ###$cds_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
           }
           # output to potentially already existent alignment file
-          $cds_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
+          ###$cds_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
           my $stk_file_key = $mdl_name . "." . $cds_and_idx . ".frameshift.stk";
           if(! defined $ofile_info_HHR->{"fullpath"}{$stk_file_key}) { 
             ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $stk_file_key, $stk_file_name, 1, 1, "Stockholm file for >= 1 possible frameshifts for $cds_and_idx for model $mdl_name");
