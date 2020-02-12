@@ -2816,17 +2816,17 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 }
               }
               # complete final frame token
-              $frame_tok_str .= $uapos . "[0];SGM-END;";
+              $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
             }
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
           }
         } # end of for loop over segments
 
-        printf("frame_ct_A[1]: $frame_ct_A[1]\n");
-        printf("frame_ct_A[2]: $frame_ct_A[2]\n");
-        printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-        printf("frame_str: $frame_tok_str\n");
+        #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
+        #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
+        #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
+        #printf("frame_str: $frame_tok_str\n");
 
         # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
@@ -2849,13 +2849,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           my $delete_str = "";    # string of deletes to put in alert string
           my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
           for(my $f = 0; $f < $nframe_tok; $f++) { 
-            if($frame_tok_A[$f] =~ /^SGM-END/) { 
-              # special token indicating the end of a segment
-              $prv_tok_sgm_end_flag = 1;
-            }
-            elsif($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\]/) { 
-              my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete) = ($1, $2, $3, $4); 
-
+            if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
+              my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
               # add to growing list of inserts, if nec
               # we do this before we report an alert because insert info 
               # in the current frame token is relevant to the alert we may be about to report
@@ -2936,7 +2931,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               }
               $prv_stop  = $cur_stop;
               $prv_frame = $cur_frame;
-              $prv_tok_sgm_end_flag = 0;
+              $prv_tok_sgm_end_flag = ($cur_sgmend eq "!") ? 1 : 0;
             } # end if statement that parses $frame_tok_A[$f]
             else { 
               ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok_A[$f]", 1, $FH_HR);
