@@ -2742,9 +2742,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           if((defined $sgm_results_HAHR->{$seq_name}) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
-            #if($sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) { 
-            #  die "ERROR trying to infer frame for multi-segment CDS, not yet implemented";
-            #}
+
             push(@sgm_idx_A, $sgm_idx); # store this segment
             my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
@@ -2772,7 +2770,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
 
-#            my $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; # frame of initial nongap RF position for this segment 
             my $ftr_seq_rflen += abs($mstart - $sgm_start_rfpos);
             my $F_0 = ($ftr_seq_rflen % 3) + 1; # frame of initial nongap RF position for this segment 
             my $F_prv = undef;     # frame of previous RF position 
@@ -2784,8 +2781,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 if($rfpos_pp_A[$rfpos] ne ".") { 
                   # this rfpos is not aligned to a gap in the sequence
                   $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
-                  my $rf_diff = ($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
-                  my $ua_diff = ($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
+                  my $rf_diff = abs($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
+                  my $ua_diff = abs($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
                   my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
                   my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
                   $gr_frame_str .= $F_cur;
@@ -2795,7 +2792,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                     # frame changed, 
                     # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
                     if(defined $F_prv) { 
-                      $frame_tok_str .= $uapos_prv . "[" . (($rfpos - $rfpos_prv) - 1) . "];"; 
+                      $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
                       # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                     } 
                     # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
@@ -2817,16 +2814,65 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               }
               # complete final frame token
               $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            } # end of 'if($strand eq "+")'
+            elsif($strand eq "-") { 
+              # for each RF position covered by the predicted segment
+              for($rfpos = $mstart; $rfpos >= $mstop; $rfpos--) { 
+                if($rfpos_pp_A[$rfpos] ne ".") { 
+                  # this rfpos is not aligned to a gap in the sequence
+                  $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
+                  my $rf_diff = abs($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
+                  my $ua_diff = abs($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
+                  my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
+                  my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
+                  if($strand eq "+") { $gr_frame_str .= $F_cur; }
+                  else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
+                  $frame_ct_A[$F_cur]++;
+                  printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx strand:- $mstart..$mstop rfpos: $rfpos frame: $F_cur\n");
+                  if((! defined $F_prv) || ($F_cur != $F_prv)) { 
+                    # frame changed, 
+                    # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
+                    if(defined $F_prv) { 
+                      $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
+                      # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
+                    } 
+                    # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
+                    $frame_tok_str .= $F_cur . ":" . $uapos . "-";
+                  }
+                  $uapos_prv = $uapos;
+                  $rfpos_prv = $rfpos;
+                  $F_prv     = $F_cur;
+                }
+                else { # rf position is a gap, add 'd' GR frame annotation
+                  if($strand eq "+") { $gr_frame_str .= "d"; }
+                  else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
+                }
+                # add 'i' GR frame annotation for inserts that occur before this rfpos, if any
+                if(($rfpos > $mstop) && ($rf2ilen_A[($rfpos-1)] > 0)) { 
+                  for(my $ipos = 0; $ipos < $rf2ilen_A[($rfpos-1)]; $ipos++) { 
+                    if($strand eq "+") { $gr_frame_str .= "i"; }
+                    else               { $gr_frame_str =  "i" . $gr_frame_str; } # prepend for negative strand
+                  }
+                }
+              }
+              # complete final frame token
+              $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            } # end of 'elsif($strand eq "-")'
+            else { 
+              ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
             }
+
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
+            printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+            print("$gr_frame_str\n");
           }
         } # end of for loop over segments
 
-        #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
-        #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
-        #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-        #printf("frame_str: $frame_tok_str\n");
+        printf("frame_ct_A[1]: $frame_ct_A[1]\n");
+        printf("frame_ct_A[2]: $frame_ct_A[2]\n");
+        printf("frame_ct_A[3]: $frame_ct_A[3]\n");
+        printf("frame_str: $frame_tok_str\n");
 
         # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
@@ -2947,6 +2993,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my $mstart = $sgm_results_HR->{"mstart"}; # model RF position this segment starts at
             my $mstop  = $sgm_results_HR->{"mstop"};  # model RF position this segment stops at
+            my $sgm_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
 
             my @cds_sgm_seq_A = ();
             for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_sgm_seq_A[$i2] = 0; }
@@ -2957,9 +3004,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             
             # remove columns outside the CDS segment
             my @cds_sgm_col_A = (); # [0..$alen-1], 0 to remove this column, 1 to keep (if within CDS) 
-            my $cds_sgm_apos_start = ($rf2a_A[$mstart]) - 1; # -1 puts it into 0..alen-1 coords
-            my $cds_sgm_apos_stop  = ($rf2a_A[$mstop])  - 1; # -1 puts it into 0..alen-1 coords
-            for(my $a = 0;                  $a <  $cds_sgm_apos_start; $a++) { $cds_sgm_col_A[$a] = 0; } # before CDS
+            my $cds_sgm_apos_start = ($sgm_strand eq "+" ? $rf2a_A[$mstart] : $rf2a_A[$mstop])  - 1; # -1 puts it into 0..alen-1 coords
+            my $cds_sgm_apos_stop  = ($sgm_strand eq "+" ? $rf2a_A[$mstop]  : $rf2a_A[$mstart]) - 1; # -1 puts it into 0..alen-1 coords
+            for(my $a = 0;                      $a <  $cds_sgm_apos_start; $a++) { $cds_sgm_col_A[$a] = 0; } # before CDS
             for(my $a = $cds_sgm_apos_start;    $a <= $cds_sgm_apos_stop;  $a++) { $cds_sgm_col_A[$a] = 1; } # CDS
             for(my $a = $cds_sgm_apos_stop + 1; $a <  $alen;           $a++) { $cds_sgm_col_A[$a] = 0; } # after CDS
             $cds_sgm_msa->column_subset(\@cds_sgm_col_A);
@@ -2968,6 +3015,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             $cds_sgm_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
             
             # add GR annotation
+            printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+            print("$gr_frame_str\n");
+            printf("alen: %d\n", $cds_sgm_msa->alen());
             $cds_sgm_msa->addGR("CS", 0, $gr_frame_str);
             
             # output alignment
