@@ -2775,93 +2775,65 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $F_prv = undef;     # frame of previous RF position 
             my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
             my $rfpos_prv = undef; # previous RF position
-            if($strand eq "+") { 
-              # for each RF position covered by the predicted segment
-              for($rfpos = $mstart; $rfpos <= $mstop; $rfpos++) { 
-                if($rfpos_pp_A[$rfpos] ne ".") { 
-                  # this rfpos is not aligned to a gap in the sequence
-                  $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
-                  my $rf_diff = abs($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
-                  my $ua_diff = abs($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
-                  my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
-                  my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
-                  $gr_frame_str .= $F_cur;
-                  $frame_ct_A[$F_cur]++;
-                  printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx rfpos: $rfpos frame: $F_cur\n");
-                  if((! defined $F_prv) || ($F_cur != $F_prv)) { 
-                    # frame changed, 
-                    # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
-                    if(defined $F_prv) { 
-                      $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
-                      # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
-                    } 
-                    # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                    $frame_tok_str .= $F_cur . ":" . $uapos . "-";
-                  }
-                  $uapos_prv = $uapos;
-                  $rfpos_prv = $rfpos;
-                  $F_prv     = $F_cur;
+            if(($strand ne "+") && ($strand ne "-")) { 
+              ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
+            }
+            # for each RF position covered by the predicted segment
+            # we want to deal with both + and - strands with same code block, 
+            # so can't use a simple for loop 
+            $rfpos = $mstart;
+            while(($strand eq "+" && $rfpos <= $mstop) || 
+                  ($strand eq "-" && $rfpos >= $mstop)) { 
+              if($rfpos_pp_A[$rfpos] ne ".") { 
+                # this rfpos is not aligned to a gap in the sequence
+                $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
+                my $rf_diff = abs($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
+                my $ua_diff = abs($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
+                my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
+                my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
+                if($strand eq "+") { $gr_frame_str .= $F_cur; }
+                else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
+                $frame_ct_A[$F_cur]++;
+                printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx rfpos: $rfpos frame: $F_cur\n");
+                if((! defined $F_prv) || ($F_cur != $F_prv)) { 
+                  # frame changed, 
+                  # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
+                  if(defined $F_prv) { 
+                    $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
+                    # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
+                  } 
+                  # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
+                  $frame_tok_str .= $F_cur . ":" . $uapos . "-";
                 }
-                else { # rf position is a gap, add 'd' GR frame annotation
-                  $gr_frame_str .= "d";
-                }
-                # add 'i' GR frame annotation for inserts that occur after this rfpos, if any
+                $uapos_prv = $uapos;
+                $rfpos_prv = $rfpos;
+                $F_prv     = $F_cur;
+              }
+              else { # rf position is a gap, add 'd' GR frame annotation
+                if($strand eq "+") { $gr_frame_str .= "d"; }
+                else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
+              }
+              # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
+              if($strand eq "+") { 
                 if(($rfpos < $mstop) && ($rf2ilen_A[$rfpos] > 0)) { 
                   for(my $ipos = 0; $ipos < $rf2ilen_A[$rfpos]; $ipos++) { 
                     $gr_frame_str .= "i"; 
                   }
                 }
               }
-              # complete final frame token
-              $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-            } # end of 'if($strand eq "+")'
-            elsif($strand eq "-") { 
-              # for each RF position covered by the predicted segment
-              for($rfpos = $mstart; $rfpos >= $mstop; $rfpos--) { 
-                if($rfpos_pp_A[$rfpos] ne ".") { 
-                  # this rfpos is not aligned to a gap in the sequence
-                  $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
-                  my $rf_diff = abs($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
-                  my $ua_diff = abs($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
-                  my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
-                  my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
-                  if($strand eq "+") { $gr_frame_str .= $F_cur; }
-                  else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
-                  $frame_ct_A[$F_cur]++;
-                  printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx strand:- $mstart..$mstop rfpos: $rfpos frame: $F_cur\n");
-                  if((! defined $F_prv) || ($F_cur != $F_prv)) { 
-                    # frame changed, 
-                    # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
-                    if(defined $F_prv) { 
-                      $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
-                      # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
-                    } 
-                    # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                    $frame_tok_str .= $F_cur . ":" . $uapos . "-";
-                  }
-                  $uapos_prv = $uapos;
-                  $rfpos_prv = $rfpos;
-                  $F_prv     = $F_cur;
-                }
-                else { # rf position is a gap, add 'd' GR frame annotation
-                  if($strand eq "+") { $gr_frame_str .= "d"; }
-                  else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
-                }
-                # add 'i' GR frame annotation for inserts that occur before this rfpos, if any
+              else { # negative strand, look for inserts that occur before this position
                 if(($rfpos > $mstop) && ($rf2ilen_A[($rfpos-1)] > 0)) { 
                   for(my $ipos = 0; $ipos < $rf2ilen_A[($rfpos-1)]; $ipos++) { 
-                    if($strand eq "+") { $gr_frame_str .= "i"; }
-                    else               { $gr_frame_str =  "i" . $gr_frame_str; } # prepend for negative strand
+                    $gr_frame_str =  "i" . $gr_frame_str; # prepend for negative strand
                   }
                 }
               }
-              # complete final frame token
-              $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-            } # end of 'elsif($strand eq "-")'
-            else { 
-              ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
+              # increment or decrement rfpos
+              if($strand eq "+") { $rfpos++; } 
+              else               { $rfpos--; }
             }
-
+            # complete final frame token
+            $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
             printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
