@@ -2730,11 +2730,11 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $ftr_mstop  = undef; # ending   model position of this CDS feature that $ftr_sstop pertains to
       my $ftr_start_rfpos = undef; # start model position of this CDS (regardless of where sequence alignment to the CDS starts)
       my $ftr_stop_rfpos  = undef; # stop  model position of this CDS (regardless of where sequence alignment to the CDS stops)
-      my $ftr_seq_rflen = 0; # number of RF positions covered by alignment of this sequence to this CDS so far
       my $nsgm = 0; # number of segments for this CDS
       my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
       my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
-
+      my $rf_diff = 0;
+      my $F_0 = undef;
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
         my @cds_alt_str_A = ();
@@ -2744,6 +2744,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
              (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
 
             push(@sgm_idx_A, $sgm_idx); # store this segment
+
             my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
@@ -2760,6 +2761,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
             $ftr_sstop = $sstop;
             $ftr_mstop = $mstop;
+            if(! defined $F_0) { $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; } # frame of initial nongap RF position for this CDS 
+
 
             # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
@@ -2769,9 +2772,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             if($strand ne $sgm_strand) { 
               ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
-
-            my $ftr_seq_rflen += abs($mstart - $sgm_start_rfpos);
-            my $F_0 = ($ftr_seq_rflen % 3) + 1; # frame of initial nongap RF position for this segment 
             my $F_prv = undef;     # frame of previous RF position 
             my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
             my $rfpos_prv = undef; # previous RF position
@@ -2784,11 +2784,11 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             $rfpos = $mstart;
             while(($strand eq "+" && $rfpos <= $mstop) || 
                   ($strand eq "-" && $rfpos >= $mstop)) { 
+              $rf_diff++; # number of RF positions seen since first nt in this CDS
               if($rfpos_pp_A[$rfpos] ne ".") { 
                 # this rfpos is not aligned to a gap in the sequence
                 $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
-                my $rf_diff = abs($rfpos - $mstart) + 1; # number of RF positions seen since first nt in this segment
-                my $ua_diff = abs($uapos - $sstart) + 1; # number of nucleotides seen since first nt in this segment
+                my $ua_diff = abs($uapos - $ftr_sstart) + 1; # number of nucleotides seen since first nt in this CDS
                 my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
                 my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
                 if($strand eq "+") { $gr_frame_str .= $F_cur; }
@@ -2838,7 +2838,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             push(@gr_frame_str_A, $gr_frame_str);
             printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
             print("$gr_frame_str\n");
-          }
+          } # end of 'if' entered if segment has a sstart
         } # end of for loop over segments
 
         printf("frame_ct_A[1]: $frame_ct_A[1]\n");
@@ -2867,6 +2867,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           my $delete_str = "";    # string of deletes to put in alert string
           my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
           for(my $f = 0; $f < $nframe_tok; $f++) { 
+            printf("HEYA f: $f frame_tok: %s\n", $frame_tok_A[$f]);
             if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
               my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
               # add to growing list of inserts, if nec
@@ -2891,7 +2892,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               # Two possible cases:
               # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_tok ($f != 0))
               # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
-              if((($cur_frame == $dominant_frame) && ($f > 0))                ||  # Case 1
+              if((($cur_frame == $dominant_frame) && ($f > 0) && ($prv_frame != $dominant_frame)) ||  # Case 1
                  (($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1)))) {  # Case 2
                 # determine $span_start: the first position of the non-dominant frame subseq
                 if(defined $prv_dom_stop) { 
@@ -2933,7 +2934,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   $delete_str = "";
                   push(@cds_alt_str_A, $alt_str);
                 }
-              }
+              } # end of 2 case if entered if we have a frameshift alert
 
               # add to growing list of deletes, if nec
               if($f != ($nframe_tok-1)) { 
@@ -2950,6 +2951,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               $prv_stop  = $cur_stop;
               $prv_frame = $cur_frame;
               $prv_tok_sgm_end_flag = ($cur_sgmend eq "!") ? 1 : 0;
+              printf("HEYA cur_sgmend: $cur_sgmend, prv_tok_sgm_end_flag set to $prv_tok_sgm_end_flag\n");
             } # end if statement that parses $frame_tok_A[$f]
             else { 
               ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok_A[$f]", 1, $FH_HR);
