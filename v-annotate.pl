@@ -578,7 +578,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $blastdb = $blastdb_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
     foreach my $sfx ("", ".phr", ".pin", ".psq") { 
       if(! -s ($blastdb . $sfx)) { 
-        ofile_FAIL("ERROR, required blastdb file $blastdb.$sfx for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", 1, $FH_HR);
+        ofile_FAIL("ERROR, required blastdb file $blastdb" . $sfx . " for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", 1, $FH_HR);
       }
     }
     $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastdb;
