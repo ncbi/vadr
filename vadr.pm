@@ -592,11 +592,13 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
     if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
       $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
     }
-    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
-      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
-    }
-    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
-      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
+      if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
+      }
+      elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      }
     }
   }
   
