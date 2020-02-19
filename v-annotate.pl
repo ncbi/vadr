@@ -210,9 +210,10 @@ opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef
 opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options for skipping stages and using files from earlier, identical runs, primarily useful for debugging";
-#     option               type       default            group   requires    incompat                    preamble-output                                            help-output    
-opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",         "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options for skipping stages";
+#     option               type       default            group   requires    incompat                                      preamble-output                                            help-output    
+opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",                "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skipblast",     "boolean", 0,                    $g,   undef,      "-b,--xalntol,--xmaxins,--xmaxdel,--xlonescore", "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                         help-output    
@@ -283,6 +284,7 @@ my $options_okay =
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages, using earlier results
                 'skipalign'     => \$GetOptions_H{"--skipalign"},
+                'skipblast'     => \$GetOptions_H{"--skipblast"},
 # optional output files
                 'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
@@ -341,6 +343,11 @@ if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH)))
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
 }
 
+##########################################
+# determine if we are running blast or not 
+##########################################
+my $do_blast = opt_Get("--skipblast", \%opt_HH) ? 0 : 1;
+
 #############################
 # create the output directory
 #############################
@@ -380,7 +387,9 @@ $extra_H{"\$VADRMODELDIR"}    = $env_vadr_model_dir;
 $extra_H{"\$VADRINFERNALDIR"} = $env_vadr_infernal_dir;
 $extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
 $extra_H{"\$VADRBIOEASELDIR"} = $env_vadr_bioeasel_dir;
-$extra_H{"\$VADRBLASTDIR"}    = $env_vadr_blast_dir;
+if($do_blast) { 
+  $extra_H{"\$VADRBLASTDIR"}    = $env_vadr_blast_dir;
+}
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
@@ -491,10 +500,12 @@ if(opt_IsUsed("-p", \%opt_HH)) {
 # make sure the blastdb directory exists
 my $blastdb_dir = (opt_IsUsed("-b", \%opt_HH)) ? opt_Get("-b", \%opt_HH) : $df_model_dir;
 $blastdb_dir =~ s/\/$//; # remove trailing '/'
-if(! -d $blastdb_dir) { 
-  ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
-                     opt_IsUsed("-b", \%opt_HH) ? "" : "default", 
-                     opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), 1, $FH_HR);
+if($do_blast) { 
+  if(! -d $blastdb_dir) { 
+    ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
+                       opt_IsUsed("-b", \%opt_HH) ? "" : "default", 
+                       opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), 1, $FH_HR);
+  }
 }
 # we check for existence of blast DB files after we parse the model info file
 
@@ -568,20 +579,22 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 }
 
 # if there are any CDS features, validate that the BLAST db files we need exist
-for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
-  if($ncds > 0) { 
-    if(! defined $mdl_info_AH[$mdl_idx]{"blastdb"}) { 
-      ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$modelinfo_file\n", 1, $FH_HR);
-    }
-    my $blastdb = $blastdb_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
-    foreach my $sfx ("", ".phr", ".pin", ".psq") { 
-      if(! -s ($blastdb . $sfx)) { 
-        ofile_FAIL("ERROR, required blastdb file $blastdb" . $sfx . " for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", 1, $FH_HR);
+if($do_blast) { 
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+    if($ncds > 0) { 
+      if(! defined $mdl_info_AH[$mdl_idx]{"blastdb"}) { 
+        ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$modelinfo_file\n", 1, $FH_HR);
       }
+      my $blastdb = $blastdb_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
+      foreach my $sfx ("", ".phr", ".pin", ".psq") { 
+        if(! -s ($blastdb . $sfx)) { 
+          ofile_FAIL("ERROR, required blastdb file $blastdb" . $sfx . " for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", 1, $FH_HR);
+        }
+      }
+      $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastdb;
     }
-    $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastdb;
   }
 }
 
@@ -826,27 +839,32 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
 #########################################################################################
-$start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
+if($do_blast) { 
+  $start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
 
-for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
-    if($ncds > 0) { # only run blast for models with >= 1 CDS
-      run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                      \%opt_HH, \%ofile_info_HH);
-      push(@to_remove_A, 
-           ($ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-fasta"},
-            $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
-            $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
-      
-      parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                           \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-      
-      add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                        \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
-    }                
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+      my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+      if($ncds > 0) { # only run blast for models with >= 1 CDS
+        run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                        \%opt_HH, \%ofile_info_HH);
+        push(@to_remove_A, 
+             ($ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-fasta"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
+        
+        parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                             \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        
+        add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+      }                
+    }
   }
+} # end of 'if($do_blast)'
+else { 
+  $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblast)", $progress_w, $log_FH, *STDOUT);
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -5751,6 +5769,8 @@ sub output_feature_table {
       $cls_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
+  my $do_blast = opt_Get("--skipblast", $opt_HHR) ? 0 : 1;
+
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
   my $fail_ftbl_FH = $FH_HR->{"fail_tbl"};     # feature table for FAILing sequences
@@ -5959,8 +5979,8 @@ sub output_feature_table {
     # - zero notes and alerts
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
-    # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features
-    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag)) { 
+    # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features (if we did the blastx step)
+    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag) && ($do_blast)) { 
       ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
     # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
