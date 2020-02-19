@@ -64,6 +64,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
+# vdr_FeatureInfoValidateParentIndexStrings()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 #
 # vdr_SegmentInfoPopulate()
@@ -559,6 +560,52 @@ sub vdr_FeatureInfoValidateCoords {
   }
   
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateParentIndexStrings
+# Incept:     EPN, Wed Feb 19 11:44:28 2020
+# 
+# Purpose:    Validate "parent_idx_str" values are either "GBNULL"
+#             or a valid feature index [0..$nftr-1]. Should probably
+#             be called after vdr_FeatureInfoInitializeParentIndexStrings().
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoValidateParentIndexStrings {
+  my $sub_name = "vdr_FeatureInfoValidateParentIndexStrings";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
+    }
+    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some parent index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+  
 }
 
 #################################################################
