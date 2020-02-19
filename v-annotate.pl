@@ -2756,6 +2756,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
       my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
       my $rf_diff = 0;
+      my $ua_diff = 0;
       my $F_0 = undef;
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
@@ -2809,10 +2810,15 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               $rf_diff++; # number of RF positions seen since first nt in this CDS
               if($rfpos_pp_A[$rfpos] ne ".") { 
                 # this rfpos is not aligned to a gap in the sequence
-                $uapos = $max_uapos_before_A[$rfpos]; # maximum unaligned seq position that aligns at or inserts after $rfpos
-                my $ua_diff = abs($uapos - $ftr_sstart) + 1; # number of nucleotides seen since first nt in this CDS
+                # determine uapos, the unaligned sequence position that aligns to RF pos $rfpos
+                # $max_uapos_before_A[$rfpos] actually gives you the maximum unaligned seq position that 
+                # aligns at or inserts before $rfpos, but we know it aligns at $rfpos because we just 
+                # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
+                $uapos = $max_uapos_before_A[$rfpos]; 
+                $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
                 my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
                 my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
+                printf("\trf_diff: $rf_diff, ua_diff: $ua_diff, F_0: $F_0, z: $z\n");
                 if($strand eq "+") { $gr_frame_str .= $F_cur; }
                 else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
                 $frame_ct_A[$F_cur]++;
@@ -2840,6 +2846,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 if(($rfpos < $mstop) && ($rf2ilen_A[$rfpos] > 0)) { 
                   for(my $ipos = 0; $ipos < $rf2ilen_A[$rfpos]; $ipos++) { 
                     $gr_frame_str .= "i"; 
+                    $ua_diff++; # increment number of seq positions seen
                   }
                 }
               }
@@ -2847,6 +2854,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 if(($rfpos > $mstop) && ($rf2ilen_A[($rfpos-1)] > 0)) { 
                   for(my $ipos = 0; $ipos < $rf2ilen_A[($rfpos-1)]; $ipos++) { 
                     $gr_frame_str =  "i" . $gr_frame_str; # prepend for negative strand
+                    $ua_diff++; # increment number of seq positions seen
                   }
                 }
               }
