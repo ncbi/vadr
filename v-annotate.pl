@@ -2818,11 +2818,11 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
                 my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
                 my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
-                printf("\trf_diff: $rf_diff, ua_diff: $ua_diff, F_0: $F_0, z: $z\n");
+                #printf("\trf_diff: $rf_diff, ua_diff: $ua_diff, F_0: $F_0, z: $z\n");
                 if($strand eq "+") { $gr_frame_str .= $F_cur; }
                 else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
                 $frame_ct_A[$F_cur]++;
-                printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx rfpos: $rfpos frame: $F_cur\n");
+                #printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx rfpos: $rfpos frame: $F_cur\n");
                 if((! defined $F_prv) || ($F_cur != $F_prv)) { 
                   # frame changed, 
                   # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
@@ -3518,8 +3518,7 @@ sub sqstring_check_stop {
 #             
 # Returns:  void, updates arrays that are not undef
 # 
-# Dies:     If one but not both pos*AAR are undef
-#           If one but not both neg*AAR are undef
+# Dies:     never
 #
 #################################################################
 sub sqstring_find_stops { 
