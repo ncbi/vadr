@@ -3031,7 +3031,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $comment = "Alignment of CDS " . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
             $comment .= " segment " . vdr_FeatureRelativeSegmentIndex($ftr_info_AHR, $ftr_idx, $sgm_idx);
             $comment .= " of " . vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
-            $comment .= " for sequence " . cds_sgm_msa->get_sqname(0); 
+            $comment .= " for sequence " . $cds_sgm_msa->get_sqname(0); 
             $comment .= " to model $mdl_name with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
             $cds_sgm_msa->addGF("CC", $comment);
             $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
