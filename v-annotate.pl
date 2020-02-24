@@ -3031,11 +3031,12 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $comment = "Alignment of CDS " . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
             $comment .= " segment " . vdr_FeatureRelativeSegmentIndex($ftr_info_AHR, $ftr_idx, $sgm_idx);
             $comment .= " of " . vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
-            $comment .= " to model $mdl_name for CDS that have at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
+            $comment .= " for sequence " . cds_sgm_msa->get_sqname(0); 
+            $comment .= " to model $mdl_name with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
             $cds_sgm_msa->addGF("CC", $comment);
             $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
             $cds_sgm_msa->addGF("CC", $comment);
-            $comment  = "Changes from the dominant codon_start value indicate possible frameshifted regions.";
+            $comment  = "Changes from the dominant codon_start value indicate possibly frameshifted regions.";
             $cds_sgm_msa->addGF("CC", $comment);
             for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
               $cds_sgm_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
