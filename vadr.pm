@@ -89,10 +89,12 @@ require "sqp_utils.pm";
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()
 # vdr_AlertInfoAdd()
-# vdr_AlertInfoSetFTableInvalidatedBy
+# vdr_AlertInfoSetFTableInvalidatedBy()
+# vdr_AlertInfoSetCausesFailure()
+# vdr_AlertInfoDump()
 # 
 # Subroutines related to parallelization on the compute farm:
-# vdr_
+# vdr_ParseQsubFile()
 # vdr_SubmitJob()
 # vdr_WaitForFarmJobsToFinish()
 #

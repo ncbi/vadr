@@ -2422,7 +2422,7 @@ sub cmalign_parse_ifile {
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
-#  $sgm_results_HAHR:       REF to results AAH, FILLED HERE
+#  $sgm_results_HAHR:       REF to results HAH, FILLED HERE
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
 #  $mdl_name:               model name this alignment pertains to
@@ -2761,13 +2761,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
         my @cds_alt_str_A = ();
-        for($sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
-          if((defined $sgm_results_HAHR->{$seq_name}) && 
-             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
-             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
-
-            push(@sgm_idx_A, $sgm_idx); # store this segment
-
+        my $first_sgm_idx = get_5p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
+        my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
+        if($first_sgm_idx != -1) { 
+          for($sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
+            push(@sgm_idx_A, $sgm_idx); # store this segment index
+            my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
+            my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
             my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
@@ -2777,9 +2777,13 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
             my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
             my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
-            my $mstart = $sgm_results_HR->{"mstart"}; # model RF position this segment starts at
-            my $mstop  = $sgm_results_HR->{"mstop"};  # model RF position this segment stops at
+            my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
+            my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
             my $strand = $sgm_results_HR->{"strand"};
+            printf("sstart: $sstart\n");
+            printf("sstop:  $sstop\n");
+            printf("sgm_start_rfpos: $mstart\n");
+            printf("mstop:  $mstop\n");
             if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
             if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
             $ftr_sstop = $sstop;
@@ -2995,8 +2999,10 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $sgm_idx      = $sgm_idx_A[$s];
             my $gr_frame_str = $gr_frame_str_A[$s];
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
-            my $mstart = $sgm_results_HR->{"mstart"}; # model RF position this segment starts at
-            my $mstop  = $sgm_results_HR->{"mstop"};  # model RF position this segment stops at
+            my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
+            my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
+            my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
+            my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
             my $sgm_strand = $sgm_info_AHR->[$sgm_idx]{"strand"};
 
             my @cds_sgm_seq_A = ();
@@ -6909,4 +6915,77 @@ sub helper_sort_hit_array {
   }
 
   return $ret_str;
+}
+
+#################################################################
+# Subroutine: get_5p_most_sgm_idx_with_results()
+# Incept:     EPN, Mon Feb 24 15:11:47 2020
+# Purpose:    Return segment index $sgm_idx of 5'-most segment for 
+#             feature $ftr_idx that has results for $seq_name 
+#             defined ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}
+#
+# Arguments:
+#  $ftr_info_AHR:       REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_results_HAHR:   REF to results HAH, PRE-FILLED
+#  $ftr_idx:            feature index
+#  $seq_name:           sequence name
+#             
+# Returns:  index of 5'-most segment that has results for this ftr/seq
+#           -1 if none
+# Dies:     never
+#
+#################################################################
+sub get_5p_most_sgm_idx_with_results { 
+  my $sub_name = "get_5p_most_sgm_idx_with_results";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name) = (@_);
+
+  for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+    if((defined $sgm_results_HAHR->{$seq_name}) && 
+       (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+       (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+      return $sgm_idx;
+    }
+  }
+
+  return -1; # none found
+}
+
+#################################################################
+# Subroutine: get_3p_most_sgm_idx_with_results()
+# Incept:     EPN, Mon Feb 24 15:15:38 2020
+# Purpose:    Return segment index $sgm_idx of 3'-most segment for 
+#             feature $ftr_idx that has results for $seq_name 
+#             defined ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}
+#
+# Arguments:
+#  $ftr_info_AHR:       REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_results_HAHR:   REF to results HAH, PRE-FILLED
+#  $ftr_idx:            feature index
+#  $seq_name:           sequence name
+#             
+# Returns:  index of 5'-most segment that has results for this ftr/seq
+#           -1 if none
+# Dies:     never
+#
+#################################################################
+sub get_3p_most_sgm_idx_with_results { 
+  my $sub_name = "get_3p_most_sgm_idx_with_results";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name) = (@_);
+
+  # loop 3' -> 5'
+  for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx >= $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx--) { 
+    if((defined $sgm_results_HAHR->{$seq_name}) && 
+       (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+       (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+      return $sgm_idx;
+    }
+  }
+
+  return -1; # none found
 }
