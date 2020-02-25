@@ -42,19 +42,19 @@ installation](documentation/install.md#top).
 You can download pre-built models to use to validate and
 annotate the listed viruses or cox1 genes:
 
-  * [Norovirus and Dengue virus
+  * [VADR models for Norovirus and Dengue virus
     RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT)
     as described in the [manuscript describing VADR
     v1.0](https://www.biorxiv.org/content/10.1101/852657v1) - the
     construction of these models is detailed [here](documentation/build.md#1.0library)
-  * [Coronaviridae RefSeqs, including 2019-nCoV
+  * [VADR models for Coronaviridae RefSeqs, including 2019-nCoV
     (NC_045512)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae)
     * WARNING: using `v-annotate.pl` with these models requires a
       **lot** of RAM (64Gb recommended)
     * these models are larger than the maximum length allowed by
       `v-build.pl` and were built with a still in-development version of
       VADR that is not yet publicly available.
-  * [Metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1)
+  * [VADR models for metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1)
     * these models were built from alignments instead of single
       RefSeqs, email eric.nawrocki@nih.gov if you want the alignments.
 
