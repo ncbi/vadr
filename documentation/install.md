@@ -39,18 +39,36 @@ sh ./vadr-install.sh macosx
 The `linux` or `macosx` argument controls (only) the type of infernal
 and blast executable files that will be installed.
 
-The `vadr-install.sh` command will create several directories in the current directory.
-It will download and install VADR and the required 
+The `vadr-install.sh` command will create several directories in the
+current directory.  It will download and install VADR and the required
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
-binary executables of [Infernal](http://eddylab.org/infernal/) and 
-the NCBI BLAST package (for either Linux or Mac/OSX).
+binary executables of [Infernal](http://eddylab.org/infernal/) and the
+NCBI BLAST package (for either Linux or Mac/OSX).
+
+The installation requires that you have the perl Inline module
+installed on your system. If not, the installation script will
+fail. If this happens, read [this](#inline).
 
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
 ---
+### If installation fails because the `Inline` perl module is not installed...<a name="inline"></a>
+
+The perl Inline module must be installed prior to installation. You 
+can install Inline using `cpan` with two simple commands:
+
+`cpan install Inline`
+`cpan install Inline::C`
+
+However, for Mac/OSX these commands may not work if you have
+not installed the "Command line tools for Xcode" or "XCode" packages.
+You can download Xcode from the Mac App Store for free.
+
+---
+
 ## Setting VADR environment variables <a name="environment"></a>
 
 As mentioned above, when you run `vadr-install.sh`, instructions will be
