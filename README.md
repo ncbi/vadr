@@ -60,7 +60,7 @@ installed with VADR, you will need to use use the `-m`, `-i` and
       [here](documentation/build.md#1.0library)
 
 
-  * [VADR models for *Coronaviridae* RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae), including 2019-nCoV
+  * [VADR models for *Coronaviridae* RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae/CURRENT), including 2019-nCoV
     [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
     * ***WARNING:*** using `v-annotate.pl` with these models requires a
       ***lot*** of RAM (64Gb recommended) and you will need to add the
@@ -71,7 +71,7 @@ installed with VADR, you will need to use use the `-m`, `-i` and
       in-development version of VADR that is not yet publicly
       available.
 
-  * [VADR models for metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1)
+  * [VADR models for metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1/CURRENT)
     * these models are currently in testing for analyzing metazoan cox1
       sequence submissions to GenBank
     * these models were built from alignments instead of single
