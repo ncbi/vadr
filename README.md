@@ -46,7 +46,9 @@ installed with VADR, you will need to use use the `-m`, `-i` and
 `-b` options as described [here](documentation/build.md#building-a-vadr-model-library).
 
 Pre-built models are available for:
-  * Norovirus and Dengue virus RefSeqs, along with other *Flaviviridae* and *Caliciviridae* RefSeqs
+  * Norovirus and Dengue virus RefSeqs, along with other
+    *Flaviviridae* and *Caliciviridae* RefSeqs (**this is the "default"
+    set of models that is installed with VADR**)
   * *Coronaviridae* RefSeqs, including 2019-nCoV [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
   * metazoan Cytochrome c oxidase I (COX1)
 
