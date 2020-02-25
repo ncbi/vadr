@@ -1,0 +1,42 @@
+Partial sequence testing, many of these sequences pass. Most of those
+are only different from the reference in that they are partial.
+
+<[(toy-model-20200219)]> esl-seqstat -a entoy100a-fs3.fa
+ok, pass = ENTOY100A-3                    100 
+ok, pass = ENTOY100A-3-fs1                 90 
+ok, pass = ENTOY100A-3-fs2                 89 
+ok, pass = ENTOY100A-3-fs3                 88 
+ok, fs   = ENTOY100A-3-fs4                 91 
+ok, no fs= ENTOY100A-3-fs5                 90 
+ok, no fs= ENTOY100A-3-fs6                 89 
+ok, fs   = ENTOY100A-3-fs7                 86 
+ok, fs   = ENTOY100A-3-fs8                 85 
+ok, no fs= ENTOY100A-3-fs9                 84 
+ok, pass = ENTOY100A-3-fs10                69 
+ok, pass = ENTOY100A-3-fs11                68 
+ok, pass = ENTOY100A-3-fs12                67 
+ok, fs   = ENTOY100A-3-fs13                70 
+ok, fs   = ENTOY100A-3-fs14                69 
+ok, fs   = ENTOY100A-3-fs15                68 
+ok, fs   = ENTOY100A-3-fs16                69 
+ok, fs   = ENTOY100A-3-fs17                68 
+ok, fs   = ENTOY100A-3-fs18                67 
+ok, pass = ENTOY100A-3-fs19                70 
+ok, pass = ENTOY100A-3-fs20                69 
+ok, pass = ENTOY100A-3-fs21                68 
+ok, pass = ENTOY100A-3-fs22                39 
+ok, pass = ENTOY100A-3-fs23                37 
+ok, pass = ENTOY100A-3-fs24                35 
+ok, fs   = ENTOY100A-3-fs25                40 
+ok, fs   = ENTOY100A-3-fs26                38 
+ok, fs   = ENTOY100A-3-fs27                36 
+ok, fs   = ENTOY100A-3-fs28                39 
+ok, fs   = ENTOY100A-3-fs29                37 
+ok, fs   = ENTOY100A-3-fs30                39 
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 31
+Total # residues:    2054
+Smallest:            35
+Largest:             100
+Average length:      66.3
