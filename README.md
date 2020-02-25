@@ -66,7 +66,7 @@ installation](documentation/install.md#top).
   * [Metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1)
 * Reference
   * The recommended citation for using VADR is:
-    Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
+    Alejandro A Sch\"{a}ffer, Eneida L Hatcher, Linda Yankie, Lara
     Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
     Nawrocki, *VADR: validation and annotation of virus sequence
     submissions to GenBank*, 
