@@ -40,7 +40,10 @@ installation](documentation/install.md#top).
 ## Available VADR models <a name="models"></a>
 
 You can download pre-built models to use to validate and
-annotate the listed viruses or cox1 genes:
+annotate the listed viruses or cox1 genes. ***Importantly***,
+to use a set of models other than the default set that is
+installed with VADR, you will need to use use the `-m`, `-i` and
+`-b` options as described [here](documentation/build.md#building-a-vadr-model-library).
 
   * [VADR models for Norovirus and Dengue virus
     RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT)
@@ -52,12 +55,10 @@ annotate the listed viruses or cox1 genes:
       link](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-1.0-1.tar.gz)
       will download the specific set of models
       (vadr-models-1.0-1.tar.gz) used in the [manuscript describing VADR
-      v1.0](https://www.biorxiv.org/content/10.1101/852657v1) - the
-    * construction of these models is detailed [here](documentation/build.md#1.0library)
+      v1.0](https://www.biorxiv.org/content/10.1101/852657v1) 
+    * construction of this set of models is detailed
+      [here](documentation/build.md#1.0library)
 
-  * To use a set of models other than the default set that is
-    installed with VADR, you will need to use use the `-m`, `-i` and
-    `-b` options as described [here](documentation/build.md#building-a-vadr-model-library)
 
   * [VADR models for *Coronaviridae* RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae), including 2019-nCoV
     [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
