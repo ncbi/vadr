@@ -60,6 +60,7 @@ installation](documentation/install.md#top).
   * [`v-annotate.pl` output files](documentation/formats.md#annotate)
   * [VADR `coords` coordinate string format](documentation/formats.md#coords)
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
+* [Available VADR model files](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
