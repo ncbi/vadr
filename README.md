@@ -61,6 +61,15 @@ installation](documentation/install.md#top).
   * [VADR `coords` coordinate string format](documentation/formats.md#coords)
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
 * [Available VADR model files](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
-
+  * [Flaviviridae and caliciviridae RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT) as described in the [manuscript describing VADR v1.0](https://www.biorxiv.org/content/10.1101/852657v1)
+  * [Coronaviridae RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae)
+  * [Metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1)
+* Reference
+  * The recommended citation for using VADR is:
+    Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
+    Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
+    Nawrocki, *VADR: validation and annotation of virus sequence
+    submissions to GenBank*, 
+    bioRxiv 852657; doi: https://doi.org/10.1101/852657.
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
