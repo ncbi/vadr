@@ -68,8 +68,8 @@ installation](documentation/install.md#top).
   * The recommended citation for using VADR is:
     Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
     Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
-    Nawrocki, *VADR: validation and annotation of virus sequence
-    submissions to GenBank*, 
+    Nawrocki; *VADR: validation and annotation of virus sequence
+    submissions to GenBank*;
     bioRxiv 852657; doi: https://doi.org/10.1101/852657.
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
