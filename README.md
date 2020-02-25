@@ -45,37 +45,12 @@ to use a set of models other than the default set that is
 installed with VADR, you will need to use use the `-m`, `-i` and
 `-b` options as described [here](documentation/build.md#building-a-vadr-model-library).
 
-  * [VADR models for Norovirus and Dengue virus
-    RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT)
-    along with other *Flaviviridae* and *Caliciviridae* RefSeqs.
-    
-    * ***THIS SET OF MODELS IS INSTALLED WITH VADR*** and is referred
-      to in the documentation as the "default" set of models
-    * [this
-      link](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-1.0-1.tar.gz)
-      will download the specific set of models
-      (vadr-models-1.0-1.tar.gz) used in the [manuscript describing VADR
-      v1.0](https://www.biorxiv.org/content/10.1101/852657v1) 
-    * construction of this set of models is detailed
-      [here](documentation/build.md#1.0library)
+Pre-built models are available for:
+  * Norovirus and Dengue virus RefSeqs, along with other *Flaviviridae* and *Caliciviridae* RefSeqs
+  * *Coronaviridae* RefSeqs, including 2019-nCoV [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
+  * metazoan Cytochrome c oxidase I (COX1)
 
-
-  * [VADR models for *Coronaviridae* RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae/CURRENT), including 2019-nCoV
-    [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
-    * ***WARNING:*** using `v-annotate.pl` with these models requires a
-      ***lot*** of RAM (64Gb recommended) and you will need to add the
-      option `--mxsize 64000` to your `v-annotate.pl` commands. 
-    
-    * these models (~30Kb) are larger than the maximum length (25Kb)
-      allowed by `v-build.pl` and were built with a still
-      in-development version of VADR that is not yet publicly
-      available.
-
-  * [VADR models for metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1/CURRENT)
-    * these models are currently in testing for analyzing metazoan cox1
-      sequence submissions to GenBank
-    * these models were built from alignments instead of single
-      RefSeqs, email eric.nawrocki@nih.gov if you want the alignments
+See [this page](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files) for more information
 
 ---
 ## VADR documentation <a name="documentation"></a>
