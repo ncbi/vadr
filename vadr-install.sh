@@ -170,10 +170,10 @@ echo "------------------------------------------------"
 # download blast binaries
 if [ $INPUTSYSTEM == "linux" ]; then
 echo "Downloading BLAST version $BVERSION for Linux"
-curl -k -L -o blast.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-linux.tar.gz
+curl -k -L -o blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-linux.tar.gz
 else 
 echo "Downloading BLAST version $BVERSION for Mac/OSX"
-curl -k -L -o blast.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-macosx.tar.gz
+curl -k -L -o blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-macosx.tar.gz
 fi
 tar xfz blast.tar.gz
 rm blast.tar.gz
@@ -182,7 +182,7 @@ echo "------------------------------------------------"
 
 # download vadr-models 
 echo "Downloading latest VADR models ... "
-curl -k -L -o vadr-models.tar.gz http://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-$MVERSION.tar.gz
+curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-$MVERSION.tar.gz
 tar xfz vadr-models.tar.gz
 rm vadr-models.tar.gz
 echo "------------------------------------------------"
