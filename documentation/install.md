@@ -81,9 +81,9 @@ The final step is to update your environment variables.
 https://github.com/nawrockie/vadr/blob/master/documentation/install.md
 for more information.)
 
-If you are using the bash shell, add the following
-lines to the end of your '.bashrc' file in your home
-directory:
+If you are using the bash or zsh shell (zsh is default in MacOS/X as
+of v10.15 (Catalina)), add the following lines to the end of your 
+'.bashrc' or '.zshrc' file in your home directory:
 
 export VADRINSTALLDIR=<full path to directory in which you ran vadr-install.sh>
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
@@ -96,10 +96,14 @@ export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
-After adding the export lines to your .bashrc file, source that file
+After adding the export lines to your .bashrc or .zshrc file, source that file
 to update your current environment with the command:
 
 source ~/.bashrc
+
+OR
+
+source ~/.zshrc
 
 ---
 If you are using the C shell, add the following
@@ -152,19 +156,21 @@ source ~/.cshrc
 
 ### If you get an error about `PERL5LIB` being undefined...
 
-Change the PERL5LIB line to add to:
+If you use bash or zsh, change the PERL5LIB line in your `~/.bashrc` or
+`~/.zshrc` file to:
 
 ```
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
 ````
 
-for `.bashrc`, *or*
+or if you use C shell, change the PERL5LIB line in your `~/.cshrc`
+file to:
 
 ```
 setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
 ```
 
-for `.cshrc`. And then execute `source ~/.bashrc` or `source ~/.cshrc` again.
+And then execute `source ~/.bashrc`, `source ~/.zshrc`, or `source ~/.cshrc` again.
 
 ---
 ## Verifying successful installation with test runs<a name="tests"></a>
