@@ -978,7 +978,7 @@ sub vdr_FeatureRelativeSegmentIndex {
   my ($ftr_info_AHR, $ftr_idx, $sgm_idx) = (@_);
 
   if(($sgm_idx >= $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) && 
-     ($sgm_idx >= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})) { 
+     ($sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})) { 
     return $sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
   }
 
