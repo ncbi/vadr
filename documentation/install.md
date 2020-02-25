@@ -57,10 +57,11 @@ variables so that you can run the VADR scripts, as discussed next.
 ---
 ### If installation fails because the `Inline` perl module is not installed...<a name="inline"></a>
 
-The perl Inline module must be installed prior to installation. You 
-can install Inline using `cpan` with two simple commands:
+The perl `Inline` module must be installed prior to installation. You 
+can install `Inline` using `cpan` with two simple commands:
 
 `cpan install Inline`
+
 `cpan install Inline::C`
 
 However, for Mac/OSX these commands may not work if you have
