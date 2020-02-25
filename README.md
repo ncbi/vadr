@@ -102,12 +102,15 @@ installed with VADR, you will need to use use the `-m`, `-i` and
   * [VADR `coords` coordinate string format](documentation/formats.md#coords)
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
 * [Available VADR model files](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
-* Reference
-  * The recommended citation for using VADR is:
-    Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
-    Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
-    Nawrocki; *VADR: validation and annotation of virus sequence
-    submissions to GenBank*;
-    bioRxiv 852657; doi: https://doi.org/10.1101/852657.
+
+---
+## Reference <a name="reference"></a>
+* The recommended citation for using VADR is:
+  Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
+  Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
+  Nawrocki; *VADR: validation and annotation of virus sequence
+  submissions to GenBank*;
+  bioRxiv 852657; doi: https://doi.org/10.1101/852657.
+
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
