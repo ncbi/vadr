@@ -40,14 +40,14 @@ installation](documentation/install.md#top).
 ## Available VADR models <a name="models"></a>
 
 You can download pre-built models to use to validate and
-annotate the listed viruses or cox1 genes. ***Importantly***,
+annotate viruses or cox1 genes as listed below. ***Importantly***,
 to use a set of models other than the default set that is
 installed with VADR, you will need to use use the `-m`, `-i` and
 `-b` options as described [here](documentation/build.md#building-a-vadr-model-library).
 
   * [VADR models for Norovirus and Dengue virus
     RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT)
-    along with other *Flaviviridae* and *Caliciviridae* RefSeqs 
+    along with other *Flaviviridae* and *Caliciviridae* RefSeqs.
     
     * ***THIS SET OF MODELS IS INSTALLED WITH VADR*** and is referred
       to in the documentation as the "default" set of models
@@ -63,12 +63,17 @@ installed with VADR, you will need to use use the `-m`, `-i` and
   * [VADR models for *Coronaviridae* RefSeqs](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/coronaviridae), including 2019-nCoV
     [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
     * ***WARNING:*** using `v-annotate.pl` with these models requires a
-      ***lot*** of RAM (64Gb recommended)
-    * these models are larger than the maximum length allowed by
-      `v-build.pl` and were built with a still in-development version of
-      VADR that is not yet publicly available.
+      ***lot*** of RAM (64Gb recommended) and you will need to add the
+      option `--mxsize 64000` to your `v-annotate.pl` commands. 
+    
+    * these models (~30Kb) are larger than the maximum length (25Kb)
+      allowed by `v-build.pl` and were built with a still
+      in-development version of VADR that is not yet publicly
+      available.
 
   * [VADR models for metazoan Cytochrome c oxidase I (COX1)](https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/cox1)
+    * these models are currently in testing for analyzing metazoan cox1
+      sequence submissions to GenBank
     * these models were built from alignments instead of single
       RefSeqs, email eric.nawrocki@nih.gov if you want the alignments
 
