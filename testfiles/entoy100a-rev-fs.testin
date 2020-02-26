@@ -39,6 +39,27 @@ rmdir: va-entoy100a-rev-fs1
 # 
 # set 2, multi-segment CDS, positive strand
 #
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --fshifttol 1 --xminntlen 3 --keep -v --skipblast -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-rev-fs2.fa va-entoy100a-rev-fs2 > va-entoy100a-rev-fs2.out
+desc: annotate-entoy100a-rev-fs2
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.pass.tbl 
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.fail.tbl
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.sqa
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.sqc
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.ftr
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.sgm
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.mdl
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.alt
+out: va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs2/va-entoy100a-rev-fs2.vadr.alc
+rmdir: va-entoy100a-rev-fs2
 # 
 # set 3, partial sequence, single and multi-segment CDS, positive strand
 #
