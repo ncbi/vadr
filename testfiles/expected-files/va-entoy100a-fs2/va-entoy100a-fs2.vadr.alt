@@ -73,14 +73,14 @@
 18.4.1  ENTOY100A-2-fs17  ENTOY100A  CDS          protein_four         9  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [GGA ending at position 85 on - strand is not a valid stop]
 18.4.2  ENTOY100A-2-fs17  ENTOY100A  CDS          protein_four         9  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
 18.4.3  ENTOY100A-2-fs17  ENTOY100A  CDS          protein_four         9  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
-18.4.4  ENTOY100A-2-fs17  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 88..85 (4 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:87(1);]
+18.4.4  ENTOY100A-2-fs17  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 86..85 (2 nt, avgpp: 0.750) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:87(1);]
 #
 19.1.1  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_three        6  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 76..92 (17 nt, avgpp: 0.741) on + strand are inconsistent with dominant frame (+1); inserts:76,88-92; deletes:none;]
 19.2.1  ENTOY100A-2-fs18  ENTOY100A  mat_peptide  protein_three_mp1    7  pepadjcy  yes   PEPTIDE_ADJACENCY_PROBLEM    predictions of two mat_peptides expected to be adjacent are not adjacent [abs(75 - 77) != 1 (strand:+)]
 19.2.2  ENTOY100A-2-fs18  ENTOY100A  mat_peptide  protein_three_mp1    7  indf3loc  yes   INDEFINITE_ANNOTATION_END    alignment to homology model has low confidence at 3' boundary [0.50 < 0.60 (mat_peptide feature), RF position 75]
 19.3.1  ENTOY100A-2-fs18  ENTOY100A  mat_peptide  protein_three_mp2    8  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
 19.4.1  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_four         9  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
-19.4.2  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 94..85 (10 nt, avgpp: 0.967) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+19.4.2  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 92..85 (8 nt, avgpp: 0.637) on - strand are inconsistent with dominant frame (-1); inserts:92-88; deletes:none;]
 #
 20.1.1  ENTOY100A-2-fs19  ENTOY100A  CDS          protein_three        6  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]
 20.1.2  ENTOY100A-2-fs19  ENTOY100A  CDS          protein_three        6  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 67..73 (stop shifted 19 nt)]
@@ -95,7 +95,7 @@
 22.1.2  ENTOY100A-2-fs21  ENTOY100A  CDS          protein_three        6  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 79, segment 1 of 2]
 22.2.1  ENTOY100A-2-fs21  ENTOY100A  mat_peptide  protein_three_mp2    8  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 79, segment 1 of 2]
 22.3.1  ENTOY100A-2-fs21  ENTOY100A  CDS          protein_four         9  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
-22.3.2  ENTOY100A-2-fs21  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 87..83 (5 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:86(2);]
+22.3.2  ENTOY100A-2-fs21  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 85..83 (3 nt, avgpp: 0.800) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:86(2);]
 #
 23.1.1  ENTOY100A-2-fs22  ENTOY100A  CDS          protein_three        6  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [25]
 23.1.2  ENTOY100A-2-fs22  ENTOY100A  CDS          protein_three        6  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 67..73 (stop shifted 25 nt)]
@@ -104,7 +104,7 @@
 23.3.1  ENTOY100A-2-fs22  ENTOY100A  mat_peptide  protein_three_mp2    8  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
 23.3.2  ENTOY100A-2-fs22  ENTOY100A  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 23.4.1  ENTOY100A-2-fs22  ENTOY100A  CDS          protein_four         9  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
-23.4.2  ENTOY100A-2-fs22  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 91..86 (6 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+23.4.2  ENTOY100A-2-fs22  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 89..86 (4 nt, avgpp: 0.819) on - strand are inconsistent with dominant frame (-1); inserts:89; deletes:none;]
 #
 24.1.1  ENTOY100A-2-fs23  ENTOY100A  CDS          protein_two          5  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [AGa ending at position 73 on + strand is not a valid stop]
 24.1.2  ENTOY100A-2-fs23  ENTOY100A  CDS          protein_two          5  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
@@ -114,7 +114,7 @@
 24.4.1  ENTOY100A-2-fs23  ENTOY100A  mat_peptide  protein_three_mp2    8  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
 24.4.2  ENTOY100A-2-fs23  ENTOY100A  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 24.5.1  ENTOY100A-2-fs23  ENTOY100A  CDS          protein_four         9  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
-24.5.2  ENTOY100A-2-fs23  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 89..84 (6 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+24.5.2  ENTOY100A-2-fs23  ENTOY100A  CDS          protein_four         9  cdsfshft  yes   POSSIBLE_FRAMESHIFT          potential frameshift in CDS [nucleotide alignment of positions 87..84 (4 nt, avgpp: 0.838) on - strand are inconsistent with dominant frame (-1); inserts:87; deletes:none;]
 #
 25.1.1  ENTOY100A-2-fs24  ENTOY100A  CDS          protein_two          5  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [AGa ending at position 73 on + strand is not a valid stop]
 25.1.2  ENTOY100A-2-fs24  ENTOY100A  CDS          protein_two          5  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon

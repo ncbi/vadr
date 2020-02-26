@@ -518,7 +518,7 @@ ERROR: POSSIBLE_FRAMESHIFT: (protein three) potential frameshift in CDS [nucleot
 ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 85, segment 2 of 2]
 ERROR: PEPTIDE_ADJACENCY_PROBLEM: (protein three mp1) predictions of two mat_peptides expected to be adjacent are not adjacent [abs(75 - 77) != 1 (strand:+)]
 ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
-ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 88..85 (4 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:87(1);]
+ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 86..85 (2 nt, avgpp: 0.750) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:87(1);]
 ERROR: MUTATION_AT_END: (protein four) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
 >Feature ENTOY100A-2-fs18
@@ -556,7 +556,7 @@ ERROR: POSSIBLE_FRAMESHIFT: (protein three) potential frameshift in CDS [nucleot
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp1) alignment to homology model has low confidence at 3' boundary [0.50 < 0.60 (mat_peptide feature), RF position 75]
 ERROR: PEPTIDE_ADJACENCY_PROBLEM: (protein three mp1) predictions of two mat_peptides expected to be adjacent are not adjacent [abs(75 - 77) != 1 (strand:+)]
 ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
-ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 94..85 (10 nt, avgpp: 0.967) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 92..85 (8 nt, avgpp: 0.637) on - strand are inconsistent with dominant frame (-1); inserts:92-88; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
 >Feature ENTOY100A-2-fs19
 5	22	ncRNA
@@ -631,7 +631,7 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein three) potential frameshift in CDS [nucleotide alignment of positions 79..85 (7 nt, avgpp: 0.814) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:85(2);]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three) alignment to homology model is a gap at 3' boundary [RF position 79, segment 1 of 2]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp2) alignment to homology model is a gap at 3' boundary [RF position 79, segment 1 of 2]
-ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 87..83 (5 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:86(2);]
+ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 85..83 (3 nt, avgpp: 0.800) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:86(2);]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
 >Feature ENTOY100A-2-fs22
 5	22	ncRNA
@@ -670,7 +670,7 @@ ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
-ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 91..86 (6 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 89..86 (4 nt, avgpp: 0.819) on - strand are inconsistent with dominant frame (-1); inserts:89; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
 >Feature ENTOY100A-2-fs23
 5	22	ncRNA
@@ -709,7 +709,7 @@ ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
-ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 89..84 (6 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 87..84 (4 nt, avgpp: 0.838) on - strand are inconsistent with dominant frame (-1); inserts:87; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
 >Feature ENTOY100A-2-fs24
 5	22	ncRNA
