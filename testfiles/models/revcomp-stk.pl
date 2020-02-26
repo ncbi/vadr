@@ -11,7 +11,35 @@ while($line = <STK>) {
     # DE line
     my ($space1, $name, $space2, $space3, $remainder) = ($1, $2, $3, $4, $5);
     $name =~ s/$old_name/$new_name/;
-    printf("#=GS%s%s%sDE%s$remainder\n", $space1, $name, $space2, $space3);
+    my @rem_A = split(/\s+/, $remainder);
+    my $new_remainder = "";
+    foreach $rem (@rem_A) { 
+      if($rem =~ /^RFPOS/) { 
+        $rem =~ s/^RFPOS//;
+        $new_remainder .= " RFPOS";
+        $rem =~ s/\)$//;
+        my @tok_A = split(",", $rem);
+        my $new_tok = "";
+        foreach my $tok (@tok_A) { 
+          if($tok =~ /^(\d+)\-$/) { # delete
+            if($new_tok ne "") { $new_tok .= ","; }
+            $new_tok .= $mlen - $1 + 1 . "-";
+          }
+          elsif($tok =~ /^(\d+)\+(\d+)$/) { # insert
+            if($new_tok ne "") { $new_tok .= ","; }
+            $new_tok .= $mlen - $1 + 1 - 1 . "+" . $2; # minus one because now we insert before prv position
+          }
+          else { 
+            die "ERROR unable to parse RFPOS tok $tok\non line\n$line\n"; 
+          }
+        }
+        $new_remainder .= $new_tok . ")";
+      }
+      else { 
+        $new_remainder .= " " . $rem;
+      }
+    }
+    printf("#=GS%s%s%sDE%s$new_remainder\n", $space1, $name, $space2, $space3);
   }
   elsif($line =~ /^\#=GC(\s+)(\S+)(\s+)(.+)$/) { 
     # GC annotation, reverse string and update name
@@ -20,8 +48,11 @@ while($line = <STK>) {
       $remainder =~ tr/\<\>/\>\</;
       printf("#=GC" . $space1 . $name . $space2 . reverse($remainder) . "\n");
     }
-    elsif($name =~ m/^COL/) { 
-      printf("#=GC%s%s%s%s\n", $space1, $name, $space2, $remainder);
+    elsif($name eq "RF") { 
+      printf("#=GC" . $space1 . $name . $space2 . reverse($remainder) . "\n");
+    }
+    elsif($name =~ m/^RFCOL/) { 
+      # do not output these, we will add them back
     }
     elsif($name =~ /(.+\.)(\d+)\-(\d+)/) { 
       my ($beg, $start, $end) = ($1, $2, $3);
