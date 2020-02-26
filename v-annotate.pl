@@ -2911,13 +2911,26 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               # info in this frame token is relevant to the next alert we may report
               if($f > 0) { 
                 # add any inserted positions between previous frame token and this one to insert_str
-                if((($prv_stop + 1) < ($cur_start)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
-                  if($insert_str ne "") { $insert_str .= ","; }
-                  if(($prv_stop + 1) == ($cur_start - 1)) { # exactly one inserted nt
-                    $insert_str .= sprintf("%d", ($prv_stop + 1));
+                if($ftr_strand eq "+") { 
+                  if((($prv_stop + 1) < ($cur_start)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
+                    if($insert_str ne "") { $insert_str .= ","; }
+                    if(($prv_stop + 1) == ($cur_start - 1)) { # exactly one inserted nt
+                      $insert_str .= sprintf("%d", ($prv_stop + 1));
+                    }
+                    else { # more than one inserted nt, specify the range
+                      $insert_str .= sprintf("%d-%d", $prv_stop+1, $cur_start-1);
+                    }
                   }
-                  else { # more than one inserted nt, specify the range
-                    $insert_str .= sprintf("%d-%d", $prv_stop+1, $cur_start-1);
+                }
+                else { # negative strand
+                  if((($prv_stop - 1) > ($cur_start)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
+                    if($insert_str ne "") { $insert_str .= ","; }
+                    if(($prv_stop - 1) == ($cur_start + 1)) { # exactly one inserted nt
+                      $insert_str .= sprintf("%d", ($prv_stop - 1));
+                    }
+                    else { # more than one inserted nt, specify the range
+                      $insert_str .= sprintf("%d-%d", $prv_stop-1, $cur_start+1);
+                    }
                   }
                 }
               }
