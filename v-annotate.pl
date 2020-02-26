@@ -2673,16 +2673,14 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $p_5seqflush = undef;
       my $p_3seqflush = undef;
 
-      # this should work regardless of strand
-      if(($min_rfpos_after_A[$sgm_start_rfpos] != -1) && 
-         ($max_rfpos_before_A[$sgm_stop_rfpos] != -1)) { 
+      # determine start and stop position differently based on strand
+      $start_rfpos = ($sgm_strand eq "+") ? $min_rfpos_after_A[$sgm_start_rfpos] : $max_rfpos_before_A[$sgm_start_rfpos];
+      $stop_rfpos  = ($sgm_strand eq "+") ? $max_rfpos_before_A[$sgm_stop_rfpos] : $min_rfpos_after_A[$sgm_stop_rfpos];
 
-        $start_uapos = $min_uapos_after_A[$sgm_start_rfpos];
-        $stop_uapos  = $max_uapos_before_A[$sgm_stop_rfpos];
+      $start_uapos = ($sgm_strand eq "+") ? $min_uapos_after_A[$sgm_start_rfpos] : $max_uapos_before_A[$sgm_start_rfpos];
+      $stop_uapos  = ($sgm_strand eq "+") ? $max_uapos_before_A[$sgm_stop_rfpos] : $min_uapos_after_A[$sgm_stop_rfpos];
 
-        $start_rfpos = $min_rfpos_after_A[$sgm_start_rfpos];
-        $stop_rfpos  = $max_rfpos_before_A[$sgm_stop_rfpos];
-
+      if(($start_rfpos != -1) && ($stop_rfpos != -1)) { 
         if($sgm_strand eq "+") { 
           $p_5seqflush = ($start_uapos == 1)        ? 1 : 0;
           $p_3seqflush = ($stop_uapos  == $seq_len) ? 1 : 0;
