@@ -2932,7 +2932,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 if(defined $prv_dom_stop) { 
                   # we've seen at least one dominant frame segment,
                   # start of the non-dominant stretch is 1 nt 3' of that
-                  $span_start = $prv_dom_stop + 1;
+                  $span_start = ($ftr_strand eq "+") ? $prv_dom_stop + 1 : $prv_dom_stop - 1;
                 }
                 else { 
                   # we haven't seen a dominant frame segment yet, 
@@ -2947,8 +2947,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 }
                 else { 
                   # previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
-                  # is 1 nt 3' of start of current frame token
-                  $span_stop = $cur_start - 1;
+                  # is 1 nt 5' of start of current frame token
+                  $span_stop = ($ftr_strand eq "+") ? $cur_start - 1 : $cur_start + 1;
                 }
                 $span_len = abs($span_stop - $span_start) + 1;
                 if($span_len > $fshift_tol) { 
@@ -2958,7 +2958,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                     $full_ppstr = $msa->get_ppstring_aligned($i); 
                     $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
                   }
-                  my $span_ppstr = substr($full_ppstr, $span_start - 1, ($span_len));
+                  my $span_ppstr = ($ftr_strand eq "+") ? 
+                      substr($full_ppstr, $span_start - 1, ($span_len)) : 
+                      substr($full_ppstr, $span_stop  - 1, ($span_len));
                   my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, Bio::Easel::MSA->get_ppstr_avg($span_ppstr));
                   my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
