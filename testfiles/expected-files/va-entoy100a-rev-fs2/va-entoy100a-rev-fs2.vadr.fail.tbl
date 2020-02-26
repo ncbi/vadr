@@ -222,7 +222,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 34	26	mat_peptide
 			product	protein three mp1
 68	53	misc_feature
-53	36
+53	37
 35	28
 			note	similar to protein two
 92	67	gene
@@ -242,7 +242,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein two) potential frameshift in CDS [nucleotide alignment of positions 36..28 (9 nt, avgpp: 0.967) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 68..34 (stop shifted 6 nt)]
 ERROR: INDEFINITE_ANNOTATION_END: (protein two) alignment to homology model is a gap at 3' boundary [RF position 37, segment 2 of 3]
+ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]
 >Feature ENTOY100A-REV-2-fs9
 3	17	CDS
 			product	protein four
@@ -356,8 +358,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			product	protein three mp2
 34	26	mat_peptide
 			product	protein three mp1
-68	53	misc_feature
-54	37
+68	54	misc_feature
+53	37
 35	28
 			note	similar to protein two
 92	67	gene
@@ -377,8 +379,10 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein two) potential frameshift in CDS [nucleotide alignment of positions 68..54 (15 nt, avgpp: 0.963) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:none;]
+ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 68..65 (stop shifted 37 nt)]
 ERROR: INDEFINITE_ANNOTATION_END: (protein two) alignment to homology model is a gap at 3' boundary [RF position 54, segment 1 of 3]
 ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is a gap at 5' boundary [RF position 54, segment 2 of 3]
+ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [40]
 >Feature ENTOY100A-REV-2-fs14
 3	17	CDS
 			product	protein four
@@ -390,8 +394,8 @@ ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is
 			product	protein three mp2
 34	26	mat_peptide
 			product	protein three mp1
-67	52	misc_feature
-53	37
+67	53	misc_feature
+52	37
 35	28
 			note	similar to protein two
 91	66	gene
@@ -413,7 +417,6 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein two) potential frameshift in CDS [nucleotide alignment of positions 52..46 (7 nt, avgpp: 0.943) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:46(1);]
 ERROR: INDEFINITE_ANNOTATION_END: (protein two) alignment to homology model is a gap at 3' boundary [RF position 54, segment 1 of 3]
 ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is a gap at 5' boundary [RF position 54, segment 2 of 3]
-ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]
 >Feature ENTOY100A-REV-2-fs15
 3	17	CDS
 			product	protein four
@@ -558,10 +561,10 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 >Feature ENTOY100A-REV-2-fs19
 3	17	CDS
 			product	protein four
-31	20	misc_feature
+31	21	misc_feature
 16	6
 			note	similar to protein three
-22	20	misc_feature
+22	21	misc_feature
 16	9
 			note	similar to protein three mp2
 31	23	misc_feature
@@ -587,23 +590,24 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein three) potential frameshift in CDS [nucleotide alignment of positions 20..6 (15 nt, avgpp: 0.963) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:none;]
+ERROR: CDS_HAS_STOP_CODON: (protein three) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 31..25 (stop shifted 19 nt)]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three) alignment to homology model is a gap at 3' boundary [RF position 22, segment 1 of 2]
-ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [23]
+ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp2) alignment to homology model is a gap at 3' boundary [RF position 22, segment 1 of 2]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
+ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10]
 >Feature ENTOY100A-REV-2-fs21
 3	15	misc_feature
 			note	similar to protein four
-31	19	misc_feature
+31	20	misc_feature
 14	6
 			note	similar to protein three
-22	19	misc_feature
+22	20	misc_feature
 14	9
 			note	similar to protein three mp2
-31	23	misc_feature
-			note	similar to protein three mp1
+31	23	mat_peptide
+			product	protein three mp1
 66	51	CDS
 51	34
 32	25
@@ -625,14 +629,9 @@ ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or 
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein three) potential frameshift in CDS [nucleotide alignment of positions 19..13 (7 nt, avgpp: 0.786) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:13(2);]
-ERROR: CDS_HAS_STOP_CODON: (protein three) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 31..25 (stop shifted 19 nt)]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three) alignment to homology model is a gap at 3' boundary [RF position 22, segment 1 of 2]
 ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 16, segment 2 of 2]
-ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp2) alignment to homology model is a gap at 3' boundary [RF position 22, segment 1 of 2]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10]
 ERROR: POSSIBLE_FRAMESHIFT: (protein four) potential frameshift in CDS [nucleotide alignment of positions 13..15 (3 nt, avgpp: 0.733) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(2);]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
 >Feature ENTOY100A-REV-2-fs22
