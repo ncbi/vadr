@@ -188,9 +188,9 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 			note	similar to protein one
 78	73	misc_feature
 			note	similar to protein one mp2
-93	78	misc_feature
+93	79	misc_feature
 			note	similar to protein one mp1
-99	78	misc_feature
+99	79	misc_feature
 			note	similar to enRNA
 94	80	stem_loop
 			note	stem-loop 1
@@ -199,9 +199,7 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 90..79 (12 nt, avgpp: 0.840) on - strand are inconsistent with dominant frame (-1); inserts:90-86; deletes:79(2);]
 ERROR: CDS_HAS_STOP_CODON: (protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 93..82 (stop shifted 12 nt)]
 ERROR: INDEFINITE_ANNOTATION_END: (protein one mp1) alignment to homology model is a gap at 3' boundary [RF position 79]
-ERROR: PEPTIDE_ADJACENCY_PROBLEM: (protein one mp1) predictions of two mat_peptides expected to be adjacent are not adjacent [abs(78 - 78) != 1 (strand:-)]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap at 3' boundary [RF position 79]
 >Feature ENTOY100A-REV-fs7
@@ -298,9 +296,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			note	similar to protein one
 78	73	misc_feature
 			note	similar to protein one mp2
-87	78	misc_feature
+87	79	misc_feature
 			note	similar to protein one mp1
-93	78	misc_feature
+93	79	misc_feature
 			note	similar to enRNA
 88	80	stem_loop
 			note	stem-loop 1
@@ -309,9 +307,7 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 85..79 (7 nt, avgpp: 0.900) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:86(1),79(2);]
 ERROR: CDS_HAS_STOP_CODON: (protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 87..82 (stop shifted 12 nt)]
 ERROR: INDEFINITE_ANNOTATION_END: (protein one mp1) alignment to homology model is a gap at 3' boundary [RF position 79]
-ERROR: PEPTIDE_ADJACENCY_PROBLEM: (protein one mp1) predictions of two mat_peptides expected to be adjacent are not adjacent [abs(78 - 78) != 1 (strand:-)]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap at 3' boundary [RF position 79]
 >Feature ENTOY100A-REV-fs10

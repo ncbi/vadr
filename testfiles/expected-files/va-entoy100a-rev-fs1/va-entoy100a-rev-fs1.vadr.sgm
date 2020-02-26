@@ -99,7 +99,7 @@
 #
 7.1.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  gene         one                  1    1    1    96   68    93   68   29    -  no   0.975  0.975  no   no 
 7.2.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  CDS          protein_one          2    1    1    93   70    90   70   24    -  no   0.975  0.975  no   no 
-7.3.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1      3    1    1    93   78    90   78   16    -  no   0.975      -  no   yes
+7.3.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1      3    1    1    93   79    90   81   15    -  no   0.975      -  no   yes
 7.4.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp2      4    1    1    78   73    78   73    6    -  no     0.7  0.975  no   no 
 7.5.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  CDS          protein_two          5    3    1    69   54    69   54   16    -  no   0.975  0.975  no   no 
 7.5.2    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  CDS          protein_two          5    3    2    54   37    54   37   18    -  no   0.975  0.975  no   no 
@@ -110,7 +110,7 @@
 7.8.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  mat_peptide  protein_three_mp2    8    2    1    25   22    25   22    4    -  no   0.975  0.975  no   no 
 7.8.2    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  mat_peptide  protein_three_mp2    8    2    2    16    9    16    9    8    -  no   0.975  0.975  no   no 
 7.9.1    ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  CDS          protein_four         9    1    1     3   17     3   17   15    +  no   0.975  0.975  no   no 
-7.10.1   ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  ncRNA        enRNA               10    1    1    99   78    96   78   22    -  no   0.975      -  no   yes
+7.10.1   ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  ncRNA        enRNA               10    1    1    99   79    96   81   21    -  no   0.975      -  no   yes
 7.11.1   ENTOY100A-REV-fs6   103  FAIL  ENTOY100A-REV  stem_loop    stem_loop.1         11    1    1    94   80    91   82   15    -  no   0.975  0.975  no   no 
 #
 8.1.1    ENTOY100A-REV-fs7    99  FAIL  ENTOY100A-REV  gene         one                  1    1    1    92   68    93   68   25    -  no   0.975  0.975  no   no 
@@ -147,7 +147,7 @@
 #
 10.1.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  gene         one                  1    1    1    90   68    93   68   23    -  no   0.975  0.975  no   no 
 10.2.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  CDS          protein_one          2    1    1    87   70    90   70   18    -  no   0.975  0.975  no   no 
-10.3.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1      3    1    1    87   78    90   78   10    -  no   0.975      -  no   yes
+10.3.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1      3    1    1    87   79    90   81    9    -  no   0.975      -  no   yes
 10.4.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp2      4    1    1    78   73    78   73    6    -  no     0.7  0.975  no   no 
 10.5.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  CDS          protein_two          5    3    1    69   54    69   54   16    -  no   0.975  0.975  no   no 
 10.5.2   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  CDS          protein_two          5    3    2    54   37    54   37   18    -  no   0.975  0.975  no   no 
@@ -158,7 +158,7 @@
 10.8.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  mat_peptide  protein_three_mp2    8    2    1    25   22    25   22    4    -  no   0.975  0.975  no   no 
 10.8.2   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  mat_peptide  protein_three_mp2    8    2    2    16    9    16    9    8    -  no   0.975  0.975  no   no 
 10.9.1   ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  CDS          protein_four         9    1    1     3   17     3   17   15    +  no   0.975  0.975  no   no 
-10.10.1  ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  ncRNA        enRNA               10    1    1    93   78    96   78   16    -  no   0.975      -  no   yes
+10.10.1  ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  ncRNA        enRNA               10    1    1    93   79    96   81   15    -  no   0.975      -  no   yes
 10.11.1  ENTOY100A-REV-fs9    97  FAIL  ENTOY100A-REV  stem_loop    stem_loop.1         11    1    1    88   80    91   82    9    -  no   0.975  0.975  no   no 
 #
 11.1.1   ENTOY100A-REV-fs10   97  FAIL  ENTOY100A-REV  gene         one                  1    1    1    90   68    93   68   23    -  no   0.975  0.975  no   no 
