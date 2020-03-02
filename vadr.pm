@@ -1413,10 +1413,16 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "cdsfshft", "feature",
-                   "POSSIBLE_FRAMESHIFT", # short description
-                   "potential frameshift in CDS", # long description
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
+                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
+                   "high confidence potential frameshift in CDS", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
+                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
+                   "low confidence potential frameshift in CDS", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",

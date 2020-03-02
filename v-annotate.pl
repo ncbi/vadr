@@ -179,7 +179,10 @@ opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",     "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fshifttol",  "integer",   5,                    $g,   undef,   undef,      "cdsfshft/POSSIBLE_FRAMESHIFT max allowed frame disagreement nt length without alert is <n>",         "cdsfshft/POSSIBLE_FRAMESHIFT max allowed frame disagreement nt length without alert is <n>",      \%opt_HH, \@opt_order_A);
+opt_Add("--fstnttol",   "integer",   5,                    $g,   undef,   undef,      "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fsthighthr", "real",      0.8,                  $g,   undef,   undef,      "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstlowthr",  "real",      0.3,                  $g,   undef,   undef,      "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+
 opt_Add("--xalntol",    "integer",   5,                    $g,   undef,"--skipblast", "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,"--skipblast", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,"--skipblast", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
@@ -259,7 +262,9 @@ my $options_okay =
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'fshifttol=s'   => \$GetOptions_H{"--fshifttol"},
+                'fstnttol=s'    => \$GetOptions_H{"--fstnttol"},
+                'fsthighthr=s'  => \$GetOptions_H{"--fsthighthr"},
+                'fstlowthr=s'   => \$GetOptions_H{"--fstlowthr"},
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
@@ -344,6 +349,22 @@ if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH)))
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
 }
 
+# enforce that --fsthighthr and --fstlowthr values make sense
+if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) { 
+  if((opt_IsUsed("--fsthighthr", \%opt_HH)) && (opt_IsUsed("--fstlowthr", \%opt_HH))) { 
+    die "ERROR if using --fsthighthr <x1> and --fstlowthr <x2>, <x1> must be > <x2>";
+  }
+  elsif(opt_IsUsed("--fsthighthr", \%opt_HH)) { 
+    die "ERROR if using --fsthighthr <x>, <x> must be > " . opt_Get("--fstlowthr", \%opt_HH);
+  }
+  elsif(opt_IsUsed("--fstlowthr", \%opt_HH)) { 
+    die "ERROR if using --fstlowthr <x>, <x> must be < " . opt_Get("--fsthighthr", \%opt_HH);
+  }
+  else {
+    die "ERROR, default value for --fsthighthr (" . opt_Get("--fsthighthr", \%opt_HH) . ") is less than default value for --fstlowthr (" . opt_Get("--fslowthr", \%opt_HH) . ")";
+  }
+}
+
 ##########################################
 # determine if we are running blast or not 
 ##########################################
@@ -364,7 +385,7 @@ if(-d $dir) {
 if(-e $dir) { 
   $cmd = "rm $dir";
  if(opt_Get("-f", \%opt_HH)) { utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, undef); push(@early_cmd_A, $cmd); }
-  else                        { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
+  else                       { die "ERROR a file named $dir already exists. Remove it, or use -f to overwrite it."; }
 }
 
 # create the dir
@@ -2445,7 +2466,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
-  my $fshift_tol       = opt_Get("--fshifttol",   $opt_HHR); # maximum allowed nt length of non-dominant frame without a cdsfshft alert 
+  my $fst_nt_tol       = opt_Get("--fstnttol",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
+  my $fst_high_ppthr   = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
+  my $fst_low_ppthr    = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -2778,10 +2801,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
             my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
             my $strand = $sgm_results_HR->{"strand"};
-            printf("sstart: $sstart\n");
-            printf("sstop:  $sstop\n");
-            printf("sgm_start_rfpos: $mstart\n");
-            printf("mstop:  $mstop\n");
             if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
             if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
             $ftr_sstop = $sstop;
@@ -2824,7 +2843,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                 if($strand eq "+") { $gr_frame_str .= $F_cur; }
                 else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
                 $frame_ct_A[$F_cur]++;
-                #printf("HEYA ftr_idx: $ftr_idx sgm_idx: $sgm_idx rfpos: $rfpos frame: $F_cur\n");
                 if((! defined $F_prv) || ($F_cur != $F_prv)) { 
                   # frame changed, 
                   # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
@@ -2868,15 +2886,15 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
-            printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
-            print("$gr_frame_str\n");
+            # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+            # print("$gr_frame_str\n");
           } # end of 'if' entered if segment has a sstart
         } # end of for loop over segments
 
-        printf("frame_ct_A[1]: $frame_ct_A[1]\n");
-        printf("frame_ct_A[2]: $frame_ct_A[2]\n");
-        printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-        printf("frame_str: $frame_tok_str\n");
+        #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
+        #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
+        #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
+        #printf("frame_str: $frame_tok_str\n");
 
         # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
@@ -2899,7 +2917,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           my $delete_str = "";    # string of deletes to put in alert string
           my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
           for(my $f = 0; $f < $nframe_tok; $f++) { 
-            printf("HEYA f: $f frame_tok: %s\n", $frame_tok_A[$f]);
+            #printf("f: $f frame_tok: %s\n", $frame_tok_A[$f]);
             if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
               my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
               # add to growing list of inserts, if nec
@@ -2962,8 +2980,8 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   $span_stop = ($ftr_strand eq "+") ? $cur_start - 1 : $cur_start + 1;
                 }
                 $span_len = abs($span_stop - $span_start) + 1;
-                if($span_len > $fshift_tol) { 
-                  # this will be a cdsfshft alert
+                if($span_len > $fst_nt_tol) { 
+                  # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
                   # determine average posterior probability of non-dominant frame subseq
                   if(! defined $full_ppstr) { 
                     $full_ppstr = $msa->get_ppstring_aligned($i); 
@@ -2972,14 +2990,20 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   my $span_ppstr = ($ftr_strand eq "+") ? 
                       substr($full_ppstr, $span_start - 1, ($span_len)) : 
                       substr($full_ppstr, $span_stop  - 1, ($span_len));
-                  my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, Bio::Easel::MSA->get_ppstr_avg($span_ppstr));
-                  my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
-                  $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
-                  $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "cdsfshft", $seq_name, $ftr_idx, $alt_str, $FH_HR);
-                  $insert_str = "";
-                  $delete_str = "";
-                  push(@cds_alt_str_A, $alt_str);
+                  my $span_avgpp;
+                  ($span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($span_ppstr);
+                  if($span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
+                    my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, $span_avgpp);
+                    my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                    $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
+                    $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
+                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
+                                               ($span_avgpp > ($fst_high_ppthr - $small_value)) ? "fsthicnf" : "fstlocnf", 
+                                               $seq_name, $ftr_idx, $alt_str, $FH_HR);
+                    $insert_str = "";
+                    $delete_str = "";
+                    push(@cds_alt_str_A, $alt_str);
+                  }
                 }
               } # end of 2 case if entered if we have a frameshift alert
 
@@ -2998,7 +3022,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
               $prv_stop  = $cur_stop;
               $prv_frame = $cur_frame;
               $prv_tok_sgm_end_flag = ($cur_sgmend eq "!") ? 1 : 0;
-              printf("HEYA cur_sgmend: $cur_sgmend, prv_tok_sgm_end_flag set to $prv_tok_sgm_end_flag\n");
             } # end if statement that parses $frame_tok_A[$f]
             else { 
               ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok_A[$f]", 1, $FH_HR);
@@ -3021,7 +3044,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my @cds_sgm_seq_A = ();
             for(my $i2 = 0; $i2 < $nseq; $i2++) { $cds_sgm_seq_A[$i2] = 0; }
             $cds_sgm_seq_A[$i] = 1; # keep this one seq
-            for(my $i2 = 0; $i2 < $nseq; $i2++) { printf("cds_sgm_seq_A[$i2]: $cds_sgm_seq_A[$i2]\n"); }
+            # for(my $i2 = 0; $i2 < $nseq; $i2++) { printf("cds_sgm_seq_A[$i2]: $cds_sgm_seq_A[$i2]\n"); }
             my $cds_sgm_msa = $msa->sequence_subset(\@cds_sgm_seq_A);
             my $alen = $cds_sgm_msa->alen;
             
@@ -3038,9 +3061,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             $cds_sgm_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
             
             # add GR annotation
-            printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
-            print("$gr_frame_str\n");
-            printf("alen: %d\n", $cds_sgm_msa->alen());
+            # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+            # print("$gr_frame_str\n");
+            # printf("alen: %d\n", $cds_sgm_msa->alen());
             $cds_sgm_msa->addGR("CS", 0, $gr_frame_str);
             
             # output alignment
