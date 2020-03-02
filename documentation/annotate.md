@@ -667,6 +667,10 @@ In the table below, `<n>` represents a positive interger argument and
 | `--lowsimint <n>`   | [*lowsimis*](#lowsimis1), [*lowsimif*](#lowsimif1)  | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1 | set length (nt) threshold for alert to `<n>` <a name="options-alerts-lowsimint"></a> |
 | `--indefann <x>`    | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | set posterior probability threshold for non-mat_peptide features for alert to `<x>` <a name="options-alerts-indefann"></a> |
 | `--indefann_mp <x>` | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | set posterior probability threshold for mat_peptide features for alert to `<x>` <a name="options-alerts-indefann_mp"></a> |
+| `--fstnttol <n>`    | [*fsthicnf*](#fsthicnf1), [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF | > 5 | set maximum allowed length of aligned region in different frame to `<n>` <a name="options-alerts-fstnttol"></a> |
+| `--fsthighthr <x>`  | [*fsthicnf*](#fsthicnf1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF | > 0.8 | set average posterior probability threshold for potentially frameshifted region for high confidence alert to `<x>` <a name="options-alerts-fsthighthr"></a> |
+| `--fstlowthr <x>`   | [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF  | > 0.3 | set average posterior probability threshold for potentially frameshifted region for low confidence alert to `<x>` <a name="options-alerts-fstlowthr"></a> |
+
 | `--xalntol <n>`     | [*indf5pst*](#indf5pst1), [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) <a name="options-alerts-xalntol"></a> |
 | `--xmaxins <n>`     | [*insertnp*](#insertnp1) | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` <a name="options-alerts-xmaxins"></a> |
 | `--xmaxdel <n>`     | [*deletinp*](#deletinp1) | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` <a name="options-alerts-xmaxdel"></a> |
@@ -723,6 +727,7 @@ The following options are related to parallel mode.
 | ......option...... | explanation | 
 |--------|-------------| 
 | `--skipalign` | skip the `cmalign` stage, use results from previous run, this is mostly useful for debugging purposes | 
+| `--skipblast` | do not perform blastx-based protein validation |
 
 ### `v-annotate.pl` options for optional output files<a name="options-output"></a>
 
@@ -805,6 +810,8 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
 | [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
 | [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
+| [*fsthicnf*](#fsthicnf2)  | feature  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
+| [*fstlocnf*](#fstlocnf2)  | feature  | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
