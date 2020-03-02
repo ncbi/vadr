@@ -1,8 +1,8 @@
-#     alert     causes   short                          per    num   num  long       
-#idx  code      failure  description                   type  cases  seqs  description
-#---  --------  -------  -------------------------  -------  -----  ----  -----------
-1     unexleng  yes      UNEXPECTED_LENGTH          feature      4     2  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
-2     cdsstopn  yes      CDS_HAS_STOP_CODON         feature      4     2  in-frame stop codon exists 5' of stop position predicted by homology to reference
-3     cdsfshft  yes      POSSIBLE_FRAMESHIFT        feature     10     2  potential frameshift in CDS
-4     indf3pst  yes      INDEFINITE_ANNOTATION_END  feature      3     2  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
-#---  --------  -------  -------------------------  -------  -----  ----  -----------
+#     alert     causes   short                              per    num   num  long       
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------
+1     unexleng  yes      UNEXPECTED_LENGTH              feature      4     2  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+2     cdsstopn  yes      CDS_HAS_STOP_CODON             feature      4     2  in-frame stop codon exists 5' of stop position predicted by homology to reference
+3     fsthicnf  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature     10     2  high confidence potential frameshift in CDS
+4     indf3pst  yes      INDEFINITE_ANNOTATION_END      feature      3     2  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------

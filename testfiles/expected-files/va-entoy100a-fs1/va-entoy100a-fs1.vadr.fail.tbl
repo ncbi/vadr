@@ -29,7 +29,7 @@
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 11..14 (4 nt, avgpp: 0.887) on + strand are inconsistent with dominant frame (+3); inserts:14; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 11..14 (4 nt, avgpp: 4.000) on + strand are inconsistent with dominant frame (+3); inserts:14; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
@@ -65,7 +65,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 11..18 (8 nt, avgpp: 0.856) on + strand are inconsistent with dominant frame (+2); inserts:14-18; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 11..18 (8 nt, avgpp: 8.000) on + strand are inconsistent with dominant frame (+2); inserts:14-18; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [26]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
@@ -101,7 +101,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 14..24 (11 nt, avgpp: 0.843) on + strand are inconsistent with dominant frame (+1); inserts:14,23-24; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 14..24 (11 nt, avgpp: 11.000) on + strand are inconsistent with dominant frame (+1); inserts:14,23-24; deletes:none;]
 >Feature ENTOY100A-fs4
 5	28	misc_feature
 			note	similar to enRNA
@@ -131,8 +131,8 @@ ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotid
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 14..27 (14 nt, avgpp: 0.875) on + strand are inconsistent with dominant frame (+1); inserts:14-18,27; deletes:none;]
 ERROR: CDS_HAS_STOP_CODON: (protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 11..22 (stop shifted 15 nt)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 14..27 (14 nt, avgpp: 14.000) on + strand are inconsistent with dominant frame (+1); inserts:14-18,27; deletes:none;]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]
@@ -165,7 +165,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 14..21 (8 nt, avgpp: 0.934) on + strand are inconsistent with dominant frame (+1); inserts:14; deletes:21(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 14..21 (8 nt, avgpp: 8.000) on + strand are inconsistent with dominant frame (+1); inserts:14; deletes:21(1);]
 ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
 >Feature ENTOY100A-fs6
 5	25	misc_feature
@@ -196,8 +196,8 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 14..25 (12 nt, avgpp: 0.890) on + strand are inconsistent with dominant frame (+1); inserts:14-18; deletes:25(2);]
 ERROR: CDS_HAS_STOP_CODON: (protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 11..22 (stop shifted 12 nt)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 14..25 (12 nt, avgpp: 12.000) on + strand are inconsistent with dominant frame (+1); inserts:14-18; deletes:25(2);]
 ERROR: INDEFINITE_ANNOTATION_END: (protein one mp1) alignment to homology model is a gap at 3' boundary [RF position 22]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
@@ -233,7 +233,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap a
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 11..12 (2 nt, avgpp: 0.975) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:12(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 11..12 (2 nt, avgpp: 2.000) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:12(1);]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
@@ -269,7 +269,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 11..12 (2 nt, avgpp: 0.975) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:12(2);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 11..12 (2 nt, avgpp: 2.000) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:12(2);]
 ERROR: MUTATION_AT_START: (protein one) expected start codon could not be identified [ATT starting at position 11 on + strand is not a valid start]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [19]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
@@ -304,8 +304,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 13..19 (7 nt, avgpp: 0.900) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(1),19(2);]
 ERROR: CDS_HAS_STOP_CODON: (protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 11..16 (stop shifted 12 nt)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 13..19 (7 nt, avgpp: 7.000) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(1),19(2);]
 ERROR: INDEFINITE_ANNOTATION_END: (protein one mp1) alignment to homology model is a gap at 3' boundary [RF position 22]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
@@ -339,7 +339,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap a
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 13..18 (6 nt, avgpp: 0.888) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(2),18(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 13..18 (6 nt, avgpp: 6.000) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(2),18(1);]
 ERROR: MUTATION_AT_START: (protein one) expected start codon could not be identified [ATT starting at position 11 on + strand is not a valid start]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
@@ -373,8 +373,8 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 13..21 (9 nt, avgpp: 0.875) on + strand are inconsistent with dominant frame (+1); inserts:21; deletes:12(1);]
 ERROR: CDS_HAS_STOP_CODON: (protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 11..16 (stop shifted 15 nt)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 13..21 (9 nt, avgpp: 9.000) on + strand are inconsistent with dominant frame (+1); inserts:21; deletes:12(1);]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]
@@ -409,7 +409,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 			product	protein four
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT: (protein one) potential frameshift in CDS [nucleotide alignment of positions 13..21 (9 nt, avgpp: 0.733) on + strand are inconsistent with dominant frame (+1); inserts:20-21; deletes:12(2);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 13..21 (9 nt, avgpp: 9.000) on + strand are inconsistent with dominant frame (+1); inserts:20-21; deletes:12(2);]
 ERROR: MUTATION_AT_START: (protein one) expected start codon could not be identified [ATT starting at position 11 on + strand is not a valid start]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem

@@ -1,9 +1,9 @@
-#     alert     causes   short                            per    num   num  long       
-#idx  code      failure  description                     type  cases  seqs  description
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
-1     cdsfshft  yes      POSSIBLE_FRAMESHIFT          feature     10     7  potential frameshift in CDS
-2     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM  feature      3     3  mat_peptide may not be translated because its parent CDS has a problem
-3     indfantn  yes      INDEFINITE_ANNOTATION        feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
-4     indf5pst  yes      INDEFINITE_ANNOTATION_START  feature      3     3  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
-5     indf3pst  yes      INDEFINITE_ANNOTATION_END    feature      3     3  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+#     alert     causes   short                              per    num   num  long       
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------
+1     fsthicnf  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature     10     7  high confidence potential frameshift in CDS
+2     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature      3     3  mat_peptide may not be translated because its parent CDS has a problem
+3     indfantn  yes      INDEFINITE_ANNOTATION          feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
+4     indf5pst  yes      INDEFINITE_ANNOTATION_START    feature      3     3  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
+5     indf3pst  yes      INDEFINITE_ANNOTATION_END      feature      3     3  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------

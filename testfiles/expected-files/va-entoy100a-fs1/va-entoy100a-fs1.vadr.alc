@@ -1,11 +1,11 @@
-#     alert     causes   short                            per    num   num  long       
-#idx  code      failure  description                     type  cases  seqs  description
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
-1     mutstart  yes      MUTATION_AT_START            feature      3     3  expected start codon could not be identified
-2     unexleng  yes      UNEXPECTED_LENGTH            feature      8     4  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
-3     cdsstopn  yes      CDS_HAS_STOP_CODON           feature      4     4  in-frame stop codon exists 5' of stop position predicted by homology to reference
-4     cdsfshft  yes      POSSIBLE_FRAMESHIFT          feature     12    12  potential frameshift in CDS
-5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM  feature     20    10  mat_peptide may not be translated because its parent CDS has a problem
-6     indf3gap  yes      INDEFINITE_ANNOTATION_END    feature      4     2  alignment to homology model is a gap at 3' boundary
-7     indf3loc  yes      INDEFINITE_ANNOTATION_END    feature      4     4  alignment to homology model has low confidence at 3' boundary
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+#     alert     causes   short                              per    num   num  long       
+#idx  code      failure  description                       type  cases  seqs  description
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------
+1     mutstart  yes      MUTATION_AT_START              feature      3     3  expected start codon could not be identified
+2     unexleng  yes      UNEXPECTED_LENGTH              feature      8     4  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+3     cdsstopn  yes      CDS_HAS_STOP_CODON             feature      4     4  in-frame stop codon exists 5' of stop position predicted by homology to reference
+4     fsthicnf  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature     12    12  high confidence potential frameshift in CDS
+5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature     20    10  mat_peptide may not be translated because its parent CDS has a problem
+6     indf3gap  yes      INDEFINITE_ANNOTATION_END      feature      4     2  alignment to homology model is a gap at 3' boundary
+7     indf3loc  yes      INDEFINITE_ANNOTATION_END      feature      4     4  alignment to homology model has low confidence at 3' boundary
+#---  --------  -------  -----------------------------  -------  -----  ----  -----------
