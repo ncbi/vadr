@@ -3188,8 +3188,6 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       $ftr2org_pos_A[0] = -1; # invalid
       my $ftr_len = 0;
       my $ftr_strand = undef;
-      my $ftr_is_5trunc = undef;
-      my $ftr_is_3trunc = undef;
       my $ftr_start  = undef; # predicted start for the feature
       my $ftr_stop   = undef; # predicted stop  for the feature
       my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
@@ -3203,6 +3201,30 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       # mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
       my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
       
+      # determine if this feature is 5' and/or 3' truncated
+      # we do this outside the main loop since the logic is a bit complex:
+      # - a feature is 5' truncated if:
+      #   (A) its 5'-most feature with results is not the 5'-most segment of the feature
+      #      (regardless of whether its 5'-most feature is truncated or not) 
+      #   OR
+      #   (B) its 5'-most feature is truncated
+      # - and vice versa for 3' truncation
+      #         
+      my $ftr_is_5trunc = undef;
+      my $ftr_is_3trunc = undef;
+      my $first_sgm_idx = get_5p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
+      my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
+      if($first_sgm_idx != -1) { 
+        $ftr_is_5trunc = 
+            (($first_sgm_idx != $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) || # (A) above
+             ($sgm_results_HAHR->{$seq_name}[$first_sgm_idx]{"5trunc"}))
+            ? 1 : 0;
+        $ftr_is_3trunc = (($final_sgm_idx != $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}) || # (A) above
+                          ($sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"})) 
+            ? 1 : 0;
+      }
+
+      # main loop over segments
       for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
         if((defined $sgm_results_HAHR->{$seq_name}) && 
            (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
@@ -3211,14 +3233,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           my ($start, $stop, $strand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
           
           # only update start and 5trunc value if this is the first segment annotated
-          if(! defined $ftr_start) { # first feature
-            $ftr_start = $start;
-            $ftr_is_5trunc = $sgm_results_HR->{"5trunc"};
-          }
-          # always update $ftr_stop and $ftr_is_3trunc, 
-          # values final annotated segment will survive past this for $sgm_idx loop
-          $ftr_stop = $stop;
-          $ftr_is_3trunc = $sgm_results_HR->{"3trunc"};
+          if(! defined $ftr_start) { $ftr_start = $start; }
+          $ftr_stop = $stop; # always update $ftr_stop
           
           # set feature strand if this is the first segment annotated
           # else for cds/mp validate it hasn't changed and fail if it has
