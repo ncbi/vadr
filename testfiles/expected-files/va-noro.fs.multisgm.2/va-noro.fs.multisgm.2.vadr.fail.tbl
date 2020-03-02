@@ -1,0 +1,79 @@
+>Feature NC_001959.2-manually-added-frameshifts-1/1-50
+5	>50	gene
+			gene	ORF1
+5	>50	misc_feature
+			note	similar to nonstructural polyprotein
+5	>50	misc_feature
+			note	similar to p48
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 5..17 (13 nt, avgpp: 0.844) on + strand are inconsistent with dominant frame (+2); inserts:16-17; deletes:none;]
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:50 blastx:39, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [14 > 5 (strand:+ CM:5 blastx:19)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+>Feature NC_001959.2-manually-added-frameshifts-1/30-200
+<1	>171	gene
+			gene	ORF1
+<1	>171	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>171	misc_feature
+			note	similar to p48
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 1..36 (36 nt, avgpp: 0.944) on + strand are inconsistent with dominant frame (+2); inserts:36; deletes:none;]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [47 > 5 (strand:+ CM:1 blastx:48)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+>Feature NC_001959.2-manually-added-frameshifts-1/5380-6000
+<1	>621	gene
+			gene	ORF2
+<1	427	misc_feature
+458	>621
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (VP1) potential frameshift in CDS [nucleotide alignment of positions 1..15 (15 nt, avgpp: 0.737) on + strand are inconsistent with dominant frame (+2); inserts:9,15; deletes:none;]
+ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [17 > 5 (strand:+ CM:1 blastx:1 + 17)]
+>Feature NC_001959.2-manually-added-frameshifts-1/7000-7500
+<1	>501	gene
+			gene	ORF3
+<1	9	misc_feature
+304	>501
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (VP2) potential frameshift in CDS [nucleotide alignment of positions 453..501 (49 nt, avgpp: 0.966) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:452(1);]
+ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [48 > 5 (strand:+ CM:501 blastx:501 - 48, no valid stop codon in CM prediction)]
+>Feature NC_001959.2-manually-added-frameshifts-1/7200-7655
+<1	390	gene
+			gene	ORF3
+<104	390	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (VP2) potential frameshift in CDS [nucleotide alignment of positions 253..390 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:252(1);]
+ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137 > 8 (strand:+ CM:390 blastx:253, valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment extends past nucleotide-based alignment at 5' end [strand:+ CM:104 blastx:101]
+>Feature NC_001959.2-manually-added-frameshifts-2/30-80
+<1	>51	gene
+			gene	ORF1
+<1	>51	misc_feature
+			note	similar to nonstructural polyprotein
+<1	>51	misc_feature
+			note	similar to p48
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 24..37 (14 nt, avgpp: 0.775) on + strand are inconsistent with dominant frame (+2); inserts:24-25; deletes:37(2);]
+ERROR: INDEFINITE_ANNOTATION: (nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+>Feature NC_001959.2-manually-added-frameshifts-2/1000-1500
+<1	199	mat_peptide
+			product	p48
+<1	>501	gene
+			gene	ORF1
+<1	>501	misc_feature
+			note	similar to nonstructural polyprotein
+200	>501	mat_peptide
+			product	NTPase
+
+Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT: (nonstructural polyprotein) potential frameshift in CDS [nucleotide alignment of positions 1..13 (13 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+3); inserts:12-13; deletes:none;]
