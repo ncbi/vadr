@@ -179,7 +179,7 @@ opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,
 opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",     "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstnttol",   "integer",   5,                    $g,   undef,   undef,      "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminnt",   "integer",    6,                    $g,   undef,   undef,      "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--fsthighthr", "real",      0.8,                  $g,   undef,   undef,      "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstlowthr",  "real",      0.3,                  $g,   undef,   undef,      "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 
@@ -262,7 +262,7 @@ my $options_okay =
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'fstnttol=s'    => \$GetOptions_H{"--fstnttol"},
+                'fstminnt=s'    => \$GetOptions_H{"--fstminnt"},
                 'fsthighthr=s'  => \$GetOptions_H{"--fsthighthr"},
                 'fstlowthr=s'   => \$GetOptions_H{"--fstlowthr"},
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
@@ -2464,9 +2464,10 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
+  my $do_output_frameshift_stk = opt_Get("--keep", $opt_HHR);
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
-  my $fst_nt_tol       = opt_Get("--fstnttol",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
+  my $fst_min_nt       = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
   my $fst_high_ppthr   = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
   my $fst_low_ppthr    = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $small_value = 0.000001; # for checking if PPs are below threshold
@@ -2762,7 +2763,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
-    # for each CDS: determine frame, and report cdsfshft alerts
+    # for each CDS: determine frame, and report fsthicnf and fstlocnf alerts
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
       my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
@@ -2776,9 +2777,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       my $nsgm = 0; # number of segments for this CDS
       my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
       my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
-      my $rf_diff = 0;
-      my $ua_diff = 0;
-      my $F_0 = undef;
+      my $rf_diff = 0;  # number of rf positions seen since first rf position aligned to a nt for current CDS
+      my $ua_diff = 0;  # number of nt seen since first nt for current CDS
+      my $F_0 = undef;  # frame of initial nongap RF position for current CDS
       if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
         my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
         my @cds_alt_str_A = ();
@@ -2795,7 +2796,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
             if(! defined $ftr_start_rfpos) { $ftr_start_rfpos = $sgm_start_rfpos; }
             $ftr_stop_rfpos  = $sgm_stop_rfpos;
-            my $sgm_strand      = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            my $sgm_strand   = $sgm_info_AHR->[$sgm_idx]{"strand"};
             my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
             my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
             my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
@@ -2806,7 +2807,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             $ftr_sstop = $sstop;
             $ftr_mstop = $mstop;
             if(! defined $F_0) { $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; } # frame of initial nongap RF position for this CDS 
-
 
             # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
@@ -2980,7 +2980,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                   $span_stop = ($ftr_strand eq "+") ? $cur_start - 1 : $cur_start + 1;
                 }
                 $span_len = abs($span_stop - $span_start) + 1;
-                if($span_len > $fst_nt_tol) { 
+                if($span_len >= $fst_min_nt) { 
                   # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
                   # determine average posterior probability of non-dominant frame subseq
                   if(! defined $full_ppstr) { 
@@ -3066,30 +3066,32 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
             # printf("alen: %d\n", $cds_sgm_msa->alen());
             $cds_sgm_msa->addGR("CS", 0, $gr_frame_str);
             
-            # output alignment
-            my $cds_and_sgm_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . "." . ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
-            my $stk_file_name   = $out_root . "." . $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
-            # add comment to stockholm file
-            my $comment = "Alignment of CDS " . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
-            $comment .= " segment " . vdr_FeatureRelativeSegmentIndex($ftr_info_AHR, $ftr_idx, $sgm_idx);
-            $comment .= " of " . vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
-            $comment .= " for sequence " . $cds_sgm_msa->get_sqname(0); 
-            $comment .= " to model $mdl_name with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
-            $cds_sgm_msa->addGF("CC", $comment);
-            $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
-            $cds_sgm_msa->addGF("CC", $comment);
-            $comment  = "Changes from the dominant codon_start value indicate possibly frameshifted regions.";
-            $cds_sgm_msa->addGF("CC", $comment);
-            for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
-              $cds_sgm_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+            # output alignment, if nec
+            if($do_output_frameshift_stk) { 
+              my $cds_and_sgm_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . "." . ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
+              my $stk_file_name   = $out_root . "." . $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+              # add comment to stockholm file
+              my $comment = "Alignment of CDS " . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
+              $comment .= " segment " . vdr_FeatureRelativeSegmentIndex($ftr_info_AHR, $ftr_idx, $sgm_idx);
+              $comment .= " of " . vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+              $comment .= " for sequence " . $cds_sgm_msa->get_sqname(0); 
+              $comment .= " to model $mdl_name with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
+              $cds_sgm_msa->addGF("CC", $comment);
+              $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
+              $cds_sgm_msa->addGF("CC", $comment);
+              $comment  = "Changes from the dominant codon_start value indicate possibly frameshifted regions.";
+              $cds_sgm_msa->addGF("CC", $comment);
+              for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
+                $cds_sgm_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+              }
+              # output to potentially already existent alignment file
+              $cds_sgm_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
+              my $stk_file_key = $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+              if(! defined $ofile_info_HHR->{"fullpath"}{$stk_file_key}) { 
+                ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $stk_file_key, $stk_file_name, 1, 1, "Stockholm file for >= 1 possible frameshifts for $cds_and_sgm_idx for model $mdl_name");
+              }
+              undef $cds_sgm_msa;
             }
-            # output to potentially already existent alignment file
-            $cds_sgm_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
-            my $stk_file_key = $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
-            if(! defined $ofile_info_HHR->{"fullpath"}{$stk_file_key}) { 
-              ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $stk_file_key, $stk_file_name, 1, 1, "Stockholm file for >= 1 possible frameshifts for $cds_and_sgm_idx for model $mdl_name");
-            }
-            undef $cds_sgm_msa;
           }
         }
       } # end of 'if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx))'
