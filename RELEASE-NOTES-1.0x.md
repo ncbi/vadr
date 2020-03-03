@@ -1,5 +1,9 @@
 # VADR 1.0x release notes 
 
+### VADR 1.0.4 release (March 2020)
+* Bug fix release: fixes installation test
+  (do-install-tests-{local,parallel}.sh), which failed in 1.0.3.
+
 ### VADR 1.0.3 release (March 2020)
 * Minor update: Adds frameshift detection capability with associated
   fsthicnf and fstlowcnf alerts, as non-fatal alerts.
