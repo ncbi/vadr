@@ -1,6 +1,7 @@
 #  <a name="top"></a> VADR installation instructions
 
 * [Installation using `vadr-install.sh`](#install.sh)
+  * [Installing Inline and LWP if installation fails](#inline)
 * [Setting environment variables](#environment)
 * [Verifying successful installation](#tests)
 * [Further information](#further)
@@ -55,14 +56,20 @@ instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
 ---
-### If installation fails because the `Inline` perl module is not installed...<a name="inline"></a>
+### If installation fails because the `Inline` or `LWP` perl modules are not installed...<a name="inline"></a>
 
-The perl `Inline` module must be installed prior to installation. You 
-can install `Inline` using `cpan` with two simple commands:
+The perl `Inline` and `LWP` modules must be installed prior to installation. You 
+can install `Inline` using `cpan` with two commands:
 
 `cpan install Inline`
 
 `cpan install Inline::C`
+
+Similarly, you can install `LWP` with:
+
+`cpan install LWP`
+
+`cpan install LWP::Simple`
 
 However, for Mac/OSX these commands may not work if you have
 not installed the "Command line tools for Xcode" or "XCode" packages.
@@ -222,12 +229,22 @@ and
 $VADRSCRIPTSDIR/testfiles/do-install-tests-parallel.sh
 ```
 
-These scripts can take up to several minutes to run. Please be patient.
+These scripts can take up to several minutes to run. 
 If something goes wrong, the `local` script will exit quickly. If the 
 compute farm is busy, the `parallel` script make take longer as the
 relevant jobs wait to run.
 
-Below is example output for `do-install-tests-local.sh`:
+If one or both of the scripts fail immediately with a warning like:
+
+`Can't locate LWP/Simple.pm in @INC (you may need to install the
+LWP::Simple module)`
+
+Or something similar but with `Inline` instead of `LWP`, then you will
+need to install the perl `LWP` and/or `Inline` modules as described
+[here](#inline)
+
+Below is an example of the expected output for
+`do-install-tests-local.sh`:
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]

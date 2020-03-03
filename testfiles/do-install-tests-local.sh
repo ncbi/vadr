@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # noro r10
 $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/noro.r10.local.testin n10-local
 
