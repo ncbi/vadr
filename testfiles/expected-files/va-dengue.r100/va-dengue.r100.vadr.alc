@@ -1,29 +1,17 @@
 #     alert     causes   short                               per    num   num  long       
 #idx  code      failure  description                        type  cases  seqs  description
 #---  --------  -------  -----------------------------  --------  -----  ----  -----------
-1     lowscore  no       LOW_SCORE                      sequence      2     2  score to homology model below low threshold
-2     biasdseq  no       BIASED_SEQUENCE                sequence      1     1  high fraction of score attributed to biased sequence composition
-3     fsthicnf  no       POSSIBLE_FRAMESHIFT_HIGH_CONF   feature     25    17  high confidence potential frameshift in CDS
-4     fstlocnf  no       POSSIBLE_FRAMESHIFT_LOW_CONF    feature     71    11  low confidence potential frameshift in CDS
+1     fsthicnf  no       POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      2     2  high confidence potential frameshift in CDS
+2     fstlocnf  no       POSSIBLE_FRAMESHIFT_LOW_CONF    feature      9     1  low confidence potential frameshift in CDS
 #---  --------  -------  -----------------------------  --------  -----  ----  -----------
-5     noannotn  yes      NO_ANNOTATION                  sequence     17    17  no significant similarity detected
-6     revcompl  yes      REVCOMPLEM                     sequence      6     6  sequence appears to be reverse complemented
-7     lowcovrg  yes      LOW_COVERAGE                   sequence      9     9  low sequence fraction with significant similarity to homology model
-8     discontn  yes      DISCONTINUOUS_SIMILARITY       sequence      1     1  not all hits are in the same order in the sequence and the homology model
-9     indfstrn  yes      INDEFINITE_STRAND              sequence      1     1  significant similarity detected on both strands
-10    lowsim5s  yes      LOW_SIMILARITY_START           sequence      1     1  significant similarity not detected at 5' end of the sequence
-11    mutstart  yes      MUTATION_AT_START               feature      3     3  expected start codon could not be identified
-12    mutendcd  yes      MUTATION_AT_END                 feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
-13    unexleng  yes      UNEXPECTED_LENGTH               feature     21    11  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
-14    cdsstopn  yes      CDS_HAS_STOP_CODON              feature      4     4  in-frame stop codon exists 5' of stop position predicted by homology to reference
-15    cdsstopp  yes      CDS_HAS_STOP_CODON              feature      7     7  stop codon in protein-based alignment
-16    peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM     feature    212    34  mat_peptide may not be translated because its parent CDS has a problem
-17    indf5gap  yes      INDEFINITE_ANNOTATION_START     feature      5     4  alignment to homology model is a gap at 5' boundary
-18    indf5loc  yes      INDEFINITE_ANNOTATION_START     feature     30    11  alignment to homology model has low confidence at 5' boundary
-19    indf5pst  yes      INDEFINITE_ANNOTATION_START     feature     12    12  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
-20    indf3gap  yes      INDEFINITE_ANNOTATION_END       feature      6     4  alignment to homology model is a gap at 3' boundary
-21    indf3loc  yes      INDEFINITE_ANNOTATION_END       feature     26     7  alignment to homology model has low confidence at 3' boundary
-22    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature     20    20  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
-23    lowsim5f  yes      LOW_FEATURE_SIMILARITY_START    feature      4     2  region within annotated feature at 5' end of sequence lacks significant similarity
-24    lowsim3f  yes      LOW_FEATURE_SIMILARITY_END      feature     13     4  region within annotated feature at 3' end of sequence lacks significant similarity
+3     noannotn  yes      NO_ANNOTATION                  sequence      1     1  no significant similarity detected
+4     lowcovrg  yes      LOW_COVERAGE                   sequence      1     1  low sequence fraction with significant similarity to homology model
+5     unexleng  yes      UNEXPECTED_LENGTH               feature      4     2  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+6     cdsstopn  yes      CDS_HAS_STOP_CODON              feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+7     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM     feature     38     3  mat_peptide may not be translated because its parent CDS has a problem
+8     indf5gap  yes      INDEFINITE_ANNOTATION_START     feature      2     1  alignment to homology model is a gap at 5' boundary
+9     indf5loc  yes      INDEFINITE_ANNOTATION_START     feature      3     1  alignment to homology model has low confidence at 5' boundary
+10    indf3gap  yes      INDEFINITE_ANNOTATION_END       feature      2     1  alignment to homology model is a gap at 3' boundary
+11    indf3loc  yes      INDEFINITE_ANNOTATION_END       feature      3     1  alignment to homology model has low confidence at 3' boundary
+12    indf3pst  yes      INDEFINITE_ANNOTATION_END       feature      3     3  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
 #---  --------  -------  -----------------------------  --------  -----  ----  -----------
