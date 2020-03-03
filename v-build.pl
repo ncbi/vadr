@@ -193,7 +193,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "1.0.3";
+my $version       = "1.0.4";
 my $releasedate   = "March 2020";
 my $pkgname       = "VADR";
 
