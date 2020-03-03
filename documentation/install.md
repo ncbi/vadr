@@ -241,7 +241,7 @@ LWP::Simple module)`
 
 Or something similar but with `Inline` instead of `LWP`, then you will
 need to install the perl `LWP` and/or `Inline` modules as described
-[here](#inline)
+[here.](#inline)
 
 Below is an example of the expected output for
 `do-install-tests-local.sh`:
