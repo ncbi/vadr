@@ -234,7 +234,12 @@ ofile_OutputString($log_FH, 1, sprintf("#\n"));
 
 $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
-exit 0;
+if($overall_pass) { 
+  exit 0;
+}
+else { 
+  exit 1;
+}
 
 #################################################################
 # Subroutine:  parse_test_file()
