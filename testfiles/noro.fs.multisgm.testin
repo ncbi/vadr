@@ -12,8 +12,8 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl  --alt_fail fsthicnf --fshighthr 0.8 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -b $VADRSCRIPTSDIR/testfiles/models/blast2 $VADRSCRIPTSDIR/testfiles/noro.fs.1.fa va-noro.fs.multisgm.1 > va-noro.fs.multisgm.1.out
-desc: annotate-noro-fs.1
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -b $VADRSCRIPTSDIR/testfiles/models/blast2 $VADRSCRIPTSDIR/testfiles/noro.fs.1.fa va-noro.fs.multisgm.1 > va-noro.fs.multisgm.1.out
+desc: annotate-noro-fs-multisgm.1
 out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.pass.tbl 
 out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.fail.tbl
 out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sqa
@@ -36,8 +36,8 @@ rmdir: va-noro.fs.multisgm.1
 ## 
 ## partial sequences extracted from noro.fs.1.fa
 ##
-command: perl $VADRSCRIPTSDIR/v-annotate.pl  --alt_fail fsthicnf --fshighthr 0.8 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -b $VADRSCRIPTSDIR/testfiles/models/blast2 $VADRSCRIPTSDIR/testfiles/noro.fs.2.fa va-noro.fs.multisgm.2 > va-noro.fs.multisgm.2.out
-desc: annotate-noro-fs.2
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -b $VADRSCRIPTSDIR/testfiles/models/blast2 $VADRSCRIPTSDIR/testfiles/noro.fs.2.fa va-noro.fs.multisgm.2 > va-noro.fs.multisgm.2.out
+desc: annotate-noro-fs-multisgm.2
 out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.pass.tbl 
 out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.fail.tbl
 out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sqa
