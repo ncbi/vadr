@@ -21,9 +21,9 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.0.2"
+VERSION="1.0.3"
 # bio-easel
-BEVERSION="Bio-Easel-0.11"
+BEVERSION="Bio-Easel-0.12"
 # blast+
 BVERSION="2.9.0"
 # infernal
@@ -31,7 +31,7 @@ IVERSION="1.1.3"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.0-1"
+MVERSION="1.0.2-3"
 
 # set defaults
 INPUTSYSTEM="?"
