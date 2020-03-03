@@ -39,18 +39,37 @@ sh ./vadr-install.sh macosx
 The `linux` or `macosx` argument controls (only) the type of infernal
 and blast executable files that will be installed.
 
-The `vadr-install.sh` command will create several directories in the current directory.
-It will download and install VADR and the required 
+The `vadr-install.sh` command will create several directories in the
+current directory.  It will download and install VADR and the required
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
-binary executables of [Infernal](http://eddylab.org/infernal/) and 
-the NCBI BLAST package (for either Linux or Mac/OSX).
+binary executables of [Infernal](http://eddylab.org/infernal/) and the
+NCBI BLAST package (for either Linux or Mac/OSX).
+
+The installation requires that you have the perl Inline module
+installed on your system. If not, the installation script will
+fail. If this happens, read [this](#inline).
 
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
 ---
+### If installation fails because the `Inline` perl module is not installed...<a name="inline"></a>
+
+The perl `Inline` module must be installed prior to installation. You 
+can install `Inline` using `cpan` with two simple commands:
+
+`cpan install Inline`
+
+`cpan install Inline::C`
+
+However, for Mac/OSX these commands may not work if you have
+not installed the "Command line tools for Xcode" or "XCode" packages.
+You can download Xcode from the Mac App Store for free.
+
+---
+
 ## Setting VADR environment variables <a name="environment"></a>
 
 As mentioned above, when you run `vadr-install.sh`, instructions will be
@@ -81,9 +100,9 @@ The final step is to update your environment variables.
 https://github.com/nawrockie/vadr/blob/master/documentation/install.md
 for more information.)
 
-If you are using the bash shell, add the following
-lines to the end of your '.bashrc' file in your home
-directory:
+If you are using the bash or zsh shell (zsh is default in MacOS/X as
+of v10.15 (Catalina)), add the following lines to the end of your 
+'.bashrc' or '.zshrc' file in your home directory:
 
 export VADRINSTALLDIR=<full path to directory in which you ran vadr-install.sh>
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
@@ -96,10 +115,14 @@ export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
-After adding the export lines to your .bashrc file, source that file
+After adding the export lines to your .bashrc or .zshrc file, source that file
 to update your current environment with the command:
 
 source ~/.bashrc
+
+OR
+
+source ~/.zshrc
 
 ---
 If you are using the C shell, add the following
@@ -152,19 +175,21 @@ source ~/.cshrc
 
 ### If you get an error about `PERL5LIB` being undefined...
 
-Change the PERL5LIB line to add to:
+If you use bash or zsh, change the PERL5LIB line in your `~/.bashrc` or
+`~/.zshrc` file to:
 
 ```
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
 ````
 
-for `.bashrc`, *or*
+or if you use C shell, change the PERL5LIB line in your `~/.cshrc`
+file to:
 
 ```
 setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch"
 ```
 
-for `.cshrc`. And then execute `source ~/.bashrc` or `source ~/.cshrc` again.
+And then execute `source ~/.bashrc`, `source ~/.zshrc`, or `source ~/.cshrc` again.
 
 ---
 ## Verifying successful installation with test runs<a name="tests"></a>
