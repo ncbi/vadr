@@ -525,8 +525,8 @@ $blastdb_dir =~ s/\/$//; # remove trailing '/'
 if($do_blast) { 
   if(! -d $blastdb_dir) { 
     ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
-                       opt_IsUsed("-b", \%opt_HH) ? "" : "default", 
-                       opt_IsUsed("-b", \%opt_HH) ? "specified with -b" : ""), 1, $FH_HR);
+                       opt_IsUsed("-b", \%opt_HH) ? "" : " default", 
+                       opt_IsUsed("-b", \%opt_HH) ? " specified with -b" : ""), 1, $FH_HR);
   }
 }
 # we check for existence of blast DB files after we parse the model info file
