@@ -1,0 +1,30 @@
+Multi-segment CDS tests for frameshift code, positive strand.
+
+<[(toy-model-20200219)]> esl-seqstat -a entoy100a-fs1.fa
+ok, pass = ENTOY100A                      100 reference sequence, no frameshifts
+ok, fs   = ENTOY100A-fs1                  101 single segment 1nt insertion that breaks frame, not fixed (CDS1, RFPOS13+1)
+ok, fs   = ENTOY100A-fs2                  105 single segment 5nt insertion that breaks frame, not fixed (CDS1, RFPOS13+5)
+ok, fs   = ENTOY100A-fs3                  103 single segment 1nt insertion that breaks frame, fixed by 2nt insertion (CDS1, RFPOS13+1,21+2)
+ok, fs   = ENTOY100A-fs4                  102 single segment 5nt insertion that breaks frame, fixed by 1nt insertion (CDS1, RFPOS13+5,21+1)
+ok, fs   = ENTOY100A-fs5                  100 single segment 1nt insertion that breaks frame, fixed by 1nt deletion  (CDS1, RFPOS13+1,21-)
+ok, fs   = ENTOY100A-fs6                  103 single segment 5nt insertion that breaks frame, fixed by 1nt deletion  (CDS1, RFPOS13+5,21-,22-)
+ok, fs   = ENTOY100A-fs7                   99 single segment 1nt deletion that breaks frame, not fixed (CDS1, RFPOS13-)
+ok, fs   = ENTOY100A-fs8                   98 single segment 2nt deletion that breaks frame, not fixed (CDS1, RFPOS13-,14-)
+ok, fs   = ENTOY100A-fs9                   97 single segment 1nt deletion that breaks frame, fixed by 2nt deletion (CDS1, RFPOS13-,21-,22-)
+ok, fs   = ENTOY100A-fs10                  97 single segment 2nt deletion that breaks frame, fixed by 1nt deletion (CDS1, RFPOS13-,14-,21-)
+ok, fs   = ENTOY100A-fs11                 100 single segment 1nt deletion that breaks frame, fixed by 1nt insertion (CDS1, RFPOS13-,21+1)
+ok, fs   = ENTOY100A-fs12                 100 single segment 2nt deletion that breaks frame, fixed by 2nt insertion (CDS1, RFPOS13-,14-,21+2)
+
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 13
+Total # residues:    1309
+Smallest:            97
+Largest:             106
+Average length:      100.7
+
+From .minfo:
+CDS 1:
+FEATURE ENTOY100A type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE ENTOY100A type:"mat_peptide" coords:"11..22:+" parent_idx_str:"1" product:"protein one mp1"
+FEATURE ENTOY100A type:"mat_peptide" coords:"23..28:+" parent_idx_str:"1" product:"protein one mp2"

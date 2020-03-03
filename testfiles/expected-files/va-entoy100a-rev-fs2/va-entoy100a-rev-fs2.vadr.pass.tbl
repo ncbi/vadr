@@ -1,0 +1,116 @@
+>Feature ENTOY100A-REV
+3	17	CDS
+			product	protein four
+34	22	CDS
+16	6
+			product	protein three
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+34	26	mat_peptide
+			product	protein three mp1
+69	54	CDS
+54	37
+35	28
+			product	protein two
+93	68	gene
+			gene	one
+90	70	CDS
+			product	protein one
+78	73	mat_peptide
+			product	protein one mp2
+90	79	mat_peptide
+			product	protein one mp1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+>Feature ENTOY100A-REV-2-fs8
+3	17	CDS
+			product	protein four
+34	22	CDS
+16	6
+			product	protein three
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+34	26	mat_peptide
+			product	protein three mp1
+69	54	CDS
+54	37
+35	28
+			product	protein two
+93	68	gene
+			gene	one
+90	70	CDS
+			product	protein one
+78	73	mat_peptide
+			product	protein one mp2
+90	79	mat_peptide
+			product	protein one mp1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+>Feature ENTOY100A-REV-2-fs10
+3	17	CDS
+			product	protein four
+37	22	CDS
+16	6
+			product	protein three
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+37	26	mat_peptide
+			product	protein three mp1
+72	57	CDS
+57	40
+38	28
+			product	protein two
+96	71	gene
+			gene	one
+93	73	CDS
+			product	protein one
+81	76	mat_peptide
+			product	protein one mp2
+93	82	mat_peptide
+			product	protein one mp1
+99	82	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+94	85	stem_loop
+			note	stem-loop 1
+>Feature ENTOY100A-REV-2-fs20
+3	20	CDS
+			product	protein four
+37	25	CDS
+19	6
+			product	protein three
+28	25	mat_peptide
+19	9
+			product	protein three mp2
+37	29	mat_peptide
+			product	protein three mp1
+72	57	CDS
+57	40
+38	31
+			product	protein two
+96	71	gene
+			gene	one
+93	73	CDS
+			product	protein one
+81	76	mat_peptide
+			product	protein one mp2
+93	82	mat_peptide
+			product	protein one mp1
+99	82	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+94	85	stem_loop
+			note	stem-loop 1

@@ -1,0 +1,41 @@
+Multi-segment CDS tests for frameshift code, positive strand.
+
+<[(toy-model-20200219)]> esl-seqstat -a entoy100a-fs2.fa
+ok, pass      = ENTOY100A                      100 reference sequence, no frameshifts
+ok, fs        = ENTOY100A-2-fs1                101 multi-segment, segment 1, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS38+1)
+ok, fs        = ENTOY100A-2-fs2                101 multi-segment, segment 2, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS52+1)
+ok, fs        = ENTOY100A-2-fs3                101 multi-segment, segment 3, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS69+1)
+ok, fs        = ENTOY100A-2-fs4                 99 multi-segment, segment 1, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS38-)
+ok, fs        = ENTOY100A-2-fs5                 99 multi-segment, segment 2, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS52-)
+ok, fs        = ENTOY100A-2-fs6                 99 multi-segment, segment 3, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS69-)
+ok, fs        = ENTOY100A-2-fs7                 99 multi-segment, segment 2, 1nt deletion  that breaks frame at end of segment, not fixed (CDS2, RFPOS64-)
+ok, misses fs = ENTOY100A-2-fs8                100 multi-segment, segment 1, 1nt insertion that breaks frame, fixed by 1nt deletion same segment (CDS2, RFPOS38+1,45-)
+ok, fs        = ENTOY100A-2-fs9                103 multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion same segment (CDS2, RFPOS52+1,60+2)
+ok, misses fs = ENTOY100A-2-fs10               103 multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 2nt insertion same segment (CDS2, RFPOS69+1,70+2)
+ok, fs        = ENTOY100A-2-fs11               100 multi-segment, segment 1, 1nt insertion that breaks frame, fixed by 1nt deletion different segment (CDS2, RFPOS38+1,58-)
+ok, fs        = ENTOY100A-2-fs12               103 multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion different segment (CDS2, RFPOS52+1,70+2)
+ok, fs        = ENTOY100A-2-fs13                99 multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, not fixed (CDS2, RFPOS47-)
+ok, fs        = ENTOY100A-2-fs14                98 multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, fixed by 1nt deletion (CDS2, RFPOS47-,55-)
+ok, fs        = ENTOY100A-2-fs15               101 multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, not fixed (CDS2, RFPOS47+1)
+ok, fs        = ENTOY100A-2-fs16               103 multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, fixed by 1nt insertion (CDS2, RFPOS47+1,55+2)
+ok, fs        = ENTOY100A-2-fs17               100 multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 1nt deletion different segment (CDS3, RFPOS73+1,86-)
+ok, fs        = ENTOY100A-2-fs18               106 multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 5nt insertion different segment (CDS3, RFPOS73+1,86+5)
+ok, fs        = ENTOY100A-2-fs19                97 multi-segment, segment 3, 3nt deletion, partly in an inter-segment region, that does break frame (CDS3, RFPOS78-,79-,80-)
+ok, pass      = ENTOY100A-2-fs20               103 multi-segment, segment 3, 3nt insertion that does not break frame (CDS3, RPOS86+3)
+ok, but !expc = ENTOY100A-2-fs21                97 multi-segment, segment 3, 3nt deletion that spans segments that does not break frame (CDS3, RFPOS79-,87-,88-)
+ok, but !expc = ENTOY100A-2-fs22               103 multi-segment, segment 3, 3nt insertions that spans segments that does not break frame (CDS3, RFPOS79+2,86+1)
+ok, fs        = ENTOY100A-2-fs23               101 multi-segment, segment 3, two frameshifts, 1nt insertion fixed by 1nt deletion, then 1nt deletion that is not fixed (CDS3, RFPOS70-,73+1,86+1)
+ok, but !expc = ENTOY100A-2-fs24               100 multi-segment, segment 3, two frameshifts, 1nt insertion fixed by 1nt deletion, then 1nt deletion that is fixed by 1nt insertion (CDS3, RFPOS70-,73+1,86+1,90-)
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 25
+Total # residues:    2516
+Smallest:            97
+Largest:             106
+Average length:      100.6
+
+From .minfo:
+
+CDS2 FEATURE ENTOY100A type:"CDS" coords:"32..47:+,47..64:+,66..73:+" parent_idx_str:"GBNULL" gene:"two" product:"protein two"
+
+CDS3 FEATURE ENTOY100A type:"CDS" coords:"67..79:+,85..95:+" parent_idx_str:"GBNULL" gene:"three" product:"protein three"

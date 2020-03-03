@@ -1,0 +1,924 @@
+#        seq                              seq                   ftr          ftr                                  ftr  num  sgm    seq    seq    mdl    mdl    sgm                 5'     3'  5'   3' 
+#idx     name                             len  p/f   model      type         name                                 idx  sgm  idx   from     to   from     to    len  str  trc       pp     pp  gap  gap
+#------  -----------------------------  -----  ----  ---------  -----------  -----------------------------------  ---  ---  ---  -----  -----  -----  -----  -----  ---  -----  -----  -----  ---  ---
+1.1.1    gi|369726350|gb|JN832547.1|     1485  PASS  NC_002640  gene         POLY                                   3    1    1      1   1485    939   2423   1485    +  5'&3'      -      -  yes  yes
+1.2.1    gi|369726350|gb|JN832547.1|     1485  PASS  NC_002640  CDS          polyprotein                            4    1    1      1   1485    939   2423   1485    +  5'&3'      -      -  yes  yes
+1.3.1    gi|369726350|gb|JN832547.1|     1485  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1      1   1485    939   2423   1485    +  no     0.975  0.975  no   no 
+#
+2.1.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.1                            1    1    1      1     54     16     69     54    +  5'         -  0.975  yes  no 
+2.2.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.2                            2    1    1     64     78     79     93     15    +  no     0.975  0.975  no   no 
+2.3.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  gene         POLY                                   3    1    1     80  10258     95  10273  10179    +  no     0.975  0.975  no   no 
+2.4.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  CDS          polyprotein                            4    1    1     80  10258     95  10273  10179    +  no     0.975  0.975  no   no 
+2.5.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.3                            5    1    1     99    115    114    130     17    +  no     0.975  0.975  no   no 
+2.6.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  ncRNA        sfRNA1                                 6    1    1  10284  10699  10320  10735    416    +  no       0.8  0.975  no   no 
+2.7.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.4                            7    1    1  10288  10353  10324  10389     66    +  no     0.975  0.975  no   no 
+2.8.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.5                            8    1    1  10361  10422  10397  10458     62    +  no     0.975  0.975  no   no 
+2.9.1    gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.6                            9    1    1  10431  10513  10467  10549     83    +  no     0.975  0.975  no   no 
+2.10.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.7                           10    1    1  10515  10597  10551  10633     83    +  no     0.975  0.975  no   no 
+2.11.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.8                           11    1    1  10607  10620  10643  10656     14    +  no     0.975  0.975  no   no 
+2.12.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  stem_loop    stem_loop.9                           12    1    1  10621  10699  10657  10735     79    +  no     0.975  0.975  no   no 
+2.13.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1     80    421     95    436    342    +  no     0.975  0.975  no   no 
+2.14.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1     80    379     95    394    300    +  no     0.975  0.975  no   no 
+2.15.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    422    919    437    934    498    +  no     0.975  0.975  no   no 
+2.16.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    422    694    437    709    273    +  no     0.975  0.975  no   no 
+2.17.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    695    919    710    934    225    +  no     0.975  0.975  no   no 
+2.18.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    920   2404    935   2419   1485    +  no     0.975  0.975  no   no 
+2.19.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1   2405   3460   2420   3475   1056    +  no     0.975  0.975  no   no 
+2.20.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2A            20    1    1   3461   4114   3476   4129    654    +  no     0.975  0.975  no   no 
+2.21.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2B            21    1    1   4115   4504   4130   4519    390    +  no     0.975  0.975  no   no 
+2.22.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  nonstructural_protein_NS3             22    1    1   4505   6361   4520   6376   1857    +  no     0.975  0.975  no   no 
+2.23.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4A            23    1    1   6362   6742   6377   6757    381    +  no     0.975  0.975  no   no 
+2.24.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  protein_2K                            24    1    1   6743   6811   6758   6826     69    +  no     0.975  0.975  no   no 
+2.25.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4B            25    1    1   6812   7558   6827   7573    747    +  no     0.975  0.975  no   no 
+2.26.1   gi|829641824|gb|KM403600.1|    10699  PASS  NC_001477  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7559  10255   7574  10270   2697    +  no     0.975  0.975  no   no 
+#
+3.1.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.1                            1    1    1      1     53     17     69     53    +  5'         -  0.975  yes  no 
+3.2.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.2                            2    1    1     62     76     79     93     15    +  no     0.975  0.975  no   no 
+3.3.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  gene         POLY                                   3    1    1     78  10250     95  10267  10173    +  no     0.975  0.975  no   no 
+3.4.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  CDS          polyprotein                            4    1    1     78  10250     95  10267  10173    +  no     0.975  0.975  no   no 
+3.5.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.3                            5    1    1     97    113    114    130     17    +  no     0.975  0.975  no   no 
+3.6.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  ncRNA        sfRNA1                                 6    1    1  10262  10523  10290  10551    262    +  3'     0.975      -  no   yes
+3.7.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.4                            7    1    1  10266  10331  10294  10359     66    +  no     0.975  0.975  no   no 
+3.8.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.5                            8    1    1  10342  10404  10370  10432     63    +  no     0.975  0.975  no   no 
+3.9.1    gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.6                            9    1    1  10412  10523  10440  10551    112    +  3'     0.975      -  no   yes
+3.10.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  stem_loop    stem_loop.7                           10    1    1  10496  10523  10524  10551     28    +  3'     0.975      -  no   yes
+3.11.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1     78    419     95    436    342    +  no     0.975  0.975  no   no 
+3.12.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  capsid_protein_C                      14    1    1     78    377     95    394    300    +  no     0.975  0.975  no   no 
+3.13.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    420    917    437    934    498    +  no     0.975  0.975  no   no 
+3.14.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  protein_pr                            16    1    1    420    692    437    709    273    +  no     0.975  0.975  no   no 
+3.15.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    693    917    710    934    225    +  no     0.975  0.975  no   no 
+3.16.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  envelope_protein_E                    18    1    1    918   2396    935   2413   1479    +  no     0.975  0.975  no   no 
+3.17.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1   2397   3452   2414   3469   1056    +  no     0.975  0.975  no   no 
+3.18.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  nonstructural_protein_NS2A            20    1    1   3453   4106   3470   4123    654    +  no     0.975  0.975  no   no 
+3.19.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  nonstructural_protein_NS2B            21    1    1   4107   4496   4124   4513    390    +  no     0.975  0.975  no   no 
+3.20.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  nonstructural_protein_NS3             22    1    1   4497   6353   4514   6370   1857    +  no     0.975   0.05  no   no 
+3.21.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  nonstructural_protein_NS4A            23    1    1   6354   6734   6371   6751    381    +  no      0.05   0.05  no   no 
+3.22.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  protein_2K                            24    1    1   6735   6803   6752   6820     69    +  no      0.05   0.05  no   no 
+3.23.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  nonstructural_protein_NS4B            25    1    1   6804   7547   6821   7564    744    +  no      0.05  0.975  no   no 
+3.24.1   gi|568131591|gb|KF971711.1|    10523  FAIL  NC_001475  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7548  10247   7565  10264   2700    +  no     0.975  0.975  no   no 
+#
+4.1.1    gi|395394347|gb|JN903605.1|      303  PASS  NC_001477  gene         POLY                                   3    1    1      1    303    257    559    303    +  5'&3'      -      -  yes  yes
+4.2.1    gi|395394347|gb|JN903605.1|      303  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    303    257    559    303    +  5'&3'      -      -  yes  yes
+4.3.1    gi|395394347|gb|JN903605.1|      303  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    180    257    436    180    +  5'         -  0.975  yes  no 
+4.4.1    gi|395394347|gb|JN903605.1|      303  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1      1    138    257    394    138    +  5'         -  0.975  yes  no 
+4.5.1    gi|395394347|gb|JN903605.1|      303  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    181    303    437    559    123    +  3'     0.975      -  no   yes
+4.6.1    gi|395394347|gb|JN903605.1|      303  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    181    303    437    559    123    +  3'     0.975      -  no   yes
+#
+5.1.1    gi|1189490831|gb|KX056446.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+5.2.1    gi|1189490831|gb|KX056446.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+5.3.1    gi|1189490831|gb|KX056446.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+6.1.1    gi|746840837|gb|KM103097.1|      281  PASS  NC_001475  gene         POLY                                   3    1    1      1    281    143    423    281    +  5'&3'      -      -  yes  yes
+6.2.1    gi|746840837|gb|KM103097.1|      281  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    281    143    423    281    +  5'&3'      -      -  yes  yes
+6.3.1    gi|746840837|gb|KM103097.1|      281  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    281    143    423    281    +  5'&3'      -      -  yes  yes
+6.4.1    gi|746840837|gb|KM103097.1|      281  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1      1    252    143    394    252    +  5'         -  0.975  yes  no 
+#
+7.1.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.1                            1    1    1      1     47     23     69     47    +  5'         -  0.975  yes  no 
+7.2.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.2                            2    1    1     57     71     79     93     15    +  no     0.975  0.975  no   no 
+7.3.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  gene         POLY                                   3    1    1     73  10251     95  10273  10179    +  no     0.975  0.975  no   no 
+7.4.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  CDS          polyprotein                            4    1    1     73  10251     95  10273  10179    +  no     0.975  0.975  no   no 
+7.5.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.3                            5    1    1     92    108    114    130     17    +  no     0.975  0.975  no   no 
+7.6.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  ncRNA        sfRNA1                                 6    1    1  10297  10689  10320  10712    393    +  3'     0.975      -  no   yes
+7.7.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.4                            7    1    1  10301  10366  10324  10389     66    +  no     0.975  0.975  no   no 
+7.8.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.5                            8    1    1  10374  10435  10397  10458     62    +  no     0.975  0.975  no   no 
+7.9.1    gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.6                            9    1    1  10444  10526  10467  10549     83    +  no     0.975  0.975  no   no 
+7.10.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.7                           10    1    1  10528  10610  10551  10633     83    +  no     0.975  0.975  no   no 
+7.11.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.8                           11    1    1  10620  10633  10643  10656     14    +  no     0.975  0.975  no   no 
+7.12.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  stem_loop    stem_loop.9                           12    1    1  10634  10689  10657  10712     56    +  3'     0.975      -  no   yes
+7.13.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1     73    414     95    436    342    +  no     0.975  0.975  no   no 
+7.14.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1     73    372     95    394    300    +  no     0.975  0.975  no   no 
+7.15.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    415    912    437    934    498    +  no     0.975  0.975  no   no 
+7.16.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    415    687    437    709    273    +  no     0.975  0.975  no   no 
+7.17.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    688    912    710    934    225    +  no     0.975  0.975  no   no 
+7.18.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    913   2397    935   2419   1485    +  no     0.975  0.975  no   no 
+7.19.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1   2398   3453   2420   3475   1056    +  no     0.975  0.975  no   no 
+7.20.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2A            20    1    1   3454   4107   3476   4129    654    +  no     0.975  0.975  no   no 
+7.21.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2B            21    1    1   4108   4497   4130   4519    390    +  no     0.975  0.975  no   no 
+7.22.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  nonstructural_protein_NS3             22    1    1   4498   6354   4520   6376   1857    +  no     0.975  0.975  no   no 
+7.23.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4A            23    1    1   6355   6735   6377   6757    381    +  no     0.975  0.975  no   no 
+7.24.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  protein_2K                            24    1    1   6736   6804   6758   6826     69    +  no     0.975  0.975  no   no 
+7.25.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4B            25    1    1   6805   7551   6827   7573    747    +  no     0.975  0.975  no   no 
+7.26.1   gi|239840357|gb|GQ199850.1|    10689  PASS  NC_001477  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7552  10248   7574  10270   2697    +  no     0.975  0.975  no   no 
+#
+8.1.1    gi|52839933|gb|AY738790.1|       240  PASS  NC_001477  gene         POLY                                   3    1    1      1    240   2309   2548    240    +  5'&3'      -      -  yes  yes
+8.2.1    gi|52839933|gb|AY738790.1|       240  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    240   2309   2548    240    +  5'&3'      -      -  yes  yes
+8.3.1    gi|52839933|gb|AY738790.1|       240  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1    111   2309   2419    111    +  5'         -  0.975  yes  no 
+8.4.1    gi|52839933|gb|AY738790.1|       240  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1    112    240   2420   2548    129    +  3'     0.975      -  no   yes
+#
+9.1.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  stem_loop    stem_loop.1                            1    1    1      1     54     16     69     54    +  5'         -  0.975  yes  no 
+9.2.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  stem_loop    stem_loop.2                            2    1    1     64     78     79     93     15    +  no     0.975  0.975  no   no 
+9.3.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  gene         POLY                                   3    1    1     80   2823     95   2838   2744    +  3'     0.975      -  no   yes
+9.4.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  CDS          polyprotein                            4    1    1     80   2823     95   2838   2744    +  3'     0.975      -  no   yes
+9.5.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  stem_loop    stem_loop.3                            5    1    1     99    115    114    130     17    +  no     0.975  0.975  no   no 
+9.6.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1     80    421     95    436    342    +  no     0.975  0.975  no   no 
+9.7.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1     80    379     95    394    300    +  no     0.975  0.975  no   no 
+9.8.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    422    919    437    934    498    +  no     0.975  0.975  no   no 
+9.9.1    gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  protein_pr                            16    1    1    422    694    437    709    273    +  no     0.975  0.975  no   no 
+9.10.1   gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    695    919    710    934    225    +  no     0.975  0.975  no   no 
+9.11.1   gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1    920   2398    935   2413   1479    +  no     0.975  0.975  no   no 
+9.12.1   gi|301602329|gb|HM162761.1|     2823  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1   2399   2823   2414   2838    425    +  3'     0.975      -  no   yes
+#
+10.1.1   gi|910764350|gb|KP849876.1|     1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+10.2.1   gi|910764350|gb|KP849876.1|     1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+10.3.1   gi|910764350|gb|KP849876.1|     1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+11.1.1   gi|253559587|gb|FJ502869.1|      216  PASS  NC_001477  gene         POLY                                   3    1    1      1    216   2196   2411    216    +  5'&3'      -      -  yes  yes
+11.2.1   gi|253559587|gb|FJ502869.1|      216  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    216   2196   2411    216    +  5'&3'      -      -  yes  yes
+11.3.1   gi|253559587|gb|FJ502869.1|      216  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1    216   2196   2411    216    +  5'&3'      -      -  yes  yes
+#
+12.1.1   gi|937349394|gb|KR347420.1|     1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+12.2.1   gi|937349394|gb|KR347420.1|     1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+12.3.1   gi|937349394|gb|KR347420.1|     1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+13.1.1   gi|966913772|gb|KU291680.1|     1479  PASS  NC_001477  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+13.2.1   gi|966913772|gb|KU291680.1|     1479  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+13.3.1   gi|966913772|gb|KU291680.1|     1479  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  3'     0.975      -  no   yes
+#
+14.1.1   gi|763430786|gb|KJ806833.1|     1482  PASS  NC_001477  gene         POLY                                   3    1    1      1   1482    935   2416   1482    +  5'&3'      -      -  yes  yes
+14.2.1   gi|763430786|gb|KJ806833.1|     1482  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1482    935   2416   1482    +  5'&3'      -      -  yes  yes
+14.3.1   gi|763430786|gb|KJ806833.1|     1482  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1482    935   2416   1482    +  3'     0.975      -  no   yes
+#
+15.1.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.1                            1    1    1      1     37     33     69     37    +  5'         -  0.975  yes  no 
+15.2.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.2                            2    1    1     47     61     79     93     15    +  no     0.975  0.975  no   no 
+15.3.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  gene         POLY                                   3    1    1     63  10235     95  10267  10173    +  no     0.975  0.975  no   no 
+15.4.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  CDS          polyprotein                            4    1    1     63  10235     95  10267  10173    +  no     0.975  0.975  no   no 
+15.5.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.3                            5    1    1     82     98    114    130     17    +  no     0.975  0.975  no   no 
+15.6.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  ncRNA        sfRNA1                                 6    1    1  10258  10676  10290  10707    419    +  no     0.975  0.975  no   no 
+15.7.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.4                            7    1    1  10262  10327  10294  10359     66    +  no     0.975  0.975  no   no 
+15.8.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.5                            8    1    1  10338  10400  10370  10432     63    +  no     0.975  0.975  no   no 
+15.9.1   gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.6                            9    1    1  10409  10521  10440  10552    113    +  no     0.975  0.975  no   no 
+15.10.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.7                           10    1    1  10493  10574  10524  10605     82    +  no     0.975  0.975  no   no 
+15.11.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.8                           11    1    1  10584  10597  10615  10628     14    +  no     0.975  0.975  no   no 
+15.12.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  stem_loop    stem_loop.9                           12    1    1  10598  10676  10629  10707     79    +  no     0.975  0.975  no   no 
+15.13.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1     63    404     95    436    342    +  no     0.975  0.975  no   no 
+15.14.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1     63    362     95    394    300    +  no     0.975  0.975  no   no 
+15.15.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    405    902    437    934    498    +  no     0.975  0.975  no   no 
+15.16.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  protein_pr                            16    1    1    405    677    437    709    273    +  no     0.975  0.975  no   no 
+15.17.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    678    902    710    934    225    +  no     0.975  0.975  no   no 
+15.18.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1    903   2381    935   2413   1479    +  no     0.975  0.975  no   no 
+15.19.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1   2382   3437   2414   3469   1056    +  no     0.975  0.975  no   no 
+15.20.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  nonstructural_protein_NS2A            20    1    1   3438   4091   3470   4123    654    +  no     0.975  0.975  no   no 
+15.21.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  nonstructural_protein_NS2B            21    1    1   4092   4481   4124   4513    390    +  no     0.975  0.975  no   no 
+15.22.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  nonstructural_protein_NS3             22    1    1   4482   6338   4514   6370   1857    +  no     0.975  0.975  no   no 
+15.23.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  nonstructural_protein_NS4A            23    1    1   6339   6719   6371   6751    381    +  no     0.975  0.975  no   no 
+15.24.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  protein_2K                            24    1    1   6720   6788   6752   6820     69    +  no     0.975  0.975  no   no 
+15.25.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  nonstructural_protein_NS4B            25    1    1   6789   7532   6821   7564    744    +  no     0.975  0.975  no   no 
+15.26.1  gi|1043526526|gb|KX380842.1|   10676  PASS  NC_001475  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7533  10232   7565  10264   2700    +  no     0.975  0.975  no   no 
+#
+16.1.1   gi|81301737|gb|DQ265004.1|      1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+16.2.1   gi|81301737|gb|DQ265004.1|      1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+16.3.1   gi|81301737|gb|DQ265004.1|      1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+17.1.1   gi|1469338655|gb|MH110633.1|    1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+17.2.1   gi|1469338655|gb|MH110633.1|    1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+17.3.1   gi|1469338655|gb|MH110633.1|    1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+18.1.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.1                            1    1    1      1     14     56     69     14    +  5'         -  0.975  yes  no 
+18.2.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.2                            2    1    1     24     38     79     93     15    +  no     0.975  0.975  no   no 
+18.3.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  gene         POLY                                   3    1    1     40  10218     95  10273  10179    +  no     0.975  0.975  no   no 
+18.4.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  CDS          polyprotein                            4    1    1     40  10218     95  10273  10179    +  no     0.975  0.975  no   no 
+18.5.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.3                            5    1    1     59     75    114    130     17    +  no     0.975  0.975  no   no 
+18.6.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  ncRNA        sfRNA1                                 6    1    1  10265  10636  10320  10691    372    +  3'     0.975      -  no   yes
+18.7.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.4                            7    1    1  10269  10334  10324  10389     66    +  no     0.975  0.975  no   no 
+18.8.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.5                            8    1    1  10342  10403  10397  10458     62    +  no     0.975  0.975  no   no 
+18.9.1   gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.6                            9    1    1  10412  10494  10467  10549     83    +  no     0.975  0.975  no   no 
+18.10.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.7                           10    1    1  10496  10578  10551  10633     83    +  no     0.975  0.975  no   no 
+18.11.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.8                           11    1    1  10588  10601  10643  10656     14    +  no     0.975  0.975  no   no 
+18.12.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  stem_loop    stem_loop.9                           12    1    1  10602  10636  10657  10691     35    +  3'     0.975      -  no   yes
+18.13.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1     40    381     95    436    342    +  no     0.975  0.975  no   no 
+18.14.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1     40    339     95    394    300    +  no     0.975  0.975  no   no 
+18.15.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    382    879    437    934    498    +  no     0.975  0.975  no   no 
+18.16.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    382    654    437    709    273    +  no     0.975  0.975  no   no 
+18.17.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    655    879    710    934    225    +  no     0.975  0.975  no   no 
+18.18.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    880   2364    935   2419   1485    +  no     0.975  0.975  no   no 
+18.19.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1   2365   3420   2420   3475   1056    +  no     0.975  0.975  no   no 
+18.20.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2A            20    1    1   3421   4074   3476   4129    654    +  no     0.975  0.975  no   no 
+18.21.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2B            21    1    1   4075   4464   4130   4519    390    +  no     0.975  0.975  no   no 
+18.22.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  nonstructural_protein_NS3             22    1    1   4465   6321   4520   6376   1857    +  no     0.975  0.975  no   no 
+18.23.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4A            23    1    1   6322   6702   6377   6757    381    +  no     0.975  0.975  no   no 
+18.24.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  protein_2K                            24    1    1   6703   6771   6758   6826     69    +  no     0.975  0.975  no   no 
+18.25.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4B            25    1    1   6772   7518   6827   7573    747    +  no     0.975  0.975  no   no 
+18.26.1  gi|1042705622|gb|KX458013.1|   10636  PASS  NC_001477  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7519  10215   7574  10270   2697    +  no     0.975  0.975  no   no 
+#
+19.1.1   gi|60280450|gb|AY786404.1|      1983  PASS  NC_001474  gene         POLY                                   3    1    1      1   1983    439   2421   1983    +  5'&3'      -      -  yes  yes
+19.2.1   gi|60280450|gb|AY786404.1|      1983  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1983    439   2421   1983    +  5'&3'      -      -  yes  yes
+19.3.1   gi|60280450|gb|AY786404.1|      1983  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1      1    498    439    936    498    +  no     0.975  0.975  no   no 
+19.4.1   gi|60280450|gb|AY786404.1|      1983  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1      1    273    439    711    273    +  no     0.975  0.975  no   no 
+19.5.1   gi|60280450|gb|AY786404.1|      1983  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    274    498    712    936    225    +  no     0.975  0.975  no   no 
+19.6.1   gi|60280450|gb|AY786404.1|      1983  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    499   1983    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+20.1.1   gi|402750143|gb|JX051813.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+20.2.1   gi|402750143|gb|JX051813.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+20.3.1   gi|402750143|gb|JX051813.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+21.1.1   gi|998491302|gb|KR051903.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+21.2.1   gi|998491302|gb|KR051903.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+21.3.1   gi|998491302|gb|KR051903.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+22.1.1   gi|25992045|gb|AF495900.1|       318  PASS  NC_001475  gene         POLY                                   3    1    1      1    318    116    433    318    +  5'&3'      -      -  yes  yes
+22.2.1   gi|25992045|gb|AF495900.1|       318  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    318    116    433    318    +  5'&3'      -      -  yes  yes
+22.3.1   gi|25992045|gb|AF495900.1|       318  PASS  NC_001475  stem_loop    stem_loop.3                            5    1    1      1     15    116    130     15    +  5'         -  0.975  yes  no 
+22.4.1   gi|25992045|gb|AF495900.1|       318  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    318    116    433    318    +  5'&3'      -      -  yes  yes
+22.5.1   gi|25992045|gb|AF495900.1|       318  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1      1    279    116    394    279    +  5'         -  0.975  yes  no 
+#
+23.1.1   gi|1067155079|gb|KT824988.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+23.2.1   gi|1067155079|gb|KT824988.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+23.3.1   gi|1067155079|gb|KT824988.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+24.1.1   gi|253559705|gb|FJ502928.1|      219  PASS  NC_001474  gene         POLY                                   3    1    1      1    219   2198   2416    219    +  5'&3'      -      -  yes  yes
+24.2.1   gi|253559705|gb|FJ502928.1|      219  PASS  NC_001474  CDS          polyprotein                            4    1    1      1    219   2198   2416    219    +  5'&3'      -      -  yes  yes
+24.3.1   gi|253559705|gb|FJ502928.1|      219  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1    219   2198   2416    219    +  5'&3'      -      -  yes  yes
+#
+25.1.1   gi|363499240|gb|JN196576.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+25.2.1   gi|363499240|gb|JN196576.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+25.3.1   gi|363499240|gb|JN196576.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+26.1.1   gi|396581432|gb|JX093668.1|     1491  PASS  NC_001477  gene         POLY                                   3    1    1      1   1491    929   2419   1491    +  5'&3'      -      -  yes  yes
+26.2.1   gi|396581432|gb|JX093668.1|     1491  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1491    929   2419   1491    +  5'&3'      -      -  yes  yes
+26.3.1   gi|396581432|gb|JX093668.1|     1491  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1      1      6    929    934      6    +  5'         -  0.975  yes  no 
+26.4.1   gi|396581432|gb|JX093668.1|     1491  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1      1      6    929    934      6    +  5'         -  0.975  yes  no 
+26.5.1   gi|396581432|gb|JX093668.1|     1491  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      7   1491    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+27.1.1   gi|1083248228|emb|LN879498.2|    408  PASS  NC_001477  gene         POLY                                   3    1    1      1    408   1706   2113    408    +  5'&3'      -      -  yes  yes
+27.2.1   gi|1083248228|emb|LN879498.2|    408  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    408   1706   2113    408    +  5'&3'      -      -  yes  yes
+27.3.1   gi|1083248228|emb|LN879498.2|    408  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1    408   1706   2113    408    +  5'&3'      -      -  yes  yes
+#
+28.1.1   gi|829643038|gb|KR779784.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+28.2.1   gi|829643038|gb|KR779784.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+28.3.1   gi|829643038|gb|KR779784.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+29.1.1   gi|51093286|gb|AY593214.1|       364  PASS  NC_001477  gene         POLY                                   3    1    1      1    364    198    561    364    +  5'&3'      -      -  yes  yes
+29.2.1   gi|51093286|gb|AY593214.1|       364  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    364    198    561    364    +  5'&3'      -      -  yes  yes
+29.3.1   gi|51093286|gb|AY593214.1|       364  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    239    198    436    239    +  5'         -  0.975  yes  no 
+29.4.1   gi|51093286|gb|AY593214.1|       364  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1      1    197    198    394    197    +  5'         -  0.975  yes  no 
+29.5.1   gi|51093286|gb|AY593214.1|       364  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    240    364    437    561    125    +  3'     0.975      -  no   yes
+29.6.1   gi|51093286|gb|AY593214.1|       364  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    240    364    437    561    125    +  3'     0.975      -  no   yes
+#
+30.1.1   gi|521308223|gb|KC812278.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+30.2.1   gi|521308223|gb|KC812278.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+30.3.1   gi|521308223|gb|KC812278.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+31.1.1   gi|541931489|gb|KF030640.1|      440  PASS  NC_001477  gene         POLY                                   3    1    1      1    440   1271   1710    440    +  5'&3'      -      -  yes  yes
+31.2.1   gi|541931489|gb|KF030640.1|      440  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    440   1271   1710    440    +  5'&3'      -      -  yes  yes
+31.3.1   gi|541931489|gb|KF030640.1|      440  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1    440   1271   1710    440    +  5'&3'      -      -  yes  yes
+#
+32.1.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  gene         POLY                                   3    1    1      1   9327    939  10265   9327    +  5'         -  0.975  yes  no 
+32.2.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  CDS          polyprotein                            4    1    1      1   9327    939  10265   9327    +  5'         -  0.975  yes  no 
+32.3.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  ncRNA        sfRNA2                                 6    1    1   9356   9692  10292  10627    337    +  3'     0.975      -  no   yes
+32.4.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  stem_loop    stem_loop.4                            7    1    1   9360   9428  10296  10364     69    +  no     0.975  0.975  no   no 
+32.5.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  stem_loop    stem_loop.5                            8    1    1   9439   9525  10376  10462     87    +  no     0.975    0.9  no   no 
+32.6.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  stem_loop    stem_loop.6                            9    1    1   9532   9612  10467  10547     81    +  no     0.975  0.975  no   no 
+32.7.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  stem_loop    stem_loop.7                           10    1    1   9622   9635  10557  10570     14    +  no     0.975  0.975  no   no 
+32.8.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  stem_loop    stem_loop.8                           11    1    1   9636   9692  10571  10627     57    +  3'     0.975      -  no   yes
+32.9.1   gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1      1   1485    939   2423   1485    +  no     0.975  0.975  no   no 
+32.10.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  nonstructural_protein_NS1             18    1    1   1486   2541   2424   3479   1056    +  no     0.975  0.975  no   no 
+32.11.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  nonstructural_protein_NS2A            19    1    1   2542   3195   3480   4133    654    +  no     0.975  0.975  no   no 
+32.12.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  nonstructural_protein_NS2B            20    1    1   3196   3585   4134   4523    390    +  no     0.975  0.975  no   no 
+32.13.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  nonstructural_protein_NS3             21    1    1   3586   5439   4524   6377   1854    +  no     0.975  0.975  no   no 
+32.14.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  nonstructural_protein_NS4A            22    1    1   5440   5820   6378   6758    381    +  no     0.975  0.975  no   no 
+32.15.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  protein_2K                            23    1    1   5821   5889   6759   6827     69    +  no     0.975  0.975  no   no 
+32.16.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  nonstructural_protein_NS4B            24    1    1   5890   6624   6828   7562    735    +  no     0.975  0.975  no   no 
+32.17.1  gi|573974500|gb|KF955511.1|     9692  PASS  NC_002640  mat_peptide  RNA-dependent_RNA_polymerase_NS5      25    1    1   6625   9324   7563  10262   2700    +  no     0.975  0.975  no   no 
+#
+33.1.1   gi|75706353|gb|DQ109043.1|       879  PASS  NC_001475  gene         POLY                                   3    1    1      1    879   1286   2164    879    +  5'&3'      -      -  yes  yes
+33.2.1   gi|75706353|gb|DQ109043.1|       879  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    879   1286   2164    879    +  5'&3'      -      -  yes  yes
+33.3.1   gi|75706353|gb|DQ109043.1|       879  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1    879   1286   2164    879    +  5'&3'      -      -  yes  yes
+#
+34.1.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.1                            1    1    1      2     69      2     69     68    +  no     0.975  0.975  no   no 
+34.2.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.2                            2    1    1     81     95     81     95     15    +  no     0.975  0.975  no   no 
+34.3.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  gene         POLY                                   3    1    1    102  10265    102  10265  10164    +  no     0.975  0.975  no   no 
+34.4.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  CDS          polyprotein                            4    1    1    102  10265    102  10265  10164    +  no     0.975  0.975  no   no 
+34.5.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.3                            5    1    1    118    134    118    134     17    +  no     0.975  0.975  no   no 
+34.6.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  ncRNA        sfRNA2                                 6    1    1  10292  10649  10292  10649    358    +  no     0.975  0.975  no   no 
+34.7.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.4                            7    1    1  10296  10364  10296  10364     69    +  no     0.975  0.975  no   no 
+34.8.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.5                            8    1    1  10376  10462  10376  10462     87    +  no     0.975  0.975  no   no 
+34.9.1   gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.6                            9    1    1  10467  10547  10467  10547     81    +  no     0.975  0.975  no   no 
+34.10.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.7                           10    1    1  10557  10570  10557  10570     14    +  no     0.975  0.975  no   no 
+34.11.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  stem_loop    stem_loop.8                           11    1    1  10571  10649  10571  10649     79    +  no     0.975  0.975  no   no 
+34.12.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  anchored_capsid_protein_ancC          12    1    1    102    440    102    440    339    +  no     0.975  0.975  no   no 
+34.13.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  capsid_protein_C                      13    1    1    102    398    102    398    297    +  no     0.975  0.975  no   no 
+34.14.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  membrane_glycoprotein_precursor_prM   14    1    1    441    938    441    938    498    +  no     0.975  0.975  no   no 
+34.15.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  protein_pr                            15    1    1    441    713    441    713    273    +  no     0.975  0.975  no   no 
+34.16.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  membrane_glycoprotein_M               16    1    1    714    938    714    938    225    +  no     0.975  0.975  no   no 
+34.17.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1    939   2423    939   2423   1485    +  no     0.975  0.975  no   no 
+34.18.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS1             18    1    1   2424   3479   2424   3479   1056    +  no     0.975  0.975  no   no 
+34.19.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS2A            19    1    1   3480   4133   3480   4133    654    +  no     0.975  0.975  no   no 
+34.20.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS2B            20    1    1   4134   4523   4134   4523    390    +  no     0.975  0.975  no   no 
+34.21.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS3             21    1    1   4524   6377   4524   6377   1854    +  no     0.975  0.975  no   no 
+34.22.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS4A            22    1    1   6378   6758   6378   6758    381    +  no     0.975  0.975  no   no 
+34.23.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  protein_2K                            23    1    1   6759   6827   6759   6827     69    +  no     0.975  0.975  no   no 
+34.24.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS4B            24    1    1   6828   7562   6828   7562    735    +  no     0.975  0.975  no   no 
+34.25.1  gi|1478022538|emb|LQ868395.1|  10649  PASS  NC_002640  mat_peptide  RNA-dependent_RNA_polymerase_NS5      25    1    1   7563  10262   7563  10262   2700    +  no     0.975  0.975  no   no 
+#
+35.1.1   gi|952949062|gb|KP703961.1|     1485  PASS  NC_002640  gene         POLY                                   3    1    1      1   1485    939   2423   1485    +  5'&3'      -      -  yes  yes
+35.2.1   gi|952949062|gb|KP703961.1|     1485  PASS  NC_002640  CDS          polyprotein                            4    1    1      1   1485    939   2423   1485    +  5'&3'      -      -  yes  yes
+35.3.1   gi|952949062|gb|KP703961.1|     1485  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1      1   1485    939   2423   1485    +  no     0.975  0.975  no   no 
+#
+36.1.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.1                            1    1    1      1     48     23     70     48    +  5'         -  0.975  yes  no 
+36.2.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.2                            2    1    1     60     74     81     95     15    +  no     0.975  0.975  no   no 
+36.3.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  gene         POLY                                   3    1    1     76  10251     97  10272  10176    +  no     0.975  0.975  no   no 
+36.4.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  CDS          polyprotein                            4    1    1     76  10251     97  10272  10176    +  no     0.975  0.975  no   no 
+36.5.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1     95    111    116    132     17    +  no     0.975  0.975  no   no 
+36.6.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  ncRNA        sfRNA1                                 6    1    1  10278  10679  10299  10700    402    +  3'     0.975      -  no   yes
+36.7.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.4                            7    1    1  10282  10347  10303  10368     66    +  no     0.975  0.975  no   no 
+36.8.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.5                            8    1    1  10355  10420  10376  10441     66    +  no     0.975  0.975  no   no 
+36.9.1   gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.6                            9    1    1  10432  10513  10453  10534     82    +  no     0.975  0.975  no   no 
+36.10.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.7                           10    1    1  10519  10600  10540  10621     82    +  no     0.975  0.975  no   no 
+36.11.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.8                           11    1    1  10610  10623  10631  10644     14    +  no     0.975  0.975  no   no 
+36.12.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  stem_loop    stem_loop.9                           12    1    1  10624  10679  10645  10700     56    +  3'     0.975      -  no   yes
+36.13.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     76    417     97    438    342    +  no     0.975  0.975  no   no 
+36.14.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     76    375     97    396    300    +  no     0.975  0.975  no   no 
+36.15.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    418    915    439    936    498    +  no     0.975  0.975  no   no 
+36.16.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    418    690    439    711    273    +  no     0.975  0.975  no   no 
+36.17.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    691    915    712    936    225    +  no     0.975  0.975  no   no 
+36.18.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    916   2400    937   2421   1485    +  no     0.975  0.975  no   no 
+36.19.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2401   3456   2422   3477   1056    +  no     0.975  0.975  no   no 
+36.20.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3457   4110   3478   4131    654    +  no     0.975  0.975  no   no 
+36.21.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4111   4500   4132   4521    390    +  no     0.975  0.975  no   no 
+36.22.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4501   6354   4522   6375   1854    +  no     0.975  0.975  no   no 
+36.23.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6355   6735   6376   6756    381    +  no     0.975  0.975  no   no 
+36.24.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  protein_2K                            24    1    1   6736   6804   6757   6825     69    +  no     0.975  0.975  no   no 
+36.25.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6805   7548   6826   7569    744    +  no     0.975  0.975  no   no 
+36.26.1  gi|169143883|gb|EU482549.1|    10679  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7549  10248   7570  10269   2700    +  no     0.975  0.975  no   no 
+#
+37.1.1   gi|281313366|gb|GU211363.1|       87  PASS  NC_001474  gene         POLY                                   3    1    1      1     87   9979  10065     87    +  5'&3'      -      -  yes  yes
+37.2.1   gi|281313366|gb|GU211363.1|       87  PASS  NC_001474  CDS          polyprotein                            4    1    1      1     87   9979  10065     87    +  5'&3'      -      -  yes  yes
+37.3.1   gi|281313366|gb|GU211363.1|       87  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1      1     87   9979  10065     87    +  5'&3'      -      -  yes  yes
+#
+38.1.1   gi|662009014|gb|KJ147099.1|     1448  PASS  NC_001474  gene         POLY                                   3    1    1      1   1448    950   2397   1448    +  5'&3'      -      -  yes  yes
+38.2.1   gi|662009014|gb|KJ147099.1|     1448  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1448    950   2397   1448    +  5'&3'      -      -  yes  yes
+38.3.1   gi|662009014|gb|KJ147099.1|     1448  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1448    950   2397   1448    +  5'&3'      -      -  yes  yes
+#
+39.1.1   gi|1189491477|gb|KX262951.1|    1484  PASS  NC_001474  gene         POLY                                   3    1    1      1   1484    937   2420   1484    +  5'&3'      -      -  yes  yes
+39.2.1   gi|1189491477|gb|KX262951.1|    1484  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1484    937   2420   1484    +  5'&3'      -      -  yes  yes
+39.3.1   gi|1189491477|gb|KX262951.1|    1484  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1484    937   2420   1484    +  3'     0.975      -  no   yes
+#
+40.1.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.1                            1    1    1      1     43     27     69     43    +  5'         -  0.975  yes  no 
+40.2.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.2                            2    1    1     53     67     79     93     15    +  no     0.975  0.975  no   no 
+40.3.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  gene         POLY                                   3    1    1     69  10247     95  10273  10179    +  no     0.975  0.975  no   no 
+40.4.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  CDS          polyprotein                            4    1    1     69  10247     95  10273  10179    +  no     0.975  0.975  no   no 
+40.5.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.3                            5    1    1     88    104    114    130     17    +  no     0.975  0.975  no   no 
+40.6.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  ncRNA        sfRNA1                                 6    1    1  10294  10684  10320  10710    391    +  3'     0.975      -  no   yes
+40.7.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.4                            7    1    1  10298  10363  10324  10389     66    +  no     0.975  0.975  no   no 
+40.8.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.5                            8    1    1  10371  10432  10397  10458     62    +  no     0.975  0.975  no   no 
+40.9.1   gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.6                            9    1    1  10441  10523  10467  10549     83    +  no     0.975  0.975  no   no 
+40.10.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.7                           10    1    1  10525  10607  10551  10633     83    +  no     0.975  0.975  no   no 
+40.11.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.8                           11    1    1  10617  10630  10643  10656     14    +  no     0.975  0.975  no   no 
+40.12.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  stem_loop    stem_loop.9                           12    1    1  10631  10684  10657  10710     54    +  3'     0.975      -  no   yes
+40.13.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1     69    410     95    436    342    +  no     0.975  0.975  no   no 
+40.14.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1     69    368     95    394    300    +  no     0.975  0.975  no   no 
+40.15.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    411    908    437    934    498    +  no     0.975  0.975  no   no 
+40.16.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    411    683    437    709    273    +  no     0.975  0.975  no   no 
+40.17.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    684    908    710    934    225    +  no     0.975  0.975  no   no 
+40.18.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    909   2393    935   2419   1485    +  no     0.975  0.975  no   no 
+40.19.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1   2394   3449   2420   3475   1056    +  no     0.975  0.975  no   no 
+40.20.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2A            20    1    1   3450   4103   3476   4129    654    +  no     0.975  0.975  no   no 
+40.21.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2B            21    1    1   4104   4493   4130   4519    390    +  no     0.975  0.975  no   no 
+40.22.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  nonstructural_protein_NS3             22    1    1   4494   6350   4520   6376   1857    +  no     0.975  0.975  no   no 
+40.23.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4A            23    1    1   6351   6731   6377   6757    381    +  no     0.975  0.975  no   no 
+40.24.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  protein_2K                            24    1    1   6732   6800   6758   6826     69    +  no     0.975  0.975  no   no 
+40.25.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4B            25    1    1   6801   7547   6827   7573    747    +  no     0.975  0.975  no   no 
+40.26.1  gi|209976777|gb|FJ410263.1|    10684  PASS  NC_001477  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7548  10244   7574  10270   2697    +  no     0.975  0.975  no   no 
+#
+41.1.1   gi|189909190|gb|EU570980.1|      408  PASS  NC_001474  gene         POLY                                   3    1    1      1    408   9778  10185    408    +  5'&3'      -      -  yes  yes
+41.2.1   gi|189909190|gb|EU570980.1|      408  PASS  NC_001474  CDS          polyprotein                            4    1    1      1    408   9778  10185    408    +  5'&3'      -      -  yes  yes
+41.3.1   gi|189909190|gb|EU570980.1|      408  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1      1    408   9778  10185    408    +  5'&3'      -      -  yes  yes
+#
+42.1.1   gi|966914026|gb|KU291811.1|     1478  PASS  NC_001474  gene         POLY                                   3    1    1      1   1478    937   2414   1478    +  5'&3'      -      -  yes  yes
+42.2.1   gi|966914026|gb|KU291811.1|     1478  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1478    937   2414   1478    +  5'&3'      -      -  yes  yes
+42.3.1   gi|966914026|gb|KU291811.1|     1478  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1478    937   2414   1478    +  3'     0.975      -  no   yes
+#
+43.1.1   gi|1229250707|gb|KY818284.1|    1983  PASS  NC_001477  gene         POLY                                   3    1    1      1   1983    437   2419   1983    +  5'&3'      -      -  yes  yes
+43.2.1   gi|1229250707|gb|KY818284.1|    1983  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1983    437   2419   1983    +  5'&3'      -      -  yes  yes
+43.3.1   gi|1229250707|gb|KY818284.1|    1983  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1      1    498    437    934    498    +  no     0.975  0.975  no   no 
+43.4.1   gi|1229250707|gb|KY818284.1|    1983  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1      1    273    437    709    273    +  no     0.975  0.975  no   no 
+43.5.1   gi|1229250707|gb|KY818284.1|    1983  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    274    498    710    934    225    +  no     0.975  0.975  no   no 
+43.6.1   gi|1229250707|gb|KY818284.1|    1983  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    499   1983    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+44.1.1   gi|1042238905|gb|KU351339.1|     809  PASS  NC_001474  gene         POLY                                   3    1    1      1    809   2518   3326    809    +  5'&3'      -      -  yes  yes
+44.2.1   gi|1042238905|gb|KU351339.1|     809  PASS  NC_001474  CDS          polyprotein                            4    1    1      1    809   2518   3326    809    +  5'&3'      -      -  yes  yes
+44.3.1   gi|1042238905|gb|KU351339.1|     809  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1      1    809   2518   3326    809    +  5'&3'      -      -  yes  yes
+#
+45.1.1   gi|1445141125|gb|MG895008.1|    1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+45.2.1   gi|1445141125|gb|MG895008.1|    1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+45.3.1   gi|1445141125|gb|MG895008.1|    1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+46.1.1   gi|254575768|gb|FJ538919.1|     2541  PASS  NC_001474  gene         POLY                                   3    1    1      1   2541    937   3477   2541    +  5'&3'      -      -  yes  yes
+46.2.1   gi|254575768|gb|FJ538919.1|     2541  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   2541    937   3477   2541    +  5'&3'      -      -  yes  yes
+46.3.1   gi|254575768|gb|FJ538919.1|     2541  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+46.4.1   gi|254575768|gb|FJ538919.1|     2541  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   1486   2541   2422   3477   1056    +  no     0.975  0.975  no   no 
+#
+47.1.1   gi|741824935|gb|KJ470729.1|     1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+47.2.1   gi|741824935|gb|KJ470729.1|     1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+47.3.1   gi|741824935|gb|KJ470729.1|     1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+48.1.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.1                            1    1    1      2     70      2     70     69    +  no     0.975  0.975  no   no 
+48.2.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.2                            2    1    1     81     95     81     95     15    +  no     0.975  0.975  no   no 
+48.3.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  gene         POLY                                   3    1    1     97  10272     97  10272  10176    +  no     0.975  0.975  no   no 
+48.4.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  CDS          polyprotein                            4    1    1     97  10272     97  10272  10176    +  no     0.975  0.975  no   no 
+48.5.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1    116    132    116    132     17    +  no     0.975  0.975  no   no 
+48.6.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  ncRNA        sfRNA1                                 6    1    1  10299  10723  10299  10723    425    +  no     0.975  0.975  no   no 
+48.7.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.4                            7    1    1  10303  10368  10303  10368     66    +  no     0.975  0.975  no   no 
+48.8.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.5                            8    1    1  10376  10441  10376  10441     66    +  no     0.975  0.975  no   no 
+48.9.1   gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.6                            9    1    1  10453  10534  10453  10534     82    +  no     0.975  0.975  no   no 
+48.10.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.7                           10    1    1  10540  10621  10540  10621     82    +  no     0.975  0.975  no   no 
+48.11.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.8                           11    1    1  10631  10644  10631  10644     14    +  no     0.975  0.975  no   no 
+48.12.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  stem_loop    stem_loop.9                           12    1    1  10645  10723  10645  10723     79    +  no     0.975  0.975  no   no 
+48.13.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     97    438     97    438    342    +  no     0.975  0.975  no   no 
+48.14.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     97    396     97    396    300    +  no     0.975  0.975  no   no 
+48.15.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    439    936    439    936    498    +  no     0.975  0.975  no   no 
+48.16.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    439    711    439    711    273    +  no     0.975  0.975  no   no 
+48.17.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    712    936    712    936    225    +  no     0.975  0.975  no   no 
+48.18.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    937   2421    937   2421   1485    +  no     0.975  0.975  no   no 
+48.19.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2422   3477   2422   3477   1056    +  no     0.975  0.975  no   no 
+48.20.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3478   4131   3478   4131    654    +  no     0.975  0.975  no   no 
+48.21.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4132   4521   4132   4521    390    +  no     0.975  0.975  no   no 
+48.22.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4522   6375   4522   6375   1854    +  no     0.975  0.975  no   no 
+48.23.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6376   6756   6376   6756    381    +  no     0.975  0.975  no   no 
+48.24.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  protein_2K                            24    1    1   6757   6825   6757   6825     69    +  no     0.975  0.975  no   no 
+48.25.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6826   7569   6826   7569    744    +  no     0.975  0.975  no   no 
+48.26.1  gi|548917996|gb|KC294214.1|    10723  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7570  10269   7570  10269   2700    +  no     0.975  0.975  no   no 
+#
+49.1.1   gi|363499390|gb|JN380836.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+49.2.1   gi|363499390|gb|JN380836.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+49.3.1   gi|363499390|gb|JN380836.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+50.1.1   gi|1316209164|gb|KY234185.1|     366  PASS  NC_002640  gene         POLY                                   3    1    1      1    366    150    515    366    +  5'&3'      -      -  yes  yes
+50.2.1   gi|1316209164|gb|KY234185.1|     366  PASS  NC_002640  CDS          polyprotein                            4    1    1      1    366    150    515    366    +  5'&3'      -      -  yes  yes
+50.3.1   gi|1316209164|gb|KY234185.1|     366  PASS  NC_002640  mat_peptide  anchored_capsid_protein_ancC          12    1    1      1    291    150    440    291    +  5'         -  0.975  yes  no 
+50.4.1   gi|1316209164|gb|KY234185.1|     366  PASS  NC_002640  mat_peptide  capsid_protein_C                      13    1    1      1    249    150    398    249    +  5'         -  0.975  yes  no 
+50.5.1   gi|1316209164|gb|KY234185.1|     366  PASS  NC_002640  mat_peptide  membrane_glycoprotein_precursor_prM   14    1    1    292    366    441    515     75    +  3'     0.975      -  no   yes
+50.6.1   gi|1316209164|gb|KY234185.1|     366  PASS  NC_002640  mat_peptide  protein_pr                            15    1    1    292    366    441    515     75    +  3'     0.975      -  no   yes
+#
+51.1.1   gi|56411737|gb|AY676417.1|      1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+51.2.1   gi|56411737|gb|AY676417.1|      1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+51.3.1   gi|56411737|gb|AY676417.1|      1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+52.1.1   gi|1489073894|gb|MH611649.2|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+52.2.1   gi|1489073894|gb|MH611649.2|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+52.3.1   gi|1489073894|gb|MH611649.2|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+54.1.1   gi|1476062569|gb|MG599581.1|    1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+54.2.1   gi|1476062569|gb|MG599581.1|    1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+54.3.1   gi|1476062569|gb|MG599581.1|    1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+55.1.1   gi|189182777|gb|EU552537.1|      386  PASS  NC_001474  gene         POLY                                   3    1    1      1    386    187    572    386    +  5'&3'      -      -  yes  yes
+55.2.1   gi|189182777|gb|EU552537.1|      386  PASS  NC_001474  CDS          polyprotein                            4    1    1      1    386    187    572    386    +  5'&3'      -      -  yes  yes
+55.3.1   gi|189182777|gb|EU552537.1|      386  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    252    187    438    252    +  5'         -  0.975  yes  no 
+55.4.1   gi|189182777|gb|EU552537.1|      386  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1      1    210    187    396    210    +  5'         -  0.975  yes  no 
+55.5.1   gi|189182777|gb|EU552537.1|      386  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    253    386    439    572    134    +  3'     0.975      -  no   yes
+55.6.1   gi|189182777|gb|EU552537.1|      386  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    253    386    439    572    134    +  3'     0.975      -  no   yes
+#
+56.1.1   gi|189484850|gb|EU715711.1|      399  PASS  NC_001475  gene         POLY                                   3    1    1      1    399   8332   8730    399    +  5'&3'      -      -  yes  yes
+56.2.1   gi|189484850|gb|EU715711.1|      399  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    399   8332   8730    399    +  5'&3'      -      -  yes  yes
+56.3.1   gi|189484850|gb|EU715711.1|      399  PASS  NC_001475  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1      1    399   8332   8730    399    +  5'&3'      -      -  yes  yes
+#
+57.1.1   gi|1066401393|dbj|LC147056.1|   1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+57.2.1   gi|1066401393|dbj|LC147056.1|   1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+57.3.1   gi|1066401393|dbj|LC147056.1|   1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+58.1.1   gi|1272736131|gb|KY709190.1|    1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+58.2.1   gi|1272736131|gb|KY709190.1|    1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+58.3.1   gi|1272736131|gb|KY709190.1|    1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+59.1.1   gi|363499542|gb|JN030184.1|     1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+59.2.1   gi|363499542|gb|JN030184.1|     1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+59.3.1   gi|363499542|gb|JN030184.1|     1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+60.1.1   gi|91075890|gb|DQ453980.1|      1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+60.2.1   gi|91075890|gb|DQ453980.1|      1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+60.3.1   gi|91075890|gb|DQ453980.1|      1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+61.1.1   gi|1446540478|gb|MH428143.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+61.2.1   gi|1446540478|gb|MH428143.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+61.3.1   gi|1446540478|gb|MH428143.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+62.1.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  gene         POLY                                   3    1    1      1   4314    102   5517   4314    +  3'     0.975      -  no   yes
+62.2.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  CDS          polyprotein                            4    1    1      1   4314    102   5517   4314    +  3'     0.975      -  no   yes
+62.3.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  stem_loop    stem_loop.3                            5    1    1     17     33    118    134     17    +  no     0.975  0.975  no   no 
+62.4.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  anchored_capsid_protein_ancC          12    1    1      1    339    102    440    339    +  no     0.975  0.975  no   no 
+62.5.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  capsid_protein_C                      13    1    1      1    297    102    398    297    +  no     0.975  0.975  no   no 
+62.6.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  membrane_glycoprotein_precursor_prM   14    1    1    340    837    441    938    498    +  no     0.975  0.975  no   no 
+62.7.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  protein_pr                            15    1    1    340    612    441    713    273    +  no     0.975  0.975  no   no 
+62.8.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  membrane_glycoprotein_M               16    1    1    613    837    714    938    225    +  no     0.975  0.975  no   no 
+62.9.1   gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  envelope_protein_E                    17    1    1    838   2322    939   2423   1485    +  no     0.975  0.975  no   no 
+62.10.1  gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  nonstructural_protein_NS1             18    1    1   2323   2628   2424   3436    306    +  no     0.975      -  no   yes
+62.11.1  gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  nonstructural_protein_NS2A            19    1    1   2629   3132   3504   4133    504    +  no         -    0.9  yes  no 
+62.12.1  gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  nonstructural_protein_NS2B            20    1    1   3133   3436   4134   4520    304    +  no       0.8      -  no   yes
+62.13.1  gi|1015635081|gb|AH012002.2|    4314  FAIL  NC_002640  mat_peptide  nonstructural_protein_NS3             21    1    1   3437   4314   4530   5517    878    +  3'         -      -  yes  yes
+#
+63.1.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  gene         POLY                                   3    1    1      1  10174     99  10272  10174    +  5'         -  0.975  yes  no 
+63.2.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  CDS          polyprotein                            4    1    1      1  10174     99  10272  10174    +  5'         -  0.975  yes  no 
+63.3.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1     18     34    116    132     17    +  no     0.975  0.975  no   no 
+63.4.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  ncRNA        sfRNA1                                 6    1    1  10201  10572  10299  10671    372    +  3'     0.975      -  no   yes
+63.5.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.4                            7    1    1  10205  10270  10303  10368     66    +  no     0.975  0.975  no   no 
+63.6.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.5                            8    1    1  10278  10344  10376  10441     67    +  no     0.975  0.975  no   no 
+63.7.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.6                            9    1    1  10355  10436  10453  10534     82    +  no     0.975  0.975  no   no 
+63.8.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.7                           10    1    1  10442  10523  10540  10621     82    +  no     0.975  0.975  no   no 
+63.9.1   gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.8                           11    1    1  10533  10546  10631  10644     14    +  no     0.975  0.975  no   no 
+63.10.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  stem_loop    stem_loop.9                           12    1    1  10547  10572  10645  10671     26    +  3'     0.975      -  no   yes
+63.11.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    340     99    438    340    +  5'         -  0.975  yes  no 
+63.12.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1      1    298     99    396    298    +  5'         -  0.975  yes  no 
+63.13.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    341    838    439    936    498    +  no     0.975  0.975  no   no 
+63.14.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    341    613    439    711    273    +  no     0.975  0.975  no   no 
+63.15.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    614    838    712    936    225    +  no     0.975  0.975  no   no 
+63.16.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    839   2323    937   2421   1485    +  no     0.975  0.975  no   no 
+63.17.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2324   3379   2422   3477   1056    +  no     0.975  0.975  no   no 
+63.18.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3380   4033   3478   4131    654    +  no     0.975  0.975  no   no 
+63.19.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4034   4423   4132   4521    390    +  no     0.975  0.975  no   no 
+63.20.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4424   6277   4522   6375   1854    +  no     0.975  0.975  no   no 
+63.21.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6278   6658   6376   6756    381    +  no     0.975  0.975  no   no 
+63.22.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  protein_2K                            24    1    1   6659   6727   6757   6825     69    +  no     0.975  0.975  no   no 
+63.23.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6728   7471   6826   7569    744    +  no     0.975  0.975  no   no 
+63.24.1  gi|573974252|gb|KF955385.1|    10572  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7472  10171   7570  10269   2700    +  no     0.975  0.975  no   no 
+#
+64.1.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.1                            1    1    1      1     47     23     69     47    +  5'         -  0.975  yes  no 
+64.2.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.2                            2    1    1     57     71     79     93     15    +  no     0.975  0.975  no   no 
+64.3.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  gene         POLY                                   3    1    1     73  10251     95  10273  10179    +  no     0.975  0.975  no   no 
+64.4.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  CDS          polyprotein                            4    1    1     73  10251     95  10273  10179    +  no     0.975  0.975  no   no 
+64.5.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.3                            5    1    1     92    108    114    130     17    +  no     0.975  0.975  no   no 
+64.6.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  ncRNA        sfRNA1                                 6    1    1  10298  10690  10320  10712    393    +  3'     0.975      -  no   yes
+64.7.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.4                            7    1    1  10302  10367  10324  10389     66    +  no     0.975  0.975  no   no 
+64.8.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.5                            8    1    1  10375  10436  10397  10458     62    +  no     0.975  0.975  no   no 
+64.9.1   gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.6                            9    1    1  10445  10527  10467  10549     83    +  no     0.975  0.975  no   no 
+64.10.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.7                           10    1    1  10529  10611  10551  10633     83    +  no     0.975  0.975  no   no 
+64.11.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.8                           11    1    1  10621  10634  10643  10656     14    +  no     0.975  0.975  no   no 
+64.12.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  stem_loop    stem_loop.9                           12    1    1  10635  10690  10657  10712     56    +  3'     0.975      -  no   yes
+64.13.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1     73    414     95    436    342    +  no     0.975  0.975  no   no 
+64.14.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1     73    372     95    394    300    +  no     0.975  0.975  no   no 
+64.15.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    415    912    437    934    498    +  no     0.975  0.975  no   no 
+64.16.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    415    687    437    709    273    +  no     0.975  0.975  no   no 
+64.17.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    688    912    710    934    225    +  no     0.975  0.975  no   no 
+64.18.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    913   2397    935   2419   1485    +  no     0.975  0.975  no   no 
+64.19.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1   2398   3453   2420   3475   1056    +  no     0.975  0.975  no   no 
+64.20.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2A            20    1    1   3454   4107   3476   4129    654    +  no     0.975  0.975  no   no 
+64.21.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2B            21    1    1   4108   4497   4130   4519    390    +  no     0.975  0.975  no   no 
+64.22.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS3             22    1    1   4498   6354   4520   6376   1857    +  no     0.975  0.975  no   no 
+64.23.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4A            23    1    1   6355   6735   6377   6757    381    +  no     0.975  0.975  no   no 
+64.24.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  protein_2K                            24    1    1   6736   6804   6758   6826     69    +  no     0.975  0.975  no   no 
+64.25.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4B            25    1    1   6805   7551   6827   7573    747    +  no     0.975  0.975  no   no 
+64.26.1  gi|221071209|gb|FJ639690.1|    10690  PASS  NC_001477  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7552  10248   7574  10270   2697    +  no     0.975  0.975  no   no 
+#
+65.1.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.1                            1    1    1      1     48     23     70     48    +  5'         -  0.975  yes  no 
+65.2.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.2                            2    1    1     58     72     81     95     15    +  no     0.975  0.975  no   no 
+65.3.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  gene         POLY                                   3    1    1     74  10249     97  10272  10176    +  no     0.975  0.975  no   no 
+65.4.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  CDS          polyprotein                            4    1    1     74  10249     97  10272  10176    +  no     0.975  0.975  no   no 
+65.5.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1     93    109    116    132     17    +  no     0.975  0.975  no   no 
+65.6.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  ncRNA        sfRNA1                                 6    1    1  10276  10678  10299  10699    403    +  3'     0.975      -  no   yes
+65.7.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.4                            7    1    1  10280  10345  10303  10368     66    +  no     0.975  0.975  no   no 
+65.8.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.5                            8    1    1  10353  10419  10376  10441     67    +  no     0.975  0.975  no   no 
+65.9.1   gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.6                            9    1    1  10431  10512  10453  10534     82    +  no     0.975    0.9  no   no 
+65.10.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.7                           10    1    1  10519  10600  10540  10621     82    +  no     0.975  0.975  no   no 
+65.11.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.8                           11    1    1  10610  10623  10631  10644     14    +  no     0.975  0.975  no   no 
+65.12.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  stem_loop    stem_loop.9                           12    1    1  10624  10678  10645  10699     55    +  3'     0.975      -  no   yes
+65.13.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     74    415     97    438    342    +  no     0.975  0.975  no   no 
+65.14.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     74    373     97    396    300    +  no     0.975  0.975  no   no 
+65.15.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    416    913    439    936    498    +  no     0.975  0.975  no   no 
+65.16.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    416    688    439    711    273    +  no     0.975  0.975  no   no 
+65.17.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    689    913    712    936    225    +  no     0.975  0.975  no   no 
+65.18.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    914   2398    937   2421   1485    +  no     0.975  0.975  no   no 
+65.19.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2399   3454   2422   3477   1056    +  no     0.975  0.975  no   no 
+65.20.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3455   4108   3478   4131    654    +  no     0.975  0.975  no   no 
+65.21.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4109   4498   4132   4521    390    +  no     0.975  0.975  no   no 
+65.22.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4499   6352   4522   6375   1854    +  no     0.975  0.975  no   no 
+65.23.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6353   6733   6376   6756    381    +  no     0.975  0.975  no   no 
+65.24.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  protein_2K                            24    1    1   6734   6802   6757   6825     69    +  no     0.975  0.975  no   no 
+65.25.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6803   7546   6826   7569    744    +  no     0.975  0.975  no   no 
+65.26.1  gi|169144051|gb|EU482633.1|    10678  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7547  10246   7570  10269   2700    +  no     0.975  0.975  no   no 
+#
+66.1.1   gi|1447973836|gb|MH680349.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+66.2.1   gi|1447973836|gb|MH680349.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+66.3.1   gi|1447973836|gb|MH680349.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+67.1.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.1                            1    1    1      1     47     23     69     47    +  5'         -  0.975  yes  no 
+67.2.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.2                            2    1    1     57     71     79     93     15    +  no     0.975  0.975  no   no 
+67.3.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  gene         POLY                                   3    1    1     73  10251     95  10273  10179    +  no     0.975  0.975  no   no 
+67.4.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  CDS          polyprotein                            4    1    1     73  10251     95  10273  10179    +  no     0.975  0.975  no   no 
+67.5.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.3                            5    1    1     92    108    114    130     17    +  no     0.975  0.975  no   no 
+67.6.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  ncRNA        sfRNA1                                 6    1    1  10298  10690  10320  10712    393    +  3'     0.975      -  no   yes
+67.7.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.4                            7    1    1  10302  10367  10324  10389     66    +  no     0.975  0.975  no   no 
+67.8.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.5                            8    1    1  10375  10436  10397  10458     62    +  no     0.975  0.975  no   no 
+67.9.1   gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.6                            9    1    1  10445  10527  10467  10549     83    +  no     0.975  0.975  no   no 
+67.10.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.7                           10    1    1  10529  10611  10551  10633     83    +  no     0.975  0.975  no   no 
+67.11.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.8                           11    1    1  10621  10634  10643  10656     14    +  no     0.975  0.975  no   no 
+67.12.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  stem_loop    stem_loop.9                           12    1    1  10635  10690  10657  10712     56    +  3'     0.975      -  no   yes
+67.13.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1     73    414     95    436    342    +  no     0.975  0.975  no   no 
+67.14.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1     73    372     95    394    300    +  no     0.975  0.975  no   no 
+67.15.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    415    912    437    934    498    +  no     0.975  0.975  no   no 
+67.16.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    415    687    437    709    273    +  no     0.975  0.975  no   no 
+67.17.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  membrane_glycoprotein_M               17    1    1    688    912    710    934    225    +  no     0.975  0.975  no   no 
+67.18.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1    913   2397    935   2419   1485    +  no     0.975  0.975  no   no 
+67.19.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS1             19    1    1   2398   3453   2420   3475   1056    +  no     0.975  0.975  no   no 
+67.20.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2A            20    1    1   3454   4107   3476   4129    654    +  no     0.975  0.975  no   no 
+67.21.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS2B            21    1    1   4108   4497   4130   4519    390    +  no     0.975  0.975  no   no 
+67.22.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS3             22    1    1   4498   6354   4520   6376   1857    +  no     0.975  0.975  no   no 
+67.23.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4A            23    1    1   6355   6735   6377   6757    381    +  no     0.975  0.975  no   no 
+67.24.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  protein_2K                            24    1    1   6736   6804   6758   6826     69    +  no     0.975  0.975  no   no 
+67.25.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  nonstructural_protein_NS4B            25    1    1   6805   7551   6827   7573    747    +  no     0.975  0.975  no   no 
+67.26.1  gi|228540178|gb|FJ898401.1|    10690  PASS  NC_001477  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7552  10248   7574  10270   2697    +  no     0.975  0.975  no   no 
+#
+68.1.1   gi|1229251026|gb|KY851517.1|    1983  PASS  NC_001474  gene         POLY                                   3    1    1      1   1983    439   2421   1983    +  5'&3'      -      -  yes  yes
+68.2.1   gi|1229251026|gb|KY851517.1|    1983  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1983    439   2421   1983    +  5'&3'      -      -  yes  yes
+68.3.1   gi|1229251026|gb|KY851517.1|    1983  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1      1    498    439    936    498    +  no     0.975  0.975  no   no 
+68.4.1   gi|1229251026|gb|KY851517.1|    1983  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1      1    273    439    711    273    +  no     0.975  0.975  no   no 
+68.5.1   gi|1229251026|gb|KY851517.1|    1983  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    274    498    712    936    225    +  no     0.975  0.975  no   no 
+68.6.1   gi|1229251026|gb|KY851517.1|    1983  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    499   1983    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+69.1.1   gi|556089194|gb|KF417479.1|      453  PASS  NC_001477  gene         POLY                                   3    1    1      1    453    161    613    453    +  5'&3'      -      -  yes  yes
+69.2.1   gi|556089194|gb|KF417479.1|      453  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    453    161    613    453    +  5'&3'      -      -  yes  yes
+69.3.1   gi|556089194|gb|KF417479.1|      453  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    276    161    436    276    +  5'         -  0.975  yes  no 
+69.4.1   gi|556089194|gb|KF417479.1|      453  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1      1    234    161    394    234    +  5'         -  0.975  yes  no 
+69.5.1   gi|556089194|gb|KF417479.1|      453  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    277    453    437    613    177    +  3'     0.975      -  no   yes
+69.6.1   gi|556089194|gb|KF417479.1|      453  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    277    453    437    613    177    +  3'     0.975      -  no   yes
+#
+70.1.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.1                            1    1    1      2     69      2     69     68    +  no     0.975  0.975  no   no 
+70.2.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.2                            2    1    1     81     95     81     95     15    +  no     0.975  0.975  no   no 
+70.3.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  gene         POLY                                   3    1    1    102  10265    102  10265  10164    +  no     0.975  0.975  no   no 
+70.4.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  CDS          polyprotein                            4    1    1    102  10265    102  10265  10164    +  no     0.975  0.975  no   no 
+70.5.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.3                            5    1    1    118    134    118    134     17    +  no     0.975  0.975  no   no 
+70.6.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  ncRNA        sfRNA2                                 6    1    1  10292  10649  10292  10649    358    +  no     0.975  0.975  no   no 
+70.7.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.4                            7    1    1  10296  10364  10296  10364     69    +  no     0.975  0.975  no   no 
+70.8.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.5                            8    1    1  10376  10462  10376  10462     87    +  no     0.975  0.975  no   no 
+70.9.1   gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.6                            9    1    1  10467  10547  10467  10547     81    +  no     0.975  0.975  no   no 
+70.10.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.7                           10    1    1  10557  10570  10557  10570     14    +  no     0.975  0.975  no   no 
+70.11.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  stem_loop    stem_loop.8                           11    1    1  10571  10649  10571  10649     79    +  no     0.975  0.975  no   no 
+70.12.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  anchored_capsid_protein_ancC          12    1    1    102    440    102    440    339    +  no     0.975  0.975  no   no 
+70.13.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  capsid_protein_C                      13    1    1    102    398    102    398    297    +  no     0.975  0.975  no   no 
+70.14.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  membrane_glycoprotein_precursor_prM   14    1    1    441    938    441    938    498    +  no     0.975  0.975  no   no 
+70.15.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  protein_pr                            15    1    1    441    713    441    713    273    +  no     0.975  0.975  no   no 
+70.16.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  membrane_glycoprotein_M               16    1    1    714    938    714    938    225    +  no     0.975  0.975  no   no 
+70.17.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1    939   2423    939   2423   1485    +  no     0.975  0.975  no   no 
+70.18.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS1             18    1    1   2424   3479   2424   3479   1056    +  no     0.975  0.975  no   no 
+70.19.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS2A            19    1    1   3480   4133   3480   4133    654    +  no     0.975  0.975  no   no 
+70.20.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS2B            20    1    1   4134   4523   4134   4523    390    +  no     0.975  0.975  no   no 
+70.21.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS3             21    1    1   4524   6377   4524   6377   1854    +  no     0.975  0.975  no   no 
+70.22.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS4A            22    1    1   6378   6758   6378   6758    381    +  no     0.975  0.975  no   no 
+70.23.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  protein_2K                            23    1    1   6759   6827   6759   6827     69    +  no     0.975  0.975  no   no 
+70.24.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  nonstructural_protein_NS4B            24    1    1   6828   7562   6828   7562    735    +  no     0.975  0.975  no   no 
+70.25.1  gi|224551985|gb|FJ196849.1|    10649  PASS  NC_002640  mat_peptide  RNA-dependent_RNA_polymerase_NS5      25    1    1   7563  10262   7563  10262   2700    +  no     0.975  0.975  no   no 
+#
+71.1.1   gi|1419338060|gb|MG812331.1|    1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+71.2.1   gi|1419338060|gb|MG812331.1|    1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+71.3.1   gi|1419338060|gb|MG812331.1|    1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+72.1.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.1                            1    1    1      1     33     37     69     33    +  5'         -  0.975  yes  no 
+72.2.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.2                            2    1    1     43     57     79     93     15    +  no     0.975  0.975  no   no 
+72.3.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  gene         POLY                                   3    1    1     59  10231     95  10267  10173    +  no     0.975  0.975  no   no 
+72.4.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  CDS          polyprotein                            4    1    1     59  10231     95  10267  10173    +  no     0.975  0.975  no   no 
+72.5.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.3                            5    1    1     78     94    114    130     17    +  no     0.975  0.975  no   no 
+72.6.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  ncRNA        sfRNA1                                 6    1    1  10254  10648  10290  10684    395    +  3'     0.975      -  no   yes
+72.7.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.4                            7    1    1  10258  10323  10294  10359     66    +  no     0.975  0.975  no   no 
+72.8.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.5                            8    1    1  10334  10396  10370  10432     63    +  no     0.975  0.975  no   no 
+72.9.1   gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.6                            9    1    1  10404  10516  10440  10552    113    +  no     0.975  0.975  no   no 
+72.10.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.7                           10    1    1  10488  10569  10524  10605     82    +  no     0.975  0.975  no   no 
+72.11.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.8                           11    1    1  10579  10592  10615  10628     14    +  no     0.975  0.975  no   no 
+72.12.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  stem_loop    stem_loop.9                           12    1    1  10593  10648  10629  10684     56    +  3'     0.975      -  no   yes
+72.13.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1     59    400     95    436    342    +  no     0.975  0.975  no   no 
+72.14.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1     59    358     95    394    300    +  no     0.975  0.975  no   no 
+72.15.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    401    898    437    934    498    +  no     0.975  0.975  no   no 
+72.16.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  protein_pr                            16    1    1    401    673    437    709    273    +  no     0.975  0.975  no   no 
+72.17.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    674    898    710    934    225    +  no     0.975  0.975  no   no 
+72.18.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1    899   2377    935   2413   1479    +  no     0.975  0.975  no   no 
+72.19.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1   2378   3433   2414   3469   1056    +  no     0.975  0.975  no   no 
+72.20.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  nonstructural_protein_NS2A            20    1    1   3434   4087   3470   4123    654    +  no     0.975  0.975  no   no 
+72.21.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  nonstructural_protein_NS2B            21    1    1   4088   4477   4124   4513    390    +  no     0.975  0.975  no   no 
+72.22.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  nonstructural_protein_NS3             22    1    1   4478   6334   4514   6370   1857    +  no     0.975  0.975  no   no 
+72.23.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  nonstructural_protein_NS4A            23    1    1   6335   6715   6371   6751    381    +  no     0.975  0.975  no   no 
+72.24.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  protein_2K                            24    1    1   6716   6784   6752   6820     69    +  no     0.975  0.975  no   no 
+72.25.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  nonstructural_protein_NS4B            25    1    1   6785   7528   6821   7564    744    +  no     0.975  0.975  no   no 
+72.26.1  gi|190161852|gb|EU781137.1|    10648  PASS  NC_001475  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7529  10228   7565  10264   2700    +  no     0.975  0.975  no   no 
+#
+73.1.1   gi|364783801|gb|JN556046.1|     1983  PASS  NC_001474  gene         POLY                                   3    1    1      1   1983    439   2421   1983    +  5'&3'      -      -  yes  yes
+73.2.1   gi|364783801|gb|JN556046.1|     1983  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1983    439   2421   1983    +  5'&3'      -      -  yes  yes
+73.3.1   gi|364783801|gb|JN556046.1|     1983  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1      1    498    439    936    498    +  no     0.975  0.975  no   no 
+73.4.1   gi|364783801|gb|JN556046.1|     1983  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1      1    273    439    711    273    +  no     0.975  0.975  no   no 
+73.5.1   gi|364783801|gb|JN556046.1|     1983  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    274    498    712    936    225    +  no     0.975  0.975  no   no 
+73.6.1   gi|364783801|gb|JN556046.1|     1983  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    499   1983    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+74.1.1   gi|1471157528|gb|MG933815.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+74.2.1   gi|1471157528|gb|MG933815.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+74.3.1   gi|1471157528|gb|MG933815.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+75.1.1   gi|443927667|gb|JQ993155.1|     1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+75.2.1   gi|443927667|gb|JQ993155.1|     1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+75.3.1   gi|443927667|gb|JQ993155.1|     1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+76.1.1   gi|1445141659|gb|MG895247.1|    1479  PASS  NC_001475  gene         POLY                                   3    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+76.2.1   gi|1445141659|gb|MG895247.1|    1479  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1479    935   2413   1479    +  5'&3'      -      -  yes  yes
+76.3.1   gi|1445141659|gb|MG895247.1|    1479  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1   1479    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+77.1.1   gi|161408422|dbj|AB008169.1|     320  PASS  NC_001475  gene         POLY                                   3    1    1      1    320   2253   2572    320    +  5'&3'      -      -  yes  yes
+77.2.1   gi|161408422|dbj|AB008169.1|     320  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    320   2253   2572    320    +  5'&3'      -      -  yes  yes
+77.3.1   gi|161408422|dbj|AB008169.1|     320  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1    161   2253   2413    161    +  5'         -  0.975  yes  no 
+77.4.1   gi|161408422|dbj|AB008169.1|     320  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1    162    320   2414   2572    159    +  3'     0.975      -  no   yes
+#
+78.1.1   gi|425784594|gb|JQ655008.1|     1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+78.2.1   gi|425784594|gb|JQ655008.1|     1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+78.3.1   gi|425784594|gb|JQ655008.1|     1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+79.1.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.1                            1    1    1      1     48     23     70     48    +  5'         -  0.975  yes  no 
+79.2.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.2                            2    1    1     59     73     81     95     15    +  no     0.975  0.975  no   no 
+79.3.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  gene         POLY                                   3    1    1     75  10179     97  10272  10105    +  no     0.975  0.975  no   no 
+79.4.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  CDS          polyprotein                            4    1    1     75  10179     97  10272  10105    +  no     0.975  0.975  no   no 
+79.5.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.3                            5    1    1     94    110    116    132     17    +  no     0.975  0.975  no   no 
+79.6.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  ncRNA        sfRNA1                                 6    1    1  10206  10630  10299  10723    425    +  no     0.975    0.8  no   no 
+79.7.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.4                            7    1    1  10210  10275  10303  10368     66    +  no     0.975  0.975  no   no 
+79.8.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.5                            8    1    1  10283  10348  10376  10441     66    +  no     0.975  0.975  no   no 
+79.9.1   gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.6                            9    1    1  10360  10441  10453  10534     82    +  no     0.975  0.975  no   no 
+79.10.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.7                           10    1    1  10447  10528  10540  10621     82    +  no     0.975  0.975  no   no 
+79.11.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.8                           11    1    1  10538  10551  10631  10644     14    +  no     0.975  0.975  no   no 
+79.12.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  stem_loop    stem_loop.9                           12    1    1  10552  10630  10645  10723     79    +  no     0.975    0.8  no   no 
+79.13.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     75    416     97    438    342    +  no     0.975  0.975  no   no 
+79.14.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     75    374     97    396    300    +  no     0.975  0.975  no   no 
+79.15.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    417    914    439    936    498    +  no     0.975  0.975  no   no 
+79.16.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  protein_pr                            16    1    1    417    689    439    711    273    +  no     0.975  0.975  no   no 
+79.17.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    690    914    712    936    225    +  no     0.975  0.975  no   no 
+79.18.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    915   2399    937   2421   1485    +  no     0.975  0.975  no   no 
+79.19.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2400   3455   2422   3477   1056    +  no     0.975  0.975  no   no 
+79.20.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3456   4109   3478   4131    654    +  no     0.975  0.975  no   no 
+79.21.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4110   4499   4132   4521    390    +  no     0.975  0.975  no   no 
+79.22.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4500   6298   4522   6375   1799    +  no     0.975  0.975  no   no 
+79.23.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6299   6679   6376   6756    381    +  no     0.975  0.975  no   no 
+79.24.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  protein_2K                            24    1    1   6680   6748   6757   6825     69    +  no     0.975  0.975  no   no 
+79.25.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6749   7492   6826   7569    744    +  no     0.975  0.975  no   no 
+79.26.1  gi|380003821|gb|JQ045672.1|    10631  FAIL  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7493  10176   7570  10269   2684    +  no     0.975  0.975  no   no 
+#
+80.1.1   gi|1154745016|gb|KU728183.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+80.2.1   gi|1154745016|gb|KU728183.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+80.3.1   gi|1154745016|gb|KU728183.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+81.1.1   gi|2970570|gb|AF051106.1|        282  PASS  NC_002640  gene         POLY                                   3    1    1      1    282   1839   2120    282    +  5'&3'      -      -  yes  yes
+81.2.1   gi|2970570|gb|AF051106.1|        282  PASS  NC_002640  CDS          polyprotein                            4    1    1      1    282   1839   2120    282    +  5'&3'      -      -  yes  yes
+81.3.1   gi|2970570|gb|AF051106.1|        282  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1      1    282   1839   2120    282    +  5'&3'      -      -  yes  yes
+#
+82.1.1   gi|1489073930|gb|MH611685.2|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+82.2.1   gi|1489073930|gb|MH611685.2|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+82.3.1   gi|1489073930|gb|MH611685.2|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+83.1.1   gi|1489074148|gb|MH611936.2|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+83.2.1   gi|1489074148|gb|MH611936.2|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+83.3.1   gi|1489074148|gb|MH611936.2|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+84.1.1   gi|1463793291|gb|MG491387.1|     403  PASS  NC_002640  gene         POLY                                   3    1    1      1    403    187    589    403    +  5'&3'      -      -  yes  yes
+84.2.1   gi|1463793291|gb|MG491387.1|     403  PASS  NC_002640  CDS          polyprotein                            4    1    1      1    403    187    589    403    +  5'&3'      -      -  yes  yes
+84.3.1   gi|1463793291|gb|MG491387.1|     403  PASS  NC_002640  mat_peptide  anchored_capsid_protein_ancC          12    1    1      1    254    187    440    254    +  5'         -  0.975  yes  no 
+84.4.1   gi|1463793291|gb|MG491387.1|     403  PASS  NC_002640  mat_peptide  capsid_protein_C                      13    1    1      1    212    187    398    212    +  5'         -  0.975  yes  no 
+84.5.1   gi|1463793291|gb|MG491387.1|     403  PASS  NC_002640  mat_peptide  membrane_glycoprotein_precursor_prM   14    1    1    255    403    441    589    149    +  3'     0.975      -  no   yes
+84.6.1   gi|1463793291|gb|MG491387.1|     403  PASS  NC_002640  mat_peptide  protein_pr                            15    1    1    255    403    441    589    149    +  3'     0.975      -  no   yes
+#
+85.1.1   gi|264669454|gb|FJ464250.1|      306  PASS  NC_001475  gene         POLY                                   3    1    1      1    306   2190   2495    306    +  5'&3'      -      -  yes  yes
+85.2.1   gi|264669454|gb|FJ464250.1|      306  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    306   2190   2495    306    +  5'&3'      -      -  yes  yes
+85.3.1   gi|264669454|gb|FJ464250.1|      306  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1      1    224   2190   2413    224    +  5'         -  0.975  yes  no 
+85.4.1   gi|264669454|gb|FJ464250.1|      306  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1    225    306   2414   2495     82    +  3'     0.975      -  no   yes
+#
+86.1.1   gi|952949088|gb|KP703974.1|     1485  PASS  NC_002640  gene         POLY                                   3    1    1      1   1485    939   2423   1485    +  5'&3'      -      -  yes  yes
+86.2.1   gi|952949088|gb|KP703974.1|     1485  PASS  NC_002640  CDS          polyprotein                            4    1    1      1   1485    939   2423   1485    +  5'&3'      -      -  yes  yes
+86.3.1   gi|952949088|gb|KP703974.1|     1485  PASS  NC_002640  mat_peptide  envelope_protein_E                    17    1    1      1   1485    939   2423   1485    +  no     0.975  0.975  no   no 
+#
+87.1.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  stem_loop    stem_loop.1                            1    1    1      2     70      2     70     69    +  no     0.975  0.975  no   no 
+87.2.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  stem_loop    stem_loop.2                            2    1    1     81     95     81     95     15    +  no     0.975  0.975  no   no 
+87.3.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  gene         POLY                                   3    1    1     97   2468     97   2468   2372    +  3'     0.975      -  no   yes
+87.4.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  CDS          polyprotein                            4    1    1     97   2468     97   2468   2372    +  3'     0.975      -  no   yes
+87.5.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1    116    132    116    132     17    +  no     0.975  0.975  no   no 
+87.6.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     97    438     97    438    342    +  no     0.975  0.975  no   no 
+87.7.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     97    396     97    396    300    +  no     0.975  0.975  no   no 
+87.8.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    439    936    439    936    498    +  no     0.975  0.975  no   no 
+87.9.1   gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    439    711    439    711    273    +  no     0.975  0.975  no   no 
+87.10.1  gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    712    936    712    936    225    +  no     0.975  0.975  no   no 
+87.11.1  gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    937   2421    937   2421   1485    +  no     0.975  0.975  no   no 
+87.12.1  gi|399929304|gb|JX042509.1|     2468  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2422   2468   2422   2468     47    +  3'     0.975      -  no   yes
+#
+88.1.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  stem_loop    stem_loop.1                            1    1    1      1     51     19     69     51    +  5'         -  0.975  yes  no 
+88.2.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  stem_loop    stem_loop.2                            2    1    1     61     75     79     93     15    +  no     0.975  0.975  no   no 
+88.3.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  gene         POLY                                   3    1    1     77    752     95    770    676    +  3'     0.975      -  no   yes
+88.4.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  CDS          polyprotein                            4    1    1     77    752     95    770    676    +  3'     0.975      -  no   yes
+88.5.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  stem_loop    stem_loop.3                            5    1    1     96    112    114    130     17    +  no     0.975  0.975  no   no 
+88.6.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1     77    418     95    436    342    +  no     0.975  0.975  no   no 
+88.7.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1     77    376     95    394    300    +  no     0.975  0.975  no   no 
+88.8.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    419    752    437    770    334    +  3'     0.975      -  no   yes
+88.9.1   gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  mat_peptide  protein_pr                            16    1    1    419    691    437    709    273    +  no     0.975  0.975  no   no 
+88.10.1  gi|75706251|gb|DQ109259.1|       752  PASS  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    692    752    710    770     61    +  3'     0.975      -  no   yes
+#
+89.1.1   gi|1229251267|gb|KY851620.1|    1977  PASS  NC_001475  gene         POLY                                   3    1    1      1   1977    437   2413   1977    +  5'&3'      -      -  yes  yes
+89.2.1   gi|1229251267|gb|KY851620.1|    1977  PASS  NC_001475  CDS          polyprotein                            4    1    1      1   1977    437   2413   1977    +  5'&3'      -      -  yes  yes
+89.3.1   gi|1229251267|gb|KY851620.1|    1977  PASS  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1      1    498    437    934    498    +  no     0.975  0.975  no   no 
+89.4.1   gi|1229251267|gb|KY851620.1|    1977  PASS  NC_001475  mat_peptide  protein_pr                            16    1    1      1    273    437    709    273    +  no     0.975  0.975  no   no 
+89.5.1   gi|1229251267|gb|KY851620.1|    1977  PASS  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    274    498    710    934    225    +  no     0.975  0.975  no   no 
+89.6.1   gi|1229251267|gb|KY851620.1|    1977  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1    499   1977    935   2413   1479    +  no     0.975  0.975  no   no 
+#
+90.1.1   gi|1488571544|gb|MG646350.1|     240  PASS  NC_001474  gene         POLY                                   3    1    1      1    240   2311   2550    240    +  5'&3'      -      -  yes  yes
+90.2.1   gi|1488571544|gb|MG646350.1|     240  PASS  NC_001474  CDS          polyprotein                            4    1    1      1    240   2311   2550    240    +  5'&3'      -      -  yes  yes
+90.3.1   gi|1488571544|gb|MG646350.1|     240  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1    111   2311   2421    111    +  5'         -  0.975  yes  no 
+90.4.1   gi|1488571544|gb|MG646350.1|     240  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1    112    240   2422   2550    129    +  3'     0.975      -  no   yes
+#
+91.1.1   gi|1194590963|gb|KY038884.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+91.2.1   gi|1194590963|gb|KY038884.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+91.3.1   gi|1194590963|gb|KY038884.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+92.1.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.1                            1    1    1      2     70      2     70     69    +  no     0.975  0.975  no   no 
+92.2.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.2                            2    1    1     81     95     81     95     15    +  no     0.975  0.975  no   no 
+92.3.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  gene         POLY                                   3    1    1     97  10272     97  10272  10176    +  no     0.975  0.975  no   no 
+92.4.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  CDS          polyprotein                            4    1    1     97  10272     97  10272  10176    +  no     0.975  0.975  no   no 
+92.5.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1    116    132    116    132     17    +  no     0.975  0.975  no   no 
+92.6.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  ncRNA        sfRNA1                                 6    1    1  10299  10723  10299  10723    425    +  no     0.975  0.975  no   no 
+92.7.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.4                            7    1    1  10303  10368  10303  10368     66    +  no     0.975  0.975  no   no 
+92.8.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.5                            8    1    1  10376  10441  10376  10441     66    +  no     0.975  0.975  no   no 
+92.9.1   gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.6                            9    1    1  10453  10534  10453  10534     82    +  no     0.975  0.975  no   no 
+92.10.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.7                           10    1    1  10540  10621  10540  10621     82    +  no     0.975  0.975  no   no 
+92.11.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.8                           11    1    1  10631  10644  10631  10644     14    +  no     0.975  0.975  no   no 
+92.12.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  stem_loop    stem_loop.9                           12    1    1  10645  10723  10645  10723     79    +  no     0.975  0.975  no   no 
+92.13.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     97    438     97    438    342    +  no     0.975  0.975  no   no 
+92.14.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     97    396     97    396    300    +  no     0.975  0.975  no   no 
+92.15.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    439    936    439    936    498    +  no     0.975  0.975  no   no 
+92.16.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    439    711    439    711    273    +  no     0.975  0.975  no   no 
+92.17.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    712    936    712    936    225    +  no     0.975  0.975  no   no 
+92.18.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    937   2421    937   2421   1485    +  no     0.975  0.975  no   no 
+92.19.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2422   3477   2422   3477   1056    +  no     0.975  0.975  no   no 
+92.20.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3478   4131   3478   4131    654    +  no     0.975  0.975  no   no 
+92.21.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4132   4521   4132   4521    390    +  no     0.975  0.975  no   no 
+92.22.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4522   6375   4522   6375   1854    +  no     0.975  0.975  no   no 
+92.23.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6376   6756   6376   6756    381    +  no     0.975  0.975  no   no 
+92.24.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  protein_2K                            24    1    1   6757   6825   6757   6825     69    +  no     0.975  0.975  no   no 
+92.25.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6826   7569   6826   7569    744    +  no     0.975  0.975  no   no 
+92.26.1  gi|300828829|gb|GQ398293.1|    10723  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7570  10269   7570  10269   2700    +  no     0.975  0.975  no   no 
+#
+93.1.1   gi|772519615|gb|KM216720.1|      953  PASS  NC_001474  gene         POLY                                   3    1    1      1    953    937   1889    953    +  5'&3'      -      -  yes  yes
+93.2.1   gi|772519615|gb|KM216720.1|      953  PASS  NC_001474  CDS          polyprotein                            4    1    1      1    953    937   1889    953    +  5'&3'      -      -  yes  yes
+93.3.1   gi|772519615|gb|KM216720.1|      953  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1    953    937   1889    953    +  3'     0.975      -  no   yes
+#
+94.1.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.1                            1    1    1      1     48     23     70     48    +  5'         -  0.975  yes  no 
+94.2.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.2                            2    1    1     59     73     81     95     15    +  no     0.975  0.975  no   no 
+94.3.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  gene         POLY                                   3    1    1     75  10250     97  10272  10176    +  no     0.975  0.975  no   no 
+94.4.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  CDS          polyprotein                            4    1    1     75  10250     97  10272  10176    +  no     0.975  0.975  no   no 
+94.5.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.3                            5    1    1     94    110    116    132     17    +  no     0.975  0.975  no   no 
+94.6.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  ncRNA        sfRNA1                                 6    1    1  10277  10673  10299  10697    397    +  3'     0.975      -  no   yes
+94.7.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.4                            7    1    1  10281  10346  10303  10368     66    +  no     0.975  0.975  no   no 
+94.8.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.5                            8    1    1  10354  10419  10376  10441     66    +  no     0.975  0.975  no   no 
+94.9.1   gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.6                            9    1    1  10431  10512  10453  10534     82    +  no     0.975  0.975  no   no 
+94.10.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.7                           10    1    1  10518  10599  10540  10621     82    +  no     0.975  0.975  no   no 
+94.11.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.8                           11    1    1  10609  10622  10631  10644     14    +  no     0.975  0.975  no   no 
+94.12.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  stem_loop    stem_loop.9                           12    1    1  10623  10673  10645  10697     51    +  3'     0.975      -  no   yes
+94.13.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  anchored_capsid_protein_ancC          13    1    1     75    416     97    438    342    +  no     0.975  0.975  no   no 
+94.14.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  capsid_protein_C                      14    1    1     75    374     97    396    300    +  no     0.975  0.975  no   no 
+94.15.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    417    914    439    936    498    +  no     0.975  0.975  no   no 
+94.16.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  protein_pr                            16    1    1    417    689    439    711    273    +  no     0.975  0.975  no   no 
+94.17.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1    690    914    712    936    225    +  no     0.975  0.975  no   no 
+94.18.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1    915   2399    937   2421   1485    +  no     0.975  0.975  no   no 
+94.19.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  nonstructural_protein_NS1             19    1    1   2400   3455   2422   3477   1056    +  no     0.975  0.975  no   no 
+94.20.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2A            20    1    1   3456   4109   3478   4131    654    +  no     0.975  0.975  no   no 
+94.21.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  nonstructural_protein_NS2B            21    1    1   4110   4499   4132   4521    390    +  no     0.975  0.975  no   no 
+94.22.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  nonstructural_protein_NS3             22    1    1   4500   6353   4522   6375   1854    +  no     0.975  0.975  no   no 
+94.23.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4A            23    1    1   6354   6734   6376   6756    381    +  no     0.975  0.975  no   no 
+94.24.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  protein_2K                            24    1    1   6735   6803   6757   6825     69    +  no     0.975  0.975  no   no 
+94.25.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  nonstructural_protein_NS4B            25    1    1   6804   7547   6826   7569    744    +  no     0.975  0.975  no   no 
+94.26.1  gi|209976651|gb|FJ410200.1|    10673  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7548  10247   7570  10269   2700    +  no     0.975  0.975  no   no 
+#
+95.1.1   gi|18644171|gb|AF363090.1|      1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+95.2.1   gi|18644171|gb|AF363090.1|      1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+95.3.1   gi|18644171|gb|AF363090.1|      1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+96.1.1   gi|1447973218|gb|MH680040.1|    1485  PASS  NC_001477  gene         POLY                                   3    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+96.2.1   gi|1447973218|gb|MH680040.1|    1485  PASS  NC_001477  CDS          polyprotein                            4    1    1      1   1485    935   2419   1485    +  5'&3'      -      -  yes  yes
+96.3.1   gi|1447973218|gb|MH680040.1|    1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1      1   1485    935   2419   1485    +  no     0.975  0.975  no   no 
+#
+97.1.1   gi|719239096|gb|KM359168.1|      344  PASS  NC_001477  gene         POLY                                   3    1    1      1    344    205    548    344    +  5'&3'      -      -  yes  yes
+97.2.1   gi|719239096|gb|KM359168.1|      344  PASS  NC_001477  CDS          polyprotein                            4    1    1      1    344    205    548    344    +  5'&3'      -      -  yes  yes
+97.3.1   gi|719239096|gb|KM359168.1|      344  PASS  NC_001477  mat_peptide  anchored_capsid_protein_ancC          13    1    1      1    232    205    436    232    +  5'         -  0.975  yes  no 
+97.4.1   gi|719239096|gb|KM359168.1|      344  PASS  NC_001477  mat_peptide  capsid_protein_C                      14    1    1      1    190    205    394    190    +  5'         -  0.975  yes  no 
+97.5.1   gi|719239096|gb|KM359168.1|      344  PASS  NC_001477  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    233    344    437    548    112    +  3'     0.975      -  no   yes
+97.6.1   gi|719239096|gb|KM359168.1|      344  PASS  NC_001477  mat_peptide  protein_pr                            16    1    1    233    344    437    548    112    +  3'     0.975      -  no   yes
+#
+98.1.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.1                            1    1    1      1     48     22     69     48    +  5'         -  0.975  yes  no 
+98.2.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.2                            2    1    1     58     72     79     93     15    +  no     0.975  0.975  no   no 
+98.3.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  gene         POLY                                   3    1    1     74  10246     95  10267  10173    +  no     0.975  0.975  no   no 
+98.4.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  CDS          polyprotein                            4    1    1     74  10246     95  10267  10173    +  no     0.975  0.975  no   no 
+98.5.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.3                            5    1    1     93    109    114    130     17    +  no     0.975  0.975  no   no 
+98.6.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  ncRNA        sfRNA1                                 6    1    1  10269  10663  10290  10684    395    +  3'     0.975      -  no   yes
+98.7.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.4                            7    1    1  10273  10338  10294  10359     66    +  no     0.975  0.975  no   no 
+98.8.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.5                            8    1    1  10349  10411  10370  10432     63    +  no     0.975  0.975  no   no 
+98.9.1   gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.6                            9    1    1  10419  10531  10440  10552    113    +  no     0.975  0.975  no   no 
+98.10.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.7                           10    1    1  10503  10584  10524  10605     82    +  no     0.975  0.975  no   no 
+98.11.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.8                           11    1    1  10594  10607  10615  10628     14    +  no     0.975  0.975  no   no 
+98.12.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  stem_loop    stem_loop.9                           12    1    1  10608  10663  10629  10684     56    +  3'     0.975      -  no   yes
+98.13.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  anchored_capsid_protein_ancC          13    1    1     74    415     95    436    342    +  no     0.975  0.975  no   no 
+98.14.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  capsid_protein_C                      14    1    1     74    373     95    394    300    +  no     0.975  0.975  no   no 
+98.15.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  membrane_glycoprotein_precursor_prM   15    1    1    416    913    437    934    498    +  no     0.975  0.975  no   no 
+98.16.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  protein_pr                            16    1    1    416    688    437    709    273    +  no     0.975  0.975  no   no 
+98.17.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  membrane_glycoprotein_M               17    1    1    689    913    710    934    225    +  no     0.975  0.975  no   no 
+98.18.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  envelope_protein_E                    18    1    1    914   2392    935   2413   1479    +  no     0.975  0.975  no   no 
+98.19.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1   2393   3448   2414   3469   1056    +  no     0.975  0.975  no   no 
+98.20.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  nonstructural_protein_NS2A            20    1    1   3449   4102   3470   4123    654    +  no     0.975  0.975  no   no 
+98.21.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  nonstructural_protein_NS2B            21    1    1   4103   4492   4124   4513    390    +  no     0.975  0.975  no   no 
+98.22.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  nonstructural_protein_NS3             22    1    1   4493   6349   4514   6370   1857    +  no     0.975  0.975  no   no 
+98.23.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  nonstructural_protein_NS4A            23    1    1   6350   6730   6371   6751    381    +  no     0.975  0.975  no   no 
+98.24.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  protein_2K                            24    1    1   6731   6799   6752   6820     69    +  no     0.975  0.975  no   no 
+98.25.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  nonstructural_protein_NS4B            25    1    1   6800   7543   6821   7564    744    +  no     0.975  0.975  no   no 
+98.26.1  gi|225691025|gb|FJ850097.1|    10663  PASS  NC_001475  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1   7544  10243   7565  10264   2700    +  no     0.975  0.975  no   no 
+#
+99.1.1   gi|363499656|gb|JN030241.1|     1485  PASS  NC_001474  gene         POLY                                   3    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+99.2.1   gi|363499656|gb|JN030241.1|     1485  PASS  NC_001474  CDS          polyprotein                            4    1    1      1   1485    937   2421   1485    +  5'&3'      -      -  yes  yes
+99.3.1   gi|363499656|gb|JN030241.1|     1485  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1      1   1485    937   2421   1485    +  no     0.975  0.975  no   no 
+#
+100.1.1  gi|112361385|gb|DQ854726.1|      390  PASS  NC_001475  gene         POLY                                   3    1    1      1    390   2990   3379    390    +  5'&3'      -      -  yes  yes
+100.2.1  gi|112361385|gb|DQ854726.1|      390  PASS  NC_001475  CDS          polyprotein                            4    1    1      1    390   2990   3379    390    +  5'&3'      -      -  yes  yes
+100.3.1  gi|112361385|gb|DQ854726.1|      390  PASS  NC_001475  mat_peptide  nonstructural_protein_NS1             19    1    1      1    390   2990   3379    390    +  5'&3'      -      -  yes  yes

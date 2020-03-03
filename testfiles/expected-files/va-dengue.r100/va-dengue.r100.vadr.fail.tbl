@@ -1,0 +1,200 @@
+>Feature gi|568131591|gb|KF971711.1|
+<1	53	stem_loop
+			note	stem-loop A (SLA)
+62	76	stem_loop
+			note	stem-loop B (SLB)
+78	10250	gene
+			gene	POLY
+78	10250	misc_feature
+			note	similar to polyprotein
+78	419	misc_feature
+			note	similar to anchored capsid protein ancC
+78	377	misc_feature
+			note	similar to capsid protein C
+97	113	stem_loop
+			note	capsid region hairpin (cHP)
+420	917	misc_feature
+			note	similar to membrane glycoprotein precursor prM
+420	692	misc_feature
+			note	similar to protein pr
+693	917	misc_feature
+			note	similar to membrane glycoprotein M
+918	2396	misc_feature
+			note	similar to envelope protein E
+2397	3452	misc_feature
+			note	similar to nonstructural protein NS1
+3453	4106	misc_feature
+			note	similar to nonstructural protein NS2A
+4107	4496	misc_feature
+			note	similar to nonstructural protein NS2B
+4497	6353	misc_feature
+			note	similar to nonstructural protein NS3
+6354	6734	misc_feature
+			note	similar to nonstructural protein NS4A
+6735	6803	misc_feature
+			note	similar to protein 2K
+6804	7547	misc_feature
+			note	similar to nonstructural protein NS4B
+7548	10247	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5
+10262	>10523	ncRNA
+			product	sfRNA1
+			ncRNA_class	lncRNA
+			note	subgenomic flavivirus RNA
+10266	10331	stem_loop
+			note	flaviviral nuclease-resistant RNA 1 (fNR1); also called stem-loop 1 or xrRNA1
+10342	10404	stem_loop
+			note	flaviviral nuclease-resistant RNA 2 (fNR2); also called stem-loop 2 or xrRNA2
+10412	>10523	stem_loop
+			note	dumbbell 1 (DBI); also called xrRNA3
+10496	>10523	stem_loop
+			note	dumbbell 2 (DBII); also called xrRNA4
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.829<0.900]
+ERROR: INDEFINITE_ANNOTATION_END: (polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [4533 > 8 (strand:+ CM:10250 blastx:5717, valid stop codon in CM prediction)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (anchored capsid protein ancC) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (capsid protein C) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (membrane glycoprotein precursor prM) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein pr) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (membrane glycoprotein M) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (envelope protein E) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS2A) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS2B) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural protein NS3) alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6370]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS3) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural protein NS4A) alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6751]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural protein NS4A) alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6371]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS4A) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_END: (protein 2K) alignment to homology model has low confidence at 3' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6820]
+ERROR: INDEFINITE_ANNOTATION_START: (protein 2K) alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6752]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein 2K) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural protein NS4B) alignment to homology model has low confidence at 5' boundary [0.05 < 0.60 (mat_peptide feature), RF position 6821]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS4B) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|323467|gb|M36806.1|DENAAA
+
+Additional note(s) to submitter:
+ERROR: NO_ANNOTATION: (*sequence*) no significant similarity detected
+>Feature gi|1015635081|gb|AH012002.2|
+1	339	misc_feature
+			note	similar to anchored capsid protein ancC
+1	297	misc_feature
+			note	similar to capsid protein C
+1	>4314	gene
+			gene	POLY
+1	>4314	misc_feature
+			note	similar to polyprotein
+17	33	stem_loop
+			note	capsid region hairpin (cHP)
+340	837	misc_feature
+			note	similar to membrane glycoprotein precursor prM
+340	612	misc_feature
+			note	similar to protein pr
+613	837	misc_feature
+			note	similar to membrane glycoprotein M
+838	2322	misc_feature
+			note	similar to envelope protein E
+2323	2628	misc_feature
+			note	similar to nonstructural protein NS1
+2629	3132	misc_feature
+			note	similar to nonstructural protein NS2A
+3133	3436	misc_feature
+			note	similar to nonstructural protein NS2B
+3437	>4314	misc_feature
+			note	similar to nonstructural protein NS3
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [1764 > 5 (strand:+ CM:4314 blastx:2550, no valid stop codon in CM prediction)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (anchored capsid protein ancC) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (capsid protein C) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (membrane glycoprotein precursor prM) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein pr) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (membrane glycoprotein M) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (envelope protein E) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural protein NS1) alignment to homology model is a gap at 3' boundary [RF position 3479]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural protein NS2A) alignment to homology model is a gap at 5' boundary [RF position 3480]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS2A) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural protein NS2B) alignment to homology model is a gap at 3' boundary [RF position 4523]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS2B) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: UNEXPECTED_LENGTH: (nonstructural protein NS2B) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [304]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural protein NS3) alignment to homology model is a gap at 5' boundary [RF position 4524]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS3) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|380003821|gb|JQ045672.1|
+<1	48	stem_loop
+			note	stem-loop A (SLA)
+59	73	stem_loop
+			note	stem-loop B (SLB)
+75	10179	gene
+			gene	POLY
+75	10179	misc_feature
+			note	similar to polyprotein
+75	416	misc_feature
+			note	similar to anchored capsid protein ancC
+75	374	misc_feature
+			note	similar to capsid protein C
+94	110	stem_loop
+			note	capsid region hairpin (cHP)
+417	914	misc_feature
+			note	similar to membrane glycoprotein precursor prM
+417	689	misc_feature
+			note	similar to protein pr
+690	914	misc_feature
+			note	similar to membrane glycoprotein M
+915	2399	misc_feature
+			note	similar to envelope protein E
+2400	3455	misc_feature
+			note	similar to nonstructural protein NS1
+3456	4109	misc_feature
+			note	similar to nonstructural protein NS2A
+4110	4499	misc_feature
+			note	similar to nonstructural protein NS2B
+4500	6298	misc_feature
+			note	similar to nonstructural protein NS3
+6299	6679	misc_feature
+			note	similar to nonstructural protein NS4A
+6680	6748	misc_feature
+			note	similar to protein 2K
+6749	7492	misc_feature
+			note	similar to nonstructural protein NS4B
+7493	10176	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5
+10206	10630	ncRNA
+			product	sfRNA1
+			ncRNA_class	lncRNA
+			note	subgenomic flavivirus RNA
+10210	10275	stem_loop
+			note	flaviviral nuclease-resistant RNA 1 (fNR1); also called stem-loop 1 or xrRNA1
+10283	10348	stem_loop
+			note	flaviviral nuclease-resistant RNA 2 (fNR2); also called stem-loop 2 or xrRNA2
+10360	10441	stem_loop
+			note	dumbbell 1 (DBI); also called xrRNA3
+10447	10528	stem_loop
+			note	dumbbell 2 (DBII); also called xrRNA4
+10538	10551	stem_loop
+			note	short hairpin (sHP)
+10552	10630	stem_loop
+			note	3' stem-loop (3'SL)
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 75..78 (stop shifted 10101 nt)]
+ERROR: INDEFINITE_ANNOTATION_END: (polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [5332 > 8 (strand:+ CM:10179 blastx:4847)]
+ERROR: UNEXPECTED_LENGTH: (polyprotein) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10105]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (anchored capsid protein ancC) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (capsid protein C) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (membrane glycoprotein precursor prM) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein pr) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (membrane glycoprotein M) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (envelope protein E) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS2A) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS2B) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS3) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: UNEXPECTED_LENGTH: (nonstructural protein NS3) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1799]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS4A) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein 2K) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (nonstructural protein NS4B) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: UNEXPECTED_LENGTH: (RNA-dependent RNA polymerase NS5) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [2684]
