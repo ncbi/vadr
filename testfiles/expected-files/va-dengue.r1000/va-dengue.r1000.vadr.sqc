@@ -350,7 +350,7 @@
 347   gi|1471157528|gb|MG933815.1|       1485  PASS  yes  NC_001477  Dengue  1      1397.9  0.941  1.000  0.138   17.9     1    +  NC_001475  Dengue  3      651.5  0.439  -     
 348   gi|363499436|gb|JN380859.1|        1485  PASS  yes  NC_001474  Dengue  2      1423.1  0.958  0.999  0.138   19.7     1    +  NC_002640  Dengue  4      814.3  0.548  -     
 349   gi|75705755|gb|DQ109348.1|         1791  PASS  yes  NC_001475  Dengue  3      1722.5  0.962  0.999  0.167   25.8     1    +  NC_001477  Dengue  1      746.1  0.417  -     
-350   gi|763477784|gb|KM222448.1|        1310  FAIL  yes  NC_001475  Dengue  3      1187.1  0.906  0.854  0.105    9.7     1    +  NC_001477  Dengue  1      577.1  0.441  LOW_COVERAGE(lowcovrg)
+350   gi|763477784|gb|KM222448.1|        1310  FAIL  yes  NC_001475  Dengue  3      1187.1  0.906  0.996  0.122    9.5     2    +  NC_001477  Dengue  1      577.1  0.441  -     
 351   gi|719239096|gb|KM359168.1|         344  PASS  yes  NC_001477  Dengue  1       309.9  0.901  0.991  0.032      0     1    +  NC_001475  Dengue  3      134.6  0.391  -     
 352   gi|1447973826|gb|MH680344.1|       1485  PASS  yes  NC_001477  Dengue  1      1392.6  0.938  1.000  0.138     18     1    +  NC_001475  Dengue  3      654.8  0.441  -     
 353   gi|239714564|emb|HB384174.1|         19  FAIL  no   -          -       -           -      -      -      -      -     -    _  -          -       -          -      -  NO_ANNOTATION(noannotn)
@@ -832,7 +832,7 @@
 829   gi|206597830|gb|FJ182023.1|       10690  PASS  yes  NC_001477  Dengue  1     10354.0  0.969  1.000  0.996  124.3     1    +  NC_001475  Dengue  3     4437.0  0.415  -     
 830   gi|156616821|gb|EF591289.1|         303  PASS  yes  NC_001474  Dengue  2       257.3  0.849  1.000  0.028    1.4     1    +  NC_002640  Dengue  4      112.6  0.372  -     
 831   gi|12060284|dbj|AB038478.1|        1050  PASS  yes  NC_001475  Dengue  3      1079.5  1.028  1.000  0.098    0.1     1    +  NC_001477  Dengue  1      463.8  0.442  -     
-832   gi|939462757|gb|KT327912.1|         311  FAIL  no   NC_001477  Dengue  1        19.4  0.062  0.572  0.016    3.3     1    -  -          -       -          -      -  LOW_SCORE(lowscore),REVCOMPLEM(revcompl),LOW_COVERAGE(lowcovrg),BIASED_SEQUENCE(biasdseq)
+832   gi|939462757|gb|KT327912.1|         311  FAIL  no   NC_001477  Dengue  1        19.4  0.062  0.572  0.016    3.3     1    -  -          -       -          -      -  LOW_SCORE(lowscore),BIASED_SEQUENCE(biasdseq),REVCOMPLEM(revcompl),LOW_COVERAGE(lowcovrg)
 833   gi|1145302949|gb|KX357994.1|       1485  PASS  yes  NC_001474  Dengue  2      1468.8  0.989  0.999  0.138   18.2     1    +  NC_001477  Dengue  1      846.4  0.570  -     
 834   gi|568131561|gb|KF971696.1|       10418  FAIL  yes  NC_001475  Dengue  3      9173.5  0.881  0.863  0.840  108.3     2    +  NC_001477  Dengue  1     4109.2  0.394  LOW_COVERAGE(lowcovrg)
 835   gi|169144073|gb|EU482644.1|       10678  PASS  yes  NC_001474  Dengue  2     10804.2  1.012  1.000  0.996  155.3     1    +  NC_001475  Dengue  3     5573.8  0.522  -     

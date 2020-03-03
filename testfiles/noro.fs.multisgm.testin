@@ -1,0 +1,59 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -b $VADRSCRIPTSDIR/testfiles/models/blast2 $VADRSCRIPTSDIR/testfiles/noro.fs.1.fa va-noro.fs.multisgm.1 > va-noro.fs.multisgm.1.out
+desc: annotate-noro-fs-multisgm.1
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.pass.tbl 
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.fail.tbl
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sqa
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sqc
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.ftr
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sgm
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.mdl
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alt
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alc
+rmdir: va-noro.fs.multisgm.1
+## 
+## partial sequences extracted from noro.fs.1.fa
+##
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.multisgm.minfo -b $VADRSCRIPTSDIR/testfiles/models/blast2 $VADRSCRIPTSDIR/testfiles/noro.fs.2.fa va-noro.fs.multisgm.2 > va-noro.fs.multisgm.2.out
+desc: annotate-noro-fs-multisgm.2
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.pass.tbl 
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.fail.tbl
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sqa
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sqc
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.ftr
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sgm
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.mdl
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alt
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alc
+rmdir: va-noro.fs.multisgm.2

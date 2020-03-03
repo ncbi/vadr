@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.2 [Jan 2020]
+# version: 1.0.3 [March 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -64,11 +64,13 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
+# vdr_FeatureInfoValidateParentIndexStrings()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 #
 # vdr_SegmentInfoPopulate()
 # 
 # vdr_FeatureTypeAndTypeIndexString()
+# vdr_FeatureTypeIndex()
 # vdr_FeatureTypeIsCds()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
@@ -76,6 +78,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureChildrenArray()
 # vdr_FeatureNumSegments()
+# vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
@@ -86,10 +89,12 @@ require "sqp_utils.pm";
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()
 # vdr_AlertInfoAdd()
-# vdr_AlertInfoSetFTableInvalidatedBy
+# vdr_AlertInfoSetFTableInvalidatedBy()
+# vdr_AlertInfoSetCausesFailure()
+# vdr_AlertInfoDump()
 # 
 # Subroutines related to parallelization on the compute farm:
-# vdr_
+# vdr_ParseQsubFile()
 # vdr_SubmitJob()
 # vdr_WaitForFarmJobsToFinish()
 #
@@ -560,6 +565,54 @@ sub vdr_FeatureInfoValidateCoords {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoValidateParentIndexStrings
+# Incept:     EPN, Wed Feb 19 11:44:28 2020
+# 
+# Purpose:    Validate "parent_idx_str" values are either "GBNULL"
+#             or a valid feature index [0..$nftr-1]. Should probably
+#             be called after vdr_FeatureInfoInitializeParentIndexStrings().
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoValidateParentIndexStrings {
+  my $sub_name = "vdr_FeatureInfoValidateParentIndexStrings";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
+      if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
+      }
+      elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      }
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some parent index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+  
+}
+
+#################################################################
 # Subroutine:  vdr_FeatureInfoChildrenArrayOfArrays()
 # Incept:      EPN, Sun Mar 10 06:22:49 2019
 #
@@ -711,6 +764,30 @@ sub vdr_FeatureTypeAndTypeIndexString {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   my ($ftr_info_AHR, $ftr_idx, $sep_char) = @_;
 
+  my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
+
+  return $type . $sep_char . vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
+}
+
+#################################################################
+# Subroutine:  vdr_FeatureTypeIndex()
+# Incept:      EPN, Tue Feb 11 11:49:05 2020
+#
+# Purpose:     Return the type index for $ftr_idx.
+# 
+# Arguments: 
+#   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $ftr_idx:        index we are interested in
+# 
+# Returns:     Type index, string
+#
+################################################################# 
+sub vdr_FeatureTypeIndex { 
+  my $nargs_expected = 2;
+  my $sub_name = "vdr_FeatureTypeIndex";
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
   my $nftr = scalar(@{$ftr_info_AHR});
   my $type = $ftr_info_AHR->[$ftr_idx]{"type"};
   my $type_idx = 1;
@@ -718,7 +795,7 @@ sub vdr_FeatureTypeAndTypeIndexString {
     if($ftr_info_AHR->[$ftr_idx2]{"type"} eq $type) { $type_idx++; }
   }
   
-  return $type . $sep_char . $type_idx;
+  return $type_idx;
 }
 
 #################################################################
@@ -865,13 +942,47 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene {
 # 
 #################################################################
 sub vdr_FeatureNumSegments { 
-  my $sub_name  = "featureNumSegments";
+  my $sub_name  = "vdr_FeatureNumSegments";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($ftr_info_AHR, $ftr_idx) = (@_);
 
   return ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
+}
+
+
+#################################################################
+# Subroutine: vdr_FeatureRelativeSegmentIndex()
+# Incept:     EPN, Tue Feb 11 11:53:02 2020
+#
+# Purpose:    Return the relative index of segment $sgm_idx 
+#             in $ftr_idx.
+#
+# Arguments: 
+#   $ftr_info_AHR:  REF to array of hashes of feature info
+#   $ftr_idx:       feature index we are interested in [0..nftr-1]
+#   $sgm_idx:       segment index we are interested in [0..nsgm-1]
+#
+# Returns:    Index of segment $sgm_idx [1..vdr_FeatureNumSegements($ftr_idx)]
+#             -1 if segment $sgm_idx is not a segment of $ftr_idx.
+# 
+# Dies: Never, nothing is validated.
+# 
+#################################################################
+sub vdr_FeatureRelativeSegmentIndex { 
+  my $sub_name  = "vdr_FeatureRelativeSegmentIndex";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $ftr_idx, $sgm_idx) = (@_);
+
+  if(($sgm_idx >= $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) && 
+     ($sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"})) { 
+    return $sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1;
+  }
+
+  return -1;
 }
 
 
@@ -1300,6 +1411,18 @@ sub vdr_AlertInfoInitialize {
                    "CDS_HAS_STOP_CODON", # short description
                    "in-frame stop codon exists 5' of stop position predicted by homology to reference", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
+                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
+                   "high confidence potential frameshift in CDS", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
+                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
+                   "low confidence potential frameshift in CDS", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",

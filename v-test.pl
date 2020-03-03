@@ -41,15 +41,16 @@ my %opt_group_desc_H = ();
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 $opt_group_desc_H{"1"} = "basic options";
-#     option            type       default               group   requires incompat    preamble-output                          help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                   "display this help",                                  \%opt_HH, \@opt_order_A);
-opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",           "force; if dir <output directory> exists, overwrite it",   \%opt_HH, \@opt_order_A);
+#     option            type       default               group   requires incompat    preamble-output                       help-output    
+opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",        "force; if dir <output directory> exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                         "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("-s",           "boolean", 0,                        1,    undef, undef,      "skip commands, they were already run, just compare files",  "skip commands, they were already run, just compare files",   \%opt_HH, \@opt_order_A);
+opt_Add("-s",           "boolean", 0,                        1,    undef, "--rmout",  "skip commands, they were already run, just compare files",  "skip commands, they were already run, just compare files",   \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"2"} = "options for defining variables in testing files";
 #       option       type        default                group  requires incompat          preamble-output                                              help-output    
 opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef,       "build directory, replaces !dirbuild! in test file with <s>", "build directory, replaces !dirbuild! in test file with <s>", \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"3"} = "other options";
+opt_Add("--rmout",      "boolean", 0,                        3,    undef, "-s",       "if output files listed in testin file already exist, remove them", "if output files listed in testin file already exist, remove them", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk", "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--skipmsg",    "boolean", 0,                        3,    undef, undef,      "do not compare errors and warnings", "do not compare errors and warning lines", \%opt_HH, \@opt_order_A);
 
@@ -64,14 +65,15 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 's'            => \$GetOptions_H{"-s"},
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
+                'rmout'        => \$GetOptions_H{"--rmout"},
                 'keep'         => \$GetOptions_H{"--keep"},
                 'skipmsg'      => \$GetOptions_H{"--skipmsg"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "1.0.2";
-my $releasedate   = "Jan 2020";
+my $version       = "1.0.3";
+my $releasedate   = "March 2020";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -229,11 +231,13 @@ if($overall_pass) {
 }
 else { 
   ofile_OutputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
+  ofile_FAIL("ERROR, at least one test FAILed", 1, undef);
 }
 ofile_OutputString($log_FH, 1, sprintf("#\n"));
 
 $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+
 exit 0;
 
 #################################################################
@@ -332,9 +336,12 @@ sub parse_test_file {
           # -s used, we aren't running commands, just comparing files, output files must already exist
           if(! -e $outfile) { ofile_FAIL("ERROR, output file $outfile does not already exist (and -s used)", 1, $FH_HR); }
         }
-        else { 
-          # -s not used
-          if(-e $outfile) { ofile_FAIL("ERROR, output file $outfile already exists (and -s not used)", 1, $FH_HR); }
+        elsif((opt_IsUsed("--rmout", $opt_HHR)) && (opt_Get("--rmout", $opt_HHR))) { 
+          # --rmout used, remove any file that already exists
+          if(-e $outfile) { utl_FileRemoveUsingSystemRm($outfile, "v-test.pl", \%opt_HH, $FH_HR); }
+        }
+        else { # -s not used, --rmout not used
+          if(-e $outfile) { ofile_FAIL("ERROR, output file $outfile already exists (and -s/--rmout not used)", 1, $FH_HR); }
         }
       }
       elsif($line =~ s/^exp\:\s+//) { 

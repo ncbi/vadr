@@ -21,9 +21,9 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.0.2"
+VERSION="1.0.3"
 # bio-easel
-BEVERSION="Bio-Easel-0.11"
+BEVERSION="Bio-Easel-0.12"
 # blast+
 BVERSION="2.9.0"
 # infernal
@@ -31,7 +31,7 @@ IVERSION="1.1.3"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.0-1"
+MVERSION="1.0.2-3"
 
 # set defaults
 INPUTSYSTEM="?"
@@ -170,10 +170,10 @@ echo "------------------------------------------------"
 # download blast binaries
 if [ $INPUTSYSTEM == "linux" ]; then
 echo "Downloading BLAST version $BVERSION for Linux"
-curl -k -L -o blast.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-linux.tar.gz
+curl -k -L -o blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-linux.tar.gz
 else 
 echo "Downloading BLAST version $BVERSION for Mac/OSX"
-curl -k -L -o blast.tar.gz ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-macosx.tar.gz
+curl -k -L -o blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-macosx.tar.gz
 fi
 tar xfz blast.tar.gz
 rm blast.tar.gz
@@ -182,7 +182,7 @@ echo "------------------------------------------------"
 
 # download vadr-models 
 echo "Downloading latest VADR models ... "
-curl -k -L -o vadr-models.tar.gz http://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-$MVERSION.tar.gz
+curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-$MVERSION.tar.gz
 tar xfz vadr-models.tar.gz
 rm vadr-models.tar.gz
 echo "------------------------------------------------"
@@ -212,11 +212,11 @@ echo ""
 echo ""
 echo "********************************************************"
 echo "The final step is to update your environment variables."
-echo "(See https://github.com/nawrockie/vadr/blob/0.991/documentation/install.md for more information.)"
+echo "(See https://github.com/nawrockie/vadr/blob/$VERSION/documentation/install.md for more information.)"
 echo ""
-echo "If you are using the bash shell, add the following"
-echo "lines to the end of your '.bashrc' file in your home"
-echo "directory:"
+echo "If you are using the bash or zsh shell (zsh is default in MacOS/X as"
+echo "of v10.15 (Catalina)), add the following lines to the end of your"
+echo "'.bashrc' or '.zshrc' file in your home directory:"
 echo ""
 echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
 echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
@@ -229,10 +229,14 @@ echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
 echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "export PATH=\"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""
-echo "After adding the export lines to your .bashrc file, source that file"
+echo "After adding the export lines to your .bashrc or .zshrc file, source that file"
 echo "to update your current environment with the command:"
 echo ""
 echo "source ~/.bashrc"
+echo ""
+echo "OR"
+echo ""
+echo "source ~/.zshrc"
 echo ""
 echo "---"
 echo "If you are using the C shell, add the following"

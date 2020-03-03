@@ -1,0 +1,76 @@
+# STOCKHOLM 1.0
+#=GF CC Multi-segment frameshift test cases
+
+#=GS ENTOY100A-REV        DE reference sequence, no frameshifts
+#=GS ENTOY100A-REV-2-fs1  DE multi-segment, segment 1, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS38+1)
+#=GS ENTOY100A-REV-2-fs2  DE multi-segment, segment 2, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS52+1)
+#=GS ENTOY100A-REV-2-fs3  DE multi-segment, segment 3, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS69+1)
+#=GS ENTOY100A-REV-2-fs4  DE multi-segment, segment 1, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS38-)
+#=GS ENTOY100A-REV-2-fs5  DE multi-segment, segment 2, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS52-)
+#=GS ENTOY100A-REV-2-fs6  DE multi-segment, segment 3, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS69-)
+#=GS ENTOY100A-REV-2-fs7  DE multi-segment, segment 2, 1nt deletion  that breaks frame at end of segment, not fixed (CDS2, RFPOS64-)
+#=GS ENTOY100A-REV-2-fs8  DE multi-segment, segment 1, 1nt insertion that breaks frame, fixed by 1nt deletion same segment (CDS2, RFPOS38+1,45-)
+#=GS ENTOY100A-REV-2-fs9  DE multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion same segment (CDS2, RFPOS52+1,60+2)
+#=GS ENTOY100A-REV-2-fs10 DE multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 2nt insertion same segment (CDS2, RFPOS69+1,70+2)
+#=GS ENTOY100A-REV-2-fs11 DE multi-segment, segment 1, 1nt insertion that breaks frame, fixed by 1nt deletion different segment (CDS2, RFPOS38+1,58-)
+#=GS ENTOY100A-REV-2-fs12 DE multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion different segment (CDS2, RFPOS52+1,70+2)
+#=GS ENTOY100A-REV-2-fs13 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, not fixed (CDS2, RFPOS47-)
+#=GS ENTOY100A-REV-2-fs14 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, fixed by 1nt deletion (CDS2, RFPOS47-,55-)
+#=GS ENTOY100A-REV-2-fs15 DE multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, not fixed (CDS2, RFPOS47+1)
+#=GS ENTOY100A-REV-2-fs16 DE multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, fixed by 1nt insertion (CDS2, RFPOS47+1,55+2)
+#=GS ENTOY100A-REV-2-fs17 DE multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 1nt deletion different segment (CDS3, RFPOS73+1,86-)
+#=GS ENTOY100A-REV-2-fs18 DE multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 5nt insertion different segment (CDS3, RFPOS73+1,86+5)
+#=GS ENTOY100A-REV-2-fs19 DE multi-segment, segment 3, 3nt deletion, partly in inter-segment region, that does break frame (CDS3, RFPOS78-,79-,80-)
+#=GS ENTOY100A-REV-2-fs20 DE multi-segment, segment 3, 3nt insertion that does not break frame (CDS3, RPOS86+3)
+#=GS ENTOY100A-REV-2-fs21 DE multi-segment, segment 3, 3nt deletion that spans segments that does not break frame (CDS3, RFPOS79-,87-,88-)
+#=GS ENTOY100A-REV-2-fs22 DE multi-segment, segment 3, 3nt insertions that spans segments that does not break frame (CDS3, RFPOS79+2,86+1)
+#=GS ENTOY100A-REV-2-fs23 DE multi-segment, segment 3, two frameshifts, 1nt insertion fixed by 1nt deletion, then 1nt deletion that is not fixed (CDS3, RFPOS70-,73+1,86+1)
+#=GS ENTOY100A-REV-2-fs24 DE multi-segment, segment 3, two frameshifts, 1nt insertion fixed by 1nt deletion, then 1nt deletion that is fixed by 1nt insertion (CDS3, RFPOS70-,73+1,86+1,90-)
+
+ENTOY100A-REV        TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs1  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAAcTGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs2  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCAtAGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs3  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..CgCATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs4  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.-GCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs5  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.-GATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs6  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.-ATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs7  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTG-ATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs8  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CA-GTAGAAcTGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs9  TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATGaaGCACC..GCAtAGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs10 TGATGCTACGTACG.....TGAATGG..CAATTT.CTAggCgCATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs11 TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GC-CC..GCA.AGATG.CACGTAGAAcTGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs12 TGATGCTACGTACG.....TGAATGG..CAATTT.CTAggC.CATTGTATG..GCACC..GCAtAGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs13 TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.-ACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs14 TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..-CA.AGATG.-ACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs15 TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATGtCACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs16 TGATGCTACGTACG.....TGAATGG..CAATTT.CTA..C.CATTGTATG..GCACCttGCA.AGATGtCACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs17 TGATGCTACGTACG.....-GAATGG..CAATTTtCTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs18 TGATGCTACGTACGaaaaaTGAATGG..CAATTTtCTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs19 TGATGCTACGTACG.....TGAATG-..--ATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs20 TGATGCTACGTACG..aaaTGAATGG..CAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs21 TGATGCTACGTA--.....TGAATGG..-AATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs22 TGATGCTACGTACG....aTGAATGGttCAATTT.CTA..C.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs23 TGATGCTACGTACG....aTGAATGG..CAATTTtCTA..-.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+ENTOY100A-REV-2-fs24 TGATGCTACG-ACG....aTGAATGG..CAATTTtCTA..-.CATTGTATG..GCACC..GCA.AGATG.CACGTAGAA.TGCTCATTTATGGTAAAGCGATCACCATCGGTGATTTC
+#=GC SS_cons         ...................................................................................................<<<____>>>.........
+#=GC CDS1.90-70      .......................................................................................pts321321321321321321..........
+#=GC MP1.1.90-79     ................................................................................................321321321321..........
+#=GC MP1.2.78-73     ..........................................................................................321321......................
+#=GC GENE1.93-68     .....................................................................................xxxxxxxxxxxxxxxxxxxxxxxxxx.......
+#=GC CDS2.69-28      ...................................321..3.2132.1321..32132..132.13213.!32132132.1321321...............................
+#=GC CDS2-1.69-54    ......................................................................132132132.1321321...............................
+#=GC CDS2-2.54-37    ...............................................1321..32132..132.13213.2...............................................
+#=GC CDS2-3.35-28    ...................................321..3.2132........................................................................
+#=GC CDS3.34-6       .....321321321.....32.......132132.132..1.321.........................................................................
+#=GC CDS3-1.34-22    ............................132132.132..1.321.........................................................................
+#=GC CDS3-2.16-6     .....321321321.....32.................................................................................................
+#=GC MP2.1.34-26     ................................32.132..1.321.........................................................................
+#=GC MP2.2.1.25-22   ............................1321......................................................................................
+#=GC MP2.2.2.16-9    ........321321.....32.................................................................................................
+#=GC CDS4.3-17       ..123123123123.....123................................................................................................
+#=GC ncRNA1.96-79    ................................................................................................xxxxxxxxxxxxxxxxxx....
+#=GC SL1.91-82       ...................................................................................................<<<____>>>.........
+#=GC COLX..          00000000000000000000000000000000000000.000000000.00000.000..00000..000000000.0..000.000000..0000000.....00000000000001
+#=GC COL.X.          00000000011111111112222222222333333333.344444444.44555.555..55556..666666666.7..777.777777..8888888.....88899999999990
+#=GC COL..X          12345678901234567890123456789012345678.901234567.89012.345..67890..123456789.0..123.456789..0123456.....78901234567890
+//
