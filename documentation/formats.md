@@ -5,7 +5,7 @@
   * [`.cmd` files](#cmd)
   * [`.filelist` files](#filelist)
 * [`v-build.pl` output files](#build)
-  * [`.minfo files](#minfo)
+  * [`.minfo` files](#minfo)
 * [`v-annotate.pl` output files](#annotate)
   * [basic output files](#annotate)
   * [`.alc` files](#alc)
