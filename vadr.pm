@@ -3096,7 +3096,7 @@ sub vdr_ModelInfoFileParse {
           }
           else { # feature line
             if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
-              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on FEATURE line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
             # printf("\tadded ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
