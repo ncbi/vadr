@@ -177,6 +177,14 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 * `<key>:<value>` pairs must be separated by one or more whitespace characters.
 * `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
 
+To create multiple qualifier values for the same qualifier
+(e.g. multiple 'note' qualifier values), separate the each qualifier
+value by the string `:GBSEP:` in the `<value>` field. For example:
+
+```
+FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" product:"RdRp" note:"this is note 1:GBSEP:this is note 2"
+```
+
 #### Common MODEL line `<key>:<value>` pairs:
 
 | \<key\> | \<value\> | required? | relevance |
