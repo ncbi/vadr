@@ -3035,6 +3035,8 @@ sub vdr_ModelInfoFileParse {
   $format_str   .= "# <key> must not include any whitespace or ':' characters\n";
   $format_str   .= "# <value> must start *and* end with '\"' but include no other '\"'\n";
   $format_str   .= "# characters (but <value> may include whitespace characters).\n";
+  $format_str   .= "# To include multiple values for the same <key>, e.g. multiple 'note' qualifiers\n";
+  $format_str   .= "# separate each qualifier value by the string ':GBSEP:' in the <value> field.\n";
   $format_str   .= "# <key>:<value> pairs must be separated by one or more whitespace characters.\n";
   $format_str   .= "# <modelname> and the first <key>:<value> pair must be separated by one or\n";
   $format_str   .= "# more whitespace characters.\n";
