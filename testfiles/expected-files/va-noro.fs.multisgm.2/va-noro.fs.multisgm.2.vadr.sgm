@@ -1,0 +1,40 @@
+#       seq                                                 seq                   ftr          ftr                        ftr  num  sgm   seq  seq   mdl   mdl  sgm                 5'     3'  5'   3' 
+#idx    name                                                len  p/f   model      type         name                       idx  sgm  idx  from   to  from    to  len  str  trc       pp     pp  gap  gap
+#-----  --------------------------------------------------  ---  ----  ---------  -----------  -------------------------  ---  ---  ---  ----  ---  ----  ----  ---  ---  -----  -----  -----  ---  ---
+1.1.1   NC_001959.2-manually-added-frameshifts-1/1-50        50  FAIL  NC_001959  gene         ORF1                         1    1    1     5   50     5    48   46    +  3'     0.975      -  no   yes
+1.2.1   NC_001959.2-manually-added-frameshifts-1/1-50        50  FAIL  NC_001959  CDS          nonstructural_polyprotein    2    1    1     5   50     5    48   46    +  3'     0.975      -  no   yes
+1.3.1   NC_001959.2-manually-added-frameshifts-1/1-50        50  FAIL  NC_001959  mat_peptide  p48                          7    1    1     5   50     5    48   46    +  3'     0.975      -  no   yes
+#
+2.1.1   NC_001959.2-manually-added-frameshifts-1/30-200     171  FAIL  NC_001959  gene         ORF1                         1    1    1     1  171    28   197  171    +  5'&3'      -      -  yes  yes
+2.2.1   NC_001959.2-manually-added-frameshifts-1/30-200     171  FAIL  NC_001959  CDS          nonstructural_polyprotein    2    1    1     1  171    28   197  171    +  5'&3'      -      -  yes  yes
+2.3.1   NC_001959.2-manually-added-frameshifts-1/30-200     171  FAIL  NC_001959  mat_peptide  p48                          7    1    1     1  171    28   197  171    +  5'&3'      -      -  yes  yes
+#
+3.1.1   NC_001959.2-manually-added-frameshifts-1/5380-6000  621  FAIL  NC_001959  gene         ORF2                         3    1    1     1  621  5376  5994  621    +  5'&3'      -      -  yes  yes
+3.2.1   NC_001959.2-manually-added-frameshifts-1/5380-6000  621  FAIL  NC_001959  CDS          VP1                          4    3    1     1  427  5376  5800  427    +  5'         -  0.975  yes  no 
+3.2.2   NC_001959.2-manually-added-frameshifts-1/5380-6000  621  FAIL  NC_001959  CDS          VP1                          4    3    2   458  621  5831  5994  164    +  3'     0.975      -  no   yes
+#
+4.1.1   NC_001959.2-manually-added-frameshifts-1/7000-7500  501  FAIL  NC_001959  gene         ORF3                         5    1    1     1  501  6992  7499  501    +  5'&3'      -      -  yes  yes
+4.2.1   NC_001959.2-manually-added-frameshifts-1/7000-7500  501  FAIL  NC_001959  CDS          VP2                          6    2    1     1    9  6992  7000    9    +  5'         -  0.975  yes  no 
+4.2.2   NC_001959.2-manually-added-frameshifts-1/7000-7500  501  FAIL  NC_001959  CDS          VP2                          6    2    2   304  501  7301  7499  198    +  3'     0.975      -  no   yes
+#
+5.1.1   NC_001959.2-manually-added-frameshifts-1/7054-7227  174  PASS  NC_001959  gene         ORF3                         5    1    1     1  174  7049  7222  174    +  5'&3'      -      -  yes  yes
+#
+6.1.1   NC_001959.2-manually-added-frameshifts-1/7200-7655  456  FAIL  NC_001959  gene         ORF3                         5    1    1     1  390  7195  7588  390    +  5'         -  0.975  yes  no 
+6.2.1   NC_001959.2-manually-added-frameshifts-1/7200-7655  456  FAIL  NC_001959  CDS          VP2                          6    2    2   104  390  7301  7588  287    +  no     0.975  0.975  no   no 
+#
+7.1.1   NC_001959.2-manually-added-frameshifts-2/1-50        50  PASS  NC_001959  gene         ORF1                         1    1    1     5   50     5    50   46    +  3'     0.975      -  no   yes
+7.2.1   NC_001959.2-manually-added-frameshifts-2/1-50        50  PASS  NC_001959  CDS          nonstructural_polyprotein    2    1    1     5   50     5    50   46    +  3'     0.975      -  no   yes
+7.3.1   NC_001959.2-manually-added-frameshifts-2/1-50        50  PASS  NC_001959  mat_peptide  p48                          7    1    1     5   50     5    50   46    +  3'     0.975      -  no   yes
+#
+8.1.1   NC_001959.2-manually-added-frameshifts-2/67-500     434  PASS  NC_001959  gene         ORF1                         1    1    1     1  434    67   500  434    +  5'&3'      -      -  yes  yes
+8.2.1   NC_001959.2-manually-added-frameshifts-2/67-500     434  PASS  NC_001959  CDS          nonstructural_polyprotein    2    1    1     1  434    67   500  434    +  5'&3'      -      -  yes  yes
+8.3.1   NC_001959.2-manually-added-frameshifts-2/67-500     434  PASS  NC_001959  mat_peptide  p48                          7    1    1     1  434    67   500  434    +  5'&3'      -      -  yes  yes
+#
+9.1.1   NC_001959.2-manually-added-frameshifts-2/30-80       51  FAIL  NC_001959  gene         ORF1                         1    1    1     1   51    30    80   51    +  5'&3'      -      -  yes  yes
+9.2.1   NC_001959.2-manually-added-frameshifts-2/30-80       51  FAIL  NC_001959  CDS          nonstructural_polyprotein    2    1    1     1   51    30    80   51    +  5'&3'      -      -  yes  yes
+9.3.1   NC_001959.2-manually-added-frameshifts-2/30-80       51  FAIL  NC_001959  mat_peptide  p48                          7    1    1     1   51    30    80   51    +  5'&3'      -      -  yes  yes
+#
+10.1.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  gene         ORF1                         1    1    1     1  501  1002  1500  501    +  5'&3'      -      -  yes  yes
+10.2.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  CDS          nonstructural_polyprotein    2    1    1     1  501  1002  1500  501    +  5'&3'      -      -  yes  yes
+10.3.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  mat_peptide  p48                          7    1    1     1  199  1002  1198  199    +  5'         -  0.975  yes  no 
+10.4.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  mat_peptide  NTPase                       8    1    1   200  501  1199  1500  302    +  3'     0.975      -  no   yes

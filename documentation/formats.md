@@ -5,7 +5,7 @@
   * [`.cmd` files](#cmd)
   * [`.filelist` files](#filelist)
 * [`v-build.pl` output files](#build)
-  * [`.minfo files](#minfo)
+  * [`.minfo` files](#minfo)
 * [`v-annotate.pl` output files](#annotate)
   * [basic output files](#annotate)
   * [`.alc` files](#alc)
@@ -176,6 +176,14 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 * `<value>` may include whitespace characters
 * `<key>:<value>` pairs must be separated by one or more whitespace characters.
 * `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
+
+To create multiple qualifier values for the same qualifier
+(e.g. multiple 'note' qualifier values), separate each qualifier
+value by the string `:GBSEP:` in the `<value>` field. For example:
+
+```
+FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" product:"RdRp" note:"this is note 1:GBSEP:this is note 2"
+```
 
 #### Common MODEL line `<key>:<value>` pairs:
 

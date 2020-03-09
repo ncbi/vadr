@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.0.2; January 2020
+#### Version 1.0.4; March 2020
 #### https://github.com/nawrockie/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -37,6 +37,24 @@ BLAST software packages, which are downloaded and installed with [VADR
 installation](documentation/install.md#top).
 
 ---
+## Available VADR models <a name="models"></a>
+
+You can download pre-built models to use to validate and
+annotate viruses or cox1 genes as listed below. ***Importantly***,
+to use a set of models other than the default set that is
+installed with VADR, you will need to use use the `-m`, `-i` and
+`-b` options as described [here](documentation/build.md#building-a-vadr-model-library).
+
+Pre-built models are available for:
+  * Norovirus and Dengue virus RefSeqs, along with other
+    *Flaviviridae* and *Caliciviridae* RefSeqs (**this is the "default"
+    set of models that is installed with VADR**)
+  * *Coronaviridae* RefSeqs, including 2019-nCoV [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/)
+  * metazoan Cytochrome c oxidase I (COX1)
+
+See [this page](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files) for more information
+
+---
 ## VADR documentation <a name="documentation"></a>
 
 * [VADR installation instructions](documentation/install.md#top)
@@ -60,6 +78,16 @@ installation](documentation/install.md#top).
   * [`v-annotate.pl` output files](documentation/formats.md#annotate)
   * [VADR `coords` coordinate string format](documentation/formats.md#coords)
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
+* [Available VADR model files](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
+
+---
+## Reference <a name="reference"></a>
+* The recommended citation for using VADR is:
+  Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
+  Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
+  Nawrocki; *VADR: validation and annotation of virus sequence
+  submissions to GenBank*;
+  bioRxiv 852657; doi: https://doi.org/10.1101/852657.
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

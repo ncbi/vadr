@@ -9,7 +9,7 @@
 
 # Usage: parse_blastx.pl --input <input file>
 
-# vadr 0.993 Nov 2019
+# vadr 1.0.4 March 2020
 
 use strict;
 use warnings;

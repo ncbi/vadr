@@ -1,0 +1,307 @@
+>Feature ENTOY100A-3
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs1
+<1	23	gene
+			gene	one
+<1	12	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+<1	9	stem_loop
+			note	stem-loop 1
+1	21	CDS
+			product	protein one
+1	12	mat_peptide
+			product	protein one mp1
+13	18	mat_peptide
+			product	protein one mp2
+22	37	CDS
+37	54
+56	63
+			product	protein two
+57	69	CDS
+75	85
+			product	protein three
+57	65	mat_peptide
+			product	protein three mp1
+66	69	mat_peptide
+75	82
+			product	protein three mp2
+88	74	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs2
+<1	22	gene
+			gene	one
+<1	20	CDS
+			product	protein one
+<1	11	mat_peptide
+			product	protein one mp1
+<1	11	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+<1	8	stem_loop
+			note	stem-loop 1
+12	17	mat_peptide
+			product	protein one mp2
+21	36	CDS
+36	53
+55	62
+			product	protein two
+56	68	CDS
+74	84
+			product	protein three
+56	64	mat_peptide
+			product	protein three mp1
+65	68	mat_peptide
+74	81
+			product	protein three mp2
+87	73	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs3
+<1	21	gene
+			gene	one
+<1	19	CDS
+			product	protein one
+<1	10	mat_peptide
+			product	protein one mp1
+<1	10	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+<1	7	stem_loop
+			note	stem-loop 1
+11	16	mat_peptide
+			product	protein one mp2
+20	35	CDS
+35	52
+54	61
+			product	protein two
+55	67	CDS
+73	83
+			product	protein three
+55	63	mat_peptide
+			product	protein three mp1
+64	67	mat_peptide
+73	80
+			product	protein three mp2
+86	72	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs6
+<1	22	gene
+			gene	one
+<1	20	CDS
+			product	protein one
+<1	11	mat_peptide
+			product	protein one mp1
+<1	11	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+<1	8	stem_loop
+			note	stem-loop 1
+12	17	mat_peptide
+			product	protein one mp2
+21	36	CDS
+36	53
+55	62
+			product	protein two
+56	68	CDS
+74	84
+			product	protein three
+56	64	mat_peptide
+			product	protein three mp1
+65	68	mat_peptide
+74	81
+			product	protein three mp2
+87	73	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs9
+<1	17	gene
+			gene	one
+<1	15	CDS
+			product	protein one
+<1	6	mat_peptide
+			product	protein one mp1
+<1	6	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+<1	3	stem_loop
+			note	stem-loop 1
+7	12	mat_peptide
+			product	protein one mp2
+16	31	CDS
+31	48
+50	57
+			product	protein two
+51	63	CDS
+69	79
+			product	protein three
+51	59	mat_peptide
+			product	protein three mp1
+60	63	mat_peptide
+69	76
+			product	protein three mp2
+82	68	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs10
+1	16	CDS
+16	33
+35	42
+			product	protein two
+36	48	CDS
+54	64
+			product	protein three
+36	44	mat_peptide
+			product	protein three mp1
+45	48	mat_peptide
+54	61
+			product	protein three mp2
+67	53	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs11
+<1	15	CDS
+15	32
+34	41
+			product	protein two
+35	47	CDS
+53	63
+			product	protein three
+35	43	mat_peptide
+			product	protein three mp1
+44	47	mat_peptide
+53	60
+			product	protein three mp2
+66	52	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs12
+<1	14	CDS
+14	31
+33	40
+			product	protein two
+34	46	CDS
+52	62
+			product	protein three
+34	42	mat_peptide
+			product	protein three mp1
+43	46	mat_peptide
+52	59
+			product	protein three mp2
+65	51	CDS
+			product	protein four
+>Feature ENTOY100A-3-fs19
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	>70
+			product	protein two
+67	>70	CDS
+			product	protein three
+67	>70	mat_peptide
+			product	protein three mp1
+>Feature ENTOY100A-3-fs20
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	>69
+			product	protein two
+67	>69	CDS
+			product	protein three
+67	>69	mat_peptide
+			product	protein three mp1
+>Feature ENTOY100A-3-fs21
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	>68
+			product	protein two
+>Feature ENTOY100A-3-fs22
+1	16	CDS
+16	33
+35	>39
+			product	protein two
+36	>39	CDS
+			product	protein three
+36	>39	mat_peptide
+			product	protein three mp1
+>Feature ENTOY100A-3-fs23
+<1	15	CDS
+15	32
+34	>37
+			product	protein two
+35	>37	CDS
+			product	protein three
+35	>37	mat_peptide
+			product	protein three mp1
+>Feature ENTOY100A-3-fs24
+<1	14	CDS
+14	31
+33	>35
+			product	protein two
