@@ -105,6 +105,8 @@ $execs_H{"cmalign"}           = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmfetch"}           = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmscan"}            = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}          = $env_vadr_infernal_dir . "/cmsearch";
+$execs_H{"hmmfetch"}          = $env_vadr_hmmer_dir    . "/hmmfetch";
+$execs_H{"hmmsearch"}         = $env_vadr_hmmer_dir    . "/hmmsearch";
 $execs_H{"esl-seqstat"}       = $env_vadr_easel_dir    . "/esl-seqstat";
 $execs_H{"esl-translate"}     = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}        = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
@@ -497,20 +499,23 @@ for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") {
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
-my $df_hmm_file = $df_model_dir . "/" . "vadr.cm";
+my $df_hmm_file = $df_model_dir . "/" . "vadr.hmm";
 my $hmm_file    = undef;
 if(! opt_IsUsed("-a", \%opt_HH)) { $hmm_file = $df_hmm_file; }
 else                             { $hmm_file = opt_Get("-a", \%opt_HH); }
 if(! opt_IsUsed("-a", \%opt_HH)) {
-  utl_FileValidateExistsAndNonEmpty($cm_file, "default HMM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($hmm_file, "default HMM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 else { # -a used on the command line
   # check if it is an absolute path first
-  if(utl_FileValidateExistsAndNonEmpty($cm_file, "HMM file specified with -a", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
+  if(utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
     # if not, check if it is a subpath within $VADRMODELDIR
     $hmm_file = $env_vadr_model_dir . "/" . $hmm_file;
     utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
   }
+}
+for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
+  utl_FileValidateExistsAndNonEmpty($hmm_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 my $df_modelinfo_file = $df_model_dir . "/" . "vadr.minfo";
@@ -930,12 +935,10 @@ if($do_hmmer) {
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
-        run_esl_translate_and_save_longest_protein(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                                   \%opt_HH, \%ofile_info_HH);
-        #hmmsearch_wrapper(\%execs_H, $hmm_file, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-        #\%opt_HH, \%ofile_info_HH);
-        #parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-        #                     \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        run_esl_translate_and_hmmsearch(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                        \%opt_HH, \%ofile_info_HH);
+        #parse_hmmsearch_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+        #\@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
         #add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
         #                  \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
@@ -7180,11 +7183,11 @@ sub get_3p_most_sgm_idx_with_results {
 
 
 #################################################################
-# Subroutine:  run_esl_translate_and_save_longest_protein()
+# Subroutine:  run_esl_translate_and_hmmsearch()
 # Incept:      EPN, Mon Mar  9 14:51:56 2020
 #
-# Purpose:    Translate each CDS fasta file, and save the longest
-#             resulting protein sequence.
+# Purpose:    Translate each CDS nt fasta file, and run hmmsearch
+#             against the resulting protein sequences.
 #
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
@@ -7200,8 +7203,8 @@ sub get_3p_most_sgm_idx_with_results {
 # Dies:       If esl-translate fails.
 #
 ################################################################# 
-sub run_esl_translate_and_save_longest_protein { 
-  my $sub_name = "run_esl_translate_and_save_longest_protein";
+sub run_esl_translate_and_hmmsearch { 
+  my $sub_name = "run_esl_translate_and_hmmsearch";
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -7216,18 +7219,53 @@ sub run_esl_translate_and_save_longest_protein {
     $esl_translate_opts .= " -c " . $mdl_info_HR->{"transl_table"};
   }
 
+  my $model_domtblout_file = $out_root . "." . $mdl_name . ".hmmsearch.domtblout";
+
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
       my $cds_idx = vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
       my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
       if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
         my $fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-        my $esl_translate_out_file = $out_root . "." . $mdl_name . ".esl_translate.out";
+        my $hmm_model_name = $mdl_name . ".cds" . $cds_idx;
+
+        # esl-translate
+        my $esl_translate_out_file = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".esl_translate.out";
         my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $fa_file > $esl_translate_out_file";
         utl_RunCommand($esl_translate_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         if($do_keep) {
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".esl-translate-out", $esl_translate_out_file, 0, $do_keep, "esl-translate output for model $mdl_name");
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.esl-translate-out", $esl_translate_out_file, 0, $do_keep, "esl-translate output for model $mdl_name, CDS $cds_idx");
   }
+
+        # hmmsearch
+        my $hmmsearch_opts = "";
+        my $hmmsearch_out_file       = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".hmmsearch.out";
+        my $hmmsearch_domtblout_file = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".hmmsearch.domtblout";
+        my $hmmsearch_stk_file       = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".hmmsearch.stk";
+        my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " $hmm_file $hmm_model_name | ";
+        my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " -A $hmmsearch_stk_file --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_out_file > $hmmsearch_out_file";
+        utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        
+        if(! -e $model_domtblout_file) { 
+          my $cmd = ($do_keep) ? "cp" : "mv";
+          $cmd .= " $hmmsearch_domtblout_file $model_domtblout_file";
+          utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        }
+        else { # file does exist, add to it
+          utl_RunCommand("cat $hmmsearch_domtblout_file >> $model_domtblout_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        }          
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout", $model_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
+
+        if($do_keep) {
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.hmmsearch", $hmmsearch_out_file, 0, $do_keep, "hmmsearch standard output for model $mdl_name, CDS $cds_idx");
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.domtblout", $hmmsearch_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name, CDS $cds_idx");
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.stk",       $hmmsearch_stk_file, 0, $do_keep, "hmmsearch -A stockholm output for model $mdl_name, CDS $cds_idx");
+        }
+        else { 
+          unlink $hmmsearch_out_file;
+          unlink $hmmsearch_stk_file;
+          # already mv'ed domtblout file
+        }
       }
     }
   }
@@ -7235,45 +7273,3 @@ sub run_esl_translate_and_save_longest_protein {
   return;
 }
 
-#################################################################
-# Subroutine:  hmmsearch_wrapper()
-# Incept:      EPN, Mon Mar  9 14:42:48 2020
-#
-# Purpose:    For each fasta file of predicted hits, run them as
-#             blastx queries against the appropriate target blast DBs.
-#
-# Arguments: 
-#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#                      executable paths
-#  $out_root:          output root for the file names
-#  $mdl_file:          name of model file to use
-#  $mdl_info_HR:       REF to hash of model info
-#  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
-#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If blastx fails.
-#
-################################################################# 
-sub hmmsearch_wrapper { 
-  my $sub_name = "hmmsearch_wrapper";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $out_root, $mdl_file, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $do_keep = opt_Get("--keep", $opt_HHR);
-  my $nftr = scalar(@{$ftr_info_AHR});
-  my $mdl_name = $mdl_info_HR->{"name"};
-  my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
-  if(! defined $blastx_db_file) { 
-    ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
-  }
-
-  my $mdl_aa_fa_file = $out_root . "." . $mdl_name . "a.prot.fa";
-
-
-  return;
-}
