@@ -96,6 +96,7 @@ my $env_vadr_scripts_dir  = utl_DirEnvVarValid("VADRSCRIPTSDIR");
 my $env_vadr_model_dir    = utl_DirEnvVarValid("VADRMODELDIR");
 my $env_vadr_blast_dir    = utl_DirEnvVarValid("VADRBLASTDIR");
 my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
+my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_bioeasel_dir = utl_DirEnvVarValid("VADRBIOEASELDIR");
 
@@ -105,6 +106,7 @@ $execs_H{"cmfetch"}           = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmscan"}            = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}          = $env_vadr_infernal_dir . "/cmsearch";
 $execs_H{"esl-seqstat"}       = $env_vadr_easel_dir    . "/esl-seqstat";
+$execs_H{"esl-translate"}     = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}        = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}            = $env_vadr_blast_dir    . "/blastx";
 $execs_H{"parse_blastx"}      = $env_vadr_scripts_dir  . "/parse_blastx.pl";
@@ -147,6 +149,7 @@ opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,
 opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-a",           "string",  undef,                   $g,"--addhmmer",undef,    "use HMM file <s> instead of default",            "use HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
 #opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -219,6 +222,10 @@ $opt_group_desc_H{++$g} = "options for skipping stages";
 opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",                "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skipblast",     "boolean", 0,                    $g,   undef,      undef,                                       "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options for adding stages";
+#     option               type       default            group   requires    incompat                                      preamble-output                                            help-output    
+opt_Add("--addhmmer",      "boolean", 0,                    $g,"--skipblast", undef,                                       "use hmmer for protein validation",                        "use hmmer for protein validation", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                         help-output    
 opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
@@ -238,6 +245,7 @@ my $options_okay =
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'i=s'           => \$GetOptions_H{"-i"}, 
                 'b=s'           => \$GetOptions_H{"-b"}, 
+                'a=s'           => \$GetOptions_H{"-a"}, 
 #                'n=s'           => \$GetOptions_H{"-n"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
@@ -288,9 +296,11 @@ my $options_okay =
                 'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
-# options for skipping stages, using earlier results
+# options for skipping stages
                 'skipalign'     => \$GetOptions_H{"--skipalign"},
                 'skipblast'     => \$GetOptions_H{"--skipblast"},
+# options for adding stages
+                'addhmmer'      => \$GetOptions_H{"--addhmmer"},
 # optional output files
                 'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
@@ -300,7 +310,7 @@ my $options_okay =
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $executable    = $0;
 my $date          = scalar localtime();
-my $version       = "1.0.4";
+my $version       = "1.0.4dev";
 my $releasedate   = "March 2020";
 my $pkgname       = "VADR";
 
@@ -369,6 +379,7 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 # determine if we are running blast or not 
 ##########################################
 my $do_blast = opt_Get("--skipblast", \%opt_HH) ? 0 : 1;
+my $do_hmmer = opt_Get("--addhmmer", \%opt_HH) ? 1 : 0;
 
 #############################
 # create the output directory
@@ -486,6 +497,22 @@ for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") {
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
+my $df_hmm_file = $df_model_dir . "/" . "vadr.cm";
+my $hmm_file    = undef;
+if(! opt_IsUsed("-a", \%opt_HH)) { $hmm_file = $df_hmm_file; }
+else                             { $hmm_file = opt_Get("-a", \%opt_HH); }
+if(! opt_IsUsed("-a", \%opt_HH)) {
+  utl_FileValidateExistsAndNonEmpty($cm_file, "default HMM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+else { # -a used on the command line
+  # check if it is an absolute path first
+  if(utl_FileValidateExistsAndNonEmpty($cm_file, "HMM file specified with -a", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
+    # if not, check if it is a subpath within $VADRMODELDIR
+    $hmm_file = $env_vadr_model_dir . "/" . $hmm_file;
+    utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
+  }
+}
+
 my $df_modelinfo_file = $df_model_dir . "/" . "vadr.minfo";
 my $modelinfo_file = undef;
 if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
@@ -530,7 +557,6 @@ if($do_blast) {
   }
 }
 # we check for existence of blast DB files after we parse the model info file
-
 
 my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
 my $do_keep = opt_Get("--keep", \%opt_HH);
@@ -602,7 +628,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
-# if there are any CDS features, validate that the BLAST db files we need exist
+# if there are any CDS features, validate that the BLAST db files or HMMER models we need exist
 if($do_blast) { 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -892,6 +918,32 @@ else {
   $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblast)", $progress_w, $log_FH, *STDOUT);
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+############################################################################################################
+# Run hmmsearch: all full length sequences and all fetched CDS features versus best-matching protein profile
+############################################################################################################
+if($do_hmmer) { 
+  $start_secs = ofile_OutputProgressPrior("Running and parsing hmmsearch", $progress_w, $log_FH, *STDOUT);
+
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+      my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
+      if($ncds > 0) { # only run blast for models with >= 1 CDS
+        run_esl_translate_and_save_longest_protein(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                                   \%opt_HH, \%ofile_info_HH);
+        #hmmsearch_wrapper(\%execs_H, $hmm_file, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+        #\%opt_HH, \%ofile_info_HH);
+        #parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+        #                     \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        
+        #add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+        #                  \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+      }                
+    }
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+} # end of 'if($do_hmmer)'
 
 ##############################################################
 # Add noftrann errors for sequences with zero annotated features
@@ -7124,4 +7176,104 @@ sub get_3p_most_sgm_idx_with_results {
   }
 
   return -1; # none found
+}
+
+
+#################################################################
+# Subroutine:  run_esl_translate_and_save_longest_protein()
+# Incept:      EPN, Mon Mar  9 14:51:56 2020
+#
+# Purpose:    Translate each CDS fasta file, and save the longest
+#             resulting protein sequence.
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#                      executable paths
+#  $out_root:          output root for the file names
+#  $mdl_info_HR:       REF to hash of model info
+#  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If esl-translate fails.
+#
+################################################################# 
+sub run_esl_translate_and_save_longest_protein { 
+  my $sub_name = "run_esl_translate_and_save_longest_protein";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $do_keep = opt_Get("--keep", $opt_HHR);
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $mdl_name = $mdl_info_HR->{"name"};
+
+  my $esl_translate_opts = "-l 1 ";
+  if(defined $mdl_info_HR->{"transl_table"}) { 
+    $esl_translate_opts .= " -c " . $mdl_info_HR->{"transl_table"};
+  }
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $cds_idx = vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
+      my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
+      if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
+        my $fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+        my $esl_translate_out_file = $out_root . "." . $mdl_name . ".esl_translate.out";
+        my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $fa_file > $esl_translate_out_file";
+        utl_RunCommand($esl_translate_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+        if($do_keep) {
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".esl-translate-out", $esl_translate_out_file, 0, $do_keep, "esl-translate output for model $mdl_name");
+  }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  hmmsearch_wrapper()
+# Incept:      EPN, Mon Mar  9 14:42:48 2020
+#
+# Purpose:    For each fasta file of predicted hits, run them as
+#             blastx queries against the appropriate target blast DBs.
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#                      executable paths
+#  $out_root:          output root for the file names
+#  $mdl_file:          name of model file to use
+#  $mdl_info_HR:       REF to hash of model info
+#  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If blastx fails.
+#
+################################################################# 
+sub hmmsearch_wrapper { 
+  my $sub_name = "hmmsearch_wrapper";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $out_root, $mdl_file, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $do_keep = opt_Get("--keep", $opt_HHR);
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $mdl_name = $mdl_info_HR->{"name"};
+  my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
+  if(! defined $blastx_db_file) { 
+    ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
+  }
+
+  my $mdl_aa_fa_file = $out_root . "." . $mdl_name . "a.prot.fa";
+
+
+  return;
 }
