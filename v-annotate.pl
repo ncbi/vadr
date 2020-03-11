@@ -7444,8 +7444,13 @@ sub parse_hmmsearch_domtblout {
       }
       my $cds_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       my $orf_coords = sprintf("%d..%d:%s", $orf_start, $orf_end, ($orf_start < $orf_end) ? "+" : "-");
-      my $hmmer_env_coords = vdr_CoordsRelativeToAbsolute($cds_coords, $orf_coords, 0, $FH_HR);
-      printf("\t\t\thmmer_env_coords: $hmmer_env_coords (nt)\n");
+      # convert orf coordinates from relative nt coords within $cds_coords to absolute coords (1..seqlen)
+      my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($cds_coords, $orf_coords, 0, $FH_HR);
+      # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
+      my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
+      my $hmmer_env_nt_coords  = vdr_CoordsRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, 1, $FH_HR);
+      printf("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
+      printf("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
 
       # should we store this query/target/hit trio?
       # we do if A is TRUE and one or both of B or C is TRUE
