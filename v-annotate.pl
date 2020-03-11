@@ -192,6 +192,7 @@ opt_Add("--xalntol",    "integer",   5,                    $g,   undef,"--skipbl
 opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,"--skipblast", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,"--skipblast", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
 opt_Add("--xlonescore",  "integer",  80,                   $g,   undef,"--skipblast", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hlonescore",  "integer",  40,                   $g,"--addhmmer", undef,    "indfantp/INDEFINITE_ANNOTATION min score for a hmmsearch hit not supported by CM analysis is <n>",   "indfantp/INDEFINITE_ANNOTATION min score for a hmmsearch hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -279,6 +280,7 @@ my $options_okay =
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
+                'hlonescore=s'  => \$GetOptions_H{"--hlonescore"},
 # options for controlling cmalign alignment stage 
                 'mxsize=s'      => \$GetOptions_H{"--mxsize"},
                 'tau=s'         => \$GetOptions_H{"--tau"},
@@ -937,8 +939,8 @@ if($do_hmmer) {
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         run_esl_translate_and_hmmsearch(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
                                         \%opt_HH, \%ofile_info_HH);
-        #parse_hmmsearch_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-        #\@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+        parse_hmmsearch_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                  \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
         #add_blastx_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
         #                  \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
@@ -7250,11 +7252,11 @@ sub run_esl_translate_and_hmmsearch {
           my $cmd = ($do_keep) ? "cp" : "mv";
           $cmd .= " $hmmsearch_domtblout_file $model_domtblout_file";
           utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout", $model_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
         }
         else { # file does exist, add to it
           utl_RunCommand("cat $hmmsearch_domtblout_file >> $model_domtblout_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         }          
-        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout", $model_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
 
         if($do_keep) {
           ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.hmmsearch", $hmmsearch_out_file, 0, $do_keep, "hmmsearch standard output for model $mdl_name, CDS $cds_idx");
@@ -7273,3 +7275,250 @@ sub run_esl_translate_and_hmmsearch {
   return;
 }
 
+#################################################################
+# Subroutine:  parse_hmmsearch_domtblout()
+# Incept:      EPN, Tue Mar 10 06:23:54 2020
+#
+# Purpose:    Parse hmmsearch --domtblout file and store the results
+#             in ftr_results.
+#
+# Arguments: 
+#  $domtblout_file:      hmmsearch --domtblout file to parse
+#  $seq_name_AR:         REF to array of sequence names
+#  $seq_len_HR:          REF to hash of sequence lengths
+#  $ftr_info_AHR:        REF to array of hashes with feature info 
+#  $ftr_results_HAHR:    REF to feature results HAH, ADDED TO HERE
+#  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If there's a problem parsing the domtblout out file 
+#             because the format is unexpected.
+#
+################################################################# 
+sub parse_hmmsearch_domtblout {
+  my $sub_name = "parse_hmmsearch_domtblout";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($domtblout_file, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $ftr_results_HAHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  utl_FileValidateExistsAndNonEmpty($domtblout_file, "hmmsearch --domtblout file", $sub_name, 1, $FH_HR);
+  my $nftr = scalar(@{$ftr_info_AHR});
+#  my $do_xlongest = opt_Get("--xlongest", $opt_HHR) ? 1 : 0;
+
+  open(IN, $domtblout_file) || ofile_FileOpenFailure($domtblout_file, $sub_name, $!, "reading", $FH_HR);
+  
+  my $line_idx   = 0;
+  my $hminntlen  = opt_Get("--xminntlen",  $opt_HHR); # yes, it should be hminntlen = --xminntlen
+  my $hlonescore = opt_Get("--hlonescore", $opt_HHR);
+  my $seq_name   = undef; # sequence name this hit corresponds to 
+  my $q_len      = undef; # length of query sequence
+  my $q_ftr_idx  = undef; # feature index query pertains to, [0..$nftr-1]
+
+  my %cds2ftr_idx_H = (); # map of CDS index to feature index
+  my $cds_idx = 1;
+  my $ftr_idx;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      printf("SETTING $cds2ftr_idx_H{$cds_idx} to $ftr_idx\n");
+      $cds2ftr_idx_H{$cds_idx++} = $ftr_idx; 
+    }
+  }
+
+
+#  my $t_ftr_idx  = undef; # feature index target (fetched CDS sequence from input fasta file) pertains to [0..$nftr-1]
+#  my %cur_H = (); # values for current hit (HSP)
+
+##                                                                                --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+## target name        accession   tlen query name               accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+##------------------- ---------- -----     -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+#orf31                -            208 cox1.tt5.arthropoda.cds1 -            511  5.4e-130  426.4  16.0   1   1  9.6e-132  6.6e-130  426.1  16.0    35   239     1   205     1   207 1.00 source=lcl|Seq1674/CDS.1/1..627:+ coords=3..626 length=208 frame=3 desc=
+
+# white-space separated fields:
+#  0: target name : orf<d>         : irrelevant
+#  1: accession   : -              : irrelevant
+#  2: tlen        : <d>            : length of translated protein
+#  3: query name  : <model>.cds<n> : <n> tells us which CDS this pertains to
+#  4: accession   : -              : irrelevant
+#  5: qlen        : <d>            : aa length of predicted CDS
+#  6: E-value     : <g>            : irrelevant, E-value for full sequence
+#  7: score       : <f>            : irrelevant, bit score for full sequence
+#  8: bias        : <f>            : irrelevant, bias score for full sequence
+#  9: #           : <n>            : irrelevant, index of domain/hit in sequence
+# 10: of          : <n>            : irrelevant, total number of domains/hits in sequence
+# 11: c-Evalue    : <g>            : conditional E-value for this domain/hit
+# 12: i-Evalue    : <g>            : independent E-value for this domain/hit
+# 13: score       : <f>            : bit score for this domain/hit
+# 14: bias        : <f>            : bias score for full sequence
+# 15: hmm from    : <n>            : model start position of HMM alignment (not envelope)
+# 16: hmm to      : <n>            : model end position of HMM alignment (not envelope)
+# 17: ali from    : <n>            : protein sequence start position of HMM alignment (not envelope)
+# 18: ali to      : <n>            : protein sequence end position of HMM alignment (not envelope)
+# 19: env from    : <n>            : protein sequence start position of HMM envelope
+# 20: env to      : <n>            : protein sequence end position of HMM envelope
+# 21: acc         : <f>            : irrelvant, average pp of aligned protein
+# description can be broken down into parseable tokens ONLY because we
+# know how esl-translate creates this description, at least up to the desc= field
+# 22: source=     : source=<s>     : <s> is <s1>\/CDS.<d>\/<s2> where <s1> is seq name, 
+#                                  : <d> is CDS idx and <s2> is coords string of predicted CDS coords
+# 23: coords=     : coords=<s>     : <d>..<d> coordinates of translated protein in nucleotide space
+#                                  : from esl-translate
+# 24: length=     : length=<d>     : <d> is length of translated protein, redundant with field 2, tlen
+# 25: frame=      : frame=<d>      : frame of translated protein from esl-translate
+# 26: desc=       : desc=<s>       : irrelevant, <s> is first field of description from nt seq input to esl-translate
+# 27+: may or may not exist, irrelevant anyway
+#      will exist only if a description existed for the nt seq
+#      input to esl-translate, that is - if we added descriptions 
+#      the seq in the esl-translate input file
+#  
+  while(my $line = <IN>) { 
+    chomp $line;
+    $line_idx++;
+    if($line !~ m/^#/) { 
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) < 27) { 
+        ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, did not read at least 25 space-delimited tokens in data line\n$line", 1, $FH_HR);
+      }
+      my ($tlen1, $qname, $qlen, $hit_ieval, $hit_score, $hit_bias, $hmm_from, $hmm_to, $ali_from, $ali_to, $env_from, $env_to, 
+          $source_str, $coords_str, $qlen_str, $frame_str) = 
+              ($el_A[2], $el_A[3], $el_A[5], $el_A[12], $el_A[13], $el_A[14], $el_A[15], $el_A[16], $el_A[17], $el_A[18], $el_A[19], $el_A[20],
+               $el_A[22], $el_A[23],  $el_A[24], $el_A[25]);
+      
+      # further parse some of the tokens
+      my ($tname, $cds_idx, $cds_coords) = (undef, undef, undef);
+      if($source_str =~ /^source=(.+)\/CDS\.(\d+)\/([^\/]+)$/) { 
+        ($tname, $cds_idx, $cds_coords) = ($1, $2, $3);
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, unable to parse source= token ($source_str) on line\n$line", 1, $FH_HR);
+      }      
+
+      my ($orf_start, $orf_end) = (undef, undef);
+      if($coords_str =~ /^coords=(\d+)\.\.(\d+)$/) { 
+         ($orf_start, $orf_end) = ($1, $2);
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, unable to parse coords= token $coords_str on line\n$line", 1, $FH_HR);
+      }      
+
+      my $frame = undef;
+      if($frame_str =~ /^frame=(\-?[123])/) { 
+         $frame = $1;
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, unable to parse frame= token $frame_str on line\n$line", 1, $FH_HR);
+      }      
+
+      print("line:$line\n");
+      print("\ttlen1: $tlen1\n");
+      print("\tqname: $qname\n");
+      print("\tqlen:  $qlen\n");
+      print("\thit_ieval:  $hit_ieval\n");
+      print("\thit_score:  $hit_score\n");
+      print("\thit_bias:   $hit_bias\n");
+      print("\thmm_from:   $hmm_from\n");
+      print("\thmm_to:     $hmm_to\n");
+      print("\tali_from:   $ali_from\n");
+      print("\tali_to:     $ali_to\n");
+      print("\tenv_from:   $env_from\n");
+      print("\tenv_to:     $env_to\n");
+      print("\tsource_str: $source_str\n");
+      print("\tcoords_str: $coords_str\n");
+      print("\tqlen_str:   $qlen_str\n");
+      print("\tframe_str:  $frame_str\n");
+      print("\t\ttname:    $tname\n");
+      print("\t\tcds_idx:  $cds_idx\n");
+      print("\t\tcds_coords: $cds_coords\n");
+      print("\t\torf_start:  $orf_start\n");
+      print("\t\torf_end:    $orf_end\n");
+      print("\t\tframe:      $frame\n");
+
+      my $q_cds_len_nt = vdr_CoordsLength($cds_coords, $FH_HR); # length of predicted CDS
+      $ftr_idx = $cds2ftr_idx_H{$cds_idx};
+      if(! defined $ftr_idx) { 
+        ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, read CDS index $cds_idx that does not map to a feature index\n$line", 1, $FH_HR);
+      }
+      my $cds_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
+      my $orf_coords = sprintf("%d..%d:%s", $orf_start, $orf_end, ($orf_start < $orf_end) ? "+" : "-");
+      my $hmmer_env_coords = vdr_CoordsRelativeToAbsolute($cds_coords, $orf_coords, 0, $FH_HR);
+      printf("\t\t\thmmer_env_coords: $hmmer_env_coords (nt)\n");
+
+      # should we store this query/target/hit trio?
+      # we do if A is TRUE and one or both of B or C is TRUE
+      #  A. query length (predicted CDS length in nt in input seq) is at least <x> nt from --xminntlen
+      # 
+      #  B. hit score is above minimum (--xlonescore)
+      #  C. hit overlaps by at least 1 nt with a nucleotide prediction
+###      my $blast_hit_qlen = abs($blast_start - $blast_stop) + 1;
+###      my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
+###      my $b_true = undef;
+###      if(! $do_xlongest) { 
+###        $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
+###                   ($cur_H{"SCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+###      }
+###      else { 
+###        $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be longest
+###                   ($blast_hit_qlen > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"})) ? 1 : 0; # longest hit
+###      }
+###      
+###      my $a_true = ($q_len >= $xminntlen) ? 1 : 0; # length >= --xminntlen
+###      if($a_true && $b_true && $c_true) { 
+###        my $d_true = ($cur_H{"SCORE"} >= $xlonescore) ? 1 : 0;
+###        my $e_true = 0; 
+###        # only bother determining $e_true if $d_true is 0
+###        if(! $d_true) { 
+###          if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
+###             ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
+###            my $noverlap = 0;
+###            if($blast_strand eq "+") { 
+###              ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
+###                                               $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
+###                                               $blast_start, $blast_stop, $FH_HR);
+###            }
+###            elsif($blast_strand eq "-") { 
+###              ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
+###                                               $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
+###                                               $blast_stop, $blast_start, $FH_HR);
+###            }
+###            if($noverlap > 0) { $e_true = 1; }
+###          }
+###        }
+###        if($d_true || $e_true) { 
+###                # store the hit
+###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
+###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
+###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
+###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = $blast_hit_qlen;
+###                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
+###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"SCORE"};
+###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
+###          if(defined $cur_H{"INS"}) { 
+###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $cur_H{"INS"};
+###          }
+###          else { 
+###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = undef;
+###          }
+###          if(defined $cur_H{"DEL"}) { 
+###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $cur_H{"DEL"};
+###          }
+###          else { 
+###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = undef;
+###          }
+###          if(defined $cur_H{"STOP"}) { 
+###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
+###          }
+###          else { 
+###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
+###          }
+###        }
+###      }
+    } # end of 'if($line !~ m/^\#/)'
+  } # end of 'while($my $line = <IN>)'
+  close(IN);
+
+  return 0;
+}
