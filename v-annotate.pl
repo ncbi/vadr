@@ -505,19 +505,22 @@ my $df_hmm_file = $df_model_dir . "/" . "vadr.hmm";
 my $hmm_file    = undef;
 if(! opt_IsUsed("-a", \%opt_HH)) { $hmm_file = $df_hmm_file; }
 else                             { $hmm_file = opt_Get("-a", \%opt_HH); }
-if(! opt_IsUsed("-a", \%opt_HH)) {
-  utl_FileValidateExistsAndNonEmpty($hmm_file, "default HMM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-}
-else { # -a used on the command line
-  # check if it is an absolute path first
-  if(utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
-    # if not, check if it is a subpath within $VADRMODELDIR
-    $hmm_file = $env_vadr_model_dir . "/" . $hmm_file;
-    utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
+# ensure $hmm_file exists if --addhmmer, otherwise we won't use it
+if(opt_IsUsed("--addhmmer", \%opt_HH)) { 
+  if(! opt_IsUsed("-a", \%opt_HH)) {
+    utl_FileValidateExistsAndNonEmpty($hmm_file, "default HMM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
-}
-for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
-  utl_FileValidateExistsAndNonEmpty($hmm_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  else { # -a used on the command line
+    # check if it is an absolute path first
+    if(utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
+      # if not, check if it is a subpath within $VADRMODELDIR
+      $hmm_file = $env_vadr_model_dir . "/" . $hmm_file;
+      utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
+    }
+  }
+  for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
+    utl_FileValidateExistsAndNonEmpty($hmm_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
 }
 
 my $df_modelinfo_file = $df_model_dir . "/" . "vadr.minfo";
@@ -4187,7 +4190,7 @@ sub add_blastx_alerts {
                   }
                 }
               }
-            } # end of 'if(defined $n_start)' entered to identify b_* alerts
+            } # end of 'if(defined $n_start)'
             my $alt_flag = 0;
             foreach my $alt_code (sort keys %alt_str_H) { 
               my @alt_str_A = split(":VADRSEP:", $alt_str_H{$alt_code});
@@ -7389,9 +7392,10 @@ sub parse_hmmsearch_domtblout {
                $el_A[22], $el_A[23],  $el_A[24], $el_A[25]);
       
       # further parse some of the tokens
-      my ($tname, $cds_idx, $cds_coords) = (undef, undef, undef);
+      my ($tname, $cds_idx, $cds_coords, $qname) = (undef, undef, undef, undef);
       if($source_str =~ /^source=(.+)\/CDS\.(\d+)\/([^\/]+)$/) { 
         ($tname, $cds_idx, $cds_coords) = ($1, $2, $3);
+        $qname = $tname . "/CDS\." . $cds_idx . "/" . $cds_coords;
       }
       else { 
         ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, unable to parse source= token ($source_str) on line\n$line", 1, $FH_HR);
@@ -7408,6 +7412,7 @@ sub parse_hmmsearch_domtblout {
       my $frame = undef;
       if($frame_str =~ /^frame=(\-?[123])/) { 
          $frame = $1;
+         if($frame !~ /^\-/) { $frame = "+" . $frame; }
       }
       else { 
         ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, unable to parse frame= token $frame_str on line\n$line", 1, $FH_HR);
@@ -7437,6 +7442,7 @@ sub parse_hmmsearch_domtblout {
       print("\t\torf_end:    $orf_end\n");
       print("\t\tframe:      $frame\n");
 
+      if($frame =~ m/^\-/) { 
       my $q_cds_len_nt = vdr_CoordsLength($cds_coords, $FH_HR); # length of predicted CDS
       $ftr_idx = $cds2ftr_idx_H{$cds_idx};
       if(! defined $ftr_idx) { 
@@ -7444,83 +7450,32 @@ sub parse_hmmsearch_domtblout {
       }
       my $cds_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
       my $orf_coords = sprintf("%d..%d:%s", $orf_start, $orf_end, ($orf_start < $orf_end) ? "+" : "-");
+
       # convert orf coordinates from relative nt coords within $cds_coords to absolute coords (1..seqlen)
       my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($cds_coords, $orf_coords, 0, $FH_HR);
+
       # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
       my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
       my $hmmer_env_nt_coords  = vdr_CoordsRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, 1, $FH_HR);
       printf("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
       printf("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
 
-      # should we store this query/target/hit trio?
-      # we do if A is TRUE and one or both of B or C is TRUE
-      #  A. query length (predicted CDS length in nt in input seq) is at least <x> nt from --xminntlen
-      # 
-      #  B. hit score is above minimum (--xlonescore)
-      #  C. hit overlaps by at least 1 nt with a nucleotide prediction
-###      my $blast_hit_qlen = abs($blast_start - $blast_stop) + 1;
-###      my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
-###      my $b_true = undef;
-###      if(! $do_xlongest) { 
-###        $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
-###                   ($cur_H{"SCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
-###      }
-###      else { 
-###        $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be longest
-###                   ($blast_hit_qlen > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"})) ? 1 : 0; # longest hit
-###      }
-###      
-###      my $a_true = ($q_len >= $xminntlen) ? 1 : 0; # length >= --xminntlen
-###      if($a_true && $b_true && $c_true) { 
-###        my $d_true = ($cur_H{"SCORE"} >= $xlonescore) ? 1 : 0;
-###        my $e_true = 0; 
-###        # only bother determining $e_true if $d_true is 0
-###        if(! $d_true) { 
-###          if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
-###             ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
-###            my $noverlap = 0;
-###            if($blast_strand eq "+") { 
-###              ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
-###                                               $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
-###                                               $blast_start, $blast_stop, $FH_HR);
-###            }
-###            elsif($blast_strand eq "-") { 
-###              ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
-###                                               $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
-###                                               $blast_stop, $blast_start, $FH_HR);
-###            }
-###            if($noverlap > 0) { $e_true = 1; }
-###          }
-###        }
-###        if($d_true || $e_true) { 
-###                # store the hit
-###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
-###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
-###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
-###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = $blast_hit_qlen;
-###                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
-###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"SCORE"};
-###          $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
-###          if(defined $cur_H{"INS"}) { 
-###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $cur_H{"INS"};
-###          }
-###          else { 
-###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = undef;
-###          }
-###          if(defined $cur_H{"DEL"}) { 
-###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $cur_H{"DEL"};
-###          }
-###          else { 
-###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = undef;
-###          }
-###          if(defined $cur_H{"STOP"}) { 
-###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
-###          }
-###          else { 
-###            $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
-###          }
-###        }
-###      }
+      # store this hit if query length (predicted CDS length in nt in input seq) is at least <x> nt from --xminntlen
+      if($q_len >= $hminntlen) { 
+        my @hmmer_start_A  = ();
+        my @hmmer_stop_A   = ();
+        my @hmmer_strand_A = ();
+        vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
+        my $hmmer_nsgm = scalar(@hmmer_start_A); 
+        my $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}  = $hmmer_start_A[0];
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"} = $hmmer_summary_strand;
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_len"}    = vdr_CoordsLength($hmmer_env_nt_coords, $FH_HR);
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_query"}  = $qname;
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_score"}  = $hit_score;
+        $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}  = $frame;
+      }
     } # end of 'if($line !~ m/^\#/)'
   } # end of 'while($my $line = <IN>)'
   close(IN);
