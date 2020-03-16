@@ -1706,7 +1706,7 @@ sub add_classification_alerts {
       }
 
       # incorrect group (incgroup) 
-      # - $exp_group must be defined 
+      # - $exp_group must be defined and group of r1.1 must be undef or != $exp_group
       # - no hits in r1.eg (no hits to group) (incgroup)
       # OR 
       # - hit(s) in r1.eg but scpernt diff between
@@ -1719,14 +1719,21 @@ sub add_classification_alerts {
       #
       my $igr_flag = 0;
       my $qgr_flag = 0;
-      if(defined $exp_group) { 
+      if((defined $exp_group) && # $exp_group defined
+         ((! defined $cls_results_HHHR->{$seq_name}{"r1.1"}{"group"}) || # r1.1 group undefined
+          ($cls_results_HHHR->{$seq_name}{"r1.1"}{"group"} ne $exp_group))) { # r1.1 group != $exp_group
+        # $exp_group is defined AND 
+        # (r1.1 group undefined OR r1.1 group != $exp_group)
         if(! defined $scpnt_H{"r1.eg"}) { 
+          # no hit to $exp_group
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incgroup", $seq_name, 
                                       "no hits to expected group $exp_group, best model group/subgroup: " . 
                                       group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"}), $FH_HR);
           $igr_flag = 1;
         }
         else { 
+          # at least one hit to $exp_group exists and r1.1's group undef or != $exp_group 
+          # so we either have a incgroup or qstgroup alert
           my $diff = $scpnt_H{"r1.1"} - $scpnt_H{"r1.eg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $incspec_opt) { 
@@ -1734,7 +1741,7 @@ sub add_classification_alerts {
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incgroup", $seq_name, $alt_str, $FH_HR);
             $igr_flag = 1;
           }
-          elsif($diff > $small_value) { 
+          else { 
             $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "qstgroup", $seq_name, $alt_str, $FH_HR);
             $qgr_flag = 1;
@@ -1743,7 +1750,7 @@ sub add_classification_alerts {
       }
 
       # incorrect subgroup (c_sgr) 
-      # - $exp_subgroup must be defined 
+      # - $exp_subgroup must be defined and subgroup of r1.1 must be undef or != $exp_subgroup
       # - incgroup not already reported
       # - no hits in r1.esg (no hits to group) (incsbgrp)
       # OR 
@@ -1752,12 +1759,18 @@ sub add_classification_alerts {
       #
       # questionable subgroup (qstsbgrp)
       # - $exp_subgroup must be defined 
-      # - i_qgr not already reported
+      # - incgroup not already reported
       # - qstgroup not already reported
       # - hit(s) in r1.esg but scpernt diff between
       #   r1.esg and r1.1 does not exceed incspec_opt (qstsbgrp)
       #
-      if((! $igr_flag) && (defined $exp_subgroup)) { 
+      if((! $igr_flag) # incgroup alert not reported
+         && (defined $exp_subgroup) && # exp_sugroup defined  
+         ((! defined $cls_results_HHHR->{$seq_name}{"r1.1"}{"subgroup"}) || # r1.1 subgroup undefined
+          ($cls_results_HHHR->{$seq_name}{"r1.1"}{"subgroup"} ne $exp_subgroup))) { # r1.1 subgroup != $exp_subgroup
+        # incgroup alert not reported AND
+        # $exp_subgroup is defined AND 
+        # (r1.1 subgroup undefined OR r1.1 subgroup != $exp_subgroup)
         if(! defined $scpnt_H{"r1.esg"}) { 
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, "no hits to expected subgroup $exp_subgroup", $FH_HR);
         }
@@ -1768,7 +1781,7 @@ sub add_classification_alerts {
             $alt_str = "$diff2print > $incspec_opt2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, $alt_str, $FH_HR);
           }
-          elsif((! $qgr_flag) && ($diff > $small_value)) { 
+          elsif(! $qgr_flag) {
             $alt_str = "$diff2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($cls_results_HHHR->{$seq_name}{"r1.1"});
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "qstsbgrp", $seq_name, $alt_str, $FH_HR);
           }
