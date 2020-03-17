@@ -2136,6 +2136,8 @@ sub cmalign_wrapper {
     utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
   return;
 }
 
@@ -2216,9 +2218,11 @@ sub cmalign_wrapper_helper {
     # vdr_WaitForFarmJobsToFinish() will fill these later
     if($do_parallel) { $success_AR->[$s] = 0; }
   }
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if($do_parallel) { 
+    # only do this if $do_parallel b/c the step of submitting jobs is over, next we wait for them to finish
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
     if((opt_Exists("--skipalign", $opt_HHR)) && (opt_Get("--skipalign", $opt_HHR))) { 
       for($s = 0; $s < $nseq_files; $s++) { 
         $success_AR->[$s] = 1; 
