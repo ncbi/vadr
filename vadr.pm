@@ -66,6 +66,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateCoords()
 # vdr_FeatureInfoValidateParentIndexStrings()
 # vdr_FeatureInfoChildrenArrayOfArrays()
+# vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -655,6 +656,36 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
+# Incept:      EPN, Wed Mar 18 08:15:06 2020
+#
+# Purpose:    Map ftr_type_idx values (e.g. CDS.4) to feature indices
+#             (ftr_idx) in \@{$ftr_info_AHR}.
+#
+# Arguments: 
+#  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
+#  $ftr_type_idx2ftr_idx_HR: REF to hash to fill, key is ftr_type_idx (e.g. CDS.4) value is 
+#  $FH_HR:                   REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#
+# Returns:    void
+#
+################################################################# 
+sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
+  my $sub_name = "vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_AHR, $ftr_type_idx2ftr_idx_HR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $ftr_type_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+    $ftr_type_idx2ftr_idx_HR->{$ftr_type_idx} = $ftr_idx;
+  }
+ 
   return;
 }
 
@@ -2206,8 +2237,8 @@ sub vdr_CoordsFromLocation {
   # complement(1..200)                 200..1:-
   # join(1..200,300..400)              1..200:+,300..400:+
   # complement(join(1..200,300..400))  400..300:-,200..1:-
-  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
-  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
+  # join(1..200,complement(300..400))  1..200:+,400..300:-
+  # join(complement(300..400),1..200)  400..300:-,1..200:+
 
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
