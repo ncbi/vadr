@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 29;
+use Test::More tests => 33;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -107,6 +107,19 @@ push(@full_abs_nt_coords_A,  "11..40:+,42..101:+");
 push(@rel_nt_or_aa_coords_A, "6..38:+,45..50:+,53..59:+");    
 push(@rel_is_aa_A,           "0");          # nt coords
 push(@ret_val_A,             "16..40:+,42..49:+,56..61:+,64..70:+");   
+
+push(@desc_A,                "abs (+++), rel (++)");
+push(@full_abs_nt_coords_A,  "11..40:+,42..58:+,62..104:+");
+push(@rel_nt_or_aa_coords_A, "6..38:+,45..50:+");    
+push(@rel_is_aa_A,           "0");          # nt coords
+push(@ret_val_A,             "16..40:+,42..49:+,56..58:+,62..64:+");   
+
+push(@desc_A,                "abs (+++), rel (+++)");
+push(@full_abs_nt_coords_A,  "11..40:+,42..58:+,62..104:+");
+push(@rel_nt_or_aa_coords_A, "6..38:+,45..50:+,53..59:+");    
+push(@rel_is_aa_A,           "0");          # nt coords
+push(@ret_val_A,             "16..40:+,42..49:+,56..58:+,62..64:+,67..73:+");   
+
 
 
 my $n = scalar(@full_abs_nt_coords_A);
