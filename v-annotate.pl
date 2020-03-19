@@ -7429,13 +7429,8 @@ sub parse_hmmer_domtblout {
 
       my $seq_strand = undef;
       if($seq_ftr_idx == -1) { 
-        if($frame <= 3) { # positive strand
           $seq_strand = "+";
           $source_coords = "1.." . $seq_len . ":+";
-        }
-        else { # frame > 3, negative strand
-          $seq_strand = "-";
-          $source_coords = $seq_len . "..1:-";
         }
       }
       else { 
