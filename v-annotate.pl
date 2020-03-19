@@ -825,7 +825,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
     my $mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
-    push(@to_remove_A, $mdl_fa_file);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
+    if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $mdl_fa_file); }
 
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
@@ -4286,24 +4287,13 @@ sub run_blastx_and_summarize_output {
     ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
   }
 
-  my $mdl_fa_file     = $out_root . "." . $mdl_name . ".a.fa";
-
   # make a query fasta file for blastx, consisting of full length
   # sequences (with sequence descriptions removed because they can
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
-  my $blastx_query_file = $out_root . "." . $mdl_name . ".a.blastx.fa";
-  sqf_FastaFileRemoveDescriptions($mdl_fa_file, $blastx_query_file, $ofile_info_HHR);
-  # now add the predicted CDS sequences
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
-      if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
-        utl_RunCommand("cat " . $ofile_info_HH{"fullpath"}{$ofile_info_key} . " >> $blastx_query_file", opt_Get("-v", \%opt_HH), 0, $ofile_info_HHR->{"FH"});
-      }
-    }
-  }
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-fasta", $blastx_query_file, 0, $do_keep, "blastx query file for model $mdl_name");
+  my $blastx_query_fa_file = $out_root . "." . $mdl_name . ".pv.blastx.fa";
+  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.blastx.fa", $blastx_query_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
   
   # run blastx 
   my $blastx_options = "";
@@ -4320,7 +4310,7 @@ sub run_blastx_and_summarize_output {
   my $xnumali = opt_Get("--xnumali", $opt_HHR);
 
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -num_alignments $xnumali -query $blastx_query_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -num_alignments $xnumali -query $blastx_query_fa_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
   utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-out", $blastx_out_file, 0, $do_keep, "blastx output for model $mdl_name");
 
@@ -7247,66 +7237,50 @@ sub run_esl_translate_and_hmmsearch {
 
   my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
 
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
   my $mdl_name = $mdl_info_HR->{"name"};
 
+  my $model_domtblout_file = $out_root . "." . $mdl_name . ".hmmscan.domtblout";
+  # make a query fasta file for blastx, consisting of full length
+  # sequences (with sequence descriptions removed because they can
+  # affect the output and mess up our parsing if they are too long)
+  # AND all the predicted CDS sequences
+  my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
+  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  1, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
+
+  # now esl-translate it
   my $esl_translate_opts = "-l 1 ";
   if(defined $mdl_info_HR->{"transl_table"}) { 
     $esl_translate_opts .= " -c " . $mdl_info_HR->{"transl_table"};
   }
-
-#  my $model_domtblout_file = $out_root . "." . $mdl_name . ".hmmsearch.domtblout";
-  my $model_domtblout_file = $out_root . "." . $mdl_name . ".hmmscan.domtblout";
-
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      my $cds_idx = vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx);
-      my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
-      if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
-        my $fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-        my $hmm_model_name = $mdl_name . ".cds" . $cds_idx;
-
-        # esl-translate
-        my $esl_translate_out_file = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".esl_translate.out";
-        my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $fa_file > $esl_translate_out_file";
-        utl_RunCommand($esl_translate_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-        if($do_keep) {
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.esl-translate-out", $esl_translate_out_file, 0, $do_keep, "esl-translate output for model $mdl_name, CDS $cds_idx");
+  my $esl_translate_prot_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.esl_translate.aa.fa";
+  my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $fa_file > $esl_translate_prot_fa_file";
+  utl_RunCommand($esl_translate_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  if($do_keep) {
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.esl_translate.aa.fa", $esl_translate_prot_fa_file, 0, $do_keep, "esl-translate output for protein validation sequences for model $mdl_name");
   }
 
-        # hmmsearch
-        my $hmmsearch_opts = "";
-        my $hmmsearch_out_file       = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".hmmsearch.out";
-        my $hmmsearch_domtblout_file = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".hmmsearch.domtblout";
-        my $hmmsearch_stk_file       = $out_root . "." . $mdl_name . ".cds." . $cds_idx . ".hmmsearch.stk";
-        my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " $hmm_file $hmm_model_name | ";
-        my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " -A $hmmsearch_stk_file --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_out_file > $hmmsearch_out_file";
-        utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+  # run hmmsearch against it using only those HMMs that pertain to this model
+  my @hmm_name_A = (); 
+  get_hmm_list_for_model($ftr_info_AHR, $mdl_name, \@hmm_name_A, $FH_HR);
+  my $hmm_list_file = $out_root . "." . $mdl_name . ".pv.hmmlist";
+  utl_AToFile(\@hmm_name_A, $hmm_list_file, 1, $FH_HR);
+
+  my $hmmsearch_opts = "";
+  my $hmmsearch_out_file       = $out_root . "." . $mdl_name . ".hmmsearch.out";
+  my $hmmsearch_domtblout_file = $out_root . "." . $mdl_name . ".hmmsearch.domtblout";
+  my $hmmsearch_stk_file       = $out_root . "." . $mdl_name . ".hmmsearch.stk";
+  my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " -f $hmm_file $hmm_list_file | ";
+  my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " -A $hmmsearch_stk_file --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
+  utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         
-        if(! -e $model_domtblout_file) { 
-          my $cmd = ($do_keep) ? "cp" : "mv";
-          $cmd .= " $hmmsearch_domtblout_file $model_domtblout_file";
-          utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout", $model_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
-        }
-        else { # file does exist, add to it
-          utl_RunCommand("cat $hmmsearch_domtblout_file >> $model_domtblout_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-        }          
-
-        if($do_keep) {
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.hmmsearch", $hmmsearch_out_file, 0, $do_keep, "hmmsearch standard output for model $mdl_name, CDS $cds_idx");
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.domtblout", $hmmsearch_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name, CDS $cds_idx");
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cds.$cds_idx.stk",       $hmmsearch_stk_file, 0, $do_keep, "hmmsearch -A stockholm output for model $mdl_name, CDS $cds_idx");
-        }
-        else { 
-          unlink $hmmsearch_out_file;
-          unlink $hmmsearch_stk_file;
-          # already mv'ed domtblout file
-        }
-      }
-    }
-  }
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmsearch",      $hmmsearch_out_file,       0, $do_keep, "hmmsearch standard output for model $mdl_name");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout",      $hmmsearch_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmsearch.stk",  $hmmsearch_stk_file,       0, $do_keep, "hmmsearch -A stockholm output for model $mdl_name");
 
   return;
 }
@@ -7446,7 +7420,7 @@ sub parse_hmmer_domtblout {
       }      
 
       my $frame = undef;
-      if($frame_str =~ /^frame=(\-?[123])/) { 
+      if($frame_str =~ /^frame=([123456])$/) { 
          $frame = $1;
       }
       else { 
@@ -7468,19 +7442,6 @@ sub parse_hmmer_domtblout {
         $seq_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$seq_ftr_idx]{"coords"}, $FH_HR);
         # $source_coords was defined by helper_protein_validation_breakdown_source() call above
       }
-      my $seq_source_len_nt = vdr_CoordsLength($source_coords, $FH_HR); # length of predicted CDS or full sequence
-      my $orf_coords = sprintf("%d..%d:%s", $orf_start, $orf_end, ($orf_start < $orf_end) ? "+" : "-");
-
-      # convert orf coordinates from relative nt coords within $source_coords to absolute coords (1..seqlen)
-      my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($source_coords, $orf_coords, 0, $FH_HR);
-
-      # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
-      my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
-      my $hmmer_env_nt_coords  = vdr_CoordsRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, 1, $FH_HR);
-      printf("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
-      printf("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
-
-
       print("line:$line\n");
       print("\ttlen1:   $tlen1\n");
       print("\th_qname: $h_qname\n");
@@ -7507,8 +7468,25 @@ sub parse_hmmer_domtblout {
       print("\t\tseq_len:    $seq_len\n");
       print("\t\tseq_name:   $seq_name\n");
       print("\t\tseq_ftr_type_idx:   $seq_ftr_type_idx\n");
-      print("\t\tseq_source_len_nt: $seq_source_len_nt\n");
-      print("\t\thmmer_env_nt_coords: $hmmer_env_nt_coords\n");
+
+      my $seq_source_len_nt = vdr_CoordsLength($source_coords, $FH_HR); # length of predicted CDS or full sequence
+      my $orf_coords = sprintf("%d..%d:%s", $orf_start, $orf_end, ($orf_start < $orf_end) ? "+" : "-");
+      print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
+      print("\t\t\torf_coords:          $orf_coords\n");
+
+      # convert orf coordinates from relative nt coords within $source_coords to absolute coords (1..seqlen)
+      my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($source_coords, $orf_coords, 0, $FH_HR);
+      print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
+
+      # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
+      my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
+      my $hmmer_env_nt_coords  = vdr_CoordsRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, 1, $FH_HR);
+
+      print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
+      print("\t\t\torf_coords:          $orf_coords\n");
+      print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
+      print("\t\t\tenv_aa_coords:       $env_aa_coords\n");
+      print("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
 
       # store this hit if sequence source length (predicted CDS length in nt in input seq) is at least <x> nt from --xminntlen
       if($seq_source_len_nt >= $hminntlen) { 
@@ -7570,6 +7548,104 @@ sub convert_esl_translate_to_blastx_frame() {
   }
   return "-" . ($esl_translate_frame - 3);
 }
-    
 
 
+#################################################################
+# Subroutine: make_protein_validation_fasta_file()
+# Incept:     EPN, Wed Mar 18 12:01:36 2020
+#
+# Purpose:    Create a fasta file to use as input for blastx or 
+#             hmmsearch in the protein validation stage.
+#             This file consists of the full length sequences 
+#             in the file $mdl_fa_file (these are typically the
+#             set of sequences that match best to a specific model)
+#             and the predicted CDS sequences for each sequence
+#             in $mdl_fa_file.
+#      
+#             If $do_blastx is '1' We remove the descriptions from the
+#             sequences in $mdl_fa_file because blastx parsing is more
+#             difficult if descriptions are included.
+#
+# Arguments: 
+#  $out_fa_file:    name of output fasta file to create
+#  $mdl_name:       name of model
+#  $do_blastx:      '1' if we are going to run blastx, else '0'
+#  $ftr_info_AHR:   REF to array of hashes with feature info 
+#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       
+#
+################################################################# 
+sub make_protein_validation_fasta_file() {
+  my $sub_name = "make_protein_validation_fasta_file";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($out_fa_file, $mdl_name, $do_blastx, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $ofile_info_key = $mdl_name . ".a.fa";
+  my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  if($do_blastx) { 
+    sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
+  }
+  else { 
+    utl_RunCommand("cp $mdl_fa_file $out_fa_file", 0, $ofile_info_HHR->{"FH"});
+  }
+  # now add the predicted CDS sequences
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
+      if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
+        utl_RunCommand("cat " . $ofile_info_HH{"fullpath"}{$ofile_info_key} . " >> $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+      }
+    }
+  }
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".protein-validation-fasta", $out_fa_file, 0, opt_Get("--keep", $opt_HHR), "protein validation fasta file for model $mdl_name");
+
+  return;
+}
+
+#################################################################
+# Subroutine: get_hmm_list_for_model()
+# Incept:     EPN, Wed Mar 18 14:21:54 2020
+#
+# Purpose:    Fill an array with names of all protein HMMs in the
+#             HMM library that pertain to a model. There is one
+#             per CDS for that model.
+#      
+# Arguments: 
+#  $ftr_info_AHR:   REF to array of hashes with information on the features, PRE-FILLED
+#  $mdl_name:       name of model
+#  $hmm_name_AR:    REF to array of HMM names, FILLED HERE 
+#  $FH_HR:             REF to hash of file handles
+#
+# Returns:    void, adds to @{$hmm_name_AR}
+#
+# Dies:       If HMM has zero CDS features
+#
+################################################################# 
+sub get_hmm_list_for_model() { 
+  my $sub_name = "get_hmm_list_for_model()";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $mdl_name, $hmm_name_AR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nhmm = 0;
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
+      push(@{$hmm_name_AR}, $mdl_name . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"});
+      $nhmm++;
+    }
+  }
+  if($nhmm == 0) { 
+    ofile_FAIL("ERROR in $sub_name, no CDS features exist for model $mdl_name", 1, $FH_HR);
+  }
+  return;
+}
