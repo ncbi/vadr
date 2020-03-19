@@ -250,60 +250,60 @@ push(@rel_is_aa_A,           "0");          # nt coords
 push(@ret_val_A,             "48..16:-");   
 
 # positive strand, 2 segments
-push(@desc_A,                "abs (+)+, rel (+) ");
+push(@desc_A,                "abs (+)+, rel (-) ");
 push(@full_abs_nt_coords_A,  "11..40:+,42..101:+");
-push(@rel_nt_or_aa_coords_A, "6..25:+");    
+push(@rel_nt_or_aa_coords_A, "25..6:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "16..35:+");   
+push(@ret_val_A,             "35..16:-");   
 
-push(@desc_A,                "abs +(+), rel (+)");
+push(@desc_A,                "abs +(+), rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..101:+");
-push(@rel_nt_or_aa_coords_A, "31..33:+");    
+push(@rel_nt_or_aa_coords_A, "33..31:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "42..44:+");   
+push(@ret_val_A,             "44..42:-");   
 
-push(@desc_A,                "abs (++), rel (+)");
+push(@desc_A,                "abs (++), rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..101:+");
-push(@rel_nt_or_aa_coords_A, "6..38:+");    
+push(@rel_nt_or_aa_coords_A, "38..6:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "16..40:+,42..49:+");   
+push(@ret_val_A,             "49..42:-,40..16:-");
 
 # positive strand, 3 segments
-push(@desc_A,                "abs (+)++, rel (+)");
+push(@desc_A,                "abs (+)++, rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_nt_or_aa_coords_A, "6..25:+");    
+push(@rel_nt_or_aa_coords_A, "25..6:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "16..35:+");   
+push(@ret_val_A,             "35..16:-");   
 
-push(@desc_A,                "abs +(+)+, rel (+)");
+push(@desc_A,                "abs +(+)+, rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_nt_or_aa_coords_A, "31..33:+");    
+push(@rel_nt_or_aa_coords_A, "33..31:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "42..44:+");   
+push(@ret_val_A,             "44..42:-");   
 
-push(@desc_A,                "abs ++(+), rel (+)");
+push(@desc_A,                "abs ++(+), rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_nt_or_aa_coords_A, "90..105:+");    
+push(@rel_nt_or_aa_coords_A, "105..90:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "105..120:+");   
+push(@ret_val_A,             "120..105:-");   
 
-push(@desc_A,                "abs (++)+, rel (+)");
+push(@desc_A,                "abs (++)+, rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_nt_or_aa_coords_A, "6..38:+");    
+push(@rel_nt_or_aa_coords_A, "38..6:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "16..40:+,42..49:+");   
+push(@ret_val_A,             "49..42:-,40..16:-");
 
-push(@desc_A,                "abs +(++), rel (+)");
+push(@desc_A,                "abs +(++), rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_nt_or_aa_coords_A, "39..99:+");    
+push(@rel_nt_or_aa_coords_A, "99..39:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "50..100:+,105..114:+");   
+push(@ret_val_A,             "114..105:-,100..50:-");
 
-push(@desc_A,                "abs (+++), rel (+)");
+push(@desc_A,                "abs (+++), rel (-)");
 push(@full_abs_nt_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_nt_or_aa_coords_A, "19..99:+");    
+push(@rel_nt_or_aa_coords_A, "99..19:-");    
 push(@rel_is_aa_A,           "0");          # nt coords
-push(@ret_val_A,             "29..40:+,42..100:+,105..114:+");   
+push(@ret_val_A,             "114..105:-,100..42:-,40..29:-");
 
 
 
