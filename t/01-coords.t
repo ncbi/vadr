@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 53;
+use Test::More tests => 93;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -116,10 +116,14 @@ push(@ret_val_A,  "400..300:-,100..200:+");
 push(@ret_val2_A, "<400..300:-,<100..200:+");
 
 $ntests = scalar(@desc_A);
+my $do_carrots = undef;
 for(my $i = 0; $i < $ntests; $i++) { 
-  $cur_val = vdr_CoordsFromLocation($location_A[$i], undef);
+  $do_carrots = 0;
+  $cur_val = vdr_CoordsFromLocation($location_A[$i], $do_carrots, undef);
   is($cur_val, $ret_val_A[$i], "vdr_CoordsFromLocation(): $desc_A[$i]");
-  $cur_val = vdr_CoordsFromLocationWithCarrots($location_A[$i], undef);
+
+  $do_carrots = 1;
+  $cur_val = vdr_CoordsFromLocation($location_A[$i], $do_carrots, undef);
   is($cur_val, $ret_val2_A[$i], "vdr_CoordsFromLocationWithCarrots(): $desc_A[$i]");
 }
 

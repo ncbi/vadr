@@ -104,15 +104,13 @@ require "sqp_utils.pm";
 # vdr_CoordsTokenCreate()
 # vdr_CoordsLength()
 # vdr_CoordsFromLocation()
-# vdr_CoordsFromLocationWithCarrots()
-# vdr_CoordsComplement()
-# vdr_CoordsComplementWithCarrots()
+# vdr_CoordsReverseComplement()
+# vdr_CoordsTokenReverseComplement()
 # vdr_CoordsMin()
 # vdr_CoordsMax()
 # vdr_CoordsMissing()
 # vdr_CoordsCheckIfSpans()
 # vdr_CoordsTokenOverlap()
-# vdr_CoordsProtToNuc
 # vdr_CoordsRelativeToAbsolutePosition
 #
 # Subroutines related to eutils:
@@ -148,6 +146,8 @@ sub vdr_FeatureInfoImputeCoords {
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
 
+  my $do_carrots = 0; # do not include carrots in coords strings, even if they exist in location strings
+
   my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "location"
@@ -155,7 +155,7 @@ sub vdr_FeatureInfoImputeCoords {
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
+    $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $do_carrots, $FH_HR);
   }
 
   return;
@@ -2200,17 +2200,37 @@ sub vdr_CoordsLength {
 #             a coords string in the format:
 #             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
 # 
-#             Any carrots before start/stop positions in the 
-#             location string are removed.
-#             See vdr_CoordsFromLocationWithCarrots() for 
-#             a similar subroutine that keeps carrots.
+#             <startN>: may begin with "<" carrot.
+#             <stopN>: may begin with ">" carrot.
+#
+#             If $do_carrots is 1: include them in the
+#             appropriate position in the returned
+#             $coords string
+#             Else: remove carrots
 #
 #             This function has to call itself recursively in some
 #             cases.
 # 
+# Examples:
+#                                      $do_carrots=0        $do_carrots=1
+# $location                            return value         return value
+# ---------------------------------    -----------------    ----------------
+# 1..200                               1..200:+             1..200:+
+# <1..200                              1..200:+             <1..200:+
+# 100..>200                            100..200:+           100..>200:+
+# <1..>200                             1..200:+             <1..>200:+
+# complement(1..200)                   200..1:-             200..1:-           
+# join(1..200,300..400)                1..200:+,300..400:+  1..200:+,300..400:+  
+# complement(join(1..200,300..400))    400..300:-,200..1:-  400..300:-,200..1:-
+# join(1..200,complement(<300..400))   1..200:+,400..300:-  1..200:+,400..>300:-
+# join(complement(300..>400),<1..>200) 400..300:-,1..200:+  <400..300:-,<1..>200:+
+#
+# See t/01-coords.t for additional examples
+# 
 # Arguments:
-#   $location: GenBank file location string
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#   $location:   GenBank file location string
+#   $do_carrots: '1' to have return values include carrots, '0' not to
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 # 
@@ -2222,241 +2242,193 @@ sub vdr_CoordsLength {
 #################################################################
 sub vdr_CoordsFromLocation { 
   my $sub_name = "vdr_CoordsFromLocation";
-  my $nargs_expected = 2;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($location, $FH_HR) = @_;
-
-  # Examples we can parse: 
-  # $location                          return value
-  # ---------------------------------  -----------------
-  # 1..200                             1..200:+
-  # <1..200                            1..200:+
-  # 100..>200                          100..200:+
-  # <1..>200                           1..200:+
-  # complement(1..200)                 200..1:-
-  # join(1..200,300..400)              1..200:+,300..400:+
-  # complement(join(1..200,300..400))  400..300:-,200..1:-
-  # join(1..200,complement(300..400))  1..200:+,400..300:-
-  # join(complement(300..400),1..200)  400..300:-,1..200:+
+  my ($location, $do_carrots, $FH_HR) = @_;
 
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
     my $location_to_join = $1;
-    $ret_val = vdr_CoordsFromLocation($location_to_join, $FH_HR);
+    $ret_val = vdr_CoordsFromLocation($location_to_join, $do_carrots, $FH_HR);
   }
   elsif($location =~ /^complement\((.+)\)$/) { 
     my $location_to_complement = $1;
-    my $coords_to_complement = vdr_CoordsFromLocation($location_to_complement, $FH_HR);
-    $ret_val = vdr_CoordsComplement($coords_to_complement, $FH_HR);
+    my $coords_to_complement = vdr_CoordsFromLocation($location_to_complement, $do_carrots, $FH_HR);
+    $ret_val = vdr_CoordsReverseComplement($coords_to_complement, $do_carrots, $FH_HR);
   }
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
       if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= vdr_CoordsFromLocation($location_el, $FH_HR);
+      $ret_val .= vdr_CoordsFromLocation($location_el, $do_carrots, $FH_HR);
     }
   }
-  elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
-    $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
+  elsif($do_carrots) { 
+    # only difference with this block and following block ($do_carrot == 0)
+    # is that the carrots are possibly included in the $ret_val in this block
+    if($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
+      $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^(\<?\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^(\>?\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+    }
   }
-  elsif($location =~ /^\<?(\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  elsif($location =~ /^\>?(\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+  else { # $do_carrot is 0
+    if($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
+      $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^\<?(\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^\>?(\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+    }
   }
 
   return $ret_val;
 }
 
 #################################################################
-# Subroutine: vdr_CoordsFromLocationWithCarrots
-# Incept:     EPN, Fri Apr 12 11:51:16 2019
-# 
-# Purpose:    Convert a GenBank file 'location' value to 
-#             a coords string in the format:
-#             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
-#             
-#             <startN>: may begin with "<" carrot.
-#             <stopN>: may begin with ">" carrot.
-#
-#             vdr_CoordsFromLocation() does the same thing but 
-#             removes carrots.
-#
-#             This function has to call itself recursively in some
-#             cases.
-# 
-# Arguments:
-#   $location: GenBank file location string
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if unable to parse $location
-#
-# Ref: GenBank release notes (release 230.0) as of this writing
-#      and
-#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
-#################################################################
-sub vdr_CoordsFromLocationWithCarrots { 
-  my $sub_name = "vdr_CoordsFromLocationWithCarrots";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($location, $FH_HR) = @_;
-
-  # Examples we can parse: 
-  # $location                          return value
-  # ---------------------------------  -----------------
-  # 1..200                             1..200:+
-  # <1..200                            <1..200:+
-  # 100..>200                          100..>200:+
-  # <1..>200                           <1..>200:+
-  # complement(1..200)                 200..1:-
-  # join(1..200,300..400)              1..200:+,300..400:+
-  # complement(join(1..200,300..400))  400..300:-,200..1:-
-  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
-  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
-
-  my $ret_val = "";
-  if($location =~ /^join\((.+)\)$/) { 
-    my $location_to_join = $1;
-    $ret_val = vdr_CoordsFromLocationWithCarrots($location_to_join, $FH_HR);
-  }
-  elsif($location =~ /^complement\((.+)\)$/) { 
-    my $location_to_complement = $1;
-    my $coords_to_complement = vdr_CoordsFromLocationWithCarrots($location_to_complement, $FH_HR);
-    $ret_val = vdr_CoordsComplementWithCarrots($coords_to_complement, $FH_HR);
-  }
-  elsif($location =~ /\,/) { 
-    # not wrapped in join() or complement(), but multiple segments
-    foreach my $location_el (split(",", $location)) { 
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= vdr_CoordsFromLocationWithCarrots($location_el, $FH_HR);
-    }
-  }
-  elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
-    $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  elsif($location =~ /^(\<?\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  elsif($location =~ /^(\>?\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
-  }
-
-  return $ret_val;
-}
-
-#################################################################
-# Subroutine: vdr_CoordsComplement
+# Subroutine: vdr_CoordsReverseComplement
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
-# Purpose:    Complement a coords string by complementing all
-#             elements within it. Removes carrots "<" and ">"
-#             before start and stop positions, if they exist.
-#             See vdr_CoordsComplementWithCarrots() to keep
-#             carrots.
-# 
-# Arguments:
-#   $coords:   coords string to complement
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# Purpose:    Reverse complement a coords string by reverse complementing
+#             all tokens within it (by calling 
+#             vdr_CoordsTokenReverseComplement()), then reversing 
+#             the order of the resulting tokens, concatenating them
+#             and returning that concatenated string.
 #
-# Returns:    complemented $coords
+#             If $do_carrots is 1: include "<" before start and
+#             ">" before stop if they exist. 
+#             Else: remove carrots
 # 
-# Dies:       if unable to parse $coords, or any segment in $coords
-#             is already on the negative strand.
+# 
+# Examples:
+#                                      $do_carrots=0         $do_carrots=1
+# $location                            return value          return value
+# ---------------------------------    -----------------     ----------------
+# 1..200:+                             200..1:-              200..1:-
+# <1..200:+                            200..1:-              200..>1:-
+# 100..>200:+                          200..100:-            <200..100:-
+# <1..>200                             200..1:-              <200..>1:-
+# 200..1:-                             1..200:+              1..200:+
+# 1..200:+,300..400:+                  400..300:-,200..1:-   400..300:-,200..1:-
+# 400..300:-,200..1:-                  1..200:+,300..400:+   1..200:+,300..400:+
+# 1..200:+,400..>300:-                 300..400:+,200..1:-   <300..400:+,200..1:-
+# <400..300:-,1..200:+                 200..1:-,300.. 400:+  200..1:-,300..>400:+
+# 
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#   $coords:     coords string to complement
+#   $do_carrots: '1' to have return values include carrots, '0' not to
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    reverse complemented $coords
+# 
+# Dies:       if unable to parse $coords
 #
 #################################################################
-sub vdr_CoordsComplement { 
-  my $sub_name = "vdr_CoordsComplement";
-  my $nargs_expected = 2;
+sub vdr_CoordsReverseComplement { 
+  my $sub_name = "vdr_CoordsReverseComplement";
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($coords, $FH_HR) = @_;
+  my ($coords, $do_carrots, $FH_HR) = @_;
 
-  # Examples we can parse: 
-  # $coords                  return value
-  # -----------------------  -----------------
-  # 1-200:+                  200-1:-
-  # 1-200:+,300-400:+        400-300:-,200-1:-
+  my @tok_A = split(",", $coords);
+  my $ntok = scalar(@tok_A);
+  my @ret_coords_tok_A = (); 
 
-  my $ret_val = "";
-  my @el_A = split(",", $coords);
-  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
-    if($el_A[$i] =~ /^\<?(\d+)\.\.\>?(\d+)\:\+/) { 
-      my ($start, $stop) = ($1, $2, $3, $4);
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= $stop . ".." . $start . ":-";
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
-    }
+  for(my $i = 0; $i < $ntok; $i++) { 
+    push(@ret_coords_tok_A, vdr_CoordsTokenReverseComplement($tok_A[$i], $do_carrots, $FH_HR));
   }
-
-  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
-
+  
+  # concatenate the tokens in reverse order
+  my $ret_val = "";
+  for(my $i = $ntok-1; $i >= 0; $i--) { 
+    if($ret_val ne "") { $ret_val .= ","; }
+    $ret_val .= $ret_coords_tok_A[$i];
+  }
+  printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
+      
   return $ret_val;
 }
 
 #################################################################
-# Subroutine: vdr_CoordsComplementWithCarrots
-# Incept:     EPN, Fri Apr 12 11:49:06 2019
+# Subroutine: vdr_CoordsTokenReverseComplement
+# Incept:     EPN, Thu Mar 19 15:29:22 2020
 # 
-# Purpose:    Complement a coords string by complementing all
-#             elements within it, and reverse any carrots. 
-#             Just like vdr_CoordsComplement() but keeps
-#             and complements carrots.
-# 
-# Arguments:
-#   $coords:   coords string to complement
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# Purpose:    Reverse complement a single coords tokenn by 
+#             reverse complementing it. 
 #
-# Returns:    complemented $coords
+#             If $do_carrots is 1: include "<" before start and
+#             ">" before stop if they exist. 
+#             Else: remove carrots
 # 
-# Dies:       if unable to parse $coords, or any segment in $coords
-#             is already on the negative strand.
+# 
+# Examples:
+#                                      $do_carrots=0         $do_carrots=1
+# $location                            return value          return value
+# ---------------------------------    -----------------     ----------------
+# 1..200:+                             200..1:-              200..1:-
+# <1..200:+                            200..1:-              200..>1:-
+# 100..>200:+                          200..100:-            <200..100:-
+# <1..>200                             200..1:-              <200..>1:-
+# 200..1:-                             1..200:+              1..200:+
+# 
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#   $coords_tok: coords string to complement
+#   $do_carrots: '1' to have return values include carrots, '0' not to
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    reverse complemented $coords_tok
+# 
+# Dies:       if we are unable to parse $coords_tok (including if it 
+#             has a ',' in it implying it is multiple segments)
 #
 #################################################################
-sub vdr_CoordsComplementWithCarrots { 
-  my $sub_name = "vdr_CoordsComplementWithCarrots";
-  my $nargs_expected = 2;
+sub vdr_CoordsTokenReverseComplement { 
+  my $sub_name = "vdr_CoordsTokenReverseComplement";
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($coords, $FH_HR) = @_;
+  my ($coords_tok, $do_carrots, $FH_HR) = @_;
 
-  # Examples we can parse: 
-  # $coords                  return value
-  # -----------------------  -----------------
-  # 1-200:+                  200-1:-
-  # 1-200:+,300-400:+        400-300:-,200-1:-
-
-  my $ret_val = "";
-  my @el_A = split(",", $coords);
-  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
-    if($el_A[$i] =~ /^(\<?)(\d+)\.\.(\>?)(\d+)\:\+/) { 
-      my ($start_carrot, $start, $stop_carrot, $stop) = ($1, $2, $3, $4);
-      if($start_carrot eq "<") { $start_carrot = ">"; }
-      if($stop_carrot  eq ">") { $stop_carrot  = "<"; }
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= $stop_carrot . $stop . ".." . $start_carrot . $start . ":-";
+  if($coords_tok =~ /^(\<?)(\d+)\.\.(\>?)(\d+)\:([\+\-])$/) { 
+    my ($start_carrot, $start, $stop_carrot, $stop, $strand) = ($1, $2, $3, $4, $5);
+    if($do_carrots) { 
+      if($start_carrot ne "") { $start_carrot = ">"; } # swap it from < to >
+      if($stop_carrot  ne "") { $stop_carrot  = "<"; } # swap it from > to <
     }
     else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
-    }
+      $start_carrot = "";
+      $stop_carrot  = "";
+    }    
+    my $ret_strand = "?";
+    if   ($strand eq "+") { $ret_strand = "-"; }
+    elsif($strand eq "-") { $ret_strand = "+"; }
+
+    return $stop_carrot . $stop . ".." . $start_carrot . $start . ":" . $ret_strand;
   }
-
-  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
-
-  return $ret_val;
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse input coords token: $coords_tok", 1, $FH_HR); 
+  }
+  return ""; # NEVER REACHED
 }
+
 
 #################################################################
 # Subroutine: vdr_CoordsMin()
@@ -2732,9 +2704,9 @@ sub vdr_CoordsTokenOverlap {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsProtToNuc()
 # Subroutine: vdr_CoordsRelativeToAbsoluate()
 #             formerly vdr_CoordsProtToNuc() (pre v1.0.5)
+#
 # Incept:     EPN, Wed May 22 09:49:30 2019
 #
 # Synopsis: Return absolute nucleotide coordinates that correspond to
@@ -2797,6 +2769,7 @@ sub vdr_CoordsRelativeToAbsolute {
   if(! defined $full_abs_nt_coords) { ofile_FAIL("ERROR in $sub_name, nt_coords is undefined", 1, $FH_HR); }
   if(! defined $rel_nt_or_pt_coords) { ofile_FAIL("ERROR in $sub_name, $rel_nt_or_pt_coords is undefined", 1, $FH_HR); }
 
+
   my @full_abs_nt_coords_tok_A = split(",", $full_abs_nt_coords);
   my @rel_nt_or_pt_coords_tok_A = split(",", $rel_nt_or_pt_coords);
   my $full_len = vdr_CoordsLength($full_abs_nt_coords, $FH_HR);
@@ -2821,7 +2794,7 @@ sub vdr_CoordsRelativeToAbsolute {
       ofile_FAIL("ERROR in $sub_name, relative coords strand is - but start coordinate is before stop coordinate ($rel_start < $rel_stop) in rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok", 1, $FH_HR); 
     }
 
-    my $remaining_conv_tok_nt_len = (($rel_stop - $rel_start) + 1) * $len_mult; # number of nucleotide positions left to convert from protein coords to nt coords
+    my $remaining_conv_tok_nt_len = (abs($rel_stop - $rel_start) + 1) * $len_mult; # number of nucleotide positions left to convert from protein coords to nt coords
     printf("remaining_conv_tok_nt_len: $remaining_conv_tok_nt_len\n");
     my $cur_nt_offset = ($rel_start - 1) * $len_mult; # number of nucleotides to skip from start of $full_abs_nt_coords_tok when converting coords
     # 
@@ -2853,19 +2826,20 @@ sub vdr_CoordsRelativeToAbsolute {
           }
           # determine how many more nt we have to cover for this protein coord token
           $remaining_conv_tok_nt_len -= abs($conv_stop - $conv_start) + 1;
-          
+          printf("updated remaining_conv_tok_nt_len to $remaining_conv_tok_nt_len\n");
+
           # append converted token to return coords string
           if($ret_coords ne "") { $ret_coords .= ","; }
           $ret_coords .= vdr_CoordsTokenCreate($conv_start, $conv_stop, $abs_nt_strand, $FH_HR);
-        }   
+        }
         # adjust nt offset so that for next nt coords token we start at the proper position
         $cur_nt_offset -= $full_abs_nt_coords_tok_len;
         if($cur_nt_offset < 0) { 
           $cur_nt_offset = 0;
         }
       }
-    }
-  }
+    } # end of 'foreach my $full_abs_nt_coords_tok (@full_abs_nt_coords_tok_A)'
+  } # end of 'foreach my $rel_nt_or_pt_coords_tok (@rel_nt_or_pt_coords_tok_A)'
 
   # printf("in $sub_name, returning $ret_coords\n");
   return $ret_coords;
