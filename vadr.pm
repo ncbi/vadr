@@ -2753,8 +2753,9 @@ sub vdr_CoordsTokenOverlap {
 #           IF $rel_is_aa = 0: ($rel_nt_or_aa_coords are in nucleotide space)
 #
 #           full_abs_nt_coords     rel_nt_or_aa_coords  returns
-#           "11..100:+"            "6..35:+"            "14..43:+"     
-#           "100..11:-"            "6..35:+"            "97..68:-"
+#           "11..100:+"            "6..38:+"            "16..48:+"     
+
+#           "100..11:-"            "6..35:+"            "95..66:-"
 #           "11..40:+,42..101:+"   "6..35:+"            "14..40:+,42..44:+"
 #           "11..100:+"            "6..11:+,15..35:+"   "14..19:+,23..43:+"
 #           "100..11:-"            "6..11:+,15..35:+"   "97..92:-,88..68:-"
@@ -2807,36 +2808,34 @@ sub vdr_CoordsRelativeToAbsolute {
   
   my $ret_coords = "";
 
-  # printf("in $sub_name, nt_coords: $full_abs_nt_coords, $rel_nt_or_pt_coords: $rel_nt_or_pt_coords\n");
+  printf("in $sub_name, full_abs_nt_coords: $full_abs_nt_coords, rel_nt_or_pt_coords: $rel_nt_or_pt_coords\n");
   foreach my $rel_nt_or_pt_coords_tok (@rel_nt_or_pt_coords_tok_A) { 
-    # printf("$rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok\n");
+    printf("\trel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok\n");
     my ($rel_start, $rel_stop, $rel_strand) = vdr_CoordsTokenParse($rel_nt_or_pt_coords_tok, $FH_HR);
 
     # strand-related sanity checks
-    if($rel_strand eq "+") { 
-      if($rel_start > $rel_stop) { 
-        ofile_FAIL("ERROR in $sub_name, relative coords strand is + but start coordinate is after stop coordinate ($rel_start > $rel_stop)", 1, $FH_HR); 
-      }
+    if(($rel_strand eq "+") && ($rel_start > $rel_stop)) { 
+      ofile_FAIL("ERROR in $sub_name, relative coords strand is + but start coordinate is after stop coordinate ($rel_start > $rel_stop) in rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok", 1, $FH_HR); 
     }
-    elsif($rel_strand eq "-") { 
-      if($rel_is_aa) { 
-        ofile_FAIL("ERROR in $sub_name, rel_is_aa is 1 and relative coords strand is - for token $rel_nt_or_pt_coords_tok in coords string $rel_nt_or_pt_coords", 1, $FH_HR); 
-      }
-      else { 
-        ofile_FAIL("ERROR in $sub_name, NOT YET IMPLEMENTED: rel_is_aa is 1 and relative coords strand is - for token $rel_nt_or_pt_coords_tok in coords string $rel_nt_or_pt_coords", 1, $FH_HR); 
-      }
-      if($rel_start < $rel_stop) { ofile_FAIL("ERROR in $sub_name, relative coords strand is - but start coordinate is before stop coordinate ($rel_start < $rel_stop)", 1, $FH_HR); }
+    elsif(($rel_strand eq "-") && ($rel_start < $rel_stop)) {
+      ofile_FAIL("ERROR in $sub_name, relative coords strand is - but start coordinate is before stop coordinate ($rel_start < $rel_stop) in rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok", 1, $FH_HR); 
     }
 
     my $remaining_conv_tok_nt_len = (($rel_stop - $rel_start) + 1) * $len_mult; # number of nucleotide positions left to convert from protein coords to nt coords
+    printf("remaining_conv_tok_nt_len: $remaining_conv_tok_nt_len\n");
     my $cur_nt_offset = ($rel_start - 1) * $len_mult; # number of nucleotides to skip from start of $full_abs_nt_coords_tok when converting coords
     # 
+    printf("cur_nt_offset: $cur_nt_offset\n");
     foreach my $full_abs_nt_coords_tok (@full_abs_nt_coords_tok_A) { 
       if($remaining_conv_tok_nt_len > 0) { # only need to look at this token if we still have sequence left to convert
         my ($abs_nt_start, $abs_nt_stop, $abs_nt_strand) = vdr_CoordsTokenParse($full_abs_nt_coords_tok, $FH_HR);
         my $full_abs_nt_coords_tok_len = abs($abs_nt_start - $abs_nt_stop) + 1;
+        printf("full_abs_nt_coords_tok_len: $full_abs_nt_coords_tok_len\n");
+        printf("abs_nt_start:   $abs_nt_start\n");
+        printf("abs_nt_stop:    $abs_nt_stop\n");
+        printf("abs_nt_strand:  $abs_nt_strand\n");
         my ($conv_start, $conv_stop) = (undef, undef); 
-        if($cur_nt_offset <= $full_abs_nt_coords_tok_len) { # this nt token has >= 1 nt corresponding to $rel_nt_or_pt_coords_tok
+        if($cur_nt_offset < $full_abs_nt_coords_tok_len) { # this nt token has >= 1 nt corresponding to $rel_nt_or_pt_coords_tok
           if($abs_nt_strand eq "+") { 
             $conv_start = $abs_nt_start + $cur_nt_offset;
             $conv_stop  = $conv_start + $remaining_conv_tok_nt_len - 1;
