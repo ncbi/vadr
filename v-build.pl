@@ -684,10 +684,18 @@ if($ncds > 0) {
   my @hmmbuild_file_A = (); # array of names of individual hmmbuild output files to be concatenated to make the library
   for(my $i = 0; $i < $ncds; $i++) { 
     my $seq_name = $protein_sqfile->fetch_seq_name_given_ssi_number($i);
+    my $hmm_name = undef;
+    # remove version from $hmm_name
+    if($seq_name =~ /^(.+)\.\d+(\/[^\/]+)$/) { 
+      $hmm_name = $1 . $2;
+    }
+    else { 
+      ofile_FAIL("ERROR, unable to parse protein sequence name $seq_name to make HMM model name", 1, $FH_HR);
+    }
     my $tmp_hmm_file      = $out_root . "." . ($nhmm+1) . ".hmm";
     my $tmp_hmmbuild_file = $out_root . "." . ($nhmm+1) . ".hmmbuild";
     my $sfetch_to_hmmbuild_cmd = $execs_H{"esl-sfetch"} . " $protein_fa_file $seq_name | ";
-    $sfetch_to_hmmbuild_cmd   .= $execs_H{"hmmbuild"} . " -n $seq_name --informat afa $tmp_hmm_file - > $tmp_hmmbuild_file";
+    $sfetch_to_hmmbuild_cmd   .= $execs_H{"hmmbuild"} . " -n $hmm_name --informat afa $tmp_hmm_file - > $tmp_hmmbuild_file";
     utl_RunCommand($sfetch_to_hmmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
     push(@hmm_file_A,      $tmp_hmm_file);
     push(@hmmbuild_file_A, $tmp_hmmbuild_file);
