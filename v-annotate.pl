@@ -3842,13 +3842,13 @@ sub add_low_similarity_alerts {
         my $min_coord = vdr_CoordsMin($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
         my $max_coord = vdr_CoordsMax($cls_results_HHHR->{$seq_name}{"r2.bs"}{"s_coords"}, $FH_HR);
         if($min_coord != 1) { 
-          if($bstrand eq "+") { $missing_coords = vdr_CoordsTokenCreate(1, $min_coord-1, "+", $FH_HR); }
-          else                { $missing_coords = vdr_CoordsTokenCreate($min_coord-1, 1, "-", $FH_HR); }
+          if($bstrand eq "+") { $missing_coords = vdr_CoordsSegmentCreate(1, $min_coord-1, "+", $FH_HR); }
+          else                { $missing_coords = vdr_CoordsSegmentCreate($min_coord-1, 1, "-", $FH_HR); }
         }
         if($max_coord != $seq_len) { 
           if($missing_coords ne "") { $missing_coords .= ","; }
-          if($bstrand eq "+") { $missing_coords .= vdr_CoordsTokenCreate($max_coord+1, $seq_len, "+", $FH_HR); }
-          else                { $missing_coords .= vdr_CoordsTokenCreate($seq_len, $max_coord+1, "-", $FH_HR); }
+          if($bstrand eq "+") { $missing_coords .= vdr_CoordsSegmentCreate($max_coord+1, $seq_len, "+", $FH_HR); }
+          else                { $missing_coords .= vdr_CoordsSegmentCreate($seq_len, $max_coord+1, "-", $FH_HR); }
         }
       }
       else { 
@@ -3858,7 +3858,7 @@ sub add_low_similarity_alerts {
       if($missing_coords ne "") { 
         my @missing_coords_A = split(",", $missing_coords);
         foreach my $missing_coords_tok (@missing_coords_A) { 
-          my ($start, $stop, undef) = vdr_CoordsTokenParse($missing_coords_tok, $FH_HR);
+          my ($start, $stop, undef) = vdr_CoordsSegmentParse($missing_coords_tok, $FH_HR);
           my $length = abs($start - $stop) + 1;
           if($bstrand eq "+") { 
             my $is_start   = ($start == 1)        ? 1 : 0;
@@ -7100,7 +7100,7 @@ sub helper_sort_hit_array {
   my %hash = ();
   my $bstrand;
   for($i = 0; $i < $nel; $i++) { 
-    my($start, $stop, $strand) = vdr_CoordsTokenParse($tosort_AR->[$i], $FH_HR);
+    my($start, $stop, $strand) = vdr_CoordsSegmentParse($tosort_AR->[$i], $FH_HR);
     $hash{($i+1)} = $start . "." . $stop;
     if($i == 0) { 
       $bstrand = $strand;
