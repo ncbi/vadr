@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 165;
+use Test::More tests => 185;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -11,6 +11,18 @@ my @exp_val_A  = ();  # array of return values for each test
 my @exp_val2_A = ();  # array of return values for each test
 my $ntests     = 0;      # number of tests in a section
 my $cur_val    = undef; # current return value
+my $i;
+my @sgm1_A = ();   # segment 1 values
+my @sgm2_A = ();   # segment 2 values
+my @coords_A = (); # coords values
+my $do_carrots = undef;
+my $cur_exp_val = undef;
+my @location_A = (); # location values
+my ($cur_sgm1, $cur_sgm2, $cur_coords);
+my @abs_coords_A  = ();
+my @rel_coords_A = ();
+my ($rel_nt_length, $cur_val_length);
+
 ###########################################
 # vdr_CoordsReverseComplement() tests
 # vdr_CoordsSegmentReverseComplement() tests
@@ -25,7 +37,7 @@ my $cur_val    = undef; # current return value
 # vdr_CoordsSegmentReverseComplement() 
 # internally also.
 ##########################################
-my @coords_A = (); # coords value to reverse complement
+@coords_A = (); # coords value to reverse complement
 @desc_A = ();
 @exp_val_A = ();
 @exp_val2_A = ();
@@ -101,13 +113,13 @@ push(@exp_val_A,  "650..1000:+,700..402:-,300..400:+,200..1:-");
 push(@exp_val2_A, "650..>1000:+,700..402:-,<300..400:+,200..1:-");
 
 $ntests = scalar(@desc_A);
-my $do_carrots = undef;
-my $cur_exp_val = undef;
+$do_carrots = undef;
+$cur_exp_val = undef;
 # for each coords string, make sure that:
 # vdr_CoordsReverseComplement works with $do_carrots as 0 and 1
 # vdr_CoordsSegmentReverseComplement works with $do_carrots as 0 and 1 if it is a single segment
 # And that reverse complementing the reverse complement gives you back the original.
-for(my $i = 0; $i < $ntests; $i++) { 
+for($i = 0; $i < $ntests; $i++) { 
   $do_carrots = 0;
   $cur_val = vdr_CoordsReverseComplement($coords_A[$i], $do_carrots, undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsReverseComplement() no carrots: $desc_A[$i]");
@@ -144,7 +156,7 @@ for(my $i = 0; $i < $ntests; $i++) {
 ################################
 # vdr_CoordsFromLocation() tests
 ################################
-my @location_A = (); # location value from a GenBank file 
+@location_A = (); # location value from a GenBank file 
 @desc_A = ();
 @exp_val_A = ();
 @exp_val2_A = ();
@@ -250,7 +262,7 @@ push(@exp_val_A,  "400..300:-,100..200:+");
 push(@exp_val2_A, "<400..300:-,<100..200:+");
 
 $ntests = scalar(@desc_A);
-for(my $i = 0; $i < $ntests; $i++) { 
+for($i = 0; $i < $ntests; $i++) { 
   $do_carrots = 0;
   $cur_val = vdr_CoordsFromLocation($location_A[$i], $do_carrots, undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsFromLocation(): $desc_A[$i]");
@@ -260,6 +272,79 @@ for(my $i = 0; $i < $ntests; $i++) {
   is($cur_val, $exp_val2_A[$i], "vdr_CoordsFromLocationWithCarrots(): $desc_A[$i]");
 }
 
+###########################################
+# vdr_CoordsMergeAllAdjacentSegments() tests
+# vdr_CoordsMergeTwoSegmentsIfAdjacent() tests
+#
+# We don't have negative strand versions
+# of some of these because we test that
+# by reverse complementing the reverse
+# complement and make sure we get the
+# original value back again.
+##########################################
+@sgm1_A = ();   # segment 1
+@sgm2_A = ();   # segment 2
+@desc_A = ();
+@coords_A = ();
+@exp_val_A = ();
+@exp_val2_A = ();
+
+push(@desc_A,     "+ +, not adj");
+push(@coords_A,   "1..200:+,202..300:+");
+push(@sgm1_A,     "1..200:+");
+push(@sgm2_A,     "202..300:+");
+push(@exp_val_A,  "1..200:+,202..300:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++, adj");
+push(@coords_A,   "1..200:+,201..300:+");
+push(@sgm1_A,     "1..200:+");
+push(@sgm2_A,     "201..300:+");
+push(@exp_val_A,  "1..300:+");
+push(@exp_val2_A, "1..300:+");
+
+push(@desc_A,     "+ + +, not adj");
+push(@coords_A,   "1..200:+,202..300:+,302..310:+");
+push(@sgm1_A,     "202..300:+");
+push(@sgm2_A,     "302..310:+");
+push(@exp_val_A,  "1..200:+,202..300:+,302..310:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++ +, 2 adj");
+push(@coords_A,   "1..200:+,201..300:+,302..310:+");
+push(@sgm1_A,     "201..300:+");
+push(@sgm2_A,     "302..310:+");
+push(@exp_val_A,  "1..300:+,302..310:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "+++, 3 adj");
+push(@coords_A,   "1..200:+,201..300:+,301..310:+");
+push(@sgm1_A,     "201..300:+");
+push(@sgm2_A,     "301..310:+");
+push(@exp_val_A,  "1..310:+");
+push(@exp_val2_A, "201..310:+");
+
+$ntests = scalar(@desc_A);
+for($i = 0; $i < $ntests; $i++) { 
+  $cur_val = vdr_CoordsMergeAllAdjacentSegments($coords_A[$i], undef);
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsMergeAllAdjacentSegments(): $desc_A[$i]");
+  # now reverse complement $coords_A[$i], run the subroutine again, revcomp the result and 
+  # make sure we get the expected return value again
+  $cur_coords = vdr_CoordsReverseComplement($coords_A[$i], 0, undef);
+  $cur_val = vdr_CoordsReverseComplement(vdr_CoordsMergeAllAdjacentSegments($cur_coords, undef), 0, undef);
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsMergeAllAdjacentSegments() rev comp: $desc_A[$i]");
+
+  $cur_val = vdr_CoordsMergeTwoSegmentsIfAdjacent($sgm1_A[$i], $sgm2_A[$i], undef);
+  is($cur_val, $exp_val2_A[$i], "vdr_CoordsMergeTwoSegmentsIfAdjacent(): $desc_A[$i]");
+  # now reverse complement $sgm1_A[$i] and $sgm2_A[$i], run the subroutine again, revcomp the result and 
+  # make sure we get the expected return value again
+  $cur_sgm1 = vdr_CoordsReverseComplement($sgm1_A[$i], 0, undef);
+  $cur_sgm2 = vdr_CoordsReverseComplement($sgm2_A[$i], 0, undef);
+  # note: pass in cur_sgm2 first, then cur_sgm1 b/c they're reverse complemented
+  $cur_val = vdr_CoordsReverseComplement(vdr_CoordsMergeTwoSegmentsIfAdjacent($cur_sgm2, $cur_sgm1, undef), 0, undef);
+  is($cur_val, $exp_val2_A[$i], "vdr_CoordsMergeTwoSegmentsIfAdjacent() rev comp: $desc_A[$i]");
+}
+
 ############################################
 # vdr_CoordsRelativeToAbsolute() tests
 ############################################
@@ -267,8 +352,8 @@ for(my $i = 0; $i < $ntests; $i++) {
 # RELATIVE: POSITIVE STRAND, 1 segment
 # positive strand, 1 segment
 @desc_A                = ();
-my @abs_coords_A  = ();
-my @rel_coords_A = ();
+@abs_coords_A  = ();
+@rel_coords_A = ();
 @exp_val_A             = ();
 
 push(@desc_A,       "abs (+), rel (+)");
@@ -412,14 +497,14 @@ push(@rel_coords_A,  "99..19:-");
 push(@exp_val_A,     "114..105:-,100..42:-,40..29:-");
 
 $ntests = scalar(@desc_A);
-for(my $i = 0; $i < $ntests; $i++) { 
+for($i = 0; $i < $ntests; $i++) { 
   $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
                                           $rel_coords_A[$i], undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsRelativeToAbsolute(): $desc_A[$i]");
   # sanity check:
   # make sure the length of the returned coords string is the same as the
   # length of the $rel_nt_or_aa_coords string
-  my $rel_nt_length   = vdr_CoordsLength($rel_coords_A[$i], undef);
-  my $cur_val_length  = vdr_CoordsLength($cur_val, undef);
+  $rel_nt_length   = vdr_CoordsLength($rel_coords_A[$i], undef);
+  $cur_val_length  = vdr_CoordsLength($cur_val, undef);
   is($cur_val_length, $rel_nt_length, "vdr_CoordsRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 }
