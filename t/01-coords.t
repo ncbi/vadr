@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 233;
+use Test::More tests => 229;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -21,7 +21,7 @@ my @location_A = (); # location values
 my ($cur_sgm1, $cur_sgm2, $cur_coords);
 my @abs_coords_A  = ();
 my @rel_coords_A = ();
-my ($rel_nt_length, $cur_val_length);
+my ($rel_length, $cur_val_length, $cur_rel_coords);
 
 ###########################################
 # vdr_CoordsReverseComplement() tests
@@ -529,60 +529,6 @@ push(@abs_coords_A,  "11..40:+,42..58:+,62..104:+");
 push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "16..40:+,42..49:+,56..58:+,62..64:+,67..73:+");   
 
-# ABSOLUTE: POSITIVE STRAND, 1-3 segments
-# RELATIVE: NEGATIVE STRAND, 1 segment
-push(@desc_A,        "abs (+), rel (-)");
-push(@abs_coords_A,  "11..100:+");
-push(@rel_coords_A,  "38..6:-");    
-push(@exp_val_A,     "48..16:-");   
-
-# positive strand, 2 segments
-push(@desc_A,        "abs (+)+, rel (-) ");
-push(@abs_coords_A,  "11..40:+,42..101:+");
-push(@rel_coords_A,  "25..6:-");    
-push(@exp_val_A,     "35..16:-");   
-
-push(@desc_A,        "abs +(+), rel (-)");
-push(@abs_coords_A,  "11..40:+,42..101:+");
-push(@rel_coords_A,  "33..31:-");    
-push(@exp_val_A,     "44..42:-");   
-
-push(@desc_A,        "abs (++), rel (-)");
-push(@abs_coords_A,  "11..40:+,42..101:+");
-push(@rel_coords_A,  "38..6:-");    
-push(@exp_val_A,     "49..42:-,40..16:-");
-
-# positive strand, 3 segments
-push(@desc_A,        "abs (+)++, rel (-)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "25..6:-");    
-push(@exp_val_A,     "35..16:-");   
-
-push(@desc_A,        "abs +(+)+, rel (-)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "33..31:-");    
-push(@exp_val_A,     "44..42:-");   
-
-push(@desc_A,        "abs ++(+), rel (-)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "105..90:-");    
-push(@exp_val_A,     "120..105:-");   
-
-push(@desc_A,        "abs (++)+, rel (-)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "38..6:-");    
-push(@exp_val_A,     "49..42:-,40..16:-");
-
-push(@desc_A,        "abs +(++), rel (-)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "99..39:-");    
-push(@exp_val_A,     "114..105:-,100..50:-");
-
-push(@desc_A,        "abs (+++), rel (-)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "99..19:-");    
-push(@exp_val_A,     "114..105:-,100..42:-,40..29:-");
-
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
   $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
@@ -591,7 +537,14 @@ for($i = 0; $i < $ntests; $i++) {
   # sanity check:
   # make sure the length of the returned coords string is the same as the
   # length of the $rel_nt_or_aa_coords string
-  $rel_nt_length   = vdr_CoordsLength($rel_coords_A[$i], undef);
-  $cur_val_length  = vdr_CoordsLength($cur_val, undef);
-  is($cur_val_length, $rel_nt_length, "vdr_CoordsRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
+  $rel_length     = vdr_CoordsLength($rel_coords_A[$i], undef);
+  $cur_val_length = vdr_CoordsLength($cur_val, undef);
+  is($cur_val_length, $rel_length, "vdr_CoordsRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
+
+  # reverse complement $rel_coords_A
+  $cur_rel_coords = vdr_CoordsReverseComplement($rel_coords_A[$i], 0, undef);
+  $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
+                                          $cur_rel_coords, undef);
+  $cur_val = vdr_CoordsReverseComplement($cur_val, 0, undef);
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsRelativeToAbsolute() revcomp: $desc_A[$i]");
 }
