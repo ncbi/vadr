@@ -111,7 +111,7 @@ require "sqp_utils.pm";
 # vdr_CoordsMissing()
 # vdr_CoordsCheckIfSpans()
 # vdr_CoordsSegmentOverlap()
-# vdr_CoordsRelativeToAbsolutePosition
+# vdr_CoordsRelativeToAbsolute()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -3597,7 +3597,7 @@ sub vdr_CoordsProteinToNucleotide {
   my @start_A  = ();
   my @stop_A   = ();
   my @strand_A = ();
-  vdr_FeatureStartStopStrandArrays($pt_coords, \@start_A, \@stop_A, \@strand_A);
+  vdr_FeatureStartStopStrandArrays($pt_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
   my $nt_coords = "";
   my $start_coord = undef;
   my $stop_coord  = undef;
@@ -3608,7 +3608,7 @@ sub vdr_CoordsProteinToNucleotide {
       ofile_FAIL("ERROR in $sub_name, protein has segment that is not on + strand in coords string: $pt_coords", 1, $FH_HR);
     }
     my $start_coord = ($start_A[$s] * 3) - 2;
-    my $stop_coords = ($stop_A[$s] * 3);
+    my $stop_coord  = ($stop_A[$s] * 3);
     $nt_coords .= $start_coord . ".." . $stop_coord . ":+";
   }
 
@@ -3665,7 +3665,7 @@ sub vdr_CoordsAppendSegment {
 # Dies: never
 #
 #################################################################
-sub vdr_CoordsMergeAllAdjacentSegments() { 
+sub vdr_CoordsMergeAllAdjacentSegments { 
   my $sub_name = "vdr_CoordsMergeAllAdjacentSegments";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -3686,6 +3686,7 @@ sub vdr_CoordsMergeAllAdjacentSegments() {
     if($merged_sgm ne "") { 
       # we merged two segments, don't append yet
       $cur_sgm = $merged_sgm;
+      printf("in $sub_name, cur_sgm is merged_sum: $cur_sgm\n");
     }
     else { # did not merge, append $cur_sgm, then update $cur_sgm
       $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
@@ -3695,6 +3696,7 @@ sub vdr_CoordsMergeAllAdjacentSegments() {
   # add the final segment
   $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
 
+  printf("in $sub_name, input coords: $coords returning $ret_coords\n");
   return $ret_coords;
 }
 
@@ -3706,15 +3708,19 @@ sub vdr_CoordsMergeAllAdjacentSegments() {
 #
 # Synopsis: Merge two segments into one if they are 'adjacent'.
 #           Two segments 1 and 2 are adjacent if they are either:
-#           a) both are + strand and
+#           a) both are same strand and have fwd direction and
 #              $coords_str and start_2 == (stop_1+1)
-#              and 1 and 2 have the same direction 
 #           OR
-#           b) both are - strand and
+#           b) both are same strand and have bck direction and
 #              $coords_str and start_2 == (stop_1-1)
-#              and 2 and 2 have the same direction 
-#           Where direction(i) = "fwd" if start_i <= stop_i
-#           else "bck"
+#
+#           Where direction is defined as:
+#           if strand is +
+#             "fwd" if start_i <= stop_i
+#             "bck" if start_i >  stop_i
+#           if strand is -
+#             "fwd" if start_i >= stop_i
+#             "bck" if start_i <  stop_i
 #       
 #
 # Arguments:
@@ -3728,7 +3734,7 @@ sub vdr_CoordsMergeAllAdjacentSegments() {
 # Dies: If either $sgm1 or $sgm2 is not parseable
 #
 #################################################################
-sub vdr_CoordsMergeTwoSegmentsIfAdjacent() { 
+sub vdr_CoordsMergeTwoSegmentsIfAdjacent { 
   my $sub_name = "vdr_CoordsMergeTwoSegmentsIfAdjacent";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
@@ -3737,17 +3743,32 @@ sub vdr_CoordsMergeTwoSegmentsIfAdjacent() {
 
   my ($start1, $stop1, $strand1) = vdr_CoordsSegmentParse($sgm1, $FH_HR);
   my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($sgm2, $FH_HR);
-  my $dir1 = ($start1 <= $stop1) ? "fwd" : "bck"; 
-  my $dir2 = ($start2 <= $stop2) ? "fwd" : "bck"; 
+  my $dir1 = undef;
+  my $dir2 = undef;
+  if($strand1 eq "+") { 
+    $dir1 = ($start1 <= $stop1) ? "fwd" : "bck";
+  }
+  else { 
+    $dir1 = ($start1 >= $stop1) ? "bck" : "fwd";
+  }
+  if($strand2 eq "+") { 
+    $dir2 = ($start2 <= $stop2) ? "fwd" : "bck";
+  }
+  else { 
+    $dir2 = ($start2 >= $stop2) ? "bck" : "fwd";
+  }
+
+  printf("in $sub_name, sgm1: $sgm1 sgm2: $sgm2 dir1: $dir1 dir2: $dir2\n");
 
   # return quick if we can
   if(($strand1 ne $strand2) || 
-     ($dir1    ne $dir1)) { 
+     ($dir1    ne $dir2)) { 
     return "";
   }
 
-  if((($strand1 eq "+") && ($start2 == ($stop1+1))) ||
-     (($strand1 eq "-") && ($start2 == ($stop1-1)))) { 
+  # if we get here, $strand1 eq $strand2 and $dir1 eq $dir2
+  if((($dir1 eq "fwd") && ($start2 == ($stop1+1))) ||
+     (($dir1 eq "bck") && ($start2 == ($stop1-1)))) { 
     return vdr_CoordsSegmentCreate($start1, $stop2, $strand1, $FH_HR);
   }
 

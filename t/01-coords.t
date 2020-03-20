@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 229;
+use Test::More tests => 287;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -21,6 +21,7 @@ my @location_A = (); # location values
 my ($cur_sgm1, $cur_sgm2, $cur_coords);
 my @abs_coords_A  = ();
 my @rel_coords_A = ();
+my @rel_pt_coords_A  = ();
 my ($rel_length, $cur_val_length, $cur_rel_coords);
 
 ###########################################
@@ -435,20 +436,16 @@ for($i = 0; $i < $ntests; $i++) {
 ############################################
 # vdr_CoordsRelativeToAbsolute() tests
 ############################################
-# ABSOLUTE: POSITIVE STRAND, 1-3 segments
-# RELATIVE: POSITIVE STRAND, 1 segment
-# positive strand, 1 segment
-@desc_A                = ();
-@abs_coords_A  = ();
+@desc_A       = ();
+@abs_coords_A = ();
 @rel_coords_A = ();
-@exp_val_A             = ();
+@exp_val_A    = ();
 
 push(@desc_A,       "abs (+), rel (+)");
 push(@abs_coords_A, "11..100:+");
 push(@rel_coords_A, "6..38:+");    
 push(@exp_val_A,    "16..48:+");   
 
-# positive strand, 2 segments
 push(@desc_A,       "abs (+)+, rel (+) ");
 push(@abs_coords_A, "11..40:+,42..101:+");
 push(@rel_coords_A, "6..25:+");    
@@ -464,7 +461,6 @@ push(@abs_coords_A,  "11..40:+,42..101:+");
 push(@rel_coords_A,  "6..38:+");    
 push(@exp_val_A,     "16..40:+,42..49:+");   
 
-# positive strand, 3 segments
 push(@desc_A,        "abs (+)++, rel (+)");
 push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
 push(@rel_coords_A,  "6..25:+");    
@@ -494,10 +490,6 @@ push(@desc_A,        "abs (+++), rel (+)");
 push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
 push(@rel_coords_A,  "19..99:+");    
 push(@exp_val_A,     "29..40:+,42..100:+,105..114:+");   
-
-# ABSOLUTE: POSITIVE STRAND, 1-3 segments
-# RELATIVE: POSITIVE STRAND, 2 segments
-# note: all relative segments must be 'spanned' in return segment
 
 push(@desc_A,        "abs (+), rel (++)");
 push(@abs_coords_A,  "11..100:+");
@@ -529,6 +521,111 @@ push(@abs_coords_A,  "11..40:+,42..58:+,62..104:+");
 push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "16..40:+,42..49:+,56..58:+,62..64:+,67..73:+");   
 
+# negative strand abs coords
+push(@desc_A,       "abs (-), rel (+)");
+push(@abs_coords_A, "100..11:-");
+push(@rel_coords_A, "6..38:+");    
+push(@exp_val_A,    "95..63:-");   
+
+push(@desc_A,       "abs (-)-, rel (+) ");
+push(@abs_coords_A, "101..42:-,40..11:-");
+push(@rel_coords_A, "6..25:+");    
+push(@exp_val_A,    "96..77:-");   
+
+push(@desc_A,       "abs -(-), rel (+)");
+push(@abs_coords_A, "101..42:-,40..11:-");
+push(@rel_coords_A, "71..73:+");    
+push(@exp_val_A,    "30..28:-");   
+
+push(@desc_A,        "abs (--), rel (+)");
+push(@abs_coords_A,  "101..42:-,40..11:-");
+push(@rel_coords_A,  "6..78:+");    
+push(@exp_val_A,     "96..42:-,40..23:-");   
+
+push(@desc_A,        "abs (-)--, rel (+)");
+push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@rel_coords_A,  "6..15:+");    
+push(@exp_val_A,     "116..107:-");
+
+push(@desc_A,        "abs -(-)-, rel (+)");
+push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@rel_coords_A,  "71..73:+");
+push(@exp_val_A,     "47..45:-");   
+
+push(@desc_A,        "abs --(-), rel (+)");
+push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@rel_coords_A,  "80..85:+");    
+push(@exp_val_A,     "37..32:-");   
+
+push(@desc_A,        "abs (--)-, rel (+)");
+push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@rel_coords_A,  "6..25:+");    
+push(@exp_val_A,     "116..105:-,100..93:-");   
+
+push(@desc_A,        "abs -(--), rel (+)");
+push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@rel_coords_A,  "39..99:+");    
+push(@exp_val_A,     "79..42:-,40..18:-");   
+
+push(@desc_A,        "abs (---), rel (+)");
+push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@rel_coords_A,  "9..99:+");    
+push(@exp_val_A,     "113..105:-,100..42:-,40..18:-");   
+
+push(@desc_A,        "abs (+), rel (--)");
+push(@abs_coords_A,  "100..11:-");
+push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@exp_val_A,     "95..63:-,56..51:-");
+
+push(@desc_A,        "abs (+), rel (---)");
+push(@abs_coords_A,  "100..11:-");
+push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@exp_val_A,     "95..63:-,56..51:-,48..42:-");
+
+push(@desc_A,        "abs (++), rel (--)");
+push(@abs_coords_A,  "101..42:-,40..11:-");
+push(@rel_coords_A,  "6..38:+,45..70:+");    
+push(@exp_val_A,     "96..64:-,57..42:-,40..31:-");
+
+push(@desc_A,        "abs (++), rel (---)");
+push(@abs_coords_A,  "101..42:-,40..11:-");
+push(@rel_coords_A,  "6..38:+,45..70:+,73..80:+");    
+push(@exp_val_A,     "96..64:-,57..42:-,40..31:-,28..21:-");
+
+push(@desc_A,        "abs (+++), rel (--)");
+push(@abs_coords_A,  "104..94:-,101..42:-,40..11:-");
+push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@exp_val_A,     "99..94:-,101..75:-,68..63:-");
+
+push(@desc_A,        "abs (+++), rel (---)");
+push(@abs_coords_A,  "104..94:-,101..42:-,40..11:-");
+push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@exp_val_A,     "99..94:-,101..75:-,68..63:-,60..54:-");
+
+#push(@desc_A,        "abs (-++), rel (+++)");
+#push(@desc_A,        "abs (+-+), rel (+++)");
+#push(@desc_A,        "abs (++-), rel (+++)");
+#push(@desc_A,        "abs (-+-), rel (+++)");
+#push(@desc_A,        "abs (--+), rel (+++)");
+
+#push(@desc_A,        "abs (-++), rel (+-+)");
+#push(@desc_A,        "abs (+-+), rel (+-+)");
+#push(@desc_A,        "abs (++-), rel (+-+)");
+#push(@desc_A,        "abs (-+-), rel (+-+)");
+#push(@desc_A,        "abs (--+), rel (+-+)");
+
+#push(@desc_A,        "abs (-++), rel (+--)");
+#push(@desc_A,        "abs (+-+), rel (+--)");
+#push(@desc_A,        "abs (++-), rel (+--)");
+#push(@desc_A,        "abs (-+-), rel (+--)");
+#push(@desc_A,        "abs (--+), rel (+--)");
+
+#push(@desc_A,        "abs (-++), rel (--+)");
+#push(@desc_A,        "abs (+-+), rel (--+)");
+#push(@desc_A,        "abs (++-), rel (--+)");
+#push(@desc_A,        "abs (-+-), rel (--+)");
+#push(@desc_A,        "abs (--+), rel (--+)");
+
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
   $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
@@ -548,3 +645,53 @@ for($i = 0; $i < $ntests; $i++) {
   $cur_val = vdr_CoordsReverseComplement($cur_val, 0, undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsRelativeToAbsolute() revcomp: $desc_A[$i]");
 }
+
+#############################################
+# vdr_CoordsProteinRelativeToAbsolute() tests
+#
+# Relative protein coords segments must all
+# be "+" strand.
+#############################################
+@desc_A          = ();
+@abs_coords_A    = ();
+@rel_pt_coords_A = ();
+@exp_val_A       = ();
+
+push(@desc_A,          "abs (+), rel (+)");
+push(@abs_coords_A,    "11..100:+");
+push(@rel_pt_coords_A, "6..10:+");    
+push(@exp_val_A,       "26..40:+");   
+
+push(@desc_A,          "abs (+), rel (++)");
+push(@abs_coords_A,    "11..100:+");
+push(@rel_pt_coords_A, "6..10:+,12..13:+");    
+push(@exp_val_A,       "26..40:+,44..49:+");   
+
+push(@desc_A,          "abs (++), rel (+)");
+push(@abs_coords_A,    "11..30:+,30..100:+");
+push(@rel_pt_coords_A, "6..10:+");    
+push(@exp_val_A,       "26..30:+,30..39:+");
+
+push(@desc_A,          "abs (++), rel (++)");
+push(@abs_coords_A,    "11..30:+,30..100:+");
+push(@rel_pt_coords_A, "6..10:+,12..13:+");    
+push(@exp_val_A,       "26..30:+,30..39:+,43..48:+");
+
+push(@desc_A,          "abs (+-), rel (++)");
+push(@abs_coords_A,    "11..30:+,100..30:-");
+push(@rel_pt_coords_A, "6..10:+,12..13:+");    
+push(@exp_val_A,       "26..30:+,100..91:-,87..82:-");
+
+$ntests = scalar(@desc_A);
+for($i = 0; $i < $ntests; $i++) { 
+  $cur_val = vdr_CoordsProteinRelativeToAbsolute($abs_coords_A[$i], 
+                                                 $rel_pt_coords_A[$i], undef);
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsProteinRelativeToAbsolute(): $desc_A[$i]");
+  # sanity check:
+  # make sure the length of the returned coords string is the same as the
+  # length of the $rel_nt_or_aa_coords string
+  $rel_length     = vdr_CoordsLength($rel_pt_coords_A[$i], undef);
+  $cur_val_length = (vdr_CoordsLength($cur_val, undef) / 3);
+  is($cur_val_length, $rel_length, "vdr_CoordsProteinRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
+}
+
