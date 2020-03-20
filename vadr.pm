@@ -2314,18 +2314,18 @@ sub vdr_CoordsFromLocation {
 # 
 # 
 # Examples:
-#                                      $do_carrots=0         $do_carrots=1
-# $location                            return value          return value
-# ---------------------------------    -----------------     ----------------
-# 1..200:+                             200..1:-              200..1:-
-# <1..200:+                            200..1:-              200..>1:-
-# 100..>200:+                          200..100:-            <200..100:-
-# <1..>200                             200..1:-              <200..>1:-
-# 200..1:-                             1..200:+              1..200:+
-# 1..200:+,300..400:+                  400..300:-,200..1:-   400..300:-,200..1:-
-# 400..300:-,200..1:-                  1..200:+,300..400:+   1..200:+,300..400:+
-# 1..200:+,400..>300:-                 300..400:+,200..1:-   <300..400:+,200..1:-
-# <400..300:-,1..200:+                 200..1:-,300.. 400:+  200..1:-,300..>400:+
+#                          $do_carrots=0         $do_carrots=1
+# $coords                  return value          return value
+# ---------------------    -----------------     ----------------
+# 1..200:+                 200..1:-              200..1:-
+# <1..200:+                200..1:-              200..>1:-
+# 100..>200:+              200..100:-            <200..100:-
+# <1..>200                 200..1:-              <200..>1:-
+# 200..1:-                 1..200:+              1..200:+
+# 1..200:+,300..400:+      400..300:-,200..1:-   400..300:-,200..1:-
+# 400..300:-,200..1:-      1..200:+,300..400:+   1..200:+,300..400:+
+# 1..200:+,400..>300:-     300..400:+,200..1:-   <300..400:+,200..1:-
+# <400..300:-,1..200:+     200..1:-,300.. 400:+  200..1:-,300..>400:+
 # 
 # See t/01-coords.t for additional examples
 #
@@ -2378,14 +2378,14 @@ sub vdr_CoordsReverseComplement {
 # 
 # 
 # Examples:
-#                                      $do_carrots=0         $do_carrots=1
-# $location                            return value          return value
-# ---------------------------------    -----------------     ----------------
-# 1..200:+                             200..1:-              200..1:-
-# <1..200:+                            200..1:-              200..>1:-
-# 100..>200:+                          200..100:-            <200..100:-
-# <1..>200                             200..1:-              <200..>1:-
-# 200..1:-                             1..200:+              1..200:+
+#                  $do_carrots=0         $do_carrots=1
+# $coords          return value          return value
+# -------------    -----------------     ----------------
+# 1..200:+         200..1:-              200..1:-
+# <1..200:+        200..1:-              200..>1:-
+# 100..>200:+      200..100:-            <200..100:-
+# <1..>200         200..1:-              <200..>1:-
+# 200..1:-         1..200:+              1..200:+
 # 
 # See t/01-coords.t for additional examples
 #
@@ -2784,17 +2784,28 @@ sub vdr_CoordsRelativeToAbsolute {
   printf("in $sub_name, full_abs_nt_coords: $full_abs_nt_coords, rel_nt_or_pt_coords: $rel_nt_or_pt_coords\n");
   foreach my $rel_nt_or_pt_coords_tok (@rel_nt_or_pt_coords_tok_A) { 
     printf("\trel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok\n");
+    my $cur_ret_coords = "";
     my ($rel_start, $rel_stop, $rel_strand) = vdr_CoordsTokenParse($rel_nt_or_pt_coords_tok, $FH_HR);
-
-    # strand-related sanity checks
-    if(($rel_strand eq "+") && ($rel_start > $rel_stop)) { 
-      ofile_FAIL("ERROR in $sub_name, relative coords strand is + but start coordinate is after stop coordinate ($rel_start > $rel_stop) in rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok", 1, $FH_HR); 
+    my $revcomped_rel_nt_or_pt_coords_tok = 0; # set to 1 if we revcomp this token, indicating
+                                               # we need to revcomp the tokens we create for this token
+                                               # before adding to the return coords string
+    if($rel_strand eq "-") { 
+      # reverse complement $rel_nt_or_pt_coords_tok, and raise the revcomp flag
+      $rel_nt_or_pt_coords_tok = vdr_CoordsReverseComplement($rel_nt_or_pt_coords_tok, 0, $FH_HR);
+      $revcomped_rel_nt_or_pt_coords_tok = 1;
+      # get the start/stop again
+      ($rel_start, $rel_stop, $rel_strand) = vdr_CoordsTokenParse($rel_nt_or_pt_coords_tok, $FH_HR);
     }
-    elsif(($rel_strand eq "-") && ($rel_start < $rel_stop)) {
-      ofile_FAIL("ERROR in $sub_name, relative coords strand is - but start coordinate is before stop coordinate ($rel_start < $rel_stop) in rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok", 1, $FH_HR); 
+    
+    # sanity checks
+    if($rel_strand ne "+") { 
+      ofile_FAIL("ERROR in $sub_name, relative coords is still not + after possibly revcomp'ing it", 1, $FH_HR); 
     }
-
-    my $remaining_conv_tok_nt_len = (abs($rel_stop - $rel_start) + 1) * $len_mult; # number of nucleotide positions left to convert from protein coords to nt coords
+    if($rel_start > $rel_stop) { 
+      ofile_FAIL("ERROR in $sub_name, relative coords strand is + but start coordinate is after stop coordinate ($rel_start > $rel_stop) in (possibly revcomp'ed) rel_nt_or_pt_coords_tok: $rel_nt_or_pt_coords_tok", 1, $FH_HR); 
+    }
+    
+    my $remaining_conv_tok_nt_len = (($rel_stop - $rel_start) + 1) * $len_mult; # number of nucleotide positions left to convert from protein coords to nt coords
     printf("remaining_conv_tok_nt_len: $remaining_conv_tok_nt_len\n");
     my $cur_nt_offset = ($rel_start - 1) * $len_mult; # number of nucleotides to skip from start of $full_abs_nt_coords_tok when converting coords
     # 
@@ -2829,8 +2840,8 @@ sub vdr_CoordsRelativeToAbsolute {
           printf("updated remaining_conv_tok_nt_len to $remaining_conv_tok_nt_len\n");
 
           # append converted token to return coords string
-          if($ret_coords ne "") { $ret_coords .= ","; }
-          $ret_coords .= vdr_CoordsTokenCreate($conv_start, $conv_stop, $abs_nt_strand, $FH_HR);
+          if($cur_ret_coords ne "") { $cur_ret_coords .= ","; }
+          $cur_ret_coords .= vdr_CoordsTokenCreate($conv_start, $conv_stop, $abs_nt_strand, $FH_HR);
         }
         # adjust nt offset so that for next nt coords token we start at the proper position
         $cur_nt_offset -= $full_abs_nt_coords_tok_len;
@@ -2839,6 +2850,11 @@ sub vdr_CoordsRelativeToAbsolute {
         }
       }
     } # end of 'foreach my $full_abs_nt_coords_tok (@full_abs_nt_coords_tok_A)'
+    if($revcomped_rel_nt_or_pt_coords_tok) { 
+      $cur_ret_coords = vdr_CoordsReverseComplement($cur_ret_coords, 0, $FH_HR)
+    }
+    if($ret_coords ne "") { $ret_coords .= ","; }
+    $ret_coords .= $cur_ret_coords;
   } # end of 'foreach my $rel_nt_or_pt_coords_tok (@rel_nt_or_pt_coords_tok_A)'
 
   # printf("in $sub_name, returning $ret_coords\n");
