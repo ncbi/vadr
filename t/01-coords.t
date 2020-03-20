@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 185;
+use Test::More tests => 233;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -323,6 +323,93 @@ push(@sgm1_A,     "201..300:+");
 push(@sgm2_A,     "301..310:+");
 push(@exp_val_A,  "1..310:+");
 push(@exp_val2_A, "201..310:+");
+
+push(@desc_A,     "+ ++ +, 2 adj");
+push(@coords_A,   "1..200:+,202..300:+,301..310:+,500..700:+");
+push(@sgm1_A,     "301..310:+");
+push(@sgm2_A,     "500..700:+");
+push(@exp_val_A,  "1..200:+,202..310:+,500..700:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "+++++, 5 adj");
+push(@coords_A,   "1..1:+,2..2:+,3..3:+,4..4:+,5..5:+");
+push(@sgm1_A,     "3..3:+");
+push(@sgm2_A,     "4..4:+");
+push(@exp_val_A,  "1..5:+");
+push(@exp_val2_A, "3..4:+");
+
+# mixed strands
+push(@desc_A,     "+ -, not adj");
+push(@coords_A,   "1..200:+,300..202:-");
+push(@sgm1_A,     "1..200:+");
+push(@sgm2_A,     "300..202:-");
+push(@exp_val_A,  "1..200:+,300..202:-");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "+-, adj");
+push(@coords_A,   "1..200:+,300..201:-");
+push(@sgm1_A,     "1..200:+");
+push(@sgm2_A,     "300..201:-");
+push(@exp_val_A,  "1..200:+,300..201:-");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "+ - +, not adj");
+push(@coords_A,   "1..200:+,300..202:-,302..310:+");
+push(@sgm1_A,     "300..202:-");
+push(@sgm2_A,     "302..310:+");
+push(@exp_val_A,  "1..200:+,300..202:-,302..310:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++ -, 2 adj");
+push(@coords_A,   "1..200:+,201..300:+,310..301:-");
+push(@sgm1_A,     "201..300:+");
+push(@sgm2_A,     "310..301:-");
+push(@exp_val_A,  "1..300:+,310..301:-");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++-++, 2 adj");
+push(@coords_A,   "1..200:+,201..300:+,310..301:-,311..400:+,401..500:+");
+push(@sgm1_A,     "310..301:-");
+push(@sgm2_A,     "311..400:+");
+push(@exp_val_A,  "1..300:+,310..301:-,311..500:+");
+push(@exp_val2_A, "");
+
+# different directions, same strand 
+push(@desc_A,     "++ fwd bck");
+push(@coords_A,   "1..200:+,201..1:+");
+push(@sgm1_A,     "1..200:+");
+push(@sgm2_A,     "201..1:+");
+push(@exp_val_A,  "1..200:+,201..1:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++++ fwd bck");
+push(@coords_A,   "1..200:+,201..1:+,2..300:+,301..302:+");
+push(@sgm1_A,     "201..1:+");
+push(@sgm2_A,     "2..300:+");
+push(@exp_val_A,  "1..200:+,201..1:+,2..302:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++++ fwd bck");
+push(@coords_A,   "1..200:+,201..1:+,2..300:+,301..302:+");
+push(@sgm1_A,     "201..1:+");
+push(@sgm2_A,     "2..300:+");
+push(@exp_val_A,  "1..200:+,201..1:+,2..302:+");
+push(@exp_val2_A, "");
+
+push(@desc_A,     "++, bck bck");
+push(@coords_A,   "6..5:+,4..3:+,2..1:+");
+push(@sgm1_A,     "6..5:+");
+push(@sgm2_A,     "4..3:+");
+push(@exp_val_A,  "6..1:+");
+push(@exp_val2_A, "6..3:+");
+
+push(@desc_A,     "++, bck bck");
+push(@coords_A,   "6..5:+,4..3:+,3..1:+");
+push(@sgm1_A,     "4..3:+");
+push(@sgm2_A,     "3..1:+");
+push(@exp_val_A,  "6..3:+,3..1:+");
+push(@exp_val2_A, "");
+
 
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
