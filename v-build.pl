@@ -1010,7 +1010,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
         # first, convert protein coords to nucleotide coords (before
         # checking if it already exists or not)
         if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") { 
-          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} = vdr_CoordsRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}, 1, $FH_HR);
+          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}, $FH_HR);
           my $found_ftr_idx = -1;
           for(my $chk_ftr_idx = 0; $chk_ftr_idx < scalar(@{$ftr_info_AHR}); $chk_ftr_idx++) { 
             if($found_ftr_idx == -1) { 
