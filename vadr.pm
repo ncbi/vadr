@@ -102,6 +102,7 @@ require "sqp_utils.pm";
 # Subroutines related to sequence and model coordinates: 
 # vdr_CoordsSegmentParse()
 # vdr_CoordsSegmentCreate()
+# vdr_CoordsAppendSegment()
 # vdr_CoordsLength()
 # vdr_CoordsFromLocation()
 # vdr_CoordsReverseComplement()
@@ -112,6 +113,11 @@ require "sqp_utils.pm";
 # vdr_CoordsCheckIfSpans()
 # vdr_CoordsSegmentOverlap()
 # vdr_CoordsRelativeToAbsolute()
+# vdr_CoordsRelativeSegmentToAbsolute()
+# vdr_CoordsProteinRelativeToAbsolute()
+# vdr_CoordsProteinToNucleotide()
+# vdr_CoordsMergeAllAdjacentSegments()
+# vdr_CoordsMergeTwoSegmentsIfAdjacent()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -2150,6 +2156,37 @@ sub vdr_CoordsSegmentCreate {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsAppendSegment()
+#
+# Incept:     EPN, Fri Mar 20 09:11:03 2020
+#
+# Synopsis: Append a segment $coords_sgm to $coords and return 
+#           the result, after potentially adding a ',' before
+#           $coords_sgm. If $coords is undef, return $coords_sgm.
+#
+# Arguments:
+#  $coords:     existing coords string, can be undef or ""
+#  $coords_sgm: segment to append, not checked for validity
+#
+# Returns:   Coords string with $coords_sgm appended.
+#
+# Dies: never
+#
+#################################################################
+sub vdr_CoordsAppendSegment { 
+  my $sub_name = "vdr_CoordsAppendSegment";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $coords_sgm) = @_;
+
+  if((! defined $coords) || ($coords eq "")) { 
+    return $coords_sgm;
+  }
+  return $coords . "," . $coords_sgm;
+}
+
+#################################################################
 # Subroutine: vdr_CoordsLength()
 # Incept:     EPN, Tue Mar 26 05:56:08 2019
 #
@@ -2358,7 +2395,7 @@ sub vdr_CoordsReverseComplement {
   for(my $i = $ntok-1; $i >= 0; $i--) { 
     $ret_val = vdr_CoordsAppendSegment($ret_val, $ret_coords_tok_A[$i]);
   }
-  printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
+  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
       
   return $ret_val;
 }
@@ -2732,6 +2769,22 @@ sub vdr_CoordsRelativeToAbsolute {
 
   my ($abs_coords, $rel_coords, $FH_HR) = @_;
 
+  # check to make sure we have identical strands for all segments in both
+  # $abs_coords and $rel_coords
+  # the code may work even if we don't but I didn't add tests for these
+  # mixed strand cases, so I'm disallowing them here.
+  # If you want to allow mixed strand in the future, add tests in
+  # 01-coords.t (see note in that file as well dated Fri Mar 20, 2020)
+  my $abs_summary_strand = vdr_FeatureSummaryStrand($abs_coords, $FH_HR); # will be + if 
+  my $rel_summary_strand = vdr_FeatureSummaryStrand($rel_coords, $FH_HR);
+  # $*_summary_strand values will be + if all segments are +, - if all segments are -, else !
+  if($abs_summary_strand eq "!") { 
+    ofile_FAIL("ERROR in $sub_name, in abs_coords $abs_coords not all segments are the same strand", 1, $FH_HR);
+  }
+  if($rel_summary_strand eq "!") { 
+    ofile_FAIL("ERROR in $sub_name, in rel_coords $rel_coords not all segments are the same strand", 1, $FH_HR);
+  }
+
   my @rel_coords_sgm_A = split(",", $rel_coords);
   my $ret_coords = "";
   foreach my $rel_coords_sgm (@rel_coords_sgm_A) { 
@@ -2775,7 +2828,7 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
 
   my ($abs_coords, $rel_coords_sgm, $FH_HR) = @_;
 
-  printf("in $sub_name, abs_coords: $abs_coords, rel_coords_sgm: $rel_coords_sgm\n");
+  # printf("in $sub_name, abs_coords: $abs_coords, rel_coords_sgm: $rel_coords_sgm\n");
 
   my $ret_coords = ""; # return value 
 
@@ -2806,18 +2859,13 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
   
   # do the conversion, one absolute segment at a time
   my $cur_len_to_convert = abs($rel_stop - $rel_start) + 1; # number of positions left to convert from relative to absolute coords
-  my $cur_abs_offset    = $rel_start - 1; # number of nucleotides to skip from start of $abs_coords_tok when converting coords
+  my $cur_abs_offset = $rel_start - 1; # number of nucleotides to skip from start of $abs_coords_tok when converting coords
   my $conv_start = undef; # a start position converted from relative to absolute coords
   my $conv_stop  = undef; # a stop  position converted from relative to absolute coords
   for(my $a = 0; $a < $nsgm_abs; $a++) { 
     if($cur_len_to_convert > 0) { # only need to look at this token if we still have sequence left to convert
       my ($abs_start, $abs_stop, $abs_strand) = ($abs_start_A[$a], $abs_stop_A[$a], $abs_strand_A[$a]);
       my $abs_sgm_len = abs($abs_start - $abs_stop) + 1;
-      printf("abs_sgm_len: $abs_sgm_len\n");
-      printf("abs_start:   $abs_start\n");
-      printf("abs_stop:    $abs_stop\n");
-      printf("abs_strand:  $abs_strand\n");
-      printf("cur_abs_offset: $cur_abs_offset\n");
       if($cur_abs_offset < $abs_sgm_len) { 
         # this abs token has >= 1 nt corresponding to $rel_coords_sgm
         if($abs_strand eq "+") { 
@@ -2852,8 +2900,241 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
     $ret_coords = vdr_CoordsReverseComplement($ret_coords, 0, $FH_HR); # 0: do not include carrots
   }
 
-  printf("in $sub_name, returning $ret_coords\n");
+  # printf("in $sub_name, returning $ret_coords\n");
   return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsProteinRelativeToAbsoluate()
+#
+# Incept:     EPN, Fri Mar 20 07:12:19 2020
+#
+# Synopsis: Return absolute nucleotide coordinates that correspond to
+#           the relative protein coordinates in the coords string
+#           <$rel_coords> for a protein encoded by the nucleotide
+#           sequence with absolute coordinates <$abs_coords>
+#  
+#           abs_nt_coords          rel_pt_coords     returns
+#           "11..100:+"            "2..11:+"         "14..43:+"     
+#           "100..11:-"            "2..11:+"         "97..68:-"
+#           "11..40:+,42..101:+"   "2..11:+"         "14..40:+,42..44:+"
+#           "11..100:+"            "2..3:+,5..11:+"  "14..19:+,23..43:+"
+#           "100..11:-"            "2..3:+,5..11:+"  "97..92:-,88..68:-"
+#           "11..40:+,42..101:+"   "2..3:+,5..11:+"  "14..19:+,23..40:+,42..44:+"
+#
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#  $abs_nt_coords:  nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_pt_coords:  relative protein coordinates 
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
+#            coordinates relative to $abs_nt_coords.
+#
+# Dies: if $rel_pt_coords coordinates imply positions outside 
+#       $abs_nt_coords nucleotide coordinates (protein is too long)
+#
+#################################################################
+sub vdr_CoordsProteinRelativeToAbsolute { 
+  my $sub_name = "vdr_CoordsProteinRelativeToAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($abs_nt_coords, $rel_pt_coords, $FH_HR) = @_;
+
+  my $rel_nt_coords = vdr_CoordsProteinToNucleotide($rel_pt_coords, $FH_HR);
+  return vdr_CoordsRelativeToAbsolute($abs_nt_coords, $rel_nt_coords, $FH_HR);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsProteinToNucleotide()
+#
+# Incept:     EPN, Fri Mar 20 07:40:19 2020
+#
+# Synopsis: Return nucleotide coordinates that correspond to the
+#           protein coordinates in <$pt_coords>. 
+#
+#           Restricted to only work for plus strand segments, because
+#           it doesn't make sense to have negative strand proteins but
+#           code should be easily adaptable to work for minus strand
+#           if desired.
+#
+#           A protein start position corresponds to the first
+#           nucleotide position of the codon that encodes the first
+#           amino acid of the protein. A protein stop position
+#           corresponds to the third nucleotide position of the codon
+#           that encodes the final amino acid of the protein.
+#  
+#           pt_coords            returns 
+#           "1..10:+"            "1..30:+"
+#           "1..10:+,15..30:+"   "1..30:+,43..90");
+#
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#  $pt_coords:  protein coordinates 
+#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
+#            coordinates relative to $abs_nt_coords.
+#
+# Dies: if a segment in $pt_coords has a strand that is not "+"
+#
+#################################################################
+sub vdr_CoordsProteinToNucleotide { 
+  my $sub_name = "vdr_CoordsProteinToNucleotide";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($pt_coords, $FH_HR) = @_;
+
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
+  vdr_FeatureStartStopStrandArrays($pt_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+  my $nt_coords = "";
+  my $start_coord = undef;
+  my $stop_coord  = undef;
+  my $nseg = scalar(@start_A);
+  for(my $s = 0; $s < $nseg; $s++) { 
+    if($nt_coords ne "") { $nt_coords .= ","; }
+    if($strand_A[$s] ne "+") { 
+      ofile_FAIL("ERROR in $sub_name, protein has segment that is not on + strand in coords string: $pt_coords", 1, $FH_HR);
+    }
+    my $start_coord = ($start_A[$s] * 3) - 2;
+    my $stop_coord  = ($stop_A[$s] * 3);
+    $nt_coords .= $start_coord . ".." . $stop_coord . ":+";
+  }
+
+  return $nt_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMergeAllAdjacentSegments()
+#
+# Incept:     EPN, Fri Mar 20 09:17:06 2020
+#
+# Synopsis: Merge any 'adjacent' segments in <$coords_str> and
+#           return the possibly modified resulting coords string.
+#           Actual work is done by vdr_CoordsMergeTwoSegmentsIfAdjacent()
+#
+# Arguments:
+#  $coords: coords string to merge adjacent segments in
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string with all adjacent segments merged together
+#
+# Dies: never
+#
+#################################################################
+sub vdr_CoordsMergeAllAdjacentSegments { 
+  my $sub_name = "vdr_CoordsMergeAllAdjacentSegments";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+
+  my @sgm_A = split(",", $coords);
+  my $nsgm = scalar(@sgm_A);
+
+  # only 1 segment, can't merge anything 
+  if($nsgm == 1) { return $coords; }
+
+  my $ret_coords = "";
+  my $cur_sgm = $sgm_A[0];
+  my $merged_sgm = undef;
+  for(my $i = 1; $i < $nsgm; $i++) { 
+    $merged_sgm = vdr_CoordsMergeTwoSegmentsIfAdjacent($cur_sgm, $sgm_A[$i], $FH_HR);
+    if($merged_sgm ne "") { 
+      # we merged two segments, don't append yet
+      $cur_sgm = $merged_sgm;
+      # printf("in $sub_name, cur_sgm is merged_sum: $cur_sgm\n");
+    }
+    else { # did not merge, append $cur_sgm, then update $cur_sgm
+      $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
+      $cur_sgm = $sgm_A[$i];
+    }
+  }
+  # add the final segment
+  $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
+
+  # printf("in $sub_name, input coords: $coords returning $ret_coords\n");
+  return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMergeTwoSegmentsIfAdjacent()
+#
+# Incept:     EPN, Fri Mar 20 09:39:35 2020
+#
+# Synopsis: Merge two segments into one if they are 'adjacent'.
+#           Two segments 1 and 2 are adjacent if they are either:
+#           a) both are same strand and have fwd direction and
+#              $coords_str and start_2 == (stop_1+1)
+#           OR
+#           b) both are same strand and have bck direction and
+#              $coords_str and start_2 == (stop_1-1)
+#
+#           Where direction is defined as:
+#           if strand is +
+#             "fwd" if start_i <= stop_i
+#             "bck" if start_i >  stop_i
+#           if strand is -
+#             "fwd" if start_i >= stop_i
+#             "bck" if start_i <  stop_i
+#       
+#
+# Arguments:
+#  $sgm1:   segment 1
+#  $sgm2:   segment 2
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  A merged segment of segment 1 and 2 if they are adjacent
+#           else "" if they are not adjacent
+#
+# Dies: If either $sgm1 or $sgm2 is not parseable
+#
+#################################################################
+sub vdr_CoordsMergeTwoSegmentsIfAdjacent { 
+  my $sub_name = "vdr_CoordsMergeTwoSegmentsIfAdjacent";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($sgm1, $sgm2, $FH_HR) = @_;
+
+  my ($start1, $stop1, $strand1) = vdr_CoordsSegmentParse($sgm1, $FH_HR);
+  my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($sgm2, $FH_HR);
+  my $dir1 = undef;
+  my $dir2 = undef;
+  if($strand1 eq "+") { 
+    $dir1 = ($start1 <= $stop1) ? "fwd" : "bck";
+  }
+  else { 
+    $dir1 = ($start1 >= $stop1) ? "bck" : "fwd";
+  }
+  if($strand2 eq "+") { 
+    $dir2 = ($start2 <= $stop2) ? "fwd" : "bck";
+  }
+  else { 
+    $dir2 = ($start2 >= $stop2) ? "bck" : "fwd";
+  }
+
+  # printf("in $sub_name, sgm1: $sgm1 sgm2: $sgm2 dir1: $dir1 dir2: $dir2\n");
+
+  # return quick if we can
+  if(($strand1 ne $strand2) || 
+     ($dir1    ne $dir2)) { 
+    return "";
+  }
+
+  # if we get here, $strand1 eq $strand2 and $dir1 eq $dir2
+  if((($dir1 eq "fwd") && ($start2 == ($stop1+1))) ||
+     (($dir1 eq "bck") && ($start2 == ($stop1-1)))) { 
+    return vdr_CoordsSegmentCreate($start1, $stop2, $strand1, $FH_HR);
+  }
+
+  return "";  
 }
 
 #################################################################
@@ -3509,271 +3790,6 @@ sub vdr_ParseSeqFileToSeqHash {
   return;
 }
 
-#################################################################
-# Subroutine: vdr_CoordsProteinRelativeToAbsoluate()
-#
-# Incept:     EPN, Fri Mar 20 07:12:19 2020
-#
-# Synopsis: Return absolute nucleotide coordinates that correspond to
-#           the relative protein coordinates in the coords string
-#           <$rel_coords> for a protein encoded by the nucleotide
-#           sequence with absolute coordinates <$abs_coords>
-#  
-#           abs_nt_coords          rel_pt_coords     returns
-#           "11..100:+"            "2..11:+"         "14..43:+"     
-#           "100..11:-"            "2..11:+"         "97..68:-"
-#           "11..40:+,42..101:+"   "2..11:+"         "14..40:+,42..44:+"
-#           "11..100:+"            "2..3:+,5..11:+"  "14..19:+,23..43:+"
-#           "100..11:-"            "2..3:+,5..11:+"  "97..92:-,88..68:-"
-#           "11..40:+,42..101:+"   "2..3:+,5..11:+"  "14..19:+,23..40:+,42..44:+"
-#
-# See t/01-coords.t for additional examples
-#
-# Arguments:
-#  $abs_nt_coords:  nucleotide coordinates in full sequence [1..seqlen]
-#  $rel_pt_coords:  relative protein coordinates 
-#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
-#            coordinates relative to $abs_nt_coords.
-#
-# Dies: if $rel_pt_coords coordinates imply positions outside 
-#       $abs_nt_coords nucleotide coordinates (protein is too long)
-#
-#################################################################
-sub vdr_CoordsProteinRelativeToAbsolute { 
-  my $sub_name = "vdr_CoordsProteinRelativeToAbsolute";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($abs_nt_coords, $rel_pt_coords, $FH_HR) = @_;
-
-  my $rel_nt_coords = vdr_CoordsProteinToNucleotide($rel_pt_coords, $FH_HR);
-  return vdr_CoordsRelativeToAbsolute($abs_nt_coords, $rel_nt_coords, $FH_HR);
-}
-
-#################################################################
-# Subroutine: vdr_CoordsProteinToNucleotide()
-#
-# Incept:     EPN, Fri Mar 20 07:40:19 2020
-#
-# Synopsis: Return nucleotide coordinates that correspond to the
-#           protein coordinates in <$pt_coords>. 
-#
-#           Restricted to only work for plus strand segments, because
-#           it doesn't make sense to have negative strand proteins but
-#           code should be easily adaptable to work for minus strand
-#           if desired.
-#
-#           A protein start position corresponds to the first
-#           nucleotide position of the codon that encodes the first
-#           amino acid of the protein. A protein stop position
-#           corresponds to the third nucleotide position of the codon
-#           that encodes the final amino acid of the protein.
-#  
-#           pt_coords            returns 
-#           "1..10:+"            "1..30:+"
-#           "1..10:+,15..30:+"   "1..30:+,43..90");
-#
-# See t/01-coords.t for additional examples
-#
-# Arguments:
-#  $pt_coords:  protein coordinates 
-#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
-#            coordinates relative to $abs_nt_coords.
-#
-# Dies: if a segment in $pt_coords has a strand that is not "+"
-#
-#################################################################
-sub vdr_CoordsProteinToNucleotide { 
-  my $sub_name = "vdr_CoordsProteinToNucleotide";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($pt_coords, $FH_HR) = @_;
-
-  my @start_A  = ();
-  my @stop_A   = ();
-  my @strand_A = ();
-  vdr_FeatureStartStopStrandArrays($pt_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
-  my $nt_coords = "";
-  my $start_coord = undef;
-  my $stop_coord  = undef;
-  my $nseg = scalar(@start_A);
-  for(my $s = 0; $s < $nseg; $s++) { 
-    if($nt_coords ne "") { $nt_coords .= ","; }
-    if($strand_A[$s] ne "+") { 
-      ofile_FAIL("ERROR in $sub_name, protein has segment that is not on + strand in coords string: $pt_coords", 1, $FH_HR);
-    }
-    my $start_coord = ($start_A[$s] * 3) - 2;
-    my $stop_coord  = ($stop_A[$s] * 3);
-    $nt_coords .= $start_coord . ".." . $stop_coord . ":+";
-  }
-
-  return $nt_coords;
-}
-
-
-#################################################################
-# Subroutine: vdr_CoordsAppendSegment()
-#
-# Incept:     EPN, Fri Mar 20 09:11:03 2020
-#
-# Synopsis: Append a segment $coords_sgm to $coords and return 
-#           the result, after potentially adding a ',' before
-#           $coords_sgm. If $coords is undef, return $coords_sgm.
-#
-# Arguments:
-#  $coords:     existing coords string, can be undef or ""
-#  $coords_sgm: segment to append, not checked for validity
-#
-# Returns:   Coords string with $coords_sgm appended.
-#
-# Dies: never
-#
-#################################################################
-sub vdr_CoordsAppendSegment { 
-  my $sub_name = "vdr_CoordsAppendSegment";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($coords, $coords_sgm) = @_;
-
-  if((! defined $coords) || ($coords eq "")) { 
-    return $coords_sgm;
-  }
-  return $coords . "," . $coords_sgm;
-}
-
-#################################################################
-# Subroutine: vdr_CoordsMergeAllAdjacentSegments()
-#
-# Incept:     EPN, Fri Mar 20 09:17:06 2020
-#
-# Synopsis: Merge any 'adjacent' segments in <$coords_str> and
-#           return the possibly modified resulting coords string.
-#           Actual work is done by vdr_CoordsMergeTwoSegmentsIfAdjacent()
-#
-# Arguments:
-#  $coords: coords string to merge adjacent segments in
-#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:   Coords string with all adjacent segments merged together
-#
-# Dies: never
-#
-#################################################################
-sub vdr_CoordsMergeAllAdjacentSegments { 
-  my $sub_name = "vdr_CoordsMergeAllAdjacentSegments";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($coords, $FH_HR) = @_;
-
-  my @sgm_A = split(",", $coords);
-  my $nsgm = scalar(@sgm_A);
-
-  # only 1 segment, can't merge anything 
-  if($nsgm == 1) { return $coords; }
-
-  my $ret_coords = "";
-  my $cur_sgm = $sgm_A[0];
-  my $merged_sgm = undef;
-  for(my $i = 1; $i < $nsgm; $i++) { 
-    $merged_sgm = vdr_CoordsMergeTwoSegmentsIfAdjacent($cur_sgm, $sgm_A[$i], $FH_HR);
-    if($merged_sgm ne "") { 
-      # we merged two segments, don't append yet
-      $cur_sgm = $merged_sgm;
-      printf("in $sub_name, cur_sgm is merged_sum: $cur_sgm\n");
-    }
-    else { # did not merge, append $cur_sgm, then update $cur_sgm
-      $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
-      $cur_sgm = $sgm_A[$i];
-    }
-  }
-  # add the final segment
-  $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
-
-  printf("in $sub_name, input coords: $coords returning $ret_coords\n");
-  return $ret_coords;
-}
-
-
-#################################################################
-# Subroutine: vdr_CoordsMergeTwoSegmentsIfAdjacent()
-#
-# Incept:     EPN, Fri Mar 20 09:39:35 2020
-#
-# Synopsis: Merge two segments into one if they are 'adjacent'.
-#           Two segments 1 and 2 are adjacent if they are either:
-#           a) both are same strand and have fwd direction and
-#              $coords_str and start_2 == (stop_1+1)
-#           OR
-#           b) both are same strand and have bck direction and
-#              $coords_str and start_2 == (stop_1-1)
-#
-#           Where direction is defined as:
-#           if strand is +
-#             "fwd" if start_i <= stop_i
-#             "bck" if start_i >  stop_i
-#           if strand is -
-#             "fwd" if start_i >= stop_i
-#             "bck" if start_i <  stop_i
-#       
-#
-# Arguments:
-#  $sgm1:   segment 1
-#  $sgm2:   segment 2
-#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:  A merged segment of segment 1 and 2 if they are adjacent
-#           else "" if they are not adjacent
-#
-# Dies: If either $sgm1 or $sgm2 is not parseable
-#
-#################################################################
-sub vdr_CoordsMergeTwoSegmentsIfAdjacent { 
-  my $sub_name = "vdr_CoordsMergeTwoSegmentsIfAdjacent";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($sgm1, $sgm2, $FH_HR) = @_;
-
-  my ($start1, $stop1, $strand1) = vdr_CoordsSegmentParse($sgm1, $FH_HR);
-  my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($sgm2, $FH_HR);
-  my $dir1 = undef;
-  my $dir2 = undef;
-  if($strand1 eq "+") { 
-    $dir1 = ($start1 <= $stop1) ? "fwd" : "bck";
-  }
-  else { 
-    $dir1 = ($start1 >= $stop1) ? "bck" : "fwd";
-  }
-  if($strand2 eq "+") { 
-    $dir2 = ($start2 <= $stop2) ? "fwd" : "bck";
-  }
-  else { 
-    $dir2 = ($start2 >= $stop2) ? "bck" : "fwd";
-  }
-
-  printf("in $sub_name, sgm1: $sgm1 sgm2: $sgm2 dir1: $dir1 dir2: $dir2\n");
-
-  # return quick if we can
-  if(($strand1 ne $strand2) || 
-     ($dir1    ne $dir2)) { 
-    return "";
-  }
-
-  # if we get here, $strand1 eq $strand2 and $dir1 eq $dir2
-  if((($dir1 eq "fwd") && ($start2 == ($stop1+1))) ||
-     (($dir1 eq "bck") && ($start2 == ($stop1-1)))) { 
-    return vdr_CoordsSegmentCreate($start1, $stop2, $strand1, $FH_HR);
-  }
-
-  return "";  
-}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
