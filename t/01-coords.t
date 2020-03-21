@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 287;
+use Test::More tests => 285;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -602,6 +602,12 @@ push(@abs_coords_A,  "104..94:-,101..42:-,40..11:-");
 push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "99..94:-,101..75:-,68..63:-,60..54:-");
 
+# Did not include these mixed strands tests yet, not sure if they'll
+# ever be needed and I had already spent too much time on this I put a
+# check in the code for mixed strand abs or rel coords (it fails if it
+# finds them) and a note about not allowing it because I didn't write
+# tests yet. 
+# EPN, Fri Mar 20 16:12:17 2020
 #push(@desc_A,        "abs (-++), rel (+++)");
 #push(@desc_A,        "abs (+-+), rel (+++)");
 #push(@desc_A,        "abs (++-), rel (+++)");
@@ -677,10 +683,14 @@ push(@abs_coords_A,    "11..30:+,30..100:+");
 push(@rel_pt_coords_A, "6..10:+,12..13:+");    
 push(@exp_val_A,       "26..30:+,30..39:+,43..48:+");
 
-push(@desc_A,          "abs (+-), rel (++)");
-push(@abs_coords_A,    "11..30:+,100..30:-");
-push(@rel_pt_coords_A, "6..10:+,12..13:+");    
-push(@exp_val_A,       "26..30:+,100..91:-,87..82:-");
+# The following test is excluded because current code requires all
+# absolute coords segments to be the same strand as a contract check.
+# existing code should work for it though if you ever want to 
+# relax that requirement.
+#push(@desc_A,          "abs (+-), rel (++)");
+#push(@abs_coords_A,    "11..30:+,100..30:-");
+#push(@rel_pt_coords_A, "6..10:+,12..13:+");    
+#push(@exp_val_A,       "26..30:+,100..91:-,87..82:-");
 
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
