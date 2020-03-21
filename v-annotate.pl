@@ -1105,7 +1105,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 # parse_blastx_results 
 # helper_protein_validation_breakdown_source
 # helper_blastx_breakdown_max_indel_str
-# helper_blastx_db_seqname_to_ftr_idx 
+# helper_protein_validation_db_seqname_to_ftr_idx 
 #
 # Other subroutines related to alerts: 
 # alert_list_option
@@ -3942,7 +3942,7 @@ sub add_low_similarity_alerts {
 # parse_blastx_results 
 # helper_protein_validation_breakdown_source
 # helper_blastx_breakdown_max_indel_str
-# helper_blastx_db_seqname_to_ftr_idx 
+# helper_protein_validation_db_seqname_to_ftr_idx 
 #
 #################################################################
 #################################################################
@@ -4064,9 +4064,9 @@ sub add_protein_validation_alerts {
           my $p_query        = undef; # query name from blastx hit
           my $p_qlen         = undef; # length of query sequence, if $p_feature_flag == 1
           my $p_hlen         = undef; # length of blastx hit
-          my $p_feature_flag = 0; # set to '1' if $p_query is a fetched feature sequence, not a full length input sequence
           my $p_qseq_name    = undef; # query seq name parsed out of blast query $p_query
           my $p_qftr_idx     = undef; # feature idx a blast query pertains to, parsed out of blast query $p_query
+          my $p_blastx_feature_flag = 0; # set to '1' if $do_hmmer is 0 and $p_query is a fetched feature sequence, not a full length input sequence
           
           my $start_diff = undef; # difference in start values between CM and blastx
           my $stop_diff  = undef; # difference in start values between CM and blastx
@@ -4100,8 +4100,8 @@ sub add_protein_validation_alerts {
               if($p_qseq_name ne $seq_name) { 
                 ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", 1, $FH_HR);
               }
-              $p_feature_flag = ($p_qftr_idx ne "") ? 1 : 0;
-              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_feature_flag: $p_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
+              $p_blastx_feature_flag = ((! $do_hmmer) && ($p_qftr_idx ne "")) ? 1 : 0;
+              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_blastx_feature_flag: $p_blastx_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
             }
 
             # add alerts as needed:
@@ -4121,21 +4121,22 @@ sub add_protein_validation_alerts {
               else { 
                 # we have both $n_start and $p_start, we can compare CM and blastx predictions
 
-                # check for indfstrp: strand mismatch failure, differently depending on $p_feature_flag
-                if(((  $p_feature_flag) && ($p_strand eq "-")) || 
-                   ((! $p_feature_flag) && ($n_strand ne $p_strand))) { 
+                # check for indfstrp: strand mismatch failure, differently depending on $p_blastx_feature_flag
+                if(((  $p_blastx_feature_flag) && ($p_strand eq "-")) || 
+                   ((! $p_blastx_feature_flag) && ($n_strand ne $p_strand))) { 
                   $alt_str_H{"indfstrp"} = "";
                 }
                 else { 
                   # we have both $n_start and $p_start and predictions are on the same strand
                   # determine if predictions are 'close enough' in terms of sequence positions
                   # calcuate $start_diff and $stop_diff, differently depending on if hit
-                  # was to the full sequence or a fetched features (true if $p_feature_flag == 1)
-                  if($p_feature_flag) { 
+                  # was to the full sequence or a fetched feature (true if $p_blastx_feature_flag == 1)
+                  if($p_blastx_feature_flag) { 
                     $start_diff = $p_start - 1; 
                     $stop_diff  = $p_qlen - $p_stop;
                     $p_start2print = sprintf("$n_start %s $start_diff", ($n_strand eq "+") ? "+" : "-");
                     $p_stop2print  = sprintf("$n_stop %s $stop_diff",  ($n_strand eq "+") ? "-" : "+");
+                    printf("HEYA p_blastx_feature_flag: $p_blastx_feature_flag, p_start: $p_start, n_start: $n_start p_stop: $p_stop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
                   }
                   else { 
                     $start_diff = abs($n_start - $p_start);
@@ -4144,7 +4145,7 @@ sub add_protein_validation_alerts {
                     $p_stop2print  = $p_stop;
                   }
                   # check for 'indf5plg': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
-                  if((! $p_feature_flag) && 
+                  if((! $p_blastx_feature_flag) && 
                      ((($n_strand eq "+") && ($p_start < $n_start)) || 
                       (($n_strand eq "-") && ($p_start > $n_start)))) { 
                     $alt_str_H{"indf5plg"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
@@ -4156,7 +4157,7 @@ sub add_protein_validation_alerts {
                     }                
                   }
                   # check for 'indf3plg': blastx alignment extends outside of nucleotide/CM alignment on 3' end
-                  if((! $p_feature_flag) && 
+                  if((! $p_blastx_feature_flag) && 
                      ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
                       (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
                     $alt_str_H{"indf3plg"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
@@ -4444,7 +4445,7 @@ sub parse_blastx_results {
         elsif($value =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
           # find it in @{$ftr_info_AHR} (or set to lone CDS if there is only 1
-          $t_ftr_idx = helper_blastx_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+          $t_ftr_idx = helper_protein_validation_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
         }
         else {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse HACC line $line", 1, $FH_HR);
@@ -4536,17 +4537,7 @@ sub parse_blastx_results {
               if(! $d_true) { 
                 if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
                    ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
-                  my $noverlap = 0;
-                  if($blast_strand eq "+") { 
-                    ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
-                                                     $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
-                                                     $blast_start, $blast_stop, $FH_HR);
-                  }
-                  elsif($blast_strand eq "-") { 
-                    ($noverlap, undef) = seq_Overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_stop"},
-                                                     $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_start"},
-                                                     $blast_stop, $blast_start, $FH_HR);
-                  }
+                  my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx], $blast_start, $blast_stop, $blast_strand, $FH_HR);
                   if($noverlap > 0) { $e_true = 1; }
                 }
               }
@@ -4721,7 +4712,7 @@ sub helper_blastx_breakdown_max_indel_str {
 }
 
 #################################################################
-# Subroutine: helper_blastx_db_seqname_to_ftr_idx()
+# Subroutine: helper_protein_validation_db_seqname_to_ftr_idx()
 # Incept:     EPN, Tue Dec 18 13:27:50 2018
 #
 # Purpose:    Find the feature $ftr_idx that corresponds to the blastx
@@ -4742,8 +4733,8 @@ sub helper_blastx_breakdown_max_indel_str {
 #             If we find more than 1 features that match to this sequence
 #
 ################################################################# 
-sub helper_blastx_db_seqname_to_ftr_idx { 
-  my $sub_name = "helper_blastx_db_seqname_to_ftr_idx";
+sub helper_protein_validation_db_seqname_to_ftr_idx { 
+  my $sub_name = "helper_protein_validation_db_seqname_to_ftr_idx";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -7249,7 +7240,7 @@ sub run_esl_translate_and_hmmsearch {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
-  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  1, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
+  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
@@ -7258,7 +7249,7 @@ sub run_esl_translate_and_hmmsearch {
     $esl_translate_opts .= " -c " . $mdl_info_HR->{"transl_table"};
   }
   my $esl_translate_prot_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.esl_translate.aa.fa";
-  my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $fa_file > $esl_translate_prot_fa_file";
+  my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $pv_fa_file > $esl_translate_prot_fa_file";
   utl_RunCommand($esl_translate_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   if($do_keep) {
     ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.esl_translate.aa.fa", $esl_translate_prot_fa_file, 0, $do_keep, "esl-translate output for protein validation sequences for model $mdl_name");
@@ -7386,14 +7377,15 @@ sub parse_hmmer_domtblout {
       if(scalar(@el_A) < 27) { 
         ofile_FAIL("ERROR in $sub_name, reading $domtblout_file, did not read at least 25 space-delimited tokens in data line\n$line", 1, $FH_HR);
       }
-      my ($tname1, $tlen1, $h_qname, $h_qlen, $hit_ieval, $hit_score, $hit_bias, $hmm_from, $hmm_to, $ali_from, $ali_to, $env_from, $env_to, 
+      my ($orig_seq_name, $orig_seq_len, $mdl_name, $mdl_len, $hit_ieval, $hit_score, $hit_bias, $hmm_from, $hmm_to, $ali_from, $ali_to, $env_from, $env_to, 
           $source_str, $coords_str, $qlen_str, $frame_str) = 
               ($el_A[0], $el_A[2], $el_A[3], $el_A[5], $el_A[12], $el_A[13], $el_A[14], $el_A[15], $el_A[16], $el_A[17], $el_A[18], $el_A[19], $el_A[20],
                $el_A[22], $el_A[23],  $el_A[24], $el_A[25]);
       if($do_hmmscan) { # swap query/target names and lengths
-        utl_Swap(\$tname1, \$h_qname);
-        utl_Swap(\$tlen1,  \$h_qlen);
+        utl_Swap(\$orig_seq_name, \$mdl_name);
+        utl_Swap(\$orig_seq_len,  \$mdl_len);
       }
+      $mdl_ftr_idx = helper_protein_validation_db_seqname_to_ftr_idx($mdl_name, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
 
       # further parse some of the tokens
       my ($seq_ftr_type_idx, $seq_len, $source_coords, $source_val);
@@ -7429,18 +7421,17 @@ sub parse_hmmer_domtblout {
 
       my $seq_strand = undef;
       if($seq_ftr_idx == -1) { 
-          $seq_strand = "+";
-          $source_coords = "1.." . $seq_len . ":+";
-        }
+        $seq_strand = "+";
+        $source_coords = "1.." . $seq_len . ":+";
       }
       else { 
         $seq_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$seq_ftr_idx]{"coords"}, $FH_HR);
         # $source_coords was defined by helper_protein_validation_breakdown_source() call above
       }
       print("line:$line\n");
-      print("\ttlen1:   $tlen1\n");
-      print("\th_qname: $h_qname\n");
-      print("\th_qlen:  $h_qlen\n");
+      print("\torig_seq_len: $orig_seq_len\n");
+      print("\tmdl_name:     $mdl_name\n");
+      print("\tmdl_len:      $mdl_len\n");
       print("\thit_ieval:  $hit_ieval\n");
       print("\thit_score:  $hit_score\n");
       print("\thit_bias:   $hit_bias\n");
@@ -7470,12 +7461,12 @@ sub parse_hmmer_domtblout {
       print("\t\t\torf_coords:          $orf_coords\n");
 
       # convert orf coordinates from relative nt coords within $source_coords to absolute coords (1..seqlen)
-      my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($source_coords, $orf_coords, 0, $FH_HR);
+      my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($source_coords, $orf_coords, $FH_HR);
       print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
 
       # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
       my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
-      my $hmmer_env_nt_coords  = vdr_CoordsRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, 1, $FH_HR);
+      my $hmmer_env_nt_coords  = vdr_CoordsProteinRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, $FH_HR);
 
       print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
       print("\t\t\torf_coords:          $orf_coords\n");
@@ -7483,22 +7474,56 @@ sub parse_hmmer_domtblout {
       print("\t\t\tenv_aa_coords:       $env_aa_coords\n");
       print("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
 
-      # store this hit if sequence source length (predicted CDS length in nt in input seq) is at least <x> nt from --xminntlen
-      if($seq_source_len_nt >= $hminntlen) { 
-        my @hmmer_start_A  = ();
-        my @hmmer_stop_A   = ();
-        my @hmmer_strand_A = ();
-        vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
-        my $hmmer_nsgm = scalar(@hmmer_start_A); 
-        my $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_start"}  = $hmmer_start_A[0];
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_stop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_strand"} = $hmmer_summary_strand;
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_len"}    = vdr_CoordsLength($hmmer_env_nt_coords, $FH_HR);
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_query"}  = $source_val;
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"}  = $hit_score;
-        $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_frame"}  = convert_esl_translate_to_blastx_frame($frame, $FH_HR);
-      }
+      my $hmmer_nsgm = 0;
+      my @hmmer_start_A  = (); # fill these below, only if nec
+      my @hmmer_stop_A   = (); # fill these below, only if nec
+      my @hmmer_strand_A = (); # fill these below, only if nec
+      my $hmmer_summary_strand = undef; 
+
+      # should we store this model/sequence/hit trio?
+      # we do if A, B, and C are all TRUE and one or both of D or E is TRUE
+      #  A. this model/sequence pair is compatible (sequence is full sequence or correct CDS feature for this model) 
+      #  B. this is the highest scoring hit for this model for this sequence
+      #  C. query length (full length seq or predicted CDS) is at least <x> nt from --xminntlen
+      # 
+      #  D. hit score is above minimum (--hlonescore)
+      #  E. hit overlaps by at least 1 nt with a nucleotide prediction
+      my $a_true = (($seq_ftr_idx == -1) || ($seq_ftr_idx == $mdl_ftr_idx)) ? 1 : 0; # sequence is full sequence OR model is CDS that pertains to sequence
+      my $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
+                    ($hit_score > $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+      my $c_true = ($seq_source_len_nt >= $hminntlen) ? 1 : 0; # length >= --xminntlen
+      printf("HEYA score: $hit_score abc: $a_true $b_true $c_true\n");
+
+      if($a_true && $b_true && $c_true) { 
+        my $d_true = ($hit_score >= $hlonescore) ? 1 : 0;
+        my $e_true = 0; 
+        # only bother determining $e_true if $d_true is 0
+        if(! $d_true) { 
+          if((defined $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"n_strand"}) &&
+             ($ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"n_strand"} eq $hmmer_summary_strand)) { 
+            $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
+            $hmmer_nsgm = vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
+            my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$seq_ftr_idx], 
+                                                                   $hmmer_start_A[0], $hmmer_stop_A[($hmmer_nsgm-1)], $hmmer_summary_strand, $FH_HR);
+            if($noverlap > 0) { $e_true = 1; }
+          }
+        }
+        if($d_true || $e_true) { 
+          if($hmmer_nsgm == 0) { # if != 0, we already called FeatureStartStopStrandArrays() above
+            vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
+          }
+          if(! defined $hmmer_summary_strand) { # if defined, we already calculated it above
+            $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
+          }
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_start"}  = $hmmer_start_A[0];
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_stop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_strand"} = $hmmer_summary_strand;
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_len"}    = vdr_CoordsLength($hmmer_env_nt_coords, $FH_HR);
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_query"}  = $source_val;
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"}  = $hit_score;
+          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_frame"}  = convert_esl_translate_to_blastx_frame($frame, $FH_HR);
+        } # end of 'if($d_true || $e_true)'
+      } # end of 'if($a_true && $b_true && $c_true)'
     } # end of 'if($line !~ m/^\#/)'
   } # end of 'while($my $line = <IN>)'
   close(IN);
@@ -7585,11 +7610,13 @@ sub make_protein_validation_fasta_file() {
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   my $nftr = scalar(@{$ftr_info_AHR});
 
+  print("in $sub_name do_blastx: $do_blastx\n");
+
   if($do_blastx) { 
     sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
   }
   else { 
-    utl_RunCommand("cp $mdl_fa_file $out_fa_file", 0, $ofile_info_HHR->{"FH"});
+    utl_RunCommand("cp $mdl_fa_file $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   }
   # now add the predicted CDS sequences
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -7643,4 +7670,49 @@ sub get_hmm_list_for_model() {
     ofile_FAIL("ERROR in $sub_name, no CDS features exist for model $mdl_name", 1, $FH_HR);
   }
   return;
+}
+
+#################################################################
+# Subroutine: helper_protein_validation_check_overlap()
+# Incept:     EPN, Sat Mar 21 09:14:34 2020
+#
+# Purpose:    Check if a protein validation hit overlaps with 
+#             a nucleotide prediction.
+#      
+# Arguments: 
+#  $ftr_results_HR: REF to hash of $ftr_results for a specific sequence 
+#                   and feature index
+#  $pv_start:       protein validation predicted start position
+#  $pv_stop:        protein validation predicted stop position
+#  $pv_strand:      protein validation predicted strand
+#  $FH_HR:          REF to hash of file handles
+#
+# Returns:    number of nucleotide overlap, 0 if none
+#
+# Dies:       If seq_Overlap() has a problem or if $pv_strand is not "+" or "-"
+#
+################################################################# 
+sub helper_protein_validation_check_overlap { 
+  my $sub_name = "helper_protein_validation_check_overlap";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_results_HR, $pv_start, $pv_stop, $pv_strand, $FH_HR) = @_;
+
+  my $noverlap = 0;
+  if($pv_strand eq "+") { 
+    ($noverlap, undef) = seq_Overlap($ftr_results_HR->{"n_start"},
+                                     $ftr_results_HR->{"n_stop"},
+                                     $pv_start, $pv_stop, $FH_HR);
+  }
+  elsif($pv_strand eq "-") { 
+    ($noverlap, undef) = seq_Overlap($ftr_results_HR->{"n_stop"},
+                                     $ftr_results_HR->{"n_start"},
+                                     $pv_stop, $pv_start, $FH_HR);
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, pv_strand is $pv_strand (expected to be + or -)\n", 1, $FH_HR);
+  }
+
+  return $noverlap;
 }
