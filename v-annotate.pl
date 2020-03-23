@@ -3051,7 +3051,7 @@ sub add_frameshift_alerts_for_one_sequence {
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"frame"} = $dominant_frame;
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"} = $dominant_frame;
 
       # deconstruct $frame_tok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the dominant frame together and
@@ -7564,9 +7564,11 @@ sub convert_esl_translate_to_blastx_frame() {
     ofile_FAIL("ERROR in $sub_name, unexpected esl-translate frame value of $esl_translate_frame", 1, $FH_HR);
   }
   if($esl_translate_frame <= 3) { 
-    return "+" . $esl_translate_frame;
+    # return "+" . $esl_translate_frame;
+    return $esl_translate_frame;
   }
-  return "-" . ($esl_translate_frame - 3);
+  # return "-" . ($esl_translate_frame - 3);
+  return ($esl_translate_frame - 3);
 }
 
 
