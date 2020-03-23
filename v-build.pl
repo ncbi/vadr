@@ -45,7 +45,6 @@ my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
 my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 
-
 # make sure the required executables exist and are executable
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
@@ -744,7 +743,11 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
 
   $start_secs = ofile_OutputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
-  my $cmbuild_opts = "-n $mdl_name --verbose ";
+  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
+  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
+  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
+
+  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
   if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
   if(opt_IsUsed("--cmn",       \%opt_HH)) { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
   if(opt_IsUsed("--cmp7ml",    \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
