@@ -603,11 +603,17 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
       $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
     }
     elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
-      if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
+      if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} =~ m/^\-?\d+/) { 
+        # is a positive or negative integer
+        if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} < 0) { 
+          $fail_str .= "ftr_idx: $ftr_idx, parent_idx_str is " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " < 0\n"; 
+        }
+        elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
+          $fail_str .= "ftr_idx: $ftr_idx, parent_idx_str is " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+        }
       }
-      elsif($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} >= $nftr) { 
-        $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      else { # is not GBNULL and is not a positive or negative integer
+        $fail_str .= "ftr_idx: $ftr_idx, parent_idx_str is " . $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} . ", should be an integer between 0 and " . ($nftr-1) . ")\n";
       }
     }
   }
@@ -1086,6 +1092,36 @@ sub vdr_Feature3pMostPosition {
   }
 
   return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: vdr_FeatureParentIndex
+# Incept:     EPN, Tue Mar 24 16:40:27 2020
+# 
+# Purpose:    Return "parent_idx_str" if it is not "GBNULL"
+#             else return "1"
+#             be called after vdr_FeatureInfoInitializeParentIndexStrings().
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never; does not validate $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}
+#
+#################################################################
+sub vdr_FeatureParentIndex {
+  my $sub_name = "vdr_FeatureParentIndex";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} eq "GBNULL") { 
+    return -1;
+  }
+  return $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"};
 }
 
 #################################################################
