@@ -985,6 +985,9 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
 
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_protein_tbl",       $out_root . ".pass.p.tbl",       1, 1, "5 column feature table output for passing sequences (with proteins)");
+
+
 ########################
 # tabular output files #
 ########################
@@ -1001,9 +1004,18 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 ######################
 $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 
+my $do_ftbl_protein = 0;
 my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
                                  \%cls_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                 \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                 \%alt_ftr_instances_HHH, $do_ftbl_protein, \%opt_HH, \%ofile_info_HH);
+if(1) { 
+  $do_ftbl_protein = 1;
+  output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
+                       \%cls_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
+                       \%alt_ftr_instances_HHH, $do_ftbl_protein, \%opt_HH, \%ofile_info_HH);
+}
+  
+
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -5972,6 +5984,7 @@ sub helper_tabular_replace_spaces {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $do_protein:              '1' to output protein feature tables too, '0' not too
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -5982,17 +5995,17 @@ sub helper_tabular_replace_spaces {
 #################################################################
 sub output_feature_table { 
   my $sub_name = "output_feature_table";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $do_protein, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_blast = opt_Get("--skipblast", $opt_HHR) ? 0 : 1;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-  my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
+  my $pass_ftbl_FH = ($do_protein) ? $FH_HR->{"pass_protein_tbl"} : $FH_HR->{"pass_tbl"}; # feature table for PASSing sequences
   my $fail_ftbl_FH = $FH_HR->{"fail_tbl"};     # feature table for FAILing sequences
   my $pass_list_FH = $FH_HR->{"pass_list"};    # list of PASSing seqs
   my $fail_list_FH = $FH_HR->{"fail_list"};    # list of FAILing seqs
@@ -6042,8 +6055,12 @@ sub output_feature_table {
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name  = $seq_name_AR->[$seq_idx];
     
-    my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
+    my @ftout_AH      = (); # array of hashes with output for nucleotide feature table, kept in a hash so we can sort before outputting
+    my %pftout_HAH    = (); # hash of array of hashes with output for protein feature tables, kept in a hash so we can sort before outputting
+    my %pftidx_H      = (); # hash, key is a <ftr_idx>, value is of current indices in 2nd dim of pftout_HAH{<ftr_idx>}
     my $ftidx         = 0;  # index in @ftout_AH
+    my $pftidx        = 0;  # index in @pftout_HAH
+    my @pftout_ftr_idx_A = (); # array of feature indices we have info in %pfout_HAH for
     my $min_coord     = -1; # minimum coord in this feature
     my $cur_min_coord = -1; # minimum coord in this segment
     my %ftr_idx2ftout_idx_H = (); # key is feature index $fidx, value is $ftidx index in @ftout_AH that $fidx corresponds to
@@ -6076,7 +6093,14 @@ sub output_feature_table {
           my $ftr_coords_str          = ""; # string of coordinates for this feature
           my $ftr_out_str             = ""; # output string for this feature
           my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-          
+          my $is_cds                  = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+          my $parent_ftr_idx          = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if has no parents
+          my $parent_is_cds           = ($parent_ftr_idx == -1) ? 0 : vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx);
+          # sanity check
+          if($is_cds && $parent_is_cds) { 
+            ofile_FAIL("ERROR in $sub_name, feature $ftr_idx is a CDS and its parent is a CDS, $sub_name can't handle this", 1, $FH_HR);
+          }
+
           my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
           my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
           my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
@@ -6174,6 +6198,26 @@ sub output_feature_table {
           $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
           $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
           $ftidx++;
+
+          # if we have a CDS or a feature whose parent is a CDS
+          # add that info to the feature table for that CDS
+          if(($is_cds) || ($parent_is_cds)) { 
+            my $protein_ftr_idx = ($is_cds) ? $ftr_idx : $parent_ftr_idx;
+            if(! defined $pftout_HAH{$protein_ftr_idx}) { 
+              @{$pftout_HAH{$protein_ftr_idx}} = ();
+              $pftidx_H{$protein_ftr_idx} = 0;
+              push(@pftout_ftr_idx_A, $protein_ftr_idx);
+            }
+            $pftidx = $pftidx_H{$protein_ftr_idx};
+            %{$pftout_HAH{$protein_ftr_idx}[$pftidx]} = ();
+            $pftout_HAH{$protein_ftr_idx}[$pftidx]{"5trunc"}          = $is_5trunc;
+            $pftout_HAH{$protein_ftr_idx}[$pftidx]{"3trunc"}          = $is_3trunc;
+            $pftout_HAH{$protein_ftr_idx}[$pftidx]{"mincoord"}        = $min_coord;
+            $pftout_HAH{$protein_ftr_idx}[$pftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
+            $pftout_HAH{$protein_ftr_idx}[$pftidx]{"coords"}          = $ftr_coords_str;
+            $pftout_HAH{$protein_ftr_idx}[$pftidx]{"output"}          = $ftr_out_str;
+            $pftidx_H{$protein_ftr_idx}++;
+          }
         } # end of 'if(check_for_valid_feature_prediction('
       } # end of 'for(my $ftr_idx...'
     } # end of 'if(defined $mdl_name)'
@@ -6209,22 +6253,34 @@ sub output_feature_table {
     #if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
     #ofile_FAIL("ERROR in $sub_name, sequence $seq_name, feature table do_pass: $do_pass disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     #}
-              
+
     if($do_pass) { 
       # print to the passing feature table file
       $ret_npass++;
       print $pass_list_FH $seq_name . "\n";
       print $pass_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
-        # print 
         print $pass_ftbl_FH $ftout_AH[$i]{"output"};
+      }
+      if($do_protein) { 
+        # output protein feature tables, if any
+        foreach $ftr_idx (@pftout_ftr_idx_A) { 
+          @{$pftout_HAH{$ftr_idx}} = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
+                                                $b->{"5trunc"}        <=> $a->{"5trunc"}   or
+                                                $a->{"3trunc"}        <=> $b->{"3trunc"}   or
+                                                $a->{"type_priority"} <=> $b->{"type_priority"} 
+          } @{$pftout_HAH{$ftr_idx}};
+          print $pass_ftbl_FH ">Feature " . $seq_name . "_ftr_idx_" . $ftr_idx . "\n";
+          for($i = 0; $i < scalar(@ftout_AH); $i++) { 
+            print $pass_ftbl_FH $pftout_HAH{$ftr_idx}[$i]{"output"};
+          }
+        }
       }
     }
     else { # $do_pass == 0
       print $fail_list_FH $seq_name . "\n";
       print $fail_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
-        # print 
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
       }
       if($cur_nalert > 0) { 
