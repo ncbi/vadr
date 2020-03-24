@@ -926,7 +926,7 @@ if($do_blast) {
     }
   }
 } # end of 'if($do_blast)'
-else { 
+elsif(! $do_hmmer) { 
   $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblast)", $progress_w, $log_FH, *STDOUT);
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1236,7 +1236,6 @@ sub cmsearch_or_cmscan_wrapper {
     }
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
-  if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
   # run cmsearch or cmscan
   my $out_key;
   my @out_keys_A = ("stdout", "err", "tblout");
@@ -1250,6 +1249,7 @@ sub cmsearch_or_cmscan_wrapper {
   }
 
   if($do_parallel) { 
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
     # wait for the jobs to finish
     $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                             $progress_w, $log_FH, *STDOUT);
@@ -2198,8 +2198,6 @@ sub cmalign_wrapper {
     utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
   return;
 }
 
@@ -2261,7 +2259,6 @@ sub cmalign_wrapper_helper {
                     ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
-  if($do_parallel) { ofile_OutputString($log_FH, 1, "\n"); }
 
   my $key; # a file key
   my $s;   # counter over sequence files
@@ -2280,11 +2277,9 @@ sub cmalign_wrapper_helper {
     # vdr_WaitForFarmJobsToFinish() will fill these later
     if($do_parallel) { $success_AR->[$s] = 0; }
   }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if($do_parallel) { 
-    # only do this if $do_parallel b/c the step of submitting jobs is over, next we wait for them to finish
-    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
     if((opt_Exists("--skipalign", $opt_HHR)) && (opt_Get("--skipalign", $opt_HHR))) { 
       for($s = 0; $s < $nseq_files; $s++) { 
         $success_AR->[$s] = 1; 
@@ -2306,6 +2301,8 @@ sub cmalign_wrapper_helper {
       }
       ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
     }
+
+    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   
   return;
@@ -4002,8 +3999,6 @@ sub add_protein_validation_alerts {
   
   my $do_hmmer = opt_Get("--addhmmer", $opt_HHR) ? 1 : 0;
 
-  printf("in $sub_name, do_hmmer: $do_hmmer\n");
-
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
   my $seq_idx;   # counter over sequences
@@ -4094,8 +4089,6 @@ sub add_protein_validation_alerts {
               if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
 
               # determine if the query is a full length sequence, or a fetched sequence feature:
-              printf("p_query: $p_query\n");
-
               ($p_qseq_name, $p_qftr_idx, $p_qlen) = helper_protein_validation_breakdown_source($p_query, $seq_len_HR, $FH_HR); 
               if($p_qseq_name ne $seq_name) { 
                 ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", 1, $FH_HR);
@@ -7428,51 +7421,52 @@ sub parse_hmmer_domtblout {
         $seq_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$seq_ftr_idx]{"coords"}, $FH_HR);
         # $source_coords was defined by helper_protein_validation_breakdown_source() call above
       }
-      print("line:$line\n");
-      print("\torig_seq_len: $orig_seq_len\n");
-      print("\tmdl_name:     $mdl_name\n");
-      print("\tmdl_len:      $mdl_len\n");
-      print("\thit_ieval:  $hit_ieval\n");
-      print("\thit_score:  $hit_score\n");
-      print("\thit_bias:   $hit_bias\n");
-      print("\thmm_from:   $hmm_from\n");
-      print("\thmm_to:     $hmm_to\n");
-      print("\tali_from:   $ali_from\n");
-      print("\tali_to:     $ali_to\n");
-      print("\tenv_from:   $env_from\n");
-      print("\tenv_to:     $env_to\n");
-      print("\tsource_str: $source_str\n");
-      print("\tsource_val: $source_val\n");
-      print("\tcoords_str: $coords_str\n");
-      print("\tqlen_str:   $qlen_str\n");
-      print("\tframe_str:  $frame_str\n");
-      print("\t\tseq_ftr_idx:  $seq_ftr_idx\n");
-      print("\t\tsource_coords: $source_coords\n");
-      print("\t\torf_start:  $orf_start\n");
-      print("\t\torf_end:    $orf_end\n");
-      print("\t\tframe:      $frame\n");
-      print("\t\tseq_len:    $seq_len\n");
-      print("\t\tseq_name:   $seq_name\n");
-      print("\t\tseq_ftr_type_idx:   $seq_ftr_type_idx\n");
+      # debugging print statements:
+      #print("line:$line\n");
+      #print("\torig_seq_len: $orig_seq_len\n");
+      #print("\tmdl_name:     $mdl_name\n");
+      #print("\tmdl_len:      $mdl_len\n");
+      #print("\thit_ieval:  $hit_ieval\n");
+      #print("\thit_score:  $hit_score\n");
+      #print("\thit_bias:   $hit_bias\n");
+      #print("\thmm_from:   $hmm_from\n");
+      #print("\thmm_to:     $hmm_to\n");
+      #print("\tali_from:   $ali_from\n");
+      #print("\tali_to:     $ali_to\n");
+      #print("\tenv_from:   $env_from\n");
+      #print("\tenv_to:     $env_to\n");
+      #print("\tsource_str: $source_str\n");
+      #print("\tsource_val: $source_val\n");
+      #print("\tcoords_str: $coords_str\n");
+      #print("\tqlen_str:   $qlen_str\n");
+      #print("\tframe_str:  $frame_str\n");
+      #print("\t\tseq_ftr_idx:  $seq_ftr_idx\n");
+      #print("\t\tsource_coords: $source_coords\n");
+      #print("\t\torf_start:  $orf_start\n");
+      #print("\t\torf_end:    $orf_end\n");
+      #print("\t\tframe:      $frame\n");
+      #print("\t\tseq_len:    $seq_len\n");
+      #print("\t\tseq_name:   $seq_name\n");
+      #print("\t\tseq_ftr_type_idx:   $seq_ftr_type_idx\n");
 
       my $seq_source_len_nt = vdr_CoordsLength($source_coords, $FH_HR); # length of predicted CDS or full sequence
       my $orf_coords = sprintf("%d..%d:%s", $orf_start, $orf_end, ($orf_start < $orf_end) ? "+" : "-");
-      print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
-      print("\t\t\torf_coords:          $orf_coords\n");
+      #print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
+      #print("\t\t\torf_coords:          $orf_coords\n");
 
       # convert orf coordinates from relative nt coords within $source_coords to absolute coords (1..seqlen)
       my $hmmer_orf_nt_coords = vdr_CoordsRelativeToAbsolute($source_coords, $orf_coords, $FH_HR);
-      print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
+      #print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
 
       # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
       my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
       my $hmmer_env_nt_coords  = vdr_CoordsProteinRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, $FH_HR);
 
-      print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
-      print("\t\t\torf_coords:          $orf_coords\n");
-      print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
-      print("\t\t\tenv_aa_coords:       $env_aa_coords\n");
-      print("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
+      #print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
+      #print("\t\t\torf_coords:          $orf_coords\n");
+      #print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
+      #print("\t\t\tenv_aa_coords:       $env_aa_coords\n");
+      #print("\t\t\thmmer_env_nt_coords: $hmmer_env_nt_coords (nt)\n");
 
       my $hmmer_nsgm = 0;
       my @hmmer_start_A  = (); # fill these below, only if nec
@@ -7492,7 +7486,6 @@ sub parse_hmmer_domtblout {
       my $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
                     ($hit_score > $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
       my $c_true = ($seq_source_len_nt >= $hminntlen) ? 1 : 0; # length >= --xminntlen
-      printf("HEYA score: $hit_score abc: $a_true $b_true $c_true\n");
 
       if($a_true && $b_true && $c_true) { 
         my $d_true = ($hit_score >= $hlonescore) ? 1 : 0;
@@ -7611,8 +7604,6 @@ sub make_protein_validation_fasta_file() {
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   my $nftr = scalar(@{$ftr_info_AHR});
-
-  print("in $sub_name do_blastx: $do_blastx\n");
 
   if($do_blastx) { 
     sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
