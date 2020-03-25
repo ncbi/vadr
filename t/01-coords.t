@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 285;
+use Test::More tests => 301;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -705,3 +705,116 @@ for($i = 0; $i < $ntests; $i++) {
   is($cur_val_length, $rel_length, "vdr_CoordsProteinRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 }
 
+#############################################
+# vdr_CoordsCreate() tests
+# also tests vdr_CoordsSegmentCreate() and 
+#            vdr_CoordsSegmentAppend()
+# which are called internally by vdr_CoordsCreate()
+#############################################
+@desc_A       = ();
+my @start_AA  = ();
+my @stop_AA   = ();
+my @strand_AA = ();
+@exp_val_A    = ();
+
+push(@desc_A,          "+fwd");
+push(@start_AA,        [ ("1") ]);
+push(@stop_AA,         [ ("100") ]);
+push(@strand_AA,       [ ("+") ]);
+push(@exp_val_A,       "1..100:+");
+
+push(@desc_A,          "+bck");
+push(@start_AA,        [ ("100") ]);
+push(@stop_AA,         [ ("1") ]);
+push(@strand_AA,       [ ("+") ]);
+push(@exp_val_A,       "100..1:+");
+
+push(@desc_A,          "-bck");
+push(@start_AA,        [ ("100") ]);
+push(@stop_AA,         [ ("1") ]);
+push(@strand_AA,       [ ("-") ]);
+push(@exp_val_A,       "100..1:-");
+
+push(@desc_A,          "-fwd");
+push(@start_AA,        [ ("1") ]);
+push(@stop_AA,         [ ("100") ]);
+push(@strand_AA,       [ ("-") ]);
+push(@exp_val_A,       "1..100:-");
+
+push(@desc_A,          "++");
+push(@start_AA,        [ ("1", "200"), ]);
+push(@stop_AA,         [ ("100", "300") ]);
+push(@strand_AA,       [ ("+", "+") ]);
+push(@exp_val_A,       "1..100:+,200..300:+");
+
+push(@desc_A,          "+++");
+push(@start_AA,        [ ("1", "200", "400"), ]);
+push(@stop_AA,         [ ("100", "300", "500") ]);
+push(@strand_AA,       [ ("+", "+", "+") ]);
+push(@exp_val_A,       "1..100:+,200..300:+,400..500:+");
+
+push(@desc_A,          "--");
+push(@start_AA,        [ ("300", "100"), ]);
+push(@stop_AA,         [ ("200", "1") ]);
+push(@strand_AA,       [ ("-", "-") ]);
+push(@exp_val_A,       "300..200:-,100..1:-");
+
+push(@desc_A,          "---");
+push(@start_AA,        [ ("500", "300", "100"), ]);
+push(@stop_AA,         [ ("400", "200", "1") ]);
+push(@strand_AA,       [ ("-", "-", "-") ]);
+push(@exp_val_A,       "500..400:-,300..200:-,100..1:-");
+
+push(@desc_A,          "+-");
+push(@start_AA,        [ ("1", "300"), ]);
+push(@stop_AA,         [ ("100", "200") ]);
+push(@strand_AA,       [ ("+", "-") ]);
+push(@exp_val_A,       "1..100:+,300..200:-");
+
+push(@desc_A,          "-+");
+push(@start_AA,        [ ("300", "1"), ]);
+push(@stop_AA,         [ ("200", "100") ]);
+push(@strand_AA,       [ ("-", "+") ]);
+push(@exp_val_A,       "300..200:-,1..100:+");
+
+push(@desc_A,          "++-");
+push(@start_AA,        [ ("1", "200", "500"), ]);
+push(@stop_AA,         [ ("100", "300", "400") ]);
+push(@strand_AA,       [ ("+", "+", "-") ]);
+push(@exp_val_A,       "1..100:+,200..300:+,500..400:-");
+
+push(@desc_A,          "+-+");
+push(@start_AA,        [ ("1", "300", "400"), ]);
+push(@stop_AA,         [ ("100", "200", "500") ]);
+push(@strand_AA,       [ ("+", "-", "+") ]);
+push(@exp_val_A,       "1..100:+,300..200:-,400..500:+");
+
+push(@desc_A,          "+--");
+push(@start_AA,        [ ("1", "300", "500"), ]);
+push(@stop_AA,         [ ("100", "200", "400") ]);
+push(@strand_AA,       [ ("+", "-", "-") ]);
+push(@exp_val_A,       "1..100:+,300..200:-,500..400:-");
+
+push(@desc_A,          "-++");
+push(@start_AA,        [ ("100", "200", "400"), ]);
+push(@stop_AA,         [ ("1", "300", "500") ]);
+push(@strand_AA,       [ ("-", "+", "+") ]);
+push(@exp_val_A,       "100..1:-,200..300:+,400..500:+");
+
+push(@desc_A,          "-+-");
+push(@start_AA,        [ ("100", "200", "500"), ]);
+push(@stop_AA,         [ ("1", "300", "400") ]);
+push(@strand_AA,       [ ("-", "+", "-") ]);
+push(@exp_val_A,       "100..1:-,200..300:+,500..400:-");
+
+push(@desc_A,          "--+");
+push(@start_AA,        [ ("100", "300", "400"), ]);
+push(@stop_AA,         [ ("1", "200", "500") ]);
+push(@strand_AA,       [ ("-", "-", "+") ]);
+push(@exp_val_A,       "100..1:-,300..200:-,400..500:+");
+
+$ntests = scalar(@desc_A);
+for($i = 0; $i < $ntests; $i++) { 
+  $cur_val = vdr_CoordsCreate(\@{$start_AA[$i]}, \@{$stop_AA[$i]}, \@{$strand_AA[$i]}, undef);
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsCreate(): $desc_A[$i]");
+}

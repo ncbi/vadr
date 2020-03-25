@@ -102,7 +102,7 @@ require "sqp_utils.pm";
 # Subroutines related to sequence and model coordinates: 
 # vdr_CoordsSegmentParse()
 # vdr_CoordsSegmentCreate()
-# vdr_CoordsAppendSegment()
+# vdr_CoordsSegmentAppend()
 # vdr_CoordsLength()
 # vdr_CoordsFromLocation()
 # vdr_CoordsReverseComplement()
@@ -2192,7 +2192,7 @@ sub vdr_CoordsSegmentCreate {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsAppendSegment()
+# Subroutine: vdr_CoordsSegmentAppend()
 #
 # Incept:     EPN, Fri Mar 20 09:11:03 2020
 #
@@ -2209,8 +2209,8 @@ sub vdr_CoordsSegmentCreate {
 # Dies: never
 #
 #################################################################
-sub vdr_CoordsAppendSegment { 
-  my $sub_name = "vdr_CoordsAppendSegment";
+sub vdr_CoordsSegmentAppend { 
+  my $sub_name = "vdr_CoordsSegmentAppend";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2220,6 +2220,50 @@ sub vdr_CoordsAppendSegment {
     return $coords_sgm;
   }
   return $coords . "," . $coords_sgm;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsCreate()
+# Incept:     EPN, Wed Mar 25 06:11:50 2020
+#
+# Synopsis: Create a coords string (>= 1 coords tokens separated
+#           by commans) from given arrays of starts, stops, and 
+#           strands
+# 
+# Arguments:
+#  $start_AR:  REF to array of start positions [0..<nsgm>-1]
+#  $stop_AR:   REF to array of stop positions [0..<nsgm>-1]
+#  $strand_AR: REF to array of strands [0..<nsgm>-1]
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    coordinate string: 
+#             <start_0>..<stop_0>:<strand_1>,...,<start_<nsgm>-1>,<stop_<nsgm-1>>,<strand_<nsgm-1>>
+#
+# Dies:  
+#        if length of any of the three arrays differs
+#        if any start or stop is invalid
+#        if any strand is not "+" or "-"
+#
+#################################################################
+sub vdr_CoordsCreate {
+  my $sub_name = "vdr_CoordsCreate";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+  
+  my $nsgm    = scalar(@{$start_AR});
+  my $nstop   = scalar(@{$stop_AR});
+  my $nstrand = scalar(@{$strand_AR});
+  if($nsgm != $nstop)   { ofile_FAIL("ERROR in $sub_name, $nsgm start values != $nstop stop values", 1, $FH_HR); }
+  if($nsgm != $nstrand) { ofile_FAIL("ERROR in $sub_name, $nsgm start values != $nstrand strand values", 1, $FH_HR); }
+
+  my $ret_coords = "";
+  for(my $i = 0; $i < $nsgm; $i++) { 
+    $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsSegmentCreate($start_AR->[$i], $stop_AR->[$i], $strand_AR->[$i], $FH_HR)); 
+  }
+
+  return $ret_coords;
 }
 
 #################################################################
@@ -2333,7 +2377,7 @@ sub vdr_CoordsFromLocation {
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
-      $ret_val = vdr_CoordsAppendSegment($ret_val, vdr_CoordsFromLocation($location_el, $do_carrots, $FH_HR));
+      $ret_val = vdr_CoordsSegmentAppend($ret_val, vdr_CoordsFromLocation($location_el, $do_carrots, $FH_HR));
     }
   }
   elsif($do_carrots) { 
@@ -2429,7 +2473,7 @@ sub vdr_CoordsReverseComplement {
   # concatenate the tokens in reverse order
   my $ret_val = "";
   for(my $i = $ntok-1; $i >= 0; $i--) { 
-    $ret_val = vdr_CoordsAppendSegment($ret_val, $ret_coords_tok_A[$i]);
+    $ret_val = vdr_CoordsSegmentAppend($ret_val, $ret_coords_tok_A[$i]);
   }
   # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
       
@@ -2667,7 +2711,7 @@ sub vdr_CoordsMissing {
       $start = $i;
       while((($i+1) <= $in_length) && ($covered_A[($i+1)] == 0)) { $i++; }
       $stop = $i; 
-      $ret_coords = vdr_CoordsAppendSegment($ret_coords, vdr_CoordsSegmentCreate($start, $stop, $in_strand, $FH_HR));
+      $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsSegmentCreate($start, $stop, $in_strand, $FH_HR));
     }
   }
 
@@ -2824,7 +2868,7 @@ sub vdr_CoordsRelativeToAbsolute {
   my @rel_coords_sgm_A = split(",", $rel_coords);
   my $ret_coords = "";
   foreach my $rel_coords_sgm (@rel_coords_sgm_A) { 
-    $ret_coords = vdr_CoordsAppendSegment($ret_coords, vdr_CoordsRelativeSegmentToAbsolute($abs_coords, $rel_coords_sgm, $FH_HR));
+    $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsRelativeSegmentToAbsolute($abs_coords, $rel_coords_sgm, $FH_HR));
   }
   $ret_coords = vdr_CoordsMergeAllAdjacentSegments($ret_coords, $FH_HR);
   
@@ -3088,12 +3132,12 @@ sub vdr_CoordsMergeAllAdjacentSegments {
       # printf("in $sub_name, cur_sgm is merged_sum: $cur_sgm\n");
     }
     else { # did not merge, append $cur_sgm, then update $cur_sgm
-      $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
+      $ret_coords = vdr_CoordsSegmentAppend($ret_coords, $cur_sgm);
       $cur_sgm = $sgm_A[$i];
     }
   }
   # add the final segment
-  $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
+  $ret_coords = vdr_CoordsSegmentAppend($ret_coords, $cur_sgm);
 
   # printf("in $sub_name, input coords: $coords returning $ret_coords\n");
   return $ret_coords;
