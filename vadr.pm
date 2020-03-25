@@ -103,6 +103,7 @@ require "sqp_utils.pm";
 # vdr_CoordsSegmentParse()
 # vdr_CoordsSegmentCreate()
 # vdr_CoordsSegmentAppend()
+# vdr_CoordsCreate()
 # vdr_CoordsLength()
 # vdr_CoordsFromLocation()
 # vdr_CoordsReverseComplement()
@@ -2786,11 +2787,14 @@ sub vdr_CoordsCheckIfSpans {
 #  $coords_tok2: coordinate token 2
 #  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Number of positions of overap between <$coords1_tok>
-#            and <$coords2_tok> on the same strand.
-#            '0' if no overlap or the two tokens are on opposite strands.
+# Returns:   Two values:
+#            1. Number of positions of overap between <$coords1_tok>
+#               and <$coords2_tok> on the same strand.
+#               '0' if no overlap or the two tokens are on opposite strands.
+#            2. coords segment string giving the overlap
 #
-# Dies: if unable to parse $coords_tok1 or $coords_tok2
+# Dies: - if unable to parse $coords_tok1 or $coords_tok2
+#       - if either strand is not + or -
 #
 #################################################################
 sub vdr_CoordsSegmentOverlap { 
@@ -2805,16 +2809,43 @@ sub vdr_CoordsSegmentOverlap {
   my ($start1, $stop1, $strand1) = vdr_CoordsSegmentParse($coords_tok1, $FH_HR);
   my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($coords_tok2, $FH_HR);
 
+  if(($strand1 ne "-") && ($strand1 ne "+")) { 
+    ofile_FAIL("ERROR in $sub_name, strand1 is $strand1 which is not - or +", 1, $FH_HR); 
+  }    
+  if(($strand2 ne "-") && ($strand2 ne "+")) { 
+    ofile_FAIL("ERROR in $sub_name, strand1 is $strand1 which is not - or +", 1, $FH_HR); 
+  }    
   if($strand1 ne $strand2) { # strand mismatch
-    return 0;
+    return (0, "");
   }
 
-  if($strand1 eq "-") { # $strand2 must be "-" too
-    utl_Swap(\$start1, \$stop1); 
-    utl_Swap(\$start2, \$stop2);
+  # swap start and stops, if nec, so that seq_Overlap will work (it expects start <= stop)
+  if($start1 > $stop1) { utl_Swap(\$start1, \$stop1); }
+  if($start2 > $stop2) { utl_Swap(\$start2, \$stop2); }
+
+  my ($overlap_len, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+  if($overlap_len == 0) { return(0, ""); }
+
+  # if we get here, we have overlap
+  # overlap_reg is in format: <d>-<d>, and may need to be reversed
+  my ($overlap_start, $overlap_stop) = (undef, undef);
+  if($overlap_reg =~ /^(\d+)-(\d+)$/) { 
+    ($overlap_start, $overlap_stop) = ($1, $2);
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unexpected overlap_region returned from seq_Overlap(): $overlap_reg", 1, $FH_HR);
+  }
+  my $ret_coords_sgm = ($strand1 eq "+") ? 
+      vdr_CoordsSegmentCreate($overlap_start, $overlap_stop,  $strand1, $FH_HR) :
+      vdr_CoordsSegmentCreate($overlap_stop,  $overlap_start, $strand1, $FH_HR);
+
+  # sanity check, length of $ret_coords_sgm should equal $overlap_len
+  my $ret_len = vdr_CoordsLength($ret_coords_sgm, $FH_HR);
+  if($ret_len != $overlap_len) { 
+    ofile_FAIL("ERROR in $sub_name, internal error, returning overlap region $ret_coords_sgm of length $ret_len != overlap length $overlap_len returned by seq_Overlap()", 1, $FH_HR);
   }
 
-  return seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+  return($overlap_len, $ret_coords_sgm);
 }
 
 #################################################################
@@ -2967,8 +2998,7 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
         $cur_len_to_convert -= abs($conv_stop - $conv_start) + 1;
         
         # append converted token to return coords string
-        if($ret_coords ne "") { $ret_coords .= ","; }
-        $ret_coords .= vdr_CoordsSegmentCreate($conv_start, $conv_stop, $abs_strand, $FH_HR);
+        $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsSegmentCreate($conv_start, $conv_stop, $abs_strand, $FH_HR));
       }
       # adjust nt offset so that for next nt coords token we start at the proper position
       $cur_abs_offset -= $abs_sgm_len;
@@ -2985,7 +3015,7 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsProteinRelativeToAbsoluate()
+# Subroutine: vdr_CoordsProteinRelativeToAbsolute()
 #
 # Incept:     EPN, Fri Mar 20 07:12:19 2020
 #

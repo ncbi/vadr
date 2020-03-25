@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 301;
+use Test::More tests => 341;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -817,4 +817,70 @@ $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
   $cur_val = vdr_CoordsCreate(\@{$start_AA[$i]}, \@{$stop_AA[$i]}, \@{$strand_AA[$i]}, undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsCreate(): $desc_A[$i]");
+}
+
+#############################################
+# vdr_CoordsSegmentOverlap() tests
+# we run 3 tests for each block below:
+#  - we swap $coords1 and $coords2 and make 
+#    sure answer doesn't change
+#############################################
+@desc_A          = ();
+my @coords1_A    = ();
+my @coords2_A    = ();
+my @exp_len_A    = ();
+my @exp_coords_A = ();
+
+push(@desc_A,          "+ + no overlap");
+push(@coords1_A,       "1..100:+");
+push(@coords2_A,       "151..250:+");
+push(@exp_len_A,       "0");
+push(@exp_coords_A,    "");
+
+push(@desc_A,          "+ - no overlap 1");
+push(@coords1_A,       "1..100:+");
+push(@coords2_A,       "100..1:-");
+push(@exp_len_A,       "0");
+push(@exp_coords_A,    "");
+
+push(@desc_A,          "+ - no overlap 2");
+push(@coords1_A,       "1..100:+");
+push(@coords2_A,       "200..101:-");
+push(@exp_len_A,       "0");
+push(@exp_coords_A,    "");
+
+push(@desc_A,          "+ + overlap");
+push(@coords1_A,       "1..100:+");
+push(@coords2_A,       "51..150:+");
+push(@exp_len_A,       "50");
+push(@exp_coords_A,    "51..100:+");
+
+push(@desc_A,          "+ + fwd bck overlap");
+push(@coords1_A,       "100..1:+");
+push(@coords2_A,       "51..150:+");
+push(@exp_len_A,       "50");
+push(@exp_coords_A,    "51..100:+");
+
+my ($cur_len, $rc_coords1, $rc_coords2, $rc_exp_coords);
+$ntests = scalar(@desc_A);
+for($i = 0; $i < $ntests; $i++) { 
+  ($cur_len, $cur_coords) = vdr_CoordsSegmentOverlap($coords1_A[$i], $coords2_A[$i], undef);
+  is($cur_len,    $exp_len_A[$i],    "vdr_CoordsSegmentOverlap(): $desc_A[$i]");
+  is($cur_coords, $exp_coords_A[$i], "vdr_CoordsSegmentOverlap(): $desc_A[$i]");
+  # swap coords and rerun
+  ($cur_len, $cur_coords) = vdr_CoordsSegmentOverlap($coords2_A[$i], $coords1_A[$i], undef);
+  is($cur_len,    $exp_len_A[$i],    "vdr_CoordsSegmentOverlap() coords swapped: $desc_A[$i]");
+  is($cur_coords, $exp_coords_A[$i], "vdr_CoordsSegmentOverlap() coords swapped: $desc_A[$i]");
+
+  # reverse complement and rerun
+  $rc_coords1 = vdr_CoordsReverseComplement($coords1_A[$i], 0, undef);
+  $rc_coords2 = vdr_CoordsReverseComplement($coords2_A[$i], 0, undef);
+  $rc_exp_coords = ($exp_coords_A[$i] eq "") ? "" : vdr_CoordsReverseComplement($exp_coords_A[$i], 0, undef);
+  ($cur_len, $cur_coords) = vdr_CoordsSegmentOverlap($rc_coords1, $rc_coords2, undef);
+  is($cur_len,    $exp_len_A[$i], "vdr_CoordsSegmentOverlap() revcomp'ed: $desc_A[$i]");
+  is($cur_coords, $rc_exp_coords, "vdr_CoordsSegmentOverlap() revcomp'ed: $desc_A[$i]");
+  # swap coords and rerun
+  ($cur_len, $cur_coords) = vdr_CoordsSegmentOverlap($rc_coords2, $rc_coords1, undef);
+  is($cur_len,    $exp_len_A[$i],  "vdr_CoordsSegmentOverlap() revcomp'ed coords swapped: $desc_A[$i]");
+  is($cur_coords, $rc_exp_coords,  "vdr_CoordsSegmentOverlap() revcomp'ed coords swapped: $desc_A[$i]");
 }
