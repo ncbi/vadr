@@ -83,8 +83,9 @@ require "sqp_utils.pm";
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
+# vdr_FeatureParentIndex()
 # vdr_FeatureStartStopStrandArrays()
-# vdr_FeatureSummaryStrand
+# vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
 # 
 # Subroutines related to alerts:
