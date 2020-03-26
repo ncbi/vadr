@@ -19,10 +19,10 @@ my $do_carrots = undef;
 my $cur_exp_val = undef;
 my @location_A = (); # location values
 my ($cur_sgm1, $cur_sgm2, $cur_coords);
-my @abs_coords_A  = ();
-my @rel_coords_A = ();
+my @full_abs_coords_A  = ();
+my @sub_rel_coords_A = ();
 my @rel_pt_coords_A  = ();
-my ($rel_length, $cur_val_length, $cur_rel_coords);
+my ($rel_length, $cur_val_length, $cur_sub_rel_coords, $cur_full_abs_coords);
 
 ###########################################
 # vdr_CoordsReverseComplement() tests
@@ -437,169 +437,169 @@ for($i = 0; $i < $ntests; $i++) {
 # vdr_CoordsMapSubseqRelativeToAbsolute() tests
 ############################################
 @desc_A       = ();
-@abs_coords_A = ();
-@rel_coords_A = ();
+@full_abs_coords_A = ();
+@sub_rel_coords_A = ();
 @exp_val_A    = ();
 
-push(@desc_A,       "abs (+), rel (+)");
-push(@abs_coords_A, "11..100:+");
-push(@rel_coords_A, "6..38:+");    
-push(@exp_val_A,    "16..48:+");   
+push(@desc_A,            "abs (+), rel (+)");
+push(@full_abs_coords_A, "11..100:+");
+push(@sub_rel_coords_A,  "6..38:+");    
+push(@exp_val_A,         "16..48:+");   
 
-push(@desc_A,       "abs (+)+, rel (+) ");
-push(@abs_coords_A, "11..40:+,42..101:+");
-push(@rel_coords_A, "6..25:+");    
-push(@exp_val_A,    "16..35:+");   
+push(@desc_A,            "abs (+)+, rel (+) ");
+push(@full_abs_coords_A, "11..40:+,42..101:+");
+push(@sub_rel_coords_A,  "6..25:+");    
+push(@exp_val_A,         "16..35:+");   
 
-push(@desc_A,       "abs +(+), rel (+)");
-push(@abs_coords_A, "11..40:+,42..101:+");
-push(@rel_coords_A, "31..33:+");    
-push(@exp_val_A,    "42..44:+");   
+push(@desc_A,            "abs +(+), rel (+)");
+push(@full_abs_coords_A, "11..40:+,42..101:+");
+push(@sub_rel_coords_A,  "31..33:+");    
+push(@exp_val_A,         "42..44:+");   
 
-push(@desc_A,        "abs (++), rel (+)");
-push(@abs_coords_A,  "11..40:+,42..101:+");
-push(@rel_coords_A,  "6..38:+");    
-push(@exp_val_A,     "16..40:+,42..49:+");   
+push(@desc_A,            "abs (++), rel (+)");
+push(@full_abs_coords_A, "11..40:+,42..101:+");
+push(@sub_rel_coords_A,  "6..38:+");    
+push(@exp_val_A,         "16..40:+,42..49:+");   
 
 push(@desc_A,        "abs (+)++, rel (+)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "6..25:+");    
+push(@full_abs_coords_A,  "11..40:+,42..100:+,105..121:+");
+push(@sub_rel_coords_A,  "6..25:+");    
 push(@exp_val_A,     "16..35:+");   
 
 push(@desc_A,        "abs +(+)+, rel (+)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "31..33:+");    
+push(@full_abs_coords_A,  "11..40:+,42..100:+,105..121:+");
+push(@sub_rel_coords_A,  "31..33:+");    
 push(@exp_val_A,     "42..44:+");   
 
 push(@desc_A,        "abs ++(+), rel (+)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "90..105:+");    
+push(@full_abs_coords_A,  "11..40:+,42..100:+,105..121:+");
+push(@sub_rel_coords_A,  "90..105:+");    
 push(@exp_val_A,     "105..120:+");   
 
 push(@desc_A,        "abs (++)+, rel (+)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "6..38:+");    
+push(@full_abs_coords_A,  "11..40:+,42..100:+,105..121:+");
+push(@sub_rel_coords_A,  "6..38:+");    
 push(@exp_val_A,     "16..40:+,42..49:+");   
 
 push(@desc_A,        "abs +(++), rel (+)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "39..99:+");    
+push(@full_abs_coords_A,  "11..40:+,42..100:+,105..121:+");
+push(@sub_rel_coords_A,  "39..99:+");    
 push(@exp_val_A,     "50..100:+,105..114:+");   
 
 push(@desc_A,        "abs (+++), rel (+)");
-push(@abs_coords_A,  "11..40:+,42..100:+,105..121:+");
-push(@rel_coords_A,  "19..99:+");    
+push(@full_abs_coords_A,  "11..40:+,42..100:+,105..121:+");
+push(@sub_rel_coords_A,  "19..99:+");    
 push(@exp_val_A,     "29..40:+,42..100:+,105..114:+");   
 
 push(@desc_A,        "abs (+), rel (++)");
-push(@abs_coords_A,  "11..100:+");
-push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@full_abs_coords_A,  "11..100:+");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+");    
 push(@exp_val_A,     "16..48:+,55..60:+");   
 
 push(@desc_A,        "abs (+), rel (+++)");
-push(@abs_coords_A,  "11..100:+");
-push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@full_abs_coords_A,  "11..100:+");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "16..48:+,55..60:+,63..69:+");   
 
 push(@desc_A,        "abs (++), rel (++)");
-push(@abs_coords_A,  "11..40:+,42..101:+");
-push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@full_abs_coords_A,  "11..40:+,42..101:+");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+");    
 push(@exp_val_A,     "16..40:+,42..49:+,56..61:+");   
 
 push(@desc_A,        "abs (++), rel (+++)");
-push(@abs_coords_A,  "11..40:+,42..101:+");
-push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@full_abs_coords_A,  "11..40:+,42..101:+");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,      "16..40:+,42..49:+,56..61:+,64..70:+");   
 
 push(@desc_A,        "abs (+++), rel (++)");
-push(@abs_coords_A,  "11..40:+,42..58:+,62..104:+");
-push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@full_abs_coords_A,  "11..40:+,42..58:+,62..104:+");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+");    
 push(@exp_val_A,     "16..40:+,42..49:+,56..58:+,62..64:+");   
 
 push(@desc_A,        "abs (+++), rel (+++)");
-push(@abs_coords_A,  "11..40:+,42..58:+,62..104:+");
-push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@full_abs_coords_A,  "11..40:+,42..58:+,62..104:+");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "16..40:+,42..49:+,56..58:+,62..64:+,67..73:+");   
 
 # negative strand abs coords
 push(@desc_A,       "abs (-), rel (+)");
-push(@abs_coords_A, "100..11:-");
-push(@rel_coords_A, "6..38:+");    
+push(@full_abs_coords_A, "100..11:-");
+push(@sub_rel_coords_A, "6..38:+");    
 push(@exp_val_A,    "95..63:-");   
 
 push(@desc_A,       "abs (-)-, rel (+) ");
-push(@abs_coords_A, "101..42:-,40..11:-");
-push(@rel_coords_A, "6..25:+");    
+push(@full_abs_coords_A, "101..42:-,40..11:-");
+push(@sub_rel_coords_A, "6..25:+");    
 push(@exp_val_A,    "96..77:-");   
 
 push(@desc_A,       "abs -(-), rel (+)");
-push(@abs_coords_A, "101..42:-,40..11:-");
-push(@rel_coords_A, "71..73:+");    
+push(@full_abs_coords_A, "101..42:-,40..11:-");
+push(@sub_rel_coords_A, "71..73:+");    
 push(@exp_val_A,    "30..28:-");   
 
 push(@desc_A,        "abs (--), rel (+)");
-push(@abs_coords_A,  "101..42:-,40..11:-");
-push(@rel_coords_A,  "6..78:+");    
+push(@full_abs_coords_A,  "101..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..78:+");    
 push(@exp_val_A,     "96..42:-,40..23:-");   
 
 push(@desc_A,        "abs (-)--, rel (+)");
-push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
-push(@rel_coords_A,  "6..15:+");    
+push(@full_abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..15:+");    
 push(@exp_val_A,     "116..107:-");
 
 push(@desc_A,        "abs -(-)-, rel (+)");
-push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
-push(@rel_coords_A,  "71..73:+");
+push(@full_abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@sub_rel_coords_A,  "71..73:+");
 push(@exp_val_A,     "47..45:-");   
 
 push(@desc_A,        "abs --(-), rel (+)");
-push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
-push(@rel_coords_A,  "80..85:+");    
+push(@full_abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@sub_rel_coords_A,  "80..85:+");    
 push(@exp_val_A,     "37..32:-");   
 
 push(@desc_A,        "abs (--)-, rel (+)");
-push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
-push(@rel_coords_A,  "6..25:+");    
+push(@full_abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..25:+");    
 push(@exp_val_A,     "116..105:-,100..93:-");   
 
 push(@desc_A,        "abs -(--), rel (+)");
-push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
-push(@rel_coords_A,  "39..99:+");    
+push(@full_abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@sub_rel_coords_A,  "39..99:+");    
 push(@exp_val_A,     "79..42:-,40..18:-");   
 
 push(@desc_A,        "abs (---), rel (+)");
-push(@abs_coords_A,  "121..105:-,100..42:-,40..11:-");
-push(@rel_coords_A,  "9..99:+");    
+push(@full_abs_coords_A,  "121..105:-,100..42:-,40..11:-");
+push(@sub_rel_coords_A,  "9..99:+");    
 push(@exp_val_A,     "113..105:-,100..42:-,40..18:-");   
 
 push(@desc_A,        "abs (+), rel (--)");
-push(@abs_coords_A,  "100..11:-");
-push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@full_abs_coords_A,  "100..11:-");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+");    
 push(@exp_val_A,     "95..63:-,56..51:-");
 
 push(@desc_A,        "abs (+), rel (---)");
-push(@abs_coords_A,  "100..11:-");
-push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@full_abs_coords_A,  "100..11:-");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "95..63:-,56..51:-,48..42:-");
 
 push(@desc_A,        "abs (++), rel (--)");
-push(@abs_coords_A,  "101..42:-,40..11:-");
-push(@rel_coords_A,  "6..38:+,45..70:+");    
+push(@full_abs_coords_A,  "101..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..38:+,45..70:+");    
 push(@exp_val_A,     "96..64:-,57..42:-,40..31:-");
 
 push(@desc_A,        "abs (++), rel (---)");
-push(@abs_coords_A,  "101..42:-,40..11:-");
-push(@rel_coords_A,  "6..38:+,45..70:+,73..80:+");    
+push(@full_abs_coords_A,  "101..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..38:+,45..70:+,73..80:+");    
 push(@exp_val_A,     "96..64:-,57..42:-,40..31:-,28..21:-");
 
 push(@desc_A,        "abs (+++), rel (--)");
-push(@abs_coords_A,  "104..94:-,101..42:-,40..11:-");
-push(@rel_coords_A,  "6..38:+,45..50:+");    
+push(@full_abs_coords_A,  "104..94:-,101..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+");    
 push(@exp_val_A,     "99..94:-,101..75:-,68..63:-");
 
 push(@desc_A,        "abs (+++), rel (---)");
-push(@abs_coords_A,  "104..94:-,101..42:-,40..11:-");
-push(@rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
+push(@full_abs_coords_A,  "104..94:-,101..42:-,40..11:-");
+push(@sub_rel_coords_A,  "6..38:+,45..50:+,53..59:+");    
 push(@exp_val_A,     "99..94:-,101..75:-,68..63:-,60..54:-");
 
 # Did not include these mixed strands tests yet, not sure if they'll
@@ -634,22 +634,35 @@ push(@exp_val_A,     "99..94:-,101..75:-,68..63:-,60..54:-");
 
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
-  $cur_val = vdr_CoordsMapSubseqRelativeToAbsolute($abs_coords_A[$i], 
-                                 $rel_coords_A[$i], undef);
+  $cur_val = vdr_CoordsMapSubseqRelativeToAbsolute($full_abs_coords_A[$i], 
+                                                   $sub_rel_coords_A[$i], undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsMapSubseqRelativeToAbsolute(): $desc_A[$i]");
+
   # sanity check:
   # make sure the length of the returned coords string is the same as the
-  # length of the $rel_nt_or_aa_coords string
-  $rel_length     = vdr_CoordsLength($rel_coords_A[$i], undef);
+  # length of the $sub_rel_coords string
+  $rel_length     = vdr_CoordsLength($sub_rel_coords_A[$i], undef);
   $cur_val_length = vdr_CoordsLength($cur_val, undef);
   is($cur_val_length, $rel_length, "vdr_CoordsMapSubseqRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 
-  # reverse complement $rel_coords_A
-  $cur_rel_coords = vdr_CoordsReverseComplement($rel_coords_A[$i], 0, undef);
-  $cur_val = vdr_CoordsMapSubseqRelativeToAbsolute($abs_coords_A[$i], 
-                                          $cur_rel_coords, undef);
+  # convert absolute coords string back to relative coords and check it matches 
+  $cur_val = vdr_CoordsMapSubseqAbsoluteToRelative($full_abs_coords_A[$i], 
+                                                   $cur_val, undef);
+  is($cur_val, $sub_rel_coords_A[$i], "vdr_CoordsMapSubseqAbsoluteToRelative() inverse check: $desc_A[$i]");
+  
+  # reverse complement $sub_rel_coords_A, redo call, reverse complement return value and check it matches
+  $cur_sub_rel_coords = vdr_CoordsReverseComplement($sub_rel_coords_A[$i], 0, undef);
+  $cur_val = vdr_CoordsMapSubseqRelativeToAbsolute($full_abs_coords_A[$i], 
+                                                   $cur_sub_rel_coords, undef);
   $cur_val = vdr_CoordsReverseComplement($cur_val, 0, undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsMapSubseqRelativeToAbsolute() revcomp: $desc_A[$i]");
+
+  # now revcomp it back and test AbsoluteToRelative
+#  $cur_full_abs_coords = vdr_CoordsReverseComplement($cur_val, 0, undef);
+#  $cur_val = vdr_CoordsMapSubseqAbsoluteToRelative($full_abs_coords_A[$i], 
+#                                                   $cur_full_abs_coords, undef);
+#  $cur_val = vdr_CoordsReverseComplement($cur_val, 0, undef);
+#  is($cur_val, $sub_rel_coords_A[$i], "vdr_CoordsMapSubseqRelativeToAbsolute() inverse check revcomp: $desc_A[$i]");
 }
 
 #############################################
@@ -659,27 +672,27 @@ for($i = 0; $i < $ntests; $i++) {
 # be "+" strand.
 #############################################
 @desc_A          = ();
-@abs_coords_A    = ();
+@full_abs_coords_A    = ();
 @rel_pt_coords_A = ();
 @exp_val_A       = ();
 
 push(@desc_A,          "abs (+), rel (+)");
-push(@abs_coords_A,    "11..100:+");
+push(@full_abs_coords_A,    "11..100:+");
 push(@rel_pt_coords_A, "6..10:+");    
 push(@exp_val_A,       "26..40:+");   
 
 push(@desc_A,          "abs (+), rel (++)");
-push(@abs_coords_A,    "11..100:+");
+push(@full_abs_coords_A,    "11..100:+");
 push(@rel_pt_coords_A, "6..10:+,12..13:+");    
 push(@exp_val_A,       "26..40:+,44..49:+");   
 
 push(@desc_A,          "abs (++), rel (+)");
-push(@abs_coords_A,    "11..30:+,30..100:+");
+push(@full_abs_coords_A,    "11..30:+,30..100:+");
 push(@rel_pt_coords_A, "6..10:+");    
 push(@exp_val_A,       "26..30:+,30..39:+");
 
 push(@desc_A,          "abs (++), rel (++)");
-push(@abs_coords_A,    "11..30:+,30..100:+");
+push(@full_abs_coords_A,    "11..30:+,30..100:+");
 push(@rel_pt_coords_A, "6..10:+,12..13:+");    
 push(@exp_val_A,       "26..30:+,30..39:+,43..48:+");
 
@@ -688,14 +701,14 @@ push(@exp_val_A,       "26..30:+,30..39:+,43..48:+");
 # existing code should work for it though if you ever want to 
 # relax that requirement.
 #push(@desc_A,          "abs (+-), rel (++)");
-#push(@abs_coords_A,    "11..30:+,100..30:-");
+#push(@full_abs_coords_A,    "11..30:+,100..30:-");
 #push(@rel_pt_coords_A, "6..10:+,12..13:+");    
 #push(@exp_val_A,       "26..30:+,100..91:-,87..82:-");
 
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
-  $cur_val = vdr_CoordsMapProteinSubseqRelativeToAbsolute($abs_coords_A[$i], 
-                                                 $rel_pt_coords_A[$i], undef);
+  $cur_val = vdr_CoordsMapProteinSubseqRelativeToAbsolute($full_abs_coords_A[$i], 
+                                                          $rel_pt_coords_A[$i], undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsMapProteinSubseqRelativeToAbsolute(): $desc_A[$i]");
   # sanity check:
   # make sure the length of the returned coords string is the same as the

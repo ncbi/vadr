@@ -987,7 +987,6 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . 
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_protein_tbl",       $out_root . ".pass.p.tbl",       1, 1, "5 column feature table output for passing sequences (with proteins)");
 
-
 ########################
 # tabular output files #
 ########################
@@ -3272,7 +3271,6 @@ sub add_frameshift_alerts_for_one_sequence {
 #              a DP matrix memory overflow. 
 #              
 # Arguments: 
-
 #  $seq_file:           the sequence file with the single sequence that failed in it
 #  $mxsize:             matrix size to add to @{$overflow_mxsize_AR}
 #  $overflow_seq_AR:    ref to array of sequences that failed due to matrix overflows, to add to
