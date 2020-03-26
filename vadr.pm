@@ -100,25 +100,32 @@ require "sqp_utils.pm";
 # vdr_WaitForFarmJobsToFinish()
 #
 # Subroutines related to sequence and model coordinates: 
-# vdr_CoordsSegmentParse()
-# vdr_CoordsSegmentCreate()
-# vdr_CoordsSegmentAppend()
-# vdr_CoordsCreate()
-# vdr_CoordsLength()
-# vdr_CoordsFromLocation()
-# vdr_CoordsReverseComplement()
-# vdr_CoordsSegmentReverseComplement()
-# vdr_CoordsMin()
-# vdr_CoordsMax()
-# vdr_CoordsMissing()
-# vdr_CoordsCheckIfSpans()
-# vdr_CoordsSegmentOverlap()
-# vdr_CoordsRelativeToAbsolute()
-# vdr_CoordsRelativeSegmentToAbsolute()
-# vdr_CoordsProteinRelativeToAbsolute()
-# vdr_CoordsProteinToNucleotide()
-# vdr_CoordsMergeAllAdjacentSegments()
-# vdr_CoordsMergeTwoSegmentsIfAdjacent()
+# vdr_CoordsSegmentParse
+# vdr_CoordsSegmentCreate
+# vdr_CoordsSegmentAppend 
+# vdr_CoordsCreate
+# vdr_CoordsLength
+# vdr_CoordsFromLocation 
+# vdr_CoordsReverseComplement 
+# vdr_CoordsSegmentReverseComplement 
+# vdr_CoordsMin
+# vdr_CoordsMax
+# vdr_CoordsMissing
+# vdr_CoordsCheckIfSpans
+# vdr_CoordsSegmentOverlap 
+
+# vdr_CoordsMapSubseqRelativeToAbsolute 
+# vdr_CoordsMapProteinSubseqRelativeToAbsolute 
+# vdr_CoordsMapSubseqAbsoluteToRelative 
+# vdr_CoordsMapProteinSubseqAbsoluteToRelative
+# vdr_CoordsProteinToNucleotide 
+# vdr_CoordsNucleotideSegmentToProtein 
+# vdr_CoordsNucleotideToProtein 
+
+# vdr_CoordsSegmentOverlap 
+# vdr_CoordsMergeAllAdjacentSegments 
+# vdr_CoordsMergeTwoSegmentsIfAdjacent 
+# vdr_CoordsSplitIntoSegments 
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -2849,209 +2856,61 @@ sub vdr_CoordsSegmentOverlap {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsRelativeToAbsolute()
+# Subroutine: vdr_CoordsMapSubseqRelativeToAbsolute()
 #             formerly vdr_CoordsProtToNuc() (pre v1.0.5)
 #
 # Incept:     EPN, Wed May 22 09:49:30 2019
 #
-# Synopsis: Return absolute nucleotide coordinates that correspond to
-#           the relative nucleotide coordinates in <$rel_coords>.
-#           Work is done by calling vdr_CoordsRelativeSegmentToAbsolute()
-#           for each segment in <$rel_coords>, concatenating all the 
-#           returned coords, and then condensing them to combine any
-#           adjacent segments.
+# Synopsis: Given a full sequence coordinate string and a subseq
+#           coordinate string that has coordinates 'relative' to the
+#           full sequence coordinates, map the subsequence coordinate
+#           string to the absolute coordinate space of the full
+#           sequence and return it.
 #
-# Arguments:
-#  $abs_coords:  nucleotide coordinates in full sequence [1..seqlen]
-#  $rel_coords:  relative nucleotide coordinates within $abs_coords
-#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#           Actual work is done by coords_map_subseq().
 #
-# Returns:   Absolute coordinates coords string corresponding to $rel_coords.
-#
-# Dies: if $rel_coords has a position that is longer than
-#       total length of absolute coords 
-#       (dies within vdr_CoordsRelativeSegmentToAbsolute())
-#
-#################################################################
-sub vdr_CoordsRelativeToAbsolute { 
-  my $sub_name = "vdr_CoordsRelativeToAbsolute";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($abs_coords, $rel_coords, $FH_HR) = @_;
-
-  # check to make sure we have identical strands for all segments in both
-  # $abs_coords and $rel_coords
-  # the code may work even if we don't but I didn't add tests for these
-  # mixed strand cases, so I'm disallowing them here.
-  # If you want to allow mixed strand in the future, add tests in
-  # 01-coords.t (see note in that file as well dated Fri Mar 20, 2020)
-  my $abs_summary_strand = vdr_FeatureSummaryStrand($abs_coords, $FH_HR); # will be + if 
-  my $rel_summary_strand = vdr_FeatureSummaryStrand($rel_coords, $FH_HR);
-  # $*_summary_strand values will be + if all segments are +, - if all segments are -, else !
-  if($abs_summary_strand eq "!") { 
-    ofile_FAIL("ERROR in $sub_name, in abs_coords $abs_coords not all segments are the same strand", 1, $FH_HR);
-  }
-  if($rel_summary_strand eq "!") { 
-    ofile_FAIL("ERROR in $sub_name, in rel_coords $rel_coords not all segments are the same strand", 1, $FH_HR);
-  }
-
-  my @rel_coords_sgm_A = split(",", $rel_coords);
-  my $ret_coords = "";
-  foreach my $rel_coords_sgm (@rel_coords_sgm_A) { 
-    $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsRelativeSegmentToAbsolute($abs_coords, $rel_coords_sgm, $FH_HR));
-  }
-  $ret_coords = vdr_CoordsMergeAllAdjacentSegments($ret_coords, $FH_HR);
-  
-  return $ret_coords;
-}
-
-#################################################################
-# Subroutine: vdr_CoordsRelativeSegmentToAbsolute()
-#             formerly vdr_CoordsProtToNuc() (pre v1.0.5)
-#
-# Incept:     EPN, Wed May 22 09:49:30 2019
-#
-# Synopsis: Return absolute nucleotide coordinates that correspond to
-#           the relative nucleotide coordinates segment in <$rel_coords_tok>.
-#           with nucleotide sequence with absolute coords <$abs_coords>.
-#
-#           Examples:
+#           full_abs_coords  sub_rel_coords  returns
+#           "11..100:+"      "6..38:+"       "16..48:+"  
 # 
-#           abs_coords     rel_coords  returns
-#           "11..100:+"    "6..38:+"   "16..48:+"     
-#
 # Arguments:
-#  $abs_coords:     nucleotide coordinates in full sequence [1..seqlen]
-#  $rel_coords_sgm: relative nucleotide coordinates (single segment) within $abs_coords
-#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#  $full_abs_coords:  nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_rel_coords:   relative nucleotide coordinates for subsequence
+#                     within $abs_coords
+#  $FH_HR:            REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Absolute coordinates coords string corresponding to $rel_coords_sgm.
+# Returns:   Absolute coordinates coords string corresponding to $rel_coords
+#            relative to $abs_coords.
 #
-# Dies: if $rel_coords_sgm has a position that is longer than
-#       total length of absolute coords
+# Dies: if $sub_rel_coords has a position that is longer than
+#       total length of absolute coords 
+#       (dies within coords_map_subseq_segment())
 #
 #################################################################
-sub vdr_CoordsRelativeSegmentToAbsolute { 
-  my $sub_name = "vdr_CoordsRelativeSegmentToAbsolute";
+sub vdr_CoordsMapSubseqRelativeToAbsolute { 
+  my $sub_name = "vdr_CoordsMapSubseqRelativeToAbsolute";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($abs_coords, $rel_coords_sgm, $FH_HR) = @_;
+  my ($full_abs_coords, $sub_rel_coords, $FH_HR) = @_;
 
-  # printf("in $sub_name, abs_coords: $abs_coords, rel_coords_sgm: $rel_coords_sgm\n");
-
-  # $rel_coords_sgm should not be multiple segments (i.e have any ',' characters)
-  if($rel_coords_sgm =~ m/\,/) { 
-    ofile_FAIL("ERROR in $sub_name, rel_coords_sgm: $rel_coords_sgm seems to be multiple segments (has at least one ',')", 1, $FH_HR); 
-  }
-
-  # breakdown the absolute and relative coords
-  my $abs_len = vdr_CoordsLength($abs_coords, $FH_HR);
-  my $rel_len = vdr_CoordsLength($rel_coords_sgm, $FH_HR);
-  my ($orig_rel_start, $orig_rel_stop, $orig_rel_strand) = vdr_CoordsSegmentParse($rel_coords_sgm, $FH_HR);
-
-  my @abs_start_A  = (); # array of starts  for $abs_coords segments
-  my @abs_stop_A   = (); # array of stops   for $abs_coords segments
-  my @abs_strand_A = (); # array of strands for $abs_coords segments
-  my $nsgm_abs = vdr_FeatureStartStopStrandArrays($abs_coords, \@abs_start_A, \@abs_stop_A, \@abs_strand_A, $FH_HR);
-
-  # if $orig_rel_strand is -, reverse complement the relative coords, we will reverse complement comp $ret_coords back at the end prior to return
-  my ($rel_start, $rel_stop, $rel_strand); 
-  if   ($orig_rel_strand eq "+") { ($rel_start, $rel_stop, $rel_strand) = ($orig_rel_start, $orig_rel_stop, "+"); }
-  elsif($orig_rel_strand eq "-") { ($rel_start, $rel_stop, $rel_strand) = ($orig_rel_stop, $orig_rel_start, "-"); }
-  else                           { ofile_FAIL("ERROR in $sub_name, relative coords segment $rel_coords_sgm is not + or - strand", 1, $FH_HR); }
-
-  # make sure our relative start and stop are <= $abs_len
-  if($rel_start > $abs_len) { ofile_FAIL("ERROR in $sub_name, relative coords segment has a position $rel_start that exceeds absolute coords ($abs_coords) length: $abs_len", 1, $FH_HR); }
-  if($rel_stop  > $abs_len) { ofile_FAIL("ERROR in $sub_name, relative coords segment has a position $rel_stop  that exceeds absolute coords ($abs_coords) length: $abs_len", 1, $FH_HR); }
-
-  my $ret_coords = convert_subseq_coords_relative_to_absolute_helper(\@abs_start_A, \@abs_stop_A, \@abs_strand_A, $rel_start, $rel_stop);
-
-  if($orig_rel_strand eq "-") { 
-    $ret_coords = vdr_CoordsReverseComplement($ret_coords, 0, $FH_HR); # 0: do not include carrots
-  }
-
-  # printf("in $sub_name, returning $ret_coords\n");
-  return $ret_coords;
+  return coords_map_subseq($full_abs_coords, $sub_rel_coords, 1, $FH_HR); # 1 indicates second argument is relative coords
 }
 
 #################################################################
-# Subroutine: convert_subseq_coords_relative_to_absolute_helper()
-#
-# Incept:     EPN, Wed Mar 25 15:23:46 2020
-#
-# Synopsis: Helper function for vdr_CoordsSubseqConversion().
-#
-# Arguments:
-#  $abs_coords:     nucleotide coordinates in full sequence [1..seqlen]
-#  $rel_coords_sgm: relative nucleotide coordinates (single segment) within $abs_coords
-#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:   Absolute coordinates coords string corresponding to $rel_coords_sgm.
-#
-# Dies: if $rel_coords_sgm has a position that is longer than
-#       total length of absolute coords
-sub convert_subseq_coords_relative_to_absolute_helper {
-  my $sub_name = "convert_subseq_coords_relative_to_absolute_helper";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($abs_start_AR, $abs_stop_AR, $abs_strand_AR, $rel_start, $rel_stop, $FH_HR) = @_;
-
-  # do the conversion, one absolute segment at a time
-  my $ret_coords = ""; # return value 
-  my $cur_len_to_convert = abs($rel_stop - $rel_start) + 1; # number of positions left to convert from relative to absolute coords
-  my $cur_abs_offset = $rel_start - 1; # number of nucleotides to skip from start of $abs_coords_tok when converting coords
-  my $conv_start = undef; # a start position converted from relative to absolute coords
-  my $conv_stop  = undef; # a stop  position converted from relative to absolute coords
-  my $nsgm_abs = scalar(@{$abs_start_AR});
-  for(my $a = 0; $a < $nsgm_abs; $a++) { 
-    if($cur_len_to_convert > 0) { # only need to look at this token if we still have sequence left to convert
-      my ($abs_start, $abs_stop, $abs_strand) = ($abs_start_AR->[$a], $abs_stop_AR->[$a], $abs_strand_AR->[$a]);
-      my $abs_sgm_len = abs($abs_start - $abs_stop) + 1;
-      if($cur_abs_offset < $abs_sgm_len) { 
-        # this abs token has >= 1 nt corresponding to $rel_coords_sgm
-        if($abs_strand eq "+") { 
-          $conv_start = $abs_start + $cur_abs_offset;
-          $conv_stop  = $conv_start + $cur_len_to_convert - 1;
-          # make sure we didn't go off the end of the abs token
-          if($conv_stop > $abs_stop) { $conv_stop = $abs_stop; }
-        }
-        elsif($abs_strand eq "-") { 
-          $conv_start = $abs_start - $cur_abs_offset;
-          $conv_stop  = $conv_start - $cur_len_to_convert + 1;
-          # make sure we didn't go off the end of the nt token
-          if($conv_stop < $abs_stop) { $conv_stop = $abs_stop; }
-        }          
-        else { 
-          ofile_FAIL("ERROR in $sub_name, abs_coords token $abs_start..$abs_stop:$abs_strand has strand $abs_strand that is not either + or -", 1, $FH_HR); 
-        }
-        # update length of $rel_coords_sgm we still have to convert
-        $cur_len_to_convert -= abs($conv_stop - $conv_start) + 1;
-        
-        # append converted token to return coords string
-        $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsSegmentCreate($conv_start, $conv_stop, $abs_strand, $FH_HR));
-      }
-      # adjust nt offset so that for next nt coords token we start at the proper position
-      $cur_abs_offset -= $abs_sgm_len;
-      if($cur_abs_offset < 0) { $cur_abs_offset = 0; }
-    } # end of 'if($cur_len_to_convert > 0)
-  } # end of 'for(my $a = 0; $a < $nsgm_abs; $a++)'
-
-  return $ret_coords;
-}
-#################################################################
-# Subroutine: vdr_CoordsProteinRelativeToAbsolute()
+# Subroutine: vdr_CoordsMapProteinSubseqRelativeToAbsolute()
 #
 # Incept:     EPN, Fri Mar 20 07:12:19 2020
 #
-# Synopsis: Return absolute nucleotide coordinates that correspond to
-#           the relative protein coordinates in the coords string
-#           <$rel_coords> for a protein encoded by the nucleotide
-#           sequence with absolute coordinates <$abs_coords>
+# Synopsis: Given a full sequence nucleotide coordinate string and a
+#           subseq coordinate string that has *protein* coordinates
+#           'relative' to the full sequence coordinates, map the
+#           protein subsequence coordinate string to the absolute
+#           nucleotide coordinate space of the full sequence and
+#           return it.
+#
+#           Actual work is done by coords_map_subseq().
 #  
-#           abs_nt_coords          rel_pt_coords     returns
+#           full_abs_nt_coords     sub_rel_pt_coords returns
 #           "11..100:+"            "2..11:+"         "14..43:+"     
 #           "100..11:-"            "2..11:+"         "97..68:-"
 #           "11..40:+,42..101:+"   "2..11:+"         "14..40:+,42..44:+"
@@ -3062,26 +2921,338 @@ sub convert_subseq_coords_relative_to_absolute_helper {
 # See t/01-coords.t for additional examples
 #
 # Arguments:
-#  $abs_nt_coords:  nucleotide coordinates in full sequence [1..seqlen]
-#  $rel_pt_coords:  relative protein coordinates 
-#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#  $full_abs_nt_coords: nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_rel_pt_coords:  relative protein coordinates 
+#  $FH_HR:              REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
-#            coordinates relative to $abs_nt_coords.
+# Returns:   Coords string corresponding to $sub_rel_pt_coords in nucleotide 
+#            coordinates relative to $full_abs_nt_coords.
 #
-# Dies: if $rel_pt_coords coordinates imply positions outside 
-#       $abs_nt_coords nucleotide coordinates (protein is too long)
+# Dies: if $sub_rel_pt_coords coordinates imply positions outside 
+#       $full_abs_nt_coords nucleotide coordinates (protein is too long)
 #
 #################################################################
-sub vdr_CoordsProteinRelativeToAbsolute { 
-  my $sub_name = "vdr_CoordsProteinRelativeToAbsolute";
+sub vdr_CoordsMapProteinSubseqRelativeToAbsolute { 
+  my $sub_name = "vdr_CoordsMapProteinSubseqRelativeToAbsolute";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($abs_nt_coords, $rel_pt_coords, $FH_HR) = @_;
+  my ($full_abs_nt_coords, $sub_rel_pt_coords, $FH_HR) = @_;
 
-  my $rel_nt_coords = vdr_CoordsProteinToNucleotide($rel_pt_coords, $FH_HR);
-  return vdr_CoordsRelativeToAbsolute($abs_nt_coords, $rel_nt_coords, $FH_HR);
+  my $sub_rel_nt_coords = vdr_CoordsProteinToNucleotide($sub_rel_pt_coords, $FH_HR);
+  return coords_map_subseq($full_abs_nt_coords, $sub_rel_nt_coords, 1, $FH_HR); # 1 indicates second argument is relative coords
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMapSubseqAbsoluteToRelative()
+#
+# Incept:     EPN, Wed Mar 25 16:42:17 2020
+#
+# Synopsis: Given a full sequence coordinate string and a subseq
+#           coordinate string that has coordinates in the same
+#           coordinate space as the full coorindate string, map 
+#           the subsequence coordinate string to the coordinate
+#           space 'relative' to the full sequence coordinates
+#           and return it.
+#
+#           full_abs_coords  sub_abs_coords  returns
+#           "11..100:+"      "16..48:+"      "6..38:+"  
+#
+#           Actual work is done by coords_map_subseq().
+#
+# Arguments:
+#  $full_abs_coords: nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_abs_coords:  nucleotide coordinates of the subsequence to map to
+#                    relative coordinates
+#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Relative coordinates coords string corresponding to $sub_abs_coords
+#            relative to $full_abs_coords.
+#
+#################################################################
+sub vdr_CoordsMapSubseqAbsoluteToRelative { 
+  my $sub_name = "vdr_CoordsMapSubseqAbsoluteToRelative";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($full_abs_coords, $sub_abs_coords, $FH_HR) = @_;
+
+  return coords_map_subseq($full_abs_coords, $sub_abs_coords, 0, $FH_HR); # 0 indicates second argument is absolute coords
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMapProteinSubseqAbsoluteToRelative()
+#
+# Incept:     EPN, Fri Mar 20 07:12:19 2020
+#
+# Synopsis: Given a full sequence nucleotide coordinate string and a
+#           subseq coordinate string that has nucleotide coordinates
+#           in the same coordinate space as the full coordinate
+#           string, map the subsequence coordinate string to the
+#           coordinate space 'relative' to the full sequence
+#           coordinates and return it in *protein* coordinate
+#           space.
+#
+#           Actual work is done by coords_map_subseq().
+#  
+#           full_abs_nt_coords     sub_abs_nt_coords             returns (relative protein coord space)
+#           "11..100:+"            "14..43:+"                    "2..11:+"         
+#           "100..11:-"            "97..68:-"                    "2..11:+"         
+#           "11..40:+,42..101:+"   "14..40:+,42..44:+"           "2..11:+"         
+#           "11..100:+"            "14..19:+,23..43:+"           "2..3:+,5..11:+"  
+#           "100..11:-"            "97..92:-,88..68:-"           "2..3:+,5..11:+"  
+#           "11..40:+,42..101:+"   "14..19:+,23..40:+,42..44:+"  "2..3:+,5..11:+"  
+#
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#  $full_abs_nt_coords: nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_abs_coords:     nucleotide coordinates of the subsequence to map to
+#                       relative coordinates
+#  $FH_HR:              REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $sub_abs_nt_coords in protein
+#            coordinates relative to $full_abs_nt_coords.
+#
+#################################################################
+sub vdr_CoordsMapProteinSubseqAbsoluteToRelative { 
+  my $sub_name = "vdr_CoordsMapProteinSubseqAbsoluteToRelative";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($full_abs_nt_coords, $sub_abs_nt_coords, $FH_HR) = @_;
+  
+  my $sub_rel_nt_coords = coords_map_subseq($full_abs_nt_coords, $sub_abs_nt_coords, 0, $FH_HR); # 0 indicates second argument is absolute coords
+
+  return vdr_CoordsNucleotideToProtein($sub_rel_nt_coords, $FH_HR);
+}
+
+#################################################################
+# Subroutine: coords_map_subseq()
+#
+# Incept:     EPN, Wed Mar 25 16:10:53 2020
+#
+# Synopsis: Given a full sequence coordinate string and a subseq
+#           coordinate string, either convert the subsequence
+#           coordinates from absolute to relative coordinates (if
+#           $is_relative == 0) or from relative to absolute
+#           coordinates (if $is_relative == 1) and return the
+#           resulting subseq coordinate string.
+#
+#           Work is done by calling coords_map_subseq_segment() for each
+#           segment in <$rel_coords>, concatenating all the returned
+#           coords, and then condensing them to combine any adjacent
+#           segments.
+#
+# Arguments:
+#  $full_coords: nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_coords:  nucleotide coordinates of subsequence
+#  $is_relative: '1' if $sub_coords are 'relative' to $full_coords and
+#                our return coords string will be in 'absolute'
+#                coordinate space of '$full_coords';
+#                '0' if they are in the same 'absolute' coordinate
+#                space as $full_coords, and our return coords string
+#                will be 'relative' to coordinate space of
+#                $full_coords.
+#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   coordinate string corresponding to $sub_coords in
+#            'absolute' coordinate space of $full_coords (if
+#            $is_relative == 1) or relative coordinate space to
+#            $full_coords (if $is_relative == 0)
+#
+# Dies: if unable to map the coordinates in $sub_coords to $full_coords
+#
+#################################################################
+sub coords_map_subseq { 
+  my $sub_name = "coords_map_subseq()";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($full_coords, $sub_coords, $is_relative, $FH_HR) = @_;
+
+  # Check to make sure we have identical strands for all segments in both
+  # $full_coords and $sub_coords (that is, all segments in $full_coords need to 
+  # be + or -, and all segments in $sub_coords need to be + or -).
+  # The code may work even if we don't but I didn't add tests for these
+  # mixed strand cases, so I'm disallowing them here.
+  # If you want to allow mixed strand in the future, add tests in
+  # 01-coords.t (see note in that file as well dated Fri Mar 20, 2020)
+  my $full_summary_strand = vdr_FeatureSummaryStrand($full_coords, $FH_HR); # will be + if 
+  my $sub_summary_strand = vdr_FeatureSummaryStrand($sub_coords, $FH_HR);
+  # $*_summary_strand values will be + if all segments are +, - if all segments are -, else !
+  if($full_summary_strand eq "!") { 
+    ofile_FAIL("ERROR in $sub_name, in abs_coords $full_coords not all segments are the same strand", 1, $FH_HR);
+  }
+  if($sub_summary_strand eq "!") { 
+    ofile_FAIL("ERROR in $sub_name, in rel_coords $sub_coords not all segments are the same strand", 1, $FH_HR);
+  }
+
+  my @rel_coords_sgm_A = split(",", $sub_coords);
+  my $ret_coords = "";
+  foreach my $sub_coords_sgm (@rel_coords_sgm_A) { 
+    $ret_coords = vdr_CoordsSegmentAppend($ret_coords, coords_map_subseq_segment($full_coords, $sub_coords_sgm, $is_relative, $FH_HR));
+  }
+  $ret_coords = vdr_CoordsMergeAllAdjacentSegments($ret_coords, $FH_HR);
+  
+  return $ret_coords;
+}
+
+#################################################################
+# Subroutine: coords_map_subseq_segment()
+#
+# Incept:     EPN, Wed Mar 25 16:23:12 2020
+#
+# Synopsis: Return absolute nucleotide coordinates that correspond to
+#           the relative nucleotide coordinates segment in <$rel_coords_tok>.
+#           with nucleotide sequence with absolute coords <$abs_coords>.
+#
+#           Examples:
+#           if($is_relative == 1)
+#           full_coords    sub_coords  returns
+#           "11..100:+"    "6..38:+"   "16..48:+"     
+#
+#           if($is_relative == 1)
+#           full_coords    sub_coords  returns
+#           "11..100:+"    "16..48:+"  "6..48:+"     
+#
+# Arguments:
+#  $full_coords:    nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_coords_sgm: relative nucleotide coordinates (single segment) within $full_coords
+#  $is_relative:    '1' if $sub_coords are 'relative' to $full_coords and
+#                   our return coords string will be in 'absolute'
+#                   coordinate space of '$full_coords';
+#                   '0' if they are in the same 'absolute' coordinate
+#                   space as $full_coords, and our return coords string
+#                   will be 'relative' to coordinate space of
+#                   $full_coords.
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Absolute coordinates coords string corresponding to $sub_coords_sgm.
+#
+# Dies: if $sub_coords_sgm has a position that is longer than
+#       total length of absolute coords
+#
+#################################################################
+sub coords_map_subseq_segment { 
+  my $sub_name = "coords_map_subseq_segment";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($full_coords, $sub_coords_sgm, $is_relative, $FH_HR) = @_;
+
+  # printf("in $sub_name, full_coords: $full_coords, sub_coords_sgm: $sub_coords_sgm\n");
+
+  # $sub_coords_sgm should not be multiple segments (i.e have any ',' characters)
+  if($sub_coords_sgm =~ m/\,/) { 
+    ofile_FAIL("ERROR in $sub_name, sub_coords_sgm: $sub_coords_sgm seems to be multiple segments (has at least one ',')", 1, $FH_HR); 
+  }
+
+  # breakdown the full and subsequence coords
+  my $full_len = vdr_CoordsLength($full_coords, $FH_HR);
+  my $sub_len = vdr_CoordsLength($sub_coords_sgm, $FH_HR);
+  my ($orig_sub_start, $orig_sub_stop, $orig_sub_strand) = vdr_CoordsSegmentParse($sub_coords_sgm, $FH_HR);
+
+  # if $orig_sub_strand is -, reverse complement the subsequence coords, we will reverse complement comp $ret_coords back at the end prior to return
+  my ($sub_start, $sub_stop, $sub_strand); 
+  if   ($orig_sub_strand eq "+") { ($sub_start, $sub_stop, $sub_strand) = ($orig_sub_start, $orig_sub_stop,  "+"); }
+  elsif($orig_sub_strand eq "-") { ($sub_start, $sub_stop, $sub_strand) = ($orig_sub_stop,  $orig_sub_start, "-"); }
+  else                           { ofile_FAIL("ERROR in $sub_name, subsequence coords segment $sub_coords_sgm is not + or - strand", 1, $FH_HR); }
+
+  # make sure our subsequence start and stop are <= $full_len
+  if($sub_start > $full_len) { ofile_FAIL("ERROR in $sub_name, subsequence coords segment has a position $sub_start that exceeds full sequence coords ($full_coords) length: $full_len", 1, $FH_HR); }
+  if($sub_stop  > $full_len) { ofile_FAIL("ERROR in $sub_name, subsequence coords segment has a position $sub_stop  that exceeds full sequence coords ($full_coords) length: $full_len", 1, $FH_HR); }
+
+  my $ret_coords = ($is_relative) ? 
+      coords_map_subseq_segment_relative_to_absolute($full_coords, $sub_start, $sub_stop, $FH_HR) : 
+      coords_map_subseq_segment_absolute_to_relative($full_coords, $sub_start, $sub_stop, $FH_HR);
+
+  if($orig_sub_strand eq "-") { 
+    $ret_coords = vdr_CoordsReverseComplement($ret_coords, 0, $FH_HR); # 0: do not include carrots
+  }
+
+  # printf("in $sub_name, returning $ret_coords\n");
+  return $ret_coords;
+}
+
+#################################################################
+# Subroutine: coords_map_subseq_segment_relative_to_absolute()
+#
+# Incept:     EPN, Wed Mar 25 15:23:46 2020
+#
+# Synopsis: Helper function for coords_map_subseq_segment called
+#           when subsequence coordinates are relative to 
+#           full sequence coordinates, as opposed to being
+#           in the same 'absolute' coordinate space (see
+#           coords_map_subseq_segment_absolute_to_relative()
+#           for that case).
+#
+#           Subsequence start and stop are passed in, without
+#           strand because we assume it is always positive + 
+#           strand, caller should have reverse complemented it
+#           prior to calling this subroutine.
+#
+# Arguments:
+#  $full_coords:    nucleotide coordinates in full sequence [1..seqlen]
+#  $sub_start:      start position of subsequence
+#  $sub_stop:       stop position of subsequence
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Absolute coordinates string corresponding to $sub_start..$sub_stop.
+#
+# Dies: if $full_coords has a segment that is not + or - strand
+sub coords_map_subseq_segment_relative_to_absolute { 
+  my $sub_name = "coords_map_subseq_segment_relative_to_absolute";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($full_coords, $sub_start, $sub_stop, $FH_HR) = @_;
+
+  my @full_start_A  = (); # array of starts  for $full_coords segments
+  my @full_stop_A   = (); # array of stops   for $full_coords segments
+  my @full_strand_A = (); # array of strands for $full_coords segments
+  my $nsgm_full = vdr_FeatureStartStopStrandArrays($full_coords, \@full_start_A, \@full_stop_A, \@full_strand_A, $FH_HR);
+
+  # do the conversion, one full segment at a time
+  my $ret_coords = ""; # return value 
+  my $cur_len_to_convert = abs($sub_stop - $sub_start) + 1; # number of positions left to convert from relative to absolute coords
+  my $cur_full_offset = $sub_start - 1; # number of nucleotides to skip from start of $full_coords_tok when converting coords
+  my $conv_start = undef; # a start position converted from relative to absolute coords
+  my $conv_stop  = undef; # a stop  position converted from relative to absolute coords
+  for(my $a = 0; $a < $nsgm_full; $a++) { 
+    if($cur_len_to_convert > 0) { # only need to look at this token if we still have sequence left to convert
+      my ($full_start, $full_stop, $full_strand) = ($full_start_A[$a], $full_stop_A[$a], $full_strand_A[$a]);
+      my $full_sgm_len = abs($full_start - $full_stop) + 1;
+      if($cur_full_offset < $full_sgm_len) { 
+        # this full token has >= 1 nt corresponding to $sub_coords_sgm
+        if($full_strand eq "+") { 
+          $conv_start = $full_start + $cur_full_offset;
+          $conv_stop  = $conv_start + $cur_len_to_convert - 1;
+          # make sure we didn't go off the end of the full token
+          if($conv_stop > $full_stop) { $conv_stop = $full_stop; }
+        }
+        elsif($full_strand eq "-") { 
+          $conv_start = $full_start - $cur_full_offset;
+          $conv_stop  = $conv_start - $cur_len_to_convert + 1;
+          # make sure we didn't go off the end of the nt token
+          if($conv_stop < $full_stop) { $conv_stop = $full_stop; }
+        }          
+        else { 
+          ofile_FAIL("ERROR in $sub_name, full_coords token $full_start..$full_stop:$full_strand has strand $full_strand that is not either + or -", 1, $FH_HR); 
+        }
+        # update length of $sub_coords_sgm we still have to convert
+        $cur_len_to_convert -= abs($conv_stop - $conv_start) + 1;
+        
+        # append converted token to return coords string
+        $ret_coords = vdr_CoordsSegmentAppend($ret_coords, vdr_CoordsSegmentCreate($conv_start, $conv_stop, $full_strand, $FH_HR));
+      }
+      # adjust nt offset so that for next nt coords token we start at the proper position
+      $cur_full_offset -= $full_sgm_len;
+      if($cur_full_offset < 0) { $cur_full_offset = 0; }
+    } # end of 'if($cur_len_to_convert > 0)
+  } # end of 'for(my $a = 0; $a < $nsgm_full; $a++)'
+
+  return $ret_coords;
 }
 
 #################################################################
@@ -3105,7 +3276,7 @@ sub vdr_CoordsProteinRelativeToAbsolute {
 #  
 #           pt_coords            returns 
 #           "1..10:+"            "1..30:+"
-#           "1..10:+,15..30:+"   "1..30:+,43..90");
+#           "1..10:+,15..30:+"   "1..30:+,43..90:+";
 #
 # See t/01-coords.t for additional examples
 #
@@ -3148,7 +3319,111 @@ sub vdr_CoordsProteinToNucleotide {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsRelativeSubseqCoords()
+# Subroutine: vdr_CoordsNucleotideSegmentToProtein()
+#
+# Incept:     EPN, Wed Mar 25 21:18:33 2020
+#
+# Synopsis: Return protein coordinates that correspond to the
+#           nucleotide coordinate segment in <$nt_coords_sgm>. 
+#
+#           Input nucleotide segment should be plus strand and
+#           we assume it's relative to the full protein coding
+#           single segment region: 1..(protein_len*3).
+#
+#           pt_start = (nt_start + 2) / 3 (rounding up if ((nt_start + 2) % 3) != 0)
+#           pt_stop  = (nt_stop) / 3 (rounding down if (nt_stop % 3) != 0)
+#
+#           nt_coords            returns 
+#           "1..24:+"            "1..8:+"
+#           "4..24:+"            "2..8:+"
+#           "4..23:+"            "2..7:+"
+#           "3..23:+"            "2..7:+"
+#
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#  $nt_coords_sgm: nucleotide coordinate segment
+#  $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Protein coords segment string corresponding to $nt_coords_sgm in
+#            protein coordinates.
+#
+# Dies: if unable to parse $nt_coords_sgm
+#
+#################################################################
+sub vdr_CoordsNucleotideSegmentToProtein { 
+  my $sub_name = "vdr_CoordsNucleotideSegmentToProtein";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($nt_coords_sgm, $FH_HR) = @_;
+
+  # $nt_coords_sgm should not be multiple segments (i.e have any ',' characters)
+  if($nt_coords_sgm =~ m/\,/) { 
+    ofile_FAIL("ERROR in $sub_name, nt_coords_sgm: $nt_coords_sgm seems to be multiple segments (has at least one ',')", 1, $FH_HR); 
+  }
+
+  my ($nt_start, $nt_stop, $nt_strand) = vdr_CoordsSegmentParse($nt_coords_sgm, $FH_HR);
+  if($nt_strand ne "+") { ofile_FAIL("ERROR in $sub_name, input nt coords segment strand $nt_coords_sgm is not +", 1, $FH_HR); }
+
+  my $pt_start = (($nt_start + 2) % 3 == 0) ? int(($nt_start + 2) / 3) : int(($nt_start + 2) / 3) + 1;
+  my $pt_stop  = int($nt_start / 3);
+  return vdr_CoordsSegmentCreate($pt_start, $pt_stop, "+", $FH_HR);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsNucleotideToProtein()
+#
+# Incept:     EPN, Thu Mar 26 07:03:22 2020
+#
+# Synopsis: Return relative protein coordinates that correspond to the
+#           nucleotide coordinates in <$nt_coords>. All segments in 
+#           $nt_coords should be +.
+#
+#           nt_coords            returns 
+#           "4..33:+"            "2..11:+"
+#           "1..29:+"            "1..9:+"
+#           "1..30:+,34..36:+"   "1..10:+,11..12:+"
+#
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#  $nt_coords:  nucleotide coordinates 
+#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
+#            coordinates relative to $abs_nt_coords.
+#
+# Dies: if unable to parse $nt_coords
+#       if $nt_coords contains segments of different strands
+#
+#################################################################
+sub vdr_CoordsNucleotideToProtein { 
+  my $sub_name = "vdr_CoordsNucleotideToProtein";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($nt_coords, $FH_HR) = @_;
+
+  my $nt_summary_strand = vdr_FeatureSummaryStrand($nt_coords, $FH_HR);
+  if($nt_summary_strand ne "+") { 
+    ofile_FAIL("ERROR in $sub_name, in nt_coords $nt_coords not all segments are on + strand", 1, $FH_HR);
+  }
+
+  my @nt_coords_sgm_A = ();
+  my $nsgm = vdr_CoordsSplitIntoSegments($nt_coords, \@nt_coords_sgm_A);
+
+  my $pt_coords = "";
+  for(my $i = 0; $i < $nsgm; $i++) { 
+    vdr_CoordsAppendSegment($pt_coords, vdr_CoordsNucleotideSegmentToProtein($nt_coords_sgm_A[$i], $FH_HR));
+  }
+  # no need to 
+  
+  return $pt_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSegmentOverlap()
 # Incept:     EPN, Wed Mar 25 12:27:04 2020
 #
 # Synopsis: Return number of positions of overlap between 
@@ -3346,6 +3621,36 @@ sub vdr_CoordsMergeTwoSegmentsIfAdjacent {
   }
 
   return "";  
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSplitIntoSegments()
+#
+# Incept:     EPN, Thu Mar 26 07:10:55 2020
+#
+# Synopsis: Fill a passed in array @{$sgm_AR} with the 
+#           segments of a coords string $coords and return.
+#           No validation of the coords string is done.
+#
+# Arguments:
+#  $coords: coordinate string
+#  $sgm_AR: REF to array to fill
+#
+# Returns:  Number of comma delimited segments in $coords
+#
+# Dies: Never
+#
+#################################################################
+sub vdr_CoordsSplitIntoSegments { 
+  my $sub_name = "vdr_CoordsSplitIntoSegments";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $sgm_AR) = @_;
+
+  @{$sgm_AR} = split(",", $coords);
+
+  return;
 }
 
 #################################################################

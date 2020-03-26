@@ -434,7 +434,7 @@ for($i = 0; $i < $ntests; $i++) {
 }
 
 ############################################
-# vdr_CoordsRelativeToAbsolute() tests
+# vdr_CoordsMapSubseqRelativeToAbsolute() tests
 ############################################
 @desc_A       = ();
 @abs_coords_A = ();
@@ -634,26 +634,26 @@ push(@exp_val_A,     "99..94:-,101..75:-,68..63:-,60..54:-");
 
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
-  $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
-                                          $rel_coords_A[$i], undef);
-  is($cur_val, $exp_val_A[$i], "vdr_CoordsRelativeToAbsolute(): $desc_A[$i]");
+  $cur_val = vdr_CoordsMapSubseqRelativeToAbsolute($abs_coords_A[$i], 
+                                 $rel_coords_A[$i], undef);
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsMapSubseqRelativeToAbsolute(): $desc_A[$i]");
   # sanity check:
   # make sure the length of the returned coords string is the same as the
   # length of the $rel_nt_or_aa_coords string
   $rel_length     = vdr_CoordsLength($rel_coords_A[$i], undef);
   $cur_val_length = vdr_CoordsLength($cur_val, undef);
-  is($cur_val_length, $rel_length, "vdr_CoordsRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
+  is($cur_val_length, $rel_length, "vdr_CoordsMapSubseqRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 
   # reverse complement $rel_coords_A
   $cur_rel_coords = vdr_CoordsReverseComplement($rel_coords_A[$i], 0, undef);
-  $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
+  $cur_val = vdr_CoordsMapSubseqRelativeToAbsolute($abs_coords_A[$i], 
                                           $cur_rel_coords, undef);
   $cur_val = vdr_CoordsReverseComplement($cur_val, 0, undef);
-  is($cur_val, $exp_val_A[$i], "vdr_CoordsRelativeToAbsolute() revcomp: $desc_A[$i]");
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsMapSubseqRelativeToAbsolute() revcomp: $desc_A[$i]");
 }
 
 #############################################
-# vdr_CoordsProteinRelativeToAbsolute() tests
+# vdr_CoordsMapProteinSubseqRelativeToAbsolute() tests
 #
 # Relative protein coords segments must all
 # be "+" strand.
@@ -694,15 +694,15 @@ push(@exp_val_A,       "26..30:+,30..39:+,43..48:+");
 
 $ntests = scalar(@desc_A);
 for($i = 0; $i < $ntests; $i++) { 
-  $cur_val = vdr_CoordsProteinRelativeToAbsolute($abs_coords_A[$i], 
+  $cur_val = vdr_CoordsMapProteinSubseqRelativeToAbsolute($abs_coords_A[$i], 
                                                  $rel_pt_coords_A[$i], undef);
-  is($cur_val, $exp_val_A[$i], "vdr_CoordsProteinRelativeToAbsolute(): $desc_A[$i]");
+  is($cur_val, $exp_val_A[$i], "vdr_CoordsMapProteinSubseqRelativeToAbsolute(): $desc_A[$i]");
   # sanity check:
   # make sure the length of the returned coords string is the same as the
   # length of the $rel_nt_or_aa_coords string
   $rel_length     = vdr_CoordsLength($rel_pt_coords_A[$i], undef);
   $cur_val_length = (vdr_CoordsLength($cur_val, undef) / 3);
-  is($cur_val_length, $rel_length, "vdr_CoordsProteinRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
+  is($cur_val_length, $rel_length, "vdr_CoordsMapProteinSubseqRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 }
 
 #############################################
