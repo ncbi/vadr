@@ -168,7 +168,8 @@ opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, unde
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default                group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",              "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",      "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+opt_Add("--noprotid",     "boolean",  0,                    $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",  "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
@@ -260,6 +261,7 @@ my $options_okay =
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
+                "noprotid"      => \$GetOptions_H{"--noprotid"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -6014,7 +6016,8 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
-  my $do_nomisc = opt_Get("--nomisc", $opt_HHR); # 1 to never output misc_features
+  my $do_nomisc   = opt_Get("--nomisc",   $opt_HHR); # 1 to never output misc_features
+  my $do_noprotid = opt_Get("--noprotid", $opt_HHR); # 1 to never output protein_id qualifiers
 
   # determine order of alert codes to print
   my $alt_code;
@@ -6074,6 +6077,9 @@ sub output_feature_table {
       my $ftr_results_HAHR = \%{$ftr_results_HHAHR->{$mdl_name}}; # for convenience
       my $sgm_results_HAHR = \%{$sgm_results_HHAHR->{$mdl_name}}; # for convenience
       my $nftr = scalar(@{$ftr_info_AHR});
+      # variables related to protein_id qualifiers for CDS and mat_peptides
+      my $nprotein_id = 0; # index of protein_id qualifier, incremented as they are added
+      my %ftr_idx2protein_id_idx_H = (); # key is a feature index that is a CDS, value is protein_id index for that feature
 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
@@ -6086,7 +6092,15 @@ sub output_feature_table {
           my $ftr_coords_str          = ""; # string of coordinates for this feature
           my $ftr_out_str             = ""; # output string for this feature
           my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-          
+          my $is_cds                  = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+          my $parent_ftr_idx          = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if has no parents
+          my $parent_is_cds           = ($parent_ftr_idx == -1) ? 0 : vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx);
+
+          # sanity check
+          if($is_cds && $parent_is_cds) { 
+            ofile_FAIL("ERROR in $sub_name, feature $ftr_idx is a CDS and its parent is a CDS, $sub_name can't handle this", 1, $FH_HR);
+          }          
+
           my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
           my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
           my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
@@ -6168,6 +6182,26 @@ sub output_feature_table {
               if($is_5trunc) { # only add the codon_start if we are 5' truncated
                 $ftr_out_str .= $tmp_str;
               }
+            }
+            if((! $do_noprotid) && ($is_cds_or_mp)) { 
+              # add protein_id if we are a cds or mp
+              # determine index for th protein_id qualifier
+              my $protein_id_ftr_idx = ($is_cds) ? $ftr_idx : $parent_ftr_idx; # if !$is_cds, must be mat_peptide
+              my $protein_id_idx = undef;
+              # determine index for this protein
+              if(defined $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx}) { 
+                # the CDS itself or at least one mat_peptide with this
+                # CDS as its parent was already output, so use the same
+                # index that feature used
+                $protein_id_idx = $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx};
+              }
+              else { 
+                # no index for this CDS yet exists, create it
+                $nprotein_id++;
+                $protein_id_idx = $nprotein_id;
+                $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx} = $protein_id_idx;
+              }
+              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", sprintf("%s" . "_" . "%d", $seq_name, $protein_id_idx), $FH_HR);
             }
           }
           else { # we are a misc_feature, add the 'similar to X' note
@@ -6442,7 +6476,9 @@ sub helper_ftable_coords_to_out_str {
 # Incept:      EPN, Tue Oct 30 13:41:58 2018
 #
 # Purpose:    Add a qualifier line to a string that will be 
-#             part of a feature table output.
+#             part of a feature table output, where the 
+#             qualifier value is obtained from
+#             @{$ftr_info_AHR}.
 #
 # Arguments: 
 #  $ftr_idx:      feature index
@@ -6489,7 +6525,9 @@ sub helper_ftable_add_qualifier_from_ftr_info {
 # Incept:      EPN, Tue Oct 30 13:52:19 2018
 #
 # Purpose:    Add a qualifier line to a string that will be 
-#             part of a feature table output.
+#             part of a feature table output, where the
+#             qualifier value is obtained from 
+#             %{$ftr_results_HAHR}.
 #
 # Arguments: 
 #  $seq_name:          sequence name
@@ -6525,6 +6563,45 @@ sub helper_ftable_add_qualifier_from_ftr_results {
       $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{$results_key});
     }
   }
+  return $ret_str;
+}
+
+#################################################################
+# Subroutine:  helper_ftable_add_qualifier_specified()
+# Incept:      EPN, Thu Mar 26 14:19:27 2020
+#
+# Purpose:    Add a qualifier line to a string that will be 
+#             part of a feature table output, where that
+#             qualifier and its value are specified by the
+#             caller.
+#
+# Arguments: 
+#  $ftr_idx:      feature index
+#  $qualifier:    name for the qualifier
+#  $value:        value for the qualifier (undef for no value)
+#  $FH_HR:        REF to hash of file handles
+#
+# Returns:    String to append to the feature table.
+#
+# Dies: never
+#
+################################################################# 
+sub helper_ftable_add_qualifier_specified {
+  my $sub_name = "helper_ftable_add_qualifier_specified";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_idx, $qualifier, $value, $FH_HR) = @_;
+
+  my $ret_str = "";
+
+  if((defined $value) && ($value ne "")) { 
+    $ret_str = sprintf("\t\t\t%s\t%s\n", $qualifier, $value);
+  }
+  else { 
+    $ret_str = sprintf("\t\t\t%s\n", $qualifier);
+  }
+
   return $ret_str;
 }
 
