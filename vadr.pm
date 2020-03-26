@@ -82,8 +82,9 @@ require "sqp_utils.pm";
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
+# vdr_FeatureParentIndex()
 # vdr_FeatureStartStopStrandArrays()
-# vdr_FeatureSummaryStrand
+# vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
 # 
 # Subroutines related to alerts:
@@ -1048,6 +1049,36 @@ sub vdr_Feature3pMostPosition {
   }
 
   return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: vdr_FeatureParentIndex
+# Incept:     EPN, Tue Mar 24 16:40:27 2020
+# 
+# Purpose:    Return "parent_idx_str" if it is not "GBNULL"
+#             else return "1"
+#             be called after vdr_FeatureInfoInitializeParentIndexStrings().
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never; does not validate $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}
+#
+#################################################################
+sub vdr_FeatureParentIndex {
+  my $sub_name = "vdr_FeatureParentIndex";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} eq "GBNULL") { 
+    return -1;
+  }
+  return $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"};
 }
 
 #################################################################
