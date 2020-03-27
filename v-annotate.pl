@@ -66,7 +66,7 @@ require "sqp_utils.pm";
 # A table of alerts is output by v-annotate.pl when the --alt_list
 # option is used.
 # 
-# List of subroutines in which errors are detected and added:
+# List of subroutines in which alerts are detected and added:
 # 1. add_classification_alerts()
 #    noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, revcompl, lowcovrg, biasdseq (10)
 #
@@ -77,18 +77,22 @@ require "sqp_utils.pm";
 #    indf5gap, indf5loc, indf3gap, indf3loc (4)
 #
 # 4. fetch_features_and_add_cds_and_mp_alerts()
-#    mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, peptrans* (7)
+#    mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn (6)
 #
 # 5. add_blastx_alerts()
-#    indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp, peptrans* (11)
+#    indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10
 #
 # 6. alert_add_noftrann()
 #    noftrann (1)
 # 
-# 7. add_low_similarity_alerts()
-#    lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis, peptrans* (7)
+# 7. alert_add_parent_based()
+#    peptrans (1)
+#
+# 8. add_low_similarity_alerts()
+#    lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
 # 
-# * peptrans errors can be added in multiple places, and are only added once per feature
+# 9. add_frameshift_alerts_for_one_sequence()
+#    fsthicnf, fstlocnf (8)
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -896,16 +900,29 @@ else {
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ##############################################################
-# Add noftrann errors for sequences with zero annotated features
+# Add noftrann alerts for sequences with zero annotated features
+# Add alerts to children features that have parents with 
+# fatal alerts for specific feature combinations:
+# (currently only one such parent/child type relationship
+#  but could be expanded):
+#      parent_ftr_type  child_ftr_type child_alert
+#      ---------------  -------------- -----------
+#      CDS              mat_peptide    peptrans
 ##############################################################
 # add per-sequence 'noftrann' errors (zero annotated features)
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     alert_add_noftrann(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
-                    \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+                       \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+    alert_add_parent_based(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
+                           \%alt_ftr_instances_HHH, "CDS", "mat_peptide", "peptrans", "VADRNULL", \%opt_HH, \%{$ofile_info_HH{"FH"}});
   }
 }
+
+##############################################################
+# Add noftrann errors for sequences with zero annotated features
+##############################################################
 
 ################################
 # Output annotations and alerts
@@ -2835,6 +2852,8 @@ sub add_frameshift_alerts_for_one_sequence {
   my $fst_min_nt       = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
   my $fst_high_ppthr   = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
   my $fst_low_ppthr    = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
+  my $fsthicnf_is_fatal = $alt_info_HHR->{"fsthicnf"}{"causes_failure"} ? 1 : 0;
+  my $fstlocnf_is_fatal = $alt_info_HHR->{"fstlocnf"}{"causes_failure"} ? 1 : 0;
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
 
@@ -3073,8 +3092,9 @@ sub add_frameshift_alerts_for_one_sequence {
                   my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
+                  my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
-                                             ($span_avgpp > ($fst_high_ppthr - $small_value)) ? "fsthicnf" : "fstlocnf", 
+                                             ($is_hicnf) ? "fsthicnf" : "fstlocnf", 
                                              $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
@@ -3104,6 +3124,7 @@ sub add_frameshift_alerts_for_one_sequence {
           }
         } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
       } # end of 'if($nframe_tok > 1)'
+
       if(scalar(@cds_alt_str_A) > 0) { 
         # create and output a stockholm file for each segment of this seq/CDS 
         # remove all sequences other than the one we want
@@ -3258,10 +3279,6 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  # get children info for all features, we'll use this in the loop below
-  my @children_AA = ();
-  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
-
   my $atg_only = opt_Get("--atgonly", $opt_HHR);
 
   my $ftr_idx;
@@ -3294,12 +3311,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx;
       %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
-      my $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
 
       my %alt_str_H = (); # added to as we find alerts below
       # mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
-      my $alt_flag  = 0;  # set to '1' if we set an alert for this feature
       
       # determine if this feature is 5' and/or 3' truncated
       # we do this outside the main loop since the logic is a bit complex:
@@ -3476,21 +3491,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           } # end of 'if($ftr_is_cds_or_mp)'
         } # end of 'if((! $ftr_is_5trunc) && (! $ftr_is_3trunc))
 
-        # if we added an alert for a CDS, step through all children of this feature (if any) and add peptrans
-        my $alt_flag = 0;
+        # actually add the alerts
         foreach my $alt_code (sort keys %alt_str_H) { 
           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str_H{$alt_code}, $FH_HR);
-          $alt_flag = 1;
-        }
-        if(($ftr_is_cds) && ($alt_flag) && ($ftr_nchildren > 0)) { 
-          for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-            my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-            if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
-               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
-               (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"peptrans"})) { 
-              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "peptrans", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
-            }
-          }
         }
 
         # if we are a mature peptide, make sure we are adjacent to the next one, if there is one
@@ -3929,11 +3932,6 @@ sub add_blastx_alerts {
   my $xmaxdel   = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
   my $xminntlen = opt_Get("--xminntlen", $opt_HHR);
   
-  # get children info for all features
-  my @children_AA = ();
-  my $ftr_nchildren = undef;
-  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, \@children_AA, $FH_HR);
-
   # get info on position-specific insert and delete maximum exceptions if there are any
   my @maxins_exc_AH = ();
   my @maxdel_exc_AH = ();
@@ -3951,7 +3949,6 @@ sub add_blastx_alerts {
     if($seq_len_HR->{$seq_name} >= $xminntlen) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-          $ftr_nchildren = scalar(@{$children_AA[$ftr_idx]});
           my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
           # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
           my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
@@ -4132,24 +4129,13 @@ sub add_blastx_alerts {
                   }
                 }
               }
-            } # end of 'if(defined $n_start)' entered to identify b_* alerts
-            my $alt_flag = 0;
+            } # end of 'if(defined $n_start)'
+
+            # actually add the alerts
             foreach my $alt_code (sort keys %alt_str_H) { 
               my @alt_str_A = split(":VADRSEP:", $alt_str_H{$alt_code});
               foreach my $alt_str (@alt_str_A) { 
                 alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
-                $alt_flag = 1;
-              }
-            }
-            # if we added an alert, step through all children of this feature (if any) and add peptrans
-            if(($alt_flag) && ($ftr_nchildren > 0)) { 
-              for(my $child_idx = 0; $child_idx < $ftr_nchildren; $child_idx++) { 
-                my $child_ftr_idx = $children_AA[$ftr_idx][$child_idx];
-                if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
-                   (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
-                   (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{"peptrans"})) { 
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "peptrans", $seq_name, $child_ftr_idx, "VADRNULL", $FH_HR);
-                }
               }
             }
           } # end of 'if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start))'
@@ -5196,6 +5182,104 @@ sub alert_add_noftrann {
     }
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: alert_add_parent_based()
+# Incept:     EPN, Fri Mar 27 06:37:18 2020
+# Purpose:    Adds alerts to children features that have 
+#             parents features with fatal alerts.
+#
+# Arguments:
+#  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
+#  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
+#  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
+#  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
+#  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $parent_type:             feature type of parent (e.g. "CDS")
+#  $child_type:              feature type of child  (e.g. "mat_peptide")
+#  $alt_code:                alert code (e.g. "peptrans")
+#  $alt_msg:                 message for alert code instance (often "VADRNULL")
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:                   REF to hash of file handles, including 'log'
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub alert_add_parent_based { 
+  my $sub_name = "alert_add_parent_based";
+  my $nargs_exp = 11;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, 
+      $alt_ftr_instances_HHHR, $parent_type, $child_type, $alt_code, $alt_msg, $opt_HHR, $FH_HR) = @_;
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  printf("in $sub_name\n");
+
+  # get children info for all features, we'll use this in the loop below
+  my @children_AA = ();
+  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, $child_type, \@children_AA, $FH_HR);
+
+  # get array of feature indices that are of type $parent_type
+  my @parent_ftr_idx_A = ();
+  my $ftr_idx; 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($ftr_info_AHR->[$ftr_idx]{"type"} eq $parent_type) && # feature $ftr_idx is of type $parent_type
+       (scalar(@{$children_AA[$ftr_idx]}) > 0)) {             # feature $ftr_idx has at least one childe of type $child_type
+      push(@parent_ftr_idx_A, $ftr_idx);
+    }
+  }
+
+  my $nparent_ftr = scalar(@parent_ftr_idx_A); # number of features of type $parent_type with >= 1 child of type $child_type
+  if($nparent_ftr == 0) { 
+    # no features of type $parent_idx with children of type $child_type, 
+    # so no children to add alerts for, return
+    return;
+  }
+
+  # get array of all fatal feature alert types 
+  my @fatal_alt_codes_A = (); # array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1
+  foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+    if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
+       ($alt_info_HHR->{$alt_code}{"causes_failure"} == 1)) { 
+      push(@fatal_alt_codes_A, $alt_code);
+    }
+  }
+
+  # for each sequence:
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    my $seq_name = $seq_name_AR->[$seq_idx];
+    if(defined $alt_ftr_instances_HHHR->{$seq_name}) { 
+      # at least one feature alert exists for this sequence
+      # for each feature that is a parent of type $parent_type with
+      # at least one child of type $child_type:
+      foreach my $parent_ftr_idx (@parent_ftr_idx_A) { 
+        if(defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) { 
+          # at least one feature alert exists for this parent feature in this sequence
+          # check if any of the alerts for this parent feature are fatal
+          my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@fatal_alt_codes_A, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
+          if($have_fatal) { 
+            # at least one fatal alert for this parent feature, add child alert if it doesn't already exist
+            my $nchildren = scalar(@{$children_AA[$parent_ftr_idx]});
+            for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
+              my $child_ftr_idx = $children_AA[$parent_ftr_idx][$child_idx];
+              if((! defined $alt_ftr_instances_HHHR->{$seq_name}) ||
+                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}) ||
+                 (! defined $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}{$alt_code})) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $child_ftr_idx, $alt_msg, $FH_HR);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
   return;
 }
 
@@ -7201,4 +7285,45 @@ sub get_3p_most_sgm_idx_with_results {
   }
 
   return -1; # none found
+}
+
+#################################################################
+# Subroutine: check_for_feature_alert_codes()
+# Incept:     EPN, Fri Mar 27 07:01:41 2020
+# Purpose:    Return '1' if at least one alert in an array
+#             of alert codes exists in $alt_ftr_instances_HR,
+#             else return 0.
+#
+# Arguments:
+#  $alt_info_HHR:         REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code_AR:          array of feature codes we are interested in
+#  $alt_ftr_instances_HR: REF to hash of feature alert instances, key is 
+#                         alert code, value is message for that alert code
+#                         can be undef if not alerts exist
+#             
+# Returns:  '1' if any of the alert codes in @{$alt_code_AR} exist
+#           as keys in %{$alt_ftr_instances_HR}, else '0'
+#
+# Dies:     never
+#
+#################################################################
+sub check_for_feature_alert_codes { 
+  my $sub_name = "check_for_feature_alert_codes";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_info_HHR, $alt_code_AR, $alt_ftr_instances_HR) = (@_);
+
+  if((! defined $alt_ftr_instances_HR) || 
+     (! defined $alt_code_AR)) { 
+    return 0;
+  }
+
+  foreach my $alt_code (@{$alt_code_AR}) { 
+    if(defined $alt_ftr_instances_HR->{$alt_code}) { 
+      return 1; 
+    }
+  }
+
+  return 0;
 }
