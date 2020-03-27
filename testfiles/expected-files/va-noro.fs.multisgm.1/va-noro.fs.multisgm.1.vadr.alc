@@ -4,5 +4,6 @@
 1     unexleng  yes      UNEXPECTED_LENGTH              feature      4     2  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
 2     cdsstopn  yes      CDS_HAS_STOP_CODON             feature      4     2  in-frame stop codon exists 5' of stop position predicted by homology to reference
 3     fsthicnf  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature     10     2  high confidence potential frameshift in CDS
-4     indf3pst  yes      INDEFINITE_ANNOTATION_END      feature      3     2  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+4     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature     12     2  mat_peptide may not be translated because its parent CDS has a problem
+5     indf3pst  yes      INDEFINITE_ANNOTATION_END      feature      3     2  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
 #---  --------  -------  -----------------------------  -------  -----  ----  -----------

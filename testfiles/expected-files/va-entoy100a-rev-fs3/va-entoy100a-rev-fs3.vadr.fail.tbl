@@ -1,18 +1,23 @@
 >Feature ENTOY100A-REV-3-fs4
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs4_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs4_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs4_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs4_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-3-fs4_1
 <91	68	gene
 			gene	one
 91	70	misc_feature
@@ -39,18 +44,23 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 >Feature ENTOY100A-REV-3-fs5
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs5_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs5_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs5_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs5_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-3-fs5_1
 <90	68	gene
 			gene	one
 90	70	misc_feature
@@ -73,26 +83,31 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 >Feature ENTOY100A-REV-3-fs7
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs7_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs7_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs7_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs7_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-3-fs7_1
 <86	68	gene
 			gene	one
 <86	70	misc_feature
 			note	similar to protein one
-78	73	mat_peptide
-			product	protein one mp2
-<86	79	mat_peptide
-			product	protein one mp1
+78	73	misc_feature
+			note	similar to protein one mp2
+<86	79	misc_feature
+			note	similar to protein one mp1
 <86	79	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -102,30 +117,37 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 86..82 (5 nt, avgpp: 0.945) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:82(1);]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (stem_loop.1) alignment to homology model is a gap at 3' boundary [RF position 82]
 >Feature ENTOY100A-REV-3-fs8
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs8_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs8_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs8_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs8_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-3-fs8_1
 <85	68	gene
 			gene	one
 <85	70	misc_feature
 			note	similar to protein one
-78	73	mat_peptide
-			product	protein one mp2
-<85	79	mat_peptide
-			product	protein one mp1
+78	73	misc_feature
+			note	similar to protein one mp2
+<85	79	misc_feature
+			note	similar to protein one mp1
 <85	79	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -135,18 +157,24 @@ ERROR: INDEFINITE_ANNOTATION_END: (stem_loop.1) alignment to homology model is a
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 85..82 (4 nt, avgpp: 0.938) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:82(1);]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (stem_loop.1) alignment to homology model is a gap at 3' boundary [RF position 82]
 >Feature ENTOY100A-REV-3-fs13
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs13_2
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs13_1
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs13_1
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs13_1
 70	54	misc_feature
 54	37
 35	28
@@ -159,14 +187,18 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-3-fs14
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs14_2
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs14_1
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs14_1
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs14_1
 <69	54	misc_feature
 54	37
 35	28
@@ -177,14 +209,18 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 >Feature ENTOY100A-REV-3-fs15
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs15_2
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs15_1
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs15_1
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs15_1
 <68	54	misc_feature
 54	37
 35	28
@@ -196,14 +232,18 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 >Feature ENTOY100A-REV-3-fs16
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs16_2
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs16_1
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs16_1
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs16_1
 69	53	misc_feature
 53	37
 35	28
@@ -214,14 +254,18 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 >Feature ENTOY100A-REV-3-fs17
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs17_2
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs17_1
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs17_1
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs17_1
 <68	53	misc_feature
 53	37
 35	28
@@ -232,14 +276,18 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 >Feature ENTOY100A-REV-3-fs18
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-3-fs18_2
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs18_1
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-3-fs18_1
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs18_1
 <67	53	misc_feature
 53	37
 35	28
@@ -255,8 +303,10 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			note	similar to protein two
 4	>1	CDS
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs25_1
 4	>1	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs25_1
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 40..32 (9 nt, avgpp: 0.947) on - strand are inconsistent with dominant frame (-3); inserts:32; deletes:none;]
@@ -267,8 +317,10 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			note	similar to protein two
 3	>1	CDS
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs26_1
 3	>1	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs26_1
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 38..31 (8 nt, avgpp: 0.944) on - strand are inconsistent with dominant frame (-1); inserts:31; deletes:none;]
@@ -288,8 +340,10 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			note	similar to protein two
 4	>1	CDS
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs28_1
 4	>1	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs28_1
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 31..22 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-1); inserts:31; deletes:22(1);]
@@ -300,8 +354,10 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			note	similar to protein two
 3	>1	CDS
 			product	protein three
+			protein_id	ENTOY100A-REV-3-fs29_1
 3	>1	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-3-fs29_1
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 30..21 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-2); inserts:30; deletes:21(1);]

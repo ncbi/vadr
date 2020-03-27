@@ -4,18 +4,23 @@
 <1	>174	CDS
 			product	VP2
 			codon_start	1
+			protein_id	NC_001959.2-manually-added-frameshifts-1/7054-7227_1
 >Feature NC_001959.2-manually-added-frameshifts-2/1-50
 5	>50	gene
 			gene	ORF1
 5	>50	CDS
 			product	nonstructural polyprotein
+			protein_id	NC_001959.2-manually-added-frameshifts-2/1-50_1
 5	>50	mat_peptide
 			product	p48
+			protein_id	NC_001959.2-manually-added-frameshifts-2/1-50_1
 >Feature NC_001959.2-manually-added-frameshifts-2/67-500
 <1	>434	gene
 			gene	ORF1
 <1	>434	CDS
 			product	nonstructural polyprotein
 			codon_start	2
+			protein_id	NC_001959.2-manually-added-frameshifts-2/67-500_1
 <1	>434	mat_peptide
 			product	p48
+			protein_id	NC_001959.2-manually-added-frameshifts-2/67-500_1
