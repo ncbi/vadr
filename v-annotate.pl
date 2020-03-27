@@ -11,6 +11,7 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm"; 
+require "vadr-fast.pm"; 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
 require "sqp_seq.pm";
@@ -109,6 +110,7 @@ $execs_H{"esl-seqstat"}       = $env_vadr_easel_dir    . "/esl-seqstat";
 $execs_H{"esl-translate"}     = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}        = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}            = $env_vadr_blast_dir    . "/blastx";
+$execs_H{"blastn"}            = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"parse_blastx"}      = $env_vadr_scripts_dir  . "/parse_blastx.pl";
 utl_ExecHValidate(\%execs_H, undef);
 
@@ -188,11 +190,11 @@ opt_Add("--fstminnt",   "integer",    6,                    $g,   undef,   undef
 opt_Add("--fsthighthr", "real",      0.8,                  $g,   undef,   undef,      "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstlowthr",  "real",      0.3,                  $g,   undef,   undef,      "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 
-opt_Add("--xalntol",    "integer",   5,                    $g,   undef,   undef,      "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,"--skipblast", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,"--skipblast", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                   $g,   undef,"--skipblast", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hlonescore",  "integer",  10,                   $g,"--addhmmer", undef,    "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",       "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",    "integer",   5,                    $g,   undef,   undef,       "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,"--skipblastx", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,"--skipblastx", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,                   $g,   undef,"--skipblastx", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hlonescore",  "integer",  10,                   $g,"--addhmmer", undef,     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",       "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type   default                group  requires incompat   preamble-output                                                                help-output    
@@ -203,13 +205,18 @@ opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,
 opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
-#        option               type   default                group  requires incompat      preamble-output                                                                                 help-output    
-opt_Add("--xmatrix",     "string",   undef,                  $g,     undef,"--skipblast", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,                     $g,     undef,"--skipblast", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,                     $g,     undef,"--skipblast", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,                      $g,     undef,"--skipblast", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
-opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,     "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
-# --xminntlen has implications outside of blast, that's why it's not incompatible with --skipblast
+#        option               type   default                group  requires incompat       preamble-output                                                                                 help-output    
+opt_Add("--xmatrix",     "string",   undef,                  $g,     undef,"--skipblastx", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,                     $g,     undef,"--skipblastx", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,                     $g,     undef,"--skipblastx", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,                      $g,     undef,"--skipblastx", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,         "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
+# --xminntlen has implications outside of blast, that's why it's not incompatible with --skipblastx
+
+$opt_group_desc_H{++$g} = "options for blastn-based acceleration";
+#        option               type   default                group  requires incompat    preamble-output                                    help-output    
+opt_Add("--fast",         "boolean",     0,                   $g,"--blastndb", undef,  "run in fast mode using blastn-based acceleration", "run in fast mode using blastn-based acceleration", \%opt_HH, \@opt_order_A);
+opt_Add("--blastndb",      "string", undef,                   $g,     undef, undef,     "path to blastn database is <s>",                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -223,11 +230,11 @@ opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default            group   requires    incompat                                      preamble-output                                            help-output    
 opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",                "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipblast",     "boolean", 0,                    $g,   undef,      undef,                                       "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
+opt_Add("--skipblastx",    "boolean", 0,                    $g,   undef,      undef,                                       "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for adding stages";
-#     option               type       default            group   requires    incompat                                      preamble-output                                            help-output    
-opt_Add("--addhmmer",      "boolean", 0,                    $g,"--skipblast", undef,                                       "use hmmer for protein validation",                        "use hmmer for protein validation", \%opt_HH, \@opt_order_A);
+#     option               type       default            group   requires      incompat                                      preamble-output                                            help-output    
+opt_Add("--addhmmer",      "boolean", 0,                    $g,"--skipblastx", undef,                                       "use hmmer for protein validation",                        "use hmmer for protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default                  group  requires incompat  preamble-output                         help-output    
@@ -294,6 +301,9 @@ my $options_okay =
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
                 'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
+# options related to blastn-based acceleration
+                'fast'          => \$GetOptions_H{"--fast"},
+                'blastndb=s'    => \$GetOptions_H{"--blastndb"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -303,7 +313,7 @@ my $options_okay =
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
                 'skipalign'     => \$GetOptions_H{"--skipalign"},
-                'skipblast'     => \$GetOptions_H{"--skipblast"},
+                'skipblastx'    => \$GetOptions_H{"--skipblastx"},
 # options for adding stages
                 'addhmmer'      => \$GetOptions_H{"--addhmmer"},
 # optional output files
@@ -392,11 +402,16 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
   }
 }
 
-##########################################
-# determine if we are running blast or not 
-##########################################
-my $do_blast = opt_Get("--skipblast", \%opt_HH) ? 0 : 1;
-my $do_hmmer = opt_Get("--addhmmer", \%opt_HH) ? 1 : 0;
+#######################################################
+# determine if we are running blastx, hmmer, and blastn
+#######################################################
+my $do_blastx = opt_Get("--skipblastx", \%opt_HH) ? 0 : 1;
+my $do_hmmer  = opt_Get("--addhmmer",   \%opt_HH) ? 1 : 0;
+
+my $do_blastn_any = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
+my $do_blastn_cls = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
+my $do_blastn_cov = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
+my $do_blastn_ali = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
 
 #############################
 # create the output directory
@@ -437,7 +452,7 @@ $extra_H{"\$VADRMODELDIR"}    = $env_vadr_model_dir;
 $extra_H{"\$VADRINFERNALDIR"} = $env_vadr_infernal_dir;
 $extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
 $extra_H{"\$VADRBIOEASELDIR"} = $env_vadr_bioeasel_dir;
-if($do_blast) { 
+if($do_blastx || $do_blastn_any) { 
   $extra_H{"\$VADRBLASTDIR"}    = $env_vadr_blast_dir;
 }
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
@@ -572,14 +587,23 @@ if(opt_IsUsed("-p", \%opt_HH)) {
 # make sure the blastdb directory exists
 my $blastdb_dir = (opt_IsUsed("-b", \%opt_HH)) ? opt_Get("-b", \%opt_HH) : $df_model_dir;
 $blastdb_dir =~ s/\/$//; # remove trailing '/'
-if($do_blast) { 
+if($do_blastx) { 
   if(! -d $blastdb_dir) { 
     ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
                        opt_IsUsed("-b", \%opt_HH) ? "" : " default", 
                        opt_IsUsed("-b", \%opt_HH) ? " specified with -b" : ""), 1, $FH_HR);
   }
 }
-# we check for existence of blast DB files after we parse the model info file
+# if nec, make sure that the blastn db file exists
+my $blastn_db_file = undef;
+if($do_blastn_any) { 
+  $blastn_db_file = opt_Get("--blastndb", \%opt_HH);
+  foreach my $sfx ("", ".nhr", ".nin", ".nsq") { 
+    if(! -s ($blastn_db_file . $sfx)) { 
+      ofile_FAIL("ERROR, required blastn db file $blastn_db_file" . $sfx . " does not exist", 1, $FH_HR);
+    }
+  }
+}
 
 my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
 my $do_keep = opt_Get("--keep", \%opt_HH);
@@ -652,7 +676,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 }
 
 # if there are any CDS features, validate that the BLAST db files or HMMER models we need exist
-if($do_blast) { 
+if($do_blastx) { 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
@@ -692,37 +716,46 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # Classification: cmsearch round 1
 ####################################
 my $r1_cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
-cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
-                           $cm_file, undef, $fa_file, $r1_cmscan_opts, 
-                           $out_root, 1, $nseq, $tot_len_nt, 
-                           $progress_w, \%opt_HH, \%ofile_info_HH);
-
-# sort into a new file by score
-my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
-my $r1_stdout_key  = "scan.r1.stdout"; # set in cmsearch_or_cmscan_wrapper()
-my $r1_err_key     = "scan.r1.err"; # set in cmsearch_or_cmscan_wrapper()
-my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
-my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
-my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
-utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-
-my $sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
-# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
-utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, $do_keep, "sorted round 1 search tblout file");
-push(@to_remove_A, 
-     ($r1_tblout_file, 
-      $ofile_info_HH{"fullpath"}{$r1_stdout_key},
-      $ofile_info_HH{"fullpath"}{$r1_err_key}, 
-      $r1_sort_tblout_file));
-
-# parse the round 1 sorted tblout file
 my %cls_results_HHH = (); # key 1: sequence name, 
                           # key 2: ("r1.1","r1.2","r1.eg","r2.bs", "r2.os")
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
-cmsearch_or_cmscan_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
-                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
-
+my $sort_cmd = undef;
+if($do_blastn_cls) { # use blastn for classification
+  blastn_run(\%execs_H, $blastn_db_file, $fa_file, $out_root, 
+             $nseq, $progress_w, \%opt_HH, \%ofile_info_HH);
+  exit 0;
+#  blastn_parse($r1_sort_tblout_file, 1, # 1: round 1
+#               \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+}
+else { # default: use cmscan for classification
+  cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+                             $cm_file, undef, $fa_file, $r1_cmscan_opts, 
+                             $out_root, 1, $nseq, $tot_len_nt, 
+                             $progress_w, \%opt_HH, \%ofile_info_HH);
+  
+  # sort into a new file by score
+  my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
+  my $r1_stdout_key  = "scan.r1.stdout"; # set in cmsearch_or_cmscan_wrapper()
+  my $r1_err_key     = "scan.r1.err"; # set in cmsearch_or_cmscan_wrapper()
+  my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
+  my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
+  my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
+  utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  
+  $sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+# the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
+  utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, $do_keep, "sorted round 1 search tblout file");
+  push(@to_remove_A, 
+       ($r1_tblout_file, 
+        $ofile_info_HH{"fullpath"}{$r1_stdout_key},
+        $ofile_info_HH{"fullpath"}{$r1_err_key}, 
+        $r1_sort_tblout_file));
+  
+  # parse the round 1 sorted tblout file
+  cmsearch_or_cmscan_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
+                                         \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+}
 ###########################################
 # Coverage determination: cmsearch round 2
 ###########################################
@@ -914,7 +947,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
 #########################################################################################
-if($do_blast) { 
+if($do_blastx) { 
   $start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -937,9 +970,9 @@ if($do_blast) {
       }                
     }
   }
-} # end of 'if($do_blast)'
+} # end of 'if($do_blastx)'
 elsif(! $do_hmmer) { 
-  $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblast)", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblastx)", $progress_w, $log_FH, *STDOUT);
 }
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1183,8 +1216,7 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information
 #
-# Returns:     void, updates $$nfa_created_R with number of
-#              fasta files created.
+# Returns:     void
 # 
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
@@ -2069,8 +2101,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information
 #
-# Returns:     void, updates $$nfa_created_R with number of
-#              fasta files created.
+# Returns:     void
 # 
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
@@ -6001,7 +6032,7 @@ sub output_feature_table {
       $cls_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $do_blast = opt_Get("--skipblast", $opt_HHR) ? 0 : 1;
+  my $do_blastx = opt_Get("--skipblastx", $opt_HHR) ? 0 : 1;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
@@ -6244,7 +6275,7 @@ sub output_feature_table {
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
     # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features (if we did the blastx step)
-    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag) && ($do_blast)) { 
+    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag) && ($do_blastx)) { 
       ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
     }
     # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
