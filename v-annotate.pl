@@ -723,10 +723,8 @@ my $sort_cmd = undef;
 if($do_blastn_cls) { # use blastn for classification
   run_blastn_and_summarize_output(\%execs_H, $blastn_db_file, $fa_file, $out_root, 
                                   $nseq, $progress_w, \%opt_HH, \%ofile_info_HH);
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format");
   parse_blastn_results($ofile_info_HH{"fullpath"}{"blastn-summary"},
                        \%seq_len_H, $out_root, \%opt_HH, \%ofile_info_HH);
-  close $ofile_info_HH{"FH"}{"scan.r1.tblout"};
 }
 else { # default: use cmscan for classification
   cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,

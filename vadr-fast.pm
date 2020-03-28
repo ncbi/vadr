@@ -123,7 +123,7 @@ sub run_blastn_and_summarize_output {
 #             in infernal tblout format.
 #
 # Arguments: 
-#  $blastn_summary_file: path to blastx summary file to parse
+#  $blastn_summary_file: path to blastn summary file to parse
 #  $seq_len_HR:          REF to hash of sequence lengths
 #  $out_root:            output root for the file names
 #  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -131,7 +131,7 @@ sub run_blastn_and_summarize_output {
 #
 # Returns:    void
 #
-# Dies:       If blastx fails.
+# Dies:       If blastn fails.
 #
 ################################################################# 
 sub parse_blastn_results { 
@@ -142,19 +142,40 @@ sub parse_blastn_results {
   my ($blastn_summary_file, $seq_len_HR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-  my $tblout_FH = $FH_HR->{"scan.r1.tblout"}; # feature table for PASSing sequences
-  printf $tblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
-                     "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
 
+  # Open the pretblout output file 
+  # 
+  # We write to this file as we parse the $blastn_summary_file but we
+  # have to post-process it in blastn_pretblout_to_tblout so that the
+  # top hit per model/sequence/strand trio includes the *summed* score
+  # for that model/strand/strand instead of just the hit score. This
+  # way we will match the cmscan --trmF3 output downstream steps
+  # expect.
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
+  my $pretblout_FH = $FH_HR->{"blastn.r1.pretblout"}; 
+  printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
+                        "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
+
+  # open the coverage determination tblout file
+  # this will be in cmsearch --tblout format (not --trmF3 output format)
+
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r2.tblout", $out_root . ".blastn.r2.tblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmsearch tblout format");
+  my $covtblout_FH = $FH_HR->{"blastn.r2.tblout"}; 
+
+  # open and parse input blastn summary file
   utl_FileValidateExistsAndNonEmpty($blastn_summary_file, "blastn summary file", $sub_name, 1, $FH_HR);
-
   open(IN, $blastn_summary_file) || ofile_FileOpenFailure($blastn_summary_file, $sub_name, $!, "reading", $FH_HR);
   
   my $line_idx   = 0;
   my $seq_name   = undef; # sequence name this hit corresponds to (query)
   my $mdl_name   = undef; # model name this hit corresponds to (subject)
   my $seq_len    = undef; # length of query sequence 
-  my %cur_H = (); # values for current hit (HSP)
+  my %cur_H = ();     # values for current hit (HSP)
+  my %scsum_HHH = (); # 3D hash with summed scores for model/seq/strand trios:
+                      # key 1: model/subject
+                      # key 2: sequence/query
+                      # key 3: strand ("+" or "-")
+                      # value: summed bit score for all hits for this model/sequence/strand trio
   
   # 
   # Order of lines in <IN>:
@@ -167,8 +188,9 @@ sub parse_blastn_results {
   # SLEN   ignored
   # ------per-HSP-block------
   # HSP   
-  # SCORE 
-  # EVALUE ignored
+  # BITSCORE 
+  # RAWSCORE ignored
+  # EVALUE 
   # HLEN   ignored
   # IDENT  ignored
   # GAPS   ignored
@@ -213,7 +235,7 @@ sub parse_blastn_results {
         }
         $cur_H{$key} = $value;
         if($value !~ /^(\d+)$/) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastn summary HSP line $line", 1, $FH_HR);
         }
       }
       elsif($key eq "BITSCORE") { 
@@ -224,6 +246,12 @@ sub parse_blastn_results {
         if(($value !~ /^\d+\.\d+$/) && ($value !~ /^\d+$/)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastn summary BITSCORE line $line", 1, $FH_HR);
         }
+      }
+      elsif($key eq "EVALUE") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"BITSCORE"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read EVALUE line before one or more of QACC, HACC, HSP, or BITSCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
       }
       elsif($key =~ m/^[SQ]STRAND$/) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"BITSCORE"})) { 
@@ -276,24 +304,51 @@ sub parse_blastn_results {
           ;
         }
         elsif($value =~ /^(\d+)..(\d+)$/) { 
-          my ($sstart, $send) = ($1, $2);
+          ($cur_H{"SRANGESTART"}, $cur_H{"SRANGESTOP"}) = ($1, $2);
 
           # output data in cmscan --trmF3 format
           if((! defined $cur_H{"QRANGESTART"}) || (! defined $cur_H{"QRANGESTOP"})) { 
             ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QRANGE line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
           }
-          printf $tblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
-                             $cur_H{"HACC"},
-                             $cur_H{"QACC"}, 
-                             $cur_H{"BITSCORE"},
-                             $cur_H{"QRANGESTART"}, 
-                             $cur_H{"QRANGESTOP"}, 
-                             $cur_H{"QSTRAND"}, 
-                             sprintf("    %s%s", 
-                                     ($cur_H{"QRANGESTART"} == 1)        ? "[" : ".",
-                                     ($cur_H{"QRANGESTOP"}  == $seq_len) ? "]" : "."),
-                             "?",
-                             $seq_len);
+          
+          printf $pretblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
+                                $cur_H{"HACC"},
+                                $cur_H{"QACC"}, 
+                                $cur_H{"BITSCORE"},
+                                $cur_H{"QRANGESTART"}, 
+                                $cur_H{"QRANGESTOP"}, 
+                                $cur_H{"QSTRAND"}, 
+                                sprintf("    %s%s", 
+                                        ($cur_H{"QRANGESTART"} == 1)        ? "[" : ".",
+                                        ($cur_H{"QRANGESTOP"}  == $seq_len) ? "]" : "."),
+                                "?",
+                                $seq_len);
+
+
+          #target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+          printf $covtblout_FH ("%-s  -  %-s  -  blastn  %d  %d  %d  %d  %s  -  -  -  0.0  %8.1f  %s  ?  -\n", 
+                                $cur_H{"QACC"},
+                                $cur_H{"HACC"}, 
+                                $cur_H{"SRANGESTART"},
+                                $cur_H{"SRANGESTOP"},
+                                $cur_H{"QRANGESTART"},
+                                $cur_H{"QRANGESTOP"},
+                                $cur_H{"QSTRAND"},
+                                $cur_H{"BITSCORE"},
+                                $cur_H{"EVALUE"});
+
+          # update summed score in %scsum_HHH for this model/seq/strand trio
+          if(! defined $scsum_HHH{$cur_H{"HACC"}}) { 
+            %{$scsum_HHH{$cur_H{"HACC"}}} = ();
+          }
+          if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}) { 
+            %{$scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}} = ();
+          }
+          if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}}) { 
+            $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} = 0.;
+          }
+          $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} += $cur_H{"BITSCORE"};
+
         } # end of 'else' entered if SRANGE is NOT ".."
         # reset variables
         my $save_qacc = $cur_H{"QACC"}; 
@@ -313,6 +368,84 @@ sub parse_blastn_results {
     }
   } # end of 'while($my $line = <IN>)'
   close(IN);
+  # and close the output file
+  close $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"};
+  close $ofile_info_HHR->{"FH"}{"blastn.r2.tblout"};
 
-  return 0;
+  # convert r1 pretblout to r1 tblout (cmscan --trmF3 format)
+  blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"blastn.r1.pretblout"}, 
+                             \%scsum_HHH, $out_root, $opt_HHR, $ofile_info_HHR);
+  return;
+}
+
+#################################################################
+# Subroutine:  blastn_pretblout_to_tblout()
+# Incept:      EPN, Sat Mar 28 14:04:18 2020
+#
+# Purpose:     Given a 'pretblout' file created by parse_blastn_results
+#              generate the 'tblout' file that is identical to the
+#              'pretblout' except that scores are summed over all hits
+#              for each sequence/model/strand trio for the top hit for
+#              each sequence/model/strand trio and 0 for all other hits
+#              for that trio. This unusual step is necessary so the 
+#              highest scoring hit in the tblout file can be used to 
+#              define the winning model (as it is for the cmscan --trmF3
+#              tblout file).
+#
+# Arguments: 
+#  $blastn_pretblout_file: path to blastn summary file to parse
+#  $scsum_HHHR:            ref to 3D hash, 
+#                          key 1: model/subject
+#                          key 2: sequence/query
+#                          key 3: strand ("+" or "-")
+#                          value: summed bit score for all hits for this model/sequence/strand trio
+#                          NOTE: all values in this 3D hash are set to 0. by this subroutine!
+#  $out_root:              output root for the file names
+#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       if unable to parse a pretblout file
+#
+################################################################# 
+sub blastn_pretblout_to_tblout { 
+  my $sub_name = "blastn_pretblout_to_tblout";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($blastn_pretblout_file, $scsum_HHHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
+  my $tblout_FH = $FH_HR->{"scan.r1.tblout"}; 
+
+  # open and parse input blastn summary file
+  utl_FileValidateExistsAndNonEmpty($blastn_pretblout_file, "blastn pretblout file", $sub_name, 1, $FH_HR);
+  open(IN, $blastn_pretblout_file) || ofile_FileOpenFailure($blastn_pretblout_file, $sub_name, $!, "reading", $FH_HR);
+
+  while(my $line = <IN>) { 
+    chomp $line;
+    if($line !~ m/^#/) { 
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 9) { 
+        ofile_FAIL("ERROR in $sub_name, unable to parse $blastn_pretblout_file line (wrong number of space-delimited tokens):\n$line\n", 1, $FH_HR);
+      }
+      my ($model, $seq, $bitsc, $start, $end, $strand, $bounds, $ovp, $seqlen) = (@el_A);
+      if(! defined $scsum_HHHR->{$model}{$seq}{$strand}) { 
+        ofile_FAIL("ERROR in $sub_name, read model/seq/strand trio not in input scsum hash: model:$model, seq:$seq, strand:$strand on line:\n$line\n", 1, $FH_HR);
+      }
+      printf $tblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
+                         $model, $seq, $scsum_HHHR->{$model}{$seq}{$strand}, 
+                         $start, $end, $strand, $bounds, $ovp, $seqlen);
+      # set scsum to zero for all subsequent hits to this trio      
+      $scsum_HHHR->{$model}{$seq}{$strand} = 0.; 
+    }
+    else { 
+      print $tblout_FH ($line . "\n");
+    }
+  }
+  close(IN);
+  close $ofile_info_HHR->{"FH"}{"scan.r1.tblout"};
 }
