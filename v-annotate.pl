@@ -111,7 +111,7 @@ $execs_H{"esl-translate"}     = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}        = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}            = $env_vadr_blast_dir    . "/blastx";
 $execs_H{"blastn"}            = $env_vadr_blast_dir    . "/blastn";
-$execs_H{"parse_blastx"}      = $env_vadr_scripts_dir  . "/parse_blastx.pl";
+$execs_H{"parse_blast"}       = $env_vadr_scripts_dir  . "/parse_blast.pl";
 utl_ExecHValidate(\%execs_H, undef);
 
 
@@ -721,41 +721,42 @@ my %cls_results_HHH = (); # key 1: sequence name,
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
 my $sort_cmd = undef;
 if($do_blastn_cls) { # use blastn for classification
-  blastn_run(\%execs_H, $blastn_db_file, $fa_file, $out_root, 
-             $nseq, $progress_w, \%opt_HH, \%ofile_info_HH);
-  exit 0;
-#  blastn_parse($r1_sort_tblout_file, 1, # 1: round 1
-#               \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+  run_blastn_and_summarize_output(\%execs_H, $blastn_db_file, $fa_file, $out_root, 
+                                  $nseq, $progress_w, \%opt_HH, \%ofile_info_HH);
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format");
+  parse_blastn_results($ofile_info_HH{"fullpath"}{"blastn-summary"},
+                       \%seq_len_H, $out_root, \%opt_HH, \%ofile_info_HH);
+  close $ofile_info_HH{"FH"}{"scan.r1.tblout"};
 }
 else { # default: use cmscan for classification
   cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
                              $cm_file, undef, $fa_file, $r1_cmscan_opts, 
                              $out_root, 1, $nseq, $tot_len_nt, 
                              $progress_w, \%opt_HH, \%ofile_info_HH);
-  
-  # sort into a new file by score
-  my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper()
-  my $r1_stdout_key  = "scan.r1.stdout"; # set in cmsearch_or_cmscan_wrapper()
-  my $r1_err_key     = "scan.r1.err"; # set in cmsearch_or_cmscan_wrapper()
-  my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
-  my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
-  my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
-  utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-  
-  $sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
+} 
+# sort into a new file by score
+my $r1_tblout_key  = "scan.r1.tblout"; # set in cmsearch_or_cmscan_wrapper() or above if $do_blastn_cls
+my $r1_stdout_key  = "scan.r1.stdout"; # set in cmsearch_or_cmscan_wrapper()
+my $r1_err_key     = "scan.r1.err"; # set in cmsearch_or_cmscan_wrapper()
+my $r1_tblout_file = $ofile_info_HH{"fullpath"}{$r1_tblout_key};
+my $r1_sort_tblout_file = $r1_tblout_file . ".sort";
+my $r1_sort_tblout_key  = $r1_tblout_key . ".sort";
+utl_FileValidateExistsAndNonEmpty($r1_tblout_file, "round 1 search tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+
+$sort_cmd = "grep -v ^\# $r1_tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $r1_sort_tblout_file"; 
 # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
-  utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, $do_keep, "sorted round 1 search tblout file");
-  push(@to_remove_A, 
-       ($r1_tblout_file, 
-        $ofile_info_HH{"fullpath"}{$r1_stdout_key},
-        $ofile_info_HH{"fullpath"}{$r1_err_key}, 
-        $r1_sort_tblout_file));
-  
-  # parse the round 1 sorted tblout file
-  cmsearch_or_cmscan_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
-                                         \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
-}
+utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $r1_sort_tblout_key, $r1_sort_tblout_file, 0, $do_keep, "sorted round 1 search tblout file");
+push(@to_remove_A, 
+     ($r1_tblout_file, 
+      $ofile_info_HH{"fullpath"}{$r1_stdout_key},
+      $ofile_info_HH{"fullpath"}{$r1_err_key}, 
+      $r1_sort_tblout_file));
+
+# parse the round 1 sorted tblout file
+cmsearch_or_cmscan_parse_sorted_tblout($r1_sort_tblout_file, 1, # 1: round 1
+                                       \@mdl_info_AH, \%cls_results_HHH, \%opt_HH, $FH_HR);
+
 ###########################################
 # Coverage determination: cmsearch round 2
 ###########################################
@@ -4293,7 +4294,8 @@ sub add_protein_validation_alerts {
 # Incept:      EPN, Thu Oct  4 15:25:00 2018
 #
 # Purpose:    For each fasta file of predicted hits, run them as
-#             blastx queries against the appropriate target blast DBs.
+#             blastx queries against the appropriate target blast DBs
+#             and summarize the output with parse_blast.pl.
 #
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
@@ -4353,7 +4355,7 @@ sub run_blastx_and_summarize_output {
 
   # now summarize its output
   my $blastx_summary_file = $out_root . "." . $mdl_name . ".blastx.summary.txt";
-  my $parse_cmd = $execs_HR->{"parse_blastx"} . " --input $blastx_out_file > $blastx_summary_file";
+  my $parse_cmd = $execs_HR->{"parse_blast"} . " --program x --input $blastx_out_file > $blastx_summary_file";
   utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-summary", $blastx_summary_file, 0, $do_keep, "parsed (summarized) blastx output");
 
@@ -4432,7 +4434,7 @@ sub parse_blastx_results {
   # SLEN   ignored
   # ------per-HSP-block------
   # HSP   
-  # SCORE 
+  # RAWSCORE 
   # EVALUE ignored
   # HLEN   ignored
   # IDENT  ignored
@@ -4496,18 +4498,18 @@ sub parse_blastx_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HSP line $line", 1, $FH_HR);
         }
       }
-      elsif($key eq "SCORE") { 
+      elsif($key eq "RAWSCORE") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SCORE line before one or more of QACC, HACC, or HSP lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read RAWSCORE line before one or more of QACC, HACC, or HSP lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
         if($value !~ /^(\d+)$/) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary SCORE line $line", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary RAWSCORE line $line", 1, $FH_HR);
         }
       }
       elsif($key eq "FRAME") { 
-        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, HSP, or SCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read FRAME line before one or more of QACC, HACC, HSP, or RAWSCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         if($value =~ /^[\+\-]([123])$/) { 
           $cur_H{$key} = $1;
@@ -4518,15 +4520,15 @@ sub parse_blastx_results {
         }
       }
       elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
-        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"}) || (! defined $cur_H{"FRAME"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, RAWSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         if(($value ne "") && ($value ne "BLASTNULL")) { 
           $cur_H{$key} = $value;
         } 
       }
       elsif($key eq "QRANGE") { 
-        # we don't require all of QACC, HACC, HSP, SCORE and FRAME even though we should have them
+        # we don't require all of QACC, HACC, HSP, RAWSCORE and FRAME even though we should have them
         # sometimes we don't (may be a bug in parse-blastx.pl), we only require QACC
         if(! defined $cur_H{"QACC"}) { 
 
@@ -4535,7 +4537,7 @@ sub parse_blastx_results {
         if($value eq "..") { # special case, no hits, silently move on
           ;
         }
-        elsif(! defined $cur_H{"SCORE"}) { # special case, no SCORE lines yet seen (may be a bug in parse-blastx.pl?), silently move on
+        elsif(! defined $cur_H{"RAWSCORE"}) { # special case, no RAWSCORE lines yet seen (may be a bug in parse-blastx.pl?), silently move on
           ;
         }
         else { 
@@ -4558,7 +4560,7 @@ sub parse_blastx_results {
             my $b_true = undef;
             if(! $do_xlongest) { 
               $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
-                         ($cur_H{"SCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+                         ($cur_H{"RAWSCORE"} > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
             }
             else { 
               $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}) ||  # first hit, so must be longest
@@ -4567,7 +4569,7 @@ sub parse_blastx_results {
 
             my $c_true = ($q_len >= $xminntlen) ? 1 : 0; # length >= --xminntlen
             if($a_true && $b_true && $c_true) { 
-              my $d_true = ($cur_H{"SCORE"} >= $xlonescore) ? 1 : 0;
+              my $d_true = ($cur_H{"RAWSCORE"} >= $xlonescore) ? 1 : 0;
               my $e_true = 0; 
               # only bother determining $e_true if $d_true is 0
               if(! $d_true) { 
@@ -4584,7 +4586,7 @@ sub parse_blastx_results {
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = $blast_hit_qlen;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"SCORE"};
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"RAWSCORE"};
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
                 if(defined $cur_H{"INS"}) { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $cur_H{"INS"};

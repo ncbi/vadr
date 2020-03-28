@@ -58,7 +58,8 @@ my $slen;                   #length of subject
 my $hlen;                   #number of positions in the alignment
 my $nhsp;                   #number of alignments for this match
 my $evalue;                 #E-value for one alignment
-my $score;                  #raw score for one alignment
+my $bitscore;               #bit score for one alignment
+my $rawscore;               #raw score for one alignment
 my $hdef;                   #defline for matching sequence
 my $nmatches;               #number of matching sequences
 my $subject_start;          # first aligned position in one block of the subject sequence
@@ -77,8 +78,6 @@ my $frame;                  # frame of the nucleotide to protein alignment
 my $gaps;                   # number of gaps in the alignment
 my $first_line_query;       # are we looking for the first line of the query?
 my $first_line_subject;     # are we looking for the first line of the subject?
-my $query_coords = "";      # query coordinate string for an HSP in VADR format
-my $subject_coords = "";    # subject coordinate string for an HSP in VADR format
 my $query_strand;           # query strand (+ or -) 
 my $subject_strand;         # subject strand (+ or -)
 
@@ -257,8 +256,6 @@ while($keep_going) {
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
         # finished with previous query/target pair: re-initialize per-HSP variables
         $processing_alignment = 0;
-        $query_coords = "";
-        $subject_coords = "";
         $query_strand = "";
         $subject_strand = "";
         $overall_query_stop_representation = "";
@@ -288,7 +285,7 @@ while($keep_going) {
       print "SLEN\t".$slen."\n"; #print SLEN and the subject length
     }
     if ($linetype == $Linetype_score) {
-      ($score, $evalue) = getScoreExpect($nextline);
+      ($bitscore, $rawscore, $evalue) = getScoreExpect($nextline);
       $nhsp++;            #increment the number of matches
       if ($processing_alignment) {
         if ($DEBUG) {
@@ -322,8 +319,6 @@ while($keep_going) {
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
         # finished with previous HSP: re-initialize per-HSP variables
         $processing_alignment = 0;
-        $query_coords = "";
-        $subject_coords = "";
         $query_strand = "";
         $subject_strand = "";
         $overall_query_stop_representation = "";
@@ -337,9 +332,10 @@ while($keep_going) {
         $maximum_query_gap_str = "";
         $maximum_subject_gap_str = "";
       }
-      print "HSP\t".$nhsp."\n";      #print HSP and the number of the hsp
-      print "SCORE\t".$score."\n";   #print SCORE and the raw score
-      print "EVALUE\t".$evalue."\n";   #print EVALUE and the e-value
+      print "HSP\t".$nhsp."\n";          #print HSP and the number of the hsp
+      print "BITSCORE\t".$bitscore."\n"; #print SCORE and the bit score
+      print "RAWSCORE\t".$rawscore."\n"; #print SCORE and the raw score
+      print "EVALUE\t".$evalue."\n";     #print EVALUE and the e-value
     }
     if ($linetype == $Linetype_identities) {
       ($hlen, $identities, $gaps) = getIdentitiesGaps($nextline);
@@ -374,8 +370,6 @@ while($keep_going) {
       }
       # Query alignment line:line that begins with "Query "including a segment of the query in an alignment
       ($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline);
-      if($query_coords ne "") { $query_coords .= ","; }
-      $query_coords .= sprintf("%d..%d:%s", $query_start, $query_end, $query_strand);
       if ($first_line_query) {
         $overall_query_start = $query_start;
         $overall_query_end = $query_end;
@@ -388,8 +382,6 @@ while($keep_going) {
     if($linetype == $Linetype_subject_aln) {
       # Subject alignment line: line that begins with "Sbjct "  including a segment of the vector (subject) in an alignment
       ($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline);
-      if($subject_coords ne "") { $subject_coords .= ","; }
-      $subject_coords .= sprintf("%d..%d:%s", $subject_start, $subject_end, $subject_strand);
       if ($first_line_subject) {
         $overall_subject_start = $subject_start;
         $overall_subject_end = $subject_end;
@@ -515,10 +507,6 @@ while($keep_going) {
   if(! defined $overall_subject_end)   { $overall_subject_end   = ""; }
   print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
-  if($program eq "n") { 
-    print "QCOORDS\t".$query_coords."\n";   #print QCOORDS and the query coords for each line of the alignment
-    print "SCOORDS\t".$subject_coords."\n"; #print SCOORDS and the subject coords for each line of the alignment
-  }
   print "END_MATCH\n";  #print END_MATCH
   # finished with previous query: re-initialize per-HSP variables
   $overall_query_stop_representation = "";
@@ -536,7 +524,7 @@ while($keep_going) {
 # List of subroutines:
 #
 # determineLineType();       Returns type of line that $line is
-# getScoreExpect();          Extracts the score and the expect value from a score line
+# getScoreExpect();          Extracts the bit and raw scores and the expect value from a score line
 # getIdentitiesGaps();       Extracts the numbere of identities and gaps from a suitable line
 # getAlignmentPositions();   Extracts two numerical positions from a query or subject alignment line.
 # getFrame();                Extracts the frame of a nucleotide to protein alignment from a suitable line
@@ -609,7 +597,7 @@ sub determineLineType {
 }
 ##########################################################################################
 # Subroutine: getScoreExpect()
-# Synopsis:   Extracts the score and the expect value from a
+# Synopsis:   Extracts the bit and raw scores and the expect value from a
 #             score line.
 #
 # Args: $line: score line of input file
@@ -625,17 +613,17 @@ sub getScoreExpect {
     if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
     my ($local_line) = @_;
-    my $local_score; #stores the score
-    my $local_expect; #stores the expect value
+    my $local_bit_score = "BLASTNULL"; #stores the bit score
+    my $local_raw_score = "BLASTNULL"; #stores the raw score
+    my $local_expect    = "BLASTNULL"; #stores the expect value
      
-
-    if($local_line =~ m/^\s*Score\s*=\s+\S+\s+bits\s+\((\d+)\)/) {
-	$local_score = $1;
-	($local_expect) = ($local_line =~ m/Expect\S*\s+=\s+(\S+)\,?/);
-	return $local_score, $local_expect;
+    if($local_line =~ m/^\s*Score\s*=\s+(\S+)\s+bits\s+\((\d+)\)/) {
+      ($local_bit_score, $local_raw_score) = ($1, $2);
+      ($local_expect) = ($local_line =~ m/Expect\S*\s+=\s+(\S+)\,?/);
+      return ($local_bit_score, $local_raw_score, $local_expect);
     }
     else {
-	die "ERROR in $sub_name, unexpected format of line: $local_line\n";
+      die "ERROR in $sub_name, unexpected format of line: $local_line\n";
     }
 }
 
