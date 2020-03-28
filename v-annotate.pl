@@ -4521,7 +4521,7 @@ sub parse_blastx_results {
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"SCORE"}) || (! defined $cur_H{"FRAME"})) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, SCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
-        if($value ne "") { 
+        if(($value ne "") && ($value ne "BLASTNULL")) { 
           $cur_H{$key} = $value;
         } 
       }
