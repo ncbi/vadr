@@ -216,7 +216,8 @@ opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, unde
 $opt_group_desc_H{++$g} = "options for blastn-based acceleration";
 #        option               type   default                group  requires incompat    preamble-output                                    help-output    
 opt_Add("--fast",         "boolean",     0,                   $g,"--blastndb", undef,  "run in fast mode using blastn-based acceleration", "run in fast mode using blastn-based acceleration", \%opt_HH, \@opt_order_A);
-opt_Add("--blastndb",      "string", undef,                   $g,     undef, undef,     "path to blastn database is <s>",                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastndb",      "string",  undef,                  $g,     undef, undef,     "path to blastn database is <s>",                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnws",      "integer", undef,                  $g,     undef, undef,     "set blastn -word_size <n> to <n>",                "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -304,6 +305,7 @@ my $options_okay =
 # options related to blastn-based acceleration
                 'fast'          => \$GetOptions_H{"--fast"},
                 'blastndb=s'    => \$GetOptions_H{"--blastndb"},
+                'blastnws=s'    => \$GetOptions_H{"--blastnws"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -723,8 +725,8 @@ my $sort_cmd = undef;
 if($do_blastn_cls) { # use blastn for classification
   run_blastn_and_summarize_output(\%execs_H, $blastn_db_file, $fa_file, $out_root, 
                                   $nseq, $progress_w, \%opt_HH, \%ofile_info_HH);
-  parse_blastn_results($ofile_info_HH{"fullpath"}{"blastn-summary"},
-                       \%seq_len_H, $out_root, \%opt_HH, \%ofile_info_HH);
+  parse_blastn_results($ofile_info_HH{"fullpath"}{"blastn-summary"}, \%seq_len_H, 
+                       undef, undef, $out_root, \%opt_HH, \%ofile_info_HH);
 }
 else { # default: use cmscan for classification
   cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
@@ -771,20 +773,48 @@ if(! opt_Get("-v", \%opt_HH)) {
 my %mdl_cls_ct_H     = ();  # key is model name $mdl_name, value is number of sequences classified to this model
 my %mdl_seq_name_HA  = ();  # key is model name $mdl_name, array is of seq names that r1 search assigned to model $mdl_name 
 my %mdl_seq_len_H    = ();  # key is model name $mdl_name, value is summed length of all seqs in @{$mdl_seq_HA{$mdl_name}
+my %seq2mdl_H        = ();  # key is sequence name $seq_name, value is $mdl_name of model this sequence is classified to
 populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%seq_len_H, \%cls_results_HHH, undef, undef, undef, 
-                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_cls_ct_H, $FH_HR);
+                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_cls_ct_H, \%seq2mdl_H, $FH_HR);
 
-# for each model, fetch the sequences classified to it and perform the round 2 search to get sequence coverage
+
+# for each model, fetch the sequences classified to it 
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
 my $nr2 = 0; # number of models round 2 is called for
+my @cls_mdl_name_A = (); # array of model names that have >=1 sequences classified to them
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
     push(@to_remove_A, $mdl_fa_file);
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
+    push(@cls_mdl_name_A, $mdl_name);
+    $nr2++;
+  }
+}
 
-    # now run cmsearch against this file
+# get the coverage determination results:
+#   if default mode: perform the per model round 2 searches to get sequence coverage
+#   if blastn mode:  parse our blastn results a second time to get model
+#                    specific tblout files to use instead of cmsearch tblout
+#                    files
+if($do_blastn_cov) { 
+  my $start_secs = ofile_OutputProgressPrior(sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
+  parse_blastn_results($ofile_info_HH{"fullpath"}{"blastn-summary"}, \%seq_len_H, 
+                       \%seq2mdl_H, \@cls_mdl_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
+  # keep track of the tblout output files:
+  foreach $mdl_name (@cls_mdl_name_A) { 
+    my $r2_tblout_key = "search.r2.$mdl_name.tblout";
+    push(@r2_tblout_key_A,  $r2_tblout_key);
+    push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
+    if(! $do_keep) { push(@to_remove_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key}); }
+  }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+}
+
+else { # default, not (! $do_blastn_cov)
+  foreach $mdl_name (@cls_mdl_name_A) { 
+    my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
     cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
                                $cm_file, $mdl_name, $mdl_fa_file, $r2_cmsearch_opts, 
                                $out_root, 2, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
@@ -794,11 +824,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $r2_err_key    = "search.r2.$mdl_name.err";    # set in cmsearch_or_cmscan_wrapper()
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
-    push(@to_remove_A, 
-         ($ofile_info_HH{"fullpath"}{$r2_tblout_key}, 
-          $ofile_info_HH{"fullpath"}{$r2_stdout_key}, 
-          $ofile_info_HH{"fullpath"}{$r2_err_key}));
-    $nr2++;
+    if(! $do_keep) { 
+      push(@to_remove_A, 
+           ($ofile_info_HH{"fullpath"}{$r2_tblout_key}, 
+            $ofile_info_HH{"fullpath"}{$r2_stdout_key}, 
+            $ofile_info_HH{"fullpath"}{$r2_err_key}));
+    }
   }
 }
 
@@ -833,13 +864,14 @@ add_classification_alerts(\%alt_seq_instances_HH, \%seq_len_H, \@mdl_info_AH, \%
 ##################
 # create per-model files again, because some classification alerts can cause sequences not to be annotated 
 # (e.g. revcompl (reverse complement))
-# zero out %mdl_seq_name_HA and %mdl_seq_len_H, we'll refill them 
+# clear out %mdl_seq_name_HA, %mdl_seq_len_H, %seq2mdl_H, we'll refill them 
 %mdl_seq_name_HA = ();
-%mdl_seq_len_H = ();
+%mdl_seq_len_H   = ();
+%seq2mdl_H       = ();
 my %mdl_ant_ct_H = ();  # key is model name, value is number of sequences annotated with that model
 
 populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%seq_len_H, \%cls_results_HHH, \%cls_output_HH, \%alt_info_HH, \%alt_seq_instances_HH,
-                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, $FH_HR);
+                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, \%seq2mdl_H, $FH_HR);
 
 # file names and data structures necessary for the alignment stage
 my %stk_file_HA       = ();     # hash of arrays of all stk output files created in cmalignOrNhmmscanWrapper()
@@ -1973,7 +2005,8 @@ sub add_classification_alerts {
 #
 # Purpose:    Given classification results, fill several 'per-model'
 #             data structures with sequences that match best to that
-#             model. 
+#             model. Also fill the 'per-sequence' hash %{$seq2mdl_HR}
+#             that maps each sequence to the model it is classified to.
 # 
 #             This subroutine is called twice, once following round
 #             1 classification and once following round 2 classification
@@ -1995,6 +2028,7 @@ sub add_classification_alerts {
 #  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
 #  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
 #  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE
+#  $seq2mdl_HR:            ref to hash of classified model per sequence, FILLED HERE
 #  $FH_HR:                 ref to hash of file handles
 #
 # Returns:   void
@@ -2003,10 +2037,12 @@ sub add_classification_alerts {
 ################################################################# 
 sub populate_per_model_data_structures_given_classification_results {
   my $sub_name = "populate_per_model_data_structures_given_classification_results";
-  my $nargs_exp = 10;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name_AR, $seq_len_HR, $cls_results_HHHR, $cls_output_HHR, $alt_info_HHR, $alt_seq_instances_HHR, $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $FH_HR) = @_;
+  my ($seq_name_AR, $seq_len_HR, $cls_results_HHHR, $cls_output_HHR, 
+      $alt_info_HHR, $alt_seq_instances_HHR, 
+      $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $seq2mdl_HR, $FH_HR) = @_;
 
   # determine what round results we are using
   my $cls_2d_key = (defined $alt_seq_instances_HHR) ? "r2.bs" : "r1.1";
@@ -2038,6 +2074,7 @@ sub populate_per_model_data_structures_given_classification_results {
         push(@{$mdl_seq_name_HAR->{$mdl_name}}, $seq_name);
         $mdl_seq_len_HR->{$mdl_name} += $seq_len_HR->{$seq_name};
         $mdl_ct_HR->{$mdl_name}++;
+        $seq2mdl_HR->{$seq_name} = $mdl_name;
       }
     }
   }

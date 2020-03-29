@@ -95,7 +95,8 @@ sub run_blastn_and_summarize_output {
   my $start_secs = ofile_OutputProgressPrior(sprintf("Classifying sequences with blastn ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
 
   my $blastn_out_file = $out_root . ".r1.blastn.out";
-  my $opt_str = "-num_alignments 10 -query $seq_file -db $db_file -out $blastn_out_file";
+  my $opt_str = "-query $seq_file -db $db_file -out $blastn_out_file";
+  if(opt_IsUsed("--blastnws", $opt_HHR)) { $opt_str .= " -word_size " . opt_Get("--blastnws", $opt_HHR); }
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -120,11 +121,38 @@ sub run_blastn_and_summarize_output {
 #               Alejandro Schaffer in compare_predictions.pl]
 #
 # Purpose:    Parse blastn summary file and output a summary file
-#             in infernal tblout format.
+#             and create one of two sets of output files:
+#
+#             Output mode 1: 1 file, produced if $seq2mdl_HR is undef
+#
+#             "blastn.r1.pretblout" file: cmscan --trmF3 output format
+#             file with each hit on a separate line and individual hit
+#             scores reported for each hit. This is later processed by
+#             blastn_pretblout_to_tblout() to sum bit scores for all
+#             hits with the same model/seq/strand so we can classify
+#             sequences the same way we do in default mode (cmscan
+#             based classification).
+#
+#             Output model 2: 2 files produced per model with >= 1 matching
+#             sequence, produced if $seq2mdl_HR is defined.
+#
+#             "search.r2.<mdlname>.tblout": cmsearch --tblout format
+#             file with each hit for a sequence on + strand that is 
+#             classified to model <mdlname>. 
+#
+#             "blastn.r2.<mdlname>.indel.txt": one line per sequence
+#             with all inserts and deletes in all blastn hit
+#             alignments for each sequence that is classified to 
+#             <mdlname> on strand +.
 #
 # Arguments: 
 #  $blastn_summary_file: path to blastn summary file to parse
 #  $seq_len_HR:          REF to hash of sequence lengths
+#  $seq2mdl_HR:          REF to hash mapping each sequence to the model
+#                        it is classified to, if undef serves as flag
+#                        that we will create set 1 of output files
+#  $mdl_name_AR:         REF to array of model names that are keys in
+#                        %{$seq2mdl_HR}, can be undef if $seq2mdl_HR is undef
 #  $out_root:            output root for the file names
 #  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
@@ -136,40 +164,56 @@ sub run_blastn_and_summarize_output {
 ################################################################# 
 sub parse_blastn_results { 
   my $sub_name = "parse_blastn_results";
-  my $nargs_exp = 5;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastn_summary_file, $seq_len_HR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($blastn_summary_file, $seq_len_HR, $seq2mdl_HR, $mdl_name_AR, 
+      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  # Open the pretblout output file 
-  # 
-  # We write to this file as we parse the $blastn_summary_file but we
-  # have to post-process it in blastn_pretblout_to_tblout so that the
-  # top hit per model/sequence/strand trio includes the *summed* score
-  # for that model/strand/strand instead of just the hit score. This
-  # way we will match the cmscan --trmF3 output downstream steps
-  # expect.
-  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
-  my $pretblout_FH = $FH_HR->{"blastn.r1.pretblout"}; 
-  printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
-                        "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
+  my $pretblout_FH = undef; # defined if output mode 1 (if ! defined $seq2mdl_HR)
+  my %tblout_FH_H  = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
+  my %indel_FH_H   = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
+  my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
 
-  # open the coverage determination tblout file
-  # this will be in cmsearch --tblout format (not --trmF3 output format)
+  my $mdl_name = undef;
+  if(! defined $seq2mdl_HR) { 
+    # output mode 1, open the pretblout output file 
+    # 
+    # We write to this file as we parse the $blastn_summary_file but we
+    # have to post-process it in blastn_pretblout_to_tblout so that the
+    # top hit per model/sequence/strand trio includes the *summed* score
+    # for that model/strand/strand instead of just the hit score. This
+    # way we will match the cmscan --trmF3 output downstream steps
+    # expect.
+    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
+    $pretblout_FH = $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"}; 
+    printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
+                          "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
+  }
+  else { # $seq2mdl_HR is defined
+    # output mode 2, for each model in @{$mdl_name_AR}, open the 
+    # coverage determination tblout files in cmsearch --tblout 
+    # format (not --trmF3 output format) and the indel files 
+    foreach $mdl_name (@{$mdl_name_AR}) { 
+      $outfile_key = "search.r2.$mdl_name.tblout";
+      ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmsearch tblout format for model $mdl_name");
+      $tblout_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
 
-  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r2.tblout", $out_root . ".blastn.r2.tblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmsearch tblout format");
-  my $covtblout_FH = $FH_HR->{"blastn.r2.tblout"}; 
+      $outfile_key = "search.r2.$mdl_name.indel";
+      ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, opt_Get("--keep", $opt_HHR), "blastn indel information for model $mdl_name");
+      $indel_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
+    }
+  }
 
   # open and parse input blastn summary file
   utl_FileValidateExistsAndNonEmpty($blastn_summary_file, "blastn summary file", $sub_name, 1, $FH_HR);
   open(IN, $blastn_summary_file) || ofile_FileOpenFailure($blastn_summary_file, $sub_name, $!, "reading", $FH_HR);
-  
   my $line_idx   = 0;
   my $seq_name   = undef; # sequence name this hit corresponds to (query)
-  my $mdl_name   = undef; # model name this hit corresponds to (subject)
   my $seq_len    = undef; # length of query sequence 
+  my $cur_FH     = undef; # current file handle 
   my %cur_H = ();     # values for current hit (HSP)
   my %scsum_HHH = (); # 3D hash with summed scores for model/seq/strand trios:
                       # key 1: model/subject
@@ -182,6 +226,7 @@ sub parse_blastn_results {
   # -----per-query/target-block---
   # QACC
   # QDEF   ignored
+  # QLEN   
   # MATCH  ignored
   # HACC  
   # HDEF   ignored
@@ -216,22 +261,28 @@ sub parse_blastn_results {
       my ($key, $value) = (@el_A);
       if($key eq "QACC") { 
         $cur_H{$key} = $value;
-        $seq_name = $value;
-        if(! defined $seq_len_HR->{$seq_name}) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unexpected sequence name $seq_name in line $line", 1, $FH_HR);
+        if(! defined $seq_len_HR->{$value}) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unexpected sequence name $value in line $line", 1, $FH_HR);
         }
-        $seq_len = $seq_len_HR->{$seq_name};
+      }
+      elsif($key eq "QLEN") { 
+        if(! defined $cur_H{"QACC"}) { 
+          ofile_FAIL("ERROR in $sub_name, ing $blastn_summary_file, read QLEN line before QACC line (line: $line_idx)", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+        if($value !~ /^\d+$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse query length in line $line", 1, $FH_HR);
+        }
       }
       elsif($key eq "HACC") { 
         if(! defined $cur_H{"QACC"}) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read HACC line $line before QACC line (line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
-        $mdl_name = $value;
       }
       elsif($key eq "HSP") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read HSP line before one or both of QACC and HACC lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read HSP line before one or both of QACC and HACC lines (line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
         if($value !~ /^(\d+)$/) { 
@@ -240,7 +291,7 @@ sub parse_blastn_results {
       }
       elsif($key eq "BITSCORE") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read BITSCORE line before one or more of QACC, HACC, or HSP lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read BITSCORE line before one or more of QACC, HACC, or HSP lines (line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
         if(($value !~ /^\d+\.\d+$/) && ($value !~ /^\d+$/)) { 
@@ -249,16 +300,20 @@ sub parse_blastn_results {
       }
       elsif($key eq "EVALUE") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"BITSCORE"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read EVALUE line before one or more of QACC, HACC, HSP, or BITSCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read EVALUE line before one or more of QACC, HACC, HSP, or BITSCORE lines (line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
       }
       elsif($key =~ m/^[SQ]STRAND$/) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"BITSCORE"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read QSTRAND OR SSTRAND line before one or more of QACC, HACC, HSP, or BITSCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read QSTRAND OR SSTRAND line before one or more of QACC, HACC, HSP, or BITSCORE lines (line: $line_idx)\n", 1, $FH_HR);
         }
         if($value =~ /^([\+\-])$/) { 
           $cur_H{$key} = $1;
+          # all query strands should be + (unless blastn is reverse complementing queries and running those too)
+          if(($key eq "QSTRAND") && ($cur_H{$key} ne "+")) { 
+            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, query strand not + line $line", 1, $FH_HR);
+          }            
         }
         else { 
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastn summary $key line $line ($key $value)", 1, $FH_HR);
@@ -266,7 +321,7 @@ sub parse_blastn_results {
       }
       elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"BITSCORE"}) || (! defined $cur_H{"QSTRAND"}) || (! defined $cur_H{"SSTRAND"})) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before one or more of QACC, HACC, HSP, BITSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before one or more of QACC, HACC, HSP, BITSCORE or FRAME lines (line: $line_idx)\n", 1, $FH_HR);
         }
         if(($value ne "") && ($value ne "BLASTNULL")) { 
           $cur_H{$key} = $value;
@@ -276,7 +331,7 @@ sub parse_blastn_results {
         # we don't require all of QACC, HACC, HSP, BITSCORE and STRAND even though we should have them
         # sometimes we don't (may be a bug in parse-blastn.pl), we only require QACC
         if(! defined $cur_H{"QACC"}) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QACC line (line: $line_idx)\n", 1, $FH_HR);
         }
         if($value eq "..") { # special case, no hits, silently move on
           ;
@@ -295,7 +350,7 @@ sub parse_blastn_results {
         # we don't require all of QACC, HACC, HSP, BITSCORE and STRAND even though we should have them
         # sometimes we don't (may be a bug in parse-blastn.pl), we only require QACC
         if(! defined $cur_H{"QACC"}) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QACC line (line: $line_idx)\n", 1, $FH_HR);
         }
         if($value eq "..") { # special case, no hits, silently move on
           ;
@@ -308,48 +363,59 @@ sub parse_blastn_results {
 
           # output data in cmscan --trmF3 format
           if((! defined $cur_H{"QRANGESTART"}) || (! defined $cur_H{"QRANGESTOP"})) { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QRANGE line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QRANGE line (line: $line_idx)\n", 1, $FH_HR);
           }
-          
-          printf $pretblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
-                                $cur_H{"HACC"},
-                                $cur_H{"QACC"}, 
-                                $cur_H{"BITSCORE"},
-                                $cur_H{"QRANGESTART"}, 
-                                $cur_H{"QRANGESTOP"}, 
-                                $cur_H{"QSTRAND"}, 
-                                sprintf("    %s%s", 
-                                        ($cur_H{"QRANGESTART"} == 1)        ? "[" : ".",
-                                        ($cur_H{"QRANGESTOP"}  == $seq_len) ? "]" : "."),
-                                "?",
-                                $seq_len);
-
-
-          #target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
-          printf $covtblout_FH ("%-s  -  %-s  -  blastn  %d  %d  %d  %d  %s  -  -  -  0.0  %8.1f  %s  ?  -\n", 
-                                $cur_H{"QACC"},
-                                $cur_H{"HACC"}, 
-                                $cur_H{"SRANGESTART"},
-                                $cur_H{"SRANGESTOP"},
-                                $cur_H{"QRANGESTART"},
-                                $cur_H{"QRANGESTOP"},
-                                $cur_H{"QSTRAND"},
-                                $cur_H{"BITSCORE"},
-                                $cur_H{"EVALUE"});
-
-          # update summed score in %scsum_HHH for this model/seq/strand trio
-          if(! defined $scsum_HHH{$cur_H{"HACC"}}) { 
-            %{$scsum_HHH{$cur_H{"HACC"}}} = ();
+          my $cur_seq_name = $cur_H{"QACC"};
+          my $cur_seq_len  = $seq_len_HR->{$cur_seq_name}; # we checked this is defined when we read QACC line
+          my $cur_mdl_name = $cur_H{"HACC"};
+          if(defined $pretblout_FH) { 
+            printf $pretblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
+                                  $cur_mdl_name, 
+                                  $cur_seq_name,
+                                  $cur_H{"BITSCORE"},
+                                  $cur_H{"QRANGESTART"}, 
+                                  $cur_H{"QRANGESTOP"}, 
+                                  $cur_H{"QSTRAND"},
+                                  sprintf("    %s%s", 
+                                          ($cur_H{"QRANGESTART"} == 1)            ? "[" : ".",
+                                          ($cur_H{"QRANGESTOP"}  == $cur_seq_len) ? "]" : "."),
+                                  "?",
+                                  $cur_seq_len);
+            
+            # update summed score in %scsum_HHH for this model/seq/strand trio
+            if(! defined $scsum_HHH{$cur_H{"HACC"}}) { 
+              %{$scsum_HHH{$cur_H{"HACC"}}} = ();
+            }
+            if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}) { 
+              %{$scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}} = ();
+            }
+            if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}}) { 
+              $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} = 0.;
+            }
+            $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} += $cur_H{"BITSCORE"};
+          }            
+          else { 
+            # in output mode 2, but we only output if this hit is 
+            # a <seq>/<model> pair where <seq> is classified to <model>
+            if((defined $seq2mdl_HR->{$cur_seq_name}) &&  
+               ($seq2mdl_HR->{$cur_seq_name} eq $cur_mdl_name)) { 
+              #target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+              $cur_FH = $tblout_FH_H{$cur_mdl_name};
+              printf $cur_FH ("%-s  -  %-s  -  blastn  %d  %d  %d  %d  %s  -  -  -  0.0  %8.1f  %s  ?  -\n", 
+                              $cur_seq_name,
+                              $cur_mdl_name,
+                              $cur_H{"SRANGESTART"},
+                              $cur_H{"SRANGESTOP"},
+                              $cur_H{"QRANGESTART"},
+                              $cur_H{"QRANGESTOP"},
+                              $cur_H{"QSTRAND"},
+                              $cur_H{"BITSCORE"},
+                              $cur_H{"EVALUE"});
+              $cur_FH = $indel_FH_H{$cur_mdl_name};
+              printf $cur_FH ("%s\n", $cur_seq_name);
+            }
           }
-          if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}) { 
-            %{$scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}} = ();
-          }
-          if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}}) { 
-            $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} = 0.;
-          }
-          $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} += $cur_H{"BITSCORE"};
-
-        } # end of 'else' entered if SRANGE is NOT ".."
+          } # end of 'else' entered if SRANGE is NOT ".."
         # reset variables
         my $save_qacc = $cur_H{"QACC"}; 
         my $save_hacc = $cur_H{"HACC"};
@@ -363,18 +429,31 @@ sub parse_blastn_results {
       my $save_qacc = $cur_H{"QACC"};
       %cur_H = (); 
       $cur_H{"QACC"} = $save_qacc; # save QACC
-      $mdl_name = undef;
       # we don't update seq_name seq_len until we see a new QACC
     }
   } # end of 'while($my $line = <IN>)'
   close(IN);
-  # and close the output file
-  close $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"};
-  close $ofile_info_HHR->{"FH"}{"blastn.r2.tblout"};
 
-  # convert r1 pretblout to r1 tblout (cmscan --trmF3 format)
-  blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"blastn.r1.pretblout"}, 
-                             \%scsum_HHH, $out_root, $opt_HHR, $ofile_info_HHR);
+  # close files depending on output mode
+  if(defined $pretblout_FH) { 
+    # output mode 1:
+    # close the pretblout file
+    # then call convert it pretblout to tblout (cmscan --trmF3 format)
+    # which will have scores summed for each seq/mdl/strand trio
+    close $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"};
+    blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"blastn.r1.pretblout"}, 
+                               \%scsum_HHH, $out_root, $opt_HHR, $ofile_info_HHR);
+  }
+  else { 
+    # output mode 2:
+    # close the per model files:
+    foreach $mdl_name (@{$mdl_name_AR}) { 
+      $outfile_key = "search.r2.$mdl_name.tblout";
+      close $ofile_info_HHR->{"FH"}{$outfile_key};
+      $outfile_key = "search.r2.$mdl_name.indel";
+      close $ofile_info_HHR->{"FH"}{$outfile_key};
+    }
+  }
   return;
 }
 
