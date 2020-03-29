@@ -95,8 +95,7 @@ sub run_blastn_and_summarize_output {
   my $start_secs = ofile_OutputProgressPrior(sprintf("Classifying sequences with blastn ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
 
   my $blastn_out_file = $out_root . ".r1.blastn.out";
-  my $opt_str = "-query $seq_file -db $db_file -out $blastn_out_file";
-  if(opt_IsUsed("--blastnws", $opt_HHR)) { $opt_str .= " -word_size " . opt_Get("--blastnws", $opt_HHR); }
+  my $opt_str = "-query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -176,6 +175,8 @@ sub parse_blastn_results {
   my %tblout_FH_H  = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
   my %indel_FH_H   = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
   my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
+  my $small_value  = 0.000001;
+  my $min_bitsc    = opt_Get("--blastnsc", $opt_HHR) - $small_value;
 
   my $mdl_name = undef;
   if(! defined $seq2mdl_HR) { 
@@ -312,7 +313,7 @@ sub parse_blastn_results {
           $cur_H{$key} = $1;
           # all query strands should be + (unless blastn is reverse complementing queries and running those too)
           if(($key eq "QSTRAND") && ($cur_H{$key} ne "+")) { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, query strand not + line $line", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, subject strand not + line $line", 1, $FH_HR);
           }            
         }
         else { 
@@ -358,41 +359,63 @@ sub parse_blastn_results {
         elsif(! defined $cur_H{"BITSCORE"}) { # special case, no BITSCORE lines yet seen (may be a bug in parse-blastn.pl?), silently move on
           ;
         }
-        elsif($value =~ /^(\d+)..(\d+)$/) { 
+        elsif(($value =~ /^(\d+)..(\d+)$/) && ($cur_H{"BITSCORE"} >= $min_bitsc)) { 
           ($cur_H{"SRANGESTART"}, $cur_H{"SRANGESTOP"}) = ($1, $2);
 
           # output data in cmscan --trmF3 format
           if((! defined $cur_H{"QRANGESTART"}) || (! defined $cur_H{"QRANGESTOP"})) { 
             ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QRANGE line (line: $line_idx)\n", 1, $FH_HR);
           }
-          my $cur_seq_name = $cur_H{"QACC"};
-          my $cur_seq_len  = $seq_len_HR->{$cur_seq_name}; # we checked this is defined when we read QACC line
-          my $cur_mdl_name = $cur_H{"HACC"};
+          my $cur_seq_name  = $cur_H{"QACC"};
+          my $cur_seq_len   = $seq_len_HR->{$cur_seq_name}; # we checked this is defined when we read QACC line
+          my $cur_mdl_name  = $cur_H{"HACC"};
+          my $cur_bit_score = $cur_H{"BITSCORE"}; 
+          my $cur_evalue    = $cur_H{"EVALUE"}; 
+          my ($cur_seq_start, $cur_seq_stop, $cur_seq_strand, $cur_mdl_start, $cur_mdl_stop) = (undef, undef, undef, undef, undef);
+          # if subject strand is negative (and subject is the model)
+          # we need to revcomp both the query and subject coords, to match cmscan behavior
+          # which is the inverse of blastn, whereas cmscan revcomps the sequence (blastn equivalent of query)
+          # and searches it against the always positive model (blastn equivalent of the subject), blastn
+          # revcomps the subject and searches it against the always positive query
+          if($cur_H{"SSTRAND"} eq "+") { 
+            $cur_seq_start  = $cur_H{"QRANGESTART"};
+            $cur_seq_stop   = $cur_H{"QRANGESTOP"};
+            $cur_seq_strand = "+";
+            $cur_mdl_start  = $cur_H{"SRANGESTART"};
+            $cur_mdl_stop   = $cur_H{"SRANGESTOP"};
+          }
+          else { # SSTRAND is -
+            $cur_seq_start  = $cur_H{"QRANGESTOP"};
+            $cur_seq_stop   = $cur_H{"QRANGESTART"};
+            $cur_seq_strand = "-";
+            $cur_mdl_start  = $cur_H{"SRANGESTOP"};
+            $cur_mdl_stop   = $cur_H{"SRANGESTART"};
+          }
           if(defined $pretblout_FH) { 
             printf $pretblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
                                   $cur_mdl_name, 
                                   $cur_seq_name,
-                                  $cur_H{"BITSCORE"},
-                                  $cur_H{"QRANGESTART"}, 
-                                  $cur_H{"QRANGESTOP"}, 
-                                  $cur_H{"QSTRAND"},
+                                  $cur_bit_score,
+                                  $cur_seq_start, 
+                                  $cur_seq_stop, 
+                                  $cur_seq_strand, 
                                   sprintf("    %s%s", 
-                                          ($cur_H{"QRANGESTART"} == 1)            ? "[" : ".",
-                                          ($cur_H{"QRANGESTOP"}  == $cur_seq_len) ? "]" : "."),
+                                          ($cur_seq_start == 1)            ? "[" : ".",
+                                          ($cur_seq_stop  == $cur_seq_len) ? "]" : "."),
                                   "?",
                                   $cur_seq_len);
             
             # update summed score in %scsum_HHH for this model/seq/strand trio
-            if(! defined $scsum_HHH{$cur_H{"HACC"}}) { 
-              %{$scsum_HHH{$cur_H{"HACC"}}} = ();
+            if(! defined $scsum_HHH{$cur_mdl_name}) { 
+              %{$scsum_HHH{$cur_mdl_name}} = ();
             }
-            if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}) { 
-              %{$scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}} = ();
+            if(! defined $scsum_HHH{$cur_mdl_name}{$cur_seq_name}) { 
+              %{$scsum_HHH{$cur_mdl_name}{$cur_seq_name}} = ();
             }
-            if(! defined $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}}) { 
-              $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} = 0.;
+            if(! defined $scsum_HHH{$cur_mdl_name}{$cur_seq_name}{$cur_seq_strand}) { 
+              $scsum_HHH{$cur_mdl_name}{$cur_seq_name}{$cur_seq_strand} = 0.;
             }
-            $scsum_HHH{$cur_H{"HACC"}}{$cur_H{"QACC"}}{$cur_H{"QSTRAND"}} += $cur_H{"BITSCORE"};
+            $scsum_HHH{$cur_mdl_name}{$cur_seq_name}{$cur_seq_strand} += $cur_H{"BITSCORE"};
           }            
           else { 
             # in output mode 2, but we only output if this hit is 
@@ -404,13 +427,13 @@ sub parse_blastn_results {
               printf $cur_FH ("%-s  -  %-s  -  blastn  %d  %d  %d  %d  %s  -  -  -  0.0  %8.1f  %s  ?  -\n", 
                               $cur_seq_name,
                               $cur_mdl_name,
-                              $cur_H{"SRANGESTART"},
-                              $cur_H{"SRANGESTOP"},
-                              $cur_H{"QRANGESTART"},
-                              $cur_H{"QRANGESTOP"},
-                              $cur_H{"QSTRAND"},
-                              $cur_H{"BITSCORE"},
-                              $cur_H{"EVALUE"});
+                              $cur_mdl_start,
+                              $cur_mdl_stop,
+                              $cur_seq_start, 
+                              $cur_seq_stop, 
+                              $cur_seq_strand, 
+                              $cur_bit_score, 
+                              $cur_evalue);
               $cur_FH = $indel_FH_H{$cur_mdl_name};
               printf $cur_FH ("%s\n", $cur_seq_name);
             }

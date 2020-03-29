@@ -216,8 +216,9 @@ opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, unde
 $opt_group_desc_H{++$g} = "options for blastn-based acceleration";
 #        option               type   default                group  requires incompat    preamble-output                                    help-output    
 opt_Add("--fast",         "boolean",     0,                   $g,"--blastndb", undef,  "run in fast mode using blastn-based acceleration", "run in fast mode using blastn-based acceleration", \%opt_HH, \@opt_order_A);
-opt_Add("--blastndb",      "string",  undef,                  $g,     undef, undef,     "path to blastn database is <s>",                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnws",      "integer", undef,                  $g,     undef, undef,     "set blastn -word_size <n> to <n>",                "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastndb",      "string",  undef,                  $g,   "--fast", undef,     "path to blastn database is <s>",                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnws",      "integer",    7,                   $g,   "--fast", undef,     "set blastn -word_size <n> to <n>",                "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnsc",      "real",     50.0,                  $g,   "--fast", undef,     "set blastn minimum HSP score to consider to <x>", "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -306,6 +307,7 @@ my $options_okay =
                 'fast'          => \$GetOptions_H{"--fast"},
                 'blastndb=s'    => \$GetOptions_H{"--blastndb"},
                 'blastnws=s'    => \$GetOptions_H{"--blastnws"},
+                'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
