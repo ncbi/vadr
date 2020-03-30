@@ -39,8 +39,8 @@
 #
 4.1    ENTOY100A-fs3   103  FAIL  ENTOY100A  gene         one                 29    1    +       8    36        -  no        -     -        -     -    1    0                     8..36:+                     8..33:+  -     
 4.2    ENTOY100A-fs3   103  FAIL  ENTOY100A  CDS          protein_one         24    2    +      11    34        -  no        -     -        -     -    1    0                    11..34:+                    11..31:+  POSSIBLE_FRAMESHIFT_HIGH_CONF(fsthicnf)
-4.3    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_one_mp1     15    3    +      11    25        -  no        -     -        -     -    1    0                    11..25:+                    11..22:+  -     
-4.4    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_one_mp2      6    4    +      26    31        -  no        -     -        -     -    1    0                    26..31:+                    23..28:+  -     
+4.3    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_one_mp1     15    3    +      11    25        -  no        -     -        -     -    1    0                    11..25:+                    11..22:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
+4.4    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_one_mp2      6    4    +      26    31        -  no        -     -        -     -    1    0                    26..31:+                    23..28:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
 4.5    ENTOY100A-fs3   103  FAIL  ENTOY100A  CDS          protein_two         42    5    +      35    76        -  no        -     -        -     -    3    0  35..50:+,50..67:+,69..76:+  32..47:+,47..64:+,66..73:+  -     
 4.6    ENTOY100A-fs3   103  FAIL  ENTOY100A  CDS          protein_three       24    6    +      70    98        -  no        -     -        -     -    2    0           70..82:+,88..98:+           67..79:+,85..95:+  -     
 4.7    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    +      70    78        -  no        -     -        -     -    1    0                    70..78:+                    67..75:+  -     
@@ -63,8 +63,8 @@
 #
 6.1    ENTOY100A-fs5   100  FAIL  ENTOY100A  gene         one                 26    1    +       8    33        -  no        -     -        -     -    1    0                     8..33:+                     8..33:+  -     
 6.2    ENTOY100A-fs5   100  FAIL  ENTOY100A  CDS          protein_one         21    2    +      11    31        -  no        -     -        -     -    1    0                    11..31:+                    11..31:+  POSSIBLE_FRAMESHIFT_HIGH_CONF(fsthicnf)
-6.3    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_one_mp1     12    3    +      11    22        -  no        -     -        -     -    1    0                    11..22:+                    11..22:+  -     
-6.4    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_one_mp2      6    4    +      23    28        -  no        -     -        -     -    1    0                    23..28:+                    23..28:+  -     
+6.3    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_one_mp1     12    3    +      11    22        -  no        -     -        -     -    1    0                    11..22:+                    11..22:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
+6.4    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_one_mp2      6    4    +      23    28        -  no        -     -        -     -    1    0                    23..28:+                    23..28:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
 6.5    ENTOY100A-fs5   100  FAIL  ENTOY100A  CDS          protein_two         42    5    +      32    73        -  no        -     -        -     -    3    0  32..47:+,47..64:+,66..73:+  32..47:+,47..64:+,66..73:+  -     
 6.6    ENTOY100A-fs5   100  FAIL  ENTOY100A  CDS          protein_three       24    6    +      67    95        -  no        -     -        -     -    2    0           67..79:+,85..95:+           67..79:+,85..95:+  -     
 6.7    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    +      67    75        -  no        -     -        -     -    1    0                    67..75:+                    67..75:+  -     

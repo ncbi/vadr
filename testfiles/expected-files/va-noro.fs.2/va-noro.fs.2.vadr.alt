@@ -27,3 +27,5 @@
 9.2.1   NC_001959.2-manually-added-frameshifts-2/30-80      NC_001959  mat_peptide  p48                          7  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
 #
 10.1.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  NC_001959  CDS          nonstructural_polyprotein    2  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 1..13 (13 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+3); inserts:12-13; deletes:none;]
+10.2.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  NC_001959  mat_peptide  p48                          7  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
+10.3.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  NC_001959  mat_peptide  NTPase                       8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem

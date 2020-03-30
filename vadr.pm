@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.4 [March 2020]
+# version: 1.0.5 [March 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -77,7 +77,6 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
-# vdr_FeatureChildrenArray()
 # vdr_FeatureNumSegments()
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
@@ -643,6 +642,8 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
 # 
 # Arguments: 
 #   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $type_or_undef:  feature type of children (e.g. mat_peptide) we want information on
+#                    caller should set as 'undef' to get information on all types of children
 #   $AAR:            REF to array of arrays of children feature indices, FILLED HERE
 #   $FH_HR:          REF to hash of file handles
 # 
@@ -651,10 +652,10 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
 #
 ################################################################# 
 sub vdr_FeatureInfoChildrenArrayOfArrays { 
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   my $sub_name = "vdr_FeatureInfoChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $type_or_undef, $AAR, $FH_HR) = @_;
 
   @{$AAR} = ();
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -668,14 +669,15 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
 
   # fill
   for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
-    if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
-      my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
-      foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
-        push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+    if((! defined $type_or_undef) || ($ftr_info_AHR->[$child_ftr_idx]{"type"} eq $type_or_undef)) { 
+      if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
+        my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+        foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+          push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+        }
       }
     }
   }
-
   return;
 }
 

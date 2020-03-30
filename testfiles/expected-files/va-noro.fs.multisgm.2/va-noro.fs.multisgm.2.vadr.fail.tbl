@@ -66,14 +66,16 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidenc
 ERROR: INDEFINITE_ANNOTATION: (nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
 >Feature NC_001959.2-manually-added-frameshifts-2/1000-1500
-<1	199	mat_peptide
-			product	p48
+<1	199	misc_feature
+			note	similar to p48
 <1	>501	gene
 			gene	ORF1
 <1	>501	misc_feature
 			note	similar to nonstructural polyprotein
-200	>501	mat_peptide
-			product	NTPase
+200	>501	misc_feature
+			note	similar to NTPase
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..13 (13 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+3); inserts:12-13; deletes:none;]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem

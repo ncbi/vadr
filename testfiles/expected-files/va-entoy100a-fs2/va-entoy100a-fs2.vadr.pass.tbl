@@ -9,24 +9,32 @@
 			note	stem-loop 1
 11	31	CDS
 			product	protein one
+			protein_id	ENTOY100A_1
 11	22	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A_1
 23	28	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A_1
 32	47	CDS
 47	64
 66	73
 			product	protein two
+			protein_id	ENTOY100A_2
 67	79	CDS
 85	95
 			product	protein three
+			protein_id	ENTOY100A_3
 67	75	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A_3
 76	79	mat_peptide
 85	92
 			product	protein three mp2
+			protein_id	ENTOY100A_3
 98	84	CDS
 			product	protein four
+			protein_id	ENTOY100A_4
 >Feature ENTOY100A-2-fs8
 5	22	ncRNA
 			product	enRNA
@@ -38,24 +46,32 @@
 			note	stem-loop 1
 11	31	CDS
 			product	protein one
+			protein_id	ENTOY100A-2-fs8_1
 11	22	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-2-fs8_1
 23	28	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-2-fs8_1
 32	47	CDS
 47	64
 66	73
 			product	protein two
+			protein_id	ENTOY100A-2-fs8_2
 67	79	CDS
 85	95
 			product	protein three
+			protein_id	ENTOY100A-2-fs8_3
 67	75	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-2-fs8_3
 76	79	mat_peptide
 85	92
 			product	protein three mp2
+			protein_id	ENTOY100A-2-fs8_3
 98	84	CDS
 			product	protein four
+			protein_id	ENTOY100A-2-fs8_4
 >Feature ENTOY100A-2-fs10
 5	22	ncRNA
 			product	enRNA
@@ -67,24 +83,32 @@
 			note	stem-loop 1
 11	31	CDS
 			product	protein one
+			protein_id	ENTOY100A-2-fs10_1
 11	22	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-2-fs10_1
 23	28	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-2-fs10_1
 32	47	CDS
 47	64
 66	76
 			product	protein two
+			protein_id	ENTOY100A-2-fs10_2
 67	82	CDS
 88	98
 			product	protein three
+			protein_id	ENTOY100A-2-fs10_3
 67	78	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-2-fs10_3
 79	82	mat_peptide
 88	95
 			product	protein three mp2
+			protein_id	ENTOY100A-2-fs10_3
 101	87	CDS
 			product	protein four
+			protein_id	ENTOY100A-2-fs10_4
 >Feature ENTOY100A-2-fs20
 5	22	ncRNA
 			product	enRNA
@@ -96,21 +120,29 @@
 			note	stem-loop 1
 11	31	CDS
 			product	protein one
+			protein_id	ENTOY100A-2-fs20_1
 11	22	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-2-fs20_1
 23	28	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-2-fs20_1
 32	47	CDS
 47	64
 66	73
 			product	protein two
+			protein_id	ENTOY100A-2-fs20_2
 67	79	CDS
 85	98
 			product	protein three
+			protein_id	ENTOY100A-2-fs20_3
 67	75	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-2-fs20_3
 76	79	mat_peptide
 85	95
 			product	protein three mp2
+			protein_id	ENTOY100A-2-fs20_3
 101	84	CDS
 			product	protein four
+			protein_id	ENTOY100A-2-fs20_4
