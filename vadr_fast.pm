@@ -645,7 +645,7 @@ sub parse_blastn_indel_strings {
   my $del_tok = undef;
   while(($ii < $nins) || ($di < $ndel)) { 
     my $ins_tok = ($ii < $nins) ? $ins_tok_A[$ii] : "NULL";
-    my $del_tok = ($di < $ndel) ? $del_tok_A[$ii] : "NULL";
+    my $del_tok = ($di < $ndel) ? $del_tok_A[$di] : "NULL";
     printf("\tin loop ii: $ii ins_tok: $ins_tok, di: $di del_tok: $del_tok\n");
     if($update_ins) { 
       if($ii < $nins) { 
@@ -658,14 +658,15 @@ sub parse_blastn_indel_strings {
     }
     if($update_del) {
       if($di < $ndel) { 
-        $del_tok = $del_tok_A[$ii];
+        $del_tok = $del_tok_A[$di];
         ($del_mdl_pos, $del_seq_pos, $del_len) = parse_blastn_indel_token($del_tok, "delete", $FH_HR);
       }
       else {
         ($del_tok, $del_mdl_pos, $del_seq_pos, $del_len) = (undef, undef, undef, undef);
       }
     }
-
+    $update_ins = 0; # set to 1 below, if our next indel is an insert ($next_is_insert set to 1) and we need to read the next one
+    $update_del = 0; # set to 1 below, if our next indel is a  delete ($next_is_delete set to 1) and we need to read the next one
     my $next_is_insert = 0; # set to 1 below if we determine next token is insert, not delete
     my $next_is_delete = 0; # set to 1 below if we determine next token is delete, not insert
     if((! defined $ins_seq_pos) && (! defined $del_seq_pos)) {
@@ -702,6 +703,11 @@ sub parse_blastn_indel_strings {
     } # end of else entered if both $del_seq_pos and $ins_seq_pos are defined
 
     if($next_is_insert) {
+      # sanity check that the segments we are about to add to mdl and seq
+      # coords are the same length (they represent a chunk of ungapped alignment)
+      if(($ins_mdl_pos - $cur_mdl_start + 1) != ($ins_seq_pos - $cur_seq_start + 1)) {
+        ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments before next insert, but lengths don't match up: mdl: $cur_mdl_start .. $ins_mdl_pos, seq: $cur_seq_start .. $ins_seq_pos", 1, $FH_HR);
+      }
       $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+", $FH_HR));
       $cur_mdl_start  = $ins_mdl_pos + 1;
       $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $ins_seq_pos, "+", $FH_HR));
@@ -710,6 +716,11 @@ sub parse_blastn_indel_strings {
       $ii++;
     }
     elsif($next_is_delete) {
+      # sanity check that the segments we are about to add to mdl and seq
+      # coords are the same length (they represent a chunk of ungapped alignment)
+      if(($del_mdl_pos - $cur_mdl_start + 1) != ($del_seq_pos - $cur_seq_start + 1)) {
+        ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments before next delete, but lengths don't match up: mdl: $cur_mdl_start .. $del_mdl_pos, seq: $cur_seq_start .. $del_seq_pos", 1, $FH_HR);
+      }
       $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $del_mdl_pos, "+", $FH_HR));
       $cur_mdl_start  = $del_mdl_pos + $del_len + 1;
       $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $del_seq_pos, "+", $FH_HR));
@@ -728,6 +739,11 @@ sub parse_blastn_indel_strings {
   }
   if($cur_seq_start > $seq_stop) {
     ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of sequence (query) positions, trying to add $cur_seq_start..$seq_stop:+ to $ugp_seq_coords", 1, $FH_HR);
+  }
+  # sanity check that the segments we are about to add to mdl and seq
+  # coords are the same length (they represent a chunk of ungapped alignment)
+  if(($mdl_stop - $cur_mdl_start + 1) != ($seq_stop - $cur_seq_start + 1)) {
+    ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments as final segment, but lengths don't match up: mdl: $cur_mdl_start .. $mdl_stop, seq: $cur_seq_start .. $seq_stop", 1, $FH_HR);
   }
   $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+", $FH_HR));
   $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+", $FH_HR));
