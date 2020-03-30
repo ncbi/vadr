@@ -42,19 +42,6 @@
 #
 use strict;
 use warnings;
-use Cwd;
-use LWP::Simple; 
-
-require "sqp_opts.pm";
-require "sqp_ofile.pm";
-require "sqp_seq.pm";
-require "sqp_seqfile.pm";
-require "sqp_utils.pm";
-
-###########################################################################
-# the next line is critical, a perl module must return a true value
-return 1;
-###########################################################################
 
 #################################################################
 # Subroutine:  run_blastn_and_summarize_output()
@@ -231,7 +218,7 @@ sub parse_blastn_results {
   # MATCH  ignored
   # HACC  
   # HDEF   ignored
-  # SLEN   ignored
+  # SLEN   
   # ------per-HSP-block------
   # HSP   
   # BITSCORE 
@@ -274,12 +261,24 @@ sub parse_blastn_results {
         if($value !~ /^\d+$/) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse query length in line $line", 1, $FH_HR);
         }
+        if($value != $seq_len_HR->{$cur_H{"QACC"}}) {
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read query length of $value from QLEN line for query " . $cur_H{"QACC"} . ", but expected " . $seq_len_HR->{$cur_H{"QACC"}} . " from seq_len_HR, on line: $line", 1, $FH_HR);
+        }
       }
       elsif($key eq "HACC") { 
         if(! defined $cur_H{"QACC"}) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read HACC line $line before QACC line (line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
+      }
+      elsif($key eq "HLEN") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read HLEN line $line before one or both of QACC and HACC lines (line: $line_idx)\n", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+        if($value !~ /^\d+$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse subject length in line $line", 1, $FH_HR);
+        }
       }
       elsif($key eq "HSP") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
@@ -434,11 +433,20 @@ sub parse_blastn_results {
                               $cur_seq_strand, 
                               $cur_bit_score, 
                               $cur_evalue);
+              # and output indel info to a separate file
               $cur_FH = $indel_FH_H{$cur_mdl_name};
-              printf $cur_FH ("%s\n", $cur_seq_name);
+              printf $cur_FH ("%s  %s  %s  %s  %s  %s  %s  %s\n",
+                              $cur_mdl_name,
+                              $cur_seq_name,
+                              vdr_CoordsSegmentCreate($cur_mdl_start, $cur_mdl_stop, "+", $FH_HR),
+                              $cur_H{"HLEN"},
+                              vdr_CoordsSegmentCreate($cur_seq_start, $cur_seq_stop, $cur_seq_strand, $FH_HR),
+                              $cur_seq_len,
+                              (defined $cur_H{"INS"}) ? $cur_H{"INS"} : "BLASTNULL",
+                              (defined $cur_H{"DEL"}) ? $cur_H{"DEL"} : "BLASTNULL");
             }
           }
-          } # end of 'else' entered if SRANGE is NOT ".."
+        } # end of 'else' entered if SRANGE is NOT ".."
         # reset variables
         my $save_qacc = $cur_H{"QACC"}; 
         my $save_hacc = $cur_H{"HACC"};
@@ -551,3 +559,169 @@ sub blastn_pretblout_to_tblout {
   close(IN);
   close $ofile_info_HHR->{"FH"}{"scan.r1.tblout"};
 }
+
+#################################################################
+# Subroutine:  parse_blastn_indel_strings()
+# Incept:      EPN, Mon Mar 30 06:53:35 2020
+#
+# Purpose:     Given information on where insertions and deletions
+#              are in a blastn alignment, determine the
+#              max ungapped string and optional return the alignment
+#              of the sequence as a string.
+#
+# Arguments: 
+#  $in_mdl_coords_sgm: vadr coords segment indicating model boundaries of alignment
+#  $in_seq_coords_sgm: vadr coords segment indicating sequence boundaries of alignment
+#  $blastn_ins_str:    insert string from parse_blast.pl run on blastn output indicating
+#                      where insertions in query (sequence) with respect to model (subject)
+#                         are, in format:
+#                         <instok1>...<instokn> (note: final token does not have ';' after it)
+#                         <instok> = Q<d1>:S<d2>+<d3>
+#                         <d1> is query   (sequence) position after which insertion of length <d3> nt exists
+#                         <d2> is subject (model)    position after which insertion of length <d3> nt exists
+#  $blastn_del_str:     delete string from parse_blast.pl indicating where deletions are 
+#                       where insertions are in format:
+#                         <deltok1>;<deltok2>;...<deltokn> (note: final token does not have ';' after it)
+#                         <deltok> = Q<d1>:S<d2>+<d3>
+#                         <d1> is query   (sequence) position after which insertion of length <d3> nt exists
+#                         <d2> is subject (model)    position after which insertion of length <d3> nt exists
+#  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    Two values:
+#             $ugp_mdl_coords: vadr coords string with all segments of ungapped alignments between
+#                              query and subject in model (subject) coords, between model coords
+#                              in $in_mdl_coords_sgm.
+#             $ugp_seq_coords: vadr coords string with all segments of ungapped alignments between
+#                              query and subject in sequence (query) coords, between sequence coords
+#                              in $in_seq_coords_sgm.
+#
+# Dies:       if unable to parse the indel strings
+#
+################################################################# 
+sub parse_blastn_indel_strings { 
+  my $sub_name = "parse_blastn_indel_strings";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($in_mdl_coords_sgm, $in_seq_coords_sgm, $blastn_ins_str, $blastn_del_str, $ofile_info_HHR) = @_;
+  
+  my $FH_HR = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef; # undef helpful for tests
+
+  my @ins_tok_A = ();
+  if($blastn_ins_str ne "BLASTNULL") { 
+    @ins_tok_A = split(";", $blastn_ins_str);
+  }
+  my $nins = scalar(@ins_tok_A);
+  
+  my @del_tok_A = ();
+  if($blastn_del_str ne "BLASTNULL") { 
+    @del_tok_A = split(";", $blastn_del_str);
+  }
+  my $ndel = scalar(@del_tok_A);
+  
+  my ($mdl_start, $mdl_stop, $mdl_strand) = vdr_CoordsSegmentParse($in_mdl_coords_sgm, $FH_HR);
+  my ($seq_start, $seq_stop, $seq_strand) = vdr_CoordsSegmentParse($in_seq_coords_sgm, $FH_HR);
+
+  if($mdl_strand ne "+") { ofile_FAIL("ERROR in $sub_name, model (subject) strand in model coords: $in_mdl_coords_sgm is not +", 1, $FH_HR); }
+  if($seq_strand ne "+") { ofile_FAIL("ERROR in $sub_name, sequence (query) strand in model coords: $in_seq_coords_sgm is not +", 1, $FH_HR); }
+  
+  # construct a vadr coords string of ungapped aligned segments, segment by segment
+  my $ugp_mdl_coords = "";
+  my $ugp_seq_coords = "";
+  my $cur_mdl_start = $mdl_start;
+  my $cur_seq_start = $seq_start;
+
+  my $ii = 0; # insert index in @ins_tok_A
+  my $di = 0; # delete index in @del_tok_A
+  my ($ins_seq_pos, $ins_mdl_pos, $ins_len) = (undef, undef, undef);
+  my ($del_seq_pos, $del_mdl_pos, $del_len) = (undef, undef, undef);
+  my $update_ins = 1; # flag set when we should update our insert token
+  my $update_del = 1; # flag set when we should update our delete token
+  my $ins_tok = undef;
+  my $del_tok = undef;
+  while(($ii < $nins) && ($di < $ndel)) { 
+    my $ins_tok = ($ii < $nins) ? $ins_tok_A[$ii] : "NULL";
+    my $del_tok = ($di < $ndel) ? $del_tok_A[$ii] : "NULL";
+    if($update_ins) { 
+      $ins_tok = ($ii < $nins) ? $ins_tok_A[$ii] : undef;
+      ($ins_seq_pos, $ins_mdl_pos, $ins_len) = parse_blastn_indel_token($ins_tok, "insert", $FH_HR);
+    }
+    if($update_del) {
+      $del_tok = ($di < $ndel) ? $del_tok_A[$di] : undef;
+      ($del_seq_pos, $del_mdl_pos, $del_len) = parse_blastn_indel_token($del_tok, "delete", $FH_HR);
+    }
+
+    my $next_is_insert = 0; # set to 1 below if we determine next token is insert, not delete
+    my $next_is_delete = 0; # set to 1 below if we determine next token is delete, not insert
+    if((! defined $ins_seq_pos) && (! defined $del_seq_pos)) {
+      # shouldn't happen
+      ofile_FAIL("ERROR in $sub_name, ran out of insert and delete tokens, but insert token index is $ii out of $nins and delete token index is $di out of ndel\nblastn_ins_str: $blastn_ins_str\nblastn_del_str: $blastn_del_str\n", 1, $FH_HR);
+    }      
+    elsif(! defined $ins_seq_pos) {
+      # $del_seq_pos must be defined
+      $next_is_delete = 1;
+    }
+    elsif(! defined $del_seq_pos) {
+      # $ins_seq_pos must be defined
+      $next_is_insert = 1;
+    }
+    else {
+      # both $del_seq_pos and $ins_seq_pos are defined
+      # determine which comes first
+      if(($ins_seq_pos < $del_seq_pos) && ($ins_mdl_pos <= $del_mdl_pos)) {
+        # insert comes first
+        $next_is_insert = 1;
+      }
+      elsif(($del_seq_pos < $ins_seq_pos) && ($del_mdl_pos <= $ins_mdl_pos)) {
+        # delete comes first
+        $next_is_delete = 1;
+      }
+      elsif(($ins_seq_pos == $del_seq_pos) && ($ins_mdl_pos == $del_mdl_pos)) {
+        # shouldn't happen
+        ofile_FAIL("ERROR in $sub_name, insert and delete tokens have identical query and subject positions, " . ((defined $ins_tok) ? $ins_tok : "UNDEFINED") . " and " . ((defined $del_tok) ? $del_tok : "UNDEFINED"), 1, $FH_HR);
+      }
+      else { 
+        # shouldn't happen, seq and mdl are not in the same order
+        ofile_FAIL("ERROR in $sub_name, insert and delete tokens imply query and subject coordinates out of order, " . ((defined $ins_tok) ? $ins_tok : "UNDEFINED") . " and " . ((defined $del_tok) ? $del_tok : "UNDEFINED"), 1, $FH_HR);
+      }
+    } # end of else entered if both $del_seq_pos and $ins_seq_pos are defined
+
+    if($next_is_insert) {
+      vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+"));
+      $cur_mdl_start = $ins_mdl_pos;
+      vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $ins_seq_pos, "+"));
+      $cur_seq_start = $ins_seq_pos + $ins_len;
+      $update_ins = 1;
+      $ii++;
+    }
+    elsif($next_is_delete) {
+      vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $del_mdl_pos, "+"));
+      $cur_mdl_start = $del_mdl_pos + $del_len;
+      $update_del = 1;
+      $di++;
+    }
+    else {
+      # shouldn't happen, can't figure out what token is next
+      ofile_FAIL("ERROR in $sub_name, unable to determine which insert and delete tokens imply query and subject coordinates out of order, $ins_tok_A[$ii] and $del_tok_A[$di]", 1, $FH_HR);
+    }
+  } # end of 'while(($ii < $nins) && ($di < $ndel))'
+  # add the final segment
+  if($cur_mdl_start > $mdl_stop) {
+    ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of model (subject) positions, trying to add $cur_mdl_start..$mdl_stop:+ to $ugp_mdl_coords", 1, $FH_HR);
+  }
+  if($cur_seq_start > $seq_stop) {
+    ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of sequence (query) positions, trying to add $cur_seq_start..$seq_stop:+ to $ugp_seq_coords", 1, $FH_HR);
+  }
+
+  vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+"));
+  vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+"));
+  
+  return ($ugp_mdl_coords, $ugp_seq_coords);
+}
+  
+###########################################################################
+# the next line is critical, a perl module must return a true value
+return 1;
+###########################################################################
+
+    
