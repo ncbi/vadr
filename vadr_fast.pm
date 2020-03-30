@@ -618,6 +618,7 @@ sub parse_blastn_indel_strings {
     @del_tok_A = split(";", $blastn_del_str);
   }
   my $ndel = scalar(@del_tok_A);
+  printf("nins: $nins ndel: $ndel\n");
   
   my ($mdl_start, $mdl_stop, $mdl_strand) = vdr_CoordsSegmentParse($in_mdl_coords_sgm, $FH_HR);
   my ($seq_start, $seq_stop, $seq_strand) = vdr_CoordsSegmentParse($in_seq_coords_sgm, $FH_HR);
@@ -631,6 +632,9 @@ sub parse_blastn_indel_strings {
   my $cur_mdl_start = $mdl_start;
   my $cur_seq_start = $seq_start;
 
+  printf("HEYA init cur_mdl_start: $cur_mdl_start\n");
+  printf("HEYA init cur_seq_start: $cur_seq_start\n");
+  
   my $ii = 0; # insert index in @ins_tok_A
   my $di = 0; # delete index in @del_tok_A
   my ($ins_seq_pos, $ins_mdl_pos, $ins_len) = (undef, undef, undef);
@@ -639,16 +643,27 @@ sub parse_blastn_indel_strings {
   my $update_del = 1; # flag set when we should update our delete token
   my $ins_tok = undef;
   my $del_tok = undef;
-  while(($ii < $nins) && ($di < $ndel)) { 
+  while(($ii < $nins) || ($di < $ndel)) { 
     my $ins_tok = ($ii < $nins) ? $ins_tok_A[$ii] : "NULL";
     my $del_tok = ($di < $ndel) ? $del_tok_A[$ii] : "NULL";
+    printf("\tin loop ii: $ii ins_tok: $ins_tok, di: $di del_tok: $del_tok\n");
     if($update_ins) { 
-      $ins_tok = ($ii < $nins) ? $ins_tok_A[$ii] : undef;
-      ($ins_seq_pos, $ins_mdl_pos, $ins_len) = parse_blastn_indel_token($ins_tok, "insert", $FH_HR);
+      if($ii < $nins) { 
+        $ins_tok = $ins_tok_A[$ii];
+        ($ins_mdl_pos, $ins_seq_pos, $ins_len) = parse_blastn_indel_token($ins_tok, "insert", $FH_HR);
+      }
+      else {
+        ($ins_tok, $ins_mdl_pos, $ins_seq_pos, $ins_len) = (undef, undef, undef, undef);
+      }
     }
     if($update_del) {
-      $del_tok = ($di < $ndel) ? $del_tok_A[$di] : undef;
-      ($del_seq_pos, $del_mdl_pos, $del_len) = parse_blastn_indel_token($del_tok, "delete", $FH_HR);
+      if($di < $ndel) { 
+        $del_tok = $del_tok_A[$ii];
+        ($del_mdl_pos, $del_seq_pos, $del_len) = parse_blastn_indel_token($del_tok, "delete", $FH_HR);
+      }
+      else {
+        ($del_tok, $del_mdl_pos, $del_seq_pos, $del_len) = (undef, undef, undef, undef);
+      }
     }
 
     my $next_is_insert = 0; # set to 1 below if we determine next token is insert, not delete
@@ -687,16 +702,18 @@ sub parse_blastn_indel_strings {
     } # end of else entered if both $del_seq_pos and $ins_seq_pos are defined
 
     if($next_is_insert) {
-      vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+"));
-      $cur_mdl_start = $ins_mdl_pos;
-      vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $ins_seq_pos, "+"));
-      $cur_seq_start = $ins_seq_pos + $ins_len;
+      $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+", $FH_HR));
+      $cur_mdl_start  = $ins_mdl_pos + 1;
+      $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $ins_seq_pos, "+", $FH_HR));
+      $cur_seq_start  = $ins_seq_pos + $ins_len + 1;
       $update_ins = 1;
       $ii++;
     }
     elsif($next_is_delete) {
-      vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $del_mdl_pos, "+"));
-      $cur_mdl_start = $del_mdl_pos + $del_len;
+      $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $del_mdl_pos, "+", $FH_HR));
+      $cur_mdl_start  = $del_mdl_pos + $del_len + 1;
+      $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $del_seq_pos, "+", $FH_HR));
+      $cur_seq_start  = $del_seq_pos + 1;
       $update_del = 1;
       $di++;
     }
@@ -712,13 +729,72 @@ sub parse_blastn_indel_strings {
   if($cur_seq_start > $seq_stop) {
     ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of sequence (query) positions, trying to add $cur_seq_start..$seq_stop:+ to $ugp_seq_coords", 1, $FH_HR);
   }
+  $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+", $FH_HR));
+  $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+", $FH_HR));
 
-  vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+"));
-  vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+"));
+  print("in $sub_name, returning mdl: $ugp_mdl_coords, seq: $ugp_seq_coords\n");
   
   return ($ugp_mdl_coords, $ugp_seq_coords);
 }
   
+#################################################################
+# Subroutine:  parse_blastn_indel_token()
+# Incept:      EPN, Mon Mar 30 10:15:05 2020
+#
+# Purpose:     Parse a token from an INS or DEL output line created
+#              by parse_blast.pl --program n, and return its constituent
+#              parts.
+#
+#              if $type eq "insert": = Q<d1>:S<d2>+<d3>
+#              if $type eq "delete": = Q<d1>:S<d2>-<d3>
+#
+# Arguments: 
+#  $indel_tok:  token from parse_blast.pl INS or DEL line
+#  $type:       "insert" or "delete" (just for checking if + or - is correct)
+#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#                         
+# Returns:    Three values:
+#             $mdl_pos: model (subject) position 
+#             $seq_pos: sequence (query) position 
+#             $len:     length of insert or delete
+#
+# Dies:       if unable to parse the token
+#             if $type is "insert" and we read a - not a +
+#             if $type is "delete" and we read a + not a -
+#             if $type is not "insert" or "delete"
+#
+################################################################# 
+sub parse_blastn_indel_token { 
+  my $sub_name = "parse_blastn_indel_token";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($indel_tok, $type, $FH_HR) = @_;
+
+  if(! defined $indel_tok) {
+    ofile_FAIL("ERROR in $sub_name, indel_tok is undefined", 1, $FH_HR);
+  }    
+  if(($type ne "insert") && ($type ne "delete")) {
+    ofile_FAIL("ERROR in $sub_name, type is $type but should be \"insert\" or \"delete\"", 1, $FH_HR);
+  }  
+
+  my $exp_plus_or_minus = ($type eq "insert") ? "+" : "-";
+
+  printf("in $sub_name indel_tok: $indel_tok\n");
+  if($indel_tok =~ /^Q(\d+)\:S(\d+)\:([\+\-])(\d+)$/) { 
+    my ($seq_pos, $mdl_pos, $plus_or_minus, $len) = ($1, $2, $3, $4);
+    if($plus_or_minus ne $exp_plus_or_minus) {
+      ofile_FAIL("ERROR in $sub_name, type is $type, expected $exp_plus_or_minus but read $plus_or_minus in input token $indel_tok", 1, $FH_HR);
+    }
+    return ($mdl_pos, $seq_pos, $len); # yes, mdl and seq are supposed to be reversed order relative to $indel_tok
+  }
+
+  # if we get here we couldn't parse the token
+  ofile_FAIL("ERROR in $sub_name, unable to parse token $indel_tok", 1, $FH_HR);
+
+  return; # NEVER REACHED
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
