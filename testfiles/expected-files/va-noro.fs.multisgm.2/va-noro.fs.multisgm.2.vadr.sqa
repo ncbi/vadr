@@ -10,4 +10,4 @@
 7     NC_001959.2-manually-added-frameshifts-2/1-50        50  PASS  yes  NC_001959  Norovirus  GI     3    9    0    3      0  -     
 8     NC_001959.2-manually-added-frameshifts-2/67-500     434  PASS  yes  NC_001959  Norovirus  GI     3    9    3    3      0  -     
 9     NC_001959.2-manually-added-frameshifts-2/30-80       51  FAIL  yes  NC_001959  Norovirus  GI     3    9    3    3      3  -     
-10    NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  yes  NC_001959  Norovirus  GI     4    8    3    3      1  -     
+10    NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  yes  NC_001959  Norovirus  GI     4    8    3    3      3  -     
