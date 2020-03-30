@@ -1,18 +1,23 @@
 >Feature ENTOY100A-REV-fs1
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs1_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs1_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs1_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs1_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs1_1
 94	68	gene
 			gene	one
 91	70	misc_feature
@@ -37,18 +42,23 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 >Feature ENTOY100A-REV-fs2
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs2_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs2_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs2_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs2_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs2_1
 98	68	gene
 			gene	one
 95	70	misc_feature
@@ -73,26 +83,31 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 >Feature ENTOY100A-REV-fs3
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs3_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs3_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs3_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs3_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs3_1
 96	68	gene
 			gene	one
 93	70	misc_feature
 			note	similar to protein one
-78	73	mat_peptide
-			product	protein one mp2
-93	79	mat_peptide
-			product	protein one mp1
+78	73	misc_feature
+			note	similar to protein one mp2
+93	79	misc_feature
+			note	similar to protein one mp1
 99	79	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -102,21 +117,28 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 90..80 (11 nt, avgpp: 0.870) on - strand are inconsistent with dominant frame (-1); inserts:90,81-80; deletes:none;]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-REV-fs4
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs4_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs4_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs4_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs4_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs4_1
 99	68	gene
 			gene	one
 96	70	misc_feature
@@ -139,26 +161,31 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 >Feature ENTOY100A-REV-fs5
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs5_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs5_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs5_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs5_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs5_1
 93	68	gene
 			gene	one
 90	70	misc_feature
 			note	similar to protein one
-78	73	mat_peptide
-			product	protein one mp2
-90	79	mat_peptide
-			product	protein one mp1
+78	73	misc_feature
+			note	similar to protein one mp2
+90	79	misc_feature
+			note	similar to protein one mp1
 96	79	misc_feature
 			note	similar to enRNA
 91	81	stem_loop
@@ -166,22 +193,29 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 
 Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 87..80 (8 nt, avgpp: 0.922) on - strand are inconsistent with dominant frame (-1); inserts:87; deletes:80(1);]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 79]
 >Feature ENTOY100A-REV-fs6
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs6_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs6_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs6_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs6_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs6_1
 96	68	gene
 			gene	one
 93	70	misc_feature
@@ -205,18 +239,23 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap a
 >Feature ENTOY100A-REV-fs7
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs7_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs7_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs7_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs7_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs7_1
 92	68	gene
 			gene	one
 89	70	misc_feature
@@ -241,18 +280,23 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 >Feature ENTOY100A-REV-fs8
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs8_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs8_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs8_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs8_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs8_1
 91	68	gene
 			gene	one
 88	70	misc_feature
@@ -278,18 +322,23 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 >Feature ENTOY100A-REV-fs9
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs9_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs9_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs9_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs9_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs9_1
 90	68	gene
 			gene	one
 87	70	misc_feature
@@ -313,18 +362,23 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap a
 >Feature ENTOY100A-REV-fs10
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs10_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs10_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs10_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs10_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs10_1
 90	68	gene
 			gene	one
 87	70	misc_feature
@@ -347,18 +401,23 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 >Feature ENTOY100A-REV-fs11
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs11_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs11_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs11_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs11_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs11_1
 93	68	gene
 			gene	one
 90	70	misc_feature
@@ -381,18 +440,23 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model has low co
 >Feature ENTOY100A-REV-fs12
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-fs12_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-fs12_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-fs12_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-fs12_2
 69	54	CDS
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-fs12_1
 93	68	gene
 			gene	one
 90	70	misc_feature

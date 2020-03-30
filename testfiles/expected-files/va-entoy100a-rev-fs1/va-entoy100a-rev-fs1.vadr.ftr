@@ -39,8 +39,8 @@
 #
 4.1    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  gene         one                 29    1    -      96    68        -  no        -     -        -     -    1    0                    96..68:-                    93..68:+  -     
 4.2    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  CDS          protein_one         24    2    -      93    70        -  no        -     -        -     -    1    0                    93..70:-                    90..70:+  POSSIBLE_FRAMESHIFT_HIGH_CONF(fsthicnf)
-4.3    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1     15    3    -      93    79        -  no        -     -        -     -    1    0                    93..79:-                    90..79:+  -     
-4.4    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp2      6    4    -      78    73        -  no        -     -        -     -    1    0                    78..73:-                    78..73:+  -     
+4.3    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1     15    3    -      93    79        -  no        -     -        -     -    1    0                    93..79:-                    90..79:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
+4.4    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp2      6    4    -      78    73        -  no        -     -        -     -    1    0                    78..73:-                    78..73:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
 4.5    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  CDS          protein_two         42    5    -      69    28        -  no        -     -        -     -    3    0  69..54:-,54..37:-,35..28:-  69..54:+,54..37:+,35..28:+  -     
 4.6    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  CDS          protein_three       24    6    -      34     6        -  no        -     -        -     -    2    0            34..22:-,16..6:-            34..22:+,16..6:+  -     
 4.7    ENTOY100A-REV-fs3   103  FAIL  ENTOY100A-REV  mat_peptide  protein_three_mp1    9    7    -      34    26        -  no        -     -        -     -    1    0                    34..26:-                    34..26:+  -     
@@ -63,8 +63,8 @@
 #
 6.1    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  gene         one                 26    1    -      93    68        -  no        -     -        -     -    1    0                    93..68:-                    93..68:+  -     
 6.2    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  CDS          protein_one         21    2    -      90    70        -  no        -     -        -     -    1    0                    90..70:-                    90..70:+  POSSIBLE_FRAMESHIFT_HIGH_CONF(fsthicnf)
-6.3    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1     12    3    -      90    79        -  no        -     -        -     -    1    0                    90..79:-                    90..79:+  -     
-6.4    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp2      6    4    -      78    73        -  no        -     -        -     -    1    0                    78..73:-                    78..73:+  -     
+6.3    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp1     12    3    -      90    79        -  no        -     -        -     -    1    0                    90..79:-                    90..79:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
+6.4    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  mat_peptide  protein_one_mp2      6    4    -      78    73        -  no        -     -        -     -    1    0                    78..73:-                    78..73:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
 6.5    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  CDS          protein_two         42    5    -      69    28        -  no        -     -        -     -    3    0  69..54:-,54..37:-,35..28:-  69..54:+,54..37:+,35..28:+  -     
 6.6    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  CDS          protein_three       24    6    -      34     6        -  no        -     -        -     -    2    0            34..22:-,16..6:-            34..22:+,16..6:+  -     
 6.7    ENTOY100A-REV-fs5   100  FAIL  ENTOY100A-REV  mat_peptide  protein_three_mp1    9    7    -      34    26        -  no        -     -        -     -    1    0                    34..26:-                    34..26:+  -     

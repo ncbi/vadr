@@ -1,14 +1,18 @@
 >Feature ENTOY100A-REV-2-fs1
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs1_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs1_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs1_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs1_2
 70	54	misc_feature
 54	37
 35	28
@@ -17,10 +21,13 @@
 			gene	one
 91	71	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs1_1
 79	74	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs1_1
 91	80	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs1_1
 97	80	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -35,14 +42,18 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs2
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs2_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs2_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs2_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs2_2
 70	55	misc_feature
 55	37
 35	28
@@ -51,10 +62,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 91	71	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs2_1
 79	74	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs2_1
 91	80	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs2_1
 97	80	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -69,6 +83,7 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs3
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs3_2
 35	22	misc_feature
 16	6
 			note	similar to protein three
@@ -85,10 +100,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 91	71	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs3_1
 79	74	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs3_1
 91	80	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs3_1
 97	80	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -108,14 +126,18 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 >Feature ENTOY100A-REV-2-fs4
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs4_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs4_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs4_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs4_2
 68	54	misc_feature
 54	37
 35	28
@@ -124,10 +146,13 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			gene	one
 89	69	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs4_1
 77	72	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs4_1
 89	78	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs4_1
 95	78	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -141,14 +166,18 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs5
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs5_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs5_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs5_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs5_2
 68	53	misc_feature
 53	37
 35	28
@@ -157,10 +186,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 89	69	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs5_1
 77	72	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs5_1
 89	78	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs5_1
 95	78	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -174,6 +206,7 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs6
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs6_2
 33	22	misc_feature
 16	6
 			note	similar to protein three
@@ -190,10 +223,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 89	69	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs6_1
 77	72	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs6_1
 89	78	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs6_1
 95	78	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -213,14 +249,18 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 >Feature ENTOY100A-REV-2-fs7
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs7_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs7_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs7_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs7_2
 68	53	misc_feature
 53	37
 35	28
@@ -229,10 +269,13 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			gene	one
 89	69	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs7_1
 77	72	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs7_1
 89	78	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs7_1
 95	78	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -248,14 +291,18 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs9
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs9_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs9_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs9_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs9_2
 72	57	misc_feature
 57	37
 35	28
@@ -264,10 +311,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 93	73	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs9_1
 81	76	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs9_1
 93	82	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs9_1
 99	82	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -280,14 +330,18 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 >Feature ENTOY100A-REV-2-fs11
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs11_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs11_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs11_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs11_2
 69	53	misc_feature
 53	37
 35	28
@@ -296,10 +350,13 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			gene	one
 90	70	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs11_1
 78	73	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs11_1
 90	79	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs11_1
 96	79	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -312,6 +369,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 >Feature ENTOY100A-REV-2-fs12
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs12_2
 36	22	misc_feature
 16	6
 			note	similar to protein three
@@ -328,10 +386,13 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			gene	one
 93	73	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs12_1
 81	76	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs12_1
 93	82	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs12_1
 99	82	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -350,14 +411,18 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 >Feature ENTOY100A-REV-2-fs13
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs13_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs13_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs13_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs13_2
 68	54	misc_feature
 53	37
 35	28
@@ -366,10 +431,13 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			gene	one
 89	69	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs13_1
 77	72	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs13_1
 89	78	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs13_1
 95	78	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -386,14 +454,18 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs14
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs14_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs14_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs14_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs14_2
 67	53	misc_feature
 52	37
 35	28
@@ -402,10 +474,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 88	68	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs14_1
 76	71	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs14_1
 88	77	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs14_1
 94	77	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -420,14 +495,18 @@ ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is
 >Feature ENTOY100A-REV-2-fs15
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs15_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs15_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs15_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs15_2
 70	55	misc_feature
 55	37
 35	28
@@ -436,10 +515,13 @@ ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is
 			gene	one
 91	71	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs15_1
 79	74	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs15_1
 91	80	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs15_1
 97	80	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -454,14 +536,18 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 >Feature ENTOY100A-REV-2-fs16
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs16_3
 34	22	CDS
 16	6
 			product	protein three
+			protein_id	ENTOY100A-REV-2-fs16_2
 25	22	mat_peptide
 16	9
 			product	protein three mp2
+			protein_id	ENTOY100A-REV-2-fs16_2
 34	26	mat_peptide
 			product	protein three mp1
+			protein_id	ENTOY100A-REV-2-fs16_2
 72	57	misc_feature
 57	37
 35	28
@@ -470,10 +556,13 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			gene	one
 93	73	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs16_1
 81	76	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs16_1
 93	82	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs16_1
 99	82	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -498,14 +587,18 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 54	37
 35	28
 			product	protein two
+			protein_id	ENTOY100A-REV-2-fs17_2
 93	68	gene
 			gene	one
 90	70	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs17_1
 78	73	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs17_1
 90	79	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs17_1
 96	79	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -517,6 +610,8 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 25..15 (11 nt, avgpp: 0.791) on - strand are inconsistent with dominant frame (-1); inserts:25; deletes:15(1);]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp1) alignment to homology model has low confidence at 3' boundary [0.50 < 0.60 (mat_peptide feature), RF position 26]
 ERROR: PEPTIDE_ADJACENCY_PROBLEM: (protein three mp1) predictions of two mat_peptides expected to be adjacent are not adjacent [abs(26 - 24) != 1 (strand:-)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein four) high confidence potential frameshift in CDS [nucleotide alignment of positions 15..16 (2 nt, avgpp: 0.850) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:14(1);]
 ERROR: MUTATION_AT_END: (protein four) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
@@ -536,14 +631,18 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 60	43
 41	34
 			product	protein two
+			protein_id	ENTOY100A-REV-2-fs18_2
 99	74	gene
 			gene	one
 96	76	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs18_1
 84	79	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs18_1
 96	85	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs18_1
 102	85	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -555,12 +654,15 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 31..15 (17 nt, avgpp: 0.775) on - strand are inconsistent with dominant frame (-1); inserts:31,19-15; deletes:none;]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp1) alignment to homology model has low confidence at 3' boundary [0.50 < 0.60 (mat_peptide feature), RF position 26]
 ERROR: PEPTIDE_ADJACENCY_PROBLEM: (protein three mp1) predictions of two mat_peptides expected to be adjacent are not adjacent [abs(32 - 30) != 1 (strand:-)]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein four) high confidence potential frameshift in CDS [nucleotide alignment of positions 15..22 (8 nt, avgpp: 0.700) on + strand are inconsistent with dominant frame (+1); inserts:15-19; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
 >Feature ENTOY100A-REV-2-fs19
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs19_3
 31	21	misc_feature
 16	6
 			note	similar to protein three
@@ -573,14 +675,18 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 51	34
 32	25
 			product	protein two
+			protein_id	ENTOY100A-REV-2-fs19_2
 90	65	gene
 			gene	one
 87	67	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs19_1
 75	70	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs19_1
 87	76	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs19_1
 93	76	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -606,20 +712,24 @@ ERROR: UNEXPECTED_LENGTH: (protein three mp2) length of complete coding (CDS or 
 22	20	misc_feature
 14	9
 			note	similar to protein three mp2
-31	23	mat_peptide
-			product	protein three mp1
+31	23	misc_feature
+			note	similar to protein three mp1
 66	51	CDS
 51	34
 32	25
 			product	protein two
+			protein_id	ENTOY100A-REV-2-fs21_2
 90	65	gene
 			gene	one
 87	67	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs21_1
 75	70	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs21_1
 87	76	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs21_1
 93	76	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -631,7 +741,9 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 19..13 (7 nt, avgpp: 0.786) on - strand are inconsistent with dominant frame (-1); inserts:none; deletes:13(2);]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three) alignment to homology model is a gap at 3' boundary [RF position 22, segment 1 of 2]
 ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 16, segment 2 of 2]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (protein three mp2) alignment to homology model is a gap at 3' boundary [RF position 22, segment 1 of 2]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein four) high confidence potential frameshift in CDS [nucleotide alignment of positions 13..15 (3 nt, avgpp: 0.733) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(2);]
 ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
 >Feature ENTOY100A-REV-2-fs22
@@ -649,14 +761,18 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 57	40
 38	31
 			product	protein two
+			protein_id	ENTOY100A-REV-2-fs22_2
 96	71	gene
 			gene	one
 93	73	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs22_1
 81	76	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs22_1
 93	82	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs22_1
 99	82	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -692,10 +808,13 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 			gene	one
 91	71	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs23_1
 79	74	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs23_1
 91	80	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs23_1
 97	80	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA
@@ -715,6 +834,7 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 >Feature ENTOY100A-REV-2-fs24
 3	17	CDS
 			product	protein four
+			protein_id	ENTOY100A-REV-2-fs24_2
 34	22	misc_feature
 16	6
 			note	similar to protein three
@@ -731,10 +851,13 @@ ERROR: UNEXPECTED_LENGTH: (protein four) length of complete coding (CDS or mat_p
 			gene	one
 90	70	CDS
 			product	protein one
+			protein_id	ENTOY100A-REV-2-fs24_1
 78	73	mat_peptide
 			product	protein one mp2
+			protein_id	ENTOY100A-REV-2-fs24_1
 90	79	mat_peptide
 			product	protein one mp1
+			protein_id	ENTOY100A-REV-2-fs24_1
 96	79	ncRNA
 			product	enRNA
 			ncRNA_class	lncRNA

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.4 [March 2020]
+# version: 1.0.5 [March 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -76,14 +76,14 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
-# vdr_FeatureChildrenArray()
 # vdr_FeatureNumSegments()
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
 # vdr_FeatureSummarizeSegment()
+# vdr_FeatureParentIndex()
 # vdr_FeatureStartStopStrandArrays()
-# vdr_FeatureSummaryStrand
+# vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
 # 
 # Subroutines related to alerts:
@@ -621,6 +621,8 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
 # 
 # Arguments: 
 #   $ftr_info_AHR:   REF to hash of arrays with information on the features, PRE-FILLED
+#   $type_or_undef:  feature type of children (e.g. mat_peptide) we want information on
+#                    caller should set as 'undef' to get information on all types of children
 #   $AAR:            REF to array of arrays of children feature indices, FILLED HERE
 #   $FH_HR:          REF to hash of file handles
 # 
@@ -629,10 +631,10 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
 #
 ################################################################# 
 sub vdr_FeatureInfoChildrenArrayOfArrays { 
-  my $nargs_expected = 3;
+  my $nargs_expected = 4;
   my $sub_name = "vdr_FeatureInfoChildrenArrayOfArrays";
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  my ($ftr_info_AHR, $AAR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $type_or_undef, $AAR, $FH_HR) = @_;
 
   @{$AAR} = ();
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -646,14 +648,15 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
 
   # fill
   for($child_ftr_idx = 0; $child_ftr_idx < $nftr; $child_ftr_idx++) { 
-    if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
-      my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
-      foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
-        push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+    if((! defined $type_or_undef) || ($ftr_info_AHR->[$child_ftr_idx]{"type"} eq $type_or_undef)) { 
+      if($ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"} ne "GBNULL") { 
+        my @parent_ftr_idx_A = split(",", $ftr_info_AHR->[$child_ftr_idx]{"parent_idx_str"});
+        foreach $parent_ftr_idx (@parent_ftr_idx_A) { 
+          push(@{$AAR->[$parent_ftr_idx]}, $child_ftr_idx);
+        }
       }
     }
   }
-
   return;
 }
 
@@ -1048,6 +1051,36 @@ sub vdr_Feature3pMostPosition {
   }
 
   return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine: vdr_FeatureParentIndex
+# Incept:     EPN, Tue Mar 24 16:40:27 2020
+# 
+# Purpose:    Return "parent_idx_str" if it is not "GBNULL"
+#             else return "1"
+#             be called after vdr_FeatureInfoInitializeParentIndexStrings().
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $ftr_idx:       feature index
+#
+# Returns:    void
+# 
+# Dies:       Never; does not validate $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}
+#
+#################################################################
+sub vdr_FeatureParentIndex {
+  my $sub_name = "vdr_FeatureParentIndex";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+  
+  if($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} eq "GBNULL") { 
+    return -1;
+  }
+  return $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"};
 }
 
 #################################################################

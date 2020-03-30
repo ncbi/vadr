@@ -35,5 +35,5 @@
 #
 10.1  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  gene         ORF1                       501    1    +       1   501        -  5'&3'       -     -        -     -    1    0    1..501:+  1002..1500:+  -     
 10.2  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  CDS          nonstructural_polyprotein  501    2    +       1   501        -  5'&3'       5   499        -   852    1    0    1..501:+  1002..1500:+  POSSIBLE_FRAMESHIFT_HIGH_CONF(fsthicnf)
-10.3  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  mat_peptide  p48                        199    7    +       1   199        -  5'          -     -        -     -    1    0    1..199:+  1002..1198:+  -     
-10.4  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  mat_peptide  NTPase                     302    8    +     200   501        -  3'          -     -        -     -    1    0  200..501:+  1199..1500:+  -     
+10.3  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  mat_peptide  p48                        199    7    +       1   199        -  5'          -     -        -     -    1    0    1..199:+  1002..1198:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
+10.4  NC_001959.2-manually-added-frameshifts-2/1000-1500  501  FAIL  NC_001959  mat_peptide  NTPase                     302    8    +     200   501        -  3'          -     -        -     -    1    0  200..501:+  1199..1500:+  PEPTIDE_TRANSLATION_PROBLEM(peptrans)
