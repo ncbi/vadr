@@ -14,6 +14,8 @@
 3.3.1   ENTOY100A-fs2   ENTOY100A  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
 #
 4.1.1   ENTOY100A-fs3   ENTOY100A  CDS          protein_one        2  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 14..24 (11 nt, avgpp: 0.843) on + strand are inconsistent with dominant frame (+1); inserts:14,23-24; deletes:none;]
+4.2.1   ENTOY100A-fs3   ENTOY100A  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
+4.3.1   ENTOY100A-fs3   ENTOY100A  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
 #
 5.1.1   ENTOY100A-fs4   ENTOY100A  CDS          protein_one        2  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 11..22 (stop shifted 15 nt)]
 5.1.2   ENTOY100A-fs4   ENTOY100A  CDS          protein_one        2  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 14..27 (14 nt, avgpp: 0.875) on + strand are inconsistent with dominant frame (+1); inserts:14-18,27; deletes:none;]
@@ -22,7 +24,9 @@
 5.4.1   ENTOY100A-fs4   ENTOY100A  ncRNA        enRNA             10  indf3loc  yes   INDEFINITE_ANNOTATION_END      alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]
 #
 6.1.1   ENTOY100A-fs5   ENTOY100A  CDS          protein_one        2  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 14..21 (8 nt, avgpp: 0.934) on + strand are inconsistent with dominant frame (+1); inserts:14; deletes:21(1);]
-6.2.1   ENTOY100A-fs5   ENTOY100A  ncRNA        enRNA             10  indf3loc  yes   INDEFINITE_ANNOTATION_END      alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
+6.2.1   ENTOY100A-fs5   ENTOY100A  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
+6.3.1   ENTOY100A-fs5   ENTOY100A  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
+6.4.1   ENTOY100A-fs5   ENTOY100A  ncRNA        enRNA             10  indf3loc  yes   INDEFINITE_ANNOTATION_END      alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
 #
 7.1.1   ENTOY100A-fs6   ENTOY100A  CDS          protein_one        2  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 11..22 (stop shifted 12 nt)]
 7.1.2   ENTOY100A-fs6   ENTOY100A  CDS          protein_one        2  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 14..25 (12 nt, avgpp: 0.890) on + strand are inconsistent with dominant frame (+1); inserts:14-18; deletes:25(2);]

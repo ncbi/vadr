@@ -3,18 +3,18 @@
 			gene	ORF1
 5	5377	misc_feature
 			note	similar to nonstructural polyprotein
-5	1201	mat_peptide
-			product	p48
-1202	2290	mat_peptide
-			product	NTPase
-2291	2893	mat_peptide
-			product	p22
-2894	3307	mat_peptide
-			product	VPg
-3308	3850	mat_peptide
-			product	Pro
-3851	5374	mat_peptide
-			product	RdRp
+5	1201	misc_feature
+			note	similar to p48
+1202	2290	misc_feature
+			note	similar to NTPase
+2291	2893	misc_feature
+			note	similar to p22
+2894	3307	misc_feature
+			note	similar to VPg
+3308	3850	misc_feature
+			note	similar to Pro
+3851	5374	misc_feature
+			note	similar to RdRp
 5361	6958	gene
 			gene	ORF2
 5361	5806	misc_feature
@@ -37,23 +37,29 @@ ERROR: CDS_HAS_STOP_CODON: (VP2) in-frame stop codon exists 5' of stop position 
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 7452..7589 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7451(1);]
 ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137 > 8 (strand:+ CM:7589 blastx:7589 - 137)]
 ERROR: UNEXPECTED_LENGTH: (VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [338]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p22) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (VPg) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (Pro) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
 >Feature NC_001959.2-manually-added-frameshifts-2
 5	5374	gene
 			gene	ORF1
 5	5374	misc_feature
 			note	similar to nonstructural polyprotein
-5	1198	mat_peptide
-			product	p48
-1199	2287	mat_peptide
-			product	NTPase
-2288	2890	mat_peptide
-			product	p22
-2891	3304	mat_peptide
-			product	VPg
-3305	3847	mat_peptide
-			product	Pro
-3848	5371	mat_peptide
-			product	RdRp
+5	1198	misc_feature
+			note	similar to p48
+1199	2287	misc_feature
+			note	similar to NTPase
+2288	2890	misc_feature
+			note	similar to p22
+2891	3304	misc_feature
+			note	similar to VPg
+3305	3847	misc_feature
+			note	similar to Pro
+3848	5371	misc_feature
+			note	similar to RdRp
 5358	6951	gene
 			gene	ORF2
 5358	5800	misc_feature
@@ -79,3 +85,9 @@ ERROR: CDS_HAS_STOP_CODON: (VP2) in-frame stop codon exists 5' of stop position 
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 7438..7588 (151 nt, avgpp: 0.960) on + strand are inconsistent with dominant frame (+1); inserts:7438; deletes:7449(2);]
 ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [146 > 8 (strand:+ CM:7588 blastx:7588 - 146)]
 ERROR: UNEXPECTED_LENGTH: (VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [338]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p22) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (VPg) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (Pro) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem
