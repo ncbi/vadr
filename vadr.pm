@@ -118,6 +118,7 @@ require "sqp_utils.pm";
 # vdr_CoordsProteinToNucleotide()
 # vdr_CoordsMergeAllAdjacentSegments()
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
+# vdr_CoordsMaxLengthSegment()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -3168,6 +3169,48 @@ sub vdr_CoordsMergeTwoSegmentsIfAdjacent {
   }
 
   return "";  
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMaxLengthSegment()
+#
+# Incept:     EPN, Mon Mar 30 17:32:32 2020
+#
+# Synopsis: Return the maximum length segment and its length
+#           from a coords string of one or more segments.
+#           If multiple coords segments are tied for the maximum
+#           length, return the first one. 
+#
+# Arguments:
+#  $coords: segment 1
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  Two values:
+#           1. $argmax_sgm: he coords segment of maximum length 
+#           2. $max_sgm_len: length of $argmax_coords_sgm
+#
+# Dies: If unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsMaxLengthSegment { 
+  my $sub_name = "vdr_CoordsMaxLengthSegment";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+
+  my @coords_tok_A  = split(",", $coords);
+  my $nsgm = scalar(@coords_tok_A);
+  my $argmax_sgm = $coords_tok_A[0];
+  my $max_sgm_len = vdr_CoordsLength($coords_tok_A[0], $FH_HR);
+  for(my $i = 1; $i < $nsgm; $i++) {
+    my $sgm_len = vdr_CoordsLength($coords_tok_A[$i], $FH_HR);
+    if($sgm_len > $max_sgm_len) {
+      $max_sgm_len = $sgm_len;
+      $argmax_sgm = $coords_tok_A[$i];
+    }
+  }
+  return ($argmax_sgm, $max_sgm_len);
 }
 
 #################################################################

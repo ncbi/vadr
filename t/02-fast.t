@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 24;
+use Test::More tests => 59;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -122,3 +122,75 @@ for($i = 0; $i < $ntests; $i++) {
   is($cur_seq_coords, $exp_seq_coords_A[$i], "parse_blastn_indel_strings() ungapped seq coords: $desc_A[$i]");
 }
 
+###########################################
+# vdr_CoordsMaxLengthSegment() tests
+###########################################
+
+@desc_A             = ();
+my @coords_A        = ();
+my @exp_coords_A    = ();
+my @exp_rc_coords_A = ();
+my @exp_len_A       = ();
+
+push(@desc_A,           "1 sgm");
+push(@coords_A,         "1..3:+");
+push(@exp_coords_A,     "1..3:+");   
+push(@exp_rc_coords_A,  ""); # exp_rc_coords is just reverse complement of exp_coords
+push(@exp_len_A,        "3");   
+
+push(@desc_A,           "2 sgm 1");
+push(@coords_A,         "1..3:+,1..2:+");
+push(@exp_coords_A,     "1..3:+");   
+push(@exp_rc_coords_A,  "");   
+push(@exp_len_A,        "3");   
+
+push(@desc_A,           "2 sgm 2");
+push(@coords_A,         "1..3:+,1..4:+");
+push(@exp_coords_A,     "1..4:+");   
+push(@exp_rc_coords_A,  "");   
+push(@exp_len_A,        "4");   
+
+push(@desc_A,           "2 sgm 3");
+push(@coords_A,         "1..3:+,1..4:-");
+push(@exp_coords_A,     "1..4:-");   
+push(@exp_rc_coords_A,  "");   
+push(@exp_len_A,        "4");   
+
+push(@desc_A,           "3 sgm 1");
+push(@coords_A,         "1..3:+,1..4:+,20..21:+");
+push(@exp_coords_A,     "1..4:+");   
+push(@exp_rc_coords_A,  "");   
+push(@exp_len_A,        "4");   
+
+push(@desc_A,           "3 sgm 2");
+push(@coords_A,         "1..3:+,4..1:-,20..21:+");
+push(@exp_coords_A,     "4..1:-");   
+push(@exp_rc_coords_A,  "");   
+push(@exp_len_A,        "4");   
+
+push(@desc_A,           "3 sgm 3");
+push(@coords_A,         "1..3:+,4..6:+,20..21:+");
+push(@exp_coords_A,     "1..3:+");   
+push(@exp_rc_coords_A,  "6..4:-");   
+push(@exp_len_A,        "3");   
+
+$ntests = scalar(@desc_A);
+my ($cur_coords, $cur_len, $rc_coords, $rc_exp_coords);
+for($i = 0; $i < $ntests; $i++) { 
+  ($cur_coords, $cur_len) = vdr_CoordsMaxLengthSegment($coords_A[$i], undef);
+  is($cur_coords, $exp_coords_A[$i], "vdr_CoordsMaxLengthSegment() coords: $desc_A[$i]");
+  is($cur_len, $exp_len_A[$i], "vdr_CoordsMaxLengthSegment() length: $desc_A[$i]");
+
+  # sanity check, reverse complement it and check again
+  $rc_coords     = vdr_CoordsReverseComplement($coords_A[$i], 0, undef);
+  $rc_exp_coords = ($exp_rc_coords_A[$i] eq "") ?
+      vdr_CoordsReverseComplement($exp_coords_A[$i], 0, undef) :
+      $exp_rc_coords_A[$i];
+  ($cur_coords, $cur_len) = vdr_CoordsMaxLengthSegment($rc_coords, undef);
+  is($cur_coords, $rc_exp_coords, "vdr_CoordsMaxLengthSegment() coords reverse complement: $desc_A[$i]");
+  is($cur_len, $exp_len_A[$i], "vdr_CoordsMaxLengthSegment() len reverse complement: $desc_A[$i]");
+
+  # another sanity check, reverse complement again and make sure we get back orig
+  $cur_coords = vdr_CoordsReverseComplement($rc_coords, 0, undef);
+  is($cur_coords, $coords_A[$i], "vdr_CoordsMaxLengthSegment() coords double reverse complement 1: $desc_A[$i]");
+}
