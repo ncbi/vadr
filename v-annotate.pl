@@ -896,27 +896,46 @@ my %sgm_results_HHAH  = ();     # 1st dim: hash, keys are model names
                                 # 4th dim: hash, keys are "sstart", "sstop", "mstart", "mstop", "strand", "5seqflush", "3seqflush", "5trunc", "3trunc"
 my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
                                 # key1: sequence name, key2: feature index, key3: alert code, value: alert message
-my %mdl_unexdivg_H = ();           # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
+my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
+
+my $cur_mdl_fa_file;    # fasta file with sequences to align to current model
+my $cur_mdl_nseq;       # number of sequences we are aligning for current model
+my $cur_mdl_seq_len_HR; # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
 
 # for each model with seqs to align to, create the sequence file and run cmalign
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
-
-    # fetch seqs
-    my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
-    my $mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
-    $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
-    if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $mdl_fa_file); }
-
+    
+    $cur_mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
+    
+    # fetch seqs, we do this differently depending on if $do_blastn_ali or not
+    if(! $do_blastn_ali) { 
+      $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
+      if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $cur_mdl_fa_file); }
+      $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+      $cur_mdl_seq_len_HR = \%mdl_seq_len_H;
+    }
+    else {
+      # $do_blastn_ali == 1
+      # create the fasta file with sets of subsequences that omit well-defined regions from blastn alignment
+      my $indel_file = $ofile_info_HH{"fullpath"}{"search.r2.$mdl_name.indel"};
+      parse_blastn_indel_file_to_create_subseq_fasta_file($indel_file, $cur_mdl_fa_file, $mdl_name, \%seq_len_H, \%opt_HH, \%ofile_info_HH);
+      exit 0;
+    }
+    
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
     cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                    $cm_file, $mdl_name, $mdl_fa_file, $out_root, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
-                    $mdl_seq_len_H{$mdl_name}, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                    $cm_file, $mdl_name, $cur_mdl_fa_file, $out_root, $cur_mdl_nseq, 
+                    $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
-
+    
+    if($do_blastn_ali) {
+      ofile_FAIL("TODO: Add subroutine that maps subseq names in overflow_seq_A to actual input fasta names", 1, $FH_HR);
+    }
+    
     # add unexdivg errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
     $mdl_unexdivg_H{$mdl_name} = scalar(@overflow_seq_A);
     if($mdl_unexdivg_H{$mdl_name} > 0) { 
@@ -7948,6 +7967,7 @@ sub helper_protein_validation_check_overlap {
   }
 
   return $noverlap;
+}
 
 #################################################################
 # Subroutine: check_for_feature_alert_codes()

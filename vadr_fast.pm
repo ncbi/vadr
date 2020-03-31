@@ -314,7 +314,7 @@ sub parse_blastn_results {
           $cur_H{$key} = $1;
           # all query strands should be + (unless blastn is reverse complementing queries and running those too)
           if(($key eq "QSTRAND") && ($cur_H{$key} ne "+")) { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, subject strand not + line $line", 1, $FH_HR);
+            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, query strand not + line $line", 1, $FH_HR);
           }            
         }
         else { 
@@ -708,6 +708,8 @@ sub parse_blastn_indel_strings {
       # sanity check that the segments we are about to add to mdl and seq
       # coords are the same length (they represent a chunk of ungapped alignment)
       if(($ins_mdl_pos - $cur_mdl_start + 1) != ($ins_seq_pos - $cur_seq_start + 1)) {
+        print("\t\tugp_mdl_coords: $ugp_mdl_coords\n");
+        print("\t\tugp_seq_coords: $ugp_seq_coords\n");
         ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments before next insert, but lengths don't match up: mdl: $cur_mdl_start .. $ins_mdl_pos, seq: $cur_seq_start .. $ins_seq_pos", 1, $FH_HR);
       }
       $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+", $FH_HR));
@@ -799,7 +801,7 @@ sub parse_blastn_indel_token {
   my $exp_plus_or_minus = ($type eq "insert") ? "+" : "-";
 
   printf("in $sub_name indel_tok: $indel_tok\n");
-  if($indel_tok =~ /^Q(\d+)\:S(\d+)\:([\+\-])(\d+)$/) { 
+  if($indel_tok =~ /^Q(\d+)\:S(\d+)([\+\-])(\d+)$/) { 
     my ($seq_pos, $mdl_pos, $plus_or_minus, $len) = ($1, $2, $3, $4);
     if($plus_or_minus ne $exp_plus_or_minus) {
       ofile_FAIL("ERROR in $sub_name, type is $type, expected $exp_plus_or_minus but read $plus_or_minus in input token $indel_tok", 1, $FH_HR);
@@ -811,6 +813,71 @@ sub parse_blastn_indel_token {
   ofile_FAIL("ERROR in $sub_name, unable to parse token $indel_tok", 1, $FH_HR);
 
   return; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine:  parse_blastn_indel_file_to_create_subseq_fasta_file()
+# Incept:      EPN, Tue Mar 31 07:22:48 2020
+#
+# Purpose:     Parse a blastn indel file created by parse_blastn_results,
+#              determine blastn aligned regions of each sequence that we will
+#              trust, and subsequences around those regions that we will
+#              align with cmalign. Create a fasta file with those subsequences
+#              to align with cmalign.
+#
+# Arguments: 
+#  $indel_file:      blastn indel file to parse, created by 
+#                    parse_blastn_results() for a single model 
+#  $fasta_file:      name of fasta file to create
+#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
+#  $seq_len_HR:      REF to hash of sequence lengths
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#                         
+# Returns:    void
+#
+# Dies:       if unable to parse $indel_file
+#
+################################################################# 
+sub parse_blastn_indel_file_to_create_subseq_fasta_file { 
+  my $sub_name = "parse_blastn_indel_file_to_create_subseq_fasta_file";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($indel_file, $fasta_file, $exp_mdl_name, $seq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
+
+  my %seen_H = (); # key: sequence name, value: 1 if we've already processed an HSP for this sequence
+
+  open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line !~ m/^#/) { 
+      chomp $line;
+      #model_name seq_name    mdl_coords mdl_len seq_coords seq_len  ins_str                 del_str
+      #NC_039477  AB541310.1  5..7513:+  7535    1..7509:+  7509     Q41:S46+1;Q107:S111+1;  Q37:S41-1;Q113:S116-1;
+      chomp $line;
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 8) {
+        ofile_FAIL("ERROR in $sub_name, unable to parse indel line, unexpected number of tokens:\n$line\n", 1, $FH_HR);
+      }
+      my ($mdl_name, $seq_name, $mdl_coords, $mdl_len, $seq_coords, $seq_len, $ins_str, $del_str) = (@el_A);
+      if(! defined $seq_len_HR->{$seq_name}) {
+        ofile_FAIL("ERROR in $sub_name, unrecognized sequence $seq_name on line:\n$line\n", 1, $FH_HR);
+      }          
+      if($mdl_name ne $exp_mdl_name) { 
+        ofile_FAIL("ERROR in $sub_name, unexpected model $mdl_name (expected $exp_mdl_name) on line:\n$line\n", 1, $FH_HR);
+      }          
+      my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
+                                                                         $ins_str, $del_str, $FH_HR);
+      my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
+      my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
+      printf("HEYA $seq_name $mdl_name mdl: $argmax_ugp_mdl_sgm ($max_ugp_mdl_sgm_len), seq: $argmax_ugp_seq_sgm ($max_ugp_seq_sgm_len)\n");
+    }
+  }
+  close(IN);
+
+  return;
 }
 
 ###########################################################################

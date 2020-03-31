@@ -842,186 +842,186 @@ sub updateOverallPositions {
 #
 ##########################################################################################
 sub findQueryGaps {
-    my $sub_name = "findQueryGaps()";
-    my $nargs_expected = 8;
-    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  my $sub_name = "findQueryGaps()";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-    my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
+  my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
 
-    my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
-    my $local_length = length($query_alignment_string);  #length of this alignment block
-    my @local_query_array = split("",$query_alignment_string);
-    my @local_subject_array = split("", $subject_alignment_string);
-    my $local_i;                      #loop index
-    my $local_state;                  #state of a two-state automaton
-    my $local_StateNotGap = 0;        #one state
-    my $local_StateInGap = 1;         #the other satet
-    my $local_QueryPositionIndex;     #where are we in absolute query positions
-    my $local_SubjectPositionIndex;   #where are we in absolute subject positions
-    my $local_QueryStartDeletion;     #absolute position in query starting a gap in the query
-    my $local_QueryEndDeletion;       #absolute position in query ending a gap in the query
-    my $local_SubjectStartDeletion;   #absolute position in subject starting a gap in the subject
-    my $local_SubjectEndDeletion;     #absolute position in subject ending a gap in the subject
-    my $local_OneDeletionString;      #string to represent one gap
-    my $local_AllDeletionString = ""; #string to represent all gaps        
-    my $local_new_gap_overhang = $old_gap_overhang;  #number of gap characters at the end of this algnment row
-    my $local_longest_gap = 0;
-    my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
-    
-    $local_QueryPositionIndex = $query_start;
-    $local_SubjectPositionIndex = $subject_start;
-    if ($DEBUG) {
-	print "In findQueryGaps: Subject start is $subject_start\n";
-    }
-    if ($query_start < $query_end) {
-	if ($old_gap_overhang) {
-	    $local_QueryStartDeletion = $query_start - 1;
-            $local_SubjectStartDeletion = $subject_start - 1;
-	    $local_state = $local_StateInGap;
-	}
-	else {
-	    $local_state = $local_StateNotGap;	    
-	}
-	for ($local_i = 0; $local_i < $local_length; $local_i++) {
-	    if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-		if ($local_StateNotGap == $local_state) {
-		    ;
-		}
-		else {
-		    $local_QueryEndDeletion = $local_QueryPositionIndex;
-		    $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
-		    if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
-			$local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
-                        $local_longest_gap_str = $local_OneDeletionString;
-		    }
-		    if ($local_AllDeletionString) {
-			$local_AllDeletionString = $local_AllDeletionString . ";" . $local_OneDeletionString;
-		    }
-		    else {
-			$local_AllDeletionString = $local_OneDeletionString;			
-		    }
-		    $local_state = $local_StateNotGap;
-		    $local_new_gap_overhang = 0;
-		}
-		$local_SubjectPositionIndex += 1;
-		$local_QueryPositionIndex += $local_residue_qlen; # 1 (blastn) or 3 (blastx)
-	    }
-	    else {
-		if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-		    if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the subject
-			if ($DEBUG) {
-			    print "In findQueryGaps: start of a gap in the query at subject $local_SubjectPositionIndex\n";
-			}
-			$local_new_gap_overhang = 1;
-			$local_QueryStartDeletion = $local_QueryPositionIndex-1; 
-			$local_SubjectStartDeletion = $local_SubjectPositionIndex-1; 
-			$local_state = $local_StateInGap;
-		    }
-		    else {
-			$local_new_gap_overhang++;
-		    }
-		    $local_SubjectPositionIndex += 1;
-		}
-		else {
-		    if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
-			if ($local_StateNotGap == $local_state) {
-			    ;
-			}
-			else {
-			    $local_QueryEndDeletion   = $local_QueryPositionIndex - 1;
-			    $local_SubjectEndDeletion = $local_SubjectPositionIndex - 1;
-                            $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
-			    # AAS: $local_OneDeletionString  = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
-			    if ($local_AllDeletionString) {
-				$local_AllDeletionString = $local_OneDeletionString . ";" . $local_AllDeletionString;
-			    }
-			    else {
-				$local_AllDeletionString = $local_OneDeletionString;			
-			    }
-			    $local_state = $local_StateNotGap;
-			    $local_new_gap_overhang = 0;
-			}
-			$local_QueryPositionIndex += $local_residue_qlen;
-		    }
-		}
-	    }
-	}
-	return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
+  my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
+  my $local_length = length($query_alignment_string);  #length of this alignment block
+  my @local_query_array = split("",$query_alignment_string);
+  my @local_subject_array = split("", $subject_alignment_string);
+  my $local_i;                      #loop index
+  my $local_state;                  #state of a two-state automaton
+  my $local_StateNotGap = 0;        #one state
+  my $local_StateInGap = 1;         #the other satet
+  my $local_QueryPositionIndex;     #where are we in absolute query positions
+  my $local_SubjectPositionIndex;   #where are we in absolute subject positions
+  my $local_QueryStartDeletion;     #absolute position in query starting a gap in the query
+  my $local_QueryEndDeletion;       #absolute position in query ending a gap in the query
+  my $local_SubjectStartDeletion;   #absolute position in subject starting a gap in the subject
+  my $local_SubjectEndDeletion;     #absolute position in subject ending a gap in the subject
+  my $local_OneDeletionString;      #string to represent one gap
+  my $local_AllDeletionString = ""; #string to represent all gaps        
+  my $local_new_gap_overhang = $old_gap_overhang;  #number of gap characters at the end of this algnment row
+  my $local_longest_gap = 0;
+  my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
+  
+  $local_QueryPositionIndex = $query_start;
+  $local_SubjectPositionIndex = $subject_start;
+  if ($DEBUG) {
+    print "In findQueryGaps: Subject start is $subject_start\n";
+  }
+  if ($query_start < $query_end) {
+    if ($old_gap_overhang) {
+      $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
+      $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
+      $local_state = $local_StateInGap;
     }
     else {
-	if ($old_gap_overhang) {
-	    $local_QueryStartDeletion = $query_start + 1;
-	    $local_SubjectStartDeletion = $subject_start - 1;
-	    $local_state = $local_StateInGap;
-	}
-	else {
-	    $local_state = $local_StateNotGap;	    
-	}
-	for ($local_i = 0; $local_i < $local_length; $local_i++) {
-	    if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-		if ($local_StateNotGap == $local_state) {
-		    ;
-		}
-		else {
-		    $local_QueryEndDeletion = $local_QueryPositionIndex;
-		    $local_OneDeletionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
-		    if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
-			$local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
-                        $local_longest_gap_str = $local_OneDeletionString;
-		    }
-		    if ($local_AllDeletionString) {
-			$local_AllDeletionString = $local_OneDeletionString . ";" . $local_AllDeletionString;
-		    }
-		    else {
-			$local_AllDeletionString = $local_OneDeletionString;			
-		    }
-		    $local_state = $local_StateNotGap;
-		    $local_new_gap_overhang = 0;
-		}
-		$local_SubjectPositionIndex += 1;
-		$local_QueryPositionIndex -= $local_residue_qlen;
-	    }
-	    else {
-		if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-		    if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the subject
-			if ($DEBUG) {
-			    print "In findQueryGaps: start of a gap in the query at subject $local_SubjectPositionIndex\n";
-			}
-			$local_new_gap_overhang = 1;
-			$local_QueryStartDeletion = $local_QueryPositionIndex+1; 
-			$local_SubjectStartDeletion = $local_SubjectPositionIndex-1; 
-			$local_state = $local_StateInGap;
-		    }
-		    else {
-			$local_new_gap_overhang++;
-		    }
-		    $local_SubjectPositionIndex += 1;
-		}
-		else {
-		    if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
-			if ($local_StateNotGap == $local_state) {
-			    ;
-			}
-			else {
-			    $local_QueryEndDeletion = $local_QueryPositionIndex + 1;
-                            $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
-			    # AAS: $local_OneDeletionString = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
-			    if ($local_AllDeletionString) {
-				$local_AllDeletionString = $local_AllDeletionString . ";" . $local_OneDeletionString;
-			    }
-			    else {
-				$local_AllDeletionString = $local_OneDeletionString;			
-			    }
-			    $local_state = $local_StateNotGap;
-			    $local_new_gap_overhang = 0;
-			}
-			$local_QueryPositionIndex -= $local_residue_qlen;
-		    }
-		}
-	    }
-	}
-	return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
+      $local_state = $local_StateNotGap;	    
     }
+    for ($local_i = 0; $local_i < $local_length; $local_i++) {
+      if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+        if ($local_StateNotGap == $local_state) {
+          ;
+        }
+        else {
+          $local_QueryEndDeletion = $local_QueryPositionIndex;
+          $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
+          if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
+            $local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
+            $local_longest_gap_str = $local_OneDeletionString;
+          }
+          if ($local_AllDeletionString) {
+            $local_AllDeletionString = $local_AllDeletionString . ";" . $local_OneDeletionString;
+          }
+          else {
+            $local_AllDeletionString = $local_OneDeletionString;			
+          }
+          $local_state = $local_StateNotGap;
+          $local_new_gap_overhang = 0;
+        }
+        $local_SubjectPositionIndex += 1;
+        $local_QueryPositionIndex += $local_residue_qlen; # 1 (blastn) or 3 (blastx)
+      }
+      else {
+        if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+          if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the subject
+            if ($DEBUG) {
+              print "In findQueryGaps: start of a gap in the query at subject $local_SubjectPositionIndex\n";
+            }
+            $local_new_gap_overhang = 1;
+            $local_QueryStartDeletion = $local_QueryPositionIndex-1; 
+            $local_SubjectStartDeletion = $local_SubjectPositionIndex-1; 
+            $local_state = $local_StateInGap;
+          }
+          else {
+            $local_new_gap_overhang++;
+          }
+          $local_SubjectPositionIndex += 1;
+        }
+        else {
+          if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
+            if ($local_StateNotGap == $local_state) {
+              ;
+            }
+            else {
+              $local_QueryEndDeletion   = $local_QueryPositionIndex - 1;
+              $local_SubjectEndDeletion = $local_SubjectPositionIndex - 1;
+              $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
+              # AAS: $local_OneDeletionString  = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
+              if ($local_AllDeletionString) {
+                $local_AllDeletionString = $local_OneDeletionString . ";" . $local_AllDeletionString;
+              }
+              else {
+                $local_AllDeletionString = $local_OneDeletionString;			
+              }
+              $local_state = $local_StateNotGap;
+              $local_new_gap_overhang = 0;
+            }
+            $local_QueryPositionIndex += $local_residue_qlen;
+          }
+        }
+      }
+    }
+    return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
+  } # end of if($query_start < $query_end) (strand is +)
+  else { # $query_start >= $query_end (strand is -)
+    if ($old_gap_overhang) {
+      $local_QueryStartDeletion = $query_start + $old_gap_overhang + 1;
+      $local_SubjectStartDeletion = $subject_start - $old_gap_overhang + 1;
+      $local_state = $local_StateInGap;
+    }
+    else {
+      $local_state = $local_StateNotGap;	    
+    }
+    for ($local_i = 0; $local_i < $local_length; $local_i++) {
+      if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+        if ($local_StateNotGap == $local_state) {
+          ;
+        }
+        else {
+          $local_QueryEndDeletion = $local_QueryPositionIndex;
+          $local_OneDeletionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
+          if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
+            $local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
+            $local_longest_gap_str = $local_OneDeletionString;
+          }
+          if ($local_AllDeletionString) {
+            $local_AllDeletionString = $local_OneDeletionString . ";" . $local_AllDeletionString;
+          }
+          else {
+            $local_AllDeletionString = $local_OneDeletionString;			
+          }
+          $local_state = $local_StateNotGap;
+          $local_new_gap_overhang = 0;
+        }
+        $local_SubjectPositionIndex += 1;
+        $local_QueryPositionIndex -= $local_residue_qlen;
+      }
+      else {
+        if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+          if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the subject
+            if ($DEBUG) {
+              print "In findQueryGaps: start of a gap in the query at subject $local_SubjectPositionIndex\n";
+            }
+            $local_new_gap_overhang = 1;
+            $local_QueryStartDeletion = $local_QueryPositionIndex+1; 
+            $local_SubjectStartDeletion = $local_SubjectPositionIndex-1; 
+            $local_state = $local_StateInGap;
+          }
+          else {
+            $local_new_gap_overhang++;
+          }
+          $local_SubjectPositionIndex += 1;
+        }
+        else {
+          if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
+            if ($local_StateNotGap == $local_state) {
+              ;
+            }
+            else {
+              $local_QueryEndDeletion = $local_QueryPositionIndex + 1;
+              $local_OneDeletionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "-" . ($local_residue_qlen * $local_new_gap_overhang);
+              # AAS: $local_OneDeletionString = $local_QueryStartDeletion . ".." . $local_QueryEndDeletion;
+              if ($local_AllDeletionString) {
+                $local_AllDeletionString = $local_AllDeletionString . ";" . $local_OneDeletionString;
+              }
+              else {
+                $local_AllDeletionString = $local_OneDeletionString;			
+              }
+              $local_state = $local_StateNotGap;
+              $local_new_gap_overhang = 0;
+            }
+            $local_QueryPositionIndex -= $local_residue_qlen;
+          }
+        }
+      }
+    }
+    return($local_new_gap_overhang,$local_AllDeletionString, $local_longest_gap_str, $local_longest_gap);
+  }
 }
 
 ##########################################################################################
@@ -1053,148 +1053,153 @@ sub findQueryGaps {
 #
 ##########################################################################################
 sub findSubjectGaps {
-    my $sub_name = "findSubjectGaps()";
-    my $nargs_expected = 8;
-    if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
+  my $sub_name = "findSubjectGaps()";
+  my $nargs_expected = 8;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-    my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
+  my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
 
-    my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
-    my $local_length = length($query_alignment_string);  #length of this alignment block
-    my @local_query_array = split("",$query_alignment_string);
-    my @local_subject_array = split("", $subject_alignment_string);
-    my $local_i;                    #loop index
-    my $local_state;                #state of a two-state automaton
-    my $local_StateNotGap = 0;      #one state
-    my $local_StateInGap = 1;       #the other state
-    my $local_QueryPositionIndex;   #where are we in absolute query positions
-    my $local_SubjectPositionIndex; #where are we in absolute subject positions
-    my $local_QueryStartDeletion;   #absolute position in query starting a gap in the subject
-    my $local_QueryEndDeletion;     #absolute position in query ending a gap in the subject
-    my $local_SubjectStartDeletion; #absolute position in subject starting a gap in the subject
-    my $local_SubjectEndDeletion;   #absolute position in subject ending a gap in the subject
-    my $local_OneInsertionString;   #string to represent one gap
-    my $local_AllInsertionString = ""; #string to represent all gaps        
-    my $local_new_gap_overhang = $old_gap_overhang;   #number of gap characters at the end of the alignment row
-    my $local_longest_gap     = 0;
-    my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
-    
-    $local_QueryPositionIndex = $query_start;
-    $local_SubjectPositionIndex = $subject_start;
-    # It is always true that $query_start < $query_end
+  my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
+  my $local_length = length($query_alignment_string);  #length of this alignment block
+  my @local_query_array = split("",$query_alignment_string);
+  my @local_subject_array = split("", $subject_alignment_string);
+  my $local_i;                    #loop index
+  my $local_state;                #state of a two-state automaton
+  my $local_StateNotGap = 0;      #one state
+  my $local_StateInGap = 1;       #the other state
+  my $local_QueryPositionIndex;   #where are we in absolute query positions
+  my $local_SubjectPositionIndex; #where are we in absolute subject positions
+  my $local_QueryStartDeletion;   #absolute position in query starting a gap in the subject
+  my $local_QueryEndDeletion;     #absolute position in query ending a gap in the subject
+  my $local_SubjectStartDeletion; #absolute position in subject starting a gap in the subject
+  my $local_SubjectEndDeletion;   #absolute position in subject ending a gap in the subject
+  my $local_OneInsertionString;   #string to represent one gap
+  my $local_AllInsertionString = ""; #string to represent all gaps        
+  my $local_new_gap_overhang = $old_gap_overhang;   #number of gap characters at the end of the alignment row
+  my $local_longest_gap     = 0;
+  my $local_longest_gap_str = "0"; # string representing longest gap "Q<d1>:S<d2>+<d3>" <d1> is query position, <d2> is subject position, <d3> is length in nt
+  
+  $local_QueryPositionIndex = $query_start;
+  $local_SubjectPositionIndex = $subject_start;
+  # It is always true that $subject_start < $subject_end
+  if ($subject_start < $subject_end) {
     if ($old_gap_overhang) {
-	$local_QueryStartDeletion = $query_start - 1;
-	$local_SubjectStartDeletion = $subject_start - 1;
-        $local_state = $local_StateInGap;
+      $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
+      $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
+      $local_state = $local_StateInGap;
     }
     else {
-	$local_state = $local_StateNotGap;	    
+      $local_state = $local_StateNotGap;	    
     }
     for ($local_i = 0; $local_i < $local_length; $local_i++) {
-	if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-	    if ($local_StateNotGap == $local_state) {
-		;
-	    }
-	    else {
-		$local_QueryEndDeletion = $local_QueryPositionIndex;
-		$local_SubjectEndDeletion = $local_SubjectPositionIndex;
-		if ($DEBUG) {
-		    print "In findSubjectGaps: Setting local_QueryEndDeletion to $local_QueryEndDeletion, when local_QueryStartDeletion is $local_QueryStartDeletion\n";
-		}
-		if ($query_start < $query_end) {
-                  $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
-		}
-		else {
-                  $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
-		}
-		if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
-		    $local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
-                    $local_longest_gap_str = $local_OneInsertionString;
-		}
-		if ($local_AllInsertionString) {
-		    if ($query_start < $query_end) {
-			$local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
-		    }
-		    else {
-			$local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
-		    }
-		}
-		else {
-		    $local_AllInsertionString = $local_OneInsertionString;			
-		}
-		$local_state = $local_StateNotGap;
-		$local_new_gap_overhang = 0;
-	    }
-	    $local_SubjectPositionIndex += 1;
-	    if ($query_start < $query_end) {
-		$local_QueryPositionIndex += $local_residue_qlen;
-	    }
-	    else {
-		$local_QueryPositionIndex -= $local_residue_qlen;		
-	    }
-	}
-	else {
-	    if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
-		if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the query
-		    $local_new_gap_overhang = 1;
-                    $local_SubjectStartDeletion = $local_SubjectPositionIndex-1;
-		    if ($query_start < $query_end) {		    
-			$local_QueryStartDeletion = $local_QueryPositionIndex-1;
-		    }
-		    else {
-			$local_QueryStartDeletion = $local_QueryPositionIndex+1;			
-		    }
-		    $local_state = $local_StateInGap;
-		}
-		else {
-		    $local_new_gap_overhang++;
-		}
-		if ($query_start < $query_end) {
-		    $local_QueryPositionIndex += $local_residue_qlen;
-		}
-		else {
-		    $local_QueryPositionIndex -= $local_residue_qlen;		
-		}		    
-	    }
-	    else {
-		if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
-		    if ($local_StateNotGap == $local_state) {
-			;
-		    }
-		    else {
-			if ($query_start < $query_end) {
-                          $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
-			}
-			else {
-                          $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
-			}
-			if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
-			    $local_longest_gap     = $local_residue_qlen * $local_new_gap_overhang;
-			    $local_longest_gap_str = $local_OneInsertionString;
-			}
-			if ($local_AllInsertionString) {
-			    if ($query_start < $query_end) {
-				$local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
-			    }
-			    else {
-				$local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
-			    }
-			}			
-			else {
-			    $local_AllInsertionString = $local_OneInsertionString;			
-			}
-			$local_state = $local_StateNotGap;
-			$local_new_gap_overhang = 0;
-		    }
-		    $local_SubjectPositionIndex += 1;
-		}
-	    }
-	}
+      if ((!($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+        if ($local_StateNotGap == $local_state) {
+          ;
+        }
+        else {
+          $local_QueryEndDeletion = $local_QueryPositionIndex;
+          $local_SubjectEndDeletion = $local_SubjectPositionIndex;
+          if ($DEBUG) {
+            print "In findSubjectGaps: Setting local_QueryEndDeletion to $local_QueryEndDeletion, when local_QueryStartDeletion is $local_QueryStartDeletion\n";
+          }
+          if ($query_start < $query_end) {
+            $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
+          }
+          else {
+            $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
+          }
+          if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
+            $local_longest_gap = $local_residue_qlen * $local_new_gap_overhang;
+            $local_longest_gap_str = $local_OneInsertionString;
+          }
+          if ($local_AllInsertionString) {
+            if ($query_start < $query_end) {
+              $local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
+            }
+            else {
+              $local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
+            }
+          }
+          else {
+            $local_AllInsertionString = $local_OneInsertionString;			
+          }
+          $local_state = $local_StateNotGap;
+          $local_new_gap_overhang = 0;
+        }
+        $local_SubjectPositionIndex += 1;
+        if ($query_start < $query_end) {
+          $local_QueryPositionIndex += $local_residue_qlen;
+        }
+        else {
+          $local_QueryPositionIndex -= $local_residue_qlen;		
+        }
+      }
+      else {
+        if ((!($local_query_array[$local_i] eq "-")) && (($local_subject_array[$local_i] eq "-"))) {
+          if ($local_StateNotGap == $local_state) {   #this is the start of an insertion in the query
+            $local_new_gap_overhang = 1;
+            $local_SubjectStartDeletion = $local_SubjectPositionIndex-1;
+            if ($query_start < $query_end) {		    
+              $local_QueryStartDeletion = $local_QueryPositionIndex-1;
+            }
+            else {
+              $local_QueryStartDeletion = $local_QueryPositionIndex+1;			
+            }
+            $local_state = $local_StateInGap;
+          }
+          else {
+            $local_new_gap_overhang++;
+          }
+          if ($query_start < $query_end) {
+            $local_QueryPositionIndex += $local_residue_qlen;
+          }
+          else {
+            $local_QueryPositionIndex -= $local_residue_qlen;		
+          }		    
+        }
+        else {
+          if ((($local_query_array[$local_i] eq "-")) && (!($local_subject_array[$local_i] eq "-"))) {
+            if ($local_StateNotGap == $local_state) {
+              ;
+            }
+            else {
+              if ($query_start < $query_end) {
+                $local_OneInsertionString = "Q" . $local_QueryStartDeletion . ":" . "S" . $local_SubjectStartDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);
+              }
+              else {
+                $local_OneInsertionString = "Q" . $local_QueryEndDeletion . ":" . "S" . $local_SubjectEndDeletion . "+" . ($local_residue_qlen * $local_new_gap_overhang);		    
+              }
+              if (($local_residue_qlen * $local_new_gap_overhang) > $local_longest_gap) {
+                $local_longest_gap     = $local_residue_qlen * $local_new_gap_overhang;
+                $local_longest_gap_str = $local_OneInsertionString;
+              }
+              if ($local_AllInsertionString) {
+                if ($query_start < $query_end) {
+                  $local_AllInsertionString = $local_AllInsertionString . ";" . $local_OneInsertionString;
+                }
+                else {
+                  $local_AllInsertionString = $local_OneInsertionString . ";" . $local_AllInsertionString;			
+                }
+              }			
+              else {
+                $local_AllInsertionString = $local_OneInsertionString;			
+              }
+              $local_state = $local_StateNotGap;
+              $local_new_gap_overhang = 0;
+            }
+            $local_SubjectPositionIndex += 1;
+          }
+        }
+      }
     }
     if ($DEBUG) {
-	print "In findSubjectGaps: about to return $local_new_gap_overhang  $local_AllInsertionString\n";
+      print "In findSubjectGaps: about to return $local_new_gap_overhang  $local_AllInsertionString\n";
     }    
     return($local_new_gap_overhang,$local_AllInsertionString,$local_longest_gap_str, $local_longest_gap);
+  }
+  else { # $subject_start >= $subject_end (strand is -)
+    die "ERROR in $sub_name, subject negative strand\n";
+  }
 }
 
 ##########################################################################################
