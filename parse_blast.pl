@@ -1197,9 +1197,6 @@ sub findSubjectGaps {
     }    
     return($local_new_gap_overhang,$local_AllInsertionString,$local_longest_gap_str, $local_longest_gap);
   }
-  else { # $subject_start >= $subject_end (strand is -)
-    die "ERROR in $sub_name, subject negative strand\n";
-  }
 }
 
 ##########################################################################################
