@@ -7878,6 +7878,7 @@ sub helper_protein_validation_check_overlap {
   }
 
   return $noverlap;
+}
 
 #################################################################
 # Subroutine: check_for_feature_alert_codes()
