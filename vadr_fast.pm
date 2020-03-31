@@ -43,6 +43,8 @@
 use strict;
 use warnings;
 
+require "vadr.pm"; 
+
 #################################################################
 # Subroutine:  run_blastn_and_summarize_output()
 # Incept:      EPN, Fri Mar 27 11:11:24 2020
