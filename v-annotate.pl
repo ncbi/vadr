@@ -218,11 +218,13 @@ opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, unde
 # --xminntlen has implications outside of blast, that's why it's not incompatible with --skipblastx
 
 $opt_group_desc_H{++$g} = "options for blastn-based acceleration";
-#        option               type   default                group  requires incompat    preamble-output                                    help-output    
-opt_Add("--fast",         "boolean",     0,                   $g,"--blastndb", undef,  "run in fast mode using blastn-based acceleration", "run in fast mode using blastn-based acceleration", \%opt_HH, \@opt_order_A);
-opt_Add("--blastndb",      "string",  undef,                  $g,   "--fast", undef,     "path to blastn database is <s>",                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnws",      "integer",    7,                   $g,   "--fast", undef,     "set blastn -word_size <n> to <n>",                "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnsc",      "real",     50.0,                  $g,   "--fast", undef,     "set blastn minimum HSP score to consider to <x>", "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+#        option               type   default                group  requires incompat    preamble-output                                           help-output    
+opt_Add("--fast",         "boolean",      0,                  $g,"--blastndb", undef,  "run in fast mode using blastn-based acceleration",        "run in fast mode using blastn-based acceleration", \%opt_HH, \@opt_order_A);
+opt_Add("--blastndb",      "string",  undef,                  $g,   "--fast", undef,     "path to blastn database is <s>",                        "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnws",     "integer",      7,                  $g,   "--fast", undef,     "set blastn -word_size <n> to <n>",                      "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnsc",      "real",     50.0,                  $g,   "--fast", undef,     "set blastn minimum HSP score to consider to <x>",       "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang",     "integer",    100,                  $g,   "--fast", undef,     "set length of nt overhang for subseqs to align to <n>", "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -312,6 +314,7 @@ my $options_okay =
                 'blastndb=s'    => \$GetOptions_H{"--blastndb"},
                 'blastnws=s'    => \$GetOptions_H{"--blastnws"},
                 'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
+                'overhang=s'    => \$GetOptions_H{"--overhang"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -902,6 +905,12 @@ my $cur_mdl_fa_file;    # fasta file with sequences to align to current model
 my $cur_mdl_nseq;       # number of sequences we are aligning for current model
 my $cur_mdl_seq_len_HR; # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
 
+# variables only used if --fast used
+my %ugp_mdl_H = ();      # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
+my %ugp_seq_H = ();      # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
+my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
+my %subseq_len_H = ();   # key is name of subsequence, value is length of that subsequence
+
 # for each model with seqs to align to, create the sequence file and run cmalign
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -921,8 +930,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       # $do_blastn_ali == 1
       # create the fasta file with sets of subsequences that omit well-defined regions from blastn alignment
       my $indel_file = $ofile_info_HH{"fullpath"}{"search.r2.$mdl_name.indel"};
-      parse_blastn_indel_file_to_create_subseq_fasta_file($indel_file, $cur_mdl_fa_file, $mdl_name, \%seq_len_H, \%opt_HH, \%ofile_info_HH);
-      exit 0;
+      my @subseq_AA = ();
+      parse_blastn_indel_file_to_get_subseq_info($indel_file, \%seq_len_H, $mdl_name, \@subseq_AA,
+                                                 \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA,
+                                                 \%subseq_len_H, \%opt_HH, \%ofile_info_HH);
+      $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_fa_file);
+      $cur_mdl_nseq = scalar(@subseq_AA);
+      $cur_mdl_seq_len_HR = \%subseq_len_H;
     }
     
     # run cmalign
@@ -943,6 +957,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
   }
 }
+exit 0;
 
 ###########################
 # Parse cmalign alignments

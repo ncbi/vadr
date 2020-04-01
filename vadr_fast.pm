@@ -627,7 +627,7 @@ sub parse_blastn_indel_strings {
     @del_tok_A = split(";", $blastn_del_str);
   }
   my $ndel = scalar(@del_tok_A);
-  printf("nins: $nins ndel: $ndel\n");
+  # printf("nins: $nins ndel: $ndel\n");
   
   my ($mdl_start, $mdl_stop, $mdl_strand) = vdr_CoordsSegmentParse($in_mdl_coords_sgm, $FH_HR);
   my ($seq_start, $seq_stop, $seq_strand) = vdr_CoordsSegmentParse($in_seq_coords_sgm, $FH_HR);
@@ -641,9 +641,6 @@ sub parse_blastn_indel_strings {
   my $cur_mdl_start = $mdl_start;
   my $cur_seq_start = $seq_start;
 
-  printf("HEYA init cur_mdl_start: $cur_mdl_start\n");
-  printf("HEYA init cur_seq_start: $cur_seq_start\n");
-  
   my $ii = 0; # insert index in @ins_tok_A
   my $di = 0; # delete index in @del_tok_A
   my ($ins_seq_pos, $ins_mdl_pos, $ins_len) = (undef, undef, undef);
@@ -655,7 +652,7 @@ sub parse_blastn_indel_strings {
   while(($ii < $nins) || ($di < $ndel)) { 
     my $ins_tok = ($ii < $nins) ? $ins_tok_A[$ii] : "NULL";
     my $del_tok = ($di < $ndel) ? $del_tok_A[$di] : "NULL";
-    printf("\tin loop ii: $ii ins_tok: $ins_tok, di: $di del_tok: $del_tok\n");
+    # printf("\tin loop ii: $ii ins_tok: $ins_tok, di: $di del_tok: $del_tok\n");
     if($update_ins) { 
       if($ii < $nins) { 
         $ins_tok = $ins_tok_A[$ii];
@@ -715,8 +712,8 @@ sub parse_blastn_indel_strings {
       # sanity check that the segments we are about to add to mdl and seq
       # coords are the same length (they represent a chunk of ungapped alignment)
       if(($ins_mdl_pos - $cur_mdl_start + 1) != ($ins_seq_pos - $cur_seq_start + 1)) {
-        print("\t\tugp_mdl_coords: $ugp_mdl_coords\n");
-        print("\t\tugp_seq_coords: $ugp_seq_coords\n");
+        # print("\t\tugp_mdl_coords: $ugp_mdl_coords\n");
+        # print("\t\tugp_seq_coords: $ugp_seq_coords\n");
         ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments before next insert, but lengths don't match up: mdl: $cur_mdl_start .. $ins_mdl_pos, seq: $cur_seq_start .. $ins_seq_pos", 1, $FH_HR);
       }
       $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+", $FH_HR));
@@ -759,7 +756,7 @@ sub parse_blastn_indel_strings {
   $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+", $FH_HR));
   $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+", $FH_HR));
 
-  print("in $sub_name, returning mdl: $ugp_mdl_coords, seq: $ugp_seq_coords\n");
+  # print("in $sub_name, returning mdl: $ugp_mdl_coords, seq: $ugp_seq_coords\n");
   
   return ($ugp_mdl_coords, $ugp_seq_coords);
 }
@@ -807,7 +804,7 @@ sub parse_blastn_indel_token {
 
   my $exp_plus_or_minus = ($type eq "insert") ? "+" : "-";
 
-  printf("in $sub_name indel_tok: $indel_tok\n");
+  # printf("in $sub_name indel_tok: $indel_tok\n");
   if($indel_tok =~ /^Q(\d+)\:S(\d+)([\+\-])(\d+)$/) { 
     my ($seq_pos, $mdl_pos, $plus_or_minus, $len) = ($1, $2, $3, $4);
     if($plus_or_minus ne $exp_plus_or_minus) {
@@ -823,21 +820,34 @@ sub parse_blastn_indel_token {
 }
 
 #################################################################
-# Subroutine:  parse_blastn_indel_file_to_create_subseq_fasta_file()
+# Subroutine:  parse_blastn_indel_file_to_get_subseq_info()
 # Incept:      EPN, Tue Mar 31 07:22:48 2020
 #
 # Purpose:     Parse a blastn indel file created by parse_blastn_results,
 #              determine blastn aligned regions of each sequence that we will
 #              trust, and subsequences around those regions that we will
-#              align with cmalign. Create a fasta file with those subsequences
-#              to align with cmalign.
+#              align with cmalign. Return information on those subsequences
+#              by filling a 2D array in @{$seqseq_AAR}, where each array
+#              has 4 elements: <newname> <start> <end> <source>
+#              <newname>: name to give subsequence after fetching
+#              <start>:   start position of subsequence
+#              <end>:     end position of subsequence
+#              <source>:  name of source sequence to fetch subseq from 
 #
 # Arguments: 
 #  $indel_file:      blastn indel file to parse, created by 
 #                    parse_blastn_results() for a single model 
-#  $fasta_file:      name of fasta file to create
-#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
 #  $seq_len_HR:      REF to hash of sequence lengths
+#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
+#  $subseq_AAR:      REF to 2D array with subseq info, FILLED HERE
+#  $ugp_mdl_HR:      REF to hash, key is <seq_name>, value is mdl coords
+#                    segment of max ungapped blast aln, FILLED HERE
+#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is mdl coords
+#                    segment of max ungapped blast aln, FILLED HERE
+#  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
+#                    value is array of names of subsequences pertaining to
+#                    <seq_name>, FILLED HERE
+#  $subseq_len_HR:   REF to hash to fill here, lengths of subsequences
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
 #                         
@@ -846,17 +856,19 @@ sub parse_blastn_indel_token {
 # Dies:       if unable to parse $indel_file
 #
 ################################################################# 
-sub parse_blastn_indel_file_to_create_subseq_fasta_file { 
-  my $sub_name = "parse_blastn_indel_file_to_create_subseq_fasta_file";
-  my $nargs_exp = 6;
+sub parse_blastn_indel_file_to_get_subseq_info { 
+  my $sub_name = "parse_blastn_indel_file_to_get_subseq_info";
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($indel_file, $fasta_file, $exp_mdl_name, $seq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($indel_file, $seq_len_HR, $exp_mdl_name, $subseq_AAR, $ugp_mdl_HR, $ugp_seq_HR,
+      $seq2subseq_HAR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
+  my $nt_overhang = opt_Get("--overhang", $opt_HHR);
 
   my %seen_H = (); # key: sequence name, value: 1 if we've already processed an HSP for this sequence
-
+  
   open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
     if($line !~ m/^#/) { 
@@ -875,11 +887,58 @@ sub parse_blastn_indel_file_to_create_subseq_fasta_file {
       if($mdl_name ne $exp_mdl_name) { 
         ofile_FAIL("ERROR in $sub_name, unexpected model $mdl_name (expected $exp_mdl_name) on line:\n$line\n", 1, $FH_HR);
       }          
-      my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
-                                                                         $ins_str, $del_str, $FH_HR);
-      my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
-      my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
-      printf("HEYA $seq_name $mdl_name mdl: $argmax_ugp_mdl_sgm ($max_ugp_mdl_sgm_len), seq: $argmax_ugp_seq_sgm ($max_ugp_seq_sgm_len)\n");
+      if(! defined $seen_H{$seq_name}) {
+        # top hit for this sequence
+        my $seq_len = $seq_len_HR->{$seq_name};
+        my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
+                                                                           $ins_str, $del_str, $FH_HR);
+        my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
+        my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
+        # sanity check: these should be the same length
+        if($max_ugp_mdl_sgm_len != $max_ugp_seq_sgm_len) {
+          ofile_FAIL("ERROR in $sub_name, max ungapped model segment length and ungapped sequence length differ ($max_ugp_mdl_sgm_len != $max_ugp_seq_sgm_len)", 1, $FH_HR);
+        }
+
+        # determine subseq info
+        $ugp_mdl_HR->{$seq_name} = $argmax_ugp_mdl_sgm;
+        $ugp_seq_HR->{$seq_name} = $argmax_ugp_seq_sgm;
+        my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($argmax_ugp_seq_sgm, $FH_HR);
+        if(($ugp_seq_start == 1) && ($ugp_seq_stop == $seq_len)) {
+          ; # do nothing, full sequence is covered by the max
+          # length ungapped blast hit, no need to fetch or align with cmalign
+        }
+        else {
+          # normal case: full seq not covered, fetch 5' end and/or 3' end
+          my $start_5p = 1;
+          my $stop_5p  = $ugp_seq_start + $nt_overhang - 1;
+          my $start_3p = $ugp_seq_stop  - $nt_overhang + 1;
+          my $stop_3p  = $seq_len;
+          my $subseq_name = undef;
+          if($stop_5p > $start_3p) { # the two regions overlap, just fetch the full sequence
+            $subseq_name = $seq_name . "/1-" . $seq_len;
+            push(@{$subseq_AAR}, [ $subseq_name, 1, $seq_len, $seq_name ]);
+            @{$seq2subseq_HAR->{$seq_name}} = ($subseq_name);
+            $subseq_len_HR->{$seq_name} = $seq_len;
+          }
+          else { # two regions do not overlap, fetch 5' and/or 3' ends
+            @{$seq2subseq_HAR->{$seq_name}} = ();
+
+            if($ugp_seq_start != 1) { 
+              $subseq_name = $seq_name . "/" . $start_5p . "-" . $stop_5p; 
+              push(@{$subseq_AAR}, [ $subseq_name, $start_5p, $stop_5p, $seq_name ]);
+              push(@{$seq2subseq_HAR->{$seq_name}}, $subseq_name);
+              $subseq_len_HR->{$subseq_name} = $stop_5p;
+            }
+            if($ugp_seq_stop != $seq_len) { 
+              $subseq_name = $seq_name . "/" . $start_3p . "-" . $stop_3p; 
+              push(@{$subseq_AAR}, [ $subseq_name, $start_3p, $stop_3p, $seq_name ]);
+              push(@{$seq2subseq_HAR->{$seq_name}}, $subseq_name);
+              $subseq_len_HR->{$subseq_name} = $stop_3p - $start_3p + 1;
+            }
+          }
+        }
+        $seen_H{$seq_name} = 1;
+      }
     }
   }
   close(IN);
