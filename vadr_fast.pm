@@ -847,7 +847,7 @@ sub parse_blastn_indel_token {
 #  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
 #                    value is array of names of subsequences pertaining to
 #                    <seq_name>, FILLED HERE
-#  $subseq_len_HR:   REF to hash to fill here, lengths of subsequences
+#  $subseq_len_HR:   REF to hash of lengths of subsequences, FILLED HERE
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
 #                         
@@ -946,6 +946,162 @@ sub parse_blastn_indel_file_to_get_subseq_info {
   return;
 }
 
+#################################################################
+# Subroutine:  join_alignments()
+# Incept:      EPN, Wed Apr  1 09:37:53 2020
+#
+# Purpose:     Join all alignments of subsequences with their ungapped
+#              blastn alignments.
+#              determine blastn aligned regions of each sequence that we will
+#              trust, and subsequences around those regions that we will
+#              align with cmalign. Return information on those subsequences
+#              by filling a 2D array in @{$seqseq_AAR}, where each array
+#              has 4 elements: <newname> <start> <end> <source>
+#              <newname>: name to give subsequence after fetching
+#              <start>:   start position of subsequence
+#              <end>:     end position of subsequence
+#              <source>:  name of source sequence to fetch subseq from 
+#
+# Arguments: 
+#  $sqfile:          REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $seq_name_AR:     REF to array of original (non subseq) sequence names
+#  $seq_len_HR:      REF to hash of sequence lengths
+#  $mdl_name:        name of model these sequences were assigned to
+#  $ugp_mdl_HR:      REF to hash, key is <seq_name>, value is mdl coords
+#                    segment of max ungapped blast aln, already filled
+#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is mdl coords
+#                    segment of max ungapped blast aln, already filled
+#  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
+#                    value is array of names of subsequences pertaining to
+#                    <seq_name>, already filled
+#  $subseq_len_HR:   REF to hash with lengths of subsequences, already filled
+#  $stk_file_AR:     ref to array of stockholm files, already filled
+#  $progress_w:      width for outputProgressPrior output
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#                         
+# Returns:    void
+#
+# Dies:       if unable to parse $indel_file
+#
+################################################################# 
+sub join_alignments { 
+  my $sub_name = "join_alignments";
+  my $nargs_exp = 12;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($sqfile, $seq_name_AR, $seq_len_HR, $mdl_name, $ugp_mdl_HR, $ugp_seq_HR, $seq2subseq_HAR, $subseq_len_HR,
+      $stk_file_AR, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
+
+  # get the aligned sequence strings for all sequences in the stockholm files
+  my $nstk = scalar(@{$stk_file_AR});
+  my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$stk_file_AR}
+  my %asubseq_H = ();        # key is subseq name, value is aligned sqstring for that subseq
+  my @rf_seq_A = ();         # array: value $i is RF line from stockholm alignment $stk_file_AR->[$i]
+  for(my $stk_idx = 0; $stk_idx < $nstk; $stk_idx++) {
+    my $stk_file = $stk_file_AR->[$stk_idx];
+    my $msa = Bio::Easel::MSA->new({
+      fileLocation => $stk_file,
+      isDna => 1});
+    my $nseq = $msa->nseq();
+    push(@rf_seq_A, $msa->get_rf());
+    for(my $i = 0; $i < $nseq; $i++) {
+      my $subseq_name = $msa->get_sqname($i);
+      $subseq2stk_idx_H{$subseq_name} = $stk_idx;
+      $asubseq_H{$subseq_name} = $msa->get_sqstring_aligned($i);
+    }
+    $msa = undef;
+  }
+
+  # join alignments for each sequence
+  foreach my $seq_name (@{$seq_name_AR}) {
+    if(! defined $seq_len_HR->{$seq_name})     { ofile_FAIL("ERROR in $sub_name, no seq_len entry for sequence $seq_name", 1, $FH_HR); }
+    if(! defined $ugp_mdl_HR->{$seq_name})     { ofile_FAIL("ERROR in $sub_name, no ugp_mdl entry for sequence $seq_name", 1, $FH_HR); }
+    if(! defined $ugp_seq_HR->{$seq_name})     { ofile_FAIL("ERROR in $sub_name, no ugp_seq entry for sequence $seq_name", 1, $FH_HR); }
+    if(! defined $seq2subseq_HAR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no seq2subseq entry for sequence $seq_name", 1, $FH_HR); }
+    
+    my $seq_len = $seq_len_HR->{$seq_name};
+    my $subseq_5p_idx = -1; # set to subseq idx if we have a subsequence alignment on the 5' end
+    my $subseq_3p_idx = -1; # set to subseq idx if we have a subsequence alignment on the 3' end
+    my $full_seq_idx  = -1; # set to subseq idx if we have a alignment of the full sequence
+    my $nsubseq = scalar(@{$seq2subseq_HAR->{$seq_name}});
+    for(my $s = 0; $s < $nsubseq; $s++) { 
+      my $subseq_name = $seq2subseq_HAR->{$seq_name}[$s];
+      if($subseq_name =~ /^(\S+)\/(\d+)\-(\d+)$/) {
+        my ($orig_seq_name, $subseq_start, $subseq_stop) = ($1, $2, $3);
+        if($orig_seq_name ne $seq_name) {
+          ofile_FAIL("ERROR in $sub_name, unexpected sequence name in subsequence name $subseq_name for seq $seq_name", 1, $FH_HR);
+        }
+        if(($subseq_start == 1) && ($subseq_stop == $seq_len)) { 
+          $full_seq_idx = $s;
+          if($nsubseq != 1) { 
+            ofile_FAIL("ERROR in $sub_name, subsequence $subseq_name looks like full seq for seq $seq_name len $seq_len, but more than one subseqs for this seq exist", 1, $FH_HR);
+          }
+        }
+        elsif($subseq_start == 1) {
+          $subseq_5p_idx = $s;
+        }
+        elsif($subseq_stop == $seq_len) {
+          $subseq_3p_idx = $s;
+        }
+        else {
+          ofile_FAIL("ERROR in $sub_name, have unexpected subseq that is none of full seq,  5' end, or 3' end, subseq name $subseq_name for seq $seq_name", 1, $FH_HR);
+        }
+      }
+      else {
+        ofile_FAIL("ERROR in $sub_name, unable to parse subsequence name $subseq_name for seq $seq_name", 1, $FH_HR);
+      }
+    }# end of 'for(my $s = 0; $s < $nsubseq; $s++) {' over subseqs
+
+    # create the alignment for this sequence
+    my $seq_line = "";
+    my $rf_line = "";
+    my $stk_idx = undef;
+    my $subseq_name = undef;
+    if($full_seq_idx != -1) {
+      $subseq_name = $seq2subseq_HAR->{$seq_name}[$full_seq_idx];
+      $seq_line .= $asubseq_H{$subseq_name};
+
+      $stk_idx = $subseq2stk_idx_H{$subseq_name};
+      $rf_line .= $rf_seq_A[$stk_idx];
+    }
+    else {
+      if($subseq_5p_idx != -1) {
+        $subseq_name = $seq2subseq_HAR->{$seq_name}[$subseq_5p_idx];
+        $seq_line .= $asubseq_H{$subseq_name};
+
+        $stk_idx = $subseq2stk_idx_H{$subseq_name};
+        $rf_line .= $rf_seq_A[$stk_idx];
+      }
+      
+      # add ungapped region detected by blastn
+      my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_HR->{$seq_name}, $FH_HR);
+      if($ugp_seq_strand ne "+") { ofile_FAIL("ERROR in $sub_name, ungapped sequence segment $ugp_seq_start .. $ugp_seq_stop is not + strand", 1, $FH_HR); }
+      $seq_line .= $sqfile->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
+      $rf_line  .= utl_StringMonoChar(abs($ugp_seq_stop - $ugp_seq_start) + 1, "x", $FH_HR);
+      
+      if($subseq_3p_idx != -1) {
+        $subseq_name = $seq2subseq_HAR->{$seq_name}[$subseq_3p_idx];
+        $seq_line .= $asubseq_H{$subseq_name};
+        
+        $stk_idx = $subseq2stk_idx_H{$subseq_name};
+        $rf_line .= $rf_seq_A[$stk_idx];
+      }
+    }
+    printf("# STOCKHOLM 1.0\n");
+    printf("$seq_name $seq_line\n");
+    printf("#=GC RF $rf_line\n");
+  } # end of 'foreach $seq_name (@{$seq_name_AR})'
+
+  ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
+
+  return;
+}
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;
