@@ -44,9 +44,12 @@ my $Linetype_other         = 11;
 my $Linetype_searchspace   = 12;
 my $Linetype_strand        = 13;
 
+# variables related to command line options
+my $program = undef;             #either "x" or "n", argument for --program
+my $input_file = undef;          #file with blastx output to parse
+my $allow_subject_minus = undef; #usually 1, set to 0 if --splus used
+
 # variables used while parsing input file
-my $program = undef;        #either "x" or "n", argument for --program
-my $input_file = undef;     #file with blastx output to parse
 my $state = $State_Naive;   #what is the current state of scanning the input
 my $linetype = $Linetype_other; #what is the type of this line
 my $qdef;                   #query line
@@ -116,7 +119,9 @@ my %opt_group_desc_H = ();
 opt_Add("-h",                   "boolean", 0,          0,    undef, undef,    undef,                                                   "display this help",  \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"1"} = "required options";
 opt_Add("--program",            "string",  undef,      1,    undef, undef,   "blast program used is blast<s>, <s> must be 'x' or 'n'", "REQUIRED: blast program used is blast<s>, <s> must be 'x' or 'n'",           \%opt_HH, \@opt_order_A);
-opt_Add("--input",              "string",  undef,      1,    undef, undef,   "input fasta file",                                       "REQUIRED: input file name <s> with vecscreen output",           \%opt_HH, \@opt_order_A);
+opt_Add("--input",              "string",  undef,      1,    undef, undef,   "input fasta file",                                       "REQUIRED: input file name <s> with vecscreen output",     \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{"2"} = "other options";
+opt_Add("--splus",             "boolean",  0,          1,    undef, undef,   "only parse alignments if subject is + strand",           "only parse alignments if subject is plus strand",         \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -124,7 +129,8 @@ my $all_options_recognized =
     &GetOptions(
   'h'                  => \$GetOptions_H{"-h"},
   'program=s'          => \$GetOptions_H{"--program"},
-  'input=s'            => \$GetOptions_H{"--input"});
+  'input=s'            => \$GetOptions_H{"--input"},
+  'splus'              => \$GetOptions_H{"--splus"});
 
 my $synopsis = "parse_blast.pl :: convert blastx or blastn output file to a more structured intermediate representation\n";
 my $usage    = "Usage: parse_blast.pl ";    
@@ -136,8 +142,9 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 # get option values
-$program    = opt_Get("--program", \%opt_HH);
-$input_file = opt_Get("--input",   \%opt_HH);
+$program             = opt_Get("--program", \%opt_HH);
+$input_file          = opt_Get("--input",   \%opt_HH);
+$allow_subject_minus = opt_Get("--splus", \%opt_HH) ? 0 : 1;
 
 # Die if any of:
 # - non-existent option is used
@@ -430,16 +437,18 @@ while($keep_going) {
           }
         }
         $old_query_gap_overhang = $new_query_gap_overhang;
-        ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap_str, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang, $program);
-        if ($one_line_subject_gap > $maximum_subject_gap) {
-          $maximum_subject_gap     = $one_line_subject_gap;
-          $maximum_subject_gap_str = $one_line_subject_gap_str;
-        }
-        if (($overall_subject_gap_representation) && ($one_row_subject_gap_representation)) {
-          $overall_subject_gap_representation = $overall_subject_gap_representation . ";" . $one_row_subject_gap_representation;
-        }
-        else {
-          $overall_subject_gap_representation = $overall_subject_gap_representation . $one_row_subject_gap_representation;
+        if(($subject_start <= $subject_end) || ($allow_subject_minus)) { 
+          ($new_subject_gap_overhang, $one_row_subject_gap_representation, $one_line_subject_gap_str, $one_line_subject_gap) = findSubjectGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_subject_gap_overhang, $program);
+          if ($one_line_subject_gap > $maximum_subject_gap) {
+            $maximum_subject_gap     = $one_line_subject_gap;
+            $maximum_subject_gap_str = $one_line_subject_gap_str;
+          }
+          if (($overall_subject_gap_representation) && ($one_row_subject_gap_representation)) {
+            $overall_subject_gap_representation = $overall_subject_gap_representation . ";" . $one_row_subject_gap_representation;
+          }
+          else {
+            $overall_subject_gap_representation = $overall_subject_gap_representation . $one_row_subject_gap_representation;
+          }
         }
         if ($DEBUG) {
           print "Updated subject gap representation is $overall_subject_gap_representation\n";
@@ -1082,7 +1091,10 @@ sub findSubjectGaps {
   $local_QueryPositionIndex = $query_start;
   $local_SubjectPositionIndex = $subject_start;
   # It is always true that $subject_start < $subject_end
-  if ($subject_start < $subject_end) {
+  if ($subject_start > $subject_end) {
+    die "ERROR in $sub_name, subject is minus strand, NOT YET IMPLEMENTED (use --splus to skip alignment parsing for such hits)";
+  }
+  if ($subject_start <= $subject_end) {
     if ($old_gap_overhang) {
       $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
       $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;

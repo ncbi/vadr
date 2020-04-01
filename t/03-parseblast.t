@@ -73,7 +73,7 @@ foreach my $reqd_file (@reqd_file_A) {
 @to_remove_A = ();
 my $tmp_blastn_out = "blastn1.tmp";
 push(@to_remove_A, $tmp_blastn_out);
-$cmd = "perl $parse_blast_path --in $blastn_in_path --program n > $tmp_blastn_out";
+$cmd = "perl $parse_blast_path --in $blastn_in_path --program n --splus > $tmp_blastn_out";
 system($cmd);
 if($? != 0) { die "ERROR command $cmd failed"; }
 

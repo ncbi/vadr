@@ -91,8 +91,15 @@ sub run_blastn_and_summarize_output {
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn-out", $blastn_out_file, 0, $do_keep, "blastn output");
 
   # now summarize its output
+  # use --splus to skip alignment parsing of hits to negative strand of subject
+  # that's important because parse_blast.pl doesn't have the code to deal with
+  # such alignments (it was written for blastx originally for which subject is
+  # always +) but that's okay because those hits are to negative strand of
+  # the sequence (actually negative strand of the subject/model but blastn revcomps
+  # the subject instead of the query like cmscan would do), and we don't care
+  # about negative strand hit indel info.
   my $blastn_summary_file = $out_root . ".r1.blastn.summary.txt";
-  my $parse_cmd = $execs_HR->{"parse_blast"} . " --program n --input $blastn_out_file > $blastn_summary_file";
+  my $parse_cmd = $execs_HR->{"parse_blast"} . " --program n --input $blastn_out_file --splus > $blastn_summary_file";
   utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn-summary", $blastn_summary_file, 0, $do_keep, "parsed (summarized) blastn output");
 
