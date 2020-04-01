@@ -948,7 +948,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     
     if($do_blastn_ali) {
       # join alignments of subsequences and update all variables
-      join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
+      join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
+                      \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
                       \@{$stk_file_HA{$mdl_name}}, $progress_w, \%opt_HH, \%ofile_info_HH);
 
       ofile_FAIL("TODO: Add subroutine that maps subseq names in overflow_seq_A to actual input fasta names", 1, $FH_HR);            
