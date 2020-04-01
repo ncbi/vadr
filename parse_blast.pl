@@ -884,7 +884,7 @@ sub findQueryGaps {
   }
   if ($query_start < $query_end) {
     if ($old_gap_overhang) {
-      $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
+      $local_QueryStartDeletion = $query_start - 1;
       $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
       $local_state = $local_StateInGap;
     }
@@ -959,8 +959,8 @@ sub findQueryGaps {
   } # end of if($query_start < $query_end) (strand is +)
   else { # $query_start >= $query_end (strand is -)
     if ($old_gap_overhang) {
-      $local_QueryStartDeletion = $query_start + $old_gap_overhang + 1;
-      $local_SubjectStartDeletion = $subject_start - $old_gap_overhang + 1;
+      $local_QueryStartDeletion = $query_start + 1;
+      $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
       $local_state = $local_StateInGap;
     }
     else {
@@ -1097,7 +1097,7 @@ sub findSubjectGaps {
   if ($subject_start <= $subject_end) {
     if ($old_gap_overhang) {
       $local_QueryStartDeletion = $query_start - $old_gap_overhang - 1;
-      $local_SubjectStartDeletion = $subject_start - $old_gap_overhang - 1;
+      $local_SubjectStartDeletion = $subject_start - 1;
       $local_state = $local_StateInGap;
     }
     else {
