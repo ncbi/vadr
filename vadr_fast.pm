@@ -1122,6 +1122,47 @@ sub join_alignments {
 
   return;
 }
+
+#################################################################
+# Subroutine:  join_alignments_helper()
+# Incept:      EPN, Wed Apr  1 13:24:10 2020
+#
+# Purpose:     Figures out how to join an alignment based on
+#              input and returns the joined strings.
+#
+# Arguments: 
+#  $aligned_mdl_5p:     aligned 5' end of RF from cmalign, 
+#                       undef if none, ugp_seq_start must be 1 in this case 
+#  $aligned_seq_5p:     aligned 5' end of sequence from cmalign, 
+#                       undef if none, ugp_seq_start must be 1 in this case 
+#  $aligned_seq_3p:     aligned 3' end of sequence from cmalign, 
+#                       undef if none, ugp_seq_start must be 1 in this case 
+#  $aligned_mdl_3p:     aligned 3' end of RF from cmalign, 
+#                       undef if none, ugp_seq_start must be 1 in this case 
+#  $ugp_seq_coords_sgm: ungapped region sequence coords string
+#  $ugp_mdl_coords_sgm: ungapped region model coords string
+#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
+#                         
+# Returns:    2 values:
+#             $joined_seq: joined sequence as a string
+#             $joined_rf:  joined RF as a string
+#
+# Dies:       if $aligned_{seq,mdl}_5p is undef but $ugp_{seq,mdl}_coords_sgm indicates it should be defined
+#             if $aligned_{seq,mdl}_3p is undef but $ugp_{seq,mdl}_coords_sgm indicates it should be defined
+#
+################################################################# 
+sub join_alignments_helper { 
+  my $sub_name = "join_alignments_helper";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($aligned_seq_5p, $aligned_mdl_5p, $aligned_seq_3p, $aligned_mdl_3p, $ugp_mdl_coords_sgm, $ugp_seq_coords_sgm, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef;
+
+  return 1;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;

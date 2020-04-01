@@ -194,3 +194,19 @@ for($i = 0; $i < $ntests; $i++) {
   $cur_coords = vdr_CoordsReverseComplement($rc_coords, 0, undef);
   is($cur_coords, $coords_A[$i], "vdr_CoordsMaxLengthSegment() coords double reverse complement 1: $desc_A[$i]");
 }
+
+###########################################
+# join_alignments_helper() tests
+###########################################
+
+@desc_A               = ();
+my @aligned_seq_5p_A  = ();
+my @aligned_mdl_5p_A  = ();
+my @aligned_seq_3p_A  = ();
+my @aligned_mdl_3p_A  = ();
+my @ugp_mdl_coords_sgm_A = ();
+my @ugp_seq_coords_sgm_A = ();
+my @exp_coords_A    = ();
+my @exp_rc_coords_A = ();
+my @exp_len_A       = ();
+
