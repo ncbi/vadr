@@ -1131,36 +1131,184 @@ sub join_alignments {
 #              input and returns the joined strings.
 #
 # Arguments: 
-#  $aligned_mdl_5p:     aligned 5' end of RF from cmalign, 
-#                       undef if none, ugp_seq_start must be 1 in this case 
-#  $aligned_seq_5p:     aligned 5' end of sequence from cmalign, 
-#                       undef if none, ugp_seq_start must be 1 in this case 
-#  $aligned_seq_3p:     aligned 3' end of sequence from cmalign, 
-#                       undef if none, ugp_seq_start must be 1 in this case 
-#  $aligned_mdl_3p:     aligned 3' end of RF from cmalign, 
-#                       undef if none, ugp_seq_start must be 1 in this case 
-#  $ugp_seq_coords_sgm: ungapped region sequence coords string
-#  $ugp_mdl_coords_sgm: ungapped region model coords string
-#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
+#  $ali_5p_seq_coords:      aligned 5' region coords string
+#                           undef if none, ugp_seq_start must be 1 in this case 
+#  $ali_5p_seq:             aligned 5' end of sequence from cmalign, 
+#                           undef if none, ugp_seq_start must be 1 in this case 
+#  $ali_5p_mdl:             aligned 5' end of model (RF) from cmalign, 
+#                           undef if none, ugp_seq_start must be 1 in this case 
+#  $ali_3p_seq_coords:      aligned 3' region coords string
+#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#  $ali_3p_seq:             aligned 3' end of sequence from cmalign, 
+#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#  $ali_3p_mdl:             aligned 3' end of model (RF) from cmalign, 
+#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#  $ugp_seq_coords:         ungapped region sequence coords string
+#  $ugp_mdl_coords:         ungapped region model coords string
+#  $ugp_seq:                ungapped region sequence string
+#  $seq_len:                total sequence length
+#  $mdl_len:                total model length
+#  $ofile_info_HHR:         REF to 2D hash of output file information, ADDED TO HERE
 #                         
 # Returns:    2 values:
 #             $joined_seq: joined sequence as a string
-#             $joined_rf:  joined RF as a string
+#             $joined_mdl: joined RF as a string
 #
-# Dies:       if $aligned_{seq,mdl}_5p is undef but $ugp_{seq,mdl}_coords_sgm indicates it should be defined
-#             if $aligned_{seq,mdl}_3p is undef but $ugp_{seq,mdl}_coords_sgm indicates it should be defined
+# Dies:       if $ali_{5p,3p}_{coords,seq,mdl} is undef but $ugp_seq_coords indicates it should be defined
 #
 ################################################################# 
 sub join_alignments_helper { 
   my $sub_name = "join_alignments_helper";
-  my $nargs_exp = 7;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($aligned_seq_5p, $aligned_mdl_5p, $aligned_seq_3p, $aligned_mdl_3p, $ugp_mdl_coords_sgm, $ugp_seq_coords_sgm, $ofile_info_HHR) = @_;
+  my ($ali_5p_seq_coords, $ali_5p_seq, $ali_5p_mdl,
+      $ali_3p_seq_coords, $ali_3p_seq, $ali_3p_mdl,
+      $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq,
+      $seq_len, $mdl_len, $ofile_info_HHR) = @_;
 
   my $FH_HR  = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef;
 
-  return 1;
+  my ($have_5p)  = ((defined $ali_5p_seq_coords) && (defined $ali_5p_seq) && (defined $ali_5p_mdl)) ? 1 : 0;
+  my ($have_3p)  = ((defined $ali_3p_seq_coords) && (defined $ali_3p_seq) && (defined $ali_3p_mdl)) ? 1 : 0;
+  my ($have_ugp) = ((defined $ugp_seq_coords) && (defined $ugp_seq)) ? 1 : 0;
+
+  # parse coords
+  my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_coords, $FH_HR);
+  my ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = vdr_CoordsSegmentParse($ugp_mdl_coords, $FH_HR);
+  my ($ali_5p_seq_start, $ali_5p_seq_stop, $ali_5p_seq_strand) = ($have_5p) ?
+      vdr_CoordsSegmentParse($ali_5p_seq_coords, $FH_HR) :
+      (undef, undef, undef);
+  my ($ali_3p_seq_start, $ali_3p_seq_stop, $ali_3p_seq_strand) = ($have_3p) ?
+      vdr_CoordsSegmentParse($ali_3p_seq_coords, $FH_HR) :
+      (undef, undef, undef);
+  
+  # sanity checks
+  if(($have_5p)   && ($ugp_seq_start == 1)) {
+    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords include 1st position but we have 5p segment info", 1, $FH_HR);
+  }
+  if((! $have_5p) && ($ugp_seq_start != 1)) {
+    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords do not include 1st position but we don't have 5p segment info", 1, $FH_HR);
+  }
+  if(($have_3p)   && ($ugp_seq_stop == $seq_len)) {
+    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords include final position but we have 3p segment info", 1, $FH_HR);
+  }
+  if((! $have_3p) && ($ugp_seq_stop != $seq_len)) {
+    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords do not include final position but we don't have 3p segment info", 1, $FH_HR);
+  }
+
+  # strand sanity checks
+  if(($ugp_seq_strand ne "+") ||
+     ($ugp_mdl_strand ne "+") || 
+     ((defined $ali_5p_seq_strand) && ($ali_5p_seq_strand ne "+")) ||
+     ((defined $ali_3p_seq_strand) && ($ali_3p_seq_strand ne "+"))) { 
+    ofile_FAIL("ERROR in $sub_name, not all strands are positive", 1, $FH_HR);
+  }
+
+  # determine model length in 5' and 3' segments
+  my $ali_5p_mdl_start = ($have_5p) ? 1        : undef;
+  my $ali_5p_mdl_stop  = ($have_5p) ? ($ali_5p_mdl =~ tr/[.\-~]//c) : undef;
+  my $ali_3p_mdl_start = ($have_5p) ? ($mdl_len - ($ali_3p_mdl =~ tr/[.\-~]//c) + 1) : undef;
+  my $ali_3p_mdl_stop  = ($have_3p) ? $mdl_len : undef;
+
+  # another sanity check: there must be some overhang between 5p and ugp and ugp and 3p
+  if(($have_5p) && ($ali_5p_seq_stop < $ugp_seq_start)) {
+    ofile_FAIL("ERROR in $sub_name, no overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 5p region ($ali_5p_seq_start .. $ali_5p_seq_stop)", 1, $FH_HR);
+  }
+  if(($have_3p) && ($ali_3p_seq_start > $ugp_seq_stop)) {
+    ofile_FAIL("ERROR in $sub_name, no overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 3p region ($ali_3p_seq_start .. $ali_3p_seq_stop)", 1, $FH_HR);
+  }
+  
+  print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n");
+  print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n");
+
+  my $ugp_seq_mdl_diff = $ugp_mdl_start - $ugp_seq_start;
+  printf("ugp_seq_mdl_diff: $ugp_seq_mdl_diff\n");
+
+  # where ugp_seq_mdl_diff is ugp_mdl_start - ugp_seq_start
+  # 
+  # 5' end:
+  # find X = max position <= ali_5p_stop where
+  # c1: seqpos == mdlpos - ugp_seq_mdl_diff
+  # where seqpos = ali_5p_seq_stop - number of nongap seq positions seen since ali_5p_seq_stop
+  # where mdlpos = ali_5p_mdl_stop - number of nongap mdl positions seen since ali_5p_mdl_stop
+  #
+  # then
+  # end ali_5p_seq at position X
+  # end ali_5p_mdl at position X
+  # start ungapped seq at position X+1 (chop off first X-ugp_start positions)
+  #
+  # 3' end:
+  # find Y = min position >= ali_3p_start where
+  # c2: seqpos == mdlpos - ugp_seq_mdl_diff
+  # where seqpos = ali_3p_seq_start - number of nongap seq positions seen since ali_3p_seq_start
+  # where mdlpos = ali_3p_mdl_start - number of nongap mdl positions seen since ali_3p_mdl_start
+  # 
+  # WHAT IF WE GET TO 1 AND CAN'T SATISFY c1? NEED TO DOCTOR ALIGNMENT
+  # WHAT IF WE GET TO L AND CAN'T SATISFY c2? NEED TO DOCTOR ALIGNMENT
+  # 
+
+  # find 3' end of 5' end of ungapped segment
+  my $apos;
+
+  # variables starting with 'fetch' are in relative coordinate space for whatever they pertain to:
+  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or ugp_{seq}
+  my $fetch_ali_5p_seq_start = 1;                    
+  my $fetch_ali_5p_seq_stop  = length($ali_5p_seq);
+  my $fetch_ali_3p_seq_start = 1;                   
+  my $fetch_ali_3p_seq_stop  = length($ali_3p_seq);
+  my $fetch_ugp_seq_start    = undef;
+  my $fetch_ugp_seq_stop     = undef;
+  my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
+
+  if($have_5p) { 
+    # usual case, final position of aligned 5' region is just 1 sequence position
+    # *and* 1 model position prior to ungapped region
+    if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)) {
+      $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
+    }
+    else {
+      die "NOT YET IMPLEMENTED, mismatch at 5' end";
+    }
+  }
+  else { # $have_5p == 0
+    $fetch_ugp_seq_start = $ugp_seq_start; # this is 1
+  }
+  if($have_3p) {
+    # usual case, first position of aligned 3' region is just 1 sequence position
+    # *and* 1 model position after ungapped region
+    if($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff)) {
+      $fetch_ugp_seq_stop = $ugp_seq_len - ($ugp_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
+    }
+    else {
+      die "NOT YET IMPLEMENTED, mismatch at 3' end";
+    }
+  }
+  else { # $have_3p == 0
+    $fetch_ugp_seq_stop = $ugp_seq_len - $fetch_ugp_seq_start + 1;
+  }
+
+  my $joined_seq = "";
+  my $joined_mdl = "";
+  if($have_5p) {
+    # $fetch_ali_5p_seq_start == 1, but included below for consistency with 3p calls
+    printf("fetching 5p %d to %d from %s\n", $fetch_ali_5p_seq_start, $fetch_ali_5p_seq_stop, $ali_5p_seq_coords);
+    $joined_seq .= substr($ali_5p_seq, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
+    $joined_mdl .= substr($ali_5p_mdl, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
+  }
+
+  printf("fetching ugp %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
+  my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
+  $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
+  $joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
+
+  if($have_3p) {
+    printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
+    $joined_seq .= substr($ali_3p_seq, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
+    $joined_mdl .= substr($ali_3p_mdl, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
+  }
+  
+  return ($joined_seq, $joined_mdl);
 }
 
 ###########################################################################

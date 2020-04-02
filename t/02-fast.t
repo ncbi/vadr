@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 59;
+use Test::More tests => 61;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -199,14 +199,52 @@ for($i = 0; $i < $ntests; $i++) {
 # join_alignments_helper() tests
 ###########################################
 
-@desc_A               = ();
-my @aligned_seq_5p_A  = ();
-my @aligned_mdl_5p_A  = ();
-my @aligned_seq_3p_A  = ();
-my @aligned_mdl_3p_A  = ();
-my @ugp_mdl_coords_sgm_A = ();
-my @ugp_seq_coords_sgm_A = ();
-my @exp_coords_A    = ();
-my @exp_rc_coords_A = ();
-my @exp_len_A       = ();
+@desc_A                  = ();
+my @ali_5p_seq_coords_A  = ();
+my @ali_5p_seq_A         = ();
+my @ali_5p_mdl_A         = ();
+my @ali_3p_seq_coords_A  = ();
+my @ali_3p_seq_A         = ();
+my @ali_3p_mdl_A         = ();
+my @ugp_mdl_coords_A     = ();
+my @ugp_seq_coords_A     = ();
+my @ugp_seq_A            = ();       
+my @seq_len_A            = ();       
+my @mdl_len_A            = ();       
+my @exp_joined_seq_A     = ();
+my @exp_joined_mdl_A     = ();
 
+push(@desc_A,               "ungapped");    
+push(@ali_5p_seq_coords_A,  "1..20:+");  
+push(@ali_5p_seq_A,         "AAAAAAAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxxxxxxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "41..70:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+push(@ugp_seq_coords_A,     "11..50:+");  
+push(@ugp_mdl_coords_A,     "11..50:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "70");
+push(@mdl_len_A,            "70");
+push(@exp_joined_seq_A,     "AAAAAAAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@exp_joined_mdl_A,     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+$ntests = scalar(@desc_A);
+my ($cur_joined_seq, $cur_joined_mdl);
+for($i = 0; $i < $ntests; $i++) { 
+  ($cur_joined_seq, $cur_joined_mdl) =
+      join_alignments_helper($ali_5p_seq_coords_A[$i],
+                             $ali_5p_seq_A[$i],
+                             $ali_5p_mdl_A[$i],
+                             $ali_3p_seq_coords_A[$i],
+                             $ali_3p_seq_A[$i],
+                             $ali_3p_mdl_A[$i],
+                             $ugp_seq_coords_A[$i],
+                             $ugp_mdl_coords_A[$i],
+                             $ugp_seq_A[$i],
+                             $seq_len_A[$i],
+                             $mdl_len_A[$i],
+                             undef);
+  is($cur_joined_seq, $exp_joined_seq_A[$i], "join_alignments() correctly joined seq: $desc_A[$i]");
+  is($cur_joined_mdl, $exp_joined_mdl_A[$i], "join_alignments() correctly joined seq: $desc_A[$i]");
+}
