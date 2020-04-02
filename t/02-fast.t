@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 61;
+use Test::More tests => 87;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -229,8 +229,98 @@ push(@mdl_len_A,            "70");
 push(@exp_joined_seq_A,     "AAAAAAAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
 push(@exp_joined_mdl_A,     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
+push(@desc_A,               "one gap 5' seq");    
+push(@ali_5p_seq_coords_A,  "1..19:+");  
+push(@ali_5p_seq_A,         "AAAA-AAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxxxxxxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "40..69:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+push(@ugp_seq_coords_A,     "10..49:+");  
+push(@ugp_mdl_coords_A,     "11..50:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "69");
+push(@mdl_len_A,            "70");
+push(@exp_joined_seq_A,     "AAAA-AAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@exp_joined_mdl_A,     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+push(@desc_A,               "one 3' seq");    
+push(@ali_5p_seq_coords_A,  "1..20:+");  
+push(@ali_5p_seq_A,         "AAAAAAAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxxxxxxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "41..69:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAA-AAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+push(@ugp_seq_coords_A,     "11..50:+");  
+push(@ugp_mdl_coords_A,     "11..50:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "69");
+push(@mdl_len_A,            "70");
+push(@exp_joined_seq_A,     "AAAAAAAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAA-AAAA");
+push(@exp_joined_mdl_A,     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+push(@desc_A,               "one gap 5' and 3' seq");    
+push(@ali_5p_seq_coords_A,  "1..19:+");  
+push(@ali_5p_seq_A,         "AAAA-AAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxxxxxxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "40..68:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAA-AAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+push(@ugp_seq_coords_A,     "10..49:+");  
+push(@ugp_mdl_coords_A,     "11..50:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "68");
+push(@mdl_len_A,            "70");
+push(@exp_joined_seq_A,     "AAAA-AAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAA-AAAA");
+push(@exp_joined_mdl_A,     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+push(@desc_A,               "one gap 5' mdl");    
+push(@ali_5p_seq_coords_A,  "1..20:+");  
+push(@ali_5p_seq_A,         "AAAAAaAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxxx-xxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "41..70:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+push(@ugp_seq_coords_A,     "11..50:+");  
+push(@ugp_mdl_coords_A,     "10..49:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "70");
+push(@mdl_len_A,            "69");
+push(@exp_joined_seq_A,     "AAAAAaAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@exp_joined_mdl_A,     "xxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+push(@desc_A,               "one 3' mdl");    
+push(@ali_5p_seq_coords_A,  "1..20:+");  
+push(@ali_5p_seq_A,         "AAAAAAAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxxxxxxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "41..70:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxx-xxxx");
+push(@ugp_seq_coords_A,     "11..50:+");  
+push(@ugp_mdl_coords_A,     "11..50:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "70");
+push(@mdl_len_A,            "69");
+push(@exp_joined_seq_A,     "AAAAAAAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@exp_joined_mdl_A,     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxx");
+
+push(@desc_A,               "one gap 5' and 3' mdl");    
+push(@ali_5p_seq_coords_A,  "1..20:+");  
+push(@ali_5p_seq_A,         "AAAAAAAAAACCCCCCCCCC");
+push(@ali_5p_mdl_A,         "xxxx-xxxxxxxxxxxxxxx");
+push(@ali_3p_seq_coords_A,  "41..70:+");  
+push(@ali_3p_seq_A,         "GGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@ali_3p_mdl_A,         "xxxxxxxxxxxxxxxxxxxxxxxxx-xxxx");
+push(@ugp_seq_coords_A,     "11..50:+");  
+push(@ugp_mdl_coords_A,     "10..49:+");  
+push(@ugp_seq_A,            "CCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGG");
+push(@seq_len_A,            "70");
+push(@mdl_len_A,            "68");
+push(@exp_joined_seq_A,     "AAAAAAAAAACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGGGGUUUUUUUUUUAAAAAAAAAA");
+push(@exp_joined_mdl_A,     "xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxxx");
+
 $ntests = scalar(@desc_A);
-my ($cur_joined_seq, $cur_joined_mdl);
+my ($cur_joined_seq, $cur_joined_mdl, $cur_seq_len, $cur_mdl_len);
 for($i = 0; $i < $ntests; $i++) { 
   ($cur_joined_seq, $cur_joined_mdl) =
       join_alignments_helper($ali_5p_seq_coords_A[$i],
@@ -246,5 +336,12 @@ for($i = 0; $i < $ntests; $i++) {
                              $mdl_len_A[$i],
                              undef);
   is($cur_joined_seq, $exp_joined_seq_A[$i], "join_alignments() correctly joined seq: $desc_A[$i]");
-  is($cur_joined_mdl, $exp_joined_mdl_A[$i], "join_alignments() correctly joined seq: $desc_A[$i]");
+  is($cur_joined_mdl, $exp_joined_mdl_A[$i], "join_alignments() correctly joined mdl: $desc_A[$i]");
+
+  # number of nongap chars in joined seq string should equal $seq_len
+  # number of nongap chars in joined mdl string should equal $mdl_len
+  $cur_seq_len = $cur_joined_seq =~ tr/[.\-~]//c;
+  is($cur_seq_len, $seq_len_A[$i], "join_alignments() sequence length looks right: $desc_A[$i]");
+  $cur_mdl_len = $cur_joined_mdl =~ tr/[.\-~]//c;
+  is($cur_mdl_len, $mdl_len_A[$i], "join_alignments() model length looks right: $desc_A[$i]");
 }
