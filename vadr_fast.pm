@@ -1208,7 +1208,7 @@ sub join_alignments_helper {
   # determine model length in 5' and 3' segments
   my $ali_5p_mdl_start = ($have_5p) ? 1        : undef;
   my $ali_5p_mdl_stop  = ($have_5p) ? ($ali_5p_mdl =~ tr/[.\-~]//c) : undef;
-  my $ali_3p_mdl_start = ($have_5p) ? ($mdl_len - ($ali_3p_mdl =~ tr/[.\-~]//c) + 1) : undef;
+  my $ali_3p_mdl_start = ($have_3p) ? ($mdl_len - ($ali_3p_mdl =~ tr/[.\-~]//c) + 1) : undef;
   my $ali_3p_mdl_stop  = ($have_3p) ? $mdl_len : undef;
 
   # another sanity check: there must be some overhang between 5p and ugp and ugp and 3p
@@ -1218,9 +1218,15 @@ sub join_alignments_helper {
   if(($have_3p) && ($ali_3p_seq_start > $ugp_seq_stop)) {
     ofile_FAIL("ERROR in $sub_name, no overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 3p region ($ali_3p_seq_start .. $ali_3p_seq_stop)", 1, $FH_HR);
   }
-  
-  print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n");
-  print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n");
+
+  if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\n"); }
+  if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\n"); }
+
+  if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
+  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
+
+  print("ugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
+  print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
 
   my $ugp_seq_mdl_diff = $ugp_mdl_start - $ugp_seq_start;
   printf("ugp_seq_mdl_diff: $ugp_seq_mdl_diff\n");
@@ -1285,7 +1291,7 @@ sub join_alignments_helper {
     }
   }
   else { # $have_3p == 0
-    $fetch_ugp_seq_stop = $ugp_seq_len - $fetch_ugp_seq_start + 1;
+    $fetch_ugp_seq_stop = $ugp_seq_len;
   }
 
   my $joined_seq = "";
