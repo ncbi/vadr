@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-# 
 #
 use strict;
 use warnings;
@@ -53,12 +52,12 @@ $opt_group_desc_H{"3"} = "other options";
 opt_Add("--rmout",      "boolean", 0,                        3,    undef, "-s",       "if output files listed in testin file already exist, remove them", "if output files listed in testin file already exist, remove them", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk", "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 opt_Add("--skipmsg",    "boolean", 0,                        3,    undef, undef,      "do not compare errors and warnings", "do not compare errors and warning lines", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{"4"} = "other expert options";
+#       option       type          default     group  requires incompat  preamble-output                                 help-output    
+opt_Add("--execname",   "string",  undef,         4,    undef, undef,   "define executable name of this script as <s>", "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: v-test.pl [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
-my $synopsis = "v-test.pl :: test VADR scripts [TEST SCRIPT]";
-
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"},
                 'v'            => \$GetOptions_H{"-v"},
@@ -67,10 +66,14 @@ my $options_okay =
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'rmout'        => \$GetOptions_H{"--rmout"},
                 'keep'         => \$GetOptions_H{"--keep"},
-                'skipmsg'      => \$GetOptions_H{"--skipmsg"});
+                'skipmsg'      => \$GetOptions_H{"--skipmsg"},
+                'execname=s'    => \$GetOptions_H{"--execname"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
-my $executable    = $0;
+my $execname_opt  = $GetOptions_H{"--execname"};
+my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $usage         = "Usage: $executable [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
+my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
 my $version       = "1.0.5";
 my $releasedate   = "March 2020";
@@ -94,7 +97,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do v-test.pl -h\n\n";
+  print "\nTo see more help on available options, do $executable -h\n\n";
   exit(1);
 }
 

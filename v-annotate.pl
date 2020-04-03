@@ -316,13 +316,13 @@ my $options_okay =
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
                 'altinfo'       => \$GetOptions_H{"--altinfo"},
-# other options
+# other expert options
                 'execname=s'    => \$GetOptions_H{"--execname"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
 my $executable    = (defined $execname_opt) ? $execname_opt : $0;
-my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n\n";
+my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
 my $version       = "1.0.5";
