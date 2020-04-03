@@ -140,12 +140,12 @@ $opt_group_desc_H{++$g} = "optional output files";
 opt_Add("--ftrinfo",    "boolean", 0,         $g,    undef,     undef,    "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
 opt_Add("--sgminfo",    "boolean", 0,         $g,    undef,     undef,    "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "other expert options";
+#       option       type          default     group  requires incompat  preamble-output                                 help-output    
+opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>", "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: v-build.pl [-options] <accession> <path to output directory to create>\n";
-my $synopsis = "v-build.pl :: build homology model of a single sequence for feature annotation";
-
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
@@ -188,13 +188,18 @@ my $options_okay =
                 'onlyurl'      => \$GetOptions_H{"--onlyurl"},
 # optional output files
                 'sgminfo'      => \$GetOptions_H{"--sgminfo"},
-                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"});
+                'ftrinfo'      => \$GetOptions_H{"--ftrinfo"},
+# other expert options
+                'execname=s'   => \$GetOptions_H{"--execname"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
-my $executable    = $0;
+my $execname_opt  = $GetOptions_H{"--execname"};
+my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
+my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.0.5";
-my $releasedate   = "March 2020";
+my $version       = "1.0.6";
+my $releasedate   = "April 2020";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -209,7 +214,7 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do v-build.pl -h\n\n";
+  print "\nTo see more help on available options, do $executable -h\n\n";
   exit(1);
 }
 my ($mdl_name, $dir) = (@ARGV);

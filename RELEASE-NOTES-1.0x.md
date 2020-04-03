@@ -1,5 +1,10 @@
 # VADR 1.0x release notes 
 
+### VADR 1.0.6 release (April 2020)
+* Bug fix release: protein_id qualifiers now accession-only
+  unless --forceid used.
+* --execname option added to v-{annotate,build,test}.pl
+
 ### VADR 1.0.5 release (March 2020)
 * Minor update: adds protein_id qualifiers to CDS and mat_peptide
   features in output feature tables.

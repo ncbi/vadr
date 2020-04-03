@@ -1,0 +1,174 @@
+>Feature ENTOY100A
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four
+>Feature gb|ENTOY100A|
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four
+>Feature gbENTOY100A|
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four
+>Feature |-|
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four
+>Feature this|is|a|sequence
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four
+>Feature this|is|another|sequence
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+11	22	mat_peptide
+			product	protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+67	79	CDS
+85	95
+			product	protein three
+67	75	mat_peptide
+			product	protein three mp1
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+98	84	CDS
+			product	protein four

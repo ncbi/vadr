@@ -648,6 +648,8 @@ integer.
 | .......option....... | explanation | 
 |--------|-------------| 
 | `--nomisc`     | in feature table, never change feature to `misc_feature` | 
+| `--noprotid`   | in feature table, don't add protein_id for CDS and mat_peptide features |
+| `--forceid`    | in feature table, force protein_id value to be sequence name, then idx |
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 
