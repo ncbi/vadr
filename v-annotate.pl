@@ -902,7 +902,8 @@ my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
 my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
 
 my $cur_mdl_fa_file;    # fasta file with sequences to align to current model
-my $cur_mdl_nseq;       # number of sequences we are aligning for current model
+my $cur_mdl_nseq;       # number of sequences assigned to model
+my $cur_mdl_nalign;     # number of sequences we are aligning for current model will be $cur_mdl_nseq unless --fast
 my $cur_mdl_seq_len_HR; # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
 
 # variables only used if --fast used
@@ -917,13 +918,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     
     $cur_mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
-    
+    $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+
     # fetch seqs, we do this differently depending on if $do_blastn_ali or not
     if(! $do_blastn_ali) { 
       $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
       if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $cur_mdl_fa_file); }
-      $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+      $cur_mdl_nalign = $cur_mdl_nseq;
       $cur_mdl_seq_len_HR = \%mdl_seq_len_H;
     }
     else {
@@ -935,24 +937,31 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                  \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA,
                                                  \%subseq_len_H, \%opt_HH, \%ofile_info_HH);
       $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_fa_file);
-      $cur_mdl_nseq = scalar(@subseq_AA);
+      $cur_mdl_nalign = scalar(@subseq_AA);
       $cur_mdl_seq_len_HR = \%subseq_len_H;
     }
     
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
     cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                    $cm_file, $mdl_name, $cur_mdl_fa_file, $out_root, $cur_mdl_nseq, 
+                    $cm_file, $mdl_name, $cur_mdl_fa_file, $out_root, $cur_mdl_nalign,
                     $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
     
     if($do_blastn_ali) {
       # join alignments of subsequences and update all variables
+      my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
+                                                         ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
+      
+      my @joined_stk_file_A = ();
       join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
                       \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                      \@{$stk_file_HA{$mdl_name}}, $progress_w, \%opt_HH, \%ofile_info_HH);
-
-      ofile_FAIL("TODO: Add subroutine that maps subseq names in overflow_seq_A to actual input fasta names", 1, $FH_HR);            
+                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, $progress_w, \%opt_HH, \%ofile_info_HH);
+      # replace array of stockholm files
+      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
+      
+      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
+      exit 0;
     }
     
     # add unexdivg errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
