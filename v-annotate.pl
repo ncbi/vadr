@@ -997,7 +997,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     # parse the cmalign --ifile file
     if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
-      cmalign_parse_ifile($cmalign_ifile_file, \%seq_inserts_HH, \%{$ofile_info_HH{"FH"}});
+      vdr_CmalignParseIfile($cmalign_ifile_file, \%seq_inserts_HH, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($cmalign_stdout_file, $cmalign_ifile_file));
     }
 
@@ -1239,7 +1239,6 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 # cmalign_wrapper
 # cmalign_wrapper_helper
 # cmalign_run
-# cmalign_parse_ifile 
 # cmalign_parse_stk_and_add_alignment_alerts 
 # cmalign_store_overflow
 # fetch_features_and_add_cds_and_mp_alerts 
@@ -2161,7 +2160,6 @@ sub populate_per_model_data_structures_given_classification_results {
 # cmalign_wrapper
 # cmalign_wrapper_helper
 # cmalign_run
-# cmalign_parse_ifile 
 # cmalign_parse_stk_and_add_alignment_alerts 
 # cmalign_store_overflow
 # fetch_features_and_add_cds_and_mp_alerts 
@@ -2585,69 +2583,6 @@ sub cmalign_run {
   }
   
   return $success; 
-}
-
-#################################################################
-# Subroutine : cmalign_parse_ifile()
-# Incept:      EPN, Thu Jan 31 13:06:54 2019
-#
-# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
-#             results in %{$seq_inserts_HR}.
-#
-# Arguments: 
-#  $ifile_file:       ifile file to parse
-#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       if unable to parse the ifile
-#
-################################################################# 
-sub cmalign_parse_ifile { 
-  my $sub_name = "cmalign_parse_ifile()";
-  my $nargs_exp = 3;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($ifile_file, $seq_inserts_HHR, $FH_HR) = @_;
-  
-  open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
-
-  my $line_ctr = 0;  # counts lines in ifile_file
-  while(my $line = <IN>) { 
-    $line_ctr++;
-    if($line !~ m/^\#/) { 
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
-      #norovirus.NC_039477 7567
-      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
-      my @el_A = split(/\s+/, $line);
-      if   (scalar(@el_A) == 2) { ; } # ignore these lines
-      elsif(scalar(@el_A) >= 4) { 
-        my $nel = scalar(@el_A); 
-        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
-          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
-        }          
-        my ($seqname, $seqlen, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
-        if(! defined $seq_inserts_HHR->{$seqname}) { 
-          # initialize
-          %{$seq_inserts_HHR->{$seqname}} = ();
-        }
-        # create the insert string
-        my $insert_str = "";
-        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
-          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
-        }
-        $seq_inserts_HHR->{$seqname}{"spos"} = $spos;
-        $seq_inserts_HHR->{$seqname}{"epos"} = $epos;
-        $seq_inserts_HHR->{$seqname}{"ins"}  = $insert_str;
-      }
-    }
-  }
-  close(IN);
-  
-  return;
 }
 
 #################################################################
