@@ -1020,7 +1020,9 @@ sub join_alignments {
     }
     $msa = undef;
   }
+  # HERE HERE HERE, parse the ifile files 
 
+  
   # For each sequence, determine which of the following three cases
   # (stored as $seq_case) it is:
   # Case 1: entire sequence was aligned with cmalign
