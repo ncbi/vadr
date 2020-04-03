@@ -230,11 +230,12 @@ opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef,
 opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
 opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "other expert options";
+#       option       type          default     group  requires incompat  preamble-output                                 help-output    
+opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>", "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
-my $usage    = "Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>\n";
-$usage      .= "\n";
-my $synopsis = "v-annotate.pl :: classify and annotate sequences using a CM library";
 my $options_okay = 
     &GetOptions('h'             => \$GetOptions_H{"-h"}, 
 # basic options
@@ -301,10 +302,15 @@ my $options_okay =
                 'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
                 'sgminfo'       => \$GetOptions_H{"--sgminfo"},
                 'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'       => \$GetOptions_H{"--altinfo"});
+                'altinfo'       => \$GetOptions_H{"--altinfo"},
+# other options
+                'execname=s'    => \$GetOptions_H{"--execname"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
-my $executable    = $0;
+my $execname_opt  = $GetOptions_H{"--execname"};
+my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n\n";
+my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
 my $version       = "1.0.5";
 my $releasedate   = "March 2020";
@@ -344,7 +350,7 @@ if(opt_IsUsed("--alt_list",\%opt_HH)) {
 if(scalar(@ARGV) != 2) {   
   print "Incorrect number of command line arguments.\n";
   print $usage;
-  print "\nTo see more help on available options, do v-annotate.pl -h\n\n";
+  print "\nTo see more help on available options, do $executable -h\n\n";
   exit(1);
 }
 
