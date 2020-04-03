@@ -167,9 +167,10 @@ opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, unde
 opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
-#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",      "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
-opt_Add("--noprotid",     "boolean",  0,                    $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",  "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
+#        option               type   default                group  requires incompat    preamble-output                                                            help-output    
+opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+opt_Add("--noprotid",     "boolean",  0,                    $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
+opt_Add("--forceid",      "boolean",  0,                    $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
@@ -257,6 +258,7 @@ my $options_okay =
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
                 "noprotid"      => \$GetOptions_H{"--noprotid"},
+                "forceid"       => \$GetOptions_H{"--forceid"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -6032,6 +6034,7 @@ sub output_feature_table {
 
   my $do_nomisc   = opt_Get("--nomisc",   $opt_HHR); # 1 to never output misc_features
   my $do_noprotid = opt_Get("--noprotid", $opt_HHR); # 1 to never output protein_id qualifiers
+  my $do_forceid  = opt_Get("--forceid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
 
   # determine order of alert codes to print
   my $alt_code;
@@ -6215,7 +6218,9 @@ sub output_feature_table {
                 $protein_id_idx = $nprotein_id;
                 $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx} = $protein_id_idx;
               }
-              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", sprintf("%s" . "_" . "%d", $seq_name, $protein_id_idx), $FH_HR);
+              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", 
+                                                                    sprintf("%s" . "_" . "%d", (($do_forceid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx), 
+                                                                    $FH_HR);
             }
           }
           else { # we are a misc_feature, add the 'similar to X' note
@@ -7332,4 +7337,36 @@ sub check_for_feature_alert_codes {
   }
 
   return 0;
+}
+
+#################################################################
+# Subroutine: get_accession_from_ncbi_seq_name
+# Incept:     EPN, Fri Apr  3 14:39:06 2020
+# Purpose:    Given a sequence name that may or may not be 
+#             in NCBI format with /^[^\|]*|(<accession>)\|.* return the
+#             <accession> (where accession can have any character except |
+#             If the sequence name is not in this NCBI format, replace
+#             any underscores in it with _ and return that.
+#             This subroutine is the main change between v1.0.5 and v1.0.6.
+#
+# Arguments:
+#  $seq_name: sequence name to extract accession from
+#             
+# Returns:  <accession> extracted from $seq_name or $seq_name
+#
+# Dies:     never
+#
+#################################################################
+sub get_accession_from_ncbi_seq_name { 
+  my $sub_name = "accession_from_ncbi_seq_name";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name) = (@_);
+  if($seq_name =~ /^[^\|]*\|([^\|]+)/) { 
+    return $1; 
+  }
+  $seq_name =~ s/\|/\_/g;
+
+  return $seq_name;
 }
