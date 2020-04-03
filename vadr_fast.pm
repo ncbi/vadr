@@ -1001,8 +1001,7 @@ sub join_alignments {
 
   my $nseq = scalar(@{$seq_name_AR});
 
-  # Open all of the input stk files and fetch the aligned sequence
-  # strings for all sequences
+  # Open all of the input stk files and fetch the aligned sequence strings for all sequences
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %asubseq_H = ();        # key is subseq name, value is aligned sqstring for that subseq
