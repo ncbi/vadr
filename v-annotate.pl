@@ -962,12 +962,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @joined_stk_file_A = ();
       join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
                       \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, $progress_w, \%opt_HH, \%ofile_info_HH);
+                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, $out_root, \%opt_HH, \%ofile_info_HH);
       # replace array of stockholm files
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
       
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-      exit 0;
     }
     
     # add unexdivg errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
@@ -977,7 +976,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
   }
 }
-exit 0;
 
 ###########################
 # Parse cmalign alignments
