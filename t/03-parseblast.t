@@ -85,8 +85,10 @@ if($? != 0) { die "ERROR command $cmd failed"; }
                     "SLEN", "SRANGE", "SSTRAND", "STOP");
 
 foreach my $line_type (@line_types_A) {
-  $exp_val = `grep ^" . $line_type . " $blastn_sum_path`;
-  $cur_val = `grep ^" . $line_type . " $tmp_blastn_out`;
+  $exp_val = `grep ^$line_type $blastn_sum_path`;
+  $cur_val = `grep ^$line_type $tmp_blastn_out`;
+  #print("EXPECTED\n$exp_val\n");
+  #print("CURRENT\n$cur_val\n");
   is($exp_val, $cur_val, "blastn test 1 $line_type lines match expected");
 }
 
