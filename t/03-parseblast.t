@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 55;
+use Test::More tests => 4275;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -50,10 +50,19 @@ my @line_types_A = ("BITSCORE", "DEL", "END_MATCH", "EVALUE", "FRAME",
 
 my $exp_val;
 my $cur_val;
+my $cur_nlines;
+my $exp_nlines;
 foreach my $line_type (@line_types_A) {
   $exp_val = `grep ^" . $line_type . " $blastx_sum_path`;
   $cur_val = `grep ^" . $line_type . " $tmp_blastx_out`;
-  is($exp_val, $cur_val, "blastx test 1 $line_type lines match expected");
+  $cur_nlines = $cur_val =~ tr/\n//;
+  $exp_nlines = $exp_val =~ tr/\n//;
+  is($cur_nlines, $exp_nlines, "blastn test 1 $line_type num lines match expected");
+  my @cur_A = split(/\n/, $cur_val);
+  my @exp_A = split(/\n/, $exp_val);
+  for(my $i = 0; $i < scalar(@exp_A); $i++) { 
+    is($cur_A[$i], $exp_A[$i], "blastn test 1 $line_type lines $i match expected");
+  }
 }
   
 ####################################
@@ -89,7 +98,14 @@ foreach my $line_type (@line_types_A) {
   $cur_val = `grep ^$line_type $tmp_blastn_out`;
   #print("EXPECTED\n$exp_val\n");
   #print("CURRENT\n$cur_val\n");
-  is($exp_val, $cur_val, "blastn test 1 $line_type lines match expected");
+  $cur_nlines = $cur_val =~ tr/\n//;
+  $exp_nlines = $exp_val =~ tr/\n//;
+  is($cur_nlines, $exp_nlines, "blastn test 1 $line_type num lines match expected");
+  my @cur_A = split(/\n/, $cur_val);
+  my @exp_A = split(/\n/, $exp_val);
+  for(my $i = 0; $i < scalar(@exp_A); $i++) { 
+    is($cur_A[$i], $exp_A[$i], "blastn test 1 $line_type lines $i match expected");
+  }
 }
 
 foreach my $tmp_file (@to_remove_A) {
