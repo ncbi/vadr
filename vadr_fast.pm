@@ -1037,6 +1037,7 @@ sub join_alignments {
                               # <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
                               # <uapos_x> is unaligned sequence position of the first aligned nt
                               # <inslen_x> is length of the insert
+  my %seq_inserts_HH = (); # same format as subseq_inserts_HH but we fill this for joined sequences
   vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);
   
   # For each sequence, determine which of the following three cases
@@ -1049,6 +1050,7 @@ sub join_alignments {
   # 
   my $out_stk_idx = 0;
   foreach my $seq_name (@{$seq_name_AR}) {
+    print("main loop $seq_name\n");
     # sanity checks
     if(! defined $seq_len_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no seq_len entry for sequence $seq_name", 1, $FH_HR); }
     if(! defined $ugp_mdl_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no ugp_mdl entry for sequence $seq_name", 1, $FH_HR); }
@@ -1068,6 +1070,23 @@ sub join_alignments {
     my $ali_3p_seq        = undef; # aligned sequence string of 3' end, if it exists
     my $ali_3p_mdl_coords = undef; # mdl start/end points of 5' alignment, if it exists (from %subseq_inserts_HH from ifile)
     my $ali_3p_seq_coords = undef; # seq start/end points of 5' alignment, if it exists
+    my $ali_3p_seq_start  = undef; # updated if we aligned a 3' region with cmalign
+
+    # variables we need for defining insert info for joined alignment
+    %{$seq_inserts_HH{$seq_name}} = (); 
+    $seq_inserts_HH{$seq_name}{"spos"} = undef; # initialize
+    $seq_inserts_HH{$seq_name}{"epos"} = undef; # initialize
+    $seq_inserts_HH{$seq_name}{"ins"}  = ""; # initialize
+
+    # ungapped blastn region variables
+    my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = (undef, undef, undef);
+    my ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = (undef, undef, undef);
+    my $ugp_seq = undef;
+    if(defined $ugp_seq_HR->{$seq_name}) {
+      ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_HR->{$seq_name}, $FH_HR);
+      ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = vdr_CoordsSegmentParse($ugp_mdl_HR->{$seq_name}, $FH_HR);
+      $ugp_seq = $sqfile->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
+    }
     
     if(defined $seq2subseq_HAR->{$seq_name}) { 
       # $seq2subseq_HAR->{$seq_name} is defined, this means that 
@@ -1110,6 +1129,7 @@ sub join_alignments {
             $ali_3p_idx = $s;
             $ali_3p_mdl_coords = vdr_CoordsSegmentCreate($subseq_inserts_HH{$subseq_name}{"spos"}, $mdl_len, "+", $FH_HR);
             $ali_3p_seq_coords = vdr_CoordsSegmentCreate($subseq_start, $subseq_stop, "+", $FH_HR);
+            $ali_3p_seq_start = $subseq_start;
           }
           else {
             # not 5' or 3' end or full seq, shouldn't happen
@@ -1134,6 +1154,10 @@ sub join_alignments {
         $stk_idx = $subseq2stk_idx_H{$subseq_name};
         $ali_seq_line = $asubseq_H{$subseq_name};
         $ali_mdl_line = $rf_seq_A[$stk_idx];
+        $seq_inserts_HH{$seq_name}{"spos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
+        $seq_inserts_HH{$seq_name}{"epos"} = $subseq_inserts_HH{$subseq_name}{"epos"};
+        $seq_inserts_HH{$seq_name}{"ins"}  = $subseq_inserts_HH{$subseq_name}{"ins"};
+        printf("seq_case 1 $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . " epos:" . $seq_inserts_HH{$seq_name}{"epos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
       }
       elsif($seq_case == 2) {
         # case 2: we don't have the full sequence aligned by cmalign,
@@ -1149,8 +1173,17 @@ sub join_alignments {
           my $len_to_remove_at_3p_end = ($mdl_len - $subseq_inserts_HH{$subseq_name}{"epos"});
           $ali_5p_mdl  = substr($rf_seq_A[$stk_idx],      0, (-1 * $len_to_remove_at_3p_end));
           $ali_5p_seq  = substr($asubseq_H{$subseq_name}, 0, (-1 * $len_to_remove_at_3p_end));
+          $seq_inserts_HH{$seq_name}{"spos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
+          if(defined $subseq_inserts_HH{$subseq_name}{"ins"}) { 
+            $seq_inserts_HH{$seq_name}{"ins"} .= $subseq_inserts_HH{$subseq_name}{"ins"};
+          }
+          printf("ali_5p_idx defined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
         }
-        
+        else {
+          $seq_inserts_HH{$seq_name}{"spos"} = $ugp_mdl_start;
+          # $seq_inserts_HH{$seq_name}{"ins"} is not affected - no inserts in ungapped region
+          printf("ali_5p_idx undefined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . "\n");
+        }
         if(defined $ali_3p_idx) {
           $subseq_name  = $seq2subseq_HAR->{$seq_name}[$ali_3p_idx];
           $stk_idx      = $subseq2stk_idx_H{$subseq_name};
@@ -1158,6 +1191,21 @@ sub join_alignments {
           my $len_to_remove_at_5p_end = ($subseq_inserts_HH{$subseq_name}{"spos"} - 1);
           $ali_3p_mdl   = substr($rf_seq_A[$stk_idx],      $len_to_remove_at_5p_end);
           $ali_3p_seq   = substr($asubseq_H{$subseq_name}, $len_to_remove_at_5p_end);
+          $seq_inserts_HH{$seq_name}{"epos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
+          if(defined $subseq_inserts_HH{$subseq_name}{"ins"}) { 
+            my $ualen_to_add = $ali_3p_seq_start -1;
+            my @subseq_ins_tok_A = split(";", $subseq_inserts_HH{$subseq_name}{"ins"});
+            foreach my $subseq_ins_tok (@subseq_ins_tok_A) {
+              my ($subseq_mdl_pos, $subseq_uapos, $subseq_inslen) = split(":", $subseq_ins_tok);
+              $seq_inserts_HH{$seq_name}{"ins"} .= $subseq_mdl_pos . ":" . ($subseq_uapos + $ali_3p_seq_start - 1) . ":" . $subseq_inslen . ";";
+            }
+          }
+          printf("ali_3p_idx defined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
+        }
+        else {
+          $seq_inserts_HH{$seq_name}{"epos"} = $ugp_mdl_stop;
+          # $seq_inserts_HH{$seq_name}{"ins"} is not affected - no inserts in ungapped region
+          printf("ali_3p_idx undefined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . "\n");
         }
       }
       else {
@@ -1165,7 +1213,13 @@ sub join_alignments {
       }
     }
 
-    # sanity check, only way we should have the aligned sequence  is case 1
+    # finally if the ungapped region aligned by blastn was the full sequence, set spos and epos accordingly
+    if($seq_case == 3) {
+      $seq_inserts_HH{$seq_name}{"spos"} = $ugp_mdl_start;
+      $seq_inserts_HH{$seq_name}{"epos"} = $ugp_mdl_stop;
+    }
+    
+    # sanity check, only way we should have the aligned sequence is case 1
     if($ali_seq_line ne "") {
       if($seq_case != 1) { 
         ofile_FAIL("ERROR in $sub_name, for seq $seq_name, we have alignment prematurely", 1, $FH_HR);
@@ -1182,8 +1236,6 @@ sub join_alignments {
       # in case 3, it will return the blastn alignment and construct the
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
-      my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_HR->{$seq_name}, $FH_HR);
-      my $ugp_seq = $sqfile->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
       ($ali_seq_line, $ali_mdl_line) =
           join_alignments_helper($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl,
                                  $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl,
@@ -1210,11 +1262,15 @@ sub join_alignments {
     close(OUT);
     $out_stk_idx++;
 
-    # and the doctored ifile information
-    # TODO: fix this
-  #ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_ifile_key, $out_ifile, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
 
   } # end of 'foreach $seq_name (@{$seq_name_AR})'
+
+  # write the new insert file
+  vdr_CmalignWriteInsertFile($out_ifile, 0, # do_append = 0
+                             $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR,
+                             \%seq_inserts_HH, $FH_HR);
+    
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_ifile_key, $out_ifile, 0, $do_keep, sprintf("align ifile file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
 
   return;
 }

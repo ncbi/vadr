@@ -4013,6 +4013,9 @@ sub vdr_CmalignWriteInsertFile {
   
   my ($ifile_file, $do_append, $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR, $seq_inserts_HHR, $FH_HR) = @_;
 
+  print("in $sub_name\n");
+  utl_HHDump("seq_inserts_HH", $seq_inserts_HHR, *STDOUT);
+  
   my $out_mode = (($do_append) && (-s $ifile_file)) ? ">>" : ">";
   open(OUT, $out_mode, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, (($out_mode eq ">") ? "writing" : "appending"), $FH_HR);
 
