@@ -1027,17 +1027,17 @@ sub join_alignments {
   }
 
   # parse the ifile for this model
-  my %seq_inserts_HH = (); # key 1: sequence name
-                           # key 2: one of 'spos', 'epos', 'ins'
-                           # $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
-                           # $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
-                           # $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
-                           # <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
-                           # for n inserts, where insert x is defined by:
-                           # <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
-                           # <uapos_x> is unaligned sequence position of the first aligned nt
-                           # <inslen_x> is length of the insert
-  vdr_CmalignParseInsertFile($in_ifile, \%seq_inserts_HH, undef, undef, undef, undef, $FH_HR);
+  my %subseq_inserts_HH = (); # key 1: sequence name
+                              # key 2: one of 'spos', 'epos', 'ins'
+                              # $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+                              # $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+                              # $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+                              # <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+                              # for n inserts, where insert x is defined by:
+                              # <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+                              # <uapos_x> is unaligned sequence position of the first aligned nt
+                              # <inslen_x> is length of the insert
+  vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);
   
   # For each sequence, determine which of the following three cases
   # (stored as $seq_case) it is:
@@ -1064,9 +1064,9 @@ sub join_alignments {
     my $ali_5p_seq        = undef; # aligned sequence string of 5' end, if it exists
     my $ali_5p_mdl_coords = undef; # mdl start/end points of 5' alignment, if it exists
     my $ali_5p_seq_coords = undef; # seq start/end points of 5' alignment, if it exists
-    my $ali_3p_mdl        = undef; # aligned RF (mdl) string of 3' end, if it exists (from %seq_inserts_HH from ifile)
+    my $ali_3p_mdl        = undef; # aligned RF (mdl) string of 3' end, if it exists (from %subseq_inserts_HH from ifile)
     my $ali_3p_seq        = undef; # aligned sequence string of 3' end, if it exists
-    my $ali_3p_mdl_coords = undef; # mdl start/end points of 5' alignment, if it exists (from %seq_inserts_HH from ifile)
+    my $ali_3p_mdl_coords = undef; # mdl start/end points of 5' alignment, if it exists (from %subseq_inserts_HH from ifile)
     my $ali_3p_seq_coords = undef; # seq start/end points of 5' alignment, if it exists
     
     if(defined $seq2subseq_HAR->{$seq_name}) { 
@@ -1099,7 +1099,7 @@ sub join_alignments {
               ofile_FAIL("ERROR in $sub_name, read two aligned subseqs for 5' end of $orig_seq_name", 1, $FH_HR);
             }
             $ali_5p_idx = $s;
-            $ali_5p_mdl_coords = vdr_CoordsSegmentCreate(1, $seq_inserts_HH{$subseq_name}{"epos"}, "+", $FH_HR);
+            $ali_5p_mdl_coords = vdr_CoordsSegmentCreate(1, $subseq_inserts_HH{$subseq_name}{"epos"}, "+", $FH_HR);
             $ali_5p_seq_coords = vdr_CoordsSegmentCreate($subseq_start, $subseq_stop, "+", $FH_HR);
           }
           elsif($subseq_stop == $seq_len) {
@@ -1108,7 +1108,7 @@ sub join_alignments {
               ofile_FAIL("ERROR in $sub_name, read two aligned subseqs for 3' end of $orig_seq_name", 1, $FH_HR);
             }
             $ali_3p_idx = $s;
-            $ali_3p_mdl_coords = vdr_CoordsSegmentCreate($seq_inserts_HH{$subseq_name}{"spos"}, $mdl_len, "+", $FH_HR);
+            $ali_3p_mdl_coords = vdr_CoordsSegmentCreate($subseq_inserts_HH{$subseq_name}{"spos"}, $mdl_len, "+", $FH_HR);
             $ali_3p_seq_coords = vdr_CoordsSegmentCreate($subseq_start, $subseq_stop, "+", $FH_HR);
           }
           else {
@@ -1145,8 +1145,8 @@ sub join_alignments {
         if(defined $ali_5p_idx) { 
           $subseq_name = $seq2subseq_HAR->{$seq_name}[$ali_5p_idx];
           $stk_idx     = $subseq2stk_idx_H{$subseq_name};
-          # remove final $mdl_len - $seq_inserts_HH{$seq_name}{"epos"}, these should be all gaps in sequence, nongap in model
-          my $len_to_remove_at_3p_end = ($mdl_len - $seq_inserts_HH{$seq_name}{"epos"});
+          # remove final $mdl_len - $subseq_inserts_HH{$seq_name}{"epos"}, these should be all gaps in sequence, nongap in model
+          my $len_to_remove_at_3p_end = ($mdl_len - $subseq_inserts_HH{$subseq_name}{"epos"});
           $ali_5p_mdl  = substr($rf_seq_A[$stk_idx],      0, (-1 * $len_to_remove_at_3p_end));
           $ali_5p_seq  = substr($asubseq_H{$subseq_name}, 0, (-1 * $len_to_remove_at_3p_end));
         }
@@ -1155,7 +1155,7 @@ sub join_alignments {
           $subseq_name  = $seq2subseq_HAR->{$seq_name}[$ali_3p_idx];
           $stk_idx      = $subseq2stk_idx_H{$subseq_name};
           # remove first ($spos - 1) positions, these should be all gaps in sequence, nongap in model
-          my $len_to_remove_at_5p_end = ($seq_inserts_HH{$seq_name}{"spos"} - 1);
+          my $len_to_remove_at_5p_end = ($subseq_inserts_HH{$subseq_name}{"spos"} - 1);
           $ali_3p_mdl   = substr($rf_seq_A[$stk_idx],      $len_to_remove_at_5p_end);
           $ali_3p_seq   = substr($asubseq_H{$subseq_name}, $len_to_remove_at_5p_end);
         }
@@ -1203,9 +1203,10 @@ sub join_alignments {
 
     # output the alignment to a file
     my $out_stk_file = $out_root . "." . $mdl_name . ".align.r3.s" . $out_stk_idx . ".stk";
+    printf("Writing $out_stk_file: $seq_name, ali length %d %d\n", length($ali_seq_line), length($ali_mdl_line));
     push(@{$out_stk_file_AR}, $out_stk_file);
     open(OUT, ">", $out_stk_file) || ofile_FileOpenFailure($out_stk_file, $sub_name, $!, "writing", $FH_HR);
-    print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_mdl_line\n#=GC RF $ali_mdl_line\n//\n");
+    print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GC RF $ali_mdl_line\n//\n");
     close(OUT);
     $out_stk_idx++;
 
@@ -1409,7 +1410,15 @@ sub join_alignments_helper {
     $joined_seq .= substr($ali_5p_seq, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
     $joined_mdl .= substr($ali_5p_mdl, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
   }
-
+  else {
+    # we did not align the 5' end with cmalign, add all gap 5' chunk
+    # of seq and model up to the start of ungapped blast alignment
+    if($ugp_mdl_start != 1) {
+      $joined_seq .= utl_StringMonoChar(($ugp_mdl_start - 1), "-", $FH_HR);
+      $joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
+    }
+  }
+  
   printf("fetching ugp %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
   my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
@@ -1419,6 +1428,14 @@ sub join_alignments_helper {
     printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
     $joined_seq .= substr($ali_3p_seq, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
     $joined_mdl .= substr($ali_3p_mdl, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
+  }
+  else { 
+    # we did not align the 3' end with cmalign, add all gap 3' chunk
+    # of seq and model after the end of the ungapped blast alignment
+    if($ugp_mdl_stop != $mdl_len) {
+      $joined_seq .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "-", $FH_HR);
+      $joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
+    }
   }
   
   return ($joined_seq, $joined_mdl);
