@@ -907,10 +907,11 @@ my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
                                 # key1: sequence name, key2: feature index, key3: alert code, value: alert message
 my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
 
-my $cur_mdl_fa_file;    # fasta file with sequences to align to current model
-my $cur_mdl_nseq;       # number of sequences assigned to model
-my $cur_mdl_nalign;     # number of sequences we are aligning for current model will be $cur_mdl_nseq unless --fast
-my $cur_mdl_seq_len_HR; # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
+my $cur_mdl_fa_file;         # fasta file with sequences to align to current model
+my $cur_mdl_cmalign_fa_file; # fasta file with sequences to align to current model
+my $cur_mdl_nseq;            # number of sequences assigned to model
+my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless --fast
+my $cur_mdl_seq_len_HR;      # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
 
 # variables only used if --fast used
 my %ugp_mdl_H = ();      # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
@@ -926,11 +927,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $cur_mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
 
-    # fetch seqs, we do this differently depending on if $do_blastn_ali or not
+    # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign (e.g if $do_blastn_ali))
+    $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
+    if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $cur_mdl_fa_file); }
+
+    # set info on seqs we will align, we do this different if $do_blastn_ali or not
     if(! $do_blastn_ali) { 
-      $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
-      if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $cur_mdl_fa_file); }
+      $cur_mdl_cmalign_fa_file = $cur_mdl_fa_file;
       $cur_mdl_nalign = $cur_mdl_nseq;
       $cur_mdl_seq_len_HR = \%mdl_seq_len_H;
     }
@@ -939,20 +943,28 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       # create the fasta file with sets of subsequences that omit well-defined regions from blastn alignment
       my $indel_file = $ofile_info_HH{"fullpath"}{"search.r2.$mdl_name.indel"};
       my @subseq_AA = ();
+      $cur_mdl_cmalign_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       parse_blastn_indel_file_to_get_subseq_info($indel_file, \%seq_len_H, $mdl_name, \@subseq_AA,
                                                  \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA,
                                                  \%subseq_len_H, \%opt_HH, \%ofile_info_HH);
-      $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_fa_file);
       $cur_mdl_nalign = scalar(@subseq_AA);
-      $cur_mdl_seq_len_HR = \%subseq_len_H;
+      if($cur_mdl_nalign > 0) { 
+        $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.subseq.fa", $cur_mdl_cmalign_fa_file, 0, opt_Get("--keep", \%opt_HH), "subsequences to align with cmalign for model $mdl_name (created due to --fast)");
+        $cur_mdl_seq_len_HR = \%subseq_len_H;
+      }
     }
-    
+
+    printf("HEYA $mdl_name aligning $cur_mdl_nalign seqs\n");
+
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
-    cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                    $cm_file, $mdl_name, $cur_mdl_fa_file, $out_root, $cur_mdl_nalign,
-                    $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
-                    \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+    if($cur_mdl_nalign > 0) { 
+      cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
+                      $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, $cur_mdl_nalign,
+                      $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                      \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+    }
     
     if($do_blastn_ali) {
       # join alignments of subsequences and update all variables
@@ -991,7 +1003,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
     my %seq_inserts_HH = ();
     my $cmalign_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
-    my $cmalign_ifile_file  = $out_root . "." . $mdl_name . ".align.ifile";
+    my $cmalign_ifile_file  = sprintf("%s.%s.%s.ifile", $out_root, $mdl_name, ($do_blastn_ali ? "jalign" : "align"));
 
     # parse the cmalign --ifile file
     if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
@@ -4401,6 +4413,8 @@ sub parse_blastx_results {
 
   my ($blastx_summary_file, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $ftr_results_HAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
+  printf("in $sub_name, blastx_summary_file: $blastx_summary_file\n");
+  
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   utl_FileValidateExistsAndNonEmpty($blastx_summary_file, "blastx summary file", $sub_name, 1, $FH_HR);
@@ -4531,6 +4545,9 @@ sub parse_blastx_results {
       }
       elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"}) || (! defined $cur_H{"FRAME"})) { 
+          foreach my $z ("QACC", "HACC", "HSP", "RAWSCORE", "FRAME") { 
+            printf("$z defined: %d\n", (defined $cur_H{$z}) ? 1 : 0);
+          }
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, RAWSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         if(($value ne "") && ($value ne "BLASTNULL")) { 
@@ -4687,6 +4704,8 @@ sub helper_protein_validation_breakdown_source {
   
   my ($in_source, $seq_len_HR, $FH_HR) = (@_);
 
+  printf("\nin $sub_name, in_source: $in_source\n");
+  
   # check for simple case, $in_source is a sequence name key in %{$seq_len_HR}
   if(defined $seq_len_HR->{$in_source}) { 
     return($in_source, "", $seq_len_HR->{$in_source}, "");
@@ -7830,6 +7849,7 @@ sub make_protein_validation_fasta_file() {
 
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
+  printf("in $sub_name, ofile_info_key: $ofile_info_key, mdl_fa_file: $mdl_fa_file\n");
   my $nftr = scalar(@{$ftr_info_AHR});
 
   if($do_blastx) { 

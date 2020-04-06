@@ -303,24 +303,13 @@ while($keep_going) {
         if ($overall_query_stop_representation) {
           print "STOP\t" .$overall_query_stop_representation . "\n";
         }
-        else { 
-          print "STOP\tBLASTNULL\n";
-        }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
           print "MAXDE\t" .$maximum_query_gap_str ."\n"; 
         }
-        else { 
-          print "DEL\tBLASTNULL\n";
-          print "MAXDE\tBLASTNULL\n";
-        }
         if ($overall_subject_gap_representation) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
           print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 				
-        }
-        else { 
-          print "INS\tBLASTNULL\n";
-          print "MAXIN\tBLASTNULL\n";
         }
         print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
@@ -491,24 +480,13 @@ while($keep_going) {
   if ($overall_query_stop_representation) {
     print "STOP\t" .$overall_query_stop_representation . "\n"; 
   }
-  else { 
-    print "STOP\tBLASTNULL\n";
-  }
   if ($overall_query_gap_representation) {
     print "DEL\t" .$overall_query_gap_representation . "\n";
     print "MAXDE\t" .$maximum_query_gap_str ."\n";     
   }
-  else { 
-    print "DEL\tBLASTNULL\n";
-    print "MAXDE\tBLASTNULL\n";
-  }
   if ($overall_subject_gap_representation) {
     print "INS\t" .$overall_subject_gap_representation . "\n";
     print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 		    
-  }
-  else { 
-    print "INS\tBLASTNULL\n";
-    print "MAXIN\tBLASTNULL\n";
   }
   if(! defined $overall_query_start)   { $overall_query_start = ""; }
   if(! defined $overall_query_end)     { $overall_query_end   = ""; }
