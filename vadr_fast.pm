@@ -978,6 +978,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $subseq_len_HR:    REF to hash with lengths of subsequences, already filled
 #  $in_stk_file_AR:   REF to array of existing stockholm files, already filled
 #  $out_stk_file_AR:  REF to array of new stockholm files created here, FILLED HERE
+#  $fst_output_HHR:   REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
 #  $out_root:         output root for the file names
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information, ADDED TO HERE
@@ -989,12 +990,12 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub join_alignments { 
   my $sub_name = "join_alignments";
-  my $nargs_exp = 14;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($sqfile, $seq_name_AR, $seq_len_HR, $mdl_name, $mdl_len,
       $ugp_mdl_HR, $ugp_seq_HR, $seq2subseq_HAR, $subseq_len_HR,
-      $in_stk_file_AR, $out_stk_file_AR, 
+      $in_stk_file_AR, $out_stk_file_AR, $fst_output_HHR, 
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   printf("in $sub_name for mdl $mdl_name\n");
@@ -1276,7 +1277,13 @@ sub join_alignments {
     close(OUT);
     $out_stk_idx++;
 
-
+    # fill fst_output_HHR, to output later to .fst file in output_tabular
+    $fst_output_HHR->{$seq_name}{"ugp_seq"} = $ugp_seq_HR->{$seq_name};
+    $fst_output_HHR->{$seq_name}{"ugp_mdl"} = $ugp_mdl_HR->{$seq_name};
+    $fst_output_HHR->{$seq_name}{"5p_seq"}  = (defined $ali_5p_seq_coords) ? $ali_5p_seq_coords : undef;
+    $fst_output_HHR->{$seq_name}{"5p_mdl"}  = (defined $ali_5p_mdl_coords) ? $ali_5p_mdl_coords : undef;
+    $fst_output_HHR->{$seq_name}{"3p_seq"}  = (defined $ali_3p_seq_coords) ? $ali_3p_seq_coords : undef;
+    $fst_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_mdl_coords) ? $ali_3p_mdl_coords : undef;
   } # end of 'foreach $seq_name (@{$seq_name_AR})'
 
   # write the new insert file

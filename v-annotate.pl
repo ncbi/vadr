@@ -919,6 +919,9 @@ my %ugp_seq_H = ();      # key is sequence name, value is seq coords of max leng
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq_len_H = ();   # key is name of subsequence, value is length of that subsequence
 
+my %fst_output_HH = (); # 2D key with info to output related to the --fast option
+                        # key1: sequence name, key2 one of: "ugp_seq", "ugp_mdl"
+
 # for each model with seqs to align to, create the sequence file and run cmalign
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -974,8 +977,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @joined_stk_file_A = ();
       join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
                       \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, $out_root, \%opt_HH, \%ofile_info_HH);
-      # replace array of stockholm files
+                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%fst_output_HH,
+                      $out_root, \%opt_HH, \%ofile_info_HH);
+      # replace array of stockholm files output from cmalign
+      # from joined ones we just created
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
       
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
@@ -1137,6 +1142,9 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm",      $out_root . ".sgm"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl", 1, 1, "per-model tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
+if($do_blastn_ali) {
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fst",    $out_root . ".fst", 1, 1, "--fast info tabular summary file");
+}
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
@@ -1150,9 +1158,13 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . 
 my %class_alerts_per_seq_H = ();
 
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
+utl_HHDump("fst_output_HH", \%fst_output_HH, *STDOUT);
+
 my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
-                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
+                                           ($do_blastn_ali) ? \%fst_output_HH : undef,
+                                           \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ######################
@@ -5538,6 +5550,7 @@ sub alert_instances_check_prevents_annot {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $fst_output_HHR:          REF to 2D hash of --fast related results to output, PRE-FILLED, undef unless --fast
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -5550,14 +5563,14 @@ sub alert_instances_check_prevents_annot {
 #################################################################
 sub output_tabular { 
   my $sub_name = "output_tabular";
-  my $nargs_exp = 15;
+  my $nargs_exp = 16;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $fst_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -5633,6 +5646,14 @@ sub output_tabular {
   @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
   my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
 
+  # optional .fst file
+  my $do_fst = opt_Get("--fast", $opt_HHR) ? 1 : 0;
+  my @head_fst_AA = ();
+  my @data_fst_AA = ();
+  @{$head_fst_AA[0]} = ("",    "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
+  @{$head_fst_AA[1]} = ("idx", "name",   "len", "model", "fail",  "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
+  my @clj_fst_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
+
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
   #printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
@@ -5681,6 +5702,17 @@ sub output_tabular {
     my $seq_subgrp1 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup1"})) ? $cls_output_HR->{"subgroup1"} : "-";
     my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
 
+    my $fst_output_HR = (($do_fst) && (defined $fst_output_HHR->{$seq_name})) ? \%{$fst_output_HHR->{$seq_name}} : undef;
+    my $fst_ugp_seq   = (($do_fst) && (defined $fst_output_HR->{"ugp_seq"}))  ? $fst_output_HR->{"ugp_seq"} : "-";
+    my $fst_ugp_mdl   = (($do_fst) && (defined $fst_output_HR->{"ugp_mdl"}))  ? $fst_output_HR->{"ugp_mdl"} : "-";
+    my $fst_ugp_fract = (($do_fst) && (defined $fst_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($fst_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
+    my $fst_5p_seq    = (($do_fst) && (defined $fst_output_HR->{"5p_seq"}))  ? $fst_output_HR->{"5p_seq"} : "-";
+    my $fst_5p_mdl    = (($do_fst) && (defined $fst_output_HR->{"5p_mdl"}))  ? $fst_output_HR->{"5p_mdl"} : "-";
+    my $fst_5p_fract  = (($do_fst) && (defined $fst_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($fst_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
+    my $fst_3p_seq    = (($do_fst) && (defined $fst_output_HR->{"3p_seq"}))  ? $fst_output_HR->{"3p_seq"} : "-";
+    my $fst_3p_mdl    = (($do_fst) && (defined $fst_output_HR->{"3p_mdl"}))  ? $fst_output_HR->{"3p_mdl"} : "-";
+    my $fst_3p_fract  = (($do_fst) && (defined $fst_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($fst_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
@@ -5875,6 +5907,16 @@ sub output_tabular {
                             helper_tabular_replace_spaces($seq_grp2), 
                             helper_tabular_replace_spaces($seq_subgrp2), 
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
+
+    if($do_fst) {
+      my $fst_ugp_fract2print = ($fst_ugp_fract ne "-") ? sprintf("%.3f", $fst_ugp_fract) : "-";
+      my $fst_5p_fract2print  = ($fst_5p_fract  ne "-") ? sprintf("%.3f", $fst_5p_fract)  : "-";
+      my $fst_3p_fract2print  = ($fst_3p_fract  ne "-") ? sprintf("%.3f", $fst_3p_fract)  : "-";
+      push(@data_fst_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+                          $fst_ugp_seq, $fst_ugp_mdl, $fst_ugp_fract2print, 
+                          $fst_5p_seq, $fst_5p_mdl, $fst_5p_fract2print, 
+                          $fst_3p_seq, $fst_3p_mdl, $fst_3p_fract2print]);
+    }
   }
 
   # add data to the alert count table
@@ -5954,7 +5996,9 @@ sub output_tabular {
   ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
-
+  if($do_fst) {
+    ofile_TableHumanOutput(\@data_fst_AA, \@head_fst_AA, \@clj_fst_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"fst"}, undef, $FH_HR);
+  }
   return $zero_alerts;
 }
     
