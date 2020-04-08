@@ -1,0 +1,222 @@
+>Feature ENTOY100A
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+			protein_id	ENTOY100A_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A_3
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A_4
+>Feature gb|ENTOY100A|
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+			protein_id	gb|ENTOY100A|_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	gb|ENTOY100A|_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	gb|ENTOY100A|_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	gb|ENTOY100A|_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	gb|ENTOY100A|_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	gb|ENTOY100A|_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	gb|ENTOY100A|_3
+98	84	CDS
+			product	protein four
+			protein_id	gb|ENTOY100A|_4
+>Feature gbENTOY100A|
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+			protein_id	gbENTOY100A|_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	gbENTOY100A|_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	gbENTOY100A|_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	gbENTOY100A|_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	gbENTOY100A|_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	gbENTOY100A|_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	gbENTOY100A|_3
+98	84	CDS
+			product	protein four
+			protein_id	gbENTOY100A|_4
+>Feature |-|
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+			protein_id	|-|_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	|-|_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	|-|_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	|-|_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	|-|_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	|-|_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	|-|_3
+98	84	CDS
+			product	protein four
+			protein_id	|-|_4
+>Feature this|is|a|sequence
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+			protein_id	this|is|a|sequence_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	this|is|a|sequence_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	this|is|a|sequence_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	this|is|a|sequence_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	this|is|a|sequence_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	this|is|a|sequence_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	this|is|a|sequence_3
+98	84	CDS
+			product	protein four
+			protein_id	this|is|a|sequence_4
+>Feature this|is|another|sequence
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	CDS
+			product	protein one
+			protein_id	this|is|another|sequence_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	this|is|another|sequence_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	this|is|another|sequence_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	this|is|another|sequence_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	this|is|another|sequence_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	this|is|another|sequence_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	this|is|another|sequence_3
+98	84	CDS
+			product	protein four
+			protein_id	this|is|another|sequence_4
