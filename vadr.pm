@@ -1448,6 +1448,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
+                   "UNEXPECTED_DIVERGENCE", # short description
+                   "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
+                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "noftrann", "sequence",
                    "NO_FEATURES_ANNOTATED", # short description
                    "sequence similarity to homology model does not overlap with any features", # long description

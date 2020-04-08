@@ -1,15 +1,18 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.4 [March 2020]
+# version: 1.0.6 [April 2020]
 #
-# vadr-fast.pm
+# vadr_seed.pm
 # Eric Nawrocki
 # EPN, Fri Mar 27 10:28:01 2020
 # 
 # Perl module used by v-annotate.pl script related to 
-# the --fast option to use blastn for the classification,
+# the --seed option to use blastn for the classification,
 # and coverage determination stages, and to accelerate
-# the alignment stage. 
+# the alignment stage. Alignment acceleration achieved
+# by using the maximum length ungapped region in the top
+# as a fixed alignment and only aligning the flanking terminal
+# 5' and/or 3' regions with cmalign, if necessary.
 #
 #########################
 # Naming conventions used in this file:
@@ -952,55 +955,53 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 }
 
 #################################################################
-# Subroutine:  join_alignments()
+# Subroutine:  join_alignments_and_add_unjoinbl_alerts()
 # Incept:      EPN, Wed Apr  1 09:37:53 2020
 #
 # Purpose:     Join all alignments of subsequences with their ungapped
 #              blastn alignments.
-#              determine blastn aligned regions of each sequence that we will
-#              trust, and subsequences around those regions that we will
-#              align with cmalign. Return information on those subsequences
-#              by filling a 2D array in @{$seqseq_AAR}, where each array
-#              has 4 elements: <newname> <start> <end> <source>
-#              <newname>: name to give subsequence after fetching
-#              <start>:   start position of subsequence
-#              <end>:     end position of subsequence
-#              <source>:  name of source sequence to fetch subseq from 
+#
+#              Report unjoinbl alerts for any sequence for which
+#              we are unable to join the alignments (should be rare
+#              if overhang (--overhang) is long enough (>50-100nt))
 #
 # Arguments: 
-#  $sqfile:           REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
-#  $seq_name_AR:      REF to array of original (non subseq) sequence names
-#  $seq_len_HR:       REF to hash of sequence lengths
-#  $mdl_name:         name of model these sequences were assigned to
-#  $mdl_len:          length of model these sequences were assigned to
-#  $ugp_mdl_HR:       REF to hash, key is <seq_name>, value is mdl coords
-#                     segment of max ungapped blast aln, already filled
-#  $ugp_seq_HR:       REF to hash, key is <seq_name>, value is mdl coords
-#                     segment of max ungapped blast aln, already filled
-#  $seq2subseq_HAR:   REF to hash of arrays, key is <seq_name>,
-#                     value is array of names of subsequences pertaining to
-#                     <seq_name>, already filled
-#  $subseq_len_HR:    REF to hash with lengths of subsequences, already filled
-#  $in_stk_file_AR:   REF to array of existing stockholm files, already filled
-#  $out_stk_file_AR:  REF to array of new stockholm files created here, FILLED HERE
-#  $sda_output_HHR:   REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
-#  $out_root:         output root for the file names
-#  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:   REF to 2D hash of output file information, ADDED TO HERE
+#  $sqfile:                REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $seq_name_AR:           REF to array of original (non subseq) sequence names
+#  $seq_len_HR:            REF to hash of sequence lengths
+#  $mdl_name:              name of model these sequences were assigned to
+#  $mdl_len:               length of model these sequences were assigned to
+#  $ugp_mdl_HR:            REF to hash, key is <seq_name>, value is mdl coords
+#                          segment of max ungapped blast aln, already filled
+#  $ugp_seq_HR:            REF to hash, key is <seq_name>, value is mdl coords
+#                          segment of max ungapped blast aln, already filled
+#  $seq2subseq_HAR:        REF to hash of arrays, key is <seq_name>,
+#                          value is array of names of subsequences pertaining to
+#                          <seq_name>, already filled
+#  $subseq_len_HR:         REF to hash with lengths of subsequences, already filled
+#  $in_stk_file_AR:        REF to array of existing stockholm files, already filled
+#  $out_stk_file_AR:       REF to array of new stockholm files created here, FILLED HERE
+#  $sda_output_HHR:        REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
+#  $alt_seq_instances_HHR: REF to 2D hash with per-sequence alerts, PRE-FILLED
+#  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $out_root:              output root for the file names
+#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
 #                         
 # Returns:    void
 #
 # Dies:       if unable to parse $indel_file
 #
 ################################################################# 
-sub join_alignments { 
-  my $sub_name = "join_alignments";
-  my $nargs_exp = 15;
+sub join_alignments_and_add_unjoinbl_alerts { 
+  my $sub_name = "join_alignments_and_add_unjoinbl_alerts";
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($sqfile, $seq_name_AR, $seq_len_HR, $mdl_name, $mdl_len,
       $ugp_mdl_HR, $ugp_seq_HR, $seq2subseq_HAR, $subseq_len_HR,
       $in_stk_file_AR, $out_stk_file_AR, $sda_output_HHR, 
+      $alt_seq_instances_HHR, $alt_info_HHR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   # printf("in $sub_name for mdl $mdl_name\n");
@@ -1073,6 +1074,7 @@ sub join_alignments {
     my $ali_mdl_line = ""; # aligned full model string (#=GC RF annotation)
     my $ali_pp_line  = ""; # aligned full posterior probability string (#=GR PP annotation)
     my $seq_case = 3; # set to 1 or 2 if nec below
+    my $alt_msg = ""; # filled if we can't join the alignments for this sequence
     
     # variables we may need to fill and send to join_alignments_helper() for cases 2 and 3
     my $ali_5p_mdl        = undef; # aligned RF (mdl) string of 5' end, if it exists
@@ -1103,14 +1105,14 @@ sub join_alignments {
       $ugp_seq = $sqfile->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
     }
     
+    my $full_seq_idx = undef; # set to subseq idx if we have a alignment of the full sequence (case 1)
+    my $ali_5p_idx   = undef; # set to subseq idx if we have a subsequence alignment on the 5' end (case 2)
+    my $ali_3p_idx   = undef; # set to subseq idx if we have a subsequence alignment on the 3' end (case 2)
     if(defined $seq2subseq_HAR->{$seq_name}) { 
       # $seq2subseq_HAR->{$seq_name} is defined, this means that 
       # the longest blastn ungapped region did not span the full seq,
       # so either case 1 or 2
       $seq_case = 2; # set to 1 below if nec
-      my $full_seq_idx = undef; # set to subseq idx if we have a alignment of the full sequence (case 1)
-      my $ali_5p_idx   = undef; # set to subseq idx if we have a subsequence alignment on the 5' end (case 2)
-      my $ali_3p_idx   = undef; # set to subseq idx if we have a subsequence alignment on the 3' end (case 2)
       my $nsubseq = scalar(@{$seq2subseq_HAR->{$seq_name}});
       for(my $s = 0; $s < $nsubseq; $s++) { 
         my $subseq_name = $seq2subseq_HAR->{$seq_name}[$s];
@@ -1265,28 +1267,43 @@ sub join_alignments {
         # did not match flush with the ungapped blastn alignment. This should be
         # very rare given long enough overhangs (50-100nt) but it can happen, and
         # if it does we report an unexdivg alert
-        # TODO: write code to report alert
-        ofile_FAIL("TODO: implement unexdivg alert for seqs that have overhang mismatch", 1, $FH_HR);
+        # unjoinbl: 
+        $alt_msg = $ali_pp_line; # join_alignments_helper() put the alert msg into the third return value
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "unjoinbl", $seq_name, $alt_msg, $FH_HR);
       }
     }
-    # now we have ali_seq_line and ali_mdl_line for this sequence
+    # now we have ali_seq_line and ali_mdl_line for this sequence, unless $alt_msg ne "" in which case
+    # we added an alert, and won't align this sequence
 
-    # output the alignment to a file
-    my $out_stk_file = $out_root . "." . $mdl_name . ".align.r3.s" . $out_stk_idx . ".stk";
-    # printf("Writing $out_stk_file: $seq_name, ali length %d %d\n", length($ali_seq_line), length($ali_mdl_line));
-    push(@{$out_stk_file_AR}, $out_stk_file);
-    open(OUT, ">", $out_stk_file) || ofile_FileOpenFailure($out_stk_file, $sub_name, $!, "writing", $FH_HR);
-    print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
-    close(OUT);
-    $out_stk_idx++;
+    if($alt_msg eq "") { 
+      # output the alignment to a file
+      my $out_stk_file = $out_root . "." . $mdl_name . ".align.r3.s" . $out_stk_idx . ".stk";
+      # printf("Writing $out_stk_file: $seq_name, ali length %d %d\n", length($ali_seq_line), length($ali_mdl_line));
+      push(@{$out_stk_file_AR}, $out_stk_file);
+      open(OUT, ">", $out_stk_file) || ofile_FileOpenFailure($out_stk_file, $sub_name, $!, "writing", $FH_HR);
+      print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
+      close(OUT);
+      $out_stk_idx++;
+    }      
 
-    # fill sda_output_HHR, to output later to .fst file in output_tabular
+    # fill sda_output_HHR, to output later to .sda file in output_tabular
+    # do this even if we didn't create the alignment (if $alt_msg ne "")
     $sda_output_HHR->{$seq_name}{"ugp_seq"} = $ugp_seq_HR->{$seq_name};
     $sda_output_HHR->{$seq_name}{"ugp_mdl"} = $ugp_mdl_HR->{$seq_name};
     $sda_output_HHR->{$seq_name}{"5p_seq"}  = (defined $ali_5p_seq_coords) ? $ali_5p_seq_coords : undef;
-    $sda_output_HHR->{$seq_name}{"5p_mdl"}  = (defined $ali_5p_mdl_coords) ? $ali_5p_mdl_coords : undef;
     $sda_output_HHR->{$seq_name}{"3p_seq"}  = (defined $ali_3p_seq_coords) ? $ali_3p_seq_coords : undef;
     $sda_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_mdl_coords) ? $ali_3p_mdl_coords : undef;
+
+    # mdl coords are not just $ali_{5p,3p}_mdl_coords, because that contains coordinates of mdl line
+    # from subseq alignment but what we want is spos..epos
+    $sda_output_HHR->{$seq_name}{"5p_mdl"}  = (defined $ali_5p_idx) ? 
+        vdr_CoordsSegmentCreate($subseq_inserts_HH{$seq2subseq_HAR->{$seq_name}[$ali_5p_idx]}{"spos"},
+                                $subseq_inserts_HH{$seq2subseq_HAR->{$seq_name}[$ali_5p_idx]}{"epos"},
+                                "+", $FH_HR) : undef;
+    $sda_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_idx) ? 
+        vdr_CoordsSegmentCreate($subseq_inserts_HH{$seq2subseq_HAR->{$seq_name}[$ali_3p_idx]}{"spos"},
+                                $subseq_inserts_HH{$seq2subseq_HAR->{$seq_name}[$ali_3p_idx]}{"epos"},
+                                "+", $FH_HR) : undef;
   } # end of 'foreach $seq_name (@{$seq_name_AR})'
 
   # write the new insert file
@@ -1339,6 +1356,13 @@ sub join_alignments {
 #             $joined_mdl: joined RF as a string
 #             $joined_pp:  joined PP as a string
 #
+#             If we can't join the sequence because 3' endpoint of the 5' cmalign alignment
+#             of the 5' endpoint of the cmalign alignment are inconsistent with the ungapped
+#             seed region, then caller will add a unjoinbl alert, return:
+#             undef,
+#             undef,
+#             $alerg_msg: string describing the unjoinbl alert with coordinates
+#    
 # Dies:       if $ali_{5p,3p}_{coords,seq,mdl,pp} is undef but $ugp_seq_coords indicates it should be defined
 #
 ################################################################# 
@@ -1449,6 +1473,7 @@ sub join_alignments_helper {
   my $fetch_ugp_seq_stop     = undef;
   my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
 
+  my $alt_msg = ""; # added to if we can't join on 5' and/or 3' end
   if($have_5p) { 
     # usual case, final position of aligned 5' region is just 1 sequence position
     # *and* 1 model position prior to ungapped region
@@ -1456,7 +1481,7 @@ sub join_alignments_helper {
       $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
     }
     else {
-      return (undef, undef, undef); # signals an unexdivg alert should be reported
+      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
     }
   }
   else { # $have_5p == 0
@@ -1469,11 +1494,16 @@ sub join_alignments_helper {
       $fetch_ugp_seq_stop = $ugp_seq_len - ($ugp_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
     }
     else {
-      return (undef, undef, undef); # signals an unexdivg alert should be reported
+      $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
     }
   }
   else { # $have_3p == 0
     $fetch_ugp_seq_stop = $ugp_seq_len;
+  }
+
+  if($alt_msg ne "") {
+    # we couldn't join the alignment send the alt_msg back to caller who will add the unjoinbl alert
+    return (undef, undef, $alt_msg);
   }
 
   ####################################################

@@ -68,32 +68,35 @@ require "sqp_utils.pm";
 # option is used.
 # 
 # List of subroutines in which alerts are detected and added:
-# 1. add_classification_alerts()
-#    noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, revcompl, lowcovrg, biasdseq (10)
+#  1. add_classification_alerts()
+#     noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, revcompl, lowcovrg, biasdseq (10)
 #
-# 2. alert_add_unexdivg()
-#    unexdivg (1)
+#  2. alert_add_unexdivg()
+#     unexdivg (1)
 #
-# 3. cmalign_parse_stk_and_add_alignment_alerts()
-#    indf5gap, indf5loc, indf3gap, indf3loc (4)
+#  3. cmalign_parse_stk_and_add_alignment_alerts()
+#     indf5gap, indf5loc, indf3gap, indf3loc (4)
 #
-# 4. fetch_features_and_add_cds_and_mp_alerts()
-#    mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn (6)
+#  4. fetch_features_and_add_cds_and_mp_alerts()
+#     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn (6)
 #
-# 5. add_blastx_alerts()
-#    indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10
+#  5. add_blastx_alerts()
+#     indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10)
 #
-# 6. alert_add_noftrann()
-#    noftrann (1)
+#  6. alert_add_noftrann()
+#     noftrann (1)
 # 
-# 7. alert_add_parent_based()
-#    peptrans (1)
-#
-# 8. add_low_similarity_alerts()
-#    lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
+#  7. alert_add_parent_based()
+#     peptrans (1)
 # 
-# 9. add_frameshift_alerts_for_one_sequence()
-#    fsthicnf, fstlocnf (8)
+#  8. add_low_similarity_alerts()
+#     lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
+# 
+#  9. add_frameshift_alerts_for_one_sequence()
+#     fsthicnf, fstlocnf (2)
+#
+# 10. join_alignments_and_add_unjoinbl_alerts()
+#     unjoinbl (1)
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -987,10 +990,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
       my @joined_stk_file_A = ();
-      join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
-                      \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%sda_output_HH,
-                      $out_root, \%opt_HH, \%ofile_info_HH);
+      join_alignments_and_add_unjoinbl_alerts($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H,
+                                              $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
+                                              \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
+                                              \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%sda_output_HH,
+                                              \%alt_seq_instances_HH, \%alt_info_HH,
+                                              $out_root, \%opt_HH, \%ofile_info_HH);
       # replace array of stockholm files output from cmalign
       # from joined ones we just created
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
