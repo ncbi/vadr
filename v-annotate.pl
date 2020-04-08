@@ -979,19 +979,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                       $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, $cur_mdl_nalign,
                       $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                       \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
-      my $z_ctr = 100;
-      for(my $z = 0; $z < scalar(@{$mdl_seq_name_HA{$mdl_name}}); $z++) {
-        my $z_seq = $mdl_seq_name_HA{$mdl_name}[$z];
-        printf("HEYA mdl $mdl_name seq $z is $z_seq\n");
-        if(defined $seq2subseq_HA{$z_seq}) { 
-          foreach my $zz_subseq (@{$seq2subseq_HA{$z_seq}}) {
-            printf("\tzz_subseq: $zz_subseq\n");
-            push(@overflow_seq_A, $zz_subseq);
-            push(@overflow_mxsize_A, $z_ctr);
-            $z_ctr += 100;
-          }
-        }
-      }
     }
 
     if($do_blastn_ali) {
