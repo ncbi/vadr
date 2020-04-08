@@ -11,7 +11,7 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm"; 
-require "vadr_fast.pm"; 
+require "vadr_fix.pm"; 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
 require "sqp_seq.pm";
@@ -218,12 +218,12 @@ opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, unde
 # --xminntlen has implications outside of blast, that's why it's not incompatible with --skipblastx
 
 $opt_group_desc_H{++$g} = "options for blastn-based acceleration";
-#        option               type   default                group  requires incompat    preamble-output                                           help-output    
-opt_Add("--fast",         "boolean",      0,                  $g,"--blastndb", undef,  "run in fast mode using blastn-based acceleration",        "run in fast mode using blastn-based acceleration", \%opt_HH, \@opt_order_A);
-opt_Add("--blastndb",      "string",  undef,                  $g,   "--fast", undef,     "path to blastn database is <s>",                        "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnws",     "integer",      7,                  $g,   "--fast", undef,     "set blastn -word_size <n> to <n>",                      "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnsc",      "real",     50.0,                  $g,   "--fast", undef,     "set blastn minimum HSP score to consider to <x>",       "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--overhang",     "integer",    100,                  $g,   "--fast", undef,     "set length of nt overhang for subseqs to align to <n>", "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--fix",          "boolean",      0,                  $g,"--blastndb", undef,    "fix the max length ungapped region from blastn in the alignment", "fix the max length ungapped region from blastn in the alignment", \%opt_HH, \@opt_order_A);
+opt_Add("--blastndb",      "string",  undef,                  $g,    "--fix", undef,     "path to blastn database is <s>",                                  "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnws",     "integer",      7,                  $g,    "--fix", undef,     "set blastn -word_size <n> to <n>",                                "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnsc",      "real",     50.0,                  $g,    "--fix", undef,     "set blastn minimum HSP score to consider to <x>",                 "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--overhang",     "integer",    100,                  $g,    "--fix", undef,     "set length of nt overhang for subseqs to align to <n>",           "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
@@ -311,7 +311,7 @@ my $options_okay =
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
                 'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
 # options related to blastn-based acceleration
-                'fast'          => \$GetOptions_H{"--fast"},
+                'fast'          => \$GetOptions_H{ "--fix"},
                 'blastndb=s'    => \$GetOptions_H{"--blastndb"},
                 'blastnws=s'    => \$GetOptions_H{"--blastnws"},
                 'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
@@ -425,10 +425,14 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 my $do_blastx = opt_Get("--skipblastx", \%opt_HH) ? 0 : 1;
 my $do_hmmer  = opt_Get("--addhmmer",   \%opt_HH) ? 1 : 0;
 
-my $do_blastn_any = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
-my $do_blastn_cls = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
-my $do_blastn_cov = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
-my $do_blastn_ali = opt_Get("--fast",   \%opt_HH) ? 1 : 0;
+my $do_fix        = opt_Get( "--fix",   \%opt_HH) ? 1 : 0;
+my $do_blastn_any = opt_Get( "--fix",   \%opt_HH) ? 1 : 0;
+my $do_blastn_cls = opt_Get( "--fix",   \%opt_HH) ? 1 : 0;
+my $do_blastn_cov = opt_Get( "--fix",   \%opt_HH) ? 1 : 0;
+my $do_blastn_ali = opt_Get( "--fix",   \%opt_HH) ? 1 : 0;
+# we have separate flags for each blastn stage even though
+# they are all turned on/off with --fix in case future changes
+# only need some but not all
 
 #############################
 # create the output directory
@@ -910,16 +914,16 @@ my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg
 my $cur_mdl_fa_file;         # fasta file with sequences to align to current model
 my $cur_mdl_cmalign_fa_file; # fasta file with sequences to align to current model
 my $cur_mdl_nseq;            # number of sequences assigned to model
-my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless --fast
+my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless --fix
 my $cur_mdl_seq_len_HR;      # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
 
-# variables only used if --fast used
+# variables only used if --fix used
 my %ugp_mdl_H = ();      # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
 my %ugp_seq_H = ();      # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq_len_H = ();   # key is name of subsequence, value is length of that subsequence
 
-my %fst_output_HH = (); # 2D key with info to output related to the --fast option
+my %fst_output_HH = (); # 2D key with info to output related to the --fix option
                         # key1: sequence name, key2 one of: "ugp_seq", "ugp_mdl"
 
 # for each model with seqs to align to, create the sequence file and run cmalign
@@ -953,7 +957,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.subseq.fa", $cur_mdl_cmalign_fa_file, 0, opt_Get("--keep", \%opt_HH), "subsequences to align with cmalign for model $mdl_name (created due to --fast)");
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.subseq.fa", $cur_mdl_cmalign_fa_file, 0, opt_Get("--keep", \%opt_HH), "subsequences to align with cmalign for model $mdl_name (created due to --fix)");
         $cur_mdl_seq_len_HR = \%subseq_len_H;
       }
     }
@@ -1143,7 +1147,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
 if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fst",    $out_root . ".fst", 1, 1, "--fast info tabular summary file");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fst",    $out_root . ".fix", 1, 1, "ungapped alignment region summary file (--fix)");
 }
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
@@ -5550,7 +5554,7 @@ sub alert_instances_check_prevents_annot {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $fst_output_HHR:          REF to 2D hash of --fast related results to output, PRE-FILLED, undef unless --fast
+#  $fix_output_HHR:          REF to 2D hash of --fix related results to output, PRE-FILLED, undef unless --fix
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -5570,7 +5574,7 @@ sub output_tabular {
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $fst_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $fix_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -5647,7 +5651,7 @@ sub output_tabular {
   my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
 
   # optional .fst file
-  my $do_fst = opt_Get("--fast", $opt_HHR) ? 1 : 0;
+  my $do_fst = opt_Get("--fix", $opt_HHR) ? 1 : 0;
   my @head_fst_AA = ();
   my @data_fst_AA = ();
   @{$head_fst_AA[0]} = ("",    "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
@@ -5702,16 +5706,16 @@ sub output_tabular {
     my $seq_subgrp1 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup1"})) ? $cls_output_HR->{"subgroup1"} : "-";
     my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
 
-    my $fst_output_HR = (($do_fst) && (defined $fst_output_HHR->{$seq_name})) ? \%{$fst_output_HHR->{$seq_name}} : undef;
-    my $fst_ugp_seq   = (($do_fst) && (defined $fst_output_HR->{"ugp_seq"}))  ? $fst_output_HR->{"ugp_seq"} : "-";
-    my $fst_ugp_mdl   = (($do_fst) && (defined $fst_output_HR->{"ugp_mdl"}))  ? $fst_output_HR->{"ugp_mdl"} : "-";
-    my $fst_ugp_fract = (($do_fst) && (defined $fst_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($fst_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
-    my $fst_5p_seq    = (($do_fst) && (defined $fst_output_HR->{"5p_seq"}))  ? $fst_output_HR->{"5p_seq"} : "-";
-    my $fst_5p_mdl    = (($do_fst) && (defined $fst_output_HR->{"5p_mdl"}))  ? $fst_output_HR->{"5p_mdl"} : "-";
-    my $fst_5p_fract  = (($do_fst) && (defined $fst_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($fst_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
-    my $fst_3p_seq    = (($do_fst) && (defined $fst_output_HR->{"3p_seq"}))  ? $fst_output_HR->{"3p_seq"} : "-";
-    my $fst_3p_mdl    = (($do_fst) && (defined $fst_output_HR->{"3p_mdl"}))  ? $fst_output_HR->{"3p_mdl"} : "-";
-    my $fst_3p_fract  = (($do_fst) && (defined $fst_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($fst_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    my $fix_output_HR = (($do_fst) && (defined $fix_output_HHR->{$seq_name})) ? \%{$fix_output_HHR->{$seq_name}} : undef;
+    my $fst_ugp_seq   = (($do_fst) && (defined $fix_output_HR->{"ugp_seq"}))  ? $fix_output_HR->{"ugp_seq"} : "-";
+    my $fst_ugp_mdl   = (($do_fst) && (defined $fix_output_HR->{"ugp_mdl"}))  ? $fix_output_HR->{"ugp_mdl"} : "-";
+    my $fst_ugp_fract = (($do_fst) && (defined $fix_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
+    my $fst_5p_seq    = (($do_fst) && (defined $fix_output_HR->{"5p_seq"}))  ? $fix_output_HR->{"5p_seq"} : "-";
+    my $fst_5p_mdl    = (($do_fst) && (defined $fix_output_HR->{"5p_mdl"}))  ? $fix_output_HR->{"5p_mdl"} : "-";
+    my $fst_5p_fract  = (($do_fst) && (defined $fix_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
+    my $fst_3p_seq    = (($do_fst) && (defined $fix_output_HR->{"3p_seq"}))  ? $fix_output_HR->{"3p_seq"} : "-";
+    my $fst_3p_mdl    = (($do_fst) && (defined $fix_output_HR->{"3p_mdl"}))  ? $fix_output_HR->{"3p_mdl"} : "-";
+    my $fst_3p_fract  = (($do_fst) && (defined $fix_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
     
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";

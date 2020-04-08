@@ -3,8 +3,8 @@ use warnings FATAL => 'all';
 use Test::More tests => 185;
 
 BEGIN {
-    use_ok( 'vadr' )      || print "Bail out!\n";
-    use_ok( 'vadr_fast' ) || print "Bail out!\n";
+    use_ok( 'vadr' )     || print "Bail out!\n";
+    use_ok( 'vadr_fix' ) || print "Bail out!\n";
 }
 
 ###########################################
