@@ -1132,9 +1132,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 
-##############################################################
+################################################################
 # Add noftrann errors for sequences with zero annotated features
-##############################################################
+################################################################
 
 ################################
 # Output annotations and alerts
@@ -1148,7 +1148,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
 if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "uga",    $out_root . ".uga", 1, 1, "ungapped alignment region summary file (-a)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-a)");
 }
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
@@ -5650,13 +5650,13 @@ sub output_tabular {
   @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
   my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
 
-  # optional .uga file
-  my $do_uga = opt_Get("-a", $opt_HHR) ? 1 : 0;
-  my @head_uga_AA = ();
-  my @data_uga_AA = ();
-  @{$head_uga_AA[0]} = ("",    "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
-  @{$head_uga_AA[1]} = ("idx", "name",   "len", "model", "fail",  "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
-  my @clj_uga_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
+  # optional .sda file
+  my $do_sda = opt_Get("-a", $opt_HHR) ? 1 : 0;
+  my @head_sda_AA = ();
+  my @data_sda_AA = ();
+  @{$head_sda_AA[0]} = ("",    "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
+  @{$head_sda_AA[1]} = ("idx", "name",   "len", "model", "fail",  "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
+  my @clj_sda_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
 
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
@@ -5706,16 +5706,16 @@ sub output_tabular {
     my $seq_subgrp1 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup1"})) ? $cls_output_HR->{"subgroup1"} : "-";
     my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
 
-    my $fix_output_HR = (($do_uga) && (defined $fix_output_HHR->{$seq_name})) ? \%{$fix_output_HHR->{$seq_name}} : undef;
-    my $uga_ugp_seq   = (($do_uga) && (defined $fix_output_HR->{"ugp_seq"}))  ? $fix_output_HR->{"ugp_seq"} : "-";
-    my $uga_ugp_mdl   = (($do_uga) && (defined $fix_output_HR->{"ugp_mdl"}))  ? $fix_output_HR->{"ugp_mdl"} : "-";
-    my $uga_ugp_fract = (($do_uga) && (defined $fix_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
-    my $uga_5p_seq    = (($do_uga) && (defined $fix_output_HR->{"5p_seq"}))  ? $fix_output_HR->{"5p_seq"} : "-";
-    my $uga_5p_mdl    = (($do_uga) && (defined $fix_output_HR->{"5p_mdl"}))  ? $fix_output_HR->{"5p_mdl"} : "-";
-    my $uga_5p_fract  = (($do_uga) && (defined $fix_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
-    my $uga_3p_seq    = (($do_uga) && (defined $fix_output_HR->{"3p_seq"}))  ? $fix_output_HR->{"3p_seq"} : "-";
-    my $uga_3p_mdl    = (($do_uga) && (defined $fix_output_HR->{"3p_mdl"}))  ? $fix_output_HR->{"3p_mdl"} : "-";
-    my $uga_3p_fract  = (($do_uga) && (defined $fix_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    my $fix_output_HR = (($do_sda) && (defined $fix_output_HHR->{$seq_name})) ? \%{$fix_output_HHR->{$seq_name}} : undef;
+    my $sda_ugp_seq   = (($do_sda) && (defined $fix_output_HR->{"ugp_seq"}))  ? $fix_output_HR->{"ugp_seq"} : "-";
+    my $sda_ugp_mdl   = (($do_sda) && (defined $fix_output_HR->{"ugp_mdl"}))  ? $fix_output_HR->{"ugp_mdl"} : "-";
+    my $sda_ugp_fract = (($do_sda) && (defined $fix_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_5p_seq    = (($do_sda) && (defined $fix_output_HR->{"5p_seq"}))  ? $fix_output_HR->{"5p_seq"} : "-";
+    my $sda_5p_mdl    = (($do_sda) && (defined $fix_output_HR->{"5p_mdl"}))  ? $fix_output_HR->{"5p_mdl"} : "-";
+    my $sda_5p_fract  = (($do_sda) && (defined $fix_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_3p_seq    = (($do_sda) && (defined $fix_output_HR->{"3p_seq"}))  ? $fix_output_HR->{"3p_seq"} : "-";
+    my $sda_3p_mdl    = (($do_sda) && (defined $fix_output_HR->{"3p_mdl"}))  ? $fix_output_HR->{"3p_mdl"} : "-";
+    my $sda_3p_fract  = (($do_sda) && (defined $fix_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
     
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
@@ -5912,14 +5912,14 @@ sub output_tabular {
                             helper_tabular_replace_spaces($seq_subgrp2), 
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
-    if($do_uga) {
-      my $uga_ugp_fract2print = ($uga_ugp_fract ne "-") ? sprintf("%.3f", $uga_ugp_fract) : "-";
-      my $uga_5p_fract2print  = ($uga_5p_fract  ne "-") ? sprintf("%.3f", $uga_5p_fract)  : "-";
-      my $uga_3p_fract2print  = ($uga_3p_fract  ne "-") ? sprintf("%.3f", $uga_3p_fract)  : "-";
-      push(@data_uga_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
-                          $uga_ugp_seq, $uga_ugp_mdl, $uga_ugp_fract2print, 
-                          $uga_5p_seq, $uga_5p_mdl, $uga_5p_fract2print, 
-                          $uga_3p_seq, $uga_3p_mdl, $uga_3p_fract2print]);
+    if($do_sda) {
+      my $sda_ugp_fract2print = ($sda_ugp_fract ne "-") ? sprintf("%.3f", $sda_ugp_fract) : "-";
+      my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
+      my $sda_3p_fract2print  = ($sda_3p_fract  ne "-") ? sprintf("%.3f", $sda_3p_fract)  : "-";
+      push(@data_sda_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+                          $sda_ugp_seq, $sda_ugp_mdl, $sda_ugp_fract2print, 
+                          $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
+                          $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
     }
   }
 
@@ -6000,8 +6000,8 @@ sub output_tabular {
   ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
-  if($do_uga) {
-    ofile_TableHumanOutput(\@data_uga_AA, \@head_uga_AA, \@clj_uga_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"uga"}, undef, $FH_HR);
+  if($do_sda) {
+    ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
   }
   return $zero_alerts;
 }
