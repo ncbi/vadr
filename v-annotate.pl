@@ -11,7 +11,7 @@ use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 
 require "vadr.pm"; 
-require "vadr_join.pm"; 
+require "vadr_seed.pm"; 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
 require "sqp_seq.pm";

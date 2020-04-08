@@ -4,7 +4,7 @@ use Test::More tests => 185;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
-    use_ok( 'vadr_join' ) || print "Bail out!\n";
+    use_ok( 'vadr_seed' ) || print "Bail out!\n";
 }
 
 ###########################################
