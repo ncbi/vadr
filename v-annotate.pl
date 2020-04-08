@@ -313,7 +313,7 @@ my $options_okay =
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
                 'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
 # options related to blastn-based acceleration
-                'fast'          => \$GetOptions_H{ "--fix"},
+                'fix'           => \$GetOptions_H{ "--fix"},
                 'blastndb=s'    => \$GetOptions_H{"--blastndb"},
                 'blastnws=s'    => \$GetOptions_H{"--blastnws"},
                 'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
