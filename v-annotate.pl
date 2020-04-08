@@ -923,7 +923,7 @@ my %ugp_seq_H = ();      # key is sequence name, value is seq coords of max leng
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq_len_H = ();   # key is name of subsequence, value is length of that subsequence
 
-my %fst_output_HH = (); # 2D key with info to output related to the --fix option
+my %fix_output_HH = (); # 2D key with info to output related to the --fix option
                         # key1: sequence name, key2 one of: "ugp_seq", "ugp_mdl"
 
 # for each model with seqs to align to, create the sequence file and run cmalign
@@ -962,8 +962,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
     }
 
-    printf("HEYA $mdl_name aligning $cur_mdl_nalign seqs\n");
-
     # run cmalign
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
@@ -981,7 +979,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @joined_stk_file_A = ();
       join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
                       \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%fst_output_HH,
+                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%fix_output_HH,
                       $out_root, \%opt_HH, \%ofile_info_HH);
       # replace array of stockholm files output from cmalign
       # from joined ones we just created
@@ -1147,7 +1145,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
 if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fst",    $out_root . ".fix", 1, 1, "ungapped alignment region summary file (--fix)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fix",    $out_root . ".fix", 1, 1, "ungapped alignment region summary file (--fix)");
 }
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
@@ -1162,12 +1160,11 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . 
 my %class_alerts_per_seq_H = ();
 
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
-utl_HHDump("fst_output_HH", \%fst_output_HH, *STDOUT);
 
 my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
-                                           ($do_blastn_ali) ? \%fst_output_HH : undef,
+                                           ($do_blastn_ali) ? \%fix_output_HH : undef,
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -4429,7 +4426,7 @@ sub parse_blastx_results {
 
   my ($blastx_summary_file, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $ftr_results_HAHR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  printf("in $sub_name, blastx_summary_file: $blastx_summary_file\n");
+  # printf("in $sub_name, blastx_summary_file: $blastx_summary_file\n");
   
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
@@ -4720,7 +4717,7 @@ sub helper_protein_validation_breakdown_source {
   
   my ($in_source, $seq_len_HR, $FH_HR) = (@_);
 
-  printf("\nin $sub_name, in_source: $in_source\n");
+  # printf("\nin $sub_name, in_source: $in_source\n");
   
   # check for simple case, $in_source is a sequence name key in %{$seq_len_HR}
   if(defined $seq_len_HR->{$in_source}) { 
@@ -5388,7 +5385,7 @@ sub alert_add_parent_based {
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  printf("in $sub_name\n");
+  # printf("in $sub_name\n");
 
   # get children info for all features, we'll use this in the loop below
   my @children_AA = ();
@@ -6001,7 +5998,7 @@ sub output_tabular {
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
   if($do_fst) {
-    ofile_TableHumanOutput(\@data_fst_AA, \@head_fst_AA, \@clj_fst_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"fst"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_fst_AA, \@head_fst_AA, \@clj_fst_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"fix"}, undef, $FH_HR);
   }
   return $zero_alerts;
 }
@@ -7897,7 +7894,7 @@ sub make_protein_validation_fasta_file() {
 
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
-  printf("in $sub_name, ofile_info_key: $ofile_info_key, mdl_fa_file: $mdl_fa_file\n");
+  # printf("in $sub_name, ofile_info_key: $ofile_info_key, mdl_fa_file: $mdl_fa_file\n");
   my $nftr = scalar(@{$ftr_info_AHR});
 
   if($do_blastx) { 
