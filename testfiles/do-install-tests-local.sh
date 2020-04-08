@@ -20,7 +20,7 @@ for test in \
     noro.fail.testin \
 ; do
     if [ $do_teamcity == 1 ]; then
-        echo "##teamcity[testStarted name=\"$test\" captureStandardOutput='true']"
+        echo "##teamcity[testStarted name='$test' captureStandardOutput='true']"
     fi
 
     # actual v-test call
@@ -29,9 +29,9 @@ for test in \
 
     if [ $do_teamcity == 1 ]; then 
         if [ $ret_val != 0 ]; then
-            echo "##teamcity[testFailed name=\"$test\" message=\"v-test.pl failure\"]"
+            echo "##teamcity[testFailed name='$test' message='v-test.pl failure']"
         fi
-        echo "##teamcity[testFinished name=\"$test\"]"
+        echo "##teamcity[testFinished name='$test']"
     fi
 done
 
