@@ -917,22 +917,29 @@ my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg
 my $cur_mdl_fa_file;         # fasta file with sequences to align to current model
 my $cur_mdl_cmalign_fa_file; # fasta file with sequences to align to current model
 my $cur_mdl_nseq;            # number of sequences assigned to model
-my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless -a
+my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless -s
 my $cur_mdl_seq_len_HR;      # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
 
-# variables only used if -a used
-my %ugp_mdl_H = ();      # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
-my %ugp_seq_H = ();      # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
-my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
-my %subseq_len_H = ();   # key is name of subsequence, value is length of that subsequence
-
-my %fix_output_HH = (); # 2D key with info to output related to the -a option
+# -s related output for .sda file
+my %sda_output_HH = (); # 2D key with info to output related to the  option
                         # key1: sequence name, key2 one of: "ugp_seq", "ugp_mdl"
+# per-model variables only used if -s used
+my %ugp_mdl_H     = ();  # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
+my %ugp_seq_H     = ();  # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
+my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
+my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it derives from
+my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
 
 # for each model with seqs to align to, create the sequence file and run cmalign
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    %ugp_mdl_H     = ();
+    %ugp_seq_H     = ();
+    %seq2subseq_HA = ();
+    %subseq2seq_H  = ();
+    %subseq_len_H  = ();
     
     $cur_mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
@@ -955,12 +962,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @subseq_AA = ();
       $cur_mdl_cmalign_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       parse_blastn_indel_file_to_get_subseq_info($indel_file, \%seq_len_H, $mdl_name, \@subseq_AA,
-                                                 \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA,
+                                                 \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq2seq_H,
                                                  \%subseq_len_H, \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.subseq.fa", $cur_mdl_cmalign_fa_file, 0, opt_Get("--keep", \%opt_HH), "subsequences to align with cmalign for model $mdl_name (created due to -a)");
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.subseq.fa", $cur_mdl_cmalign_fa_file, 0, opt_Get("--keep", \%opt_HH), "subsequences to align with cmalign for model $mdl_name (created due to -s)");
         $cur_mdl_seq_len_HR = \%subseq_len_H;
       }
     }
@@ -972,8 +979,21 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                       $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, $cur_mdl_nalign,
                       $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                       \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+      my $z_ctr = 100;
+      for(my $z = 0; $z < scalar(@{$mdl_seq_name_HA{$mdl_name}}); $z++) {
+        my $z_seq = $mdl_seq_name_HA{$mdl_name}[$z];
+        printf("HEYA mdl $mdl_name seq $z is $z_seq\n");
+        if(defined $seq2subseq_HA{$z_seq}) { 
+          foreach my $zz_subseq (@{$seq2subseq_HA{$z_seq}}) {
+            printf("\tzz_subseq: $zz_subseq\n");
+            push(@overflow_seq_A, $zz_subseq);
+            push(@overflow_mxsize_A, $z_ctr);
+            $z_ctr += 100;
+          }
+        }
+      }
     }
-    
+
     if($do_blastn_ali) {
       # join alignments of subsequences and update all variables
       my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
@@ -982,12 +1002,21 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @joined_stk_file_A = ();
       join_alignments($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
                       \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%fix_output_HH,
+                      \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%sda_output_HH,
                       $out_root, \%opt_HH, \%ofile_info_HH);
       # replace array of stockholm files output from cmalign
       # from joined ones we just created
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
-      
+
+      # replace any overflow info we have on subseqs to be for full seqs
+      if(scalar(@overflow_seq_A) > 0) { 
+        my @full_overflow_seq_A    = ();  
+        my @full_overflow_mxsize_A = ();
+        update_overflow_info_for_joined_alignments(\@overflow_seq_A, \@overflow_mxsize_A, \%subseq2seq_H, \@full_overflow_seq_A, \@full_overflow_mxsize_A);
+        @overflow_seq_A    = @full_overflow_seq_A;
+        @overflow_mxsize_A = @full_overflow_mxsize_A;
+      }
+  
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
     }
     
@@ -1016,7 +1045,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     my $cmalign_ifile_file  = sprintf("%s.%s.%s.ifile", $out_root, $mdl_name, ($do_blastn_ali ? "jalign" : "align"));
 
     # parse the cmalign --ifile file
-    if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
+#    if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
+    if(1) { 
       vdr_CmalignParseInsertFile($cmalign_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($cmalign_stdout_file, $cmalign_ifile_file));
     }
@@ -1148,7 +1178,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
 if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-a)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-s)");
 }
 
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
@@ -1167,7 +1197,7 @@ $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w
 my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
-                                           ($do_blastn_ali) ? \%fix_output_HH : undef,
+                                           ($do_blastn_ali) ? \%sda_output_HH : undef,
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -5477,7 +5507,7 @@ sub alert_add_unexdivg {
   my ($overflow_seq_AR, $overflow_mxsize_AR, $alt_seq_instances_HHR, $alt_info_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
-
+  
   my $noverflow = scalar(@{$overflow_seq_AR});
   for(my $s = 0; $s < $noverflow; $s++) { 
     alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "unexdivg", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
@@ -5554,7 +5584,7 @@ sub alert_instances_check_prevents_annot {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $fix_output_HHR:          REF to 2D hash of -x related results to output, PRE-FILLED, undef unless -x
+#  $sda_output_HHR:          REF to 2D hash of -x related results to output, PRE-FILLED, undef unless -x
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -5574,7 +5604,7 @@ sub output_tabular {
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $fix_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $sda_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -5651,7 +5681,7 @@ sub output_tabular {
   my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
 
   # optional .sda file
-  my $do_sda = opt_Get("-a", $opt_HHR) ? 1 : 0;
+  my $do_sda = opt_Get("-s", $opt_HHR) ? 1 : 0;
   my @head_sda_AA = ();
   my @data_sda_AA = ();
   @{$head_sda_AA[0]} = ("",    "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
@@ -5706,16 +5736,16 @@ sub output_tabular {
     my $seq_subgrp1 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup1"})) ? $cls_output_HR->{"subgroup1"} : "-";
     my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
 
-    my $fix_output_HR = (($do_sda) && (defined $fix_output_HHR->{$seq_name})) ? \%{$fix_output_HHR->{$seq_name}} : undef;
-    my $sda_ugp_seq   = (($do_sda) && (defined $fix_output_HR->{"ugp_seq"}))  ? $fix_output_HR->{"ugp_seq"} : "-";
-    my $sda_ugp_mdl   = (($do_sda) && (defined $fix_output_HR->{"ugp_mdl"}))  ? $fix_output_HR->{"ugp_mdl"} : "-";
-    my $sda_ugp_fract = (($do_sda) && (defined $fix_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
-    my $sda_5p_seq    = (($do_sda) && (defined $fix_output_HR->{"5p_seq"}))  ? $fix_output_HR->{"5p_seq"} : "-";
-    my $sda_5p_mdl    = (($do_sda) && (defined $fix_output_HR->{"5p_mdl"}))  ? $fix_output_HR->{"5p_mdl"} : "-";
-    my $sda_5p_fract  = (($do_sda) && (defined $fix_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
-    my $sda_3p_seq    = (($do_sda) && (defined $fix_output_HR->{"3p_seq"}))  ? $fix_output_HR->{"3p_seq"} : "-";
-    my $sda_3p_mdl    = (($do_sda) && (defined $fix_output_HR->{"3p_mdl"}))  ? $fix_output_HR->{"3p_mdl"} : "-";
-    my $sda_3p_fract  = (($do_sda) && (defined $fix_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($fix_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_output_HR = (($do_sda) && (defined $sda_output_HHR->{$seq_name})) ? \%{$sda_output_HHR->{$seq_name}} : undef;
+    my $sda_ugp_seq   = (($do_sda) && (defined $sda_output_HR->{"ugp_seq"}))  ? $sda_output_HR->{"ugp_seq"} : "-";
+    my $sda_ugp_mdl   = (($do_sda) && (defined $sda_output_HR->{"ugp_mdl"}))  ? $sda_output_HR->{"ugp_mdl"} : "-";
+    my $sda_ugp_fract = (($do_sda) && (defined $sda_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_5p_seq    = (($do_sda) && (defined $sda_output_HR->{"5p_seq"}))  ? $sda_output_HR->{"5p_seq"} : "-";
+    my $sda_5p_mdl    = (($do_sda) && (defined $sda_output_HR->{"5p_mdl"}))  ? $sda_output_HR->{"5p_mdl"} : "-";
+    my $sda_5p_fract  = (($do_sda) && (defined $sda_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_3p_seq    = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? $sda_output_HR->{"3p_seq"} : "-";
+    my $sda_3p_mdl    = (($do_sda) && (defined $sda_output_HR->{"3p_mdl"}))  ? $sda_output_HR->{"3p_mdl"} : "-";
+    my $sda_3p_fract  = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
     
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
@@ -8079,4 +8109,47 @@ sub get_accession_from_ncbi_seq_name {
   $seq_name =~ s/\|/\_/g;
 
   return $seq_name;
+}
+
+#################################################################
+# Subroutine: update_overflow_info_for_joined_alignments
+# Incept:     EPN, Wed Apr  8 08:18:06 2020
+# Purpose:    Given data in @{$overflow_{seq,mxsize}_AR} filled by cmalign_wrapper()
+#             for subsequences of full seqs aligned due to -s, update
+#             the values so they pertain to full sequences, given the
+#             map from subsequences to full sequences in %{$subseq2seq_HR}.
+#
+# Arguments:
+#  $sub_overflow_seq_AR:      REF to array of subseq names we had overflows for, ALREADY FILLED
+#  $sub_overflow_mxsize_AR:   REF to array of mxsizes of overflows, ALREADY FILLED
+#  $subseq2seq_HR:            REF to hash mapping subsequence names to full seq names, ALREADY FILLED
+#  $full_overflow_seq_AR:     REF to array of full seq names we have overflows for, FILLED HERE
+#  $full_overflow_mxsize_AR:  REF to array of mxsizes of overflows for full seqs, FILLED HERE
+# 
+# Returns:  void, fills @{$full_overflow_seq_AR} and @{$full_overflow_mxsize_AR}
+#
+# Dies:     never
+#
+#################################################################
+sub update_overflow_info_for_joined_alignments { 
+  my $sub_name = "update_overflow_info_for_joined_alignments";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sub_overflow_seq_AR, $sub_overflow_mxsize_AR, $subseq2seq_HR, $full_overflow_seq_AR, $full_overflow_mxsize_AR) = (@_);
+
+  my %added_H = (); # used so we don't add overflow for same full seq twice
+  for(my $i = 0; $i < scalar(@{$sub_overflow_seq_AR}); $i++) {
+    my $subseq_name = $sub_overflow_seq_AR->[$i];
+    if(defined $subseq2seq_HR->{$subseq_name}) { 
+      my $seq_name = $subseq2seq_HR->{$subseq_name};
+      if(! defined $added_H{$seq_name}) { 
+        push(@{$full_overflow_seq_AR},    $seq_name);
+        push(@{$full_overflow_mxsize_AR}, $sub_overflow_mxsize_AR->[$i]);
+        $added_H{$seq_name} = 1;
+      }
+    }
+  }
+
+  return;
 }

@@ -847,6 +847,8 @@ sub parse_blastn_indel_token {
 #  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
 #                    value is array of names of subsequences pertaining to
 #                    <seq_name>, FILLED HERE
+#  $subseq2seq_HR:   REF to hash, key is subseq name, value is <seq_name>
+#                    it derives from, FILLED HERE
 #  $subseq_len_HR:   REF to hash of lengths of subsequences, FILLED HERE
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
@@ -858,11 +860,11 @@ sub parse_blastn_indel_token {
 ################################################################# 
 sub parse_blastn_indel_file_to_get_subseq_info { 
   my $sub_name = "parse_blastn_indel_file_to_get_subseq_info";
-  my $nargs_exp = 10;
+  my $nargs_exp = 11;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($indel_file, $seq_len_HR, $exp_mdl_name, $subseq_AAR, $ugp_mdl_HR, $ugp_seq_HR,
-      $seq2subseq_HAR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
+      $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $nt_overhang = opt_Get("--overhang", $opt_HHR);
@@ -918,7 +920,8 @@ sub parse_blastn_indel_file_to_get_subseq_info {
             $subseq_name = $seq_name . "/1-" . $seq_len;
             push(@{$subseq_AAR}, [ $subseq_name, 1, $seq_len, $seq_name ]);
             @{$seq2subseq_HAR->{$seq_name}} = ($subseq_name);
-            $subseq_len_HR->{$seq_name} = $seq_len;
+            $subseq2seq_HR->{$subseq_name} = $seq_name;
+            $subseq_len_HR->{$subseq_name} = $seq_len;
           }
           else { # two regions do not overlap, fetch 5' and/or 3' ends
             @{$seq2subseq_HAR->{$seq_name}} = ();
@@ -927,12 +930,14 @@ sub parse_blastn_indel_file_to_get_subseq_info {
               $subseq_name = $seq_name . "/" . $start_5p . "-" . $stop_5p; 
               push(@{$subseq_AAR}, [ $subseq_name, $start_5p, $stop_5p, $seq_name ]);
               push(@{$seq2subseq_HAR->{$seq_name}}, $subseq_name);
+              $subseq2seq_HR->{$subseq_name} = $seq_name;
               $subseq_len_HR->{$subseq_name} = $stop_5p;
             }
             if($ugp_seq_stop != $seq_len) { 
               $subseq_name = $seq_name . "/" . $start_3p . "-" . $stop_3p; 
               push(@{$subseq_AAR}, [ $subseq_name, $start_3p, $stop_3p, $seq_name ]);
               push(@{$seq2subseq_HAR->{$seq_name}}, $subseq_name);
+              $subseq2seq_HR->{$subseq_name} = $seq_name;
               $subseq_len_HR->{$subseq_name} = $stop_3p - $start_3p + 1;
             }
           }
@@ -978,7 +983,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $subseq_len_HR:    REF to hash with lengths of subsequences, already filled
 #  $in_stk_file_AR:   REF to array of existing stockholm files, already filled
 #  $out_stk_file_AR:  REF to array of new stockholm files created here, FILLED HERE
-#  $fst_output_HHR:   REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
+#  $sda_output_HHR:   REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
 #  $out_root:         output root for the file names
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information, ADDED TO HERE
@@ -995,7 +1000,7 @@ sub join_alignments {
   
   my ($sqfile, $seq_name_AR, $seq_len_HR, $mdl_name, $mdl_len,
       $ugp_mdl_HR, $ugp_seq_HR, $seq2subseq_HAR, $subseq_len_HR,
-      $in_stk_file_AR, $out_stk_file_AR, $fst_output_HHR, 
+      $in_stk_file_AR, $out_stk_file_AR, $sda_output_HHR, 
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   # printf("in $sub_name for mdl $mdl_name\n");
@@ -1275,13 +1280,13 @@ sub join_alignments {
     close(OUT);
     $out_stk_idx++;
 
-    # fill fst_output_HHR, to output later to .fst file in output_tabular
-    $fst_output_HHR->{$seq_name}{"ugp_seq"} = $ugp_seq_HR->{$seq_name};
-    $fst_output_HHR->{$seq_name}{"ugp_mdl"} = $ugp_mdl_HR->{$seq_name};
-    $fst_output_HHR->{$seq_name}{"5p_seq"}  = (defined $ali_5p_seq_coords) ? $ali_5p_seq_coords : undef;
-    $fst_output_HHR->{$seq_name}{"5p_mdl"}  = (defined $ali_5p_mdl_coords) ? $ali_5p_mdl_coords : undef;
-    $fst_output_HHR->{$seq_name}{"3p_seq"}  = (defined $ali_3p_seq_coords) ? $ali_3p_seq_coords : undef;
-    $fst_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_mdl_coords) ? $ali_3p_mdl_coords : undef;
+    # fill sda_output_HHR, to output later to .fst file in output_tabular
+    $sda_output_HHR->{$seq_name}{"ugp_seq"} = $ugp_seq_HR->{$seq_name};
+    $sda_output_HHR->{$seq_name}{"ugp_mdl"} = $ugp_mdl_HR->{$seq_name};
+    $sda_output_HHR->{$seq_name}{"5p_seq"}  = (defined $ali_5p_seq_coords) ? $ali_5p_seq_coords : undef;
+    $sda_output_HHR->{$seq_name}{"5p_mdl"}  = (defined $ali_5p_mdl_coords) ? $ali_5p_mdl_coords : undef;
+    $sda_output_HHR->{$seq_name}{"3p_seq"}  = (defined $ali_3p_seq_coords) ? $ali_3p_seq_coords : undef;
+    $sda_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_mdl_coords) ? $ali_3p_mdl_coords : undef;
   } # end of 'foreach $seq_name (@{$seq_name_AR})'
 
   # write the new insert file
