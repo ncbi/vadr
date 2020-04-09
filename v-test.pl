@@ -51,6 +51,7 @@ opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef, 
 $opt_group_desc_H{"3"} = "other options";
 opt_Add("--rmout",      "boolean", 0,                        3,    undef, "-s",       "if output files listed in testin file already exist, remove them", "if output files listed in testin file already exist, remove them", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk", "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+opt_Add("--noteamcity", "boolean", 0,                        3,    undef, undef,      "do not output teamcity test info",   "do not output teamcity test info", \%opt_HH, \@opt_order_A);
 opt_Add("--skipmsg",    "boolean", 0,                        3,    undef, undef,      "do not compare errors and warnings", "do not compare errors and warning lines", \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"4"} = "other expert options";
 #       option       type          default     group  requires incompat  preamble-output                                 help-output    
@@ -66,8 +67,9 @@ my $options_okay =
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'rmout'        => \$GetOptions_H{"--rmout"},
                 'keep'         => \$GetOptions_H{"--keep"},
+                'noteamcity'   => \$GetOptions_H{"--noteamcity"},
                 'skipmsg'      => \$GetOptions_H{"--skipmsg"},
-                'execname=s'    => \$GetOptions_H{"--execname"});
+                'execname=s'   => \$GetOptions_H{"--execname"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -75,7 +77,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : $0;
 my $usage         = "Usage: $executable [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
 my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
-my $version       = "1.0.6";
+my $version       = "1.0.6dev";
 my $releasedate   = "April 2020";
 my $pkgname       = "VADR";
 
@@ -171,7 +173,6 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-
 # read in the test file
 my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Parsing test file", $progress_w, $log_FH, *STDOUT);
@@ -180,6 +181,7 @@ my @desc_A     = (); # array of the descriptions for the commands
 my @outfile_AA = (); # array of arrays of output files to compare for each command
 my @expfile_AA = (); # array of arrays of expected files to compare output to for each command
 my @rmdir_AA   = (); # array of directories to remove after each command is completed
+my $do_teamcity = opt_Get("--noteamcity", \%opt_HH) ? 0 : 1;
 my $ncmd = parse_test_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, \%opt_HH, $ofile_info_HH{"FH"});
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -188,6 +190,9 @@ my $nfail = 0;
 for(my $i = 1; $i <= $ncmd; $i++) { 
   my $cmd  = $cmd_A[($i-1)];
   my $desc = $desc_A[($i-1)];
+  if($do_teamcity) { 
+    ofile_OutputString($log_FH, 1, sprintf("##teamcity[testStarted name='$desc' captureStandardOutput='true']\n"));
+  }
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
   my $expfile_AR = \@{$expfile_AA[($i-1)]};
   my $rmdir_AR   = \@{$rmdir_AA[($i-1)]};
@@ -196,14 +201,13 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   if((opt_IsUsed("-s", \%opt_HH)) && (opt_Get("-s", \%opt_HH))) { 
     # -s used, we aren't running commands, just comparing files
     $start_secs = ofile_OutputProgressPrior(sprintf("Skipping command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
-    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   else { 
     # -s not used, run command
     $start_secs = ofile_OutputProgressPrior(sprintf("Running command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
     utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
-    ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   my $nout = scalar(@{$outfile_AR});
   for(my $j = 0; $j < $nout; $j++) { 
@@ -220,6 +224,13 @@ for(my $i = 1; $i <= $ncmd; $i++) {
       utl_RunCommand("rm -rf $rmdir_AR->[$k]", opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"}); 
       ofile_OutputString($log_FH, 1, "done\n");
     }
+  }
+
+  if($do_teamcity) { 
+    if($nfail_i > 0) { 
+      ofile_OutputString($log_FH, 1, sprintf("##teamcity[testFailed name='$desc' message='v-test.pl failure']\n"));
+    }
+    ofile_OutputString($log_FH, 1, sprintf("##teamcity[testFinished name='$desc']\n"));
   }
 }
 
