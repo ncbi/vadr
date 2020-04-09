@@ -31,7 +31,7 @@ IVERSION="1.1.3"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.0.2-3"
+MVERSION="1.0.2-4"
 
 # set defaults
 INPUTSYSTEM="?"

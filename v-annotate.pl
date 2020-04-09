@@ -376,7 +376,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 ##########################################
 my $env_vadr_hmmer_dir    = undef;
 if(opt_Get("--addhmmer", \%opt_HH)) { 
-  utl_DirEnvVarValid("VADRHMMERDIR");
+  $env_vadr_hmmer_dir = utl_DirEnvVarValid("VADRHMMERDIR");
   $execs_H{"hmmfetch"}          = $env_vadr_hmmer_dir    . "/hmmfetch";
   $execs_H{"hmmscan"}           = $env_vadr_hmmer_dir    . "/hmmscan";
   $execs_H{"hmmsearch"}         = $env_vadr_hmmer_dir    . "/hmmsearch";
@@ -964,9 +964,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $indel_file = $ofile_info_HH{"fullpath"}{"search.r2.$mdl_name.indel"};
       my @subseq_AA = ();
       $cur_mdl_cmalign_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
-      parse_blastn_indel_file_to_get_subseq_info($indel_file, \%seq_len_H, $mdl_name, \@subseq_AA,
-                                                 \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq2seq_H,
-                                                 \%subseq_len_H, \%opt_HH, \%ofile_info_HH);
+      parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                                 $mdl_name, \@subseq_AA, \%ugp_mdl_H, \%ugp_seq_H, 
+                                                 \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
+                                                 \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);

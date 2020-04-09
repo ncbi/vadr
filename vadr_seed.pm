@@ -434,6 +434,9 @@ sub parse_blastn_results {
             if((defined $seq2mdl_HR->{$cur_seq_name}) &&  
                ($seq2mdl_HR->{$cur_seq_name} eq $cur_mdl_name)) { 
               #target name         accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
+              if(! defined $tblout_FH_H{$cur_mdl_name}) { 
+                ofile_FAIL("ERROR in $sub_name, read unexpected model name: $cur_mdl_name", 1, $FH_HR);
+              }
               $cur_FH = $tblout_FH_H{$cur_mdl_name};
               printf $cur_FH ("%-s  -  %-s  -  blastn  %d  %d  %d  %d  %s  -  -  -  0.0  %8.1f  %s  ?  -\n", 
                               $cur_seq_name,
@@ -840,6 +843,7 @@ sub parse_blastn_indel_token {
 # Arguments: 
 #  $indel_file:      blastn indel file to parse, created by 
 #                    parse_blastn_results() for a single model 
+#  $seq_name_AR:     REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:      REF to hash of sequence lengths
 #  $exp_mdl_name:    name of model we expect on all lines of $indel_file
 #  $subseq_AAR:      REF to 2D array with subseq info, FILLED HERE
@@ -863,17 +867,23 @@ sub parse_blastn_indel_token {
 ################################################################# 
 sub parse_blastn_indel_file_to_get_subseq_info { 
   my $sub_name = "parse_blastn_indel_file_to_get_subseq_info";
-  my $nargs_exp = 11;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($indel_file, $seq_len_HR, $exp_mdl_name, $subseq_AAR, $ugp_mdl_HR, $ugp_seq_HR,
+  my ($indel_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $subseq_AAR, $ugp_mdl_HR, $ugp_seq_HR,
       $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $nt_overhang = opt_Get("--overhang", $opt_HHR);
 
-  my %seen_H = (); # key: sequence name, value: 1 if we've already processed an HSP for this sequence
-  
+  my %processed_H = (); # key: sequence name we want indel info for, 
+                        # value: 0 if we have not processed an HSP for this sequence
+                        #        1 if we have
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    $processed_H{$seq_name} = 0; 
+  }
+  my $nprocessed = 0;
+
   open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
     if($line !~ m/^#/) { 
@@ -892,7 +902,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
       if($mdl_name ne $exp_mdl_name) { 
         ofile_FAIL("ERROR in $sub_name, unexpected model $mdl_name (expected $exp_mdl_name) on line:\n$line\n", 1, $FH_HR);
       }          
-      if(! defined $seen_H{$seq_name}) {
+      if((defined $processed_H{$seq_name}) && ($processed_H{$seq_name} == 0)) {
         # top hit for this sequence
         my $seq_len = $seq_len_HR->{$seq_name};
         my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
@@ -945,11 +955,30 @@ sub parse_blastn_indel_file_to_get_subseq_info {
             }
           }
         }
-        $seen_H{$seq_name} = 1;
+        $processed_H{$seq_name} = 1;
+        $nprocessed++;
       }
     }
   }
   close(IN);
+
+  # sanity check: we should have processed each sequence
+  if($nprocessed != scalar(@{$seq_name_AR})) { 
+    if($nprocessed < scalar(@{$seq_name_AR})) { 
+      # shouldn't happen
+      my $err_str = "ERROR in $sub_name, did not process indel strings for following sequences:\n";
+      foreach my $seq_name (@{$seq_name_AR}) { 
+        if($processed_H{$seq_name} != 1) { 
+          $err_str .= "\t$seq_name\n";
+        }
+      }
+      ofile_FAIL($err_str, 1, $FH_HR);
+    }
+    else { 
+      # really shouldn't happen
+      ofile_FAIL("ERROR in $sub_name, processed indel strings for more sequences than expected", 1, $FH_HR);
+    }
+  }
 
   return;
 }
