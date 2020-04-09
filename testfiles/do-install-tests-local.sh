@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # noro r10
-$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/noro.r10.local.testin n10-local
+$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/noro.r10.local.testin vt-n10-parallel
 
 # dengue r5
-$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/dengue.r5.local.testin d5-local
-
+$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/dengue.r5.local.testin vt-d5-parallel
