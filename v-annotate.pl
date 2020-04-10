@@ -752,6 +752,10 @@ if($do_blastn_cls) { # use blastn for classification
                                   $nseq, $progress_w, \%opt_HH, \%ofile_info_HH);
   parse_blastn_results($ofile_info_HH{"fullpath"}{"blastn-summary"}, \%seq_len_H, 
                        undef, undef, $out_root, \%opt_HH, \%ofile_info_HH);
+  push(@to_remove_A, 
+       $ofile_info_HH{"fullpath"}{"blastn-out"},
+       $ofile_info_HH{"fullpath"}{"blastn-summary"},
+       $ofile_info_HH{"fullpath"}{"blastn.r1.pretblout"});
 }
 else { # default: use cmscan for classification
   cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
@@ -832,7 +836,9 @@ if($do_blastn_cov) {
     my $r2_tblout_key = "search.r2.$mdl_name.tblout";
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
-    if(! $do_keep) { push(@to_remove_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key}); }
+    push(@to_remove_A, 
+         ($ofile_info_HH{"fullpath"}{$r2_tblout_key}, 
+          $ofile_info_HH{"fullpath"}{"search.r2.$mdl_name.indel"}));
   }
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -849,12 +855,10 @@ else { # default, not (! $do_blastn_cov)
     my $r2_err_key    = "search.r2.$mdl_name.err";    # set in cmsearch_or_cmscan_wrapper()
     push(@r2_tblout_key_A,  $r2_tblout_key);
     push(@r2_tblout_file_A, $ofile_info_HH{"fullpath"}{$r2_tblout_key});
-    if(! $do_keep) { 
-      push(@to_remove_A, 
-           ($ofile_info_HH{"fullpath"}{$r2_tblout_key}, 
-            $ofile_info_HH{"fullpath"}{$r2_stdout_key}, 
-            $ofile_info_HH{"fullpath"}{$r2_err_key}));
-    }
+    push(@to_remove_A, 
+         ($ofile_info_HH{"fullpath"}{$r2_tblout_key}, 
+          $ofile_info_HH{"fullpath"}{$r2_stdout_key}, 
+          $ofile_info_HH{"fullpath"}{$r2_err_key}));
   }
 }
 
@@ -949,8 +953,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign (e.g if $do_blastn_ali))
     $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, opt_Get("--keep", \%opt_HH), "input seqs that match best to model $mdl_name");
-    if(! opt_Get("--keep", \%opt_HH)) { push(@to_remove_A, $cur_mdl_fa_file); }
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, $do_keep, "input seqs that match best to model $mdl_name");
+    push(@to_remove_A, $cur_mdl_fa_file); 
 
     # set info on seqs we will align, we do this different if $do_blastn_ali or not
     if(! $do_blastn_ali) { 
@@ -971,7 +975,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
         $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.subseq.fa", $cur_mdl_cmalign_fa_file, 0, opt_Get("--keep", \%opt_HH), "subsequences to align with cmalign for model $mdl_name (created due to -s)");
+        my $subseq_key = $mdl_name . ".a.subseq.fa";
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_cmalign_fa_file, 0, $do_keep, "subsequences to align with cmalign for model $mdl_name (created due to -s)");
+        push(@to_remove_A, $ofile_info_HH{"fullpath"}{$subseq_key});
         $cur_mdl_seq_len_HR = \%subseq_len_H;
       }
     }
@@ -999,6 +1005,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                               $out_root, \%opt_HH, \%ofile_info_HH);
       # replace array of stockholm files output from cmalign
       # from joined ones we just created
+      push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
 
       # replace any overflow info we have on subseqs to be for full seqs
@@ -1035,11 +1042,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
     my %seq_inserts_HH = ();
     my $cmalign_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
-    my $cmalign_ifile_file  = sprintf("%s.%s.%s.ifile", $out_root, $mdl_name, ($do_blastn_ali ? "jalign" : "align"));
+    my $cmalign_ifile_file  = sprintf("%s.%s.align.ifile", $out_root, $mdl_name);
+    if($do_blastn_ali) { # use a different ifile
+      push(@to_remove_A, $cmalign_ifile_file);
+      $cmalign_ifile_file  = sprintf("%s.%s.jalign.ifile", $out_root, $mdl_name);
+    }
 
     # parse the cmalign --ifile file
-#    if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
-    if(1) { 
+    if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
       vdr_CmalignParseInsertFile($cmalign_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%{$ofile_info_HH{"FH"}});
       push(@to_remove_A, ($cmalign_stdout_file, $cmalign_ifile_file));
     }
@@ -1092,7 +1102,7 @@ if($do_blastx) {
         run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
                                         \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, 
-             ($ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-fasta"},
+             ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-blastx-fasta"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
         
@@ -4395,7 +4405,7 @@ sub run_blastx_and_summarize_output {
   # AND all the predicted CDS sequences
   my $blastx_query_fa_file = $out_root . "." . $mdl_name . ".pv.blastx.fa";
   make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.blastx.fa", $blastx_query_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv-blastx-fasta", $blastx_query_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
   
   # run blastx 
   my $blastx_options = "";
