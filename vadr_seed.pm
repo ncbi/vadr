@@ -74,6 +74,7 @@ require "vadr.pm";
 sub run_blastn_and_summarize_output { 
   my $sub_name = "run_blastn_and_summarize_output";
   my $nargs_expected = 8;
+
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $db_file, $seq_file, $out_root, 
@@ -176,7 +177,7 @@ sub parse_blastn_results {
   my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
   my $small_value  = 0.000001;
   my $min_bitsc    = opt_Get("--blastnsc", $opt_HHR) - $small_value;
-
+  my $do_keep      = opt_Get("--keep", $opt_HHR) ? 1 : 0;
   my $mdl_name = undef;
   if(! defined $seq2mdl_HR) { 
     # output mode 1, open the pretblout output file 
@@ -187,7 +188,7 @@ sub parse_blastn_results {
     # for that model/strand/strand instead of just the hit score. This
     # way we will match the cmscan --trmF3 output downstream steps
     # expect.
-    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
+    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
     $pretblout_FH = $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"}; 
     printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
                           "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
@@ -198,11 +199,11 @@ sub parse_blastn_results {
     # format (not --trmF3 output format) and the indel files 
     foreach $mdl_name (@{$mdl_name_AR}) { 
       $outfile_key = "search.r2.$mdl_name.tblout";
-      ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmsearch tblout format for model $mdl_name");
+      ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, $do_keep, "blastn output converted to cmsearch tblout format for model $mdl_name");
       $tblout_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
 
       $outfile_key = "search.r2.$mdl_name.indel";
-      ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, opt_Get("--keep", $opt_HHR), "blastn indel information for model $mdl_name");
+      ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, $do_keep, "blastn indel information for model $mdl_name");
       $indel_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
     }
   }
@@ -542,8 +543,9 @@ sub blastn_pretblout_to_tblout {
   my ($blastn_pretblout_file, $scsum_HHHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $do_keep = opt_Get("--keep", $opt_HHR);
 
-  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, opt_Get("--keep", $opt_HHR), "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
   my $tblout_FH = $FH_HR->{"scan.r1.tblout"}; 
 
   # open and parse input blastn summary file
