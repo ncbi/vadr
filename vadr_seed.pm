@@ -1088,7 +1088,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
   # Case 1: entire sequence was aligned with cmalign
   # Case 2: 5' and/or 3' ends of sequence were aligned with cmalign
   #         part of sequence covered with blastn alignment
-  # Case 3: none of the sequence was alignd with cmalign,
+  # Case 3: none of the sequence was aligned with cmalign,
   #         entire sequence covered by blastn alignment
   # 
   my $out_stk_idx = 0;
@@ -1216,11 +1216,20 @@ sub join_alignments_and_add_unjoinbl_alerts {
         if(defined $ali_5p_idx) { 
           $subseq_name = $seq2subseq_HAR->{$seq_name}[$ali_5p_idx];
           $stk_idx     = $subseq2stk_idx_H{$subseq_name};
-          # remove final $mdl_len - $subseq_inserts_HH{$seq_name}{"epos"}, these should be all gaps in sequence, nongap in model
-          my $len_to_remove_at_3p_end = ($mdl_len - $subseq_inserts_HH{$subseq_name}{"epos"});
-          $ali_5p_mdl  = substr($rf_subseq_A[$stk_idx],      0, (-1 * $len_to_remove_at_3p_end));
-          $ali_5p_seq  = substr($ali_subseq_H{$subseq_name}, 0, (-1 * $len_to_remove_at_3p_end));
-          $ali_5p_pp   = substr($ali_subpp_H{$subseq_name},  0, (-1 * $len_to_remove_at_3p_end));
+          # remove final $mdl_len - $subseq_inserts_HH{$seq_name}{"epos"}, 
+          # these will certainly all be gaps, but we still may have gaps remaining after removing these
+          # if there were more than one sequence in the stockholm alignment. So we do an additional step
+          # of removing all terminal gaps from $ali_5p_seq (we could just do this instead of doign both
+          # the substr and this step, but I think doing both is more efficient since the bulk of the gaps
+          # will be removed by the substr() call which must be more efficient than a s//, right?)
+          my $min_len_to_remove_at_3p_end = ($mdl_len - $subseq_inserts_HH{$subseq_name}{"epos"});
+          $ali_5p_seq  = substr($ali_subseq_H{$subseq_name}, 0, (-1 * $min_len_to_remove_at_3p_end));
+          $ali_5p_seq =~ s/[.\-\~]*$//; # remove trailing gaps leftover
+          # now we know length of 5' segment and we can use it with substr for mdl and pp
+          my $ali_5p_seq_len = length($ali_5p_seq);
+          $ali_5p_pp   = substr($ali_subpp_H{$subseq_name},  0, $ali_5p_seq_len);
+          $ali_5p_mdl  = substr($rf_subseq_A[$stk_idx],      0, $ali_5p_seq_len);
+          # set insert info
           $seq_inserts_HH{$seq_name}{"spos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
           if(defined $subseq_inserts_HH{$subseq_name}{"ins"}) { 
             $seq_inserts_HH{$seq_name}{"ins"} .= $subseq_inserts_HH{$subseq_name}{"ins"};
@@ -1236,10 +1245,15 @@ sub join_alignments_and_add_unjoinbl_alerts {
           $subseq_name  = $seq2subseq_HAR->{$seq_name}[$ali_3p_idx];
           $stk_idx      = $subseq2stk_idx_H{$subseq_name};
           # remove first ($spos - 1) positions, these should be all gaps in sequence, nongap in model
-          my $len_to_remove_at_5p_end = ($subseq_inserts_HH{$subseq_name}{"spos"} - 1);
-          $ali_3p_mdl   = substr($rf_subseq_A[$stk_idx],      $len_to_remove_at_5p_end);
-          $ali_3p_seq   = substr($ali_subseq_H{$subseq_name}, $len_to_remove_at_5p_end);
-          $ali_3p_pp    = substr($ali_subpp_H{$subseq_name},  $len_to_remove_at_5p_end);
+          # these will certainly all be gaps, but we still may have gaps remaining after removing these
+          # see comments for analogous code for 5' end above for an explanation of the logic here
+          my $min_len_to_remove_at_5p_end = ($subseq_inserts_HH{$subseq_name}{"spos"} - 1);
+          $ali_3p_seq  = substr($ali_subseq_H{$subseq_name}, $min_len_to_remove_at_5p_end);
+          $ali_3p_seq =~ s/^[.\-\~]*//; # remove leading gaps leftover
+          my $len_to_remove_at_5p_end = length($ali_subseq_H{$subseq_name}) - length($ali_3p_seq);
+          $ali_3p_pp   = substr($ali_subpp_H{$subseq_name},  $len_to_remove_at_5p_end);
+          $ali_3p_mdl  = substr($rf_subseq_A[$stk_idx],      $len_to_remove_at_5p_end);
+          # set insert info
           $seq_inserts_HH{$seq_name}{"epos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
           if(defined $subseq_inserts_HH{$subseq_name}{"ins"}) { 
             my $ualen_to_add = $ali_3p_seq_start -1;
@@ -1465,8 +1479,8 @@ sub join_alignments_helper {
   }
 
   # debugging print statements
-  # if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\n"); }
-  # if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\n"); }
+  # if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
+  # if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
 
   # if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
   # if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
