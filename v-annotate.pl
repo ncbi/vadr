@@ -234,7 +234,7 @@ $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
 opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,                   $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 10,                      $g,     "-p",  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 10,                      $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
@@ -3351,9 +3351,11 @@ sub add_frameshift_alerts_for_one_sequence {
           $cds_sgm_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
           
           # add GR annotation
+          # printf("in $sub_name, seq_name: $seq_name\n");
           # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
           # print("$gr_frame_str\n");
           # printf("alen: %d\n", $cds_sgm_msa->alen());
+          # printf("adding GR (CS) for $seq_name\n");
           $cds_sgm_msa->addGR("CS", 0, $gr_frame_str);
           
           # output alignment, if nec
