@@ -28,6 +28,8 @@ BEVERSION="Bio-Easel-0.12"
 BVERSION="2.9.0"
 # infernal
 IVERSION="1.1.3"
+# hmmer
+HVERSION="3.3"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
@@ -99,10 +101,8 @@ cd ..
 echo "------------------------------------------------"
 
 # download infernal binary distribution
-# - to download source distribution and build, see 'infernal block 2' below
-# - to download a specific infernal develop branch commit and also 
-#   specific commits of infernal dependencies hmmer and easel, see
-#   'infernal block 3' below
+# - to download source distribution and build, see 
+#   'infernal block 2' below.
 
 # ----- infernal block 1 start  -----
 if [ $INPUTSYSTEM == "linux" ]; then
@@ -141,30 +141,23 @@ fi
 #cd ..
 #echo "Finished building Infernal "
 # ----- infernal block 2 end -----
+echo "------------------------------------------------"
 
-# ----- infernal block 3 start -----
-# if vadr depends on a specific commit in infernal develop branch
-# comment out above curl block above and uncomment block below and 
-# specify commits
-# ----- infernal block 3 start  -----
-#echo "Downloading Infernal (develop branch) ... "
-#git clone https://github.com/EddyRivasLab/infernal.git infernal
-#cd infernal
-#git checkout 9457f7d
-#rm -rf .git
-#git clone https://github.com/EddyRivasLab/hmmer
-#(cd hmmer; git checkout 6300662; rm -rf .git)
-#git clone https://github.com/EddyRivasLab/easel
-#(cd easel; git checkout 86ee126; rm -rf git)
-#mkdir binaries
-#autoconf
-#sh ./configure --bindir=$PWD/binaries --prefix=$PWD
-#make
-#make install
-#(cd easel/miniapps; make install)
-#cd ..
-#echo "Finished building Infernal "
-# ----- infernal block 3 end -----
+# download hmmer source distribution
+# (precompiled binaries are no longer provided as of v3.3)
+echo "Downloading HMMER version $HVERSION src distribution"
+curl -k -L -o hmmer.tar.gz http://eddylab.org/software/hmmer/hmmer-3.3.tar.gz
+tar xfz hmmer.tar.gz
+rm hmmer.tar.gz
+echo "Building HMMER ... "
+mv hmmer-$HVERSION hmmer
+cd hmmer
+mkdir binaries
+sh ./configure --bindir=$PWD/binaries --prefix=$PWD
+make
+make install
+cd ..
+echo "Finished building HMMER "
 echo "------------------------------------------------"
 
 # download blast binaries
@@ -223,6 +216,7 @@ echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
 echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models\""
 echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
 echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
+echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/hmmer/binaries\""
 echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
 echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
 echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
@@ -247,6 +241,7 @@ echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
 echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
 echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models\""
 echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
+echo "setenv VADRHMMERDIR \"\$VADRHMMERDIR/hmmer/binaries\""
 echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
 echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
 echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
