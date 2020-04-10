@@ -176,6 +176,12 @@ echo "------------------------------------------------"
 # download vadr-models 
 echo "Downloading latest VADR models ... "
 curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-$MVERSION.tar.gz
+# for a test build of a release, or of the develop branch, you may want different models,
+# such as those in the develop/ dir, in that case comment out above curl and uncomment
+# and possibly modify the one below
+# ----------------------------------------------------------------------------
+#curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/develop/vadr-models-$MVERSION.tar.gz
+# ----------------------------------------------------------------------------
 tar xfz vadr-models.tar.gz
 rm vadr-models.tar.gz
 echo "------------------------------------------------"
