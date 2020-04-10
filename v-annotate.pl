@@ -121,7 +121,6 @@ $execs_H{"blastn"}            = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"parse_blast"}       = $env_vadr_scripts_dir  . "/parse_blast.pl";
 utl_ExecHValidate(\%execs_H, undef);
 
-
 #########################################################
 # Command line and option processing using sqp_opts.pm
 #
@@ -156,10 +155,6 @@ opt_Add("-h",           "boolean", 0,                        0,    undef, undef,
 $opt_group_desc_H{++$g} = "basic options";
 opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("-m",           "string",  undef,                   $g,    undef, undef,      "use CM file <s> instead of default",             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-i",           "string",  undef,                   $g,    undef, undef,      "use model info file <s> instead of default",     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-b",           "string",  undef,                   $g,    undef, undef,      "BLAST dbs are in dir <s>, instead of default",   "specify BLAST dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-a",           "string",  undef,                   $g,"--addhmmer",undef,    "use HMM file <s> instead of default",            "use HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
 #opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -174,6 +169,16 @@ $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence
 opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
 opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options related to model files";
+#        option               type   default                group  requires incompat   preamble-output                                                                   help-output    
+opt_Add("-m",           "string",  undef,                   $g,    undef, undef,       "use CM file <s> instead of default",                                             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-a",           "string",  undef,                   $g,"--addhmmer",undef,     "use HMM file <s> instead of default",                                            "use HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-i",           "string",  undef,                   $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "string",  undef,                   $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
+opt_Add("-x",           "string",  undef,                   $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--mkey",       "string",  undef,                   $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
+opt_Add("--mdir",       "string",  undef,                   $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default                group  requires incompat    preamble-output                                                            help-output    
@@ -223,12 +228,10 @@ opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, unde
 
 $opt_group_desc_H{++$g} = "options related to blastn-based acceleration (-s)";
 #        option               type   default                group  requires incompat    preamble-output                                                      help-output    
-opt_Add("-s",             "boolean",      0,                  $g,"--blastndb", undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
-opt_Add("--blastndb",      "string",  undef,                  $g,       "-s", undef,     "path to blastn database is <s>",                                   "path to blastn database is <s>", \%opt_HH, \@opt_order_A);
+opt_Add("-s",             "boolean",      0,                  $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
 opt_Add("--blastnws",     "integer",      7,                  $g,       "-s", undef,     "set blastn -word_size <n> to <n>",                                 "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--blastnsc",      "real",     50.0,                  $g,       "-s", undef,     "set blastn minimum HSP score to consider to <x>",                  "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--overhang",     "integer",     50,                  $g,       "-s", undef,     "set length of nt overhang for subseqs to align to <n>",            "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
-
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -265,10 +268,6 @@ my $options_okay =
 # basic options
                 'f'             => \$GetOptions_H{"-f"},
                 'v'             => \$GetOptions_H{"-v"},
-                'm=s'           => \$GetOptions_H{"-m"}, 
-                'i=s'           => \$GetOptions_H{"-i"}, 
-                'b=s'           => \$GetOptions_H{"-b"}, 
-                'a=s'           => \$GetOptions_H{"-a"}, 
 #                'n=s'           => \$GetOptions_H{"-n"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
@@ -279,6 +278,14 @@ my $options_okay =
                 "alt_list"      => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
+# options related to model files
+                'm=s'           => \$GetOptions_H{"-m"}, 
+                'a=s'           => \$GetOptions_H{"-a"}, 
+                'i=s'           => \$GetOptions_H{"-i"}, 
+                'n=s'           => \$GetOptions_H{"-n"}, 
+                'x=s'           => \$GetOptions_H{"-x"}, 
+                'mkey=s'        => \$GetOptions_H{"--mkey"}, 
+                'mdir=s'        => \$GetOptions_H{"--mdir"}, 
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
                 "noprotid"      => \$GetOptions_H{"--noprotid"},
@@ -317,7 +324,6 @@ my $options_okay =
                 'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
-                'blastndb=s'    => \$GetOptions_H{"--blastndb"},
                 'blastnws=s'    => \$GetOptions_H{"--blastnws"},
                 'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
                 'overhang=s'    => \$GetOptions_H{"--overhang"},
@@ -355,7 +361,6 @@ my $pkgname       = "VADR";
 # it is printed to
 select *STDOUT;
 $| = 1;
-
 
 # print help and exit if necessary
 if((! $options_okay) || ($GetOptions_H{"-h"})) { 
@@ -431,11 +436,10 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 my $do_blastx = opt_Get("--skipblastx", \%opt_HH) ? 0 : 1;
 my $do_hmmer  = opt_Get("--addhmmer",   \%opt_HH) ? 1 : 0;
 
-my $do_fix        = opt_Get(    "-s",   \%opt_HH) ? 1 : 0;
-my $do_blastn_any = opt_Get(    "-s",   \%opt_HH) ? 1 : 0;
-my $do_blastn_cls = opt_Get(    "-s",   \%opt_HH) ? 1 : 0;
-my $do_blastn_cov = opt_Get(    "-s",   \%opt_HH) ? 1 : 0;
-my $do_blastn_ali = opt_Get(    "-s",   \%opt_HH) ? 1 : 0;
+my $do_blastn_any = opt_Get("-s", \%opt_HH) ? 1 : 0;
+my $do_blastn_cls = opt_Get("-s", \%opt_HH) ? 1 : 0;
+my $do_blastn_cov = opt_Get("-s", \%opt_HH) ? 1 : 0;
+my $do_blastn_ali = opt_Get("-s", \%opt_HH) ? 1 : 0;
 # we have separate flags for each blastn stage even though
 # they are all turned on/off with -a in case future changes
 # only need some but not all
@@ -531,109 +535,85 @@ foreach $cmd (@early_cmd_A) {
 my $progress_w = 83; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
-# make sure the sequence, CM, modelinfo, qsubinfo files exist
+my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
+my $do_keep = opt_Get("--keep", \%opt_HH);
+
+###########################################
+# Validate that we have all the files we need:
+# fasta file
 utl_FileValidateExistsAndNonEmpty($fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $df_model_dir = $env_vadr_model_dir;
+my $opt_mdir_used = opt_IsUsed("--mdir", \%opt_HH);
+my $opt_mkey_used = opt_IsUsed("--mkey", \%opt_HH);
+my $opt_m_used    = opt_IsUsed("-m", \%opt_HH);
+my $opt_a_used    = opt_IsUsed("-a", \%opt_HH);
+my $opt_i_used    = opt_IsUsed("-i", \%opt_HH);
+my $opt_n_used    = opt_IsUsed("-n", \%opt_HH);
+my $opt_x_used    = opt_IsUsed("-x", \%opt_HH);
+my $opt_q_used    = opt_IsUsed("-q", \%opt_HH);
 
-my $df_cm_file   = $df_model_dir . "/" . "vadr.cm";
-my $cm_file      = undef;
-if(! opt_IsUsed("-m", \%opt_HH)) { $cm_file = $df_cm_file; }
-else                             { $cm_file = opt_Get("-m", \%opt_HH); }
-if(! opt_IsUsed("-m", \%opt_HH)) {
-  utl_FileValidateExistsAndNonEmpty($cm_file, "default CM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-}
-else { # -m used on the command line
-  # check if it is an absolute path first
-  if(utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -m", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
-    # if not, check if it is a subpath within $VADRMODELDIR
-    $cm_file = $env_vadr_model_dir . "/" . $cm_file;
-    utl_FileValidateExistsAndNonEmpty($cm_file, "CM file specified with -m", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
-  }
-}
+my $model_dir      = ($opt_mdir_used) ? opt_Get("--mdir", \%opt_HH) : $env_vadr_model_dir;
+my $model_key      = ($opt_mkey_used) ? opt_Get("--mkey", \%opt_HH) : "vadr";
+my $cm_file        = ($opt_m_used)    ? opt_Get("-m",     \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
+my $hmm_file       = ($opt_a_used)    ? opt_Get("-a",     \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
+my $minfo_file     = ($opt_i_used)    ? opt_Get("-i",     \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
+my $blastn_db_file = ($opt_n_used)    ? opt_Get("-n",     \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
+my $blastx_db_dir  = ($opt_x_used)    ? opt_Get("-x",     \%opt_HH) : $model_dir;
+my $qsubinfo_file  = ($opt_q_used)    ? opt_Get("-q",     \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $cm_extra_string       = "";
+my $hmm_extra_string      = "";
+my $minfo_extra_string    = "";
+my $blastn_extra_string   = "";
+my $blastx_extra_string   = "";
+my $qsubinfo_extra_string = "";
 
+if($opt_mdir_used) { $cm_extra_string       .= " --mdir"; $hmm_extra_string .= " --mdir"; $minfo_extra_string .= " --mdir"; $blastn_extra_string .= " --mdir"; }
+if($opt_mkey_used) { $cm_extra_string       .= " --mkey"; $hmm_extra_string .= " --mkey"; $minfo_extra_string .= " --mkey"; $blastn_extra_string .= " --mkey"; }
+if($opt_m_used)    { $cm_extra_string       .= " -m"; }
+if($opt_a_used)    { $hmm_extra_string      .= " -a"; }
+if($opt_i_used)    { $minfo_extra_string    .= " -i"; }
+if($opt_n_used)    { $blastn_extra_string   .= " -n"; }
+if($opt_x_used)    { $blastx_extra_string   .= " -x"; }
+if($opt_q_used)    { $qsubinfo_extra_string .= " -q"; }
+
+# check for files we always need, cm file and minfo file
+utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
+utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $df_hmm_file = $df_model_dir . "/" . "vadr.hmm";
-my $hmm_file    = undef;
-if(! opt_IsUsed("-a", \%opt_HH)) { $hmm_file = $df_hmm_file; }
-else                             { $hmm_file = opt_Get("-a", \%opt_HH); }
-# ensure $hmm_file exists if --addhmmer, otherwise we won't use it
-if(opt_IsUsed("--addhmmer", \%opt_HH)) { 
-  if(! opt_IsUsed("-a", \%opt_HH)) {
-    utl_FileValidateExistsAndNonEmpty($hmm_file, "default HMM file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+# only check for blastn db file if we need it
+if(opt_Get("-s", \%opt_HH)) { 
+  utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  for my $sfx (".nhr", ".nin", ".nsq") { 
+    utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
-  else { # -a used on the command line
-    # check if it is an absolute path first
-    if(utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
-      # if not, check if it is a subpath within $VADRMODELDIR
-      $hmm_file = $env_vadr_model_dir . "/" . $hmm_file;
-      utl_FileValidateExistsAndNonEmpty($hmm_file, "HMM file specified with -a", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
-    }
+}
+
+# only check for blastx db if we need it
+if($do_blastx) { 
+  $blastx_db_dir =~ s/\/$//; # remove trailing '/'
+  if(! -d $blastx_db_dir) { 
+    ofile_FAIL(sprintf("ERROR, blast db directory $blastx_db_dir%s does not exist", $blastx_extra_string), 1, $FH_HR);
   }
+}
+
+# only check for hmm file if we need it
+if($do_hmmer) { 
+  utl_FileValidateExistsAndNonEmpty($hmm_file, sprintf("HMM file%s", ($hmm_extra_string eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
     utl_FileValidateExistsAndNonEmpty($hmm_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
 }
 
-my $df_modelinfo_file = $df_model_dir . "/" . "vadr.minfo";
-my $modelinfo_file = undef;
-if(! opt_IsUsed("-i", \%opt_HH)) { $modelinfo_file = $df_modelinfo_file; }
-else                             { $modelinfo_file = opt_Get("-i", \%opt_HH); }
-if(! opt_IsUsed("-i", \%opt_HH)) {
-  utl_FileValidateExistsAndNonEmpty($modelinfo_file, "default model info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-}
-else { # -i used on the command line
-  # check if it is an absolute path first
-  if(utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 0, \%{$ofile_info_HH{"FH"}}) != 1) { # '0' says: do not die if it doesn't exist or is empty
-    $modelinfo_file = $env_vadr_model_dir . "/" . $modelinfo_file;
-    utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file specified with -i", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: do die if it doesn't exist or is empty
-  }
-}
-
-my $qsubinfo_file    = undef;
-my $df_qsubinfo_file = $env_vadr_scripts_dir . "/" . "vadr.qsubinfo";
-my $qsub_prefix      = undef; # qsub prefix for submitting jobs to the farm
-my $qsub_suffix      = undef; # qsub suffix for submitting jobs to the farm
-if(! opt_IsUsed("-q", \%opt_HH)) { $qsubinfo_file = $df_qsubinfo_file; }
-else                             { $qsubinfo_file = opt_Get("-q", \%opt_HH); }
-
+# only check for qsubinfo file if we need it
+my ($qsub_prefix, $qsub_suffix) = (undef, undef);
 if(opt_IsUsed("-p", \%opt_HH)) { 
-  # check for existence of qsub info file
-  if(! opt_IsUsed("-q", \%opt_HH)) {
-    utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "default qsub info file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-  }
-  else { # -q used on the command line
-    utl_FileValidateExistsAndNonEmpty($qsubinfo_file, "qsub info file specified with -q", undef, 1, \%{$ofile_info_HH{"FH"}}); # 1 says: die if it doesn't exist or is empty
-  }
+  utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   # parse the qsubinfo file
   ($qsub_prefix, $qsub_suffix) = vdr_ParseQsubFile($qsubinfo_file, $ofile_info_HH{"FH"});
 }
-# make sure the blastdb directory exists
-my $blastdb_dir = (opt_IsUsed("-b", \%opt_HH)) ? opt_Get("-b", \%opt_HH) : $df_model_dir;
-$blastdb_dir =~ s/\/$//; # remove trailing '/'
-if($do_blastx) { 
-  if(! -d $blastdb_dir) { 
-    ofile_FAIL(sprintf("ERROR, %sblast DB directory $blastdb_dir%s does not exist", 
-                       opt_IsUsed("-b", \%opt_HH) ? "" : " default", 
-                       opt_IsUsed("-b", \%opt_HH) ? " specified with -b" : ""), 1, $FH_HR);
-  }
-}
-# if nec, make sure that the blastn db file exists
-my $blastn_db_file = undef;
-if($do_blastn_any) { 
-  $blastn_db_file = opt_Get("--blastndb", \%opt_HH);
-  foreach my $sfx ("", ".nhr", ".nin", ".nsq") { 
-    if(! -s ($blastn_db_file . $sfx)) { 
-      ofile_FAIL("ERROR, required blastn db file $blastn_db_file" . $sfx . " does not exist", 1, $FH_HR);
-    }
-  }
-}
-
-my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
-my $do_keep = opt_Get("--keep", \%opt_HH);
 
 ###########################
 # Parse the model info file
@@ -644,12 +624,12 @@ my %sgm_info_HAH = (); # hash of array of hashes with segment info
 
 my @reqd_mdl_keys_A = ("name", "length");
 my @reqd_ftr_keys_A = ("type", "coords");
-utl_FileValidateExistsAndNonEmpty($modelinfo_file, "model info file", undef, 1, $FH_HR);
-vdr_ModelInfoFileParse($modelinfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
+utl_FileValidateExistsAndNonEmpty($minfo_file, "model info file", undef, 1, $FH_HR);
+vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 
 # validate %mdl_info_AH
 my @mdl_reqd_keys_A = ("name", "length");
-my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $modelinfo_file", $FH_HR);
+my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $minfo_file", $FH_HR);
 my $mdl_idx;
 # verify feature coords make sense and parent_idx_str is valid
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -663,7 +643,7 @@ my $exp_group    = opt_Get("--group", \%opt_HH);
 my $exp_subgroup = opt_Get("--subgroup", \%opt_HH);
 if(opt_IsUsed("--group", \%opt_HH)) { 
   if(utl_AHCountKeyValue(\@mdl_info_AH, "group", $exp_group) == 0) { 
-    ofile_FAIL("ERROR with --group $exp_group, did not read any models with group defined as $exp_group in model info file:\n$modelinfo_file", 1, $FH_HR);
+    ofile_FAIL("ERROR with --group $exp_group, did not read any models with group defined as $exp_group in model info file:\n$minfo_file", 1, $FH_HR);
   }
 }
 if(opt_IsUsed("--subgroup", \%opt_HH)) { 
@@ -672,11 +652,11 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
     ofile_FAIL("ERROR with --subgroup, the --group option must also be used", 1, $FH_HR);
   }
   if(utl_AHCountKeyValue(\@mdl_info_AH, "subgroup", $exp_subgroup) == 0) { 
-    ofile_FAIL("ERROR with --group $exp_group and --subgroup $exp_subgroup,\ndid not read any models with group defined as $exp_group and subgroup defined as $exp_subgroup in model info file:\n$modelinfo_file", 1, $FH_HR);
+    ofile_FAIL("ERROR with --group $exp_group and --subgroup $exp_subgroup,\ndid not read any models with group defined as $exp_group and subgroup defined as $exp_subgroup in model info file:\n$minfo_file", 1, $FH_HR);
   }
 }
 
-# make sure $cm_file includes CMs for all models we just read in $modelinfo_file
+# make sure $cm_file includes CMs for all models we just read in $minfo_file
 my $cm_name_file = $out_root . ".cm.namelist";
 my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
 utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
@@ -685,7 +665,7 @@ utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(! exists $cm_name_H{$mdl_name}) { 
-    ofile_FAIL("ERROR, read model named $mdl_name in model info file ($modelinfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
+    ofile_FAIL("ERROR, read model named $mdl_name in model info file ($minfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
   }
 }
 push(@to_remove_A, $cm_name_file);
@@ -693,7 +673,7 @@ push(@to_remove_A, $cm_name_file);
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $modelinfo_file", $FH_HR);
+  utl_AHValidate(\@{$ftr_info_HAH{$mdl_name}}, \@ftr_reqd_keys_A, "ERROR reading feature info for model $mdl_name from $minfo_file", $FH_HR);
   vdr_FeatureInfoImputeLength(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoInitializeParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
@@ -702,22 +682,22 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
-# if there are any CDS features, validate that the BLAST db files or HMMER models we need exist
+# if there are any CDS features, validate that the BLAST db files we need exist, if nec
 if($do_blastx) { 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
     if($ncds > 0) { 
       if(! defined $mdl_info_AH[$mdl_idx]{"blastdb"}) { 
-        ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$modelinfo_file\n", 1, $FH_HR);
+        ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$minfo_file\n", 1, $FH_HR);
       }
-      my $blastdb = $blastdb_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
+      my $blastx_db = $blastx_db_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
       foreach my $sfx ("", ".phr", ".pin", ".psq") { 
-        if(! -s ($blastdb . $sfx)) { 
-          ofile_FAIL("ERROR, required blastdb file $blastdb" . $sfx . " for model $mdl_name does not exist in directory $blastdb_dir.\nUse -b to specify a different directory.\n", 1, $FH_HR);
+        if(! -s ($blastx_db . $sfx)) { 
+          ofile_FAIL("ERROR, required blastx_db file $blastx_db" . $sfx . " for model $mdl_name does not exist in directory $blastx_db_dir.\nUse -x to specify a different directory.\n", 1, $FH_HR);
         }
       }
-      $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastdb;
+      $mdl_info_AH[$mdl_idx]{"blastdbpath"} = $blastx_db;
     }
   }
 }
