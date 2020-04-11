@@ -1094,11 +1094,12 @@ if($do_blastx) {
       }                
     }
   }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of 'if($do_blastx)'
 elsif(! $do_hmmer) { 
   $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblastx)", $progress_w, $log_FH, *STDOUT);
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ############################################################################################################
 # Run hmmsearch: all full length sequences and all fetched CDS features versus best-matching protein profile
