@@ -4,7 +4,7 @@ use Test::More tests => 4275;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
-    use_ok( 'vadr_fast' ) || print "Bail out!\n";
+    use_ok( 'vadr_seed' ) || print "Bail out!\n";
 }
 
 # make sure the VADRSCRIPTSDIR env variable is set
