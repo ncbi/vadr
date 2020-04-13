@@ -118,6 +118,7 @@ require "sqp_utils.pm";
 # vdr_CoordsProteinToNucleotide()
 # vdr_CoordsMergeAllAdjacentSegments()
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
+# vdr_CoordsMaxLengthSegment()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -126,6 +127,10 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
+#
+# Subroutines related to cmalign output files:
+# vdr_CmalignParseInsertFile()
+# vdr_CmalignWriteInsertFile()
 # 
 # Miscellaneous subroutines:
 # vdr_SplitFastaFile()
@@ -1440,6 +1445,12 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "unexdivg", "sequence",
                    "UNEXPECTED_DIVERGENCE", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
+                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
+                   "UNEXPECTED_DIVERGENCE", # short description
+                   "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -3171,6 +3182,48 @@ sub vdr_CoordsMergeTwoSegmentsIfAdjacent {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsMaxLengthSegment()
+#
+# Incept:     EPN, Mon Mar 30 17:32:32 2020
+#
+# Synopsis: Return the maximum length segment and its length
+#           from a coords string of one or more segments.
+#           If multiple coords segments are tied for the maximum
+#           length, return the first one. 
+#
+# Arguments:
+#  $coords: segment 1
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  Two values:
+#           1. $argmax_sgm: he coords segment of maximum length 
+#           2. $max_sgm_len: length of $argmax_coords_sgm
+#
+# Dies: If unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsMaxLengthSegment { 
+  my $sub_name = "vdr_CoordsMaxLengthSegment";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+
+  my @coords_tok_A  = split(",", $coords);
+  my $nsgm = scalar(@coords_tok_A);
+  my $argmax_sgm = $coords_tok_A[0];
+  my $max_sgm_len = vdr_CoordsLength($coords_tok_A[0], $FH_HR);
+  for(my $i = 1; $i < $nsgm; $i++) {
+    my $sgm_len = vdr_CoordsLength($coords_tok_A[$i], $FH_HR);
+    if($sgm_len > $max_sgm_len) {
+      $max_sgm_len = $sgm_len;
+      $argmax_sgm = $coords_tok_A[$i];
+    }
+  }
+  return ($argmax_sgm, $max_sgm_len);
+}
+
+#################################################################
 # Subroutine: vdr_EutilsFetchToFile()
 # Incept:     EPN, Tue Mar 12 12:18:37 2019
 #
@@ -3823,6 +3876,187 @@ sub vdr_ParseSeqFileToSeqHash {
   return;
 }
 
+#################################################################
+# Subroutine : vdr_CmalignParseInsertFile()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
+#             results in %{$seq_inserts_HHR}.
+#
+#             
+# Arguments: 
+#  $ifile_file:       ifile file to parse
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here, must be defined
+#                     key 1: sequence name
+#                     key 2: one of 'spos', 'epos', 'ins'
+#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                     for n inserts, where insert x is defined by:
+#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                     <uapos_x> is unaligned sequence position of the first aligned nt
+#                     <inslen_x> is length of the insert
+#  $mdl_name_HR:      REF to hash of model name hash to fill, added to here, can be undef
+#                     key: sequence name, value: name of model this sequence was aligned to
+#  $seq_name_AR:      REF to array of sequence names, in order read, added to here, can be undef
+#  $seq_len_HR:       REF to hash of sequence lengths to fill, added to here, can be undef
+#  $mdl_len_HR:       REF to hash of model name hash to fill, added to here, can be undef
+#                     key: *model* name, value: length of model
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if unable to parse the ifile
+#             if $seq_inserts_HHR is undef upon entry
+#             if the same model exists twice in the ifile with
+#             different lengths and $mdl_len_HR is defined
+#
+################################################################# 
+sub vdr_CmalignParseInsertFile { 
+  my $sub_name = "vdr_CmalignParseInsertFile()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ifile_file, $seq_inserts_HHR, $mdl_name_HR, $seq_name_AR, $seq_len_HR, $mdl_len_HR, $FH_HR) = @_;
+  
+  open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
+
+  if(! defined $seq_inserts_HHR) {
+    ofile_FAIL("ERROR in $sub_name, seq_inserts_HHR is undef upon entry", 1, $FH_HR);
+  }
+    
+  my $line_ctr = 0;  # counts lines in ifile_file
+  my $mdl_name = undef;
+  my $mdl_len  = undef;
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
+      #norovirus.NC_039477 7567
+      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) == 2) {
+        ($mdl_name, $mdl_len) = (@el_A);
+        if(defined $mdl_len_HR) {
+          if((defined $mdl_len_HR->{$mdl_name}) &&
+             ($mdl_len_HR->{$mdl_name} != $mdl_len)) {
+            ofile_FAIL("ERROR in $sub_name, model $mdl_name appears multiple times with different lengths $mdl_len and " . $mdl_len_HR->{$mdl_name}, 1, $FH_HR);
+          }
+          $mdl_len_HR->{$mdl_name} = $mdl_len;
+        }
+      }
+      elsif(scalar(@el_A) >= 4) { 
+        if((! defined $mdl_name) || (! defined $mdl_len)) { 
+          ofile_FAIL("ERROR in $sub_name, read sequence line for sequence " . $el_A[0] . "before model line", 1, $FH_HR);
+        }
+        my $nel = scalar(@el_A); 
+        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
+          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
+        }          
+        my ($seq_name, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
+        if(! defined $seq_inserts_HHR->{$seq_name}) { 
+          # initialize
+          %{$seq_inserts_HHR->{$seq_name}} = ();
+          if(defined $mdl_name_HR) { $mdl_name_HR->{$seq_name} = $mdl_name; }
+          if(defined $seq_name_AR) { push(@{$seq_name_AR}, $seq_name); }
+          if(defined $seq_len_HR)  { $seq_len_HR->{$seq_name} = $seq_len; }
+        }
+        # create the insert string
+        my $insert_str = "";
+        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
+          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
+        }
+        $seq_inserts_HHR->{$seq_name}{"spos"} = $spos;
+        $seq_inserts_HHR->{$seq_name}{"epos"} = $epos;
+        $seq_inserts_HHR->{$seq_name}{"ins"}  = $insert_str;
+      }
+    }
+  }
+  close(IN);
+  
+  return;
+}
+
+#################################################################
+# Subroutine : vdr_CmalignWriteInsertFile()
+# Incept:      EPN, Fri Apr  3 11:17:49 2020
+#
+# Purpose:    Write an Infernal 1.1 cmalign --ifile given
+#             insert information in %{$seq_inserts_HHR}.
+#
+# Arguments: 
+#  $ifile_file:       ifile file to write to
+#  $do_append:        '1' to append to if file exists, '0' to create new file
+#  $mdl_name:         name of model for model line, all seqs should have insert info relative to this model
+#  $mdl_len:          length of model for model line,
+#  $seq_name_AR:      REF to array of sequence names to output data for from seq_inserts_HHR
+#  $seq_len_HR:       REF to hash of sequence lengths
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, already filled
+#                     key 1: sequence name
+#                     key 2: one of 'spos', 'epos', 'ins'
+#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                     for n inserts, where insert x is defined by:
+#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                     <uapos_x> is unaligned sequence position of the first aligned nt
+#                     <inslen_x> is length of the insert
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if unable to parse the ifile
+#
+################################################################# 
+sub vdr_CmalignWriteInsertFile { 
+  my $sub_name = "vdr_CmalignWriteInsertFile()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ifile_file, $do_append, $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR, $seq_inserts_HHR, $FH_HR) = @_;
+
+  # print("in $sub_name\n");
+  # utl_HHDump("seq_inserts_HH", $seq_inserts_HHR, *STDOUT);
+  
+  my $out_mode = (($do_append) && (-s $ifile_file)) ? ">>" : ">";
+  open(OUT, $out_mode, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, (($out_mode eq ">") ? "writing" : "appending"), $FH_HR);
+
+  my $line_ctr = 0;  # counts lines in ifile_file
+
+  # model line: 2 tokens
+  #<modelname> <modellen>
+  #norovirus.NC_039477 7567
+  print OUT $mdl_name . " " . $mdl_len . "\n";
+
+  # per-sequence lines, each has at least 3 tokens:
+  # <seqname> <spos> <epos>
+  # and optionally 
+  foreach my $seq_name (@{$seq_name_AR}) {
+    print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
+    if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
+       $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
+      my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
+      foreach my $ins (@ins_A) {
+        # example line:
+        #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+        if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+          print OUT ("  " . $1 . " " . $2 . " " . $3);
+        }
+        else {
+          ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+        }
+      }
+    }
+    print OUT "\n";
+  }
+  print OUT "//\n";
+
+  close OUT;
+}
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
