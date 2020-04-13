@@ -1072,13 +1072,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
 #########################################################################################
 if($do_blastx) { 
-  $start_secs = ofile_OutputProgressPrior("Running and parsing BLASTX", $progress_w, $log_FH, *STDOUT);
-
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
+        my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+        $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with blastx ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
         run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
                                         \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, 
@@ -1091,10 +1091,10 @@ if($do_blastx) {
         
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
-      }                
+        ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+      }
     }
   }
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of 'if($do_blastx)'
 elsif(! $do_hmmer) { 
   $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblastx)", $progress_w, $log_FH, *STDOUT);
@@ -1105,13 +1105,13 @@ elsif(! $do_hmmer) {
 # Run hmmsearch: all full length sequences and all fetched CDS features versus best-matching protein profile
 ############################################################################################################
 if($do_hmmer) { 
-  $start_secs = ofile_OutputProgressPrior("Running and parsing hmmsearch", $progress_w, $log_FH, *STDOUT);
-
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
+        my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+        $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with hmmsearch ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
         run_esl_translate_and_hmmsearch(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
                                         \%opt_HH, \%ofile_info_HH);
         parse_hmmer_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
@@ -1119,10 +1119,10 @@ if($do_hmmer) {
         
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }                
     }
   }
-  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 } # end of 'if($do_hmmer)'
 
 ##############################################################
