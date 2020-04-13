@@ -113,6 +113,7 @@ $execs_H{"cmalign"}           = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmfetch"}           = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmscan"}            = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}          = $env_vadr_infernal_dir . "/cmsearch";
+$execs_H{"esl-alimerge"}      = $env_vadr_easel_dir    . "/esl-alimerge";
 $execs_H{"esl-seqstat"}       = $env_vadr_easel_dir    . "/esl-seqstat";
 $execs_H{"esl-translate"}     = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}        = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
@@ -230,8 +231,9 @@ $opt_group_desc_H{++$g} = "options related to blastn-based acceleration (-s)";
 #        option               type   default                group  requires incompat    preamble-output                                                      help-output    
 opt_Add("-s",             "boolean",      0,                  $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
 opt_Add("--blastnws",     "integer",      7,                  $g,       "-s", undef,     "set blastn -word_size <n> to <n>",                                 "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnsc",      "real",     50.0,                  $g,       "-s", undef,     "set blastn minimum HSP score to consider to <x>",                  "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--blastnsc",        "real",   50.0,                  $g,       "-s", undef,     "set blastn minimum HSP score to consider to <x>",                  "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--overhang",     "integer",    100,                  $g,       "-s", undef,     "set length of nt overhang for subseqs to align to <n>",            "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--merge",        "boolean",      0,                  $g,       "-s", undef,     "merge all single sequence joined alignments into one",             "merge all single sequence joined alignments into one", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -327,6 +329,7 @@ my $options_okay =
                 'blastnws=s'    => \$GetOptions_H{"--blastnws"},
                 'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
                 'overhang=s'    => \$GetOptions_H{"--overhang"},
+                'merge'         => \$GetOptions_H{"--merge"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -983,10 +986,26 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                               \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%sda_output_HH,
                                               \%alt_seq_instances_HH, \%alt_info_HH,
                                               $out_root, \%opt_HH, \%ofile_info_HH);
-      # replace array of stockholm files output from cmalign
-      # from joined ones we just created
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
-      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
+      if(! opt_Get("--merge", \%opt_HH)) { 
+        # do not merge all joined alignments together into one
+        # replace array of stockholm files output from cmalign
+        # from joined ones we just created
+        @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
+      }
+      else { 
+        # merge all joined alignments into one
+        # this should speed up annotation determination
+        ofile_FAIL("ERROR, --merge used, but it won't work until fetched model strings for seed alignments are taken from the model RF (cmemit -c)", 1, $FH_HR);
+        my $do_alimerge_small = 1; # use --small option with esl-alimerge, will only work because all joined alignments are in pfam format
+        my $merged_joined_stk_file = $out_root . "." . $mdl_name . ".align.r3.merged.stk";
+        my $joined_stk_list_file = $out_root . "." . $mdl_name . ".align.r3.stk.list";
+        utl_AToFile(\@joined_stk_file_A, $joined_stk_list_file, 1, $FH_HR);
+        run_esl_alimerge(\%execs_H, $merged_joined_stk_file, $joined_stk_list_file, $do_alimerge_small,\%opt_HH, \%ofile_info_HH);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.stk", $merged_joined_stk_file, $do_keep, sprintf("merged alignment of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+        @{$stk_file_HA{$mdl_name}} = ($merged_joined_stk_file);
+        push(@to_remove_A, $joined_stk_list_file);
+      }
 
       # replace any overflow info we have on subseqs to be for full seqs
       if(scalar(@overflow_seq_A) > 0) { 
@@ -8136,6 +8155,47 @@ sub update_overflow_info_for_joined_alignments {
       }
     }
   }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  run_esl_alimerge_list()
+# Incept:      EPN, Mon Apr 13 07:13:15 2020
+#
+# Purpose:    Run esl-alimerge --list to merge all alignments listed
+#             in $stk_list_file together into one alignment 
+#             $merged_stk_file. If $do_small, use the --small option.
+#             against the resulting protein sequences.
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#  $merged_stk_file:   name of stk file to create
+#  $stk_list_file:     name of file with list of stockholm alignments to merge
+#  $do_small:          '1' to use --small, '0' not to
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If esl-alimerge fails.
+#
+################################################################# 
+sub run_esl_alimerge { 
+  my $sub_name = "run_esl_alimerge";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $merged_stk_file, $stk_list_file, $do_small, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $esl_alimerge_opts = "";
+  if($do_keep) { 
+    $esl_alimerge_opts .= "--small";
+  }
+  my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file";
+  utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   return;
 }
