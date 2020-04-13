@@ -4422,7 +4422,7 @@ sub run_blastx_and_summarize_output {
   my $xnumali = opt_Get("--xnumali", $opt_HHR);
 
   my $blastx_out_file = $out_root . "." . $mdl_name . ".blastx.out";
-  my $blastx_cmd = $execs_HR->{"blastx"} . " -num_alignments $xnumali -query $blastx_query_fa_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
+  my $blastx_cmd = $execs_HR->{"blastx"} . " -num_threads 1 -num_alignments $xnumali -query $blastx_query_fa_file -db $blastx_db_file -seg no -out $blastx_out_file" . $blastx_options;
   utl_RunCommand($blastx_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".blastx-out", $blastx_out_file, 0, $do_keep, "blastx output for model $mdl_name");
 
