@@ -967,7 +967,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     if($cur_mdl_nalign > 0) { 
       cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
                       $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, $cur_mdl_nalign,
-                      $cur_mdl_seq_len_HR, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                      utl_HSumValues($cur_mdl_seq_len_HR), $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                       \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
     }
 
@@ -2245,8 +2245,8 @@ sub populate_per_model_data_structures_given_classification_results {
 #  $stk_file_AR:           ref to array of stockholm files created here, FILLED HERE
 #  $overflow_seq_AR:       ref to array of sequences that failed due to matrix overflows, FILLED HERE
 #  $overflow_mxsize_AR:    ref to array of required matrix sizes for each sequence that failed due to matrix overflows, FILLED HERE
-#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:        REF to 2D hash of output file information
+#  $opt_HHR:               ref to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:        ref to 2D hash of output file information
 #
 # Returns:     void
 # 
