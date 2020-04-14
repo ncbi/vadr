@@ -1510,6 +1510,8 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
     ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
 
+  print("HEYA in $sub_name, stg_key is $stg_key\n");
+
   # determine if we have an expected group and subgroup
   # (--subgroup requires --group)
   # and if so, fill hashes of model groups and subgroups, 
@@ -2100,7 +2102,7 @@ sub populate_per_model_data_structures_given_classification_results {
     if(defined $alt_seq_instances_HHR) { 
       ofile_FAIL("ERROR in $sub_name, stage key is rab.cdt or std.cdt but alt_seq_instances_HHR is not defined", 1, $FH_HR);
     }
-    $cls_2d_key = ($stg_key eq "rab.cdt") ? "rab.cdt.1" : "std.cdt.1";
+    $cls_2d_key = ($stg_key eq "rab.cdt") ? "rab.cls.1" : "std.cls.1";
   }
   elsif($stg_key eq "std.aln") { 
     if(! defined $alt_seq_instances_HHR) { 
@@ -2114,22 +2116,24 @@ sub populate_per_model_data_structures_given_classification_results {
   if(($stg_key ne "rab.cdt") && (! defined $mdl_ct_HR)) { 
     ofile_FAIL("ERROR in $sub_name, stage key is not rab.cdt but mdl_ct_HR is not defined", 1, $FH_HR);
   }
+  printf("HEYA in $sub_name, stg_key: $stg_key, cls_2d_key: $cls_2d_key\n");
+  utl_HHHDump("stg_results_HHHR", $stg_results_HHHR, *STDOUT);
 
   my $nseq = scalar(@{$seq_name_AR});
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
-    my $mdl_name = ((defined $stg_results_HHH{$seq_name}) && 
-                    (defined $stg_results_HHH{$seq_name}{$cls_2d_key}) && 
-                    (defined $stg_results_HHH{$seq_name}{$cls_2d_key}{"model"})) ? 
-                    $stg_results_HHH{$seq_name}{$cls_2d_key}{"model"} : undef;
+    my $mdl_name = ((defined $stg_results_HHHR->{$seq_name}) && 
+                    (defined $stg_results_HHHR->{$seq_name}{$cls_2d_key}) && 
+                    (defined $stg_results_HHHR->{$seq_name}{$cls_2d_key}{"model"})) ? 
+                    $stg_results_HHHR->{$seq_name}{$cls_2d_key}{"model"} : undef;
     if(defined $mdl_name) { 
       # determine if we are going to add this sequence to our per-model hashes, depending on what round
       my $add_seq = 0;
-      if($cls_2d_key eq "cls.1") { 
-        $add_seq = 1; # always add seq after round 1
+      if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "rab.cdt.1")) { 
+        $add_seq = 1; # always add seq after classification round
       }
       else { 
-        # if "cdt.bs", check if this sequence has any alerts that prevent annotation
+        # if $cls_2d_key is "std.aln", check if this sequence has any alerts that prevent annotation
         $add_seq = (alert_instances_check_prevents_annot($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $FH_HR)) ? 0 : 1;
         # update "annot" key
         $cls_output_HHR->{$seq_name}{"annot"} = ($add_seq) ? 1 : 0;
@@ -8295,6 +8299,7 @@ sub coverage_determination_stage {
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
+      printf("HEYA $mdl_name\n");
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
       push(@{$to_remove_AR}, $mdl_fa_file);
       $$sqfile_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
