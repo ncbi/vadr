@@ -856,7 +856,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     else {
       # $do_blastn_ali == 1
       # create the fasta file with sets of subsequences that omit well-defined regions from blastn alignment
-      my $indel_file = $ofile_info_HH{"fullpath"}{"search.cdt.$mdl_name.indel"};
+      my $indel_file = $ofile_info_HH{"fullpath"}{"std.cdt.$mdl_name.indel"};
       my @subseq_AA = ();
       $cur_mdl_cmalign_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
@@ -8191,7 +8191,7 @@ sub classification_stage {
   if($do_blastn) { # -s: use blastn for classification
     run_blastn_and_summarize_output($execs_HR, $blastn_db_file, $fa_file, $out_root, $stg_key,
                                     $nseq, $progress_w, $opt_HHR, $ofile_info_HHR);
-    parse_blastn_results($ofile_info_HHR->{"fullpath"}{"blastn.$stg_key.summary"}, $seq_len_HR, 
+    parse_blastn_results($ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"}, $seq_len_HR, 
                          undef, undef, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     push(@{$to_remove_AR}, 
          $ofile_info_HHR->{"fullpath"}{"blastn.$stg_key.out"},
@@ -8315,7 +8315,8 @@ sub coverage_determination_stage {
   #                    files
   if($do_blastn) { 
     $start_secs = ofile_OutputProgressPrior(sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-    parse_blastn_results($ofile_info_HHR->{"fullpath"}{"blastn.cdt.summary"}, $seq_len_HR, 
+    my $blastn_summary_key = ($stg_key eq "rab.cdt") ? "rab.cls.blastn.summary" : "std.cls.blastn.summary";
+    parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
                          \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     # keep track of the tblout output files:
     foreach $mdl_name (@cls_mdl_name_A) { 
