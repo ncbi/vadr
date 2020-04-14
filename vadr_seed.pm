@@ -62,6 +62,7 @@ require "vadr.pm";
 #  $db_file:         name of blast db file to use
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $out_root:        string for naming output files
+#  $stg_key:         stage key, "rab.cls" or "std.cls"
 #  $nseq:            number of sequences in $seq_file
 #  $progress_w:      width for outputProgressPrior output
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
@@ -73,26 +74,28 @@ require "vadr.pm";
 ################################################################# 
 sub run_blastn_and_summarize_output { 
   my $sub_name = "run_blastn_and_summarize_output";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
 
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $db_file, $seq_file, $out_root, 
+  my ($execs_HR, $db_file, $seq_file, $out_root, $stg_key,
       $nseq, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $log_FH = $FH_HR->{"log"}; # for convenience
 
+  if(($stg_key ne "rab.cls") && ($stg_key ne "std.cls")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls or std.cls", 1, $FH_HR);
+  }
+
   my $do_keep = opt_Get("--keep", $opt_HHR);
-
   my $start_secs = ofile_OutputProgressPrior(sprintf("Classifying sequences with blastn ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-
-  my $blastn_out_file = $out_root . ".r1.blastn.out";
+  my $blastn_out_file = $out_root . "blastn.$stg_key.out";
   my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn-out", $blastn_out_file, 0, $do_keep, "blastn output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn.$stg_key.out", $blastn_out_file, 0, $do_keep, "blastn output");
 
   # now summarize its output
   # use --splus to skip alignment parsing of hits to negative strand of subject
@@ -102,10 +105,10 @@ sub run_blastn_and_summarize_output {
   # the sequence (actually negative strand of the subject/model but blastn revcomps
   # the subject instead of the query like cmscan would do), and we don't care
   # about negative strand hit indel info.
-  my $blastn_summary_file = $out_root . ".r1.blastn.summary.txt";
+  my $blastn_summary_file = $out_root . ".blastn.$stg_key.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blast"} . " --program n --input $blastn_out_file --splus > $blastn_summary_file";
   utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn-summary", $blastn_summary_file, 0, $do_keep, "parsed (summarized) blastn output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn.$stg_key.summary", $blastn_summary_file, 0, $do_keep, "parsed (summarized) blastn output");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -124,25 +127,26 @@ sub run_blastn_and_summarize_output {
 #
 #             Output mode 1: 1 file, produced if $seq2mdl_HR is undef
 #
-#             "blastn.r1.pretblout" file: cmscan --trmF3 output format
-#             file with each hit on a separate line and individual hit
-#             scores reported for each hit. This is later processed by
-#             blastn_pretblout_to_tblout() to sum bit scores for all
-#             hits with the same model/seq/strand so we can classify
-#             sequences the same way we do in default mode (cmscan
-#             based classification).
+#             "blastn.{rab.cls,std.cls}.pretblout" file: cmscan --trmF3 output
+#             format file with each hit on a separate line and
+#             individual hit scores reported for each hit. This is
+#             later processed by blastn_pretblout_to_tblout() to sum
+#             bit scores for all hits with the same model/seq/strand
+#             so we can classify sequences the same way we do in
+#             default mode (cmscan based classification).
 #
-#             Output model 2: 2 files produced per model with >= 1 matching
+#             Output mode 2: 2 files produced per model with >= 1 matching
 #             sequence, produced if $seq2mdl_HR is defined.
 #
-#             "search.r2.<mdlname>.tblout": cmsearch --tblout format
-#             file with each hit for a sequence on + strand that is 
-#             classified to model <mdlname>. 
+#             "search.{rab.cls,std.cls,rab.cdt,std.cdt}.<mdlname>.tblout":
+#             cmsearch --tblout format file with each hit for a
+#             sequence on + strand that is classified to model
+#             <mdlname>.
 #
-#             "blastn.r2.<mdlname>.indel.txt": one line per sequence
-#             with all inserts and deletes in all blastn hit
-#             alignments for each sequence that is classified to 
-#             <mdlname> on strand +.
+#             "blastn.{rab.cls,std.cls,rab.cdt,std.cdt}.<mdlname>.indel.txt":
+#             one line per sequence with all inserts and deletes in
+#             all blastn hit alignments for each sequence that is
+#             classified to <mdlname> on strand +.
 #
 # Arguments: 
 #  $blastn_summary_file: path to blastn summary file to parse
@@ -153,6 +157,8 @@ sub run_blastn_and_summarize_output {
 #  $mdl_name_AR:         REF to array of model names that are keys in
 #                        %{$seq2mdl_HR}, can be undef if $seq2mdl_HR is undef
 #  $out_root:            output root for the file names
+#  $stg_key:             stage key, "rab.cls" or "std.cls" for classification
+#                        or "rab.cdt" or "std.cdt" for coverage determination
 #  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -163,13 +169,18 @@ sub run_blastn_and_summarize_output {
 ################################################################# 
 sub parse_blastn_results { 
   my $sub_name = "parse_blastn_results";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($blastn_summary_file, $seq_len_HR, $seq2mdl_HR, $mdl_name_AR, 
-      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $out_root, $stg_key, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  if(($stg_key ne "rab.cls") && ($stg_key ne "rab.cdt") && 
+     ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
+  }
 
   my $pretblout_FH = undef; # defined if output mode 1 (if ! defined $seq2mdl_HR)
   my %tblout_FH_H  = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
@@ -188,8 +199,8 @@ sub parse_blastn_results {
     # for that model/strand/strand instead of just the hit score. This
     # way we will match the cmscan --trmF3 output downstream steps
     # expect.
-    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
-    $pretblout_FH = $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"}; 
+    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.$stg_key.pretblout", $out_root . ".blastn.$stg_key.pretblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
+    $pretblout_FH = $ofile_info_HHR->{"FH"}{"blastn.$stg_key.pretblout"}; 
     printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
                           "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
   }
@@ -198,11 +209,11 @@ sub parse_blastn_results {
     # coverage determination tblout files in cmsearch --tblout 
     # format (not --trmF3 output format) and the indel files 
     foreach $mdl_name (@{$mdl_name_AR}) { 
-      $outfile_key = "search.r2.$mdl_name.tblout";
+      $outfile_key = "$stg_key.$mdl_name.tblout";
       ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, $do_keep, "blastn output converted to cmsearch tblout format for model $mdl_name");
       $tblout_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
 
-      $outfile_key = "search.r2.$mdl_name.indel";
+      $outfile_key = "$stg_key.$mdl_name.indel";
       ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, $do_keep, "blastn indel information for model $mdl_name");
       $indel_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
     }
@@ -483,21 +494,21 @@ sub parse_blastn_results {
 
   # close files depending on output mode
   if(defined $pretblout_FH) { 
-    # output mode 1:
+    # output mode 1
     # close the pretblout file
     # then call convert it pretblout to tblout (cmscan --trmF3 format)
     # which will have scores summed for each seq/mdl/strand trio
-    close $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"};
-    blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"blastn.r1.pretblout"}, 
-                               \%scsum_HHH, $out_root, $opt_HHR, $ofile_info_HHR);
+    close $ofile_info_HHR->{"FH"}{"blastn.$stg_key.pretblout"};
+    blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"blastn.$stg_key.pretblout"}, 
+                               \%scsum_HHH, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
   }
   else { 
     # output mode 2:
     # close the per model files:
     foreach $mdl_name (@{$mdl_name_AR}) { 
-      $outfile_key = "search.r2.$mdl_name.tblout";
+      $outfile_key = "$stg_key.$mdl_name.tblout";
       close $ofile_info_HHR->{"FH"}{$outfile_key};
-      $outfile_key = "search.r2.$mdl_name.indel";
+      $outfile_key = "$stg_key.$mdl_name.indel";
       close $ofile_info_HHR->{"FH"}{$outfile_key};
     }
   }
@@ -527,6 +538,8 @@ sub parse_blastn_results {
 #                          value: summed bit score for all hits for this model/sequence/strand trio
 #                          NOTE: all values in this 3D hash are set to 0. by this subroutine!
 #  $out_root:              output root for the file names
+#  $stg_key:               stage key, "rab.cls" or "std.cls" for classification (cmscan) ,
+#                          or "rab.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -537,16 +550,21 @@ sub parse_blastn_results {
 ################################################################# 
 sub blastn_pretblout_to_tblout { 
   my $sub_name = "blastn_pretblout_to_tblout";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastn_pretblout_file, $scsum_HHHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($blastn_pretblout_file, $scsum_HHHR, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_keep = opt_Get("--keep", $opt_HHR);
 
-  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
-  my $tblout_FH = $FH_HR->{"scan.r1.tblout"}; 
+  if(($stg_key ne "rab.cls") && ($stg_key ne "rab.cdt") && 
+     ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
+  }
+
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "scan.$stg_key.tblout", $out_root . ".blastn.$stg_key.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
+  my $tblout_FH = $FH_HR->{"scan.$stg_key.tblout"}; 
 
   # open and parse input blastn summary file
   utl_FileValidateExistsAndNonEmpty($blastn_pretblout_file, "blastn pretblout file", $sub_name, 1, $FH_HR);
@@ -574,7 +592,7 @@ sub blastn_pretblout_to_tblout {
     }
   }
   close(IN);
-  close $ofile_info_HHR->{"FH"}{"scan.r1.tblout"};
+  close $ofile_info_HHR->{"FH"}{"scan.$stg_key.tblout"};
 }
 
 #################################################################
