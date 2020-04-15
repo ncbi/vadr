@@ -422,6 +422,7 @@ if(scalar(@ARGV) != 2) {
 }
 
 my ($fa_file, $dir) = (@ARGV);
+my $orig_fa_file = $fa_file;
 
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
@@ -745,7 +746,9 @@ my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequen
 # --nreplace related output for .nrp file
 my %nrp_output_HH = (); # 2D key with info to output related to the  option
                         # key1: sequence name, key2 various stats (see output_tabular())
+my $nrp_fa_file = undef;
 if($do_nreplace) { 
+  my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
   classification_stage(\%execs_H, "nrp.cls", $cm_file, $blastn_db_file, $fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
@@ -753,15 +756,51 @@ if($do_nreplace) {
   coverage_determination_stage(\%execs_H, "nrp.cdt", $cm_file, \$sqfile, \@seq_name_A, \%seq_len_H,
                                $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_seq_name_HA, undef, \%stg_results_HHH, 
                                $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+
+  my $nrp_subset_fa_file = $out_root . ".nrp.sub.fa";
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "nrp.sub.fa", $nrp_subset_fa_file, 0, $do_keep, "fasta file with sequences for which Ns were replaced");
+  
   # for each model with seqs to align to, create the sequence file and run cmalign
   my $mdl_name;
+  my $nseq_replaced = 0;
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $indel_file = $ofile_info_HH{"fullpath"}{"nrp.cdt.$mdl_name.indel"};
-      parse_blastn_indel_file_to_get_missing_regions($indel_file, \%execs_H, $cm_file, \$sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
-                                                     \@seq_name_A, \%seq_len_H, \%nrp_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
+      $nseq_replaced += parse_blastn_indel_file_and_replace_ns($indel_file, \%execs_H, $cm_file, \$sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+                                                               \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%nrp_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
+  }
+  close($ofile_info_HH{"FH"}{"nrp.sub.fa"}); 
+
+  if($nseq_replaced > 0) { 
+    my $nrp_subset_sqfile = Bio::Easel::SqFile->new({ fileLocation => $nrp_subset_fa_file }); # the sequence file object
+
+    # create a new file with original sequences for those that did not have any Ns replaced
+    # and doctored sequences with Ns replaced for those that did
+    # sequences are named identically and in the same order as in the input fasta file
+    $nrp_fa_file = $out_root . ".nrp.fa";
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "nrp.fa", $nrp_fa_file, 0, $do_keep, sprintf("fasta file with all sequences, %d with Ns replaced", $nseq_replaced));
+    my $fa_FH = $ofile_info_HH{"FH"}{"nrp.fa"};
+    foreach my $seq_name (@seq_name_A) { 
+      if(defined $seq_replaced_H{$seq_name}) { 
+        print $fa_FH $nrp_subset_sqfile->fetch_seq_to_fasta_string($seq_name);
+      }
+      else { 
+        print $fa_FH $sqfile->fetch_seq_to_fasta_string($seq_name);
+      }
+    }
+    close($ofile_info_HH{"FH"}{"nrp.fa"}); 
+
+    # replace main $fa_file we will work with subsequently
+    $fa_file = $nrp_fa_file;
+    $sqfile = undef;
+    $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
+  }
+  else { 
+    # no sequences replaced just use original fasta file
+    $nrp_fa_file = $orig_fa_file;
+    # $fa_file and $sqfile are unchanged
   }
 }
 

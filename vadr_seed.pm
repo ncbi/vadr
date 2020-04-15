@@ -1008,13 +1008,16 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 }
 
 #################################################################
-# Subroutine:  parse_blastn_indel_file_to_get_missing_regions()
+# Subroutine:  parse_blastn_indel_file_and_replace_ns()
 # Incept:      EPN, Tue Apr 14 16:34:50 2020
 #
 # Purpose:     Parse a blastn indel file created by parse_blastn_results,
-#              determine the regions of the sequence and model (blastn subject)
-#              that are not covered by the 'best' non-overlapping set of 
-#              blastn hits.
+#              and store information on blastn hits for each sequence.
+#              Then use that information to:
+#              - determine regions not covered by the blastn alignments
+#              - check if they meet the minimum requirement for replacing Ns
+#              - for those that do, replace Ns and output to a fasta file
+#                with open file handle $ofile_HH{"FH"}{"nrp.sub.fa"}         
 #
 # Arguments: 
 #  $indel_file:      blastn indel file to parse, created by 
@@ -1027,39 +1030,46 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $mdl_idx:         index of $exp_mdl_name in $mdl_info_AHR
 #  $seq_name_AR:     REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:      REF to hash of sequence lengths
+#  $seq_replaced_HR: REF to hash, key is sequence name, value is 1 if this seq was replaced
 #  $nrp_output_HHR:  REF to 2D hash with information to output to .nrp tabular file, ADDED TO HERE
 #  $out_root:        string for naming output files
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
 #                         
-# Returns:    void
+# Returns:    Number of sequences that had Ns replaced and were output to fasta file
 #
 # Dies:       if unable to parse $indel_file
 #
 ################################################################# 
-sub parse_blastn_indel_file_to_get_missing_regions { 
-  my $sub_name = "parse_blastn_indel_file_to_get_missing_regions";
-  my $nargs_exp = 13;
+sub parse_blastn_indel_file_and_replace_ns { 
+  my $sub_name = "parse_blastn_indel_file_and_replace_ns";
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($indel_file, $execs_HR, $cm_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
-      $seq_name_AR, $seq_len_HR, $nrp_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $nrp_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
   my $nminlen_opt   = opt_Get("--nminlen", $opt_HHR);
   my $small_value   = 0.00000001;
   my $nminfract_opt = opt_Get("--nminfract", $opt_HHR) - $small_value;
-
+  my $do_keep       = opt_Get("--keep", $opt_HHR);
   my %blastn_coords_HAH = (); # hash of arrays of hashes 
                            # key is seq name
                            # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
   my @processed_seq_name_A = (); # array of sequences read from the file, in order
 
+  my $fa_FH       = $FH_HR->{"nrp.sub.fa"};
+  if(! defined $fa_FH) { 
+    ofile_FAIL("ERROR in $sub_name, file handle for outputting fasta file with replaced sequences is undefined", 1, $FH_HR);
+  }
+  my $nseq_output = 0; # number of seqs written to the fasta file
+
   # variables related to the model consensus sequence, 
   # these are only filled if nec (if we do a N-stretch-replacment for >= 1 seq)
-  my $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
-  my @mdl_consensus_sqstring_A = (); # filled only if 
+  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  my @mdl_consensus_sqstring_A = (); 
 
   open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
@@ -1261,10 +1271,13 @@ sub parse_blastn_indel_file_to_get_missing_regions {
         ofile_FAIL(sprintf("ERROR in $sub_name, trying to replace at least one region in $seq_name, but failed, unexpected length %d should be $seq_len", length($replaced_sqstring)), 1, $FH_HR);
       }
       printf("SUCCESS for $seq_name, replaced %d regions, and %d Ns\n", $nreplaced_regions, $nreplaced_nts);
+      printf $fa_FH (">$seq_name\n$replaced_sqstring\n");
+      $seq_replaced_HR->{$seq_name} = 1;
+      $nseq_output++;
     }
   }
 
-  return;
+  return $nseq_output;
 }
 
 #################################################################
