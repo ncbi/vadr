@@ -1027,6 +1027,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $mdl_idx:         index of $exp_mdl_name in $mdl_info_AHR
 #  $seq_name_AR:     REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:      REF to hash of sequence lengths
+#  $nrp_output_HHR:  REF to 2D hash with information to output to .nrp tabular file, ADDED TO HERE
 #  $out_root:        string for naming output files
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
@@ -1038,11 +1039,11 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub parse_blastn_indel_file_to_get_missing_regions { 
   my $sub_name = "parse_blastn_indel_file_to_get_missing_regions";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($indel_file, $execs_HR, $cm_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
-      $seq_name_AR, $seq_len_HR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $seq_name_AR, $seq_len_HR, $nrp_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
@@ -1127,6 +1128,16 @@ sub parse_blastn_indel_file_to_get_missing_regions {
 
     utl_AHDump("cur_seq_blastn_coords_AH for $seq_name", \@cur_seq_blastn_coords_AH, *STDOUT);
 
+    # initialize nrp_output_HHR for this sequence, to output later to .nrp file in output_tabular
+    $nrp_output_HHR->{$seq_name}{"ngaps_tot"}     = 0;
+    $nrp_output_HHR->{$seq_name}{"ngaps_int"}     = 0;
+    $nrp_output_HHR->{$seq_name}{"ngaps_rp"}      = 0;
+    $nrp_output_HHR->{$seq_name}{"ngaps_rp_full"} = 0;
+    $nrp_output_HHR->{$seq_name}{"ngaps_rp_part"} = 0;
+    $nrp_output_HHR->{$seq_name}{"nnt_rp_full"}   = 0;
+    $nrp_output_HHR->{$seq_name}{"nnt_rp_part"}   = 0;
+    $nrp_output_HHR->{$seq_name}{"coords"}        = "";
+
     # get start and stop arrays for all seq and mdl coords (remember all strands are +)
     my $ncoords = scalar(@cur_seq_blastn_coords_AH);
     my @seq_start_A = ();
@@ -1160,6 +1171,7 @@ sub parse_blastn_indel_file_to_get_missing_regions {
       push(@missing_seq_stop_A,  $seq_start_A[($i+1)]-1);
       push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
       push(@missing_mdl_stop_A,  $mdl_start_A[($i+1)]-1);
+      $nrp_output_HHR->{$seq_name}{"ngaps_int"}++;
     }
     # check for missing sequence after final aligned region, infer final model position
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
@@ -1171,7 +1183,8 @@ sub parse_blastn_indel_file_to_get_missing_regions {
       push(@missing_mdl_stop_A,  ($mdl_stop_A[$i]+1) + $missing_seq_len); 
     }
     my $nmissing = scalar(@missing_seq_start_A);
-    
+    $nrp_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
+
     # first pass through all missing regions to determine if any should be replaced
     # because they meet minimum replacement thresholds:
     # - length of sequence region and model region must be identical
@@ -1195,6 +1208,9 @@ sub parse_blastn_indel_file_to_get_missing_regions {
           # replace Ns in this region with expected nt
           # 
           # get the model consensus sequence if we don't have it already
+          $nrp_output_HHR->{$seq_name}{"ngaps_rp"}++;
+          $nrp_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
+          $nrp_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ";";
           if(! defined $mdl_consensus_sqstring) { 
             $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $exp_mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
             $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
@@ -1208,10 +1224,13 @@ sub parse_blastn_indel_file_to_get_missing_regions {
             # replace with substr of model cseq
             $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
             $nreplaced_nts += $missing_seq_len;
+            $nrp_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
+            $nrp_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
           }
           else { 
             # region to replace is not entirely Ns, more laborious case
             # replace only Ns with model positions
+            $nrp_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
             if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
               @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
             }
@@ -1220,6 +1239,7 @@ sub parse_blastn_indel_file_to_get_missing_regions {
               if($missing_sqstring_A[$spos] eq "N") { 
                 $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos)];
                 $nreplaced_nts++;
+                $nrp_output_HHR->{$seq_name}{"nnt_rp_part"}++;
               }
               else { 
                 $replaced_sqstring .= $missing_sqstring_A[$spos];
@@ -1243,7 +1263,6 @@ sub parse_blastn_indel_file_to_get_missing_regions {
       printf("SUCCESS for $seq_name, replaced %d regions, and %d Ns\n", $nreplaced_regions, $nreplaced_nts);
     }
   }
-  exit 0;
 
   return;
 }
@@ -1275,7 +1294,7 @@ sub parse_blastn_indel_file_to_get_missing_regions {
 #  $subseq_len_HR:         REF to hash with lengths of subsequences, already filled
 #  $in_stk_file_AR:        REF to array of existing stockholm files, already filled
 #  $out_stk_file_AR:       REF to array of new stockholm files created here, FILLED HERE
-#  $sda_output_HHR:        REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
+#  $sda_output_HHR:        REF to 2D hash with information to output to .sda tabular file, ADDED TO HERE
 #  $alt_seq_instances_HHR: REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
 #  $out_root:              output root for the file names

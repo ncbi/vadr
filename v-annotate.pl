@@ -742,6 +742,9 @@ my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequen
 #######################################################################
 # If --nreplace, pre-processing to identify and replace stretches of Ns
 #######################################################################
+# --nreplace related output for .nrp file
+my %nrp_output_HH = (); # 2D key with info to output related to the  option
+                        # key1: sequence name, key2 various stats (see output_tabular())
 if($do_nreplace) { 
   my %mdl_seq_name_HA = ();
   classification_stage(\%execs_H, "nrp.cls", $cm_file, $blastn_db_file, $fa_file, \%seq_len_H,
@@ -757,10 +760,9 @@ if($do_nreplace) {
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $indel_file = $ofile_info_HH{"fullpath"}{"nrp.cdt.$mdl_name.indel"};
       parse_blastn_indel_file_to_get_missing_regions($indel_file, \%execs_H, $cm_file, \$sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
-                                                     \@seq_name_A, \%seq_len_H, $out_root, \%opt_HH, \%ofile_info_HH);
+                                                     \@seq_name_A, \%seq_len_H, \%nrp_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
-  exit 0;
 }
 
 ####################################
@@ -1104,7 +1106,9 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc"
 if($do_blastn_ali) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-s)");
 }
-
+if($do_nreplace) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "nrp",    $out_root . ".nrp", 1, 1, "replaced stretches of Ns summary file (-s)");
+}
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
@@ -1122,6 +1126,7 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
+                                           ($do_nreplace)   ? \%nrp_output_HH : undef,
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -5541,7 +5546,8 @@ sub alert_instances_check_prevents_annot {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $sda_output_HHR:          REF to 2D hash of -x related results to output, PRE-FILLED, undef unless -x
+#  $sda_output_HHR:          REF to 2D hash of -s related results to output, PRE-FILLED, undef unless -s
+#  $nrp_output_HHR:          REF to 2D hash of --nreplace related results to output, PRE-FILLED, undef unless --nreplace
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -5554,14 +5560,14 @@ sub alert_instances_check_prevents_annot {
 #################################################################
 sub output_tabular { 
   my $sub_name = "output_tabular";
-  my $nargs_exp = 16;
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $sda_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $sda_output_HHR, $nrp_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -5645,6 +5651,14 @@ sub output_tabular {
   @{$head_sda_AA[1]} = ("idx", "name",   "len", "model", "fail",  "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
   my @clj_sda_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
 
+  # optional .nrp file
+  my $do_nrp = opt_Get("--nreplace", $opt_HHR) ? 1 : 0;
+  my @head_nrp_AA = ();
+  my @data_nrp_AA = ();
+  @{$head_nrp_AA[0]} = ("",    "seq",    "seq", "",      "",      "ngaps",  "ngaps", "ngaps", "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced");
+  @{$head_nrp_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",      "int",    "rp", "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M);coords");
+  my @clj_nrp_A      = (1,     1,        0,     1,       1,       0,        0,       0,       0,         0,         0,         0,         0);
+
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
   #printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
@@ -5703,6 +5717,16 @@ sub output_tabular {
     my $sda_3p_seq    = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? $sda_output_HR->{"3p_seq"} : "-";
     my $sda_3p_mdl    = (($do_sda) && (defined $sda_output_HR->{"3p_mdl"}))  ? $sda_output_HR->{"3p_mdl"} : "-";
     my $sda_3p_fract  = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
+    
+    my $nrp_output_HR     = (($do_nrp) && (defined $nrp_output_HHR->{$seq_name}))      ? \%{$nrp_output_HHR->{$seq_name}} : undef;
+    my $nrp_ngaps_tot     = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_tot"}))     ? $nrp_output_HR->{"ngaps_tot"} : "-";
+    my $nrp_ngaps_int     = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_int"}))     ? $nrp_output_HR->{"ngaps_int"} : "-";
+    my $nrp_ngaps_rp      = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_rp"}))      ? $nrp_output_HR->{"ngaps_rp"}  : "-";
+    my $nrp_ngaps_rp_full = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_rp_full"})) ? $nrp_output_HR->{"ngaps_rp_full"} : "-";
+    my $nrp_ngaps_rp_part = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_rp_part"})) ? $nrp_output_HR->{"ngaps_rp_part"} : "-";
+    my $nrp_nnt_rp_full   = (($do_nrp) && (defined $nrp_output_HR->{"nnt_rp_full"}))   ? $nrp_output_HR->{"nnt_rp_full"} : "-";
+    my $nrp_nnt_rp_part   = (($do_nrp) && (defined $nrp_output_HR->{"nnt_rp_part"}))   ? $nrp_output_HR->{"nnt_rp_part"} : "-";
+    my $nrp_coords        = (($do_nrp) && (defined $nrp_output_HR->{"coords"}) && ($nrp_output_HR->{"coords"} ne "")) ? $nrp_output_HR->{"coords"} : "-";
     
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
@@ -5908,6 +5932,13 @@ sub output_tabular {
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
                           $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
     }
+    if($do_nrp) {
+      push(@data_nrp_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+                          $nrp_ngaps_tot, $nrp_ngaps_int, $nrp_ngaps_rp, 
+                          $nrp_ngaps_rp_full, $nrp_ngaps_rp_part,
+                          $nrp_nnt_rp_full, $nrp_nnt_rp_part,
+                          $nrp_coords]);
+    }
   }
 
   # add data to the alert count table
@@ -5989,6 +6020,9 @@ sub output_tabular {
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
   if($do_sda) {
     ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+  }
+  if($do_nrp) {
+    ofile_TableHumanOutput(\@data_nrp_AA, \@head_nrp_AA, \@clj_nrp_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"nrp"}, undef, $FH_HR);
   }
   return $zero_alerts;
 }
