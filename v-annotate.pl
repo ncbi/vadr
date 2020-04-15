@@ -240,7 +240,9 @@ $opt_group_desc_H{++$g} = "options related to replacing completely ambiguous cha
 #        option               type   default                group  requires incompat    preamble-output                                                              help-output    
 opt_Add("--nreplace",     "boolean",      0,                  $g,      undef, undef,    "replace stretches of ambiguous characters with expected nts",               "replace stretches of ambiguous characters with expected nts", \%opt_HH, \@opt_order_A);
 opt_Add("--nminlen",      "integer",      5,                  $g,"--nreplace", undef,   "minimum length subsequence to replace ambiguous chars in is <n>",           "minimum length subsequence to replace ambiguous chars in is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--nminfract",       "real",    0.5,                  $g,"--nreplace", undef,   "minimum fraction of ambig chars in subseq to trigger replacement is <x>",   "minimum fraction of ambig chars in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nminfract",    "real",       0.5,                  $g,"--nreplace", undef,   "minimum fraction of ambig chars in subseq to trigger replacement is <x>",   "minimum fraction of ambig chars in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nfetchrp",     "boolean",      0,                  $g,"--nreplace", undef,   "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
+opt_Add("--ncdsmporig",   "boolean",      0,                  $g,"--nreplace", undef,   "detect CDS and MP alerts in original sequences, not those w/Ns replaced",   "detect CDS and MP alerts in original sequences, not those w/Ns replaced", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -341,6 +343,8 @@ my $options_okay =
                 'nreplace'      => \$GetOptions_H{"--nreplace"},
                 'nminlen=s'     => \$GetOptions_H{"--nminlen"},
                 'nminfract=s'   => \$GetOptions_H{"--nminfract"},
+                'nfetchrp'      => \$GetOptions_H{"--nfetchrp"},
+                'ncdsmporig'    => \$GetOptions_H{"--ncdsmporig"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -421,8 +425,7 @@ if(scalar(@ARGV) != 2) {
   exit(1);
 }
 
-my ($fa_file, $dir) = (@ARGV);
-my $orig_fa_file = $fa_file;
+my ($in_fa_file, $dir) = (@ARGV);
 
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
@@ -491,7 +494,7 @@ my $out_root = $dir . "/" . $dir_tail . ".vadr";
 #############################################
 # output preamble
 my @arg_desc_A = ("sequence file", "output directory");
-my @arg_A      = ($fa_file, $dir);
+my @arg_A      = ($in_fa_file, $dir);
 my %extra_H    = ();
 $extra_H{"\$VADRSCRIPTSDIR"}  = $env_vadr_scripts_dir;
 $extra_H{"\$VADRMODELDIR"}    = $env_vadr_model_dir;
@@ -557,7 +560,7 @@ my $do_nreplace = opt_Get("--nreplace", \%opt_HH);
 ###########################################
 # Validate that we have all the files we need:
 # fasta file
-utl_FileValidateExistsAndNonEmpty($fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+utl_FileValidateExistsAndNonEmpty($in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 my $opt_mdir_used = opt_IsUsed("--mdir", \%opt_HH);
 my $opt_mkey_used = opt_IsUsed("--mkey", \%opt_HH);
@@ -725,8 +728,8 @@ if($do_blastx) {
 my $seqstat_file = $out_root . ".seqstat";
 my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
 my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
-utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-if(-e $fa_file . ".ssi") { unlink $fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
+utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $in_fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+if(-e $in_fa_file . ".ssi") { unlink $in_fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
@@ -739,7 +742,8 @@ my %stg_results_HHH = (); # key 1: sequence name,
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
 
 # open the sequence file into a Bio::Easel::SqFile object
-my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
+my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
+my $nrp_sqfile = undef;
 #######################################################################
 # If --nreplace, pre-processing to identify and replace stretches of Ns
 #######################################################################
@@ -750,10 +754,10 @@ my $nrp_fa_file = undef;
 if($do_nreplace) { 
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
-  classification_stage(\%execs_H, "nrp.cls", $cm_file, $blastn_db_file, $fa_file, \%seq_len_H,
+  classification_stage(\%execs_H, "nrp.cls", $cm_file, $blastn_db_file, $in_fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
-  coverage_determination_stage(\%execs_H, "nrp.cdt", $cm_file, \$sqfile, \@seq_name_A, \%seq_len_H,
+  coverage_determination_stage(\%execs_H, "nrp.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
                                $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_seq_name_HA, undef, \%stg_results_HHH, 
                                $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
@@ -767,7 +771,7 @@ if($do_nreplace) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $indel_file = $ofile_info_HH{"fullpath"}{"nrp.cdt.$mdl_name.indel"};
-      $nseq_replaced += parse_blastn_indel_file_and_replace_ns($indel_file, \%execs_H, $cm_file, \$sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_blastn_indel_file_and_replace_ns($indel_file, \%execs_H, $cm_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                                \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%nrp_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
@@ -787,27 +791,32 @@ if($do_nreplace) {
         print $fa_FH $nrp_subset_sqfile->fetch_seq_to_fasta_string($seq_name);
       }
       else { 
-        print $fa_FH $sqfile->fetch_seq_to_fasta_string($seq_name);
+        print $fa_FH $in_sqfile->fetch_seq_to_fasta_string($seq_name);
       }
     }
     close($ofile_info_HH{"FH"}{"nrp.fa"}); 
 
     # replace main $fa_file we will work with subsequently
-    $fa_file = $nrp_fa_file;
-    $sqfile = undef;
-    $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file });
-  }
-  else { 
-    # no sequences replaced just use original fasta file
-    $nrp_fa_file = $orig_fa_file;
-    # $fa_file and $sqfile are unchanged
+    $nrp_sqfile = Bio::Easel::SqFile->new({ fileLocation => $nrp_fa_file });
   }
 }
 
+# set up sqfile values for analysis, feature fetching and cds and mp alerts
+my $fa_file_for_analysis       = (defined $nrp_fa_file) ? $nrp_fa_file : $in_fa_file; # the fasta file we will analyze
+my $sqfile_for_analysis_R      = (defined $nrp_sqfile)  ? \$nrp_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
+my $sqfile_for_cds_mp_alerts_R = ((defined $nrp_sqfile) && (! opt_Get("--ncdsmporig", \%opt_HH))) ? \$nrp_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
+my $sqfile_for_output_fastas_R = ((defined $nrp_sqfile) && (opt_Get("--nfetchrp", \%opt_HH)))     ? \$nrp_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
+
+# determine if we need to create separate files with cds seqs for the protein validation stage
+# if --nreplace and we replaced at least one sequence, we do (actually, for some combinations of 
+# --ncdsmporig and --nfetchrp we don't need to, but we do anyway because it's more complicated to
+# check than it is worth)
+my $do_separate_cds_fa_files_for_protein_validation = (($do_nreplace) && (defined $nrp_sqfile)) ? 1 : 0; 
+    
 ####################################
 # Classification: cmscan round 1
 ####################################
-classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file, \%seq_len_H,
+classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file_for_analysis, \%seq_len_H,
                      $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                      $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
@@ -815,7 +824,7 @@ classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file, 
 # Coverage determination: cmsearch round 2
 ###########################################
 my %mdl_cls_ct_H = ();  # key is model name $mdl_name, value is number of sequences classified to this model
-coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, \$sqfile, \@seq_name_A, \%seq_len_H,
+coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, $sqfile_for_analysis_R, \@seq_name_A, \%seq_len_H,
                              $qsub_prefix, $qsub_suffix, \@mdl_info_AH, undef, \%mdl_cls_ct_H, \%stg_results_HHH, 
                              $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
@@ -897,7 +906,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign (e.g if $do_blastn_ali))
-    $sqfile->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
+    $$sqfile_for_analysis_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
     ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, $do_keep, "input seqs that match best to model $mdl_name");
     push(@to_remove_A, $cur_mdl_fa_file); 
 
@@ -919,7 +928,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                  \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
-        $sqfile->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
+        $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
         my $subseq_key = $mdl_name . ".a.subseq.fa";
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_cmalign_fa_file, 0, $do_keep, "subsequences to align with cmalign for model $mdl_name (created due to -s)");
         push(@to_remove_A, $ofile_info_HH{"fullpath"}{$subseq_key});
@@ -942,7 +951,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
       my @joined_stk_file_A = ();
-      join_alignments_and_add_unjoinbl_alerts($sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H,
+      join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H,
                                               $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
                                               \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
                                               \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%sda_output_HH,
@@ -1027,7 +1036,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
-    fetch_features_and_add_cds_and_mp_alerts($sqfile, $mdl_name, $mdl_tt, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+    fetch_features_and_add_cds_and_mp_alerts($$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, 
+                                             $do_separate_cds_fa_files_for_protein_validation,
+                                             $mdl_name, $mdl_tt, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                              \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                              \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
@@ -1061,6 +1072,7 @@ if($do_blastx) {
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
         $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with blastx ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
         run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
+                                        $do_separate_cds_fa_files_for_protein_validation,
                                         \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, 
              ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-blastx-fasta"},
@@ -1094,7 +1106,7 @@ if($do_hmmer) {
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
         $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with hmmsearch ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
         run_esl_translate_and_hmmsearch(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                        \%opt_HH, \%ofile_info_HH);
+                                        $do_separate_cds_fa_files_for_protein_validation, \%opt_HH, \%ofile_info_HH);
         parse_hmmer_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                   \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
@@ -3448,19 +3460,23 @@ sub cmalign_store_overflow {
 #            and fetch the corrected feature.
 #
 # Arguments:
-#  $sqfile:                 REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
-#  $mdl_name:               name of model these sequences were assigned to
-#  $mdl_tt:                 the translation table ('1' for standard)
-#  $seq_name_AR:            REF to array of sequence names
-#  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
-#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
-#  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
-#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
-#  $sgm_results_HAHR:       REF to model segment results HAH, pre-filled
-#  $ftr_results_HAHR:       REF to feature results HAH, added to here
-#  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:         REF to the 2D hash of output file information
+#  $sqfile_for_cds_mp_alerts:  REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#                              that we'll fetch CDS and mat_peptides from and analyze for possible alerts 
+#  $sqfile_for_output_fastas:  REF to Bio::Easel::SqFile object, open sequence file containing the *original* 
+#                              that we'll fetch feature sequences from to output to per-feature fasta files
+#  $do_separate_cds_fa_files:  '1' to output two sets of cds files, one with fetched features from $sqfile_for_output_fastas
+#                              and one for the protein validation stage fetched from $sqfile_for_cds_mp_alerts
+#  $mdl_tt:                    the translation table ('1' for standard)
+#  $seq_name_AR:               REF to array of sequence names
+#  $seq_len_HR:                REF to hash of sequence lengths, PRE-FILLED
+#  $ftr_info_AHR:              REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_AHR:              REF to hash of arrays with information on the model segments, PRE-FILLED
+#  $alt_info_HHR:              REF to the alert info hash of arrays, PRE-FILLED
+#  $sgm_results_HAHR:          REF to model segment results HAH, pre-filled
+#  $ftr_results_HAHR:          REF to feature results HAH, added to here
+#  $alt_ftr_instances_HHHR:    REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:            REF to the 2D hash of output file information
 #             
 # Returns:  void
 # 
@@ -3469,18 +3485,22 @@ sub cmalign_store_overflow {
 #################################################################
 sub fetch_features_and_add_cds_and_mp_alerts { 
   my $sub_name = "fetch_features_and_add_cds_and_mp_alerts";
-  my $nargs_exp = 13;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile, $mdl_name, $mdl_tt, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, 
+      $do_separate_cds_fa_files, $mdl_name, $mdl_tt, 
+      $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+      $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
-
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
   my $atg_only = opt_Get("--atgonly", $opt_HHR);
+  my $do_keep  = opt_Get("--keep", $opt_HHR);
 
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
@@ -3500,7 +3520,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $ftr_is_cds       = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
       my $ftr_is_mp        = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
       my $ftr_type_idx     = $ftr_fileroot_A[$ftr_idx];
-      my $ftr_sqstring = "";
+      my $ftr_sqstring_alt = ""; # fetched from sqfile_for_cds_mp_alerts
+      my $ftr_sqstring_out = ""; # fetched from sqfile_for_output_fastas
       my $ftr_seq_name = undef;
       my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
       $ftr2org_pos_A[0] = -1; # invalid
@@ -3509,7 +3530,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $ftr_start  = undef; # predicted start for the feature
       my $ftr_stop   = undef; # predicted stop  for the feature
       my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
-      my $ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx;
+      my $ftr_ofile_key    = $mdl_name . ".pfa." . $ftr_idx;
+      my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
       %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
@@ -3568,9 +3590,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             $ftr_strand = "!";
           }
           
-          # update $ftr_sqstring, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
+          # update $ftr_sqstring_alt, $ftr_sqstring_out, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
           my $sgm_len = abs($stop - $start) + 1;
-          $ftr_sqstring .= $sqfile->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          $ftr_sqstring_alt .= $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          $ftr_sqstring_out .= $sqfile_for_output_fastas->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
           if(! defined $ftr_seq_name) { 
             $ftr_seq_name = $seq_name . "/" . $ftr_type_idx . "/"; 
           }
@@ -3599,15 +3622,23 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
           ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
         }
-        print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . seq_SqstringAddNewlines($ftr_sqstring, 60) . "\n"); 
+        print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
+                                                           seq_SqstringAddNewlines($ftr_sqstring_out, 60) . "\n"); 
+        if($do_separate_cds_fa_files) { 
+          if(! exists $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key}) { 
+            ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $pv_ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".pv.fa", 0, $do_keep, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs for protein validation");
+          }
+          print { $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
+                                                                seq_SqstringAddNewlines($ftr_sqstring_alt, 60) . "\n"); 
+        }
         
         # deal with mutstart for all CDS that are not 5' truncated
         if(! $ftr_is_5trunc) { 
           # feature is not 5' truncated, look for a start codon if it's a CDS
           if($ftr_is_cds) { 
-            if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring, $mdl_tt, $atg_only, $FH_HR))) { 
+            if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
               $alt_str_H{"mutstart"} = sprintf("%s starting at position %d on %s strand is not a valid start", 
-                                               substr($ftr_sqstring, 0, 3), 
+                                               substr($ftr_sqstring_alt, 0, 3), 
                                                $ftr2org_pos_A[1], $ftr_strand);
             }
           }
@@ -3616,9 +3647,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         if((! $ftr_is_3trunc) && ($ftr_is_5trunc)) { 
           # feature is not 3' truncated, but it is 3' truncated, look for a stop codon if it's a CDS
           if($ftr_is_cds) { 
-            if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring, $mdl_tt, $FH_HR))) { 
+            if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR))) { 
               $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
-                                               substr($ftr_sqstring, -3, 3), 
+                                               substr($ftr_sqstring_alt, -3, 3), 
                                                $ftr2org_pos_A[$ftr_len], $ftr_strand);
             }
           }
@@ -3635,31 +3666,31 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             # if CDS: look for all valid in-frame stops 
             if($ftr_is_cds) { 
               my @ftr_nxt_stp_A = ();
-              sqstring_find_stops($ftr_sqstring, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
+              sqstring_find_stops($ftr_sqstring_alt, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'mutendcd' alert if not
               if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
                 $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
-                                                 substr($ftr_sqstring, -3, 3),
+                                                 substr($ftr_sqstring_alt, -3, 3),
                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
               }
               if($ftr_nxt_stp_A[1] != $ftr_len) { 
                 # first stop codon 3' of $ftr_start is not $ftr_stop
                 # We will need to add an alert, (exactly) one of:
-                # 'mutendex': no stop exists in $ftr_sqstring, but one does 3' of end of $ftr_sqstring
-                # 'mutendns': no stop exists in $ftr_sqstring, and none exist 3' of end of $ftr_sqstring either
-                # 'cdsstopn': an early stop exists in $ftr_sqstring
+                # 'mutendex': no stop exists in $ftr_sqstring_alt, but one does 3' of end of $ftr_sqstring_alt
+                # 'mutendns': no stop exists in $ftr_sqstring_alt, and none exist 3' of end of $ftr_sqstring_alt either
+                # 'cdsstopn': an early stop exists in $ftr_sqstring_alt
                 if($ftr_nxt_stp_A[1] == 0) { 
-                  # there are no valid in-frame stops in $ftr_sqstring
+                  # there are no valid in-frame stops in $ftr_sqstring_alt
                   # we have a 'mutendns' or 'mutendex' alert, to find out which 
                   # we need to fetch the sequence ending at $fstop to the end of the sequence 
                   if($ftr_stop < $seq_len) { 
                     # we have some sequence left 3' of ftr_stop
                     my $ext_sqstring = undef;
                     if($ftr_strand eq "+") { 
-                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                     }
                     else { # negative strand
-                      $ext_sqstring = $sqfile->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
                     }
                     my @ext_nxt_stp_A = ();
                     sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
@@ -3679,7 +3710,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                   }
                 } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
                 else { 
-                  # there is an early stop (cdsstopn) in $ftr_sqstring
+                  # there is an early stop (cdsstopn) in $ftr_sqstring_alt
                   if($ftr_nxt_stp_A[1] > $ftr_len) { 
                     # this shouldn't happen, it means there's a bug in sqstring_find_stops()
                     ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
@@ -4367,13 +4398,14 @@ sub add_protein_validation_alerts {
 #             and summarize the output with parse_blast.pl.
 #
 # Arguments: 
-#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#                      executable paths
-#  $out_root:          output root for the file names
-#  $mdl_info_HR:       REF to hash of model info
-#  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
-#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#  $execs_HR:                  REF to a hash with "blastx" and "parse_blastx.pl""
+#                              executable paths
+#  $out_root:                  output root for the file names
+#  $mdl_info_HR:               REF to hash of model info
+#  $ftr_info_AHR:              REF to hash of arrays with information on the features, PRE-FILLED
+#  $do_separate_cds_fa_files:  '1' if we output a separate file for the protein validation stage
+#  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:            REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
 #
@@ -4382,10 +4414,10 @@ sub add_protein_validation_alerts {
 ################################################################# 
 sub run_blastx_and_summarize_output {
   my $sub_name = "run_blastx_and_summarize_output";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $do_separate_cds_fa_files, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -4400,7 +4432,7 @@ sub run_blastx_and_summarize_output {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $blastx_query_fa_file = $out_root . "." . $mdl_name . ".pv.blastx.fa";
-  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
+  make_protein_validation_fasta_file($blastx_query_fa_file, $mdl_name,  1, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv-blastx-fasta", $blastx_query_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
   
   # run blastx 
@@ -7557,13 +7589,14 @@ sub get_3p_most_sgm_idx_with_results {
 #             against the resulting protein sequences.
 #
 # Arguments: 
-#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#                      executable paths
-#  $out_root:          output root for the file names
-#  $mdl_info_HR:       REF to hash of model info
-#  $ftr_info_AHR:      REF to hash of arrays with information on the features, PRE-FILLED
-#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#  $execs_HR:                 REF to a hash with "blastx" and "parse_blastx.pl""
+#                             executable paths
+#  $out_root:                 output root for the file names
+#  $mdl_info_HR:              REF to hash of model info
+#  $ftr_info_AHR:             REF to hash of arrays with information on the features, PRE-FILLED
+#  $do_separate_cds_fa_files: '1' if we output a separate file for the protein validation stage
+#  $opt_HHR:                  REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:           REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
 #
@@ -7572,10 +7605,10 @@ sub get_3p_most_sgm_idx_with_results {
 ################################################################# 
 sub run_esl_translate_and_hmmsearch { 
   my $sub_name = "run_esl_translate_and_hmmsearch";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $do_separate_cds_fa_files, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
@@ -7589,7 +7622,7 @@ sub run_esl_translate_and_hmmsearch {
   # affect the output and mess up our parsing if they are too long)
   # AND all the predicted CDS sequences
   my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
-  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
+  make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
@@ -7938,12 +7971,13 @@ sub convert_esl_translate_to_blastx_frame() {
 #             difficult if descriptions are included.
 #
 # Arguments: 
-#  $out_fa_file:    name of output fasta file to create
-#  $mdl_name:       name of model
-#  $do_blastx:      '1' if we are going to run blastx, else '0'
-#  $ftr_info_AHR:   REF to array of hashes with feature info 
-#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#  $out_fa_file:              name of output fasta file to create
+#  $mdl_name:                 name of model
+#  $do_blastx:                '1' if we are going to run blastx, else '0'
+#  $do_separate_cds_fa_files: '1' if we output a separate file for the protein validation stage
+#  $ftr_info_AHR:             REF to array of hashes with feature info 
+#  $opt_HHR:                  REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:           REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    void
 #
@@ -7952,10 +7986,10 @@ sub convert_esl_translate_to_blastx_frame() {
 ################################################################# 
 sub make_protein_validation_fasta_file() {
   my $sub_name = "make_protein_validation_fasta_file";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_fa_file, $mdl_name, $do_blastx, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($out_fa_file, $mdl_name, $do_blastx, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
@@ -7972,6 +8006,9 @@ sub make_protein_validation_fasta_file() {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
       my $ofile_info_key = $mdl_name . ".pfa." . $ftr_idx;
+      if($do_separate_cds_fa_files) { 
+        $ofile_info_key .= ".pv";
+      }
       if(exists $ofile_info_HH{"fullpath"}{$ofile_info_key}) { 
         utl_RunCommand("cat " . $ofile_info_HH{"fullpath"}{$ofile_info_key} . " >> $out_fa_file", opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
       }
@@ -8254,7 +8291,6 @@ sub run_cmemit_c {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  print("in $sub_name\n");
   my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
   my $cseq_fa_key  = $mdl_name . ".cseq.fa";
   my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
@@ -8275,7 +8311,6 @@ sub run_cmemit_c {
     $ret_cseq .= $seq_line;
   }
   
-  print("leaving $sub_name\n");
   return $ret_cseq;
 }
 

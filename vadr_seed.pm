@@ -90,7 +90,7 @@ sub run_blastn_and_summarize_output {
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $start_secs = ofile_OutputProgressPrior(sprintf("Classifying sequences with blastn ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-  my $blastn_out_file = $out_root . "$stg_key.blastn.out";
+  my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
   my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
@@ -1136,8 +1136,6 @@ sub parse_blastn_indel_file_and_replace_ns {
       $a->{"seq_start"} <=> $b->{"seq_start"} 
     } @cur_seq_blastn_coords_AH;
 
-    utl_AHDump("cur_seq_blastn_coords_AH for $seq_name", \@cur_seq_blastn_coords_AH, *STDOUT);
-
     # initialize nrp_output_HHR for this sequence, to output later to .nrp file in output_tabular
     $nrp_output_HHR->{$seq_name}{"ngaps_tot"}     = 0;
     $nrp_output_HHR->{$seq_name}{"ngaps_int"}     = 0;
@@ -1167,7 +1165,7 @@ sub parse_blastn_indel_file_and_replace_ns {
     my @missing_mdl_stop_A  = ();
     # check for missing sequence before first aligned region, infer first model position
     if($seq_start_A[0] != 1) { 
-      printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
+      # printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
       push(@missing_seq_start_A, 1);
       push(@missing_seq_stop_A,  $seq_start_A[0]-1);
       my $missing_seq_len = ($seq_start_A[0]-1) - 1 + 1;
@@ -1176,7 +1174,7 @@ sub parse_blastn_indel_file_and_replace_ns {
     }
     # check for missing sequence in between each aligned region
     for($i = 0; $i < ($ncoords-1); $i++) { 
-      printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1);
+      # printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1);
       push(@missing_seq_start_A, $seq_stop_A[$i]+1);
       push(@missing_seq_stop_A,  $seq_start_A[($i+1)]-1);
       push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
@@ -1185,7 +1183,7 @@ sub parse_blastn_indel_file_and_replace_ns {
     }
     # check for missing sequence after final aligned region, infer final model position
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
-      printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)]+1, $seq_len);
+      # printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)]+1, $seq_len);
       push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
       push(@missing_seq_stop_A,  $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
@@ -1208,7 +1206,6 @@ sub parse_blastn_indel_file_and_replace_ns {
     for($i = 0; $i < $nmissing; $i++) {
       my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
       my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
-      printf("CONSIDERING missing %3d from %10d to %10d\n", $i, $missing_seq_start_A[$i], $missing_seq_stop_A[$i]);
       if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $nminlen_opt)) { 
         my $missing_sqstring = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $missing_seq_start_A[$i], $missing_seq_stop_A[$i], 0); # 0: do not reverse complement
         $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
@@ -1270,7 +1267,6 @@ sub parse_blastn_indel_file_and_replace_ns {
       if(length($replaced_sqstring) != $seq_len) { 
         ofile_FAIL(sprintf("ERROR in $sub_name, trying to replace at least one region in $seq_name, but failed, unexpected length %d should be $seq_len", length($replaced_sqstring)), 1, $FH_HR);
       }
-      printf("SUCCESS for $seq_name, replaced %d regions, and %d Ns\n", $nreplaced_regions, $nreplaced_nts);
       printf $fa_FH (">$seq_name\n$replaced_sqstring\n");
       $seq_replaced_HR->{$seq_name} = 1;
       $nseq_output++;
