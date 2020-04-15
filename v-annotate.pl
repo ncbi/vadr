@@ -110,6 +110,7 @@ my $env_vadr_bioeasel_dir = utl_DirEnvVarValid("VADRBIOEASELDIR");
 
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}           = $env_vadr_infernal_dir . "/cmalign";
+$execs_H{"cmemit"}            = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmfetch"}           = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmscan"}            = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}          = $env_vadr_infernal_dir . "/cmsearch";
@@ -755,8 +756,8 @@ if($do_nreplace) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $indel_file = $ofile_info_HH{"fullpath"}{"nrp.cdt.$mdl_name.indel"};
-      parse_blastn_indel_file_to_get_missing_regions($indel_file, \$sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                                     $mdl_name, \%opt_HH, \%ofile_info_HH);
+      parse_blastn_indel_file_to_get_missing_regions($indel_file, \%execs_H, $cm_file, \$sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+                                                     \@seq_name_A, \%seq_len_H, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
   exit 0;
@@ -8141,13 +8142,68 @@ sub run_esl_alimerge {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   my $esl_alimerge_opts = "";
-  if($do_keep) { 
+  if($do_small) { 
     $esl_alimerge_opts .= "--small";
   }
   my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file";
   utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   return;
+}
+
+#################################################################
+# Subroutine:  run_cmemit_c()
+# Incept:      EPN, Wed Apr 15 09:31:54 2020
+#
+# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
+#             and return the consensus sequence.
+#
+# Arguments: 
+#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
+#  $cm_file:         CM file to fetch from
+#  $mdl_name:        name of CM file to fetch
+#  $out_root:        root name for output file names
+#  $opt_HHR:         REF to options 2D hash
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If cmemit fails or we can't read any sequence from 
+#             the output fasta file
+#
+################################################################# 
+sub run_cmemit_c { 
+  my $sub_name = "run_cmemit_c";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $cm_file, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  print("in $sub_name\n");
+  my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
+  my $cseq_fa_key  = $mdl_name . ".cseq.fa";
+  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), $do_keep, $FH_HR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $cseq_fa_key, $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
+
+  # fetch the sequence
+  my @file_lines_A = ();
+  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
+  my $ret_cseq = "";
+  my $nlines = scalar(@file_lines_A);
+  if($nlines <= 1) { 
+    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
+  }
+  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
+    my $seq_line = $file_lines_A[$i];
+    chomp $seq_line;
+    $ret_cseq .= $seq_line;
+  }
+  
+  print("leaving $sub_name\n");
+  return $ret_cseq;
 }
 
 #################################################################

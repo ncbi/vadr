@@ -1019,10 +1019,15 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 # Arguments: 
 #  $indel_file:      blastn indel file to parse, created by 
 #                    parse_blastn_results() for a single model 
+#  $execs_HR:        REF to hash with paths to executables 
+#  $cm_file:         path to main cm file
 #  $sqfile_R:        REF to Bio::Easel::SqFile object from main fasta file
+#  $mdl_info_AHR:    REF to model info array of hashes, possibly added to here 
+#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
+#  $mdl_idx:         index of $exp_mdl_name in $mdl_info_AHR
 #  $seq_name_AR:     REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:      REF to hash of sequence lengths
-#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
+#  $out_root:        string for naming output files
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
 #                         
@@ -1033,20 +1038,27 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub parse_blastn_indel_file_to_get_missing_regions { 
   my $sub_name = "parse_blastn_indel_file_to_get_missing_regions";
-  my $nargs_exp = 7;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($indel_file, $sqfile_R, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($indel_file, $execs_HR, $cm_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
+      $seq_name_AR, $seq_len_HR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
   my $nminlen_opt   = opt_Get("--nminlen", $opt_HHR);
-  my $nminfract_opt = opt_Get("--nminfract", $opt_HHR);
+  my $small_value   = 0.00000001;
+  my $nminfract_opt = opt_Get("--nminfract", $opt_HHR) - $small_value;
 
   my %blastn_coords_HAH = (); # hash of arrays of hashes 
                            # key is seq name
                            # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
   my @processed_seq_name_A = (); # array of sequences read from the file, in order
+
+  # variables related to the model consensus sequence, 
+  # these are only filled if nec (if we do a N-stretch-replacment for >= 1 seq)
+  my $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  my @mdl_consensus_sqstring_A = (); # filled only if 
 
   open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
@@ -1128,37 +1140,107 @@ sub parse_blastn_indel_file_to_get_missing_regions {
     }
 
     # determine missing regions
-    my @missing_start_A = ();
-    my @missing_stop_A  = ();
+    my @missing_seq_start_A = ();
+    my @missing_seq_stop_A  = ();
+    my @missing_mdl_start_A = ();
+    my @missing_mdl_stop_A  = ();
+    # check for missing sequence before first aligned region, infer first model position
     if($seq_start_A[0] != 1) { 
       printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
-      push(@missing_start_A, 1);
-      push(@missing_stop_A,  $seq_start_A[0]-1);
+      push(@missing_seq_start_A, 1);
+      push(@missing_seq_stop_A,  $seq_start_A[0]-1);
+      my $missing_seq_len = ($seq_start_A[0]-1) - 1 + 1;
+      push(@missing_mdl_start_A, ($mdl_start_A[0]-1) - $missing_seq_len);
+      push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
     }
+    # check for missing sequence in between each aligned region
     for($i = 0; $i < ($ncoords-1); $i++) { 
       printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1);
-      push(@missing_start_A, $seq_stop_A[$i]+1);
-      push(@missing_stop_A,  $seq_start_A[($i+1)]-1);
+      push(@missing_seq_start_A, $seq_stop_A[$i]+1);
+      push(@missing_seq_stop_A,  $seq_start_A[($i+1)]-1);
+      push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
+      push(@missing_mdl_stop_A,  $mdl_start_A[($i+1)]-1);
     }
+    # check for missing sequence after final aligned region, infer final model position
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
       printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)]+1, $seq_len);
-      push(@missing_start_A, $seq_stop_A[($ncoords-1)]+1);
-      push(@missing_stop_A,  $seq_len);
+      push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
+      push(@missing_seq_stop_A,  $seq_len);
+      my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
+      push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
+      push(@missing_mdl_stop_A,  ($mdl_stop_A[$i]+1) + $missing_seq_len); 
     }
-    my $nmissing = scalar(@missing_start_A);
+    my $nmissing = scalar(@missing_seq_start_A);
     
     # first pass through all missing regions to determine if any should be replaced
-    # because they meet minimum replacement thresholds for length and fraction of 
-    # ambiguous nts
+    # because they meet minimum replacement thresholds:
+    # - length of sequence region and model region must be identical
+    #   (otherwise we wouldn't know what nt to replace Ns with)
+    # - length of sequence region is at or above minimum from --nminlen
+    # - fraction of Ns in sequence region is at or above minimum from --nminfract
+    my $replaced_sqstring = "";
+    my $original_seq_start = 1; # updated to position after last replaced string when we do a replacement
+    my $nreplaced_regions = 0;
+    my $nreplaced_nts = 0;
     for($i = 0; $i < $nmissing; $i++) {
-      my $missing_len = $missing_stop_A[$i] - $missing_start_A[$i] + 1;
-      if($missing_len >= $nminlen_opt) { 
-        my $missing_sqstring = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $missing_start_A[$i], $missing_stop_A[$i], 0); # 0: do not reverse complement
+      my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
+      my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
+      printf("CONSIDERING missing %3d from %10d to %10d\n", $i, $missing_seq_start_A[$i], $missing_seq_stop_A[$i]);
+      if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $nminlen_opt)) { 
+        my $missing_sqstring = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $missing_seq_start_A[$i], $missing_seq_stop_A[$i], 0); # 0: do not reverse complement
         $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
-        my $ncount = $missing_sqstring =~ tr/N//;
-        my $nfract = $ncount / $missing_len;
-        printf("missing %3d: fambig %5.3f, nambig: %5d, string: $missing_sqstring\n", $i, $nfract, $ncount);
+        my $count_n = $missing_sqstring =~ tr/N//;
+        my $fract_n = $count_n / $missing_seq_len;
+        if($fract_n >= $nminfract_opt) { 
+          # replace Ns in this region with expected nt
+          # 
+          # get the model consensus sequence if we don't have it already
+          if(! defined $mdl_consensus_sqstring) { 
+            $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $exp_mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
+            $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+          }
+          # fill in non-replaced region since previous replacement 
+          # (or 5' chunk up to replacement start if this is the first replacement, 
+          #  in this case $original_seq_start will be its initialized value of 1)
+          $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
+          if($count_n eq $missing_seq_len) { 
+            # region to replace is entirely Ns, easy case
+            # replace with substr of model cseq
+            $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
+            $nreplaced_nts += $missing_seq_len;
+          }
+          else { 
+            # region to replace is not entirely Ns, more laborious case
+            # replace only Ns with model positions
+            if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
+              @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
+            }
+            my @missing_sqstring_A = split("", $missing_sqstring);
+            for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
+              if($missing_sqstring_A[$spos] eq "N") { 
+                $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos)];
+                $nreplaced_nts++;
+              }
+              else { 
+                $replaced_sqstring .= $missing_sqstring_A[$spos];
+              }
+            }
+          }
+          $original_seq_start = $missing_seq_stop_A[$i] + 1;
+          $nreplaced_regions++;
+        } # end of 'if($fract_n >= $nminfract_opt)
       }
+    }
+    # if we have generated a replacement sqstring, we need to finish it off if necessary
+    # with final region of the sequence after the final replaced region
+    if($replaced_sqstring ne "") { 
+      if($original_seq_start <= $seq_len) { 
+        $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $seq_len, 0); # 0: do not reverse complement
+      }
+      if(length($replaced_sqstring) != $seq_len) { 
+        ofile_FAIL(sprintf("ERROR in $sub_name, trying to replace at least one region in $seq_name, but failed, unexpected length %d should be $seq_len", length($replaced_sqstring)), 1, $FH_HR);
+      }
+      printf("SUCCESS for $seq_name, replaced %d regions, and %d Ns\n", $nreplaced_regions, $nreplaced_nts);
     }
   }
   exit 0;
