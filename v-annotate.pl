@@ -235,11 +235,11 @@ opt_Add("--blastnsc",        "real",   50.0,                  $g,       "-s", un
 opt_Add("--overhang",     "integer",    100,                  $g,       "-s", undef,     "set length of nt overhang for subseqs to align to <n>",            "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--merge",        "boolean",      0,                  $g,       "-s", undef,     "merge all single sequence joined alignments into one",             "merge all single sequence joined alignments into one", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options related to replacing ambiguous characters (e.g. Ns) with expected nucleotides";
+$opt_group_desc_H{++$g} = "options related to replacing completely ambiguous characters (Ns) with expected nucleotides";
 #        option               type   default                group  requires incompat    preamble-output                                                              help-output    
-opt_Add("--areplace",     "boolean",      0,                  $g,      undef, undef,    "replace stretches of ambiguous characters with expected nts",               "replace stretches of ambiguous characters with expected nts", \%opt_HH, \@opt_order_A);
-opt_Add("--aminlen",      "integer",      5,                  $g,"--areplace", undef,   "minimum length subsequence to replace ambiguous chars in is <n>",           "minimum length subsequence to replace ambiguous chars in is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--aminfract",       "real",    0.5,                  $g,"--areplace", undef,   "minimum fraction of ambig chars in subseq to trigger replacement is <x>",   "minimum fraction of ambig chars in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nreplace",     "boolean",      0,                  $g,      undef, undef,    "replace stretches of ambiguous characters with expected nts",               "replace stretches of ambiguous characters with expected nts", \%opt_HH, \@opt_order_A);
+opt_Add("--nminlen",      "integer",      5,                  $g,"--nreplace", undef,   "minimum length subsequence to replace ambiguous chars in is <n>",           "minimum length subsequence to replace ambiguous chars in is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nminfract",       "real",    0.5,                  $g,"--nreplace", undef,   "minimum fraction of ambig chars in subseq to trigger replacement is <x>",   "minimum fraction of ambig chars in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -337,9 +337,9 @@ my $options_okay =
                 'overhang=s'    => \$GetOptions_H{"--overhang"},
                 'merge'         => \$GetOptions_H{"--merge"},
 # options related to parallelization
-                'areplace'      => \$GetOptions_H{"--areplace"},
-                'aminlen=s'     => \$GetOptions_H{"--aminlen"},
-                'aminfract=s'   => \$GetOptions_H{"--aminfract"},
+                'nreplace'      => \$GetOptions_H{"--nreplace"},
+                'nminlen=s'     => \$GetOptions_H{"--nminlen"},
+                'nminfract=s'   => \$GetOptions_H{"--nminfract"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -550,7 +550,7 @@ my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log
 
 my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
 my $do_keep     = opt_Get("--keep", \%opt_HH);
-my $do_areplace = opt_Get("--areplace", \%opt_HH);
+my $do_nreplace = opt_Get("--nreplace", \%opt_HH);
 
 ###########################################
 # Validate that we have all the files we need:
@@ -738,16 +738,28 @@ my %stg_results_HHH = (); # key 1: sequence name,
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file }); # the sequence file object
-##########################################################################################
-# If --areplace, pre-processing to identify and replace stretches of ambiguous nucleotides
-##########################################################################################
-if($do_areplace) { 
-  classification_stage(\%execs_H, "rab.cls", $cm_file, $blastn_db_file, $fa_file, \%seq_len_H,
+#######################################################################
+# If --nreplace, pre-processing to identify and replace stretches of Ns
+#######################################################################
+if($do_nreplace) { 
+  my %mdl_seq_name_HA = ();
+  classification_stage(\%execs_H, "nrp.cls", $cm_file, $blastn_db_file, $fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
-  coverage_determination_stage(\%execs_H, "rab.cdt", $cm_file, \$sqfile, \@seq_name_A, \%seq_len_H,
-                               $qsub_prefix, $qsub_suffix, \@mdl_info_AH, undef, \%stg_results_HHH, 
+  coverage_determination_stage(\%execs_H, "nrp.cdt", $cm_file, \$sqfile, \@seq_name_A, \%seq_len_H,
+                               $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_seq_name_HA, undef, \%stg_results_HHH, 
                                $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+  # for each model with seqs to align to, create the sequence file and run cmalign
+  my $mdl_name;
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    if(defined $mdl_seq_name_HA{$mdl_name}) { 
+      my $indel_file = $ofile_info_HH{"fullpath"}{"nrp.cdt.$mdl_name.indel"};
+      parse_blastn_indel_file_to_get_missing_regions($indel_file, \$sqfile, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                                     $mdl_name, \%opt_HH, \%ofile_info_HH);
+    }
+  }
+  exit 0;
 }
 
 ####################################
@@ -762,7 +774,7 @@ classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file, 
 ###########################################
 my %mdl_cls_ct_H = ();  # key is model name $mdl_name, value is number of sequences classified to this model
 coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, \$sqfile, \@seq_name_A, \%seq_len_H,
-                             $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_cls_ct_H, \%stg_results_HHH, 
+                             $qsub_prefix, $qsub_suffix, \@mdl_info_AH, undef, \%mdl_cls_ct_H, \%stg_results_HHH, 
                              $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
 
@@ -1279,8 +1291,8 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $opt_str:         option string for cmsearch run
 #  $out_root:        string for naming output files
-#  $stg_key:         stage key, "rab.cls" or "std.cls" for classification (cmscan) ,
-#                    or "rab.cdt" or "std.cdt" for coverage determination (cmsearch)
+#  $stg_key:         stage key, "nrp.cls" or "std.cls" for classification (cmscan) ,
+#                    or "nrp.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $nseq:            number of sequences in $seq_file
 #  $tot_len_nt:      total length of all nucleotides in $seq_file
 #  $progress_w:      width for outputProgressPrior output
@@ -1306,9 +1318,9 @@ sub cmsearch_or_cmscan_wrapper {
   my $do_parallel = opt_Get("-p",     $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
 
-  if(($stg_key ne "rab.cls") && ($stg_key ne "rab.cdt") && 
+  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
 
   # set up output file names
@@ -1341,7 +1353,7 @@ sub cmsearch_or_cmscan_wrapper {
     
   # determine description of the runs we are about to do
   my $desc = "";
-  if(($stg_key eq "rab.cls") || ($stg_key eq "std.cls")) { 
+  if(($stg_key eq "nrp.cls") || ($stg_key eq "std.cls")) { 
     $desc = ($do_parallel) ? 
         "Submitting $nseq_files cmscan classification job(s) to the farm" : 
         sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
@@ -1486,8 +1498,8 @@ sub cmsearch_or_cmscan_run {
 #
 # Arguments: 
 #  $tblout_file:   name of sorted tblout file to parse
-#  $stg_key:       stage key, "rab.cls" or "std.cls" for classification (cmscan) ,
-#                  or "rab.cdt" or "std.cdt" for coverage determination (cmsearch)
+#  $stg_key:       stage key, "nrp.cls" or "std.cls" for classification (cmscan) ,
+#                  or "nrp.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $mdl_info_AHR:  ref to model info array of hashes
 #  $results_HHHR:  ref to results 3D hash
 #  $opt_HHR:       ref to options 2D hash
@@ -1505,12 +1517,10 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
   
   my ($tblout_file, $stg_key, $mdl_info_AHR, $results_HHHR, $opt_HHR, $FH_HR) = @_;
 
-  if(($stg_key ne "rab.cls") && ($stg_key ne "rab.cdt") && 
+  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
-
-  print("HEYA in $sub_name, stg_key is $stg_key\n");
 
   # determine if we have an expected group and subgroup
   # (--subgroup requires --group)
@@ -1523,7 +1533,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
   my %mdl_group_H    = ();
   my %mdl_subgroup_H = ();
   my $nmdl = scalar(@{$mdl_info_AHR});
-  if(($stg_key eq "rab.cls") || ($stg_key eq "std.cls")) { 
+  if(($stg_key eq "nrp.cls") || ($stg_key eq "std.cls")) { 
     for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
       my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
       if(defined $mdl_info_AHR->[$mdl_idx]{"group"}) { 
@@ -1562,7 +1572,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
       $s_to   = undef;
       $strand = undef;
       my @el_A = split(/\s+/, $line);
-      if(($stg_key eq "rab.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
+      if(($stg_key eq "nrp.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
         #modelname sequence                      score  start    end strand bounds ovp      seqlen
         ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
         #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
@@ -1578,10 +1588,10 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
 
         # determine if we are going to store this hit, and to what 2D keys 
         # (the following code only works because we know we are sorted by score)
-        my $is_1   = 0; # should we store this in $results_HHHR->{$seq}{"{rab,std}.cls.1"} ? 
-        my $is_2   = 0; # should we store this in $results_HHHR->{$seq}{"{rab,std}.cls.2"} ? 
-        my $is_eg  = 0; # should we store this in $results_HHHR->{$seq}{"{rab,std}.cls.eg"} ? 
-        my $is_esg = 0; # should we store this in $results_HHHR->{$seq}{"{rab,std}.cls.esg"} ? 
+        my $is_1   = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.1"} ? 
+        my $is_2   = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.2"} ? 
+        my $is_eg  = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.eg"} ? 
+        my $is_esg = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.esg"} ? 
 
         # store hit as cls.1 only if it's the first hit seen to any model, or it's an additional hit to the r1.1 model
         # SHOULD WE ONLY BE STORING TOP HIT IN CLASSIFICATION?
@@ -1626,7 +1636,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
         if($is_eg)  { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
         if($is_esg) { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
       }
-      else { # $stg_key eq "rab.cdt" or "std.cdt": coverage determination, cmsearch --tblout output
+      else { # $stg_key eq "nrp.cdt" or "std.cdt": coverage determination, cmsearch --tblout output
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
         ##--------------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
         #gi|1215708385|gb|KY594653.1| -         NC_039477            -         hmm     5089     5389        1      301      +     -    6 0.52   0.0  268.1   3.4e-85 !   Norovirus GII.4 isolate Hu/GII/CR7410/CHN/2014 VP1 gene, partial cds
@@ -2067,7 +2077,7 @@ sub add_classification_alerts {
 # Arguments: 
 #  $seq_name_AR:           ref to sequence names
 #  $seq_len_HR:            ref to hash of sequence lengths
-#  $stg_key:               stage key, "rab.cdt" or "std.cdt" if $alt_seq_instances_HHR is undef
+#  $stg_key:               stage key, "nrp.cdt" or "std.cdt" if $alt_seq_instances_HHR is undef
 #                          or "std.aln" if $alt_seq_instances_HHR is defined
 #  $stg_results_HHHR:      ref to 3D hash of classification results, PRE-FILLED
 #  $cls_output_HHR:        ref to 2D hash of classification results to output, PRE-FILLED
@@ -2078,7 +2088,7 @@ sub add_classification_alerts {
 #                          undef to use stg_results_HHHR->{}{"cls.1"} # round 1 search
 #  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
 #  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
-#  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE, can be undef if $stg_key eq "rab.cdt"
+#  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE, can be undef if $stg_key eq "nrp.cdt"
 #  $seq2mdl_HR:            ref to hash of classified model per sequence, FILLED HERE
 #  $FH_HR:                 ref to hash of file handles
 #
@@ -2098,11 +2108,11 @@ sub populate_per_model_data_structures_given_classification_results {
   # determine what stage results we are using and check that combo of 
   # stage key and defined/undefined of %{$alt_seq_instances_HHR} is valid
   my $cls_2d_key = undef;
-  if(($stg_key eq "rab.cdt") || ($stg_key eq "std.cdt")) { 
+  if(($stg_key eq "nrp.cdt") || ($stg_key eq "std.cdt")) { 
     if(defined $alt_seq_instances_HHR) { 
-      ofile_FAIL("ERROR in $sub_name, stage key is rab.cdt or std.cdt but alt_seq_instances_HHR is not defined", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, stage key is nrp.cdt or std.cdt but alt_seq_instances_HHR is not defined", 1, $FH_HR);
     }
-    $cls_2d_key = ($stg_key eq "rab.cdt") ? "rab.cls.1" : "std.cls.1";
+    $cls_2d_key = ($stg_key eq "nrp.cdt") ? "nrp.cls.1" : "std.cls.1";
   }
   elsif($stg_key eq "std.aln") { 
     if(! defined $alt_seq_instances_HHR) { 
@@ -2111,13 +2121,11 @@ sub populate_per_model_data_structures_given_classification_results {
     $cls_2d_key = "std.cdt.bs";
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cdt, std.cdt or std.aln", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cdt, std.cdt or std.aln", 1, $FH_HR);
   }
-  if(($stg_key ne "rab.cdt") && (! defined $mdl_ct_HR)) { 
-    ofile_FAIL("ERROR in $sub_name, stage key is not rab.cdt but mdl_ct_HR is not defined", 1, $FH_HR);
+  if(($stg_key ne "nrp.cdt") && (! defined $mdl_ct_HR)) { 
+    ofile_FAIL("ERROR in $sub_name, stage key is not nrp.cdt but mdl_ct_HR is not defined", 1, $FH_HR);
   }
-  printf("HEYA in $sub_name, stg_key: $stg_key, cls_2d_key: $cls_2d_key\n");
-  utl_HHHDump("stg_results_HHHR", $stg_results_HHHR, *STDOUT);
 
   my $nseq = scalar(@{$seq_name_AR});
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -2129,7 +2137,7 @@ sub populate_per_model_data_structures_given_classification_results {
     if(defined $mdl_name) { 
       # determine if we are going to add this sequence to our per-model hashes, depending on what round
       my $add_seq = 0;
-      if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "rab.cdt.1")) { 
+      if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "nrp.cdt.1")) { 
         $add_seq = 1; # always add seq after classification round
       }
       else { 
@@ -8151,7 +8159,7 @@ sub run_esl_alimerge {
 #
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#  $stg_key:           stage key, "rab.cls" or "std.cls"
+#  $stg_key:           stage key, "nrp.cls" or "std.cls"
 #  $cm_file:           path to the CM file 
 #  $blastn_db_file:    path to blastn db
 #  $fa_file:           fasta file
@@ -8182,12 +8190,12 @@ sub classification_stage {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($stg_key ne "rab.cls") && ($stg_key ne "std.cls")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls or std.cls", 1, $FH_HR);
+  if(($stg_key ne "nrp.cls") && ($stg_key ne "std.cls")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls or std.cls", 1, $FH_HR);
   }
 
   my $nseq       = scalar(keys $seq_len_HR);
-  my $do_blastn  = ((opt_Get("-s", $opt_HHR)) || ($stg_key eq "rab.cls")) ? 1 : 0;
+  my $do_blastn  = ((opt_Get("-s", $opt_HHR)) || ($stg_key eq "nrp.cls")) ? 1 : 0;
   if($do_blastn) { # -s: use blastn for classification
     run_blastn_and_summarize_output($execs_HR, $blastn_db_file, $fa_file, $out_root, $stg_key,
                                     $nseq, $progress_w, $opt_HHR, $ofile_info_HHR);
@@ -8241,7 +8249,7 @@ sub classification_stage {
 #
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#  $stg_key:           stage key, "rab.cdt" or "std.cdt"
+#  $stg_key:           stage key, "nrp.cdt" or "std.cdt"
 #  $cm_file:           path to the CM file 
 #  $sqfile_R:          REF to Bio::Easel::SqFile object from main fasta file
 #  $seq_name_AR:       REF to array of sequence names, pre-filled
@@ -8249,7 +8257,8 @@ sub classification_stage {
 #  $qsub_prefix:       prefix for qsub calls
 #  $qsub_suffix:       suffix for qsub calls
 #  $mdl_info_AHR:      REF to array of hashes with model info     
-#  $mdl_cls_ct_HR:     REF to hash of counts of seqs assigned to each model, can be undef if stage_key is "rab.cdt"
+#  $mdl_seq_name_HAR:  REF to hash of arrays of sequences per model, can be undef if stage_key is "std.cdt"
+#  $mdl_cls_ct_HR:     REF to hash of counts of seqs assigned to each model, can be undef if stage_key is "nrp.cdt"
 #  $stg_results_HHHR:  REF to 3D hash of classification results, PRE-FILLED
 #  $out_root:          root name for output file names
 #  $progress_w:        width for outputProgressPrior output
@@ -8259,22 +8268,28 @@ sub classification_stage {
 #
 # Returns:    void
 #
-# Dies:       If esl-alimerge fails.
+# Dies:       If $stg_key is unrecognized
 #
 ################################################################# 
 sub coverage_determination_stage { 
   my $sub_name = "coverage_determination_stage";
-  my $nargs_exp = 16;
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($execs_HR, $stg_key, $cm_file, $sqfile_R, $seq_name_AR, $seq_len_HR, 
-      $qsub_prefix, $qsub_suffix, $mdl_info_AHR, $mdl_cls_ct_HR, $stg_results_HHHR, 
+      $qsub_prefix, $qsub_suffix, $mdl_info_AHR, $mdl_seq_name_HAR, $mdl_cls_ct_HR, $stg_results_HHHR, 
       $out_root, $progress_w, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($stg_key ne "rab.cdt") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cdt or std.cdt", 1, $FH_HR);
+  if(($stg_key ne "nrp.cdt") && ($stg_key ne "std.cdt")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cdt or std.cdt", 1, $FH_HR);
+  }
+  if(($stg_key eq "std.cdt") && (! defined $mdl_cls_ct_HR)) { 
+    ofile_FAIL("ERROR in $sub_name, stage key: $stg_key, but mdl_cls_ct_HR is undef", 1, $FH_HR);
+  }
+  if(($stg_key eq "nrp.cdt") && (! defined $mdl_seq_name_HAR)) { 
+    ofile_FAIL("ERROR in $sub_name, stage key: $stg_key, but mdl_seq_name_HAR is undef", 1, $FH_HR);
   }
 
   my $nmdl = scalar(@{$mdl_info_AHR});
@@ -8282,27 +8297,26 @@ sub coverage_determination_stage {
   my $seq_name;            # a sequence name
   my @tblout_key_A  = ();  # array of round 2 search tblout keys in %ofile_info_HH
   my @tblout_file_A = ();  # array of round 2 search tblout files 
-  my $do_blastn     = (opt_Get("-s", $opt_HHR) || ($stg_key eq "rab"));
+  my $do_blastn     = (opt_Get("-s", $opt_HHR) || ($stg_key eq "nrp"));
   my $nseq          = scalar(@{$seq_name_AR});
 
   # fill per-model data structures based on classification reesults
   my %mdl_seq_name_HA  = ();  # key is model name $mdl_name, array is of seq names classified to model $mdl_name 
   my %mdl_seq_len_H    = ();  # key is model name $mdl_name, value is summed length of all seqs in @{$mdl_seq_HA{$mdl_name}
   my %seq2mdl_H        = ();  # key is sequence name $seq_name, value is $mdl_name of model this sequence is classified to
+  my $local_mdl_seq_name_HAR = (defined $mdl_seq_name_HAR) ? $mdl_seq_name_HAR : \%mdl_seq_name_HA;  # to deal with fact that mdl_seq_name_HAR may be undef
   populate_per_model_data_structures_given_classification_results($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, undef, undef, undef, 
-                                                                  \%mdl_seq_name_HA, \%mdl_seq_len_H, $mdl_cls_ct_HR, \%seq2mdl_H, $FH_HR);
+                                                                  $local_mdl_seq_name_HAR, \%mdl_seq_len_H, $mdl_cls_ct_HR, \%seq2mdl_H, $FH_HR);
   
-
   # for each model, fetch the sequences classified to it 
   my $nmdl_cdt = 0; # number of models coverage determination stage is called for
   my @cls_mdl_name_A = (); # array of model names that have >=1 sequences classified to them
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-    if(defined $mdl_seq_name_HA{$mdl_name}) { 
-      printf("HEYA $mdl_name\n");
+    if(defined $local_mdl_seq_name_HAR->{$mdl_name}) { 
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
       push(@{$to_remove_AR}, $mdl_fa_file);
-      $$sqfile_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $mdl_fa_file);
+      $$sqfile_R->fetch_seqs_given_names(\@{$local_mdl_seq_name_HAR->{$mdl_name}}, 60, $mdl_fa_file);
       push(@cls_mdl_name_A, $mdl_name);
       $nmdl_cdt++;
     }
@@ -8315,7 +8329,7 @@ sub coverage_determination_stage {
   #                    files
   if($do_blastn) { 
     $start_secs = ofile_OutputProgressPrior(sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-    my $blastn_summary_key = ($stg_key eq "rab.cdt") ? "rab.cls.blastn.summary" : "std.cls.blastn.summary";
+    my $blastn_summary_key = ($stg_key eq "nrp.cdt") ? "nrp.cls.blastn.summary" : "std.cls.blastn.summary";
     parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
                          \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     # keep track of the tblout output files:
@@ -8336,7 +8350,7 @@ sub coverage_determination_stage {
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
       cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
                                  $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
-                                 $out_root, $stg_key, scalar(@{$mdl_seq_name_HA{$mdl_name}}), 
+                                 $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
                                  $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
       my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
       my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_or_cmscan_wrapper()

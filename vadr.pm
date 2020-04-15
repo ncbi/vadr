@@ -2750,9 +2750,10 @@ sub vdr_CoordsCheckIfSpans {
 #  $coords_tok2: coordinate token 2
 #  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Number of positions of overap between <$coords1_tok>
-#            and <$coords2_tok> on the same strand.
-#            '0' if no overlap or the two tokens are on opposite strands.
+# Returns:  Two values:
+#           $noverlap:    Number of nucleotides of overlap between <$coords_tok1>
+#                         and <$coords_tok2> on the same strand, 0 if none
+#           $overlap_reg: region of overlap, "" if none
 #
 # Dies: if unable to parse $coords_tok1 or $coords_tok2
 #
@@ -2770,7 +2771,7 @@ sub vdr_CoordsSegmentOverlap {
   my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($coords_tok2, $FH_HR);
 
   if($strand1 ne $strand2) { # strand mismatch
-    return 0;
+    return (0, "");
   }
 
   if($strand1 eq "-") { # $strand2 must be "-" too

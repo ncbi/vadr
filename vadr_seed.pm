@@ -62,7 +62,7 @@ require "vadr.pm";
 #  $db_file:         name of blast db file to use
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $out_root:        string for naming output files
-#  $stg_key:         stage key, "rab.cls" or "std.cls"
+#  $stg_key:         stage key, "nrp.cls" or "std.cls"
 #  $nseq:            number of sequences in $seq_file
 #  $progress_w:      width for outputProgressPrior output
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
@@ -84,8 +84,8 @@ sub run_blastn_and_summarize_output {
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $log_FH = $FH_HR->{"log"}; # for convenience
 
-  if(($stg_key ne "rab.cls") && ($stg_key ne "std.cls")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls or std.cls", 1, $FH_HR);
+  if(($stg_key ne "nrp.cls") && ($stg_key ne "std.cls")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls or std.cls", 1, $FH_HR);
   }
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
@@ -127,7 +127,7 @@ sub run_blastn_and_summarize_output {
 #
 #             Output mode 1: 1 file, produced if $seq2mdl_HR is undef
 #
-#             "blastn.{rab.cls,std.cls}.pretblout" file: cmscan --trmF3 output
+#             "blastn.{nrp.cls,std.cls}.pretblout" file: cmscan --trmF3 output
 #             format file with each hit on a separate line and
 #             individual hit scores reported for each hit. This is
 #             later processed by blastn_pretblout_to_tblout() to sum
@@ -138,12 +138,12 @@ sub run_blastn_and_summarize_output {
 #             Output mode 2: 2 files produced per model with >= 1 matching
 #             sequence, produced if $seq2mdl_HR is defined.
 #
-#             "search.{rab.cls,std.cls,rab.cdt,std.cdt}.<mdlname>.tblout":
+#             "search.{nrp.cls,std.cls,nrp.cdt,std.cdt}.<mdlname>.tblout":
 #             cmsearch --tblout format file with each hit for a
 #             sequence on + strand that is classified to model
 #             <mdlname>.
 #
-#             "blastn.{rab.cls,std.cls,rab.cdt,std.cdt}.<mdlname>.indel.txt":
+#             "blastn.{nrp.cls,std.cls,nrp.cdt,std.cdt}.<mdlname>.indel.txt":
 #             one line per sequence with all inserts and deletes in
 #             all blastn hit alignments for each sequence that is
 #             classified to <mdlname> on strand +.
@@ -157,8 +157,8 @@ sub run_blastn_and_summarize_output {
 #  $mdl_name_AR:         REF to array of model names that are keys in
 #                        %{$seq2mdl_HR}, can be undef if $seq2mdl_HR is undef
 #  $out_root:            output root for the file names
-#  $stg_key:             stage key, "rab.cls" or "std.cls" for classification
-#                        or "rab.cdt" or "std.cdt" for coverage determination
+#  $stg_key:             stage key, "nrp.cls" or "std.cls" for classification
+#                        or "nrp.cdt" or "std.cdt" for coverage determination
 #  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -177,11 +177,11 @@ sub parse_blastn_results {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($stg_key ne "rab.cls") && ($stg_key ne "rab.cdt") && 
+  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
-  if((($stg_key eq "rab.cdt") || ($stg_key eq "std.cdt")) && 
+  if((($stg_key eq "nrp.cdt") || ($stg_key eq "std.cdt")) && 
      (! defined $seq2mdl_HR)) { 
     ofile_FAIL("ERROR in $sub_name, stage key is $stg_key but seq2mdl_HR is undef", 1, $FH_HR);
   }
@@ -542,8 +542,8 @@ sub parse_blastn_results {
 #                          value: summed bit score for all hits for this model/sequence/strand trio
 #                          NOTE: all values in this 3D hash are set to 0. by this subroutine!
 #  $out_root:              output root for the file names
-#  $stg_key:               stage key, "rab.cls" or "std.cls" for classification (cmscan) ,
-#                          or "rab.cdt" or "std.cdt" for coverage determination (cmsearch)
+#  $stg_key:               stage key, "nrp.cls" or "std.cls" for classification (cmscan) ,
+#                          or "nrp.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -562,9 +562,9 @@ sub blastn_pretblout_to_tblout {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_keep = opt_Get("--keep", $opt_HHR);
 
-  if(($stg_key ne "rab.cls") && ($stg_key ne "rab.cdt") && 
+  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rab.cls, rab.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
 
   ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "$stg_key.tblout", $out_root . ".$stg_key.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
@@ -873,7 +873,7 @@ sub parse_blastn_indel_token {
 #  $subseq_AAR:      REF to 2D array with subseq info, FILLED HERE
 #  $ugp_mdl_HR:      REF to hash, key is <seq_name>, value is mdl coords
 #                    segment of max ungapped blast aln, FILLED HERE
-#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is mdl coords
+#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is seq coords
 #                    segment of max ungapped blast aln, FILLED HERE
 #  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
 #                    value is array of names of subsequences pertaining to
@@ -1003,6 +1003,165 @@ sub parse_blastn_indel_file_to_get_subseq_info {
       ofile_FAIL("ERROR in $sub_name, processed indel strings for more sequences than expected", 1, $FH_HR);
     }
   }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  parse_blastn_indel_file_to_get_missing_regions()
+# Incept:      EPN, Tue Apr 14 16:34:50 2020
+#
+# Purpose:     Parse a blastn indel file created by parse_blastn_results,
+#              determine the regions of the sequence and model (blastn subject)
+#              that are not covered by the 'best' non-overlapping set of 
+#              blastn hits.
+#
+# Arguments: 
+#  $indel_file:      blastn indel file to parse, created by 
+#                    parse_blastn_results() for a single model 
+#  $sqfile_R:        REF to Bio::Easel::SqFile object from main fasta file
+#  $seq_name_AR:     REF to array of sequences we want to parse indel info for
+#  $seq_len_HR:      REF to hash of sequence lengths
+#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#                         
+# Returns:    void
+#
+# Dies:       if unable to parse $indel_file
+#
+################################################################# 
+sub parse_blastn_indel_file_to_get_missing_regions { 
+  my $sub_name = "parse_blastn_indel_file_to_get_missing_regions";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($indel_file, $sqfile_R, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR  = $ofile_info_HHR->{"FH"};
+
+  my $nminlen_opt   = opt_Get("--nminlen", $opt_HHR);
+  my $nminfract_opt = opt_Get("--nminfract", $opt_HHR);
+
+  my %blastn_coords_HAH = (); # hash of arrays of hashes 
+                           # key is seq name
+                           # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
+  my @processed_seq_name_A = (); # array of sequences read from the file, in order
+
+  open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line !~ m/^#/) { 
+      chomp $line;
+      #model_name seq_name    mdl_coords mdl_len seq_coords seq_len  ins_str                 del_str
+      #NC_039477  AB541310.1  5..7513:+  7535    1..7509:+  7509     Q41:S46+1;Q107:S111+1;  Q37:S41-1;Q113:S116-1;
+      chomp $line;
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) != 8) {
+        ofile_FAIL("ERROR in $sub_name, unable to parse indel line, unexpected number of tokens:\n$line\n", 1, $FH_HR);
+      }
+      my ($mdl_name, $seq_name, $mdl_coords, $mdl_len, $seq_coords, $seq_len, $ins_str, $del_str) = (@el_A);
+      if(! defined $seq_len_HR->{$seq_name}) {
+        ofile_FAIL("ERROR in $sub_name, unrecognized sequence $seq_name on line:\n$line\n", 1, $FH_HR);
+      }          
+      if($mdl_name ne $exp_mdl_name) { 
+        ofile_FAIL("ERROR in $sub_name, unexpected model $mdl_name (expected $exp_mdl_name) on line:\n$line\n", 1, $FH_HR);
+      }          
+      # sanity check, seq_coords and mdl_coords should be a single segment on positive strand
+      my $seq_start = undef;
+      if($seq_coords =~ /^(\d+)\.\.\d+\:\+$/) { 
+        $seq_start = $1;
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, read sequence coords $seq_coords that is unexpectedly not a single segment on the positive strand; line:\n$line", 1, $FH_HR);
+      }
+      if($mdl_coords !~ /^\d+\.\.\d+\:\+$/) { 
+        ofile_FAIL("ERROR in $sub_name, read model coords $mdl_coords that is unexpectedly not a single segment on the positive strand; line:\n$line", 1, $FH_HR);
+      }
+
+      # add this hit to the growing model and seq coords strings if
+      # it does not overlap with any of the segments so far added
+      my $found_overlap = 0;
+      my $ncoords = (defined $blastn_coords_HAH{$seq_name}) ? scalar(@{$blastn_coords_HAH{$seq_name}}) : 0;
+      if(defined $blastn_coords_HAH{$seq_name}) { 
+        for(my $i = 0; $i < $ncoords; $i++) { 
+          my ($noverlap, undef) = vdr_CoordsSegmentOverlap($seq_coords, $blastn_coords_HAH{$seq_name}[$i]{"seq_coords"}, $FH_HR);
+          if($noverlap > 0) { 
+            $found_overlap = 1;
+            $i = $ncoords; # breaks loop
+          }
+        }
+      }
+      else { 
+        @{$blastn_coords_HAH{$seq_name}} = ();
+        push(@processed_seq_name_A, $seq_name);
+      }
+      if(! $found_overlap) {
+        %{$blastn_coords_HAH{$seq_name}[$ncoords]} = ();
+        $blastn_coords_HAH{$seq_name}[$ncoords]{"seq_coords"} = $seq_coords;
+        $blastn_coords_HAH{$seq_name}[$ncoords]{"mdl_coords"} = $mdl_coords;
+        $blastn_coords_HAH{$seq_name}[$ncoords]{"seq_start"}  = $seq_start;
+      }
+    }
+  }
+  close(IN);
+
+  # for each sequence, determine the regions that are not covered by the set of blastn hits
+  foreach my $seq_name (@processed_seq_name_A) { 
+    my $seq_len = $seq_len_HR->{$seq_name};
+    my @cur_seq_blastn_coords_AH = @{$blastn_coords_HAH{$seq_name}};
+    @cur_seq_blastn_coords_AH = sort { 
+      $a->{"seq_start"} <=> $b->{"seq_start"} 
+    } @cur_seq_blastn_coords_AH;
+
+    utl_AHDump("cur_seq_blastn_coords_AH for $seq_name", \@cur_seq_blastn_coords_AH, *STDOUT);
+
+    # get start and stop arrays for all seq and mdl coords (remember all strands are +)
+    my $ncoords = scalar(@cur_seq_blastn_coords_AH);
+    my @seq_start_A = ();
+    my @mdl_start_A = ();
+    my @seq_stop_A = ();
+    my @mdl_stop_A = ();
+    my $i;
+    for($i = 0; $i < $ncoords; $i++) { 
+      ($seq_start_A[$i], $seq_stop_A[$i], undef) = vdr_CoordsSegmentParse($cur_seq_blastn_coords_AH[$i]{"seq_coords"}, $FH_HR);
+      ($mdl_start_A[$i], $mdl_stop_A[$i], undef) = vdr_CoordsSegmentParse($cur_seq_blastn_coords_AH[$i]{"mdl_coords"}, $FH_HR);
+    }
+
+    # determine missing regions
+    my @missing_start_A = ();
+    my @missing_stop_A  = ();
+    if($seq_start_A[0] != 1) { 
+      printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
+      push(@missing_start_A, 1);
+      push(@missing_stop_A,  $seq_start_A[0]-1);
+    }
+    for($i = 0; $i < ($ncoords-1); $i++) { 
+      printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1);
+      push(@missing_start_A, $seq_stop_A[$i]+1);
+      push(@missing_stop_A,  $seq_start_A[($i+1)]-1);
+    }
+    if($seq_stop_A[($ncoords-1)] != $seq_len) { 
+      printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)]+1, $seq_len);
+      push(@missing_start_A, $seq_stop_A[($ncoords-1)]+1);
+      push(@missing_stop_A,  $seq_len);
+    }
+    my $nmissing = scalar(@missing_start_A);
+    
+    # first pass through all missing regions to determine if any should be replaced
+    # because they meet minimum replacement thresholds for length and fraction of 
+    # ambiguous nts
+    for($i = 0; $i < $nmissing; $i++) {
+      my $missing_len = $missing_stop_A[$i] - $missing_start_A[$i] + 1;
+      if($missing_len >= $nminlen_opt) { 
+        my $missing_sqstring = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $missing_start_A[$i], $missing_stop_A[$i], 0); # 0: do not reverse complement
+        $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
+        my $ncount = $missing_sqstring =~ tr/N//;
+        my $nfract = $ncount / $missing_len;
+        printf("missing %3d: fambig %5.3f, nambig: %5d, string: $missing_sqstring\n", $i, $nfract, $ncount);
+      }
+    }
+  }
+  exit 0;
 
   return;
 }
