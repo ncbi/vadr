@@ -550,7 +550,7 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $progress_w = 83; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = 87; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
@@ -1408,23 +1408,29 @@ sub cmsearch_or_cmscan_wrapper {
     $seq_file_A[0] = $seq_file;
   }
     
-  # determine description of the runs we are about to do
-  my $desc = "";
-  if(($stg_key eq "nrp.cls") || ($stg_key eq "std.cls")) { 
-    $desc = ($do_parallel) ? 
+  # determine description of the stage we are about to do
+  my $stg_desc = "";
+  if($stg_key eq "nrp.cls") { 
+    $stg_desc = ($do_parallel) ? 
+        sprintf("Preprocessing for N replacement: cmscan classification job farm submission ($mdl_name: $nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
+        sprintf("Preprocessing for N replacement: cmscan classification ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
+  }
+  elsif($stg_key eq "std.cls") { 
+    $stg_desc = ($do_parallel) ? 
         "Submitting $nseq_files cmscan classification job(s) to the farm" : 
         sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
-  else { 
-    if($do_parallel) { 
-      $desc = sprintf("Submitting $nseq_files cmsearch coverage determination job(s) ($mdl_name: $nseq seq%s) to the farm", 
-                      ($nseq > 1) ? "s" : "");
-    }
-    else { 
-      $desc = sprintf("Determining sequence coverage ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
-    }
+  elsif($stg_key eq "nrp.cdt") {
+    $stg_desc = ($do_parallel) ? 
+        sprintf("Preprocessing for N replacement: cmsearch coverage determination job farm submission ($mdl_name: $nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
+        sprintf("Preprocessing for N replacement: cmsearch coverage determination ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
-  my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
+  else { 
+    $stg_desc = ($do_parallel) ? 
+        sprintf("Submitting $nseq_files cmsearch coverage determination job(s) ($mdl_name: $nseq seq%s) to the farm", ($nseq > 1) ? "s" : "") :
+        sprintf("Determining sequence coverage ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
+  }
+  my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   # run cmsearch or cmscan
   my $out_key;
   my @out_keys_A = ("stdout", "err", "tblout");
@@ -2463,18 +2469,18 @@ sub cmalign_wrapper_helper {
 
   # determine description of the runs we are about to do, 
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
-  my $desc = "";
+  my $stg_desc = "";
   if($do_parallel) { 
-    $desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq seq%s) to the farm%s", 
+    $stg_desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq seq%s) to the farm%s", 
                     ($nseq > 1) ? "s" : "",
                     ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   else { 
-    $desc = sprintf("Aligning sequences ($mdl_name: $nseq seq%s)%s", 
+    $stg_desc = sprintf("Aligning sequences ($mdl_name: $nseq seq%s)%s", 
                     ($nseq > 1) ? "s" : "",
                     ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
-  my $start_secs = ofile_OutputProgressPrior($desc, $progress_w, $log_FH, *STDOUT);
+  my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
 
   my $key; # a file key
   my $s;   # counter over sequence files
@@ -5726,8 +5732,8 @@ sub output_tabular {
   my $do_nrp = opt_Get("--nreplace", $opt_HHR) ? 1 : 0;
   my @head_nrp_AA = ();
   my @data_nrp_AA = ();
-  @{$head_nrp_AA[0]} = ("",    "seq",    "seq", "",      "",      "ngaps",  "ngaps", "ngaps", "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced");
-  @{$head_nrp_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",      "int",    "rp", "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M);coords");
+  @{$head_nrp_AA[0]} = ("",    "seq",    "seq", "",      "",      "ngaps",  "ngaps", "ngaps", "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
+  @{$head_nrp_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",      "int",    "rp", "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
   my @clj_nrp_A      = (1,     1,        0,     1,       1,       0,        0,       0,       0,         0,         0,         0,         0);
 
   #printf $out_FH ("#sequence: sequence name\n");
@@ -8492,7 +8498,14 @@ sub coverage_determination_stage {
   #                    specific tblout files to use instead of cmsearch tblout
   #                    files
   if($do_blastn) { 
-    $start_secs = ofile_OutputProgressPrior(sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
+    my $stg_desc = "";
+    if($stg_key eq "nrp.cdt") { 
+      $stg_desc = sprintf("Preprocessing for N replacement: coverage determination from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+    }
+    else { # stg_key eq "std.cdt"
+      $stg_desc = sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+    }
+    $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
     my $blastn_summary_key = ($stg_key eq "nrp.cdt") ? "nrp.cls.blastn.summary" : "std.cls.blastn.summary";
     parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
                          \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);

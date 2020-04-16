@@ -89,7 +89,10 @@ sub run_blastn_and_summarize_output {
   }
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
-  my $start_secs = ofile_OutputProgressPrior(sprintf("Classifying sequences with blastn ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
+  my $stg_desc = ($stg_key eq "nrp.cls") ? 
+      sprintf("Preprocessing for N replacement: blastn classification ($nseq seq%s)", (($nseq > 1) ? "s" : "")) :
+      sprintf("Classifying sequences with blastn ($nseq seq%s)", (($nseq > 1) ? "s" : ""));
+  my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
   my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
@@ -1217,7 +1220,8 @@ sub parse_blastn_indel_file_and_replace_ns {
           # get the model consensus sequence if we don't have it already
           $nrp_output_HHR->{$seq_name}{"ngaps_rp"}++;
           $nrp_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
-          $nrp_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ";";
+          $nrp_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
+          $nrp_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
           if(! defined $mdl_consensus_sqstring) { 
             $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $exp_mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
             $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
@@ -1244,7 +1248,8 @@ sub parse_blastn_indel_file_and_replace_ns {
             my @missing_sqstring_A = split("", $missing_sqstring);
             for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
               if($missing_sqstring_A[$spos] eq "N") { 
-                $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos)];
+                printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
+                $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
                 $nreplaced_nts++;
                 $nrp_output_HHR->{$seq_name}{"nnt_rp_part"}++;
               }
