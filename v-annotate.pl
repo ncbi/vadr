@@ -951,10 +951,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
       my @joined_stk_file_A = ();
-      join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H,
-                                              $mdl_name, $mdl_info_AH[$mdl_idx]{"length"},
-                                              \%ugp_mdl_H, \%ugp_seq_H, \%seq2subseq_HA, \%subseq_len_H,
-                                              \@{$stk_file_HA{$mdl_name}}, \@joined_stk_file_A, \%sda_output_HH,
+      join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
+                                              \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
+                                              \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
+                                              \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
+                                              \@joined_stk_file_A, \%sda_output_HH,
                                               \%alt_seq_instances_HH, \%alt_info_HH,
                                               $out_root, \%opt_HH, \%ofile_info_HH);
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));

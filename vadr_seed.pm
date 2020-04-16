@@ -1248,7 +1248,7 @@ sub parse_blastn_indel_file_and_replace_ns {
             my @missing_sqstring_A = split("", $missing_sqstring);
             for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
               if($missing_sqstring_A[$spos] eq "N") { 
-                printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
+                # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
                 $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
                 $nreplaced_nts++;
                 $nrp_output_HHR->{$seq_name}{"nnt_rp_part"}++;
@@ -1294,10 +1294,12 @@ sub parse_blastn_indel_file_and_replace_ns {
 #
 # Arguments: 
 #  $sqfile:                REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $execs_HR:              REF to hash with paths to executables (for cmemit)
+#  $cm_file:               path to the main CM file
 #  $seq_name_AR:           REF to array of original (non subseq) sequence names
 #  $seq_len_HR:            REF to hash of sequence lengths
-#  $mdl_name:              name of model these sequences were assigned to
-#  $mdl_len:               length of model these sequences were assigned to
+#  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
+#  $mdl_idx:               index of model in @{mdl_info_AHR} these sequences were assigned to
 #  $ugp_mdl_HR:            REF to hash, key is <seq_name>, value is mdl coords
 #                          segment of max ungapped blast aln, already filled
 #  $ugp_seq_HR:            REF to hash, key is <seq_name>, value is mdl coords
@@ -1322,12 +1324,14 @@ sub parse_blastn_indel_file_and_replace_ns {
 ################################################################# 
 sub join_alignments_and_add_unjoinbl_alerts { 
   my $sub_name = "join_alignments_and_add_unjoinbl_alerts";
-  my $nargs_exp = 17;
+  my $nargs_exp = 19;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($sqfile, $seq_name_AR, $seq_len_HR, $mdl_name, $mdl_len,
-      $ugp_mdl_HR, $ugp_seq_HR, $seq2subseq_HAR, $subseq_len_HR,
-      $in_stk_file_AR, $out_stk_file_AR, $sda_output_HHR, 
+  my ($sqfile, $execs_HR, $cm_file, 
+      $seq_name_AR, $seq_len_HR, 
+      $mdl_info_AHR, $mdl_idx, $ugp_mdl_HR, $ugp_seq_HR, 
+      $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
+      $out_stk_file_AR, $sda_output_HHR, 
       $alt_seq_instances_HHR, $alt_info_HHR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -1335,6 +1339,9 @@ sub join_alignments_and_add_unjoinbl_alerts {
   
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $do_keep = opt_Get("--keep", $opt_HHR);
+  my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+  my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
+  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
 
   # Open all of the input stk files and fetch the aligned sequence strings for all sequences
   my $ninstk = scalar(@{$in_stk_file_AR});
@@ -1597,10 +1604,14 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # in case 3, it will return the blastn alignment and construct the
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
+      if(! defined $mdl_consensus_sqstring) { 
+        $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
+        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+      }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
           join_alignments_helper($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
                                  $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp,
-                                 $ugp_seq_HR->{$seq_name}, $ugp_mdl_HR->{$seq_name}, $ugp_seq,
+                                 $ugp_seq_HR->{$seq_name}, $ugp_mdl_HR->{$seq_name}, $ugp_seq, $mdl_consensus_sqstring, 
                                  $seq_len, $mdl_len, $ofile_info_HHR);
       if(! defined $ali_seq_line) {
         # this means something went wrong when we tried to join the alignments,
@@ -1688,6 +1699,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #  $ugp_seq_coords:         ungapped region sequence coords string
 #  $ugp_mdl_coords:         ungapped region model coords string
 #  $ugp_seq:                ungapped region sequence string
+#  $mdl_consensus_sqstring: the model consensus sequence, as a string
 #  $seq_len:                total sequence length
 #  $mdl_len:                total model length
 #  $ofile_info_HHR:         REF to 2D hash of output file information, ADDED TO HERE
@@ -1709,12 +1721,12 @@ sub join_alignments_and_add_unjoinbl_alerts {
 ################################################################# 
 sub join_alignments_helper { 
   my $sub_name = "join_alignments_helper";
-  my $nargs_exp = 16;
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
       $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp, 
-      $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq,
+      $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq, $mdl_consensus_sqstring, 
       $seq_len, $mdl_len, $ofile_info_HHR) = @_;
 
   my $FH_HR  = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef;
@@ -1777,14 +1789,14 @@ sub join_alignments_helper {
   }
 
   # debugging print statements
-  # if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
-  # if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
+  if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
+  if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
 
-  # if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
-  # if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
+  if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
+  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
 
-  # print("ugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
-  # print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
+  print("ugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
+  print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
 
   ################################################
   # Check to make sure aligned overlapping (overhang) regions
@@ -1803,7 +1815,7 @@ sub join_alignments_helper {
   # ($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff))
   # 
   # variables starting with 'fetch' are in relative coordinate space for whatever they pertain to:
-  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or ugp_{seq}
+  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or ugp_seq
   my $ugp_seq_mdl_diff = $ugp_mdl_start - $ugp_seq_start; # offset between model start and sequence start
   # printf("ugp_seq_mdl_diff: $ugp_seq_mdl_diff\n");
   my $fetch_ali_5p_seq_start = 1;                    
@@ -1812,7 +1824,10 @@ sub join_alignments_helper {
   my $fetch_ali_3p_seq_stop  = length($ali_3p_seq);
   my $fetch_ugp_seq_start    = undef;
   my $fetch_ugp_seq_stop     = undef;
+  my $fetch_ugp_mdl_start    = undef;
+  my $fetch_ugp_mdl_stop     = undef;
   my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
+  my $ugp_mdl_len = ($ugp_mdl_stop - $ugp_mdl_start + 1);
 
   my $alt_msg = ""; # added to if we can't join on 5' and/or 3' end
   if($have_5p) { 
@@ -1820,19 +1835,22 @@ sub join_alignments_helper {
     # *and* 1 model position prior to ungapped region
     if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)) {
       $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
+      $fetch_ugp_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
     }
     else {
       $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
     }
   }
   else { # $have_5p == 0
-    $fetch_ugp_seq_start = $ugp_seq_start; # this is 1
+    $fetch_ugp_seq_start = 1;
+    $fetch_ugp_mdl_start = $ugp_mdl_start; # because mdl_consensus_sqstring is always length of model, and length of sequence is not
   }
   if($have_3p) {
     # usual case, first position of aligned 3' region is just 1 sequence position
     # *and* 1 model position after ungapped region
     if($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff)) {
       $fetch_ugp_seq_stop = $ugp_seq_len - ($ugp_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
+      $fetch_ugp_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
     }
     else {
       $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
@@ -1840,6 +1858,7 @@ sub join_alignments_helper {
   }
   else { # $have_3p == 0
     $fetch_ugp_seq_stop = $ugp_seq_len;
+    $fetch_ugp_mdl_stop = $ugp_mdl_stop; # because mdl_consensus string is always length of model, and length of sequence is not
   }
 
   if($alt_msg ne "") {
@@ -1884,7 +1903,7 @@ sub join_alignments_helper {
   my $joined_pp  = "";
   if($have_5p) {
     # $fetch_ali_5p_seq_start == 1, but included below for consistency with 3p calls
-    # printf("fetching 5p %d to %d from %s\n", $fetch_ali_5p_seq_start, $fetch_ali_5p_seq_stop, $ali_5p_seq_coords);
+    printf("fetching 5p %d to %d from %s\n", $fetch_ali_5p_seq_start, $fetch_ali_5p_seq_stop, $ali_5p_seq_coords);
     $joined_seq .= substr($ali_5p_seq, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
     $joined_mdl .= substr($ali_5p_mdl, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
     $joined_pp  .= substr($ali_5p_pp,  $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
@@ -1894,19 +1913,23 @@ sub join_alignments_helper {
     # of seq and model up to the start of ungapped blast alignment
     if($ugp_mdl_start != 1) {
       $joined_seq .= utl_StringMonoChar(($ugp_mdl_start - 1), "-", $FH_HR);
-      $joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
+      #$joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
+      $joined_mdl .= substr($mdl_consensus_sqstring, 0, ($ugp_mdl_start - 1));
       $joined_pp  .= utl_StringMonoChar(($ugp_mdl_start - 1), ".", $FH_HR);
     }
   }
   
-  # printf("fetching ugp %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
+  printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
+  printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
   my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
+  my $fetch_ugp_mdl_len = ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1);
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
-  $joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
+  #$joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
+  $joined_mdl .= substr($mdl_consensus_sqstring, $fetch_ugp_mdl_start - 1, $fetch_ugp_mdl_len);
   $joined_pp  .= utl_StringMonoChar($fetch_ugp_seq_len, "*", $FH_HR);
 
   if($have_3p) {
-    # printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
+    printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
     $joined_seq .= substr($ali_3p_seq, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
     $joined_mdl .= substr($ali_3p_mdl, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
     $joined_pp  .= substr($ali_3p_pp,  $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
@@ -1916,7 +1939,8 @@ sub join_alignments_helper {
     # of seq and model after the end of the ungapped blast alignment
     if($ugp_mdl_stop != $mdl_len) {
       $joined_seq .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "-", $FH_HR);
-      $joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
+      #$joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
+      $joined_mdl .= substr($mdl_consensus_sqstring, $ugp_mdl_stop);
       $joined_pp  .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), ".", $FH_HR);
     }
   }
