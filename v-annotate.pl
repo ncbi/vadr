@@ -109,18 +109,18 @@ my $env_vadr_bioeasel_dir = utl_DirEnvVarValid("VADRBIOEASELDIR");
 # we check for hmmer dir below after option processing, only if we need it
 
 my %execs_H = (); # hash with paths to all required executables
-$execs_H{"cmalign"}           = $env_vadr_infernal_dir . "/cmalign";
-$execs_H{"cmemit"}            = $env_vadr_infernal_dir . "/cmemit";
-$execs_H{"cmfetch"}           = $env_vadr_infernal_dir . "/cmfetch";
-$execs_H{"cmscan"}            = $env_vadr_infernal_dir . "/cmscan";
-$execs_H{"cmsearch"}          = $env_vadr_infernal_dir . "/cmsearch";
-$execs_H{"esl-alimerge"}      = $env_vadr_easel_dir    . "/esl-alimerge";
-$execs_H{"esl-seqstat"}       = $env_vadr_easel_dir    . "/esl-seqstat";
-$execs_H{"esl-translate"}     = $env_vadr_easel_dir    . "/esl-translate";
-$execs_H{"esl-ssplit"}        = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
-$execs_H{"blastx"}            = $env_vadr_blast_dir    . "/blastx";
-$execs_H{"blastn"}            = $env_vadr_blast_dir    . "/blastn";
-$execs_H{"parse_blast"}       = $env_vadr_scripts_dir  . "/parse_blast.pl";
+$execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
+$execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
+$execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
+$execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
+$execs_H{"cmsearch"}      = $env_vadr_infernal_dir . "/cmsearch";
+$execs_H{"esl-alimerge"}  = $env_vadr_easel_dir    . "/esl-alimerge";
+$execs_H{"esl-seqstat"}   = $env_vadr_easel_dir    . "/esl-seqstat";
+$execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
+$execs_H{"esl-ssplit"}    = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
+$execs_H{"blastx"}        = $env_vadr_blast_dir    . "/blastx";
+$execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
+$execs_H{"parse_blast"}   = $env_vadr_scripts_dir  . "/parse_blast.pl";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
@@ -270,8 +270,9 @@ opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef,
 opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
-#       option       type          default     group  requires incompat  preamble-output                                 help-output    
-opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>", "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+#       option       type          default     group  requires incompat  preamble-output                                                         help-output    
+opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>",                         "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--alicheck",  "boolean",      0,         $g,    undef, undef,   "for debugging, check aligned sequence vs input sequence for identity", "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -365,6 +366,7 @@ my $options_okay =
                 'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
                 'altinfo'       => \$GetOptions_H{"--altinfo"},
 # other expert options
+                'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'execname=s'    => \$GetOptions_H{"--execname"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -1040,7 +1042,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # parse the cmalign alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which will exist for any r1 run that fails
-        cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
+        cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
+                                                   \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                    \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                    \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
@@ -2686,6 +2689,7 @@ sub cmalign_run {
 #
 # Arguments: 
 #  $stk_file:               stockholm alignment file to parse
+#  $in_sqfile_R:            REF to Bio::Easel::SqFile object from input fasta file, can be undef unless --alicheck used
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
 #  $seq_inserts_HHR:        REF to hash of hashes with sequence insert information, PRE-FILLED
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
@@ -2706,14 +2710,18 @@ sub cmalign_run {
 ################################################################# 
 sub cmalign_parse_stk_and_add_alignment_alerts { 
   my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 13;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
+      $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
+      $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
+  my $do_alicheck      = opt_Get("--alicheck",    $opt_HHR); # check aligned sequences are identical to those fetched from $sqfile (except maybe Ns if -r) 
+  my $do_replace_ns    = opt_Get("-r",            $opt_HHR); # only relevant if $do_alicheck
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -2723,6 +2731,10 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
   my $msa = Bio::Easel::MSA->new({
     fileLocation => $stk_file,
     isDna => 1});  
+
+  if(($do_alicheck) && (! defined $in_sqfile_R)) { 
+    ofile_FAIL("ERROR in $sub_name, --alicheck used but no sqfile provided", 1, $FH_HR);
+  }
 
   # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
   my $alen = $msa->alen;
@@ -2828,6 +2840,31 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
     if(length($ppstring_aligned) != $alen) { 
       ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), 1, $FH_HR);
     }
+
+    # check de-aligned sequence is identical to input sequence fetched from $in_sqfile IF --alicheck
+    # temp
+    if($do_alicheck) { 
+      my $in_sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name);
+      my $ua_sqstring = $sqstring_aligned;
+      $ua_sqstring =~ s/\W//g;
+      my $ua_len = length($ua_sqstring);
+      if($ua_len != length($in_sqstring)) { 
+        ofile_FAIL(sprintf("ERROR in $sub_name, checking aligned vs input sequences due to --alicheck, lengths for $seq_name do not match: input: %d, aligned: %d\n", length($in_sqstring), $ua_len), 1, $FH_HR);
+      }
+      $in_sqstring =~ tr/a-z/A-Z/; # uppercase-ize
+      $ua_sqstring =~ tr/a-z/A-Z/; # uppercase-ize
+      my @ua_sqstring_A = split("", $ua_sqstring);
+      my @in_sqstring_A = split("", $in_sqstring);
+      for(my $z = 0; $z < $ua_len; $z++) { 
+        if(($in_sqstring_A[$z] ne $ua_sqstring_A[$z]) && 
+           ((! $do_replace_ns) || ($in_sqstring_A[$z] ne "N"))) { 
+          ofile_FAIL(sprintf("ERROR in $sub_name, checking aligned vs input sequences due to --alicheck, seq $seq_name position %d different%s, input: %s, aligned: %s\n", 
+                             ($z+1), ($do_replace_ns ? " and not N" : ""), $in_sqstring_A[$z], $ua_sqstring_A[$z]), 
+                     1, $FH_HR);
+        }
+      }
+    }
+
     my @sq_A = split("", $sqstring_aligned);
     my @pp_A = split("", $ppstring_aligned);
     # printf("sq_A size: %d\n", scalar(@sq_A));
