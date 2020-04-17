@@ -1382,6 +1382,18 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "ambignt5", "sequence",
+                   "N_AT_START", # short description
+                   "first nucleotide is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambignt3", "sequence",
+                   "N_AT_END", # short description
+                   "final nucleotide is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowcovrg", "sequence",
                    "LOW_COVERAGE", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description

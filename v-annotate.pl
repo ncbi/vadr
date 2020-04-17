@@ -68,34 +68,37 @@ require "sqp_utils.pm";
 # option is used.
 # 
 # List of subroutines in which alerts are detected and added:
-#  1. add_classification_alerts()
+#  1. alert_add_ambignt5_ambignt3()
+#     ambignt5, ambignt3 (2)
+#
+#  2. add_classification_alerts()
 #     noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, revcompl, lowcovrg, biasdseq (10)
 #
-#  2. alert_add_unexdivg()
+#  3. alert_add_unexdivg()
 #     unexdivg (1)
 #
-#  3. cmalign_parse_stk_and_add_alignment_alerts()
+#  4. cmalign_parse_stk_and_add_alignment_alerts()
 #     indf5gap, indf5loc, indf3gap, indf3loc (4)
 #
-#  4. fetch_features_and_add_cds_and_mp_alerts()
+#  5. fetch_features_and_add_cds_and_mp_alerts()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn (6)
 #
-#  5. add_blastx_alerts()
+#  6. add_blastx_alerts()
 #     indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10)
 #
-#  6. alert_add_noftrann()
+#  7. alert_add_noftrann()
 #     noftrann (1)
 # 
-#  7. alert_add_parent_based()
+#  8. alert_add_parent_based()
 #     peptrans (1)
 # 
-#  8. add_low_similarity_alerts()
+#  9. add_low_similarity_alerts()
 #     lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
 # 
-#  9. add_frameshift_alerts_for_one_sequence()
+# 10. add_frameshift_alerts_for_one_sequence()
 #     fsthicnf, fstlocnf (2)
 #
-# 10. join_alignments_and_add_unjoinbl_alerts()
+# 11. join_alignments_and_add_unjoinbl_alerts()
 #     unjoinbl (1)
 #
 #######################################################################################
@@ -740,6 +743,8 @@ sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 # initialize the classification results
+my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
+                               # key1: sequence name, key2 alert code, value: alert message
 my %stg_results_HHH = (); # key 1: sequence name, 
                           # key 2: ("{pre,std}.cls.1","{pre,std}.cls.2","{pre,std}.cls.eg","{pre,std}.cdt.bs", "{pre,std}.cdt.os")
                           #        where 'pre' implies pre-processing replace-ambiguities stage, and 'std' implies standard stage
@@ -748,9 +753,15 @@ my %stg_results_HHH = (); # key 1: sequence name,
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
 my $rpn_sqfile = undef;
-#######################################################################
+
+$start_secs = ofile_OutputProgressPrior("Checking each sequence to see if it starts or ends with an N", $progress_w, $log_FH, *STDOUT);
+alert_add_ambignt5_ambignt3(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+exit 0;
+###############################################################
 # If -r, pre-processing to identify and replace stretches of Ns
-#######################################################################
+###############################################################
 # -r related output for .rpn file
 my %rpn_output_HH = (); # 2D key with info to output related to the  option
                         # key1: sequence name, key2 various stats (see output_tabular())
@@ -840,8 +851,6 @@ coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, $sqfile_for_analysi
 ############################
 # add classification errors based on stg_results_HHH
 # keep track of seqs to annotate per model
-my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
-                               # key1: sequence name, key2 alert code, value: alert message
 my %cls_output_HH = (); # 2D key with info to output derived from the classification stage
                         # key1: sequence name, key2 one of: "score", "scpnt", "scdiff", "bstrand", "scov", "mcov", "model1", "model2"
 add_classification_alerts(\%alt_seq_instances_HH, \%seq_len_H, \@mdl_info_AH, \%alt_info_HH, \%stg_results_HHH, \%cls_output_HH, \%opt_HH, \%ofile_info_HH);
@@ -5600,6 +5609,54 @@ sub alert_add_unexdivg {
   my $noverflow = scalar(@{$overflow_seq_AR});
   for(my $s = 0; $s < $noverflow; $s++) { 
     alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "unexdivg", $overflow_seq_AR->[$s], "required matrix size: $overflow_mxsize_AR->[$s] Mb", $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: alert_add_ambignt5_ambignt3()
+# Incept:     EPN, Fri Apr 17 10:31:22 2020
+# Purpose:    Adds ambignt5 and ambignt3 alerts for seqs with 
+#             an N as the first/final nucleotide
+#
+# Arguments:
+#  $in_sqfile_R:           REF to Bio::Easel::SqFile object from input fasta file
+#  $seq_name_AR:           REF to array of sequence names, PRE-FILLED
+#  $seq_len_HR:            REF to hash of sequence lengths, PRE-FILLED
+#  $alt_seq_instances_HHR: REF to 2D hash with per-sequence alerts, PRE-FILLED
+#  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: REF to the 2D hash of output file information
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub alert_add_ambignt5_ambignt3 {
+  my $sub_name = "alert_add_unexdivg";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($in_sqfile_R, $seq_name_AR, $seq_len_HR, $alt_seq_instances_HHR, $alt_info_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
+  my $nseq = scalar(@seq_name_A);
+
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    if(! defined $seq_len_HR->{$seq_name}) { 
+      ofile_FAIL("ERROR in $sub_name, do not have length info for sequence $seq_name", 1, $FH_HR);
+    }
+    my $seq_len = $seq_len_HR->{$seq_name};
+    my $first_nt = $$in_sqfile_R->fetch_subseq_to_sqstring($seq_name,        1,        1, 0); # 0: do not reverse complement
+    my $final_nt = $$in_sqfile_R->fetch_subseq_to_sqstring($seq_name, $seq_len, $seq_len, 0); # 0: do not reverse complement
+    if(($first_nt eq "N") || ($first_nt eq "n")) { 
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambignt5", $seq_name, "VADRNULL", $FH_HR);
+    }
+    if(($final_nt eq "N") || ($final_nt eq "n")) { 
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambignt3", $seq_name, "VADRNULL", $FH_HR);
+    }
   }
 
   return;
