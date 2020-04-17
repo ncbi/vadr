@@ -228,21 +228,22 @@ opt_Add("--xlongest",    "boolean",  0,                      $g,     undef,"--sk
 opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,         "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
 # --xminntlen has implications outside of blast, that's why it's not incompatible with --skipblastx
 
-$opt_group_desc_H{++$g} = "options related to blastn-based acceleration (-s)";
-#        option               type   default                group  requires incompat    preamble-output                                                      help-output    
-opt_Add("-s",             "boolean",      0,                  $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnws",     "integer",      7,                  $g,       "-s", undef,     "set blastn -word_size <n> to <n>",                                 "set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--blastnsc",        "real",   50.0,                  $g,       "-s", undef,     "set blastn minimum HSP score to consider to <x>",                  "set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--overhang",     "integer",    100,                  $g,       "-s", undef,     "set length of nt overhang for subseqs to align to <n>",            "set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--merge",        "boolean",      0,                  $g,       "-s", undef,     "merge all single sequence joined alignments into one",             "merge all single sequence joined alignments into one", \%opt_HH, \@opt_order_A);
+$opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration (-s)";
+#        option               type   default group   requires  incompat  preamble-output                                                     help-output    
+opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_merge",      "boolean",      0,   $g,       "-s", undef,    "for -s, merge all single sequence joined alignments into one",     "for -s, merge all single sequence joined alignments into one", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing completely ambiguous characters (Ns) with expected nucleotides";
-#        option               type   default                group  requires incompat    preamble-output                                                              help-output    
-opt_Add("--nreplace",     "boolean",      0,                  $g,      undef, undef,    "replace stretches of ambiguous characters with expected nts",               "replace stretches of ambiguous characters with expected nts", \%opt_HH, \@opt_order_A);
-opt_Add("--nminlen",      "integer",      5,                  $g,"--nreplace", undef,   "minimum length subsequence to replace ambiguous chars in is <n>",           "minimum length subsequence to replace ambiguous chars in is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--nminfract",    "real",       0.5,                  $g,"--nreplace", undef,   "minimum fraction of ambig chars in subseq to trigger replacement is <x>",   "minimum fraction of ambig chars in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nfetchrp",     "boolean",      0,                  $g,"--nreplace", undef,   "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
-opt_Add("--ncdsmporig",   "boolean",      0,                  $g,"--nreplace", undef,   "detect CDS and MP alerts in original sequences, not those w/Ns replaced",   "detect CDS and MP alerts in original sequences, not those w/Ns replaced", \%opt_HH, \@opt_order_A);
+#        option               type   default group requires incompat  preamble-output                                                              help-output    
+opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible", \%opt_HH, \@opt_order_A);
+opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfract",      "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in subseq to trigger replacement is <x>",            "minimum fraction of Ns in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
+opt_Add("--r_cdsmpo",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in original sequences, not those w/Ns replaced",   "detect CDS and MP alerts in original sequences, not those w/Ns replaced", \%opt_HH, \@opt_order_A);
+opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default                group   requires incompat    preamble-output                                                help-output    
@@ -335,16 +336,17 @@ my $options_okay =
                 'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
-                'blastnws=s'    => \$GetOptions_H{"--blastnws"},
-                'blastnsc=s'    => \$GetOptions_H{"--blastnsc"},
-                'overhang=s'    => \$GetOptions_H{"--overhang"},
-                'merge'         => \$GetOptions_H{"--merge"},
+                's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
+                's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
+                's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
+                's_merge'       => \$GetOptions_H{"--s_merge"},
 # options related to parallelization
-                'nreplace'      => \$GetOptions_H{"--nreplace"},
-                'nminlen=s'     => \$GetOptions_H{"--nminlen"},
-                'nminfract=s'   => \$GetOptions_H{"--nminfract"},
-                'nfetchrp'      => \$GetOptions_H{"--nfetchrp"},
-                'ncdsmporig'    => \$GetOptions_H{"--ncdsmporig"},
+                'r'             => \$GetOptions_H{"-r"},
+                'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
+                'r_minfract=s'  => \$GetOptions_H{"--r_minfract"},
+                'r_fetchr'      => \$GetOptions_H{"--r_fetchr"},
+                'r_cdsmpo'      => \$GetOptions_H{"--r_cdsmpo"},
+                'r_prof'        => \$GetOptions_H{"--r_prof"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -553,9 +555,9 @@ foreach $cmd (@early_cmd_A) {
 my $progress_w = 87; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
-my @to_remove_A = (); # list of files to remove at end of subroutine, if --keep not used
-my $do_keep     = opt_Get("--keep", \%opt_HH);
-my $do_nreplace = opt_Get("--nreplace", \%opt_HH);
+my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
+my $do_keep       = opt_Get("--keep", \%opt_HH);
+my $do_replace_ns = opt_Get("-r", \%opt_HH);
 
 ###########################################
 # Validate that we have all the files we need:
@@ -743,26 +745,27 @@ my %stg_results_HHH = (); # key 1: sequence name,
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
-my $nrp_sqfile = undef;
+my $rpn_sqfile = undef;
 #######################################################################
 # If --nreplace, pre-processing to identify and replace stretches of Ns
 #######################################################################
-# --nreplace related output for .nrp file
-my %nrp_output_HH = (); # 2D key with info to output related to the  option
+# --nreplace related output for .rpn file
+my %rpn_output_HH = (); # 2D key with info to output related to the  option
                         # key1: sequence name, key2 various stats (see output_tabular())
-my $nrp_fa_file = undef;
-if($do_nreplace) { 
+my $rpn_fa_file = undef;
+if($do_replace_ns) { 
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
-  classification_stage(\%execs_H, "nrp.cls", $cm_file, $blastn_db_file, $in_fa_file, \%seq_len_H,
+  classification_stage(\%execs_H, "rpn.cls", $cm_file, $blastn_db_file, $in_fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
-  coverage_determination_stage(\%execs_H, "nrp.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
+  coverage_determination_stage(\%execs_H, "rpn.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
                                $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_seq_name_HA, undef, \%stg_results_HHH, 
                                $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
-  my $nrp_subset_fa_file = $out_root . ".nrp.sub.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "nrp.sub.fa", $nrp_subset_fa_file, 0, $do_keep, "fasta file with sequences for which Ns were replaced");
+  my $start_secs = ofile_OutputProgressPrior(sprintf("Replacing Ns based on results of %s-based pre-processing", "blastn"), $progress_w, $FH_HR->{"log"}, *STDOUT);
+  my $rpn_subset_fa_file = $out_root . ".rpn.sub.fa";
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn.sub.fa", $rpn_subset_fa_file, 0, $do_keep, "fasta file with sequences for which Ns were replaced");
   
   # for each model with seqs to align to, create the sequence file and run cmalign
   my $mdl_name;
@@ -770,48 +773,49 @@ if($do_nreplace) {
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
-      my $indel_file = $ofile_info_HH{"fullpath"}{"nrp.cdt.$mdl_name.indel"};
+      my $indel_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.indel"};
       $nseq_replaced += parse_blastn_indel_file_and_replace_ns($indel_file, \%execs_H, $cm_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
-                                                               \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%nrp_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
+                                                               \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
-  close($ofile_info_HH{"FH"}{"nrp.sub.fa"}); 
+  close($ofile_info_HH{"FH"}{"rpn.sub.fa"}); 
 
   if($nseq_replaced > 0) { 
-    my $nrp_subset_sqfile = Bio::Easel::SqFile->new({ fileLocation => $nrp_subset_fa_file }); # the sequence file object
+    my $rpn_subset_sqfile = Bio::Easel::SqFile->new({ fileLocation => $rpn_subset_fa_file }); # the sequence file object
 
     # create a new file with original sequences for those that did not have any Ns replaced
     # and doctored sequences with Ns replaced for those that did
     # sequences are named identically and in the same order as in the input fasta file
-    $nrp_fa_file = $out_root . ".nrp.fa";
-    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "nrp.fa", $nrp_fa_file, 0, $do_keep, sprintf("fasta file with all sequences, %d with Ns replaced", $nseq_replaced));
-    my $fa_FH = $ofile_info_HH{"FH"}{"nrp.fa"};
+    $rpn_fa_file = $out_root . ".rpn.fa";
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn.fa", $rpn_fa_file, 0, $do_keep, sprintf("fasta file with all sequences, %d with Ns replaced", $nseq_replaced));
+    my $fa_FH = $ofile_info_HH{"FH"}{"rpn.fa"};
     foreach my $seq_name (@seq_name_A) { 
       if(defined $seq_replaced_H{$seq_name}) { 
-        print $fa_FH $nrp_subset_sqfile->fetch_seq_to_fasta_string($seq_name);
+        print $fa_FH $rpn_subset_sqfile->fetch_seq_to_fasta_string($seq_name);
       }
       else { 
         print $fa_FH $in_sqfile->fetch_seq_to_fasta_string($seq_name);
       }
     }
-    close($ofile_info_HH{"FH"}{"nrp.fa"}); 
+    close($ofile_info_HH{"FH"}{"rpn.fa"}); 
 
     # replace main $fa_file we will work with subsequently
-    $nrp_sqfile = Bio::Easel::SqFile->new({ fileLocation => $nrp_fa_file });
+    $rpn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $rpn_fa_file });
   }
-}
+  ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
+} # end of 'if($do_replace_ns)'
 
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
-my $fa_file_for_analysis       = (defined $nrp_fa_file) ? $nrp_fa_file : $in_fa_file; # the fasta file we will analyze
-my $sqfile_for_analysis_R      = (defined $nrp_sqfile)  ? \$nrp_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
-my $sqfile_for_cds_mp_alerts_R = ((defined $nrp_sqfile) && (! opt_Get("--ncdsmporig", \%opt_HH))) ? \$nrp_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
-my $sqfile_for_output_fastas_R = ((defined $nrp_sqfile) && (opt_Get("--nfetchrp", \%opt_HH)))     ? \$nrp_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
+my $fa_file_for_analysis       = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file; # the fasta file we will analyze
+my $sqfile_for_analysis_R      = (defined $rpn_sqfile)  ? \$rpn_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
+my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (! opt_Get("--r_cdsmpo", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
+my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH)))     ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
 
 # determine if we need to create separate files with cds seqs for the protein validation stage
 # if --nreplace and we replaced at least one sequence, we do (actually, for some combinations of 
-# --ncdsmporig and --nfetchrp we don't need to, but we do anyway because it's more complicated to
+# --r_cdsmpo and --r_fetchr we don't need to, but we do anyway because it's more complicated to
 # check than it is worth)
-my $do_separate_cds_fa_files_for_protein_validation = (($do_nreplace) && (defined $nrp_sqfile)) ? 1 : 0; 
+my $do_separate_cds_fa_files_for_protein_validation = (($do_replace_ns) && (defined $rpn_sqfile)) ? 1 : 0; 
     
 ####################################
 # Classification: cmscan round 1
@@ -959,7 +963,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                               \%alt_seq_instances_HH, \%alt_info_HH,
                                               $out_root, \%opt_HH, \%ofile_info_HH);
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
-      if(! opt_Get("--merge", \%opt_HH)) { 
+      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
+
+      if(! opt_Get("--s_merge", \%opt_HH)) { 
         # do not merge all joined alignments together into one
         # replace array of stockholm files output from cmalign
         # from joined ones we just created
@@ -968,15 +974,23 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       else { 
         # merge all joined alignments into one
         # this should speed up annotation determination
-        ofile_FAIL("ERROR, --merge used, but it won't work until fetched model strings for seed alignments are taken from the model RF (cmemit -c)", 1, $FH_HR);
+        my $start_secs = ofile_OutputProgressPrior(sprintf("Merging joined alignments for model $mdl_name ($cur_mdl_nseq seq%s, %d alignment%s)",
+                                                           (($cur_mdl_nseq > 1) ? "s" : ""), 
+                                                           scalar(@joined_stk_file_A), ((scalar(@joined_stk_file_A) > 1) ? "s" : "")), 
+                                                   $progress_w, $FH_HR->{"log"}, *STDOUT);
         my $do_alimerge_small = 1; # use --small option with esl-alimerge, will only work because all joined alignments are in pfam format
-        my $merged_joined_stk_file = $out_root . "." . $mdl_name . ".align.r3.merged.stk";
-        my $joined_stk_list_file = $out_root . "." . $mdl_name . ".align.r3.stk.list";
+        my $merged_joined_stk_file      = $out_root . "." . $mdl_name . ".align.r3.merged.stk";
+        my $merged_joined_alimerge_file = $out_root . "." . $mdl_name . ".align.r3.merged.alimerge";
+        my $joined_stk_list_file        = $out_root . "." . $mdl_name . ".align.r3.stk.list";
         utl_AToFile(\@joined_stk_file_A, $joined_stk_list_file, 1, $FH_HR);
-        run_esl_alimerge(\%execs_H, $merged_joined_stk_file, $joined_stk_list_file, $do_alimerge_small,\%opt_HH, \%ofile_info_HH);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.stk", $merged_joined_stk_file, $do_keep, sprintf("merged alignment of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+        run_esl_alimerge_list(\%execs_H, $merged_joined_stk_file, $merged_joined_alimerge_file, 
+                              $joined_stk_list_file, $do_alimerge_small,\%opt_HH, \%ofile_info_HH);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.alimerge", $merged_joined_alimerge_file, 0, $do_keep, sprintf("esl-alimerge output for merging of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.stk", $merged_joined_stk_file, 0, $do_keep, sprintf("merged alignment of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
         @{$stk_file_HA{$mdl_name}} = ($merged_joined_stk_file);
         push(@to_remove_A, $joined_stk_list_file);
+
+        ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
       }
 
       # replace any overflow info we have on subseqs to be for full seqs
@@ -987,8 +1001,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         @overflow_seq_A    = @full_overflow_seq_A;
         @overflow_mxsize_A = @full_overflow_mxsize_A;
       }
-  
-      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
     }
     
     # add unexdivg errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
@@ -1158,8 +1170,8 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc"
 if($do_blastn_ali) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-s)");
 }
-if($do_nreplace) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "nrp",    $out_root . ".nrp", 1, 1, "replaced stretches of Ns summary file (-s)");
+if($do_replace_ns) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-s)");
 }
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
@@ -1178,7 +1190,7 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
-                                           ($do_nreplace)   ? \%nrp_output_HH : undef,
+                                           ($do_replace_ns) ? \%rpn_output_HH : undef,
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1349,8 +1361,8 @@ ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $opt_str:         option string for cmsearch run
 #  $out_root:        string for naming output files
-#  $stg_key:         stage key, "nrp.cls" or "std.cls" for classification (cmscan) ,
-#                    or "nrp.cdt" or "std.cdt" for coverage determination (cmsearch)
+#  $stg_key:         stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#                    or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $nseq:            number of sequences in $seq_file
 #  $tot_len_nt:      total length of all nucleotides in $seq_file
 #  $progress_w:      width for outputProgressPrior output
@@ -1376,9 +1388,9 @@ sub cmsearch_or_cmscan_wrapper {
   my $do_parallel = opt_Get("-p",     $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
 
-  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls, rpn.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
 
   # set up output file names
@@ -1411,17 +1423,17 @@ sub cmsearch_or_cmscan_wrapper {
     
   # determine description of the stage we are about to do
   my $stg_desc = "";
-  if($stg_key eq "nrp.cls") { 
+  if($stg_key eq "rpn.cls") { 
     $stg_desc = ($do_parallel) ? 
-        sprintf("Preprocessing for N replacement: cmscan classification job farm submission ($mdl_name: $nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
-        sprintf("Preprocessing for N replacement: cmscan classification ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
+        sprintf("Preprocessing for N replacement: cmscan classification job farm submission ($nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
+        sprintf("Preprocessing for N replacement: cmscan classification ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   elsif($stg_key eq "std.cls") { 
     $stg_desc = ($do_parallel) ? 
         "Submitting $nseq_files cmscan classification job(s) to the farm" : 
         sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
-  elsif($stg_key eq "nrp.cdt") {
+  elsif($stg_key eq "rpn.cdt") {
     $stg_desc = ($do_parallel) ? 
         sprintf("Preprocessing for N replacement: cmsearch coverage determination job farm submission ($mdl_name: $nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
         sprintf("Preprocessing for N replacement: cmsearch coverage determination ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
@@ -1562,8 +1574,8 @@ sub cmsearch_or_cmscan_run {
 #
 # Arguments: 
 #  $tblout_file:   name of sorted tblout file to parse
-#  $stg_key:       stage key, "nrp.cls" or "std.cls" for classification (cmscan) ,
-#                  or "nrp.cdt" or "std.cdt" for coverage determination (cmsearch)
+#  $stg_key:       stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#                  or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $mdl_info_AHR:  ref to model info array of hashes
 #  $results_HHHR:  ref to results 3D hash
 #  $opt_HHR:       ref to options 2D hash
@@ -1581,9 +1593,9 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
   
   my ($tblout_file, $stg_key, $mdl_info_AHR, $results_HHHR, $opt_HHR, $FH_HR) = @_;
 
-  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls, rpn.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
 
   # determine if we have an expected group and subgroup
@@ -1597,7 +1609,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
   my %mdl_group_H    = ();
   my %mdl_subgroup_H = ();
   my $nmdl = scalar(@{$mdl_info_AHR});
-  if(($stg_key eq "nrp.cls") || ($stg_key eq "std.cls")) { 
+  if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { 
     for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
       my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
       if(defined $mdl_info_AHR->[$mdl_idx]{"group"}) { 
@@ -1636,7 +1648,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
       $s_to   = undef;
       $strand = undef;
       my @el_A = split(/\s+/, $line);
-      if(($stg_key eq "nrp.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
+      if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
         #modelname sequence                      score  start    end strand bounds ovp      seqlen
         ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
         #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
@@ -1652,10 +1664,10 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
 
         # determine if we are going to store this hit, and to what 2D keys 
         # (the following code only works because we know we are sorted by score)
-        my $is_1   = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.1"} ? 
-        my $is_2   = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.2"} ? 
-        my $is_eg  = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.eg"} ? 
-        my $is_esg = 0; # should we store this in $results_HHHR->{$seq}{"{nrp,std}.cls.esg"} ? 
+        my $is_1   = 0; # should we store this in $results_HHHR->{$seq}{"{rpn,std}.cls.1"} ? 
+        my $is_2   = 0; # should we store this in $results_HHHR->{$seq}{"{rpn,std}.cls.2"} ? 
+        my $is_eg  = 0; # should we store this in $results_HHHR->{$seq}{"{rpn,std}.cls.eg"} ? 
+        my $is_esg = 0; # should we store this in $results_HHHR->{$seq}{"{rpn,std}.cls.esg"} ? 
 
         # store hit as cls.1 only if it's the first hit seen to any model, or it's an additional hit to the r1.1 model
         # SHOULD WE ONLY BE STORING TOP HIT IN CLASSIFICATION?
@@ -1700,7 +1712,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
         if($is_eg)  { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
         if($is_esg) { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
       }
-      else { # $stg_key eq "nrp.cdt" or "std.cdt": coverage determination, cmsearch --tblout output
+      else { # $stg_key eq "rpn.cdt" or "std.cdt": coverage determination, cmsearch --tblout output
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
         ##--------------------------- --------- -------------------- --------- --- -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
         #gi|1215708385|gb|KY594653.1| -         NC_039477            -         hmm     5089     5389        1      301      +     -    6 0.52   0.0  268.1   3.4e-85 !   Norovirus GII.4 isolate Hu/GII/CR7410/CHN/2014 VP1 gene, partial cds
@@ -2141,7 +2153,7 @@ sub add_classification_alerts {
 # Arguments: 
 #  $seq_name_AR:           ref to sequence names
 #  $seq_len_HR:            ref to hash of sequence lengths
-#  $stg_key:               stage key, "nrp.cdt" or "std.cdt" if $alt_seq_instances_HHR is undef
+#  $stg_key:               stage key, "rpn.cdt" or "std.cdt" if $alt_seq_instances_HHR is undef
 #                          or "std.aln" if $alt_seq_instances_HHR is defined
 #  $stg_results_HHHR:      ref to 3D hash of classification results, PRE-FILLED
 #  $cls_output_HHR:        ref to 2D hash of classification results to output, PRE-FILLED
@@ -2152,7 +2164,7 @@ sub add_classification_alerts {
 #                          undef to use stg_results_HHHR->{}{"cls.1"} # round 1 search
 #  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
 #  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
-#  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE, can be undef if $stg_key eq "nrp.cdt"
+#  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE, can be undef if $stg_key eq "rpn.cdt"
 #  $seq2mdl_HR:            ref to hash of classified model per sequence, FILLED HERE
 #  $FH_HR:                 ref to hash of file handles
 #
@@ -2172,11 +2184,11 @@ sub populate_per_model_data_structures_given_classification_results {
   # determine what stage results we are using and check that combo of 
   # stage key and defined/undefined of %{$alt_seq_instances_HHR} is valid
   my $cls_2d_key = undef;
-  if(($stg_key eq "nrp.cdt") || ($stg_key eq "std.cdt")) { 
+  if(($stg_key eq "rpn.cdt") || ($stg_key eq "std.cdt")) { 
     if(defined $alt_seq_instances_HHR) { 
-      ofile_FAIL("ERROR in $sub_name, stage key is nrp.cdt or std.cdt but alt_seq_instances_HHR is not defined", 1, $FH_HR);
+      ofile_FAIL("ERROR in $sub_name, stage key is rpn.cdt or std.cdt but alt_seq_instances_HHR is not defined", 1, $FH_HR);
     }
-    $cls_2d_key = ($stg_key eq "nrp.cdt") ? "nrp.cls.1" : "std.cls.1";
+    $cls_2d_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.1" : "std.cls.1";
   }
   elsif($stg_key eq "std.aln") { 
     if(! defined $alt_seq_instances_HHR) { 
@@ -2185,10 +2197,10 @@ sub populate_per_model_data_structures_given_classification_results {
     $cls_2d_key = "std.cdt.bs";
   }
   else { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cdt, std.cdt or std.aln", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cdt, std.cdt or std.aln", 1, $FH_HR);
   }
-  if(($stg_key ne "nrp.cdt") && (! defined $mdl_ct_HR)) { 
-    ofile_FAIL("ERROR in $sub_name, stage key is not nrp.cdt but mdl_ct_HR is not defined", 1, $FH_HR);
+  if(($stg_key ne "rpn.cdt") && (! defined $mdl_ct_HR)) { 
+    ofile_FAIL("ERROR in $sub_name, stage key is not rpn.cdt but mdl_ct_HR is not defined", 1, $FH_HR);
   }
 
   my $nseq = scalar(@{$seq_name_AR});
@@ -2201,7 +2213,7 @@ sub populate_per_model_data_structures_given_classification_results {
     if(defined $mdl_name) { 
       # determine if we are going to add this sequence to our per-model hashes, depending on what round
       my $add_seq = 0;
-      if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "nrp.cdt.1")) { 
+      if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "rpn.cdt.1")) { 
         $add_seq = 1; # always add seq after classification round
       }
       else { 
@@ -5625,7 +5637,7 @@ sub alert_instances_check_prevents_annot {
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $sda_output_HHR:          REF to 2D hash of -s related results to output, PRE-FILLED, undef unless -s
-#  $nrp_output_HHR:          REF to 2D hash of --nreplace related results to output, PRE-FILLED, undef unless --nreplace
+#  $rpn_output_HHR:          REF to 2D hash of --nreplace related results to output, PRE-FILLED, undef unless --nreplace
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -5645,7 +5657,7 @@ sub output_tabular {
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $sda_output_HHR, $nrp_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -5729,13 +5741,13 @@ sub output_tabular {
   @{$head_sda_AA[1]} = ("idx", "name",   "len", "model", "fail",  "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
   my @clj_sda_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
 
-  # optional .nrp file
-  my $do_nrp = opt_Get("--nreplace", $opt_HHR) ? 1 : 0;
-  my @head_nrp_AA = ();
-  my @data_nrp_AA = ();
-  @{$head_nrp_AA[0]} = ("",    "seq",    "seq", "",      "",      "ngaps",  "ngaps", "ngaps", "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
-  @{$head_nrp_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",      "int",    "rp", "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
-  my @clj_nrp_A      = (1,     1,        0,     1,       1,       0,        0,       0,       0,         0,         0,         0,         0);
+  # optional .rpn file
+  my $do_rpn = opt_Get("-r", $opt_HHR) ? 1 : 0;
+  my @head_rpn_AA = ();
+  my @data_rpn_AA = ();
+  @{$head_rpn_AA[0]} = ("",    "seq",    "seq", "",      "",      "ngaps",  "ngaps", "ngaps", "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
+  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",      "int",    "rp", "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
+  my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,        0,       0,       0,         0,         0,         0,         0);
 
   #printf $out_FH ("#sequence: sequence name\n");
   #printf $out_FH ("#product:  CDS product name\n");
@@ -5796,15 +5808,15 @@ sub output_tabular {
     my $sda_3p_mdl    = (($do_sda) && (defined $sda_output_HR->{"3p_mdl"}))  ? $sda_output_HR->{"3p_mdl"} : "-";
     my $sda_3p_fract  = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
     
-    my $nrp_output_HR     = (($do_nrp) && (defined $nrp_output_HHR->{$seq_name}))      ? \%{$nrp_output_HHR->{$seq_name}} : undef;
-    my $nrp_ngaps_tot     = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_tot"}))     ? $nrp_output_HR->{"ngaps_tot"} : "-";
-    my $nrp_ngaps_int     = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_int"}))     ? $nrp_output_HR->{"ngaps_int"} : "-";
-    my $nrp_ngaps_rp      = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_rp"}))      ? $nrp_output_HR->{"ngaps_rp"}  : "-";
-    my $nrp_ngaps_rp_full = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_rp_full"})) ? $nrp_output_HR->{"ngaps_rp_full"} : "-";
-    my $nrp_ngaps_rp_part = (($do_nrp) && (defined $nrp_output_HR->{"ngaps_rp_part"})) ? $nrp_output_HR->{"ngaps_rp_part"} : "-";
-    my $nrp_nnt_rp_full   = (($do_nrp) && (defined $nrp_output_HR->{"nnt_rp_full"}))   ? $nrp_output_HR->{"nnt_rp_full"} : "-";
-    my $nrp_nnt_rp_part   = (($do_nrp) && (defined $nrp_output_HR->{"nnt_rp_part"}))   ? $nrp_output_HR->{"nnt_rp_part"} : "-";
-    my $nrp_coords        = (($do_nrp) && (defined $nrp_output_HR->{"coords"}) && ($nrp_output_HR->{"coords"} ne "")) ? $nrp_output_HR->{"coords"} : "-";
+    my $rpn_output_HR     = (($do_rpn) && (defined $rpn_output_HHR->{$seq_name}))      ? \%{$rpn_output_HHR->{$seq_name}} : undef;
+    my $rpn_ngaps_tot     = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_tot"}))     ? $rpn_output_HR->{"ngaps_tot"} : "-";
+    my $rpn_ngaps_int     = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_int"}))     ? $rpn_output_HR->{"ngaps_int"} : "-";
+    my $rpn_ngaps_rp      = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp"}))      ? $rpn_output_HR->{"ngaps_rp"}  : "-";
+    my $rpn_ngaps_rp_full = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_full"})) ? $rpn_output_HR->{"ngaps_rp_full"} : "-";
+    my $rpn_ngaps_rp_part = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_part"})) ? $rpn_output_HR->{"ngaps_rp_part"} : "-";
+    my $rpn_nnt_rp_full   = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))   ? $rpn_output_HR->{"nnt_rp_full"} : "-";
+    my $rpn_nnt_rp_part   = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))   ? $rpn_output_HR->{"nnt_rp_part"} : "-";
+    my $rpn_coords        = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
     
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
@@ -6010,12 +6022,12 @@ sub output_tabular {
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
                           $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
     }
-    if($do_nrp) {
-      push(@data_nrp_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
-                          $nrp_ngaps_tot, $nrp_ngaps_int, $nrp_ngaps_rp, 
-                          $nrp_ngaps_rp_full, $nrp_ngaps_rp_part,
-                          $nrp_nnt_rp_full, $nrp_nnt_rp_part,
-                          $nrp_coords]);
+    if($do_rpn) {
+      push(@data_rpn_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+                          $rpn_ngaps_tot, $rpn_ngaps_int, $rpn_ngaps_rp, 
+                          $rpn_ngaps_rp_full, $rpn_ngaps_rp_part,
+                          $rpn_nnt_rp_full, $rpn_nnt_rp_part,
+                          $rpn_coords]);
     }
   }
 
@@ -6099,8 +6111,8 @@ sub output_tabular {
   if($do_sda) {
     ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
   }
-  if($do_nrp) {
-    ofile_TableHumanOutput(\@data_nrp_AA, \@head_nrp_AA, \@clj_nrp_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"nrp"}, undef, $FH_HR);
+  if($do_rpn) {
+    ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
   }
   return $zero_alerts;
 }
@@ -8239,6 +8251,7 @@ sub update_overflow_info_for_joined_alignments {
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
 #  $merged_stk_file:   name of stk file to create
+#  $alimerge_file:     name of output file, if undef, set to "/dev/null"
 #  $stk_list_file:     name of file with list of stockholm alignments to merge
 #  $do_small:          '1' to use --small, '0' not to
 #  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -8249,20 +8262,23 @@ sub update_overflow_info_for_joined_alignments {
 # Dies:       If esl-alimerge fails.
 #
 ################################################################# 
-sub run_esl_alimerge { 
-  my $sub_name = "run_esl_alimerge";
-  my $nargs_exp = 6;
+sub run_esl_alimerge_list { 
+  my $sub_name = "run_esl_alimerge_list";
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $merged_stk_file, $stk_list_file, $do_small, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $merged_stk_file, $alimerge_file, $stk_list_file, $do_small, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
+  if(! defined $alimerge_file) { 
+    $alimerge_file = "/dev/null";
+  }
   my $esl_alimerge_opts = "";
   if($do_small) { 
     $esl_alimerge_opts .= "--small";
   }
-  my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file";
+  my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file > $alimerge_file";
   utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   return;
@@ -8330,7 +8346,7 @@ sub run_cmemit_c {
 #
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#  $stg_key:           stage key, "nrp.cls" or "std.cls"
+#  $stg_key:           stage key, "rpn.cls" or "std.cls"
 #  $cm_file:           path to the CM file 
 #  $blastn_db_file:    path to blastn db
 #  $fa_file:           fasta file
@@ -8361,12 +8377,18 @@ sub classification_stage {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($stg_key ne "nrp.cls") && ($stg_key ne "std.cls")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls or std.cls", 1, $FH_HR);
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "std.cls")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls or std.cls", 1, $FH_HR);
   }
 
-  my $nseq       = scalar(keys $seq_len_HR);
-  my $do_blastn  = ((opt_Get("-s", $opt_HHR)) || ($stg_key eq "nrp.cls")) ? 1 : 0;
+  my $nseq = scalar(keys $seq_len_HR);
+  # will we use blastn or cmscan?
+  my $do_blastn  = 0; 
+  # default is to use blastn in rpn.cls, but don't if --r_prof used
+  if((! opt_Get("--r_prof", $opt_HHR)) && ($stg_key eq "rpn.cls")) { $do_blastn = 1; }
+  # default is to not use blastn in std.cls, but do if -s used
+  if((  opt_Get("-s",       $opt_HHR)) && ($stg_key eq "std.cls")) { $do_blastn = 1; }
+
   if($do_blastn) { # -s: use blastn for classification
     run_blastn_and_summarize_output($execs_HR, $blastn_db_file, $fa_file, $out_root, $stg_key,
                                     $nseq, $progress_w, $opt_HHR, $ofile_info_HHR);
@@ -8420,7 +8442,7 @@ sub classification_stage {
 #
 # Arguments: 
 #  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#  $stg_key:           stage key, "nrp.cdt" or "std.cdt"
+#  $stg_key:           stage key, "rpn.cdt" or "std.cdt"
 #  $cm_file:           path to the CM file 
 #  $sqfile_R:          REF to Bio::Easel::SqFile object from main fasta file
 #  $seq_name_AR:       REF to array of sequence names, pre-filled
@@ -8429,7 +8451,7 @@ sub classification_stage {
 #  $qsub_suffix:       suffix for qsub calls
 #  $mdl_info_AHR:      REF to array of hashes with model info     
 #  $mdl_seq_name_HAR:  REF to hash of arrays of sequences per model, can be undef if stage_key is "std.cdt"
-#  $mdl_cls_ct_HR:     REF to hash of counts of seqs assigned to each model, can be undef if stage_key is "nrp.cdt"
+#  $mdl_cls_ct_HR:     REF to hash of counts of seqs assigned to each model, can be undef if stage_key is "rpn.cdt"
 #  $stg_results_HHHR:  REF to 3D hash of classification results, PRE-FILLED
 #  $out_root:          root name for output file names
 #  $progress_w:        width for outputProgressPrior output
@@ -8453,13 +8475,13 @@ sub coverage_determination_stage {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($stg_key ne "nrp.cdt") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cdt or std.cdt", 1, $FH_HR);
+  if(($stg_key ne "rpn.cdt") && ($stg_key ne "std.cdt")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cdt or std.cdt", 1, $FH_HR);
   }
   if(($stg_key eq "std.cdt") && (! defined $mdl_cls_ct_HR)) { 
     ofile_FAIL("ERROR in $sub_name, stage key: $stg_key, but mdl_cls_ct_HR is undef", 1, $FH_HR);
   }
-  if(($stg_key eq "nrp.cdt") && (! defined $mdl_seq_name_HAR)) { 
+  if(($stg_key eq "rpn.cdt") && (! defined $mdl_seq_name_HAR)) { 
     ofile_FAIL("ERROR in $sub_name, stage key: $stg_key, but mdl_seq_name_HAR is undef", 1, $FH_HR);
   }
 
@@ -8468,8 +8490,14 @@ sub coverage_determination_stage {
   my $seq_name;            # a sequence name
   my @tblout_key_A  = ();  # array of round 2 search tblout keys in %ofile_info_HH
   my @tblout_file_A = ();  # array of round 2 search tblout files 
-  my $do_blastn     = (opt_Get("-s", $opt_HHR) || ($stg_key eq "nrp"));
   my $nseq          = scalar(@{$seq_name_AR});
+
+  # will we use blastn or cmsearch?
+  my $do_blastn  = 0; 
+  # default is to use blastn in rpn.cdt, but don't if --r_prof used
+  if((! opt_Get("--r_prof", $opt_HHR)) && ($stg_key eq "rpn.cdt")) { $do_blastn = 1; }
+  # default is to not use blastn in std.cdt, but do if -s used
+  if((  opt_Get("-s",       $opt_HHR)) && ($stg_key eq "std.cdt")) { $do_blastn = 1; }
 
   # fill per-model data structures based on classification reesults
   my %mdl_seq_name_HA  = ();  # key is model name $mdl_name, array is of seq names classified to model $mdl_name 
@@ -8500,14 +8528,14 @@ sub coverage_determination_stage {
   #                    files
   if($do_blastn) { 
     my $stg_desc = "";
-    if($stg_key eq "nrp.cdt") { 
+    if($stg_key eq "rpn.cdt") { 
       $stg_desc = sprintf("Preprocessing for N replacement: coverage determination from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
     }
     else { # stg_key eq "std.cdt"
       $stg_desc = sprintf("Determining sequence coverage from blastn results ($nseq seq%s)", ($nseq > 1) ? "s" : "");
     }
     $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
-    my $blastn_summary_key = ($stg_key eq "nrp.cdt") ? "nrp.cls.blastn.summary" : "std.cls.blastn.summary";
+    my $blastn_summary_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.blastn.summary" : "std.cls.blastn.summary";
     parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
                          \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     # keep track of the tblout output files:

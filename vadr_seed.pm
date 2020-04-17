@@ -62,7 +62,7 @@ require "vadr.pm";
 #  $db_file:         name of blast db file to use
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $out_root:        string for naming output files
-#  $stg_key:         stage key, "nrp.cls" or "std.cls"
+#  $stg_key:         stage key, "rpn.cls" or "std.cls"
 #  $nseq:            number of sequences in $seq_file
 #  $progress_w:      width for outputProgressPrior output
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
@@ -84,17 +84,17 @@ sub run_blastn_and_summarize_output {
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $log_FH = $FH_HR->{"log"}; # for convenience
 
-  if(($stg_key ne "nrp.cls") && ($stg_key ne "std.cls")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls or std.cls", 1, $FH_HR);
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "std.cls")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls or std.cls", 1, $FH_HR);
   }
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
-  my $stg_desc = ($stg_key eq "nrp.cls") ? 
+  my $stg_desc = ($stg_key eq "rpn.cls") ? 
       sprintf("Preprocessing for N replacement: blastn classification ($nseq seq%s)", (($nseq > 1) ? "s" : "")) :
       sprintf("Classifying sequences with blastn ($nseq seq%s)", (($nseq > 1) ? "s" : ""));
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
-  my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--blastnws", $opt_HHR); 
+  my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -130,7 +130,7 @@ sub run_blastn_and_summarize_output {
 #
 #             Output mode 1: 1 file, produced if $seq2mdl_HR is undef
 #
-#             "blastn.{nrp.cls,std.cls}.pretblout" file: cmscan --trmF3 output
+#             "blastn.{rpn.cls,std.cls}.pretblout" file: cmscan --trmF3 output
 #             format file with each hit on a separate line and
 #             individual hit scores reported for each hit. This is
 #             later processed by blastn_pretblout_to_tblout() to sum
@@ -141,12 +141,12 @@ sub run_blastn_and_summarize_output {
 #             Output mode 2: 2 files produced per model with >= 1 matching
 #             sequence, produced if $seq2mdl_HR is defined.
 #
-#             "search.{nrp.cls,std.cls,nrp.cdt,std.cdt}.<mdlname>.tblout":
+#             "search.{rpn.cls,std.cls,rpn.cdt,std.cdt}.<mdlname>.tblout":
 #             cmsearch --tblout format file with each hit for a
 #             sequence on + strand that is classified to model
 #             <mdlname>.
 #
-#             "blastn.{nrp.cls,std.cls,nrp.cdt,std.cdt}.<mdlname>.indel.txt":
+#             "blastn.{rpn.cls,std.cls,rpn.cdt,std.cdt}.<mdlname>.indel.txt":
 #             one line per sequence with all inserts and deletes in
 #             all blastn hit alignments for each sequence that is
 #             classified to <mdlname> on strand +.
@@ -160,8 +160,8 @@ sub run_blastn_and_summarize_output {
 #  $mdl_name_AR:         REF to array of model names that are keys in
 #                        %{$seq2mdl_HR}, can be undef if $seq2mdl_HR is undef
 #  $out_root:            output root for the file names
-#  $stg_key:             stage key, "nrp.cls" or "std.cls" for classification
-#                        or "nrp.cdt" or "std.cdt" for coverage determination
+#  $stg_key:             stage key, "rpn.cls" or "std.cls" for classification
+#                        or "rpn.cdt" or "std.cdt" for coverage determination
 #  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -180,11 +180,11 @@ sub parse_blastn_results {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls, rpn.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
-  if((($stg_key eq "nrp.cdt") || ($stg_key eq "std.cdt")) && 
+  if((($stg_key eq "rpn.cdt") || ($stg_key eq "std.cdt")) && 
      (! defined $seq2mdl_HR)) { 
     ofile_FAIL("ERROR in $sub_name, stage key is $stg_key but seq2mdl_HR is undef", 1, $FH_HR);
   }
@@ -194,7 +194,7 @@ sub parse_blastn_results {
   my %indel_FH_H   = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
   my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
   my $small_value  = 0.000001;
-  my $min_bitsc    = opt_Get("--blastnsc", $opt_HHR) - $small_value;
+  my $min_bitsc    = opt_Get("--s_blastnsc", $opt_HHR) - $small_value;
   my $do_keep      = opt_Get("--keep", $opt_HHR) ? 1 : 0;
   my $mdl_name = undef;
   if(! defined $seq2mdl_HR) { 
@@ -545,8 +545,8 @@ sub parse_blastn_results {
 #                          value: summed bit score for all hits for this model/sequence/strand trio
 #                          NOTE: all values in this 3D hash are set to 0. by this subroutine!
 #  $out_root:              output root for the file names
-#  $stg_key:               stage key, "nrp.cls" or "std.cls" for classification (cmscan) ,
-#                          or "nrp.cdt" or "std.cdt" for coverage determination (cmsearch)
+#  $stg_key:               stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#                          or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -565,9 +565,9 @@ sub blastn_pretblout_to_tblout {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_keep = opt_Get("--keep", $opt_HHR);
 
-  if(($stg_key ne "nrp.cls") && ($stg_key ne "nrp.cdt") && 
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
-    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be nrp.cls, nrp.cdt, std.cls, or std.cdt", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls, rpn.cdt, std.cls, or std.cdt", 1, $FH_HR);
   }
 
   ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "$stg_key.tblout", $out_root . ".$stg_key.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
@@ -901,7 +901,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
       $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
-  my $nt_overhang = opt_Get("--overhang", $opt_HHR);
+  my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
 
   my %processed_H = (); # key: sequence name we want indel info for, 
                         # value: 0 if we have not processed an HSP for this sequence
@@ -1020,7 +1020,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #              - determine regions not covered by the blastn alignments
 #              - check if they meet the minimum requirement for replacing Ns
 #              - for those that do, replace Ns and output to a fasta file
-#                with open file handle $ofile_HH{"FH"}{"nrp.sub.fa"}         
+#                with open file handle $ofile_HH{"FH"}{"rpn.sub.fa"}         
 #
 # Arguments: 
 #  $indel_file:      blastn indel file to parse, created by 
@@ -1034,7 +1034,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $seq_name_AR:     REF to array of sequences we want to parse indel info for
 #  $seq_len_HR:      REF to hash of sequence lengths
 #  $seq_replaced_HR: REF to hash, key is sequence name, value is 1 if this seq was replaced
-#  $nrp_output_HHR:  REF to 2D hash with information to output to .nrp tabular file, ADDED TO HERE
+#  $rpn_output_HHR:  REF to 2D hash with information to output to .rpn tabular file, ADDED TO HERE
 #  $out_root:        string for naming output files
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
@@ -1050,20 +1050,20 @@ sub parse_blastn_indel_file_and_replace_ns {
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($indel_file, $execs_HR, $cm_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
-      $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $nrp_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
-  my $nminlen_opt   = opt_Get("--nminlen", $opt_HHR);
+  my $r_minlen_opt   = opt_Get("--r_minlen", $opt_HHR);
   my $small_value   = 0.00000001;
-  my $nminfract_opt = opt_Get("--nminfract", $opt_HHR) - $small_value;
+  my $r_minfract_opt = opt_Get("--r_minfract", $opt_HHR) - $small_value;
   my $do_keep       = opt_Get("--keep", $opt_HHR);
   my %blastn_coords_HAH = (); # hash of arrays of hashes 
                            # key is seq name
                            # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
   my @processed_seq_name_A = (); # array of sequences read from the file, in order
 
-  my $fa_FH       = $FH_HR->{"nrp.sub.fa"};
+  my $fa_FH       = $FH_HR->{"rpn.sub.fa"};
   if(! defined $fa_FH) { 
     ofile_FAIL("ERROR in $sub_name, file handle for outputting fasta file with replaced sequences is undefined", 1, $FH_HR);
   }
@@ -1139,15 +1139,15 @@ sub parse_blastn_indel_file_and_replace_ns {
       $a->{"seq_start"} <=> $b->{"seq_start"} 
     } @cur_seq_blastn_coords_AH;
 
-    # initialize nrp_output_HHR for this sequence, to output later to .nrp file in output_tabular
-    $nrp_output_HHR->{$seq_name}{"ngaps_tot"}     = 0;
-    $nrp_output_HHR->{$seq_name}{"ngaps_int"}     = 0;
-    $nrp_output_HHR->{$seq_name}{"ngaps_rp"}      = 0;
-    $nrp_output_HHR->{$seq_name}{"ngaps_rp_full"} = 0;
-    $nrp_output_HHR->{$seq_name}{"ngaps_rp_part"} = 0;
-    $nrp_output_HHR->{$seq_name}{"nnt_rp_full"}   = 0;
-    $nrp_output_HHR->{$seq_name}{"nnt_rp_part"}   = 0;
-    $nrp_output_HHR->{$seq_name}{"coords"}        = "";
+    # initialize rpn_output_HHR for this sequence, to output later to .rpn file in output_tabular
+    $rpn_output_HHR->{$seq_name}{"ngaps_tot"}     = 0;
+    $rpn_output_HHR->{$seq_name}{"ngaps_int"}     = 0;
+    $rpn_output_HHR->{$seq_name}{"ngaps_rp"}      = 0;
+    $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"} = 0;
+    $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"} = 0;
+    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"}   = 0;
+    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}   = 0;
+    $rpn_output_HHR->{$seq_name}{"coords"}        = "";
 
     # get start and stop arrays for all seq and mdl coords (remember all strands are +)
     my $ncoords = scalar(@cur_seq_blastn_coords_AH);
@@ -1182,7 +1182,7 @@ sub parse_blastn_indel_file_and_replace_ns {
       push(@missing_seq_stop_A,  $seq_start_A[($i+1)]-1);
       push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
       push(@missing_mdl_stop_A,  $mdl_start_A[($i+1)]-1);
-      $nrp_output_HHR->{$seq_name}{"ngaps_int"}++;
+      $rpn_output_HHR->{$seq_name}{"ngaps_int"}++;
     }
     # check for missing sequence after final aligned region, infer final model position
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
@@ -1194,14 +1194,14 @@ sub parse_blastn_indel_file_and_replace_ns {
       push(@missing_mdl_stop_A,  ($mdl_stop_A[$i]+1) + $missing_seq_len); 
     }
     my $nmissing = scalar(@missing_seq_start_A);
-    $nrp_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
+    $rpn_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
 
     # first pass through all missing regions to determine if any should be replaced
     # because they meet minimum replacement thresholds:
     # - length of sequence region and model region must be identical
     #   (otherwise we wouldn't know what nt to replace Ns with)
-    # - length of sequence region is at or above minimum from --nminlen
-    # - fraction of Ns in sequence region is at or above minimum from --nminfract
+    # - length of sequence region is at or above minimum from --r_minlen
+    # - fraction of Ns in sequence region is at or above minimum from --r_minfract
     my $replaced_sqstring = "";
     my $original_seq_start = 1; # updated to position after last replaced string when we do a replacement
     my $nreplaced_regions = 0;
@@ -1209,19 +1209,19 @@ sub parse_blastn_indel_file_and_replace_ns {
     for($i = 0; $i < $nmissing; $i++) {
       my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
       my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
-      if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $nminlen_opt)) { 
+      if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $r_minlen_opt)) { 
         my $missing_sqstring = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $missing_seq_start_A[$i], $missing_seq_stop_A[$i], 0); # 0: do not reverse complement
         $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
         my $count_n = $missing_sqstring =~ tr/N//;
         my $fract_n = $count_n / $missing_seq_len;
-        if($fract_n >= $nminfract_opt) { 
+        if($fract_n >= $r_minfract_opt) { 
           # replace Ns in this region with expected nt
           # 
           # get the model consensus sequence if we don't have it already
-          $nrp_output_HHR->{$seq_name}{"ngaps_rp"}++;
-          $nrp_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
-          $nrp_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
-          $nrp_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
+          $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
+          $rpn_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
+          $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
+          $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
           if(! defined $mdl_consensus_sqstring) { 
             $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $exp_mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
             $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
@@ -1235,13 +1235,13 @@ sub parse_blastn_indel_file_and_replace_ns {
             # replace with substr of model cseq
             $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
             $nreplaced_nts += $missing_seq_len;
-            $nrp_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
-            $nrp_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
+            $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
+            $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
           }
           else { 
             # region to replace is not entirely Ns, more laborious case
             # replace only Ns with model positions
-            $nrp_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
+            $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
             if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
               @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
             }
@@ -1251,7 +1251,7 @@ sub parse_blastn_indel_file_and_replace_ns {
                 # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
                 $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
                 $nreplaced_nts++;
-                $nrp_output_HHR->{$seq_name}{"nnt_rp_part"}++;
+                $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
               }
               else { 
                 $replaced_sqstring .= $missing_sqstring_A[$spos];
@@ -1260,7 +1260,7 @@ sub parse_blastn_indel_file_and_replace_ns {
           }
           $original_seq_start = $missing_seq_stop_A[$i] + 1;
           $nreplaced_regions++;
-        } # end of 'if($fract_n >= $nminfract_opt)
+        } # end of 'if($fract_n >= $r_minfract_opt)
       }
     }
     # if we have generated a replacement sqstring, we need to finish it off if necessary
@@ -1290,7 +1290,7 @@ sub parse_blastn_indel_file_and_replace_ns {
 #
 #              Report unjoinbl alerts for any sequence for which
 #              we are unable to join the alignments (should be rare
-#              if overhang (--overhang) is long enough (>50-100nt))
+#              if overhang (--s_overhang) is long enough (>50-100nt))
 #
 # Arguments: 
 #  $sqfile:                REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
@@ -1789,14 +1789,14 @@ sub join_alignments_helper {
   }
 
   # debugging print statements
-  if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
-  if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
+  # if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
+  # if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
 
-  if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
-  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
+  # if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
+  # if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
 
-  print("ugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
-  print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
+  # print("ugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
+  # print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
 
   ################################################
   # Check to make sure aligned overlapping (overhang) regions
@@ -1903,7 +1903,7 @@ sub join_alignments_helper {
   my $joined_pp  = "";
   if($have_5p) {
     # $fetch_ali_5p_seq_start == 1, but included below for consistency with 3p calls
-    printf("fetching 5p %d to %d from %s\n", $fetch_ali_5p_seq_start, $fetch_ali_5p_seq_stop, $ali_5p_seq_coords);
+    # printf("fetching 5p %d to %d from %s\n", $fetch_ali_5p_seq_start, $fetch_ali_5p_seq_stop, $ali_5p_seq_coords);
     $joined_seq .= substr($ali_5p_seq, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
     $joined_mdl .= substr($ali_5p_mdl, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
     $joined_pp  .= substr($ali_5p_pp,  $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
@@ -1919,8 +1919,8 @@ sub join_alignments_helper {
     }
   }
   
-  printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
-  printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
+  # printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
+  # printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
   my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
   my $fetch_ugp_mdl_len = ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1);
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
@@ -1929,7 +1929,7 @@ sub join_alignments_helper {
   $joined_pp  .= utl_StringMonoChar($fetch_ugp_seq_len, "*", $FH_HR);
 
   if($have_3p) {
-    printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
+    # printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
     $joined_seq .= substr($ali_3p_seq, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
     $joined_mdl .= substr($ali_3p_mdl, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
     $joined_pp  .= substr($ali_3p_pp,  $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
