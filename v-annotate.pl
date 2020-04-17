@@ -461,10 +461,11 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 my $do_blastx = opt_Get("--skipblastx", \%opt_HH) ? 0 : 1;
 my $do_hmmer  = opt_Get("--addhmmer",   \%opt_HH) ? 1 : 0;
 
-my $do_blastn_any = opt_Get("-s", \%opt_HH) ? 1 : 0;
+my $do_blastn_rpn = (opt_Get("-r", \%opt_HH) && (! opt_Get("--r_prof", \%opt_HH))) ? 1 : 0;
 my $do_blastn_cls = opt_Get("-s", \%opt_HH) ? 1 : 0;
-my $do_blastn_cov = opt_Get("-s", \%opt_HH) ? 1 : 0;
+my $do_blastn_cdt = opt_Get("-s", \%opt_HH) ? 1 : 0;
 my $do_blastn_ali = opt_Get("-s", \%opt_HH) ? 1 : 0;
+my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_blastn_ali) ? 1 : 0;
 # we have separate flags for each blastn stage even though
 # they are all turned on/off with -a in case future changes
 # only need some but not all
@@ -610,7 +611,7 @@ for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") {
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for blastn db file if we need it
-if(opt_Get("-s", \%opt_HH)) { 
+if($do_blastn_any) { 
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".nhr", ".nin", ".nsq") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -729,6 +730,7 @@ if($do_blastx) {
 }
 # for any features with if there are any CDS features, validate that the BLAST db files we need exist
 
+
 ##################################
 # Validate the input sequence file
 ##################################
@@ -740,25 +742,23 @@ if(-e $in_fa_file . ".ssi") { unlink $in_fa_file . ".ssi"}; # remove SSI file if
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+# open the sequence file into a Bio::Easel::SqFile object
+my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
+my $rpn_sqfile = undef;
 
-# initialize the classification results
+# Initialize the classification results
 my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
                                # key1: sequence name, key2 alert code, value: alert message
+
+# Add ambignt5 and ambignt3 alerts, if any
+alert_add_ambignt5_ambignt3(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 my %stg_results_HHH = (); # key 1: sequence name, 
                           # key 2: ("{pre,std}.cls.1","{pre,std}.cls.2","{pre,std}.cls.eg","{pre,std}.cdt.bs", "{pre,std}.cdt.os")
                           #        where 'pre' implies pre-processing replace-ambiguities stage, and 'std' implies standard stage
                           # key 3: ("model", "coords", "bstrand", "score", "bias")
 
-# open the sequence file into a Bio::Easel::SqFile object
-my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
-my $rpn_sqfile = undef;
-
-$start_secs = ofile_OutputProgressPrior("Checking each sequence to see if it starts or ends with an N", $progress_w, $log_FH, *STDOUT);
-alert_add_ambignt5_ambignt3(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-exit 0;
 ###############################################################
 # If -r, pre-processing to identify and replace stretches of Ns
 ###############################################################
@@ -1183,7 +1183,7 @@ if($do_blastn_ali) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-s)");
 }
 if($do_replace_ns) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-s)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
 }
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
@@ -1264,8 +1264,12 @@ foreach my $line (@conclude_A) {
 # remove unwanted files, unless --keep
 if(! opt_Get("--keep", \%opt_HH)) { 
   my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
+  my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
   foreach my $to_remove_file (@to_remove_A) { 
-    if((defined $to_remove_file) && (-e $to_remove_file)) { push(@to_actually_remove_A, $to_remove_file); }
+    if((defined $to_remove_file) && (-e $to_remove_file) && (! defined $to_actually_remove_H{$to_remove_file})) { 
+      push(@to_actually_remove_A, $to_remove_file); 
+      $to_actually_remove_H{$to_remove_file} = 1; 
+    }
   }
   utl_FileRemoveList(\@to_actually_remove_A, "v-annotate.pl:main()", \%opt_HH, $FH_HR);
 }
@@ -8846,7 +8850,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
       push(@missing_seq_start_A, 1);
       push(@missing_seq_stop_A,  $seq_start_A[0]-1);
       my $missing_seq_len = ($seq_start_A[0]-1) - 1 + 1;
-      push(@missing_mdl_start_A, ($mdl_start_A[0]-1) - $missing_seq_len);
+      push(@missing_mdl_start_A, (($mdl_start_A[0]-1) - $missing_seq_len) + 1);
       push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
     }
     # check for missing sequence in between each aligned region
@@ -8860,12 +8864,11 @@ sub parse_cdt_tblout_file_and_replace_ns {
     }
     # check for missing sequence after final aligned region, infer final model position
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
-      # printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)]+1, $seq_len);
       push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
       push(@missing_seq_stop_A,  $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
-      push(@missing_mdl_stop_A,  ($mdl_stop_A[$i]+1) + $missing_seq_len); 
+      push(@missing_mdl_stop_A,  ($mdl_stop_A[$i]+1) + $missing_seq_len - 1); 
     }
     my $nmissing = scalar(@missing_seq_start_A);
     $rpn_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
@@ -8903,7 +8906,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
           # fill in non-replaced region since previous replacement 
           # (or 5' chunk up to replacement start if this is the first replacement, 
           #  in this case $original_seq_start will be its initialized value of 1)
-          $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
+          if($missing_seq_start_A[$i] != 1) { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
+            $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
+          }
           if($count_n eq $missing_seq_len) { 
             # region to replace is entirely Ns, easy case
             # replace with substr of model cseq
