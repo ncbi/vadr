@@ -1,0 +1,4 @@
+#       seq                                      ftr   ftr   ftr  alert           alert     alert 
+#idx    name                          model      type  name  idx  code      fail  desc      detail
+#-----  ----------------------------  ---------  ----  ----  ---  --------  ----  --------  ------
+10.1.1  gi|1339273835|gb|MG746117.1|  NC_039476  -     -       -  ambignt3  no    N_AT_END  final nucleotide is an N

@@ -1,0 +1,5 @@
+#     alert     causes   short             per    num   num  long       
+#idx  code      failure  description      type  cases  seqs  description
+#---  --------  -------  -----------  --------  -----  ----  -----------
+1     ambignt3  no       N_AT_END     sequence      1     1  final nucleotide is an N
+#---  --------  -------  -----------  --------  -----  ----  -----------

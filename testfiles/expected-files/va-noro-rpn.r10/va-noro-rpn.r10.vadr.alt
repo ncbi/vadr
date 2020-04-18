@@ -1,0 +1,6 @@
+#       seq                                      ftr   ftr   ftr  alert           alert                      alert 
+#idx    name                          model      type  name  idx  code      fail  desc                       detail
+#-----  ----------------------------  ---------  ----  ----  ---  --------  ----  -------------------------  ------
+3.1.1   gi|507309522|gb|JX439803.1|   NC_029646  CDS   VP1     4  indf3pst  yes   INDEFINITE_ANNOTATION_END  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75 > 5 (strand:+ CM:1336 blastx:1261, no valid stop codon in CM prediction)]
+#
+10.1.1  gi|1339273835|gb|MG746117.1|  NC_039476  -     -       -  ambignt3  no    N_AT_END                   final nucleotide is an N
