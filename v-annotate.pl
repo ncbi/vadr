@@ -5843,28 +5843,11 @@ sub output_tabular {
   my $do_rpn = opt_Get("-r", $opt_HHR) ? 1 : 0;
   my @head_rpn_AA = ();
   my @data_rpn_AA = ();
-  @{$head_rpn_AA[0]} = ("",    "seq",    "seq", "",      "",      "ngaps",  "ngaps", "ngaps", "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
-  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",      "int",    "rp", "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
-  my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,        0,       0,       0,         0,         0,         0,         0);
+  @{$head_rpn_AA[0]} = ("",    "seq",    "seq", "",      "",      "num_Ns",  "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
+  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
+  my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,         0,          0,       0,        0,         0,         0,         0,         0,         1);
 
-  #printf $out_FH ("#sequence: sequence name\n");
-  #printf $out_FH ("#product:  CDS product name\n");
-  #printf $out_FH ("#cm?:      is there a CM (nucleotide-based) prediction/hit? above threshold\n");
-  #printf $out_FH ("#blast?:   is there a blastx (protein-based) prediction/hit? above threshold\n");
-  #printf $out_FH ("#bquery:   name of blastx query name\n");
-  #printf $out_FH ("#feature?: 'feature' if blastx query was a fetched feature, from CM prediction\n");
-  #printf $out_FH ("#          'full'    if blastx query was a full input sequence\n");
-  #printf $out_FH ("#cmstart:  start position of CM (nucleotide-based) prediction\n");
-  #printf $out_FH ("#cmstop:   stop  position of CM (nucleotide-based) prediction\n");
-  #printf $out_FH ("#bxstart:  start position of blastx top HSP\n");
-  #printf $out_FH ("#bxstop:   stop  position of blastx top HSP\n");
-  #printf $out_FH ("#bxscore:  raw score of top blastx HSP (if one exists, even if it is below threshold)\n");
-  #printf $out_FH ("#startdf:  difference between cmstart and bxstart\n");
-  #printf $out_FH ("#stopdf:   difference between cmstop and bxstop\n");
-  #printf $out_FH ("#bxmaxin:  maximum insert length in top blastx HSP\n");
-  #printf $out_FH ("#bxmaxde:  maximum delete length in top blastx HSP\n");
-  #printf $out_FH ("#bxtrc:    position of stop codon in top blastx HSP, if there is one\n");
-  #printf $out_FH ("#alerts:   list of alerts for this sequence, - if none\n");
+  my $zero_classifications = 1; # set to '0' below if we have >= 1 seqs that are classified ($seq_mdl1 ne "-")
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -5905,16 +5888,18 @@ sub output_tabular {
     my $sda_3p_seq    = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? $sda_output_HR->{"3p_seq"} : "-";
     my $sda_3p_mdl    = (($do_sda) && (defined $sda_output_HR->{"3p_mdl"}))  ? $sda_output_HR->{"3p_mdl"} : "-";
     my $sda_3p_fract  = (($do_sda) && (defined $sda_output_HR->{"3p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"3p_seq"}, $FH_HR) / $seq_len : "-";
-    
-    my $rpn_output_HR     = (($do_rpn) && (defined $rpn_output_HHR->{$seq_name}))      ? \%{$rpn_output_HHR->{$seq_name}} : undef;
-    my $rpn_ngaps_tot     = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_tot"}))     ? $rpn_output_HR->{"ngaps_tot"} : "-";
-    my $rpn_ngaps_int     = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_int"}))     ? $rpn_output_HR->{"ngaps_int"} : "-";
-    my $rpn_ngaps_rp      = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp"}))      ? $rpn_output_HR->{"ngaps_rp"}  : "-";
-    my $rpn_ngaps_rp_full = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_full"})) ? $rpn_output_HR->{"ngaps_rp_full"} : "-";
-    my $rpn_ngaps_rp_part = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_part"})) ? $rpn_output_HR->{"ngaps_rp_part"} : "-";
-    my $rpn_nnt_rp_full   = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))   ? $rpn_output_HR->{"nnt_rp_full"} : "-";
-    my $rpn_nnt_rp_part   = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))   ? $rpn_output_HR->{"nnt_rp_part"} : "-";
-    my $rpn_coords        = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
+     
+    my $rpn_output_HR      = (($do_rpn) && (defined $rpn_output_HHR->{$seq_name}))       ? \%{$rpn_output_HHR->{$seq_name}} : undef;
+    my $rpn_nnt_n_tot      = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_tot"}))      ? $rpn_output_HR->{"nnt_n_tot"}      : "-";
+    my $rpn_nnt_n_rp_fract = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_rp_fract"})) ? $rpn_output_HR->{"nnt_n_rp_fract"} : "-";
+    my $rpn_ngaps_tot      = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_tot"}))      ? $rpn_output_HR->{"ngaps_tot"}      : "-";
+    my $rpn_ngaps_int      = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_int"}))      ? $rpn_output_HR->{"ngaps_int"}      : "-";
+    my $rpn_ngaps_rp       = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp"}))       ? $rpn_output_HR->{"ngaps_rp"}       : "-";
+    my $rpn_ngaps_rp_full  = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_full"}))  ? $rpn_output_HR->{"ngaps_rp_full"}  : "-";
+    my $rpn_ngaps_rp_part  = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_rp_part"}))  ? $rpn_output_HR->{"ngaps_rp_part"}  : "-";
+    my $rpn_nnt_rp_full    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))    ? $rpn_output_HR->{"nnt_rp_full"}    : "-";
+    my $rpn_nnt_rp_part    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))    ? $rpn_output_HR->{"nnt_rp_part"}    : "-";
+    my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
     
     my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
@@ -5924,6 +5909,7 @@ sub output_tabular {
       if(! defined $mdl_fail_ct_H{$seq_mdl1}) { $mdl_fail_ct_H{$seq_mdl1} = 0; }
       if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$seq_mdl1}++; }
       if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$seq_mdl1}++; }
+      $zero_classifications = 0;
     }
 
     my $ftr_nprinted   = 0; # number of total features printed for this sequence 
@@ -5999,8 +5985,8 @@ sub output_tabular {
             $seq_nftr_alt++; 
             $seq_nftr_alt += $ftr_alt_str =~ tr/,//; # plus 1 for each comma
           }
-
-          my $s_coords_str   = ""; # sequence coordinate string for feature
+ 
+         my $s_coords_str   = ""; # sequence coordinate string for feature
           my $m_coords_str   = ""; # model    coordinate string for feature
           my $ftr_nsgm_annot = 0;
           my $ftr_len_by_sgm = 0;
@@ -6121,7 +6107,10 @@ sub output_tabular {
                           $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
     }
     if($do_rpn) {
+      my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
+          sprintf("%.3f", $rpn_nnt_n_rp_fract) : "-";
       push(@data_rpn_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+                          $rpn_nnt_n_tot, $rpn_nnt_n_rp_fract2print,
                           $rpn_ngaps_tot, $rpn_ngaps_int, $rpn_ngaps_rp, 
                           $rpn_ngaps_rp_full, $rpn_ngaps_rp_part,
                           $rpn_nnt_rp_full, $rpn_nnt_rp_part,
@@ -6212,7 +6201,7 @@ sub output_tabular {
   if($do_rpn) {
     ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
   }
-  return $zero_alerts;
+  return ($zero_classifications, $zero_alerts);
 }
     
 #################################################################
@@ -8816,14 +8805,16 @@ sub parse_cdt_tblout_file_and_replace_ns {
     } @cur_seq_tblout_coords_AH;
 
     # initialize rpn_output_HHR for this sequence, to output later to .rpn file in output_tabular
-    $rpn_output_HHR->{$seq_name}{"ngaps_tot"}     = 0;
-    $rpn_output_HHR->{$seq_name}{"ngaps_int"}     = 0;
-    $rpn_output_HHR->{$seq_name}{"ngaps_rp"}      = 0;
-    $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"} = 0;
-    $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"} = 0;
-    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"}   = 0;
-    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}   = 0;
-    $rpn_output_HHR->{$seq_name}{"coords"}        = "";
+    $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = 0;  # total number of Ns
+    $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = 0;  # fraction of Ns that are replaced
+    $rpn_output_HHR->{$seq_name}{"ngaps_tot"}      = 0;  # total number of missing regions
+    $rpn_output_HHR->{$seq_name}{"ngaps_int"}      = 0;  # number of internal missing regions
+    $rpn_output_HHR->{$seq_name}{"ngaps_rp"}       = 0;  # number of regions in which at least 1 N is replaced
+    $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}  = 0;  # number of regions in which all Ns are replaced
+    $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}  = 0;  # number of regions in which not all Ns are replaced
+    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"}    = 0;  # number of N nts replaced in regions in which all Ns are replaced
+    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}    = 0;  # number of N nts replaced in regions in which all Ns are replaced
+    $rpn_output_HHR->{$seq_name}{"coords"}         = ""; # pseudo-coordinate string describing number of Ns replaced per region
 
     # get start and stop arrays for all seq and mdl coords (remember all strands are +)
     my $ncoords = scalar(@cur_seq_tblout_coords_AH);
@@ -8882,7 +8873,8 @@ sub parse_cdt_tblout_file_and_replace_ns {
     my $replaced_sqstring = "";
     my $original_seq_start = 1; # updated to position after last replaced string when we do a replacement
     my $nreplaced_regions = 0;
-    my $nreplaced_nts = 0;
+    my $nreplaced_nts = 0; # number of N nts replaced
+    my $n_tot         = 0; # total number of Ns in the sequence
     for($i = 0; $i < $nmissing; $i++) {
       my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
       my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
@@ -8951,11 +8943,23 @@ sub parse_cdt_tblout_file_and_replace_ns {
       if(length($replaced_sqstring) != $seq_len) { 
         ofile_FAIL(sprintf("ERROR in $sub_name, trying to replace at least one region in $seq_name, but failed, unexpected length %d should be $seq_len", length($replaced_sqstring)), 1, $FH_HR);
       }
+      $n_tot  = ($replaced_sqstring =~ tr/N//);
+      $n_tot += ($replaced_sqstring =~ tr/n//);
+      $n_tot += $nreplaced_nts;
+      $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = $n_tot;
+      $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = $nreplaced_nts / $n_tot;
       printf $fa_FH (">$seq_name\n$replaced_sqstring\n");
       $seq_replaced_HR->{$seq_name} = 1;
       $nseq_output++;
+    } # end of 'if($replaced_sqstring)'
+    else { # no Ns replaced
+      my $full_sqstring = $$sqfile_R->fetch_seq_to_sqstring($seq_name);
+      my $n_tot  = ($full_sqstring =~ tr/N//);
+      $n_tot += ($full_sqstring =~ tr/n//);
+      $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      =  $n_tot;
+      $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = 0.;
     }
-  }
+  } # end of 'foreach my $seq_name'
 
   return $nseq_output;
 }
