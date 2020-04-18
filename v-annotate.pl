@@ -55,6 +55,42 @@ require "sqp_utils.pm";
 #    BLAST databases for the model. Alerts can be reported based on
 #    the blast results. 
 #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Important options that change this behavior:
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 
+# Seeded alignment for faster processing (originally developed for
+# SARS-CoV-2 sequences), enabled with the -s option:
+#
+# Stage 1 and 2 are performed by a single blastn search instead of
+# cmscan followed by cmsearch. The maximum lengthed ungapped region
+# from the top blast hit per sequence is identified and used to 'seed'
+# the alignment of that sequence by cmalign. The ungapped alignment of
+# this seed blastn region is considered fixed and only the sequence
+# before and after it (plus 100nt of overlap on each side,
+# controllable with --s_overhang) is aligned separately by
+# cmalign. The up to three alignments are then joined to get the final
+# alignment.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# 
+# Replacement of stretches of Ns with the -r option:
+# 
+# Stage 1 and 2 are run as pre-processing steps to identify stretches
+# of each sequence that are N-rich and replace the Ns in them with the
+# expected nucleotide from the best-matching model, where possible.
+# After Ns are replaced, the new sequence with Ns replaced is analyzed
+# by all four stages a new (so stages 1 and 2 are performed twice, once
+# on the input sequences and once on those same sequences but with Ns
+# replaced. 
+#
+# By default, stages 1 and 2 are performed with blastn which in
+# anecdotal (but not systematic) testing seems less likely then cmscan
+# to extend alignments through stretches of Ns (although this is
+# probably controllable to an extent with command line options).
+# However, with --r_prof, preprocessing stages 1 and 2 are performed
+# with cmscan and cmsearch
+#
 #######################################################################################
 #
 # Alert identification:
