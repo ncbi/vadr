@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f -r $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn.r10 > va-noro-rpn.r10.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f -r $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn.r10 > va-noro-rpn.r10.out
 desc: annotate-noro-10-rpn
 out: va-noro-rpn.r10/va-noro-rpn.r10.vadr.pass.tbl 
 out: va-noro-rpn.r10/va-noro-rpn.r10.vadr.fail.tbl
@@ -36,7 +36,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.v
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.rpn
 rmdir: va-noro-rpn.r10
 # --r_prof
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f -r --r_prof $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-prof.r10 > va-noro-rpn-prof.r10.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f -r --r_prof $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-prof.r10 > va-noro-rpn-prof.r10.out
 desc: annotate-noro-10-rpn-prof
 out: va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.pass.tbl 
 out: va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.fail.tbl
