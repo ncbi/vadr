@@ -1334,8 +1334,10 @@ sub join_alignments_and_add_unjoinbl_alerts {
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
       if(! defined $mdl_consensus_sqstring) { 
-        $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
+        my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
+        $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
         $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
       }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
           join_alignments_helper($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
