@@ -611,7 +611,7 @@ for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") {
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for blastn db file if we need it
-if($do_blastn_any) { 
+if(($do_blastn_any) || ($do_replace_ns)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".nhr", ".nin", ".nsq") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -787,7 +787,7 @@ if($do_replace_ns) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, \%execs_H, $cm_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, $blastn_db_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                              \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
@@ -8692,8 +8692,8 @@ sub coverage_determination_stage {
 #
 # Arguments: 
 #  $tblout_file:     tblout file from a 'cvd' stage for a single model
-#  $execs_HR:        REF to hash with paths to executables 
 #  $cm_file:         path to main cm file
+#  $blastn_db_file:  path to blastn db file with consensus sequence for each model
 #  $sqfile_R:        REF to Bio::Easel::SqFile object from main fasta file
 #  $mdl_info_AHR:    REF to model info array of hashes, possibly added to here 
 #  $exp_mdl_name:    name of model we expect on all lines of $indel_file
@@ -8716,7 +8716,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
   my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $execs_HR, $cm_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
+  my ($tblout_file, $cm_file, $blastn_db_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
       $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
@@ -8892,8 +8892,10 @@ sub parse_cdt_tblout_file_and_replace_ns {
           $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
           $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
           if(! defined $mdl_consensus_sqstring) { 
-            $mdl_info_AHR->[$mdl_idx]{"cseq"} = run_cmemit_c($execs_HR, $cm_file, $exp_mdl_name, $out_root, $opt_HHR, $ofile_info_HHR);
+            my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file }); 
+            $mdl_info_AHR->[$mdl_idx]{"cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
             $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+            $blastn_sqfile = undef;
           }
           # fill in non-replaced region since previous replacement 
           # (or 5' chunk up to replacement start if this is the first replacement, 
