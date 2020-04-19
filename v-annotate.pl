@@ -1041,22 +1041,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 ###########################
 $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
 
-# determine which output alignments, if any we will create
-# and which, if any, we will keep (some we need only as intermediates
-# in certain situations)
-my $save_out_stk   = ($do_keep || opt_Get("--out_stk",   \%opt_HH)) ? 1 : 0;
-my $save_out_afa   = ($do_keep || opt_Get("--out_afa",   \%opt_HH)) ? 1 : 0;
-my $save_out_rpstk = ($do_keep || opt_Get("--out_rpstk", \%opt_HH)) ? 1 : 0;
-my $save_out_rpafa = ($do_keep || opt_Get("--out_rpafa", \%opt_HH)) ? 1 : 0;
-my $do_out_stk     = ($save_out_stk || (($save_out_rpstk || $save_out_rpafa)) && (! $save_out_afa)) ? 1 : 0; 
-my $do_out_afa     = ($save_out_afa || (($save_out_rpstk || $save_out_rpafa)) && (! $save_out_stk)) ? 1 : 0; 
-my $do_out_rpstk   = $save_out_rpstk;
-my $do_out_rpafa   = $save_out_rpafa;
-my $do_out_any     = ($do_out_stk || $do_out_afa || $do_out_rpstk || $do_out_rpafa) ? 1 : 0;
-
-printf("\nHEYA $out_root: save_out_stk: $save_out_stk save_out_afa: $save_out_afa save_out_rpstk: $save_out_rpstk save_out_rpafa: $save_out_rpafa\n");
-printf("HEYA $out_root: do_out_stk: $do_out_stk do_out_afa: $do_out_afa do_out_rpstk: $do_out_rpstk do_out_rpafa: $do_out_rpafa\n");
-
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
@@ -1090,28 +1074,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
     }
 
-    # create option-defined output alignments, if any
-    if($do_out_any) { 
-      my $stk_list_file = $out_root . "." . $mdl_name . ".align.stk.list";
-      my $do_alimerge_small = 0;
-      my $out_aln_key  = undef;
-      my $out_aln_file = undef;
-      utl_AToFile(\@{$stk_file_HA{$mdl_name}}, $stk_list_file, 1, $FH_HR);
-      if($do_out_stk) { 
-        $out_aln_file = $out_root . "." . $mdl_name . ".align.stk";
-        $out_aln_key  = $mdl_name . ".align.stk";
-        sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "stockholm", \%opt_HH, $FH_HR);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $out_aln_key, $out_aln_file, $save_out_stk, $save_out_stk, sprintf("model $mdl_name full sequence alignment (stockholm)"));
-        if(! $save_out_stk) { push(@to_remove_A, $out_aln_file); }
-      }
-      if($do_out_afa) { 
-        $out_aln_file = $out_root . "." . $mdl_name . ".align.afa";
-        $out_aln_key  = $mdl_name . ".align.afa";
-        sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "afa", \%opt_HH, $FH_HR);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $out_aln_key, $out_aln_file, $save_out_afa, $save_out_afa, sprintf("model $mdl_name full sequence alignment (afa)"));
-        if(! $save_out_afa) { push(@to_remove_A, $out_aln_file); }
-      }
-      push(@to_remove_A, $stk_list_file);
+    # Create option-defined output alignments, if any. 
+    # Logic differs significantly depending on -r or not so 
+    # we have separate blocks for each.
+    if(opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
+      output_alignments(\%execs_H, \@{$stk_file_HA{$mdl_name}}, $mdl_name, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
@@ -8381,51 +8348,6 @@ sub update_overflow_info_for_joined_alignments {
 }
 
 #################################################################
-# Subroutine:  run_esl_alimerge_list()
-# Incept:      EPN, Mon Apr 13 07:13:15 2020
-#
-# Purpose:    Run esl-alimerge --list to merge all alignments listed
-#             in $stk_list_file together into one alignment 
-#             $merged_stk_file. If $do_small, use the --small option.
-#             against the resulting protein sequences.
-#
-# Arguments: 
-#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#  $merged_stk_file:   name of stk file to create
-#  $alimerge_file:     name of output file, if undef, set to "/dev/null"
-#  $stk_list_file:     name of file with list of stockholm alignments to merge
-#  $do_small:          '1' to use --small, '0' not to
-#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If esl-alimerge fails.
-#
-################################################################# 
-sub run_esl_alimerge_list { 
-  my $sub_name = "run_esl_alimerge_list";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $merged_stk_file, $alimerge_file, $stk_list_file, $do_small, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  if(! defined $alimerge_file) { 
-    $alimerge_file = "/dev/null";
-  }
-  my $esl_alimerge_opts = "";
-  if($do_small) { 
-    $esl_alimerge_opts .= "--small";
-  }
-  my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file > $alimerge_file";
-  utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-
-  return;
-}
-
-#################################################################
 # Subroutine:  classification_stage()
 # Incept:      EPN, Mon Apr 13 17:07:28 2020
 #
@@ -8965,4 +8887,143 @@ sub parse_cdt_tblout_file_and_replace_ns {
   } # end of 'foreach my $seq_name'
 
   return $nseq_output;
+}
+
+#################################################################
+# Subroutine:  output_alignments()
+# Incept:      EPN, Sun Apr 19 08:16:36 2020
+#
+# Purpose:    Merge and output alignments in stockholm, aligned fasta
+#             or both for a single model. The logic differs
+#             significantly depending on whether -r is used or not.
+#             If -r is not used 
+#             
+#             If -r is enabled: --out_stk and --out_afa need to have
+#             original sequences in them, not the replaced sequences 
+#             which cmalign aligned, so we replace back to the originals
+#             by fetching from {$$in_sqfile_R}. And --out_rpstk and 
+#             --out_rpafa need to have replaced sequences in them.
+# 
+#             Regarding efficiency: if both --out_stk and --out_afa 
+#             are used, we could get away with only calling 
+#             msa_replace_sequences() once but we call it twice 
+#             because it would complicate this already complicated code logic.
+#             (And that situation should be rare, a savvy user could 
+#             use esl-reformat on one or the other.)
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#  $stk_file_AR:       REF to array of stockholm files to merge to get full alignment
+#  $mdl_name:          name of model this alignment is to
+#  $out_root:          root name for output file names
+#  $to_remove_AR:      REF to array of files to eventually remove, possibly ADDED TO HERE 
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If esl-alimerge fails.
+#
+################################################################# 
+sub output_alignments { 
+  my $sub_name = "output_alignments";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $stk_file_AR, $mdl_name, $out_root, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $stk_list_file = $out_root . "." . $mdl_name . ".align.stk.list";
+  utl_AToFile($stk_file_AR, $stk_list_file, 1, $FH_HR);
+  my $out_aln_file   = undef;
+  my $out_rpaln_file = undef;
+      
+  if(! opt_Get("-r", $opt_HHR)) { 
+    # default, no replacements happened
+    if(opt_Get("--out_stk", $opt_HHR)) { 
+      $out_aln_file = $out_root . "." . $mdl_name . ".align.stk";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "stockholm", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_aln_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
+    }
+    if(opt_Get("--out_afa", $opt_HHR)) { 
+      $out_aln_file = $out_root . "." . $mdl_name . ".align.afa";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "afa", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.afa", $out_aln_file, 1, 1, sprintf("model $mdl_name full sequence alignment (afa)"));
+    }
+  }
+  else { 
+    # -r enabled
+    if((opt_Get("--out_stk", $opt_HHR)) || (opt_Get("--out_rpstk", $opt_HHR))) { 
+      $out_rpaln_file = $out_root . "." . $mdl_name . ".align.rpstk";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "stockholm", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpstk", $out_aln_file, opt_Get("--out_rpstk", $opt_HHR), opt_Get("--out_rpstk", $opt_HHR), sprintf("model $mdl_name full replaced sequence alignment (stockholm)"));
+      if(opt_Get("--out_stk", $opt_HHR)) { 
+        # swap replaced sequences back with original sequences in the alignment
+        msa_replace_sequences(); # save as stockholm
+      }
+      if(! opt_Get("--out_rpstk", $opt_HHR)) { push(@{$to_remove_AR}, $out_rpaln_file); }
+    }
+    if((opt_Get("--out_afa", $opt_HHR)) || (opt_Get("--out_rpafa", $opt_HHR))) { 
+      $out_rpaln_file = $out_root . "." . $mdl_name . ".align.rpafa";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "afa", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpafa", $out_aln_file, opt_Get("--out_rpafa", $opt_HHR), opt_Get("--out_rpafa", $opt_HHR), sprintf("model $mdl_name full replaced sequence alignment (afa)"));
+      if(opt_Get("--out_afa", $opt_HHR)) { 
+        # swap replaced sequences back with original sequences in the alignment
+        msa_replace_sequences(); # save as afa
+      }
+      if(! opt_Get("--out_rpafa", $opt_HHR)) { push(@{$to_remove_AR}, $out_rpaln_file); }
+    }
+  } # end of block for -r
+
+  push(@{$to_remove_AR}, $stk_list_file);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  msa_replace_sequences()
+# Incept:      EPN, Sun Apr 19 07:50:59 2020
+#
+# Purpose:    Given an alignment file with a set of sequences 
+#             and a sequence file including sequences of the same
+#             names and lengths as those in the alignment file, 
+#             replace the aligned sequences in the alignment file
+#             with the sequences from the sequence file and output
+#             the new alignment.
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#  $merged_stk_file:   name of stk file to create
+#  $alimerge_file:     name of output file, if undef, set to "/dev/null"
+#  $stk_list_file:     name of file with list of stockholm alignments to merge
+#  $do_small:          '1' to use --small, '0' not to
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If esl-alimerge fails.
+#
+################################################################# 
+sub msa_replace_sequences { 
+  my $sub_name = "msa_replace_sequences";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $merged_stk_file, $alimerge_file, $stk_list_file, $do_small, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  if(! defined $alimerge_file) { 
+    $alimerge_file = "/dev/null";
+  }
+  my $esl_alimerge_opts = "";
+  if($do_small) { 
+    $esl_alimerge_opts .= "--small";
+  }
+  my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file > $alimerge_file";
+  utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
+
+  return;
 }
