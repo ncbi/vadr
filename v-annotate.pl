@@ -273,9 +273,8 @@ opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use ma
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_merge",      "boolean",      0,   $g,       "-s", undef,    "for -s, merge all single sequence joined alignments into one",     "for -s, merge all single sequence joined alignments into one", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options related to replacing completely ambiguous characters (Ns) with expected nucleotides";
+$opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
 opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible", \%opt_HH, \@opt_order_A);
 opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>", \%opt_HH, \@opt_order_A);
@@ -303,10 +302,14 @@ $opt_group_desc_H{++$g} = "options for adding stages";
 opt_Add("--addhmmer",      "boolean", 0,                    $g,"--skipblastx", undef,                                       "use hmmer for protein validation",                        "use hmmer for protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
-#       option       type       default                  group  requires incompat  preamble-output                         help-output    
-opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
-opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
+#       option       type       default   group  requires incompat  preamble-output                                                  help-output    
+opt_Add("--out_stk",        "boolean", 0,    $g,    undef, undef,   "output per-model full length stockholm alignments (.stk)",      "output per-model full length stockholm alignments (.stk)",      \%opt_HH, \@opt_order_A);
+opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-model full length fasta alignments (.afa)",          "output per-model full length fasta alignments (.afa)",          \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced", "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",     "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_ftrinfo",    "boolean", 0,    $g,    undef, undef,   "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--out_sgminfo",    "boolean", 0,    $g,    undef, undef,   "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
+opt_Add("--out_altinfo",    "boolean", 0,    $g,    undef, undef,   "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat  preamble-output                                                         help-output    
@@ -379,7 +382,6 @@ my $options_okay =
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
-                's_merge'       => \$GetOptions_H{"--s_merge"},
 # options related to parallelization
                 'r'             => \$GetOptions_H{"-r"},
                 'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
@@ -400,10 +402,13 @@ my $options_okay =
 # options for adding stages
                 'addhmmer'      => \$GetOptions_H{"--addhmmer"},
 # optional output files
-                'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
-                'sgminfo'       => \$GetOptions_H{"--sgminfo"},
-                'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'       => \$GetOptions_H{"--altinfo"},
+                'out_stk'       => \$GetOptions_H{"--out_stk"}, 
+                'out_afa'       => \$GetOptions_H{"--out_afa"}, 
+                'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
+                'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
+                'out_ftrinfo'   => \$GetOptions_H{"--out_ftrinfo"}, 
+                'out_sgminfo'   => \$GetOptions_H{"--out_sgminfo"},
+                'out_altinfo'   => \$GetOptions_H{"--out_altinfo"},
 # other expert options
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'execname=s'    => \$GetOptions_H{"--execname"});
@@ -575,13 +580,13 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # to close these first.
 
 # open optional output files
-if(opt_Get("--ftrinfo", \%opt_HH)) { 
+if(opt_Get("--out_ftrinfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
 }
-if(opt_Get("--sgminfo", \%opt_HH)) { 
+if(opt_Get("--out_sgminfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, 1, "Segment information (created due to --sgminfo)");
 }
-if(opt_Get("--altinfo", \%opt_HH)) { 
+if(opt_Get("--out_altinfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altinfo", $out_root . ".altinfo", 1, 1, "Alert information (created due to --altinfo)");
 }
 
@@ -1011,34 +1016,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                               $out_root, \%opt_HH, \%ofile_info_HH);
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-
-      if(! opt_Get("--s_merge", \%opt_HH)) { 
-        # do not merge all joined alignments together into one
-        # replace array of stockholm files output from cmalign
-        # from joined ones we just created
-        @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
-      }
-      else { 
-        # merge all joined alignments into one
-        # this should speed up annotation determination
-        my $start_secs = ofile_OutputProgressPrior(sprintf("Merging joined alignments for model $mdl_name ($cur_mdl_nseq seq%s, %d alignment%s)",
-                                                           (($cur_mdl_nseq > 1) ? "s" : ""), 
-                                                           scalar(@joined_stk_file_A), ((scalar(@joined_stk_file_A) > 1) ? "s" : "")), 
-                                                   $progress_w, $FH_HR->{"log"}, *STDOUT);
-        my $do_alimerge_small = 1; # use --small option with esl-alimerge, will only work because all joined alignments are in pfam format
-        my $merged_joined_stk_file      = $out_root . "." . $mdl_name . ".align.r3.merged.stk";
-        my $merged_joined_alimerge_file = $out_root . "." . $mdl_name . ".align.r3.merged.alimerge";
-        my $joined_stk_list_file        = $out_root . "." . $mdl_name . ".align.r3.stk.list";
-        utl_AToFile(\@joined_stk_file_A, $joined_stk_list_file, 1, $FH_HR);
-        run_esl_alimerge_list(\%execs_H, $merged_joined_stk_file, $merged_joined_alimerge_file, 
-                              $joined_stk_list_file, $do_alimerge_small,\%opt_HH, \%ofile_info_HH);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.alimerge", $merged_joined_alimerge_file, 0, $do_keep, sprintf("esl-alimerge output for merging of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.stk", $merged_joined_stk_file, 0, $do_keep, sprintf("merged alignment of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
-        @{$stk_file_HA{$mdl_name}} = ($merged_joined_stk_file);
-        push(@to_remove_A, $joined_stk_list_file);
-
-        ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-      }
+      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
 
       # replace any overflow info we have on subseqs to be for full seqs
       if(scalar(@overflow_seq_A) > 0) { 
@@ -1062,6 +1040,22 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 # Parse cmalign alignments
 ###########################
 $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
+
+# determine which output alignments, if any we will create
+# and which, if any, we will keep (some we need only as intermediates
+# in certain situations)
+my $save_out_stk   = ($do_keep || opt_Get("--out_stk",   \%opt_HH)) ? 1 : 0;
+my $save_out_afa   = ($do_keep || opt_Get("--out_afa",   \%opt_HH)) ? 1 : 0;
+my $save_out_rpstk = ($do_keep || opt_Get("--out_rpstk", \%opt_HH)) ? 1 : 0;
+my $save_out_rpafa = ($do_keep || opt_Get("--out_rpafa", \%opt_HH)) ? 1 : 0;
+my $do_out_stk     = ($save_out_stk || (($save_out_rpstk || $save_out_rpafa)) && (! $save_out_afa)) ? 1 : 0; 
+my $do_out_afa     = ($save_out_afa || (($save_out_rpstk || $save_out_rpafa)) && (! $save_out_stk)) ? 1 : 0; 
+my $do_out_rpstk   = $save_out_rpstk;
+my $do_out_rpafa   = $save_out_rpafa;
+my $do_out_any     = ($do_out_stk || $do_out_afa || $do_out_rpstk || $do_out_rpafa) ? 1 : 0;
+
+printf("\nHEYA $out_root: save_out_stk: $save_out_stk save_out_afa: $save_out_afa save_out_rpstk: $save_out_rpstk save_out_rpafa: $save_out_rpafa\n");
+printf("HEYA $out_root: do_out_stk: $do_out_stk do_out_afa: $do_out_afa do_out_rpstk: $do_out_rpstk do_out_rpafa: $do_out_rpafa\n");
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -1094,6 +1088,30 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                    \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
+    }
+
+    # create option-defined output alignments, if any
+    if($do_out_any) { 
+      my $stk_list_file = $out_root . "." . $mdl_name . ".align.stk.list";
+      my $do_alimerge_small = 0;
+      my $out_aln_key  = undef;
+      my $out_aln_file = undef;
+      utl_AToFile(\@{$stk_file_HA{$mdl_name}}, $stk_list_file, 1, $FH_HR);
+      if($do_out_stk) { 
+        $out_aln_file = $out_root . "." . $mdl_name . ".align.stk";
+        $out_aln_key  = $mdl_name . ".align.stk";
+        sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "stockholm", \%opt_HH, $FH_HR);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $out_aln_key, $out_aln_file, $save_out_stk, $save_out_stk, sprintf("model $mdl_name full sequence alignment (stockholm)"));
+        if(! $save_out_stk) { push(@to_remove_A, $out_aln_file); }
+      }
+      if($do_out_afa) { 
+        $out_aln_file = $out_root . "." . $mdl_name . ".align.afa";
+        $out_aln_key  = $mdl_name . ".align.afa";
+        sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "afa", \%opt_HH, $FH_HR);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $out_aln_key, $out_aln_file, $save_out_afa, $save_out_afa, sprintf("model $mdl_name full sequence alignment (afa)"));
+        if(! $save_out_afa) { push(@to_remove_A, $out_aln_file); }
+      }
+      push(@to_remove_A, $stk_list_file);
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
@@ -8405,59 +8423,6 @@ sub run_esl_alimerge_list {
   utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
 
   return;
-}
-
-#################################################################
-# Subroutine:  run_cmemit_c()
-# Incept:      EPN, Wed Apr 15 09:31:54 2020
-#
-# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
-#             and return the consensus sequence.
-#
-# Arguments: 
-#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
-#  $cm_file:         CM file to fetch from
-#  $mdl_name:        name of CM file to fetch
-#  $out_root:        root name for output file names
-#  $opt_HHR:         REF to options 2D hash
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If cmemit fails or we can't read any sequence from 
-#             the output fasta file
-#
-################################################################# 
-sub run_cmemit_c { 
-  my $sub_name = "run_cmemit_c";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $cm_file, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-  my $cseq_fa_key  = $mdl_name . ".cseq.fa";
-  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
-  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), $do_keep, $FH_HR);
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $cseq_fa_key, $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
-
-  # fetch the sequence
-  my @file_lines_A = ();
-  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
-  my $ret_cseq = "";
-  my $nlines = scalar(@file_lines_A);
-  if($nlines <= 1) { 
-    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
-  }
-  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
-    my $seq_line = $file_lines_A[$i];
-    chomp $seq_line;
-    $ret_cseq .= $seq_line;
-  }
-  
-  return $ret_cseq;
 }
 
 #################################################################
