@@ -38,9 +38,6 @@
 # - $alt_info_HHR: reference to a hash of hashes with alert information.
 #
 ########################################################################################
-#
-# List of subroutines in this file, divided into categories. 
-#
 use strict;
 use warnings;
 use Cwd;
@@ -53,6 +50,8 @@ require "sqp_seqfile.pm";
 require "sqp_utils.pm";
 
 #########################################################################################
+#
+# List of subroutines in this file, divided into categories. 
 #
 # Subroutines related to features or segments:
 # vdr_FeatureInfoImputeCoords()
@@ -67,6 +66,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateParentIndexStrings()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
+# vdr_FeatureInfoMerge()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -81,8 +81,8 @@ require "sqp_utils.pm";
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
-# vdr_FeatureSummarizeSegment()
 # vdr_FeatureParentIndex()
+# vdr_FeatureSummarizeSegment()
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
@@ -128,13 +128,13 @@ require "sqp_utils.pm";
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
 #
-# Subroutines related to cmalign output files:
+# Subroutines related to cmalign output:
+# vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
 # 
-# Subroutines related to running infernal programs
+# Other subroutines related to running infernal programs
 # vdr_CmemitConsensus()
-# vdr_CmalignWriteInsertFile()
 # 
 # Miscellaneous subroutines:
 # vdr_SplitFastaFile()
@@ -704,6 +704,86 @@ sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
     $ftr_type_idx2ftr_idx_HR->{$ftr_type_idx} = $ftr_idx;
   }
  
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoMerge()
+# Incept:     EPN, Sun May  5 10:32:40 2019
+#
+# Synopsis: Add info in one feature information arrays to another
+#           after validating that they can be merged.
+#
+#           Features to be merged are identified as "consistent"
+#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
+#           defined as those for which there is a subset of >=1
+#           features that are in common (identical qualifier name and
+#           value) between the two.
+#
+#           If any "inconsistent" features are identified between
+#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
+#           die. "Inconsistent" features are those for which a subset
+#           of >=1 qualifiers have identical values but another subset
+#           of >=1 qualifiers have different values.
+# 
+# Arguments:
+#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
+#                       add to $
+#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
+#                    on the features to add to  $ftr_info1_HAHR
+#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if something is inconsistent between the two mdl_info_AHRs or
+#             ftr_info_HAHRs that prevent merging
+#################################################################
+sub vdr_FeatureInfoMerge { 
+  my $sub_name = "vdr_FeatureInfoMerge";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $src_nftr = scalar(@{$src_ftr_info_AHR});
+  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
+  my $src_ftr_key;
+  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
+    my $found_consistent = 0;
+    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
+      my $nconsistent   = 0;
+      my $ninconsistent = 0;
+      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
+             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $nconsistent++;
+          }
+          else { 
+            $ninconsistent++;
+          }
+        }
+      }
+      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
+        # we found a match, merge them
+        if($found_consistent) { 
+          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+        }
+        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
+                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
+          }
+        }
+        $found_consistent = 1;
+      }
+    }
+    if(! $found_consistent) { 
+      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
+    }
+  }
+
   return;
 }
 
@@ -3565,83 +3645,299 @@ sub vdr_ModelInfoFileParse {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoMerge()
-# Incept:     EPN, Sun May  5 10:32:40 2019
+# Subroutine:  vdr_CmalignCheckStdOutput()
+# Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
-# Synopsis: Add info in one feature information arrays to another
-#           after validating that they can be merged.
-#
-#           Features to be merged are identified as "consistent"
-#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
-#           defined as those for which there is a subset of >=1
-#           features that are in common (identical qualifier name and
-#           value) between the two.
-#
-#           If any "inconsistent" features are identified between
-#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
-#           die. "Inconsistent" features are those for which a subset
-#           of >=1 qualifiers have identical values but another subset
-#           of >=1 qualifiers have different values.
+# Purpose:     Check cmalign output to see if it indicates that 
+#              a cmalign run finished successfully, in error, or 
+#              has not yet finished.
+#              
+# Arguments: 
+#  $stdout_file:      path to the stdout file we will check
+#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
+#  $FH_HR:            REF to hash of file handles
 # 
-# Arguments:
-#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
-#                       add to $
-#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
-#                    on the features to add to  $ftr_info1_HAHR
-#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
+#              '0' if $stdout_file indicates cmalign job finished in error but in
+#                  a way that is allowed, fills $$ret_mxsize_R
+#             '-1' if $stdout_file indicates cmalign job is not yet finished
+#                  or failed in some way we aren't looking for
+#
+# Dies: If $stdout_file does not exist or is empty
+# 
+################################################################# 
+sub vdr_CmalignCheckStdOutput { 
+  my $sub_name = "vdr_CmalignCheckStdOutput";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
+  if(defined $ret_mxsize_R) { 
+    $$ret_mxsize_R = 0; # overwritten below if nec
+  }
+
+  if(! -e $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
+  }
+  if(! -s $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
+  }
+
+  # if we get here, the file exists and is non-empty
+  my $final_line = `tail -n 1 $stdout_file`;
+  chomp $final_line;
+  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+  if($final_line =~ m/\Q# CPU time/) { 
+    return 1; 
+  }
+  else { 
+    # job did NOT finish successfully, check for mx overflow error
+    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
+    if($error_line =~ m/\r$/) { chop $error_line; } # remove ^M if it exists
+    if($error_line =~ /Error: .+ alignment mxes need (\d+\.\d+)/) { 
+      if(defined $ret_mxsize_R) { 
+        $$ret_mxsize_R = $1;
+      }
+      return 0;
+    }
+    else { 
+      return -1;
+    }
+  }
+    
+  return -1; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine : vdr_CmalignParseInsertFile()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
+#             results in %{$seq_inserts_HHR}.
+#
+#             
+# Arguments: 
+#  $ifile_file:       ifile file to parse
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here, must be defined
+#                     key 1: sequence name
+#                     key 2: one of 'spos', 'epos', 'ins'
+#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                     for n inserts, where insert x is defined by:
+#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                     <uapos_x> is unaligned sequence position of the first aligned nt
+#                     <inslen_x> is length of the insert
+#  $mdl_name_HR:      REF to hash of model name hash to fill, added to here, can be undef
+#                     key: sequence name, value: name of model this sequence was aligned to
+#  $seq_name_AR:      REF to array of sequence names, in order read, added to here, can be undef
+#  $seq_len_HR:       REF to hash of sequence lengths to fill, added to here, can be undef
+#  $mdl_len_HR:       REF to hash of model name hash to fill, added to here, can be undef
+#                     key: *model* name, value: length of model
+#  $FH_HR:            REF to hash of file handles
 #
 # Returns:    void
 #
-# Dies:       if something is inconsistent between the two mdl_info_AHRs or
-#             ftr_info_HAHRs that prevent merging
-#################################################################
-sub vdr_FeatureInfoMerge { 
-  my $sub_name = "vdr_FeatureInfoMerge";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+# Dies:       if unable to parse the ifile
+#             if $seq_inserts_HHR is undef upon entry
+#             if the same model exists twice in the ifile with
+#             different lengths and $mdl_len_HR is defined
+#
+################################################################# 
+sub vdr_CmalignParseInsertFile { 
+  my $sub_name = "vdr_CmalignParseInsertFile()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  my ($ifile_file, $seq_inserts_HHR, $mdl_name_HR, $seq_name_AR, $seq_len_HR, $mdl_len_HR, $FH_HR) = @_;
   
-  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
-  my $src_nftr = scalar(@{$src_ftr_info_AHR});
-  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
-  my $src_ftr_key;
-  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
-    my $found_consistent = 0;
-    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
-      my $nconsistent   = 0;
-      my $ninconsistent = 0;
-      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
-        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
-             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-            $nconsistent++;
+  open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
+
+  if(! defined $seq_inserts_HHR) {
+    ofile_FAIL("ERROR in $sub_name, seq_inserts_HHR is undef upon entry", 1, $FH_HR);
+  }
+    
+  my $line_ctr = 0;  # counts lines in ifile_file
+  my $mdl_name = undef;
+  my $mdl_len  = undef;
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
+      #norovirus.NC_039477 7567
+      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) == 2) {
+        ($mdl_name, $mdl_len) = (@el_A);
+        if(defined $mdl_len_HR) {
+          if((defined $mdl_len_HR->{$mdl_name}) &&
+             ($mdl_len_HR->{$mdl_name} != $mdl_len)) {
+            ofile_FAIL("ERROR in $sub_name, model $mdl_name appears multiple times with different lengths $mdl_len and " . $mdl_len_HR->{$mdl_name}, 1, $FH_HR);
           }
-          else { 
-            $ninconsistent++;
-          }
+          $mdl_len_HR->{$mdl_name} = $mdl_len;
         }
       }
-      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
-        # we found a match, merge them
-        if($found_consistent) { 
-          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+      elsif(scalar(@el_A) >= 4) { 
+        if((! defined $mdl_name) || (! defined $mdl_len)) { 
+          ofile_FAIL("ERROR in $sub_name, read sequence line for sequence " . $el_A[0] . "before model line", 1, $FH_HR);
         }
-        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
-          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
-                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
-          }
+        my $nel = scalar(@el_A); 
+        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
+          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
+        }          
+        my ($seq_name, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
+        if(! defined $seq_inserts_HHR->{$seq_name}) { 
+          # initialize
+          %{$seq_inserts_HHR->{$seq_name}} = ();
+          if(defined $mdl_name_HR) { $mdl_name_HR->{$seq_name} = $mdl_name; }
+          if(defined $seq_name_AR) { push(@{$seq_name_AR}, $seq_name); }
+          if(defined $seq_len_HR)  { $seq_len_HR->{$seq_name} = $seq_len; }
         }
-        $found_consistent = 1;
+        # create the insert string
+        my $insert_str = "";
+        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
+          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
+        }
+        $seq_inserts_HHR->{$seq_name}{"spos"} = $spos;
+        $seq_inserts_HHR->{$seq_name}{"epos"} = $epos;
+        $seq_inserts_HHR->{$seq_name}{"ins"}  = $insert_str;
       }
-    }
-    if(! $found_consistent) { 
-      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
     }
   }
-
+  close(IN);
+  
   return;
+}
+
+#################################################################
+# Subroutine : vdr_CmalignWriteInsertFile()
+# Incept:      EPN, Fri Apr  3 11:17:49 2020
+#
+# Purpose:    Write an Infernal 1.1 cmalign --ifile given
+#             insert information in %{$seq_inserts_HHR}.
+#
+# Arguments: 
+#  $ifile_file:       ifile file to write to
+#  $do_append:        '1' to append to if file exists, '0' to create new file
+#  $mdl_name:         name of model for model line, all seqs should have insert info relative to this model
+#  $mdl_len:          length of model for model line,
+#  $seq_name_AR:      REF to array of sequence names to output data for from seq_inserts_HHR
+#  $seq_len_HR:       REF to hash of sequence lengths
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, already filled
+#                     key 1: sequence name
+#                     key 2: one of 'spos', 'epos', 'ins'
+#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                     for n inserts, where insert x is defined by:
+#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                     <uapos_x> is unaligned sequence position of the first aligned nt
+#                     <inslen_x> is length of the insert
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if unable to parse the ifile
+#
+################################################################# 
+sub vdr_CmalignWriteInsertFile { 
+  my $sub_name = "vdr_CmalignWriteInsertFile()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ifile_file, $do_append, $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR, $seq_inserts_HHR, $FH_HR) = @_;
+
+  # print("in $sub_name\n");
+  # utl_HHDump("seq_inserts_HH", $seq_inserts_HHR, *STDOUT);
+  
+  my $out_mode = (($do_append) && (-s $ifile_file)) ? ">>" : ">";
+  open(OUT, $out_mode, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, (($out_mode eq ">") ? "writing" : "appending"), $FH_HR);
+
+  my $line_ctr = 0;  # counts lines in ifile_file
+
+  # model line: 2 tokens
+  #<modelname> <modellen>
+  #norovirus.NC_039477 7567
+  print OUT $mdl_name . " " . $mdl_len . "\n";
+
+  # per-sequence lines, each has at least 3 tokens:
+  # <seqname> <spos> <epos>
+  # and optionally 
+  foreach my $seq_name (@{$seq_name_AR}) {
+    print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
+    if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
+       $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
+      my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
+      foreach my $ins (@ins_A) {
+        # example line:
+        #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+        if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+          print OUT ("  " . $1 . " " . $2 . " " . $3);
+        }
+        else {
+          ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+        }
+      }
+    }
+    print OUT "\n";
+  }
+  print OUT "//\n";
+
+  close OUT;
+}
+
+#################################################################
+# Subroutine:  vdr_CmemitConsensusToFile()
+# Incept:      EPN, Wed Apr 15 09:31:54 2020
+#
+# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
+#             and return the consensus sequence.
+#
+# Arguments: 
+#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
+#  $cm_file:         CM file to fetch from
+#  $mdl_name:        name of CM file to fetch
+#  $cseq_fa_file:    name of output fasta file to create
+#  $opt_HHR:         REF to options 2D hash
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    the consensus sequence as a string
+#
+# Dies:       If cmemit fails or we can't read any sequence from 
+#             the output fasta file
+#
+################################################################# 
+sub vdr_CmemitConsensus {
+  my $sub_name = "vdr_CmemitConsensusToFile";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), opt_Get("--keep", $opt_HHR), $FH_HR);
+
+  # fetch the sequence
+  my @file_lines_A = ();
+  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
+  my $ret_cseq = "";
+  my $nlines = scalar(@file_lines_A);
+  if($nlines <= 1) { 
+    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
+  }
+  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
+    my $seq_line = $file_lines_A[$i];
+    chomp $seq_line;
+    $ret_cseq .= $seq_line;
+  }
+  
+  return $ret_cseq;
 }
 
 #################################################################
@@ -3795,70 +4091,6 @@ sub vdr_CdsFetchStockholmToFasta {
 }
 
 #################################################################
-# Subroutine:  vdr_CmalignCheckStdOutput()
-# Incept:      EPN, Wed Feb  6 14:18:59 2019
-#
-# Purpose:     Check cmalign output to see if it indicates that 
-#              a cmalign run finished successfully, in error, or 
-#              has not yet finished.
-#              
-# Arguments: 
-#  $stdout_file:      path to the stdout file we will check
-#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
-#  $FH_HR:            REF to hash of file handles
-# 
-# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
-#              '0' if $stdout_file indicates cmalign job finished in error but in
-#                  a way that is allowed, fills $$ret_mxsize_R
-#             '-1' if $stdout_file indicates cmalign job is not yet finished
-#                  or failed in some way we aren't looking for
-#
-# Dies: If $stdout_file does not exist or is empty
-# 
-################################################################# 
-sub vdr_CmalignCheckStdOutput { 
-  my $sub_name = "vdr_CmalignCheckStdOutput";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
-  if(defined $ret_mxsize_R) { 
-    $$ret_mxsize_R = 0; # overwritten below if nec
-  }
-
-  if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
-  }
-  if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
-  }
-
-  # if we get here, the file exists and is non-empty
-  my $final_line = `tail -n 1 $stdout_file`;
-  chomp $final_line;
-  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-  if($final_line =~ m/\Q# CPU time/) { 
-    return 1; 
-  }
-  else { 
-    # job did NOT finish successfully, check for mx overflow error
-    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
-    if($error_line =~ m/\r$/) { chop $error_line; } # remove ^M if it exists
-    if($error_line =~ /Error: .+ alignment mxes need (\d+\.\d+)/) { 
-      if(defined $ret_mxsize_R) { 
-        $$ret_mxsize_R = $1;
-      }
-      return 0;
-    }
-    else { 
-      return -1;
-    }
-  }
-    
-  return -1; # NEVER REACHED
-}
-
-#################################################################
 # Subroutine: vdr_ParseSeqFileToSeqHash()
 # Incept:     EPN, Mon May 20 12:19:29 2019
 # 
@@ -3891,238 +4123,6 @@ sub vdr_ParseSeqFileToSeqHash {
   }
   
   return;
-}
-
-#################################################################
-# Subroutine : vdr_CmalignParseInsertFile()
-# Incept:      EPN, Thu Jan 31 13:06:54 2019
-#
-# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
-#             results in %{$seq_inserts_HHR}.
-#
-#             
-# Arguments: 
-#  $ifile_file:       ifile file to parse
-#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here, must be defined
-#                     key 1: sequence name
-#                     key 2: one of 'spos', 'epos', 'ins'
-#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
-#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
-#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
-#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
-#                     for n inserts, where insert x is defined by:
-#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
-#                     <uapos_x> is unaligned sequence position of the first aligned nt
-#                     <inslen_x> is length of the insert
-#  $mdl_name_HR:      REF to hash of model name hash to fill, added to here, can be undef
-#                     key: sequence name, value: name of model this sequence was aligned to
-#  $seq_name_AR:      REF to array of sequence names, in order read, added to here, can be undef
-#  $seq_len_HR:       REF to hash of sequence lengths to fill, added to here, can be undef
-#  $mdl_len_HR:       REF to hash of model name hash to fill, added to here, can be undef
-#                     key: *model* name, value: length of model
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       if unable to parse the ifile
-#             if $seq_inserts_HHR is undef upon entry
-#             if the same model exists twice in the ifile with
-#             different lengths and $mdl_len_HR is defined
-#
-################################################################# 
-sub vdr_CmalignParseInsertFile { 
-  my $sub_name = "vdr_CmalignParseInsertFile()";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($ifile_file, $seq_inserts_HHR, $mdl_name_HR, $seq_name_AR, $seq_len_HR, $mdl_len_HR, $FH_HR) = @_;
-  
-  open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
-
-  if(! defined $seq_inserts_HHR) {
-    ofile_FAIL("ERROR in $sub_name, seq_inserts_HHR is undef upon entry", 1, $FH_HR);
-  }
-    
-  my $line_ctr = 0;  # counts lines in ifile_file
-  my $mdl_name = undef;
-  my $mdl_len  = undef;
-  while(my $line = <IN>) { 
-    $line_ctr++;
-    if($line !~ m/^\#/) { 
-      chomp $line;
-      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
-      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
-      #norovirus.NC_039477 7567
-      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
-      my @el_A = split(/\s+/, $line);
-      if(scalar(@el_A) == 2) {
-        ($mdl_name, $mdl_len) = (@el_A);
-        if(defined $mdl_len_HR) {
-          if((defined $mdl_len_HR->{$mdl_name}) &&
-             ($mdl_len_HR->{$mdl_name} != $mdl_len)) {
-            ofile_FAIL("ERROR in $sub_name, model $mdl_name appears multiple times with different lengths $mdl_len and " . $mdl_len_HR->{$mdl_name}, 1, $FH_HR);
-          }
-          $mdl_len_HR->{$mdl_name} = $mdl_len;
-        }
-      }
-      elsif(scalar(@el_A) >= 4) { 
-        if((! defined $mdl_name) || (! defined $mdl_len)) { 
-          ofile_FAIL("ERROR in $sub_name, read sequence line for sequence " . $el_A[0] . "before model line", 1, $FH_HR);
-        }
-        my $nel = scalar(@el_A); 
-        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
-          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
-        }          
-        my ($seq_name, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
-        if(! defined $seq_inserts_HHR->{$seq_name}) { 
-          # initialize
-          %{$seq_inserts_HHR->{$seq_name}} = ();
-          if(defined $mdl_name_HR) { $mdl_name_HR->{$seq_name} = $mdl_name; }
-          if(defined $seq_name_AR) { push(@{$seq_name_AR}, $seq_name); }
-          if(defined $seq_len_HR)  { $seq_len_HR->{$seq_name} = $seq_len; }
-        }
-        # create the insert string
-        my $insert_str = "";
-        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
-          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
-        }
-        $seq_inserts_HHR->{$seq_name}{"spos"} = $spos;
-        $seq_inserts_HHR->{$seq_name}{"epos"} = $epos;
-        $seq_inserts_HHR->{$seq_name}{"ins"}  = $insert_str;
-      }
-    }
-  }
-  close(IN);
-  
-  return;
-}
-
-#################################################################
-# Subroutine:  vdr_CmemitConsensusToFile()
-# Incept:      EPN, Wed Apr 15 09:31:54 2020
-#
-# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
-#             and return the consensus sequence.
-#
-# Arguments: 
-#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
-#  $cm_file:         CM file to fetch from
-#  $mdl_name:        name of CM file to fetch
-#  $cseq_fa_file:    name of output fasta file to create
-#  $opt_HHR:         REF to options 2D hash
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    the consensus sequence as a string
-#
-# Dies:       If cmemit fails or we can't read any sequence from 
-#             the output fasta file
-#
-################################################################# 
-sub vdr_CmemitConsensus {
-  my $sub_name = "vdr_CmemitConsensusToFile";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
-  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), opt_Get("--keep", $opt_HHR), $FH_HR);
-
-  # fetch the sequence
-  my @file_lines_A = ();
-  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
-  my $ret_cseq = "";
-  my $nlines = scalar(@file_lines_A);
-  if($nlines <= 1) { 
-    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
-  }
-  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
-    my $seq_line = $file_lines_A[$i];
-    chomp $seq_line;
-    $ret_cseq .= $seq_line;
-  }
-  
-  return $ret_cseq;
-}
-
-#################################################################
-# Subroutine : vdr_CmalignWriteInsertFile()
-# Incept:      EPN, Fri Apr  3 11:17:49 2020
-#
-# Purpose:    Write an Infernal 1.1 cmalign --ifile given
-#             insert information in %{$seq_inserts_HHR}.
-#
-# Arguments: 
-#  $ifile_file:       ifile file to write to
-#  $do_append:        '1' to append to if file exists, '0' to create new file
-#  $mdl_name:         name of model for model line, all seqs should have insert info relative to this model
-#  $mdl_len:          length of model for model line,
-#  $seq_name_AR:      REF to array of sequence names to output data for from seq_inserts_HHR
-#  $seq_len_HR:       REF to hash of sequence lengths
-#  $seq_inserts_HHR:  REF to hash of hashes with insert information, already filled
-#                     key 1: sequence name
-#                     key 2: one of 'spos', 'epos', 'ins'
-#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
-#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
-#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
-#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
-#                     for n inserts, where insert x is defined by:
-#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
-#                     <uapos_x> is unaligned sequence position of the first aligned nt
-#                     <inslen_x> is length of the insert
-#  $FH_HR:            REF to hash of file handles
-#
-# Returns:    void
-#
-# Dies:       if unable to parse the ifile
-#
-################################################################# 
-sub vdr_CmalignWriteInsertFile { 
-  my $sub_name = "vdr_CmalignWriteInsertFile()";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-  
-  my ($ifile_file, $do_append, $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR, $seq_inserts_HHR, $FH_HR) = @_;
-
-  # print("in $sub_name\n");
-  # utl_HHDump("seq_inserts_HH", $seq_inserts_HHR, *STDOUT);
-  
-  my $out_mode = (($do_append) && (-s $ifile_file)) ? ">>" : ">";
-  open(OUT, $out_mode, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, (($out_mode eq ">") ? "writing" : "appending"), $FH_HR);
-
-  my $line_ctr = 0;  # counts lines in ifile_file
-
-  # model line: 2 tokens
-  #<modelname> <modellen>
-  #norovirus.NC_039477 7567
-  print OUT $mdl_name . " " . $mdl_len . "\n";
-
-  # per-sequence lines, each has at least 3 tokens:
-  # <seqname> <spos> <epos>
-  # and optionally 
-  foreach my $seq_name (@{$seq_name_AR}) {
-    print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
-    if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
-       $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
-      my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
-      foreach my $ins (@ins_A) {
-        # example line:
-        #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
-        if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
-          print OUT ("  " . $1 . " " . $2 . " " . $3);
-        }
-        else {
-          ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
-        }
-      }
-    }
-    print OUT "\n";
-  }
-  print OUT "//\n";
-
-  close OUT;
 }
 
 ###########################################################################
