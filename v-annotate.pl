@@ -3447,11 +3447,11 @@ sub add_frameshift_alerts_for_one_sequence {
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $do_output_frameshift_stk = opt_Get("--keep", $opt_HHR);
-  my $fst_min_nt       = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
-  my $fst_high_ppthr   = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
-  my $fst_low_ppthr    = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
-  my $nmaxins          = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
-  my $nmaxdel          = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
+  my $fst_min_nt     = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
+  my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
+  my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
+  my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
+  my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
   my $fsthicnf_is_fatal = $alt_info_HHR->{"fsthicnf"}{"causes_failure"} ? 1 : 0;
   my $fstlocnf_is_fatal = $alt_info_HHR->{"fstlocnf"}{"causes_failure"} ? 1 : 0;
   my $small_value = 0.000001; # for checking if PPs are below threshold
@@ -3507,6 +3507,7 @@ sub add_frameshift_alerts_for_one_sequence {
           my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
           my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
           my $strand = $sgm_results_HR->{"strand"};
+          my $cur_delete_len = 0; # current length of deletion
           if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
           if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
           $ftr_sstop = $sstop;
@@ -3562,10 +3563,17 @@ sub add_frameshift_alerts_for_one_sequence {
               $uapos_prv = $uapos;
               $rfpos_prv = $rfpos;
               $F_prv     = $F_cur;
+              if($cur_delete_len > $nmaxdel) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                           sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
+                                                   $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+              }
+              $cur_delete_len = 0;
             }
             else { # rf position is a gap, add 'd' GR frame annotation
               if($strand eq "+") { $gr_frame_str .= "d"; }
               else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
+              $cur_delete_len++;
             }
             # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
             if($strand eq "+") { 
@@ -3573,11 +3581,6 @@ sub add_frameshift_alerts_for_one_sequence {
                 for(my $ipos = 0; $ipos < $rf2ilen_AR->[$rfpos]; $ipos++) { 
                   $gr_frame_str .= "i"; 
                   $ua_diff++; # increment number of seq positions seen
-                }
-                # add insertnn alert, if nec
-                my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
-                if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins start at reference nucleotide posn $rfpos", $FH_HR);
                 }
               }
             }
@@ -3589,6 +3592,12 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
               }
             }
+            # add insertnn alert, if nec
+            my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
+            if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
+            }
+
             # increment or decrement rfpos
             if($strand eq "+") { $rfpos++; } 
             else               { $rfpos--; }
@@ -3599,6 +3608,11 @@ sub add_frameshift_alerts_for_one_sequence {
           push(@gr_frame_str_A, $gr_frame_str);
           # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
           # print("$gr_frame_str\n");
+          if($cur_delete_len > $nmaxdel) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                       sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
+                                               $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+          }
         } # end of 'if' entered if segment has a sstart
       } # end of for loop over segments
 
