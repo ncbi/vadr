@@ -1,13 +1,13 @@
-#seq  seq                            seq                                   sub                    seq    mdl         num                             sub     score  diff/  seq   
-#idx  name                           len  p/f   ant  model1     grp1       grp1   score  sc/nt    cov    cov  bias  hits  str  model2     grp2       grp2     diff     nt  alerts
-#---  ----------------------------  ----  ----  ---  ---------  ---------  ----  ------  -----  -----  -----  ----  ----  ---  ---------  ---------  -----  ------  -----  ------
-1     gi|307574518|dbj|AB525810.1|   338  PASS  yes  NC_029646  Norovirus  GII    313.4  0.927  0.994  0.045     0     1    +  NC_044046  Norovirus  GVIII   138.5  0.410  -     
-2     gi|1215708385|gb|KY594653.1|   301  PASS  yes  NC_039477  Norovirus  GII    279.7  0.929  1.000  0.040     0     1    +  NC_044047  Norovirus  GVII    155.4  0.516  -     
-3     gi|507309522|gb|JX439803.1|   1336  FAIL  yes  NC_029646  Norovirus  GII   1032.4  0.773  0.937  0.167     0     1    +  NC_044046  Norovirus  GVIII   335.6  0.251  -     
-4     gi|1203184899|gb|KX722332.1|   640  PASS  yes  NC_039477  Norovirus  GII    515.8  0.806  1.000  0.085   0.1     1    +  NC_044045  Norovirus  GIX     417.4  0.652  -     
-5     gi|959141925|gb|KR107577.1|    387  PASS  yes  NC_039477  Norovirus  GII    363.3  0.939  1.000  0.051     0     1    +  NC_044046  Norovirus  GVIII   155.7  0.402  -     
-6     gi|407879400|emb|HE716655.1|   357  PASS  yes  NC_039477  Norovirus  GII    325.4  0.911  1.000  0.047     0     1    +  NC_044046  Norovirus  GVIII   135.0  0.378  -     
-7     gi|260065694|gb|FJ913901.1|    285  PASS  yes  NC_039477  Norovirus  GII    265.7  0.932  1.000  0.038     0     1    +  NC_044047  Norovirus  GVII    142.2  0.499  -     
-8     gi|125971647|gb|EF141133.1|    285  PASS  yes  NC_029646  Norovirus  GII    223.3  0.784  0.993  0.038     0     1    +  NC_044046  Norovirus  GVIII    71.0  0.249  -     
-9     gi|1150565489|gb|KX514171.1|  1620  PASS  yes  NC_039477  Norovirus  GII   1417.3  0.875  0.998  0.214     0     1    +  NC_044045  Norovirus  GIX     952.5  0.588  -     
-10    gi|1339273835|gb|MG746117.1|  1626  PASS  yes  NC_039476  Norovirus  GII   1710.6  1.052  0.998  0.215     0     1    +  NC_044045  Norovirus  GIX    1238.0  0.761  N_AT_END(ambignt3)
+#seq  seq                            seq                                   sub                    seq    mdl         num                     sub   score  diff/  seq   
+#idx  name                           len  p/f   ant  model1     grp1       grp1   score  sc/nt    cov    cov  bias  hits  str  model2  grp2  grp2   diff     nt  alerts
+#---  ----------------------------  ----  ----  ---  ---------  ---------  ----  ------  -----  -----  -----  ----  ----  ---  ------  ----  ----  -----  -----  ------
+1     gi|307574518|dbj|AB525810.1|   338  PASS  yes  NC_029646  Norovirus  GII    313.4  0.927  0.994  0.045     0     1    +  -       -     -         -      -  -     
+2     gi|1215708385|gb|KY594653.1|   301  PASS  yes  NC_039477  Norovirus  GII    279.7  0.929  1.000  0.040     0     1    +  -       -     -         -      -  -     
+3     gi|507309522|gb|JX439803.1|   1336  FAIL  yes  NC_029646  Norovirus  GII   1032.4  0.773  0.937  0.167     0     1    +  -       -     -         -      -  -     
+4     gi|1203184899|gb|KX722332.1|   640  PASS  yes  NC_039477  Norovirus  GII    515.8  0.806  1.000  0.085   0.1     1    +  -       -     -         -      -  -     
+5     gi|959141925|gb|KR107577.1|    387  PASS  yes  NC_039477  Norovirus  GII    363.3  0.939  1.000  0.051     0     1    +  -       -     -         -      -  -     
+6     gi|407879400|emb|HE716655.1|   357  PASS  yes  NC_039477  Norovirus  GII    325.4  0.911  1.000  0.047     0     1    +  -       -     -         -      -  -     
+7     gi|260065694|gb|FJ913901.1|    285  PASS  yes  NC_039477  Norovirus  GII    265.7  0.932  1.000  0.038     0     1    +  -       -     -         -      -  -     
+8     gi|125971647|gb|EF141133.1|    285  PASS  yes  NC_029646  Norovirus  GII    223.3  0.784  0.993  0.038     0     1    +  -       -     -         -      -  -     
+9     gi|1150565489|gb|KX514171.1|  1620  PASS  yes  NC_039477  Norovirus  GII   1417.3  0.875  0.998  0.214     0     1    +  -       -     -         -      -  -     
+10    gi|1339273835|gb|MG746117.1|  1626  PASS  yes  NC_039476  Norovirus  GII   1710.6  1.052  0.998  0.215     0     1    +  -       -     -         -      -  N_AT_END(ambignt3)

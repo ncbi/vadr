@@ -154,6 +154,7 @@ $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}      = $env_vadr_infernal_dir . "/cmsearch";
 $execs_H{"esl-alimerge"}  = $env_vadr_easel_dir    . "/esl-alimerge";
+$execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"esl-seqstat"}   = $env_vadr_easel_dir    . "/esl-seqstat";
 $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}    = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
@@ -273,9 +274,8 @@ opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use ma
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_merge",      "boolean",      0,   $g,       "-s", undef,    "for -s, merge all single sequence joined alignments into one",     "for -s, merge all single sequence joined alignments into one", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options related to replacing completely ambiguous characters (Ns) with expected nucleotides";
+$opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
 opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible", \%opt_HH, \@opt_order_A);
 opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>", \%opt_HH, \@opt_order_A);
@@ -303,10 +303,14 @@ $opt_group_desc_H{++$g} = "options for adding stages";
 opt_Add("--addhmmer",      "boolean", 0,                    $g,"--skipblastx", undef,                                       "use hmmer for protein validation",                        "use hmmer for protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
-#       option       type       default                  group  requires incompat  preamble-output                         help-output    
-opt_Add("--ftrinfo",    "boolean", 0,                       $g,    undef, undef, "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--sgminfo",    "boolean", 0,                       $g,    undef, undef, "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
-opt_Add("--altinfo",    "boolean", 0,                       $g,    undef, undef, "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
+#       option       type       default   group  requires incompat  preamble-output                                                  help-output    
+opt_Add("--out_stk",        "boolean", 0,    $g,    undef, undef,   "output per-model full length stockholm alignments (.stk)",      "output per-model full length stockholm alignments (.stk)",      \%opt_HH, \@opt_order_A);
+opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-model full length fasta alignments (.afa)",          "output per-model full length fasta alignments (.afa)",          \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced", "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",     "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_ftrinfo",    "boolean", 0,    $g,    undef, undef,   "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
+opt_Add("--out_sgminfo",    "boolean", 0,    $g,    undef, undef,   "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
+opt_Add("--out_altinfo",    "boolean", 0,    $g,    undef, undef,   "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat  preamble-output                                                         help-output    
@@ -379,7 +383,6 @@ my $options_okay =
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
-                's_merge'       => \$GetOptions_H{"--s_merge"},
 # options related to parallelization
                 'r'             => \$GetOptions_H{"-r"},
                 'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
@@ -400,10 +403,13 @@ my $options_okay =
 # options for adding stages
                 'addhmmer'      => \$GetOptions_H{"--addhmmer"},
 # optional output files
-                'ftrinfo'       => \$GetOptions_H{"--ftrinfo"}, 
-                'sgminfo'       => \$GetOptions_H{"--sgminfo"},
-                'seqinfo'       => \$GetOptions_H{"--seqinfo"}, 
-                'altinfo'       => \$GetOptions_H{"--altinfo"},
+                'out_stk'       => \$GetOptions_H{"--out_stk"}, 
+                'out_afa'       => \$GetOptions_H{"--out_afa"}, 
+                'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
+                'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
+                'out_ftrinfo'   => \$GetOptions_H{"--out_ftrinfo"}, 
+                'out_sgminfo'   => \$GetOptions_H{"--out_sgminfo"},
+                'out_altinfo'   => \$GetOptions_H{"--out_altinfo"},
 # other expert options
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'execname=s'    => \$GetOptions_H{"--execname"});
@@ -575,13 +581,13 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # to close these first.
 
 # open optional output files
-if(opt_Get("--ftrinfo", \%opt_HH)) { 
+if(opt_Get("--out_ftrinfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
 }
-if(opt_Get("--sgminfo", \%opt_HH)) { 
+if(opt_Get("--out_sgminfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, 1, "Segment information (created due to --sgminfo)");
 }
-if(opt_Get("--altinfo", \%opt_HH)) { 
+if(opt_Get("--out_altinfo", \%opt_HH)) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altinfo", $out_root . ".altinfo", 1, 1, "Alert information (created due to --altinfo)");
 }
 
@@ -815,6 +821,8 @@ if($do_replace_ns) {
   my $start_secs = ofile_OutputProgressPrior(sprintf("Replacing Ns based on results of %s-based pre-processing", "blastn"), $progress_w, $FH_HR->{"log"}, *STDOUT);
   my $rpn_subset_fa_file = $out_root . ".rpn.sub.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn.sub.fa", $rpn_subset_fa_file, 0, $do_keep, "fasta file with sequences for which Ns were replaced");
+  push(@to_remove_A, $rpn_subset_fa_file);
+  push(@to_remove_A, $rpn_subset_fa_file.".ssi");
   
   # for each model with seqs to align to, create the sequence file and run cmalign
   my $mdl_name;
@@ -837,6 +845,8 @@ if($do_replace_ns) {
     # sequences are named identically and in the same order as in the input fasta file
     $rpn_fa_file = $out_root . ".rpn.fa";
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn.fa", $rpn_fa_file, 0, $do_keep, sprintf("fasta file with all sequences, %d with Ns replaced", $nseq_replaced));
+  push(@to_remove_A, $rpn_fa_file);
+  push(@to_remove_A, $rpn_fa_file.".ssi");
     my $fa_FH = $ofile_info_HH{"FH"}{"rpn.fa"};
     foreach my $seq_name (@seq_name_A) { 
       if(defined $seq_replaced_H{$seq_name}) { 
@@ -1011,34 +1021,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                               $out_root, \%opt_HH, \%ofile_info_HH);
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-
-      if(! opt_Get("--s_merge", \%opt_HH)) { 
-        # do not merge all joined alignments together into one
-        # replace array of stockholm files output from cmalign
-        # from joined ones we just created
-        @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
-      }
-      else { 
-        # merge all joined alignments into one
-        # this should speed up annotation determination
-        my $start_secs = ofile_OutputProgressPrior(sprintf("Merging joined alignments for model $mdl_name ($cur_mdl_nseq seq%s, %d alignment%s)",
-                                                           (($cur_mdl_nseq > 1) ? "s" : ""), 
-                                                           scalar(@joined_stk_file_A), ((scalar(@joined_stk_file_A) > 1) ? "s" : "")), 
-                                                   $progress_w, $FH_HR->{"log"}, *STDOUT);
-        my $do_alimerge_small = 1; # use --small option with esl-alimerge, will only work because all joined alignments are in pfam format
-        my $merged_joined_stk_file      = $out_root . "." . $mdl_name . ".align.r3.merged.stk";
-        my $merged_joined_alimerge_file = $out_root . "." . $mdl_name . ".align.r3.merged.alimerge";
-        my $joined_stk_list_file        = $out_root . "." . $mdl_name . ".align.r3.stk.list";
-        utl_AToFile(\@joined_stk_file_A, $joined_stk_list_file, 1, $FH_HR);
-        run_esl_alimerge_list(\%execs_H, $merged_joined_stk_file, $merged_joined_alimerge_file, 
-                              $joined_stk_list_file, $do_alimerge_small,\%opt_HH, \%ofile_info_HH);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.alimerge", $merged_joined_alimerge_file, 0, $do_keep, sprintf("esl-alimerge output for merging of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "align.r3.merged.stk", $merged_joined_stk_file, 0, $do_keep, sprintf("merged alignment of all joined alignments%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
-        @{$stk_file_HA{$mdl_name}} = ($merged_joined_stk_file);
-        push(@to_remove_A, $joined_stk_list_file);
-
-        ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-      }
+      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
 
       # replace any overflow info we have on subseqs to be for full seqs
       if(scalar(@overflow_seq_A) > 0) { 
@@ -1096,13 +1079,20 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       }
     }
 
+    # Create option-defined output alignments, if any. 
+    # Logic differs significantly depending on -r or not so 
+    # we have separate blocks for each.
+    if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
+      output_alignments(\%execs_H, \$in_sqfile, \@{$stk_file_HA{$mdl_name}}, $mdl_name, \%rpn_output_HH, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+    }
+
     # fetch the features and add alerts pertaining to CDS and mature peptides
     fetch_features_and_add_cds_and_mp_alerts($$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, 
                                              $do_separate_cds_fa_files_for_protein_validation,
                                              $mdl_name, $mdl_tt, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                              \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                             \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                             \%alt_ftr_instances_HHH, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
   }
 }
 
@@ -1174,6 +1164,11 @@ if($do_hmmer) {
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+        push(@to_remove_A, 
+             ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-hmmer-fasta"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
+        
       }                
     }
   }
@@ -2673,7 +2668,7 @@ sub cmalign_run {
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   # determine cmalign options based on command line options
-  my $opts = sprintf(" --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
   # add --tfile $tfile_file, only if --keep 
   if(opt_Get("--keep", $opt_HHR)) { 
     $opts .= " --tfile $tfile_file"; 
@@ -2891,7 +2886,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
     }
 
     # check de-aligned sequence is identical to input sequence fetched from $in_sqfile IF --alicheck
-    # temp
     if($do_alicheck) { 
       my $in_sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name);
       my $ua_sqstring = $sqstring_aligned;
@@ -3580,6 +3574,7 @@ sub cmalign_store_overflow {
 #  $sgm_results_HAHR:          REF to model segment results HAH, pre-filled
 #  $ftr_results_HAHR:          REF to feature results HAH, added to here
 #  $alt_ftr_instances_HHHR:    REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $to_remove_AR:              REF to array of files to remove before exiting, possibly added to here if $do_separate_cds_fa_files
 #  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:            REF to the 2D hash of output file information
 #             
@@ -3590,14 +3585,14 @@ sub cmalign_store_overflow {
 #################################################################
 sub fetch_features_and_add_cds_and_mp_alerts { 
   my $sub_name = "fetch_features_and_add_cds_and_mp_alerts";
-  my $nargs_exp = 15;
+  my $nargs_exp = 16;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, 
       $do_separate_cds_fa_files, $mdl_name, $mdl_tt, 
       $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
-      $opt_HHR, $ofile_info_HHR) = @_;
+      $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
   my $nseq = scalar(@{$seq_name_AR});
@@ -3729,9 +3724,11 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
                                                            seq_SqstringAddNewlines($ftr_sqstring_out, 60) . "\n"); 
-        if($do_separate_cds_fa_files) { 
+        if(($do_separate_cds_fa_files) && ($ftr_is_cds)) { 
           if(! exists $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key}) { 
-            ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $pv_ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".pv.fa", 0, $do_keep, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs for protein validation");
+            my $separate_cds_fa_file = $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".pv.fa"; 
+            ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $pv_ftr_ofile_key, $separate_cds_fa_file, 0, $do_keep, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs for protein validation");
+            push(@{$to_remove_AR}, $separate_cds_fa_file);
           }
           print { $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
                                                                 seq_SqstringAddNewlines($ftr_sqstring_alt, 60) . "\n"); 
@@ -5879,9 +5876,9 @@ sub output_tabular {
   my $do_rpn = opt_Get("-r", $opt_HHR) ? 1 : 0;
   my @head_rpn_AA = ();
   my @data_rpn_AA = ();
-  @{$head_rpn_AA[0]} = ("",    "seq",    "seq", "",      "",      "num_Ns",  "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
-  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
-  my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,         0,          0,       0,        0,         0,         0,         0,         0,         1);
+  @{$head_rpn_AA[0]} = ("",    "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
+  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
+  my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,         0,        0,          0,       0,        0,         0,         0,         0,         0,         1);
 
   my $zero_classifications = 1; # set to '0' below if we have >= 1 seqs that are classified ($seq_mdl1 ne "-")
 
@@ -5927,6 +5924,7 @@ sub output_tabular {
      
     my $rpn_output_HR      = (($do_rpn) && (defined $rpn_output_HHR->{$seq_name}))       ? \%{$rpn_output_HHR->{$seq_name}} : undef;
     my $rpn_nnt_n_tot      = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_tot"}))      ? $rpn_output_HR->{"nnt_n_tot"}      : "-";
+    my $rpn_nnt_n_rp_tot   = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_rp_tot"}))   ? $rpn_output_HR->{"nnt_n_rp_tot"}   : "-";
     my $rpn_nnt_n_rp_fract = (($do_rpn) && (defined $rpn_output_HR->{"nnt_n_rp_fract"})) ? $rpn_output_HR->{"nnt_n_rp_fract"} : "-";
     my $rpn_ngaps_tot      = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_tot"}))      ? $rpn_output_HR->{"ngaps_tot"}      : "-";
     my $rpn_ngaps_int      = (($do_rpn) && (defined $rpn_output_HR->{"ngaps_int"}))      ? $rpn_output_HR->{"ngaps_int"}      : "-";
@@ -6146,7 +6144,7 @@ sub output_tabular {
       my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
           sprintf("%.3f", $rpn_nnt_n_rp_fract) : "-";
       push(@data_rpn_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
-                          $rpn_nnt_n_tot, $rpn_nnt_n_rp_fract2print,
+                          $rpn_nnt_n_tot, $rpn_nnt_n_rp_tot, $rpn_nnt_n_rp_fract2print,
                           $rpn_ngaps_tot, $rpn_ngaps_int, $rpn_ngaps_rp, 
                           $rpn_ngaps_rp_full, $rpn_ngaps_rp_part,
                           $rpn_nnt_rp_full, $rpn_nnt_rp_part,
@@ -7765,7 +7763,7 @@ sub run_esl_translate_and_hmmsearch {
   # AND all the predicted CDS sequences
   my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
   make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv-hmmer-fasta", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
   my $esl_translate_opts = "-l 1 ";
@@ -8156,7 +8154,6 @@ sub make_protein_validation_fasta_file() {
       }
     }
   }
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".protein-validation-fasta", $out_fa_file, 0, opt_Get("--keep", $opt_HHR), "protein validation fasta file for model $mdl_name");
 
   return;
 }
@@ -8363,104 +8360,6 @@ sub update_overflow_info_for_joined_alignments {
 }
 
 #################################################################
-# Subroutine:  run_esl_alimerge_list()
-# Incept:      EPN, Mon Apr 13 07:13:15 2020
-#
-# Purpose:    Run esl-alimerge --list to merge all alignments listed
-#             in $stk_list_file together into one alignment 
-#             $merged_stk_file. If $do_small, use the --small option.
-#             against the resulting protein sequences.
-#
-# Arguments: 
-#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
-#  $merged_stk_file:   name of stk file to create
-#  $alimerge_file:     name of output file, if undef, set to "/dev/null"
-#  $stk_list_file:     name of file with list of stockholm alignments to merge
-#  $do_small:          '1' to use --small, '0' not to
-#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If esl-alimerge fails.
-#
-################################################################# 
-sub run_esl_alimerge_list { 
-  my $sub_name = "run_esl_alimerge_list";
-  my $nargs_exp = 7;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $merged_stk_file, $alimerge_file, $stk_list_file, $do_small, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  if(! defined $alimerge_file) { 
-    $alimerge_file = "/dev/null";
-  }
-  my $esl_alimerge_opts = "";
-  if($do_small) { 
-    $esl_alimerge_opts .= "--small";
-  }
-  my $esl_alimerge_cmd = $execs_HR->{"esl-alimerge"} . " --list $esl_alimerge_opts -o $merged_stk_file $stk_list_file > $alimerge_file";
-  utl_RunCommand($esl_alimerge_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-
-  return;
-}
-
-#################################################################
-# Subroutine:  run_cmemit_c()
-# Incept:      EPN, Wed Apr 15 09:31:54 2020
-#
-# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
-#             and return the consensus sequence.
-#
-# Arguments: 
-#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
-#  $cm_file:         CM file to fetch from
-#  $mdl_name:        name of CM file to fetch
-#  $out_root:        root name for output file names
-#  $opt_HHR:         REF to options 2D hash
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
-#
-# Returns:    void
-#
-# Dies:       If cmemit fails or we can't read any sequence from 
-#             the output fasta file
-#
-################################################################# 
-sub run_cmemit_c { 
-  my $sub_name = "run_cmemit_c";
-  my $nargs_exp = 6;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($execs_HR, $cm_file, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
-
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-  my $cseq_fa_key  = $mdl_name . ".cseq.fa";
-  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
-  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), $do_keep, $FH_HR);
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $cseq_fa_key, $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
-
-  # fetch the sequence
-  my @file_lines_A = ();
-  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
-  my $ret_cseq = "";
-  my $nlines = scalar(@file_lines_A);
-  if($nlines <= 1) { 
-    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
-  }
-  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
-    my $seq_line = $file_lines_A[$i];
-    chomp $seq_line;
-    $ret_cseq .= $seq_line;
-  }
-  
-  return $ret_cseq;
-}
-
-#################################################################
 # Subroutine:  classification_stage()
 # Incept:      EPN, Mon Apr 13 17:07:28 2020
 #
@@ -8518,9 +8417,9 @@ sub classification_stage {
     parse_blastn_results($ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"}, $seq_len_HR, 
                          undef, undef, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     push(@{$to_remove_AR}, 
-         $ofile_info_HHR->{"fullpath"}{"blastn.$stg_key.out"},
-         $ofile_info_HHR->{"fullpath"}{"blastn.$stg_key.summary"},
-         $ofile_info_HHR->{"fullpath"}{"blastn.$stg_key.pretblout"});
+         $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.out"},
+         $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"},
+         $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"});
   }
   else { # default: use cmscan for classification
     my $cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
@@ -8842,6 +8741,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
 
     # initialize rpn_output_HHR for this sequence, to output later to .rpn file in output_tabular
     $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = 0;  # total number of Ns
+    $rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"}   = 0;  # total number of Ns replaced
     $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = 0;  # fraction of Ns that are replaced
     $rpn_output_HHR->{$seq_name}{"ngaps_tot"}      = 0;  # total number of missing regions
     $rpn_output_HHR->{$seq_name}{"ngaps_int"}      = 0;  # number of internal missing regions
@@ -8911,67 +8811,83 @@ sub parse_cdt_tblout_file_and_replace_ns {
     my $nreplaced_regions = 0;
     my $nreplaced_nts = 0; # number of N nts replaced
     my $n_tot         = 0; # total number of Ns in the sequence
-    for($i = 0; $i < $nmissing; $i++) {
-      my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
-      my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
-      if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $r_minlen_opt)) { 
-        my $missing_sqstring = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $missing_seq_start_A[$i], $missing_seq_stop_A[$i], 0); # 0: do not reverse complement
-        $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
-        my $count_n = $missing_sqstring =~ tr/N//;
-        my $fract_n = $count_n / $missing_seq_len;
-        if($fract_n >= $r_minfract_opt) { 
-          # replace Ns in this region with expected nt
-          # 
-          # get the model consensus sequence if we don't have it already
-          $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
-          $rpn_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
-          $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
-          $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
-          if(! defined $mdl_consensus_sqstring) { 
-            my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file }); 
-            $mdl_info_AHR->[$mdl_idx]{"cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
-            $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-            $blastn_sqfile = undef;
-          }
-          # fill in non-replaced region since previous replacement 
-          # (or 5' chunk up to replacement start if this is the first replacement, 
-          #  in this case $original_seq_start will be its initialized value of 1)
-          if($missing_seq_start_A[$i] != 1) { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
-            $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
-          }
-          if($count_n eq $missing_seq_len) { 
-            # region to replace is entirely Ns, easy case
-            # replace with substr of model cseq
-            $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
-            $nreplaced_nts += $missing_seq_len;
-            $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
-            $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
-          }
-          else { 
-            # region to replace is not entirely Ns, more laborious case
-            # replace only Ns with model positions
-            $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
-            if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
-              @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
-            }
-            my @missing_sqstring_A = split("", $missing_sqstring);
-            for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
-              if($missing_sqstring_A[$spos] eq "N") { 
-                # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
-                $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
-                $nreplaced_nts++;
-                $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
-              }
-              else { 
-                $replaced_sqstring .= $missing_sqstring_A[$spos];
-              }
-            }
-          }
-          $original_seq_start = $missing_seq_stop_A[$i] + 1;
-          $nreplaced_regions++;
-        } # end of 'if($fract_n >= $r_minfract_opt)
+    my $seq_desc      = "";    # fetched sequence description, if any
+    if($nmissing > 0) { # at least one missing region
+      my $fasta_seq = $$sqfile_R->fetch_seq_to_fasta_string($seq_name, -1); # -1 puts entire sequence into second line of $fasta_sqstring
+      my $fetched_seq_name = undef; # name of fetched sequence, should eq $seq_name
+      my $sqstring         = "";    # fetched sqstring
+      if($fasta_seq =~ /^>(\S+)(\s*[^\n]*)\n(\S+)\n$/) { 
+        ($fetched_seq_name, $seq_desc, $sqstring) = ($1, $2, $3);
+        # sanity check
+        if($fetched_seq_name ne $seq_name) { 
+          ofile_FAIL("ERROR in $sub_name, tried to fetch sequence $seq_name but fetched $fetched_seq_name", 1, $FH_HR); 
+        }
       }
-    }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, unable to parse fetched sequence fasta:\n$fasta_seq\n", 1, $FH_HR);
+      }
+      for($i = 0; $i < $nmissing; $i++) {
+        my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
+        my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
+        if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $r_minlen_opt)) { 
+          my $missing_sqstring = substr($sqstring, ($missing_seq_start_A[$i]-1), $missing_seq_len);
+          $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
+          my $count_n = $missing_sqstring =~ tr/N//;
+          my $fract_n = $count_n / $missing_seq_len;
+          if($fract_n >= $r_minfract_opt) { 
+            # replace Ns in this region with expected nt
+            # 
+            # get the model consensus sequence if we don't have it already
+            $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
+            $rpn_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
+            $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
+            $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
+            if(! defined $mdl_consensus_sqstring) { 
+              my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file }); 
+              $mdl_info_AHR->[$mdl_idx]{"cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
+              $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+              $blastn_sqfile = undef;
+            }
+            # fill in non-replaced region since previous replacement 
+            # (or 5' chunk up to replacement start if this is the first replacement, 
+            #  in this case $original_seq_start will be its initialized value of 1)
+            if($missing_seq_start_A[$i] != 1) { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
+              $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
+            }
+            if($count_n eq $missing_seq_len) { 
+              # region to replace is entirely Ns, easy case
+              # replace with substr of model cseq
+              $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
+              $nreplaced_nts += $missing_seq_len;
+              $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
+              $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
+            }
+            else { 
+              # region to replace is not entirely Ns, more laborious case
+              # replace only Ns with model positions
+              $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
+              if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
+                @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
+              }
+              my @missing_sqstring_A = split("", $missing_sqstring);
+              for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
+                if($missing_sqstring_A[$spos] eq "N") { 
+                  # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
+                  $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
+                  $nreplaced_nts++;
+                  $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
+                }
+                else { 
+                  $replaced_sqstring .= $missing_sqstring_A[$spos];
+                }
+              }
+            }
+            $original_seq_start = $missing_seq_stop_A[$i] + 1;
+            $nreplaced_regions++;
+          } # end of 'if($fract_n >= $r_minfract_opt)
+        }
+      } # end of 'for($i = 0; $i < nmissing; $i++);'
+    } # end of 'if($nmissing > 0)'
     # if we have generated a replacement sqstring, we need to finish it off if necessary
     # with final region of the sequence after the final replaced region
     if($replaced_sqstring ne "") { 
@@ -8985,8 +8901,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
       $n_tot += ($replaced_sqstring =~ tr/n//);
       $n_tot += $nreplaced_nts;
       $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = $n_tot;
+      $rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"}   = $nreplaced_nts;
       $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = $nreplaced_nts / $n_tot;
-      printf $fa_FH (">$seq_name\n$replaced_sqstring\n");
+      printf $fa_FH (">%s%s\n%s\n", $seq_name, $seq_desc, $replaced_sqstring);
       $seq_replaced_HR->{$seq_name} = 1;
       $nseq_output++;
     } # end of 'if($replaced_sqstring)'
@@ -8994,10 +8911,247 @@ sub parse_cdt_tblout_file_and_replace_ns {
       my $full_sqstring = $$sqfile_R->fetch_seq_to_sqstring($seq_name);
       my $n_tot  = ($full_sqstring =~ tr/N//);
       $n_tot += ($full_sqstring =~ tr/n//);
-      $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      =  $n_tot;
+      $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = $n_tot;
+      $rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"}   = 0;
       $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = 0.;
     }
   } # end of 'foreach my $seq_name'
 
   return $nseq_output;
+}
+
+#################################################################
+# Subroutine:  output_alignments()
+# Incept:      EPN, Sun Apr 19 08:16:36 2020
+#
+# Purpose:    Merge and output alignments in stockholm, aligned fasta
+#             or both for a single model. The logic differs
+#             significantly depending on whether -r is used or not.
+#             If -r is not used 
+#             
+#             If -r is enabled: --out_stk and --out_afa need to have
+#             original sequences in them, not the replaced sequences 
+#             which cmalign aligned, so we replace back to the originals
+#             by fetching from {$$in_sqfile_R}. And --out_rpstk and 
+#             --out_rpafa need to have replaced sequences in them.
+# 
+#             Regarding efficiency: if both --out_stk and --out_afa 
+#             are used, we could get away with only calling 
+#             msa_replace_sequences() once but we call it twice 
+#             because it would complicate this already complicated code logic.
+#             (And that situation should be rare, a savvy user could 
+#             use esl-reformat on one or the other.)
+#
+# Arguments: 
+#  $execs_HR:          REF to a hash with "blastx" and "parse_blastx.pl""
+#  $in_sqfile_R:       REF to Bio::Easel::SqFile object from input fasta file
+#  $stk_file_AR:       REF to array of stockholm files to merge to get full alignment
+#  $mdl_name:          name of model this alignment is to
+#  $rpn_output_HHR:    REF to 2D hash of -r related results to output, used to 
+#                      determine which sequences had Ns replaced in them, will be undef unless -r
+#  $out_root:          root name for output file names
+#  $to_remove_AR:      REF to array of files to eventually remove, possibly ADDED TO HERE 
+#  $opt_HHR:           REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:    REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If esl-alimerge fails.
+#
+################################################################# 
+sub output_alignments { 
+  my $sub_name = "output_alignments";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $in_sqfile_R, $stk_file_AR, $mdl_name, $rpn_output_HHR, $out_root, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $do_out_stk   = opt_Get("--out_stk",   $opt_HHR);
+  my $do_out_afa   = opt_Get("--out_afa",   $opt_HHR);
+  my $do_out_rpstk = opt_Get("--out_rpstk", $opt_HHR);
+  my $do_out_rpafa = opt_Get("--out_rpafa", $opt_HHR);
+
+  if(opt_Get("--keep", $opt_HHR)) { 
+    $do_out_stk = 1;
+    $do_out_afa = 1;
+    if(opt_Get("-r", $opt_HHR)) { 
+      $do_out_rpstk = 1;
+      $do_out_rpafa = 1;
+    }      
+  }
+
+  my $stk_list_file = $out_root . "." . $mdl_name . ".align.stk.list";
+  utl_AToFile($stk_file_AR, $stk_list_file, 1, $FH_HR);
+  my $out_aln_file   = undef;
+  my $out_rpaln_file = undef;
+      
+  if(! opt_Get("-r", $opt_HHR)) { 
+    # default, no replacements happened
+    if($do_out_stk) { 
+      $out_aln_file = $out_root . "." . $mdl_name . ".align.stk";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "stockholm", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_aln_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
+    }
+    if($do_out_afa) { 
+      $out_aln_file = $out_root . "." . $mdl_name . ".align.afa";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "afa", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.afa", $out_aln_file, 1, 1, sprintf("model $mdl_name full sequence alignment (afa)"));
+    }
+  }
+  else { 
+    # -r enabled
+    if(($do_out_stk) || ($do_out_rpstk)) { 
+      $out_rpaln_file = $out_root . "." . $mdl_name . ".align.rpstk";
+      $out_aln_file   = $out_root . "." . $mdl_name . ".align.stk";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rpaln_file, "stockholm", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpstk", $out_aln_file, $do_out_rpstk, $do_out_rpstk, sprintf("model $mdl_name full replaced sequence alignment (stockholm)"));
+      if($do_out_stk) { 
+        # swap replaced sequences back with original sequences in the alignment
+        msa_replace_sequences($execs_HR, $out_rpaln_file, $out_aln_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, 
+                              "stockholm", "stockholm", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_aln_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
+      }
+      if(! $do_out_rpstk) { push(@{$to_remove_AR}, $out_rpaln_file); }
+    }
+    if(($do_out_afa) || ($do_out_rpafa)) { 
+      $out_rpaln_file = $out_root . "." . $mdl_name . ".align.rpafa";
+      $out_aln_file   = $out_root . "." . $mdl_name . ".align.afa";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rpaln_file, "afa", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpafa", $out_aln_file, $do_out_rpafa, $do_out_rpafa, sprintf("model $mdl_name full replaced sequence alignment (afa)"));
+      if($do_out_afa) { 
+        # swap replaced sequences back with original sequences in the alignment
+        msa_replace_sequences($execs_HR, $out_rpaln_file, $out_aln_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name,
+                              "afa", "afa", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.afa", $out_aln_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (afa)"));
+      }
+      if(! $do_out_rpafa) { push(@{$to_remove_AR}, $out_rpaln_file); }
+    }
+  } # end of block for -r
+
+  push(@{$to_remove_AR}, $stk_list_file);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  msa_replace_sequences()
+# Incept:      EPN, Sun Apr 19 07:50:59 2020
+#
+# Purpose:    Given an alignment file with a set of sequences 
+#             and a sequence file including sequences of the same
+#             names and lengths as those in the alignment file, 
+#             replace the aligned sequences in the alignment file
+#             with the sequences from the sequence file and output
+#             the new alignment.
+#
+# Arguments: 
+#  $execs_HR:       REF to a hash with "blastx" and "parse_blastx.pl""
+#  $aln_file:       name of alignment file to replace seqs in
+#  $out_aln_file:   name of alignment file to create with replaced seqs
+#  $in_sqfile_R:    REF to Bio::Easel::SqFile object from input fasta file
+#  $rpn_output_HHR: REF to 2D hash of -r related results to output, used to 
+#                   determine which sequences had Ns replaced in them
+#  $mdl_name:       name of model these seqs were aligned to
+#  $informat:       input format, must be "stockholm" or "afa"
+#  $outformat:      output format, must be "stockholm" or "afa"
+#  $to_remove_AR:   REF to array of files to eventually remove, possibly ADDED TO HERE 
+#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    void
+#
+# Dies:       If problem parsing alignment or replacing sequences
+#
+################################################################# 
+sub msa_replace_sequences { 
+  my $sub_name = "msa_replace_sequences";
+  my $nargs_exp = 11;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $aln_file, $out_aln_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, $informat, $outformat, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # we need $informat in the file names and keys because we may make these files twice, one from afa and once from stk
+  my $tmp_pfam_aln_file     = $aln_file . "." . $informat . ".pfam";
+  my $tmp_pfam_new_aln_file = $aln_file . "." . $informat . ".new.pfam";
+
+  my $do_keep = opt_Get("--keep", $opt_HHR);
+
+  sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "-d", $aln_file, $tmp_pfam_aln_file, $informat, "pfam", $opt_HHR, $FH_HR);
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".tmp.$informat.pfam", $tmp_pfam_aln_file, 0, $do_keep, "pfam formatted alignment of replaced (non-original) seqs for model $mdl_name");
+
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $mdl_name . ".tmp.$informat.new.pfam", $tmp_pfam_new_aln_file, 0, $do_keep, "pfam formatted alignment of re-replaced (original) seqs for model $mdl_name");
+  my $out_FH = $ofile_info_HHR->{"FH"}{"$mdl_name.tmp.$informat.new.pfam"};
+
+  if(! $do_keep) { 
+    push(@{$to_remove_AR}, $tmp_pfam_aln_file);
+    push(@{$to_remove_AR}, $tmp_pfam_new_aln_file);
+  }
+
+  my $line_ctr = 0;
+  my $alen = undef;
+  my $uc_alnchar = undef; # an aligned uppercased nt
+  my $uc_uachar  = undef; # an unaligned uppercased nt
+  open(IN, $tmp_pfam_aln_file) || ofile_FileOpenFailure($tmp_pfam_aln_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    chomp $line;
+    $line_ctr++;
+    if(($line !~ m/^\#/) && ($line =~ m/^\S+\s+\S+$/)) { 
+      $line =~ /^(\S+)\s+(\S+)$/;
+      my ($seq_name, $aln_sqstring) = ($1, $2);
+      my $rp_aln_sqstring = "";
+      if((defined $rpn_output_HHR->{$seq_name}) && 
+         (defined $rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"}) && 
+         ($rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"} ne "-") && 
+         ($rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"} > 0)) { 
+        # at least 1 N replaced 
+        my $in_ua_sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name);
+        my @in_ua_sqstring_A = split("", $in_ua_sqstring);
+        my @aln_sqstring_A = split("", $aln_sqstring);
+        my $uapos = 0;
+        my $uachar = undef;
+        if(! defined $alen) { 
+          $alen = scalar(@aln_sqstring_A); 
+        }
+        elsif($alen != scalar(@aln_sqstring_A)) { 
+          ofile_FAIL("ERROR in $sub_name, not all aligned sequences are the same length, failed on line $line_ctr:\n$line\n", 1, $FH_HR);
+        }
+        for(my $apos = 0; $apos < $alen; $apos++) { 
+          if($aln_sqstring_A[$apos] =~ m/[A-Za-z]/) { 
+            $rp_aln_sqstring .= $in_ua_sqstring_A[$uapos];
+            
+            # extra sanity check that would be removed if we weren't only replacing Ns
+            $uc_alnchar = $aln_sqstring_A[$apos];
+            $uc_uachar  = $in_ua_sqstring_A[$uapos];
+            $uc_alnchar =~ tr/a-z/A-Z/;
+            $uc_uachar  =~ tr/a-z/A-Z/;
+            if(($uc_uachar ne "N") && ($uc_uachar ne $uc_alnchar)) { 
+              ofile_FAIL(sprintf("ERROR in $sub_name, for $seq_name, replacing alignment position %d with unaligned position %d, but unaligned char is %s (not N or n) and aligned char is %s, they are expected to match", $apos+1, $uapos+1, $in_ua_sqstring_A[$uapos], $aln_sqstring_A[$apos]), 1, $FH_HR);
+            }
+            
+            $uapos++;
+          }
+          else { 
+            $rp_aln_sqstring .= $aln_sqstring_A[$apos];
+          }
+        }
+        print $out_FH $seq_name . " " . $rp_aln_sqstring . "\n";
+      } # end of 'if' entered if >= N was replaced for $seq_name
+      else { 
+        print $out_FH $line . "\n";
+      }
+    } # end of 'if(($line =~ m/^\#/) && ($line =~ m/^\S+\s+\S+$/))' { 
+    else { 
+      print $out_FH $line . "\n";
+    }
+  }
+  close(IN);
+
+  # convert newly created pfam file to desired output format
+  sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "-d", $tmp_pfam_new_aln_file, $out_aln_file, "stockholm", $outformat, $opt_HHR, $FH_HR);
+
+  return;
 }

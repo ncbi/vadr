@@ -4,5 +4,5 @@
 1     gi|770146038|gb|KM031079.1|    515  PASS  yes  NC_001474  Dengue  2      490.1  0.952  1.000  0.048  12.8     1    +  NC_001477  Dengue  1      218.2  0.424  -     
 2     gi|1126644957|gb|KX577695.1|  2325  PASS  yes  NC_001474  Dengue  2     2241.4  0.964  1.000  0.217  32.3     1    +  NC_001477  Dengue  1     1201.3  0.517  -     
 3     gi|1044891200|gb|KU550333.1|  2325  PASS  yes  NC_001474  Dengue  2     2229.8  0.959  1.000  0.217  31.6     1    +  NC_001477  Dengue  1     1193.4  0.513  -     
-4     gi|1447973732|gb|MH680297.1|  1485  PASS  yes  NC_001477  Dengue  1     1388.4  0.935  0.999  0.138  12.1     1    +  NC_001475  Dengue  3      676.6  0.456  N_AT_START(ambignt5)
-5     gi|281314094|gb|GU211727.1|     87  PASS  yes  NC_001474  Dengue  2       60.1  0.691  0.977  0.008     0     1    +  NC_001475  Dengue  3       18.8  0.216  N_AT_END(ambignt3)
+4     gi|1447973732|gb|MH680297.1|  1485  PASS  yes  NC_001477  Dengue  1     1388.4  0.935  0.999  0.138  12.1     1    +  NC_001474  Dengue  2      777.1  0.523  N_AT_START(ambignt5)
+5     gi|281314094|gb|GU211727.1|     87  PASS  yes  NC_001474  Dengue  2       60.1  0.691  0.977  0.008     0     1    +  NC_001477  Dengue  1       26.9  0.309  N_AT_END(ambignt3)

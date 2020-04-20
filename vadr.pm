@@ -132,6 +132,10 @@ require "sqp_utils.pm";
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
 # 
+# Subroutines related to running infernal programs
+# vdr_CmemitConsensus()
+# vdr_CmalignWriteInsertFile()
+# 
 # Miscellaneous subroutines:
 # vdr_SplitFastaFile()
 # vdr_SplitNumSeqFiles()
@@ -3991,6 +3995,56 @@ sub vdr_CmalignParseInsertFile {
   close(IN);
   
   return;
+}
+
+#################################################################
+# Subroutine:  vdr_CmemitConsensusToFile()
+# Incept:      EPN, Wed Apr 15 09:31:54 2020
+#
+# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
+#             and return the consensus sequence.
+#
+# Arguments: 
+#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
+#  $cm_file:         CM file to fetch from
+#  $mdl_name:        name of CM file to fetch
+#  $cseq_fa_file:    name of output fasta file to create
+#  $opt_HHR:         REF to options 2D hash
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    the consensus sequence as a string
+#
+# Dies:       If cmemit fails or we can't read any sequence from 
+#             the output fasta file
+#
+################################################################# 
+sub vdr_CmemitConsensus {
+  my $sub_name = "vdr_CmemitConsensusToFile";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), opt_Get("--keep", $opt_HHR), $FH_HR);
+
+  # fetch the sequence
+  my @file_lines_A = ();
+  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
+  my $ret_cseq = "";
+  my $nlines = scalar(@file_lines_A);
+  if($nlines <= 1) { 
+    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
+  }
+  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
+    my $seq_line = $file_lines_A[$i];
+    chomp $seq_line;
+    $ret_cseq .= $seq_line;
+  }
+  
+  return $ret_cseq;
 }
 
 #################################################################

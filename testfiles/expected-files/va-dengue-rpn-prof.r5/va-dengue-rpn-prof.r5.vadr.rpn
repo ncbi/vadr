@@ -1,8 +1,8 @@
-#     seq                            seq                   num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
-#idx  name                           len  model      fail     tot        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
-#---  ----------------------------  ----  ---------  ----  ------  --------  -----  -----  -----  -------  -------  -------  -------  ---------------------
-1     gi|770146038|gb|KM031079.1|    515  NC_001474  PASS      47     0.000      0      0      0        0        0        0        0  -                    
-2     gi|1126644957|gb|KX577695.1|  2325  NC_001474  PASS     140     0.986      2      1      1        1        0      138        0  S:1472..1609,M:1568..1705,N:138/138;
-3     gi|1044891200|gb|KU550333.1|  2325  NC_001474  PASS       0         -      1      0      0        0        0        0        0  -                    
-4     gi|1447973732|gb|MH680297.1|  1485  NC_001477  PASS      35     1.000      2      0      1        1        0       35        0  S:1..35,M:935..969,N:35/35;
-5     gi|281314094|gb|GU211727.1|     87  NC_001474  PASS       1     0.000      1      0      0        0        0        0        0  -                    
+#     seq                            seq                   num_Ns  num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
+#idx  name                           len  model      fail     tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
+#---  ----------------------------  ----  ---------  ----  ------  ------  --------  -----  -----  -----  -------  -------  -------  -------  ---------------------
+1     gi|770146038|gb|KM031079.1|    515  NC_001474  PASS      47       0     0.000      0      0      0        0        0        0        0  -                    
+2     gi|1126644957|gb|KX577695.1|  2325  NC_001474  PASS     140     138     0.986      2      1      1        1        0      138        0  S:1472..1609,M:1568..1705,N:138/138;
+3     gi|1044891200|gb|KU550333.1|  2325  NC_001474  PASS       0       0         -      1      0      0        0        0        0        0  -                    
+4     gi|1447973732|gb|MH680297.1|  1485  NC_001477  PASS      35      35     1.000      2      0      1        1        0       35        0  S:1..35,M:935..969,N:35/35;
+5     gi|281314094|gb|GU211727.1|     87  NC_001474  PASS       1       0     0.000      1      0      0        0        0        0        0  -                    
