@@ -606,7 +606,7 @@ else {
   # --stk not used, we create it from the fasta file we read
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, undef, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
