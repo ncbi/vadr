@@ -1,0 +1,142 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+#
+## no -r 
+# --out_stk only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_stk $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-os.r3 > va-noro-outaln-os.r3.out
+desc: annotate-noro-1-outaln-os
+out: va-noro-outaln-os.r3/va-noro-outaln-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-os.r3.vadr.NC_039477.align.stk
+rmdir: va-noro-outaln-os.r3.out
+#
+# --out_afa only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_afa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-oa.r3 > va-noro-outaln-oa.r3.out
+desc: annotate-noro-1-outaln-oa
+out: va-noro-outaln-oa.r3/va-noro-outaln-oa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-oa.r3.vadr.NC_039477.align.afa
+rmdir: va-noro-outaln-oa.r3.out
+#
+# --out_stk and --out_afa
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_stk --out_afa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-osa.r3 > va-noro-outaln-osa.r3.out
+desc: annotate-noro-1-outaln-osa
+out: va-noro-outaln-osa.r3/va-noro-outaln-osa.r3.vadr.NC_039477.align.stk
+out: va-noro-outaln-osa.r3/va-noro-outaln-osa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-oa.r3.vadr.NC_039477.align.afa
+rmdir: va-noro-outaln-osa.r3.out
+#
+## yes -r 
+# -r --out_stk only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_stk $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-os.r3 > va-noro-outaln-r-os.r3.out
+desc: annotate-noro-1-outaln-r-os
+out: va-noro-outaln-r-os.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+rmdir: va-noro-outaln-r-os.r3.out
+#
+# -r --out_afa only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_afa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-oa.r3 > va-noro-outaln-r-oa.r3.out
+desc: annotate-noro-1-outaln-r-oa
+out: va-noro-outaln-r-oa.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+rmdir: va-noro-outaln-r-oa.r3.out
+#
+# -r --out_stk and --out_afa
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_stk --out_afa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-osa.r3 > va-noro-outaln-r-osa.r3.out
+desc: annotate-noro-1-outaln-r-osa
+out: va-noro-outaln-r-osa.r3/va-noro-outaln-r-osa.r3.vadr.NC_039477.align.stk
+out: va-noro-outaln-r-osa.r3/va-noro-outaln-r-osa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+rmdir: va-noro-outaln-r-osa.r3.out
+#
+## yes -r and --out_* and --out_rp*
+# -r --out_stk --out_rpstk
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_stk --out_rpstk $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-osrs.r3 > va-noro-outaln-r-osrs.r3.out
+desc: annotate-noro-1-outaln-r-osrs
+out: va-noro-outaln-r-osrs.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.stk
+out: va-noro-outaln-r-osrs.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.rpstk
+rmdir: va-noro-outaln-r-osrs.r3.out
+#
+# -r --out_afa --out_rpafa
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_afa --out_rpafa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-oara.r3 > va-noro-outaln-r-oara.r3.out
+desc: annotate-noro-1-outaln-r-oara
+out: va-noro-outaln-r-oara.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.afa
+out: va-noro-outaln-r-oara.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.rpafa
+rmdir: va-noro-outaln-r-oara.r3.out
+#
+# -r --out_stk --out_rpstk --out_afa --out_rpafa
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_stk --out_afa --out_rpstk --out_rpafa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-osrsoara.r3 > va-noro-outaln-r-osrsoara.r3.out
+desc: annotate-noro-1-outaln-r-osrsoara
+out: va-noro-outaln-r-osrsoara.r3/va-noro-outaln-r-osrsoara.r3.vadr.NC_039477.align.stk
+out: va-noro-outaln-r-osrsoara.r3/va-noro-outaln-r-osrsoara.r3.vadr.NC_039477.align.afa
+out: va-noro-outaln-r-osrsoara.r3/va-noro-outaln-r-osrsoara.r3.vadr.NC_039477.align.rpstk
+out: va-noro-outaln-r-osrsoara.r3/va-noro-outaln-r-osrsoara.r3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.rpafa
+rmdir: va-noro-outaln-r-osrsoara.r3.out
+#
+## yes -r no --out_*, yes --out_rp*
+# -r --out_rpstk
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_rpstk $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-rs.r3 > va-noro-outaln-r-rs.r3.out
+desc: annotate-noro-1-outaln-r-rs
+out: va-noro-outaln-r-rs.r3/va-noro-outaln-r-rs.r3.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.rpstk
+rmdir: va-noro-outaln-r-rs.r3.out
+#
+# -r --out_rpafa
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_rpafa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-ra.r3 > va-noro-outaln-r-ra.r3.out
+desc: annotate-noro-1-outaln-r-ra
+out: va-noro-outaln-r-ra.r3/va-noro-outaln-r-ra.r3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.rpafa
+rmdir: va-noro-outaln-r-ra.r3.out
+#
+# -r --out_rpstk --out_rpafa
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 --out_rpstk --out_rpafa $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-rsra.r3 > va-noro-outaln-r-rsra.r3.out
+desc: annotate-noro-1-outaln-r-rsra
+out: va-noro-outaln-r-rsra.r3/va-noro-outaln-r-rsra.r3.vadr.NC_039477.align.rpstk
+out: va-noro-outaln-r-rsra.r3/va-noro-outaln-r-rsra.r3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.rpafa
+rmdir: va-noro-outaln-r-rsra.r3.out
+#
+## --keep
+#
+# --keep and no -r 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-keep.r3 > va-noro-outaln-keep.r3.out
+desc: annotate-noro-1-outaln-keep
+out: va-noro-outaln-keep.r3/va-noro-outaln-keep.r3.vadr.NC_039477.align.stk
+out: va-noro-outaln-keep.r3/va-noro-outaln-keep.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+rmdir: va-noro-outaln-keep.r3.out
+#
+# --keep and -r (all 4 should get created)
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_039477 $VADRSCRIPTSDIR/testfiles/noro.r3.rpn.fa va-noro-outaln-r-keep.r3 > va-noro-outaln-r-keep.r3.out
+desc: annotate-noro-1-outaln-r-keep
+out: va-noro-outaln-r-keep.r3/va-noro-outaln-r-keep.r3.vadr.NC_039477.align.stk
+out: va-noro-outaln-r-keep.r3/va-noro-outaln-r-keep.r3.vadr.NC_039477.align.afa
+out: va-noro-outaln-r-keep.r3/va-noro-outaln-r-keep.r3.vadr.NC_039477.align.rpstk
+out: va-noro-outaln-r-keep.r3/va-noro-outaln-r-keep.r3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-os.r3.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oa.r3.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-osrs.r3.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-outaln.r3/va-noro-outaln-r-oara.r3.vadr.NC_039477.align.rpafa
+rmdir: va-noro-outaln-r-keep.r3.out
