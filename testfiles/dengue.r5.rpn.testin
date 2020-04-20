@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --alicheck -r $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn.r5 > va-dengue-rpn.r5.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn.r5 > va-dengue-rpn.r5.out
 desc: annotate-dengue-5-rpn
 out: va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.pass.tbl 
 out: va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.fail.tbl 
@@ -36,7 +36,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.rpn
 rmdir: va-dengue.r5
 # --r_prof
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --alicheck -r --r_prof $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn-prof.r5 > va-dengue-rpn-prof.r5.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r --r_prof $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn-prof.r5 > va-dengue-rpn-prof.r5.out
 desc: annotate-dengue-5-rpn-prof
 out: va-dengue-rpn-prof.r5/va-dengue-rpn-prof.r5.vadr.pass.tbl 
 out: va-dengue-rpn-prof.r5/va-dengue-rpn-prof.r5.vadr.fail.tbl 
