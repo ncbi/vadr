@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 4275;
+use Test::More tests => 3487;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -37,7 +37,7 @@ foreach my $reqd_file (@reqd_file_A) {
 my @to_remove_A = ();
 my $tmp_blastx_out = "blastx1.tmp";
 push(@to_remove_A, $tmp_blastx_out);
-my $cmd = "perl $parse_blast_path --in $blastx_in_path --program x > $tmp_blastx_out";
+my $cmd = "perl $parse_blast_path --input $blastx_in_path --program x > $tmp_blastx_out";
 system($cmd);
 if($? != 0) { die "ERROR command $cmd failed"; }
 
@@ -82,7 +82,7 @@ foreach my $reqd_file (@reqd_file_A) {
 @to_remove_A = ();
 my $tmp_blastn_out = "blastn1.tmp";
 push(@to_remove_A, $tmp_blastn_out);
-$cmd = "perl $parse_blast_path --in $blastn_in_path --program n --splus > $tmp_blastn_out";
+$cmd = "perl $parse_blast_path --input $blastn_in_path --program n --splus > $tmp_blastn_out";
 system($cmd);
 if($? != 0) { die "ERROR command $cmd failed"; }
 
@@ -109,6 +109,6 @@ foreach my $line_type (@line_types_A) {
 }
 
 foreach my $tmp_file (@to_remove_A) {
-  unlink $tmp_file;
+#  unlink $tmp_file;
 }
 

@@ -15,7 +15,7 @@
 
 use strict;
 use warnings;
-use Getopt::Long;
+use Getopt::Long qw(:config no_auto_abbrev);
 
 require "sqp_opts.pm";
 

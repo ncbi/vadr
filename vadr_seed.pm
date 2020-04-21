@@ -7,7 +7,7 @@
 # EPN, Fri Mar 27 10:28:01 2020
 # 
 # Perl module used by v-annotate.pl script related to 
-# the --seed option to use blastn for the classification,
+# the -s option to use blastn for the classification,
 # and coverage determination stages, and to accelerate
 # the alignment stage. Alignment acceleration achieved
 # by using the maximum length ungapped region in the top
@@ -30,24 +30,41 @@
 # - File handles typically start or end with 'FH', e.g. $log_FH, or a hash
 #   of file handles that is used commonly is %FH_HR.
 # 
-#########################
-# Common data structures used in this file:
+## 
 #
-# - $ftr_info_AHR: reference to an array of hashes with feature information for a single model.
-#                   
-# - $sgm_info_AHR: reference to an array of hashes with model-segment information for a single model.
-#                   
-# - $alt_info_HHR: reference to a hash of hashes with alert information.
-#
-########################################################################################
-#
-# List of subroutines in this file, divided into categories. 
+# See vadr.pm for additional notes
 #
 use strict;
 use warnings;
 
 require "vadr.pm"; 
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seq.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
 
+#########################################################################################
+#
+# List of subroutines in this file, divided into categories. 
+#
+# Subroutines related to running and parsing blastn:
+# run_blastn_and_summarize_output()
+# parse_blastn_results()
+# blastn_pretblout_to_tblout()
+# parse_blastn_indel_strings()
+# parse_blastn_indel_token()
+# parse_blastn_indel_file_to_get_subseq_info()
+# 
+# Subroutines related to joining alignments:
+# join_alignments_and_add_unjoinbl_alerts()
+# join_alignments_helper()
+# update_overflow_info_for_joined_alignments
+# 
+#########################################################################################
+# 
+# List of subroutines in this file
+# 
 #################################################################
 # Subroutine:  run_blastn_and_summarize_output()
 # Incept:      EPN, Fri Mar 27 11:11:24 2020
@@ -1677,6 +1694,49 @@ sub join_alignments_helper {
   }
   
   return ($joined_seq, $joined_mdl, $joined_pp);
+}
+
+#################################################################
+# Subroutine: update_overflow_info_for_joined_alignments
+# Incept:     EPN, Wed Apr  8 08:18:06 2020
+# Purpose:    Given data in @{$overflow_{seq,mxsize}_AR} filled by cmalign_wrapper()
+#             for subsequences of full seqs aligned due to -s, update
+#             the values so they pertain to full sequences, given the
+#             map from subsequences to full sequences in %{$subseq2seq_HR}.
+#
+# Arguments:
+#  $sub_overflow_seq_AR:      REF to array of subseq names we had overflows for, ALREADY FILLED
+#  $sub_overflow_mxsize_AR:   REF to array of mxsizes of overflows, ALREADY FILLED
+#  $subseq2seq_HR:            REF to hash mapping subsequence names to full seq names, ALREADY FILLED
+#  $full_overflow_seq_AR:     REF to array of full seq names we have overflows for, FILLED HERE
+#  $full_overflow_mxsize_AR:  REF to array of mxsizes of overflows for full seqs, FILLED HERE
+# 
+# Returns:  void, fills @{$full_overflow_seq_AR} and @{$full_overflow_mxsize_AR}
+#
+# Dies:     never
+#
+#################################################################
+sub update_overflow_info_for_joined_alignments { 
+  my $sub_name = "update_overflow_info_for_joined_alignments";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sub_overflow_seq_AR, $sub_overflow_mxsize_AR, $subseq2seq_HR, $full_overflow_seq_AR, $full_overflow_mxsize_AR) = (@_);
+
+  my %added_H = (); # used so we don't add overflow for same full seq twice
+  for(my $i = 0; $i < scalar(@{$sub_overflow_seq_AR}); $i++) {
+    my $subseq_name = $sub_overflow_seq_AR->[$i];
+    if(defined $subseq2seq_HR->{$subseq_name}) { 
+      my $seq_name = $subseq2seq_HR->{$subseq_name};
+      if(! defined $added_H{$seq_name}) { 
+        push(@{$full_overflow_seq_AR},    $seq_name);
+        push(@{$full_overflow_mxsize_AR}, $sub_overflow_mxsize_AR->[$i]);
+        $added_H{$seq_name} = 1;
+      }
+    }
+  }
+
+  return;
 }
 
 ###########################################################################
