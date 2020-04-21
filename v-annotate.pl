@@ -1176,9 +1176,12 @@ if($do_hmmer) {
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
         push(@to_remove_A, 
-             ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-hmmer-fasta"},
-              $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
-              $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
+             ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv.hmmer.esl_translate.aa.fa"}, 
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".pv.hmmer.fa"}, 
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".hmmsearch"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".hmmlist"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".domtblout"},
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".hmmsearch.stk"}));
         
       }                
     }
@@ -5281,7 +5284,7 @@ sub run_esl_translate_and_hmmsearch {
   # AND all the predicted CDS sequences
   my $pv_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.fa";
   make_protein_validation_fasta_file($pv_fa_file, $mdl_name,  0, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR); # 0: not doing blastx
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv-hmmer-fasta", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
   my $esl_translate_opts = "-l 1 ";
@@ -5291,9 +5294,7 @@ sub run_esl_translate_and_hmmsearch {
   my $esl_translate_prot_fa_file = $out_root . "." . $mdl_name . ".pv.hmmer.esl_translate.aa.fa";
   my $esl_translate_cmd = $execs_HR->{"esl-translate"} . " $esl_translate_opts $pv_fa_file > $esl_translate_prot_fa_file";
   utl_RunCommand($esl_translate_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  if($do_keep) {
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.esl_translate.aa.fa", $esl_translate_prot_fa_file, 0, $do_keep, "esl-translate output for protein validation sequences for model $mdl_name");
-  }
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.esl_translate.aa.fa", $esl_translate_prot_fa_file, 0, $do_keep, "esl-translate output for protein validation sequences for model $mdl_name");
 
   # run hmmsearch against it using only those HMMs that pertain to this model
   my @hmm_name_A = (); 
@@ -5309,6 +5310,7 @@ sub run_esl_translate_and_hmmsearch {
   my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " -A $hmmsearch_stk_file --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
   utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmlist",        $hmm_list_file,            0, $do_keep, "list of hmm files fetched for model $mdl_name");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmsearch",      $hmmsearch_out_file,       0, $do_keep, "hmmsearch standard output for model $mdl_name");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout",      $hmmsearch_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmsearch.stk",  $hmmsearch_stk_file,       0, $do_keep, "hmmsearch -A stockholm output for model $mdl_name");
