@@ -8256,8 +8256,8 @@ sub output_alignments {
   my $do_out_afa   = opt_Get("--out_afa",   $opt_HHR);
   my $do_out_rpstk = opt_Get("--out_rpstk", $opt_HHR);
   my $do_out_rpafa = opt_Get("--out_rpafa", $opt_HHR);
-
-  if(opt_Get("--keep", $opt_HHR)) { 
+  my $do_keep      = opt_Get("--keep", $opt_HHR);
+  if($do_keep) { 
     $do_out_stk = 1;
     $do_out_afa = 1;
     if(opt_Get("-r", $opt_HHR)) { 
@@ -8268,49 +8268,72 @@ sub output_alignments {
 
   my $stk_list_file = $out_root . "." . $mdl_name . ".align.stk.list";
   utl_AToFile($stk_file_AR, $stk_list_file, 1, $FH_HR);
-  my $out_aln_file   = undef;
-  my $out_rpaln_file = undef;
       
   if(! opt_Get("-r", $opt_HHR)) { 
     # default, no replacements happened
     if($do_out_stk) { 
-      $out_aln_file = $out_root . "." . $mdl_name . ".align.stk";
-      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "stockholm", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_aln_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
+      my $out_rfrna_stk_file = $out_root . "." . $mdl_name . ".rfrna.align.stk";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_rfrna_stk_file, "stockholm", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".rfrna.align.stk", $out_rfrna_stk_file, 0, $do_keep, sprintf("model $mdl_name full sequence alignment with RNA RF line (stockholm)"));
+      if(! $do_keep) { push($to_remove_AR, $out_rfrna_stk_file); }
+      # for stockholm we need to replace RNA RF with DNA
+      my $msa = Bio::Easel::MSA->new({
+        fileLocation => $out_rfrna_stk_file,
+        isDna => 1});  
+      my $rna_rf = $msa->get_rf();
+      seq_SqstringDnaize(\$rna_rf);
+      $msa->set_rf($rna_rf);
+      my $out_stk_file = $out_root . "." . $mdl_name . ".align.stk";
+      $msa->write_msa($out_stk_file, "stockholm", 0); # 0: do not append to file if it exists
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
     }
     if($do_out_afa) { 
-      $out_aln_file = $out_root . "." . $mdl_name . ".align.afa";
-      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_aln_file, "afa", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.afa", $out_aln_file, 1, 1, sprintf("model $mdl_name full sequence alignment (afa)"));
+      my $out_afa_file = $out_root . "." . $mdl_name . ".align.afa";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_afa_file, "afa", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.afa", $out_afa_file, 1, 1, sprintf("model $mdl_name full sequence alignment (afa)"));
+      # for afa, no RF line so don't need to replace with DNA
     }
   }
   else { 
     # -r enabled
     if(($do_out_stk) || ($do_out_rpstk)) { 
-      $out_rpaln_file = $out_root . "." . $mdl_name . ".align.rpstk";
-      $out_aln_file   = $out_root . "." . $mdl_name . ".align.stk";
-      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rpaln_file, "stockholm", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpstk", $out_aln_file, $do_out_rpstk, $do_out_rpstk, sprintf("model $mdl_name full replaced sequence alignment (stockholm)"));
+      my $out_rfrna_rpstk_file = $out_root . "." . $mdl_name . ".rfrna.align.rpstk";
+      my $out_stk_file         = $out_root . "." . $mdl_name . ".align.stk";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rfrna_rpstk_file, "stockholm", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "rfrna.align.rpstk", $out_stk_file, 0, $do_keep, sprintf("model $mdl_name full replaced sequence alignment with RNA RF line (stockholm)"));
+      if(! $do_keep) { push($to_remove_AR, $out_rfrna_rpstk_file); }
+      # for stockholm we need to replace RNA RF with DNA
+      my $msa = Bio::Easel::MSA->new({
+        fileLocation => $out_rfrna_rpstk_file,
+        isDna => 1});  
+      my $rna_rf = $msa->get_rf();
+      seq_SqstringDnaize(\$rna_rf);
+      $msa->set_rf($rna_rf);
+      my $out_rpstk_file = $out_root . "." . $mdl_name . ".align.rpstk";
+      $msa->write_msa($out_rpstk_file, "stockholm", 0); # 0: do not append to file if it exists
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.rpstk", $out_rpstk_file, $do_out_rpstk, $do_out_rpstk, sprintf("model $mdl_name replaced sequence alignment (stockholm)"));
+
       if($do_out_stk) { 
         # swap replaced sequences back with original sequences in the alignment
-        msa_replace_sequences($execs_HR, $out_rpaln_file, $out_aln_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, 
+        msa_replace_sequences($execs_HR, $out_rpstk_file, $out_stk_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, 
                               "stockholm", "stockholm", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_aln_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
       }
-      if(! $do_out_rpstk) { push(@{$to_remove_AR}, $out_rpaln_file); }
+      if(! $do_out_rpstk) { push(@{$to_remove_AR}, $out_rpstk_file); }
     }
     if(($do_out_afa) || ($do_out_rpafa)) { 
-      $out_rpaln_file = $out_root . "." . $mdl_name . ".align.rpafa";
-      $out_aln_file   = $out_root . "." . $mdl_name . ".align.afa";
-      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rpaln_file, "afa", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpafa", $out_aln_file, $do_out_rpafa, $do_out_rpafa, sprintf("model $mdl_name full replaced sequence alignment (afa)"));
+      my $out_rpafa_file = $out_root . "." . $mdl_name . ".align.rpafa";
+      my $out_afa_file   = $out_root . "." . $mdl_name . ".align.afa";
+      sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rpafa_file, "afa", $opt_HHR, $FH_HR);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpafa", $out_afa_file, $do_out_rpafa, $do_out_rpafa, sprintf("model $mdl_name full replaced sequence alignment (afa)"));
+      # for afa, no RF line so don't need to replace with DNA
       if($do_out_afa) { 
         # swap replaced sequences back with original sequences in the alignment
-        msa_replace_sequences($execs_HR, $out_rpaln_file, $out_aln_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name,
+        msa_replace_sequences($execs_HR, $out_rpafa_file, $out_afa_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name,
                               "afa", "afa", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.afa", $out_aln_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (afa)"));
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.afa", $out_afa_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (afa)"));
       }
-      if(! $do_out_rpafa) { push(@{$to_remove_AR}, $out_rpaln_file); }
+      if(! $do_out_rpafa) { push(@{$to_remove_AR}, $out_rpafa_file); }
     }
   } # end of block for -r
 
@@ -8442,7 +8465,7 @@ sub msa_replace_sequences {
 
 #################################################################
 #
-# Subroutines realted to -r:
+# Subroutines related to -r:
 # parse_cdt_tblout_file_and_replace_ns()
 #
 #################################################################
