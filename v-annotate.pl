@@ -1484,7 +1484,7 @@ sub classification_stage {
     ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls or std.cls", 1, $FH_HR);
   }
 
-  my $nseq = scalar(keys $seq_len_HR);
+  my $nseq = scalar(keys %{$seq_len_HR});
   # will we use blastn or cmscan?
   my $do_blastn  = 0; 
   # default is to use blastn in rpn.cls, but don't if --r_prof used
@@ -8279,7 +8279,7 @@ sub output_alignments {
       my $out_rfrna_stk_file = $out_root . "." . $mdl_name . ".rfrna.align.stk";
       sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_rfrna_stk_file, "stockholm", $opt_HHR, $FH_HR);
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".rfrna.align.stk", $out_rfrna_stk_file, 0, $do_keep, sprintf("model $mdl_name full sequence alignment with RNA RF line (stockholm)"));
-      if(! $do_keep) { push($to_remove_AR, $out_rfrna_stk_file); }
+      if(! $do_keep) { push(@{$to_remove_AR}, $out_rfrna_stk_file); }
       # for stockholm we need to replace RNA RF with DNA
       my $msa = Bio::Easel::MSA->new({
         fileLocation => $out_rfrna_stk_file,
@@ -8305,7 +8305,7 @@ sub output_alignments {
       my $out_stk_file         = $out_root . "." . $mdl_name . ".align.stk";
       sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rfrna_rpstk_file, "stockholm", $opt_HHR, $FH_HR);
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "rfrna.align.rpstk", $out_stk_file, 0, $do_keep, sprintf("model $mdl_name full replaced sequence alignment with RNA RF line (stockholm)"));
-      if(! $do_keep) { push($to_remove_AR, $out_rfrna_rpstk_file); }
+      if(! $do_keep) { push(@{$to_remove_AR}, $out_rfrna_rpstk_file); }
       # for stockholm we need to replace RNA RF with DNA
       my $msa = Bio::Easel::MSA->new({
         fileLocation => $out_rfrna_rpstk_file,
