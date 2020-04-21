@@ -8283,7 +8283,7 @@ sub output_alignments {
       # for stockholm we need to replace RNA RF with DNA
       my $msa = Bio::Easel::MSA->new({
         fileLocation => $out_rfrna_stk_file,
-        isDna => 1});  
+        forceText => 1});  
       my $rna_rf = $msa->get_rf();
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
@@ -8309,7 +8309,7 @@ sub output_alignments {
       # for stockholm we need to replace RNA RF with DNA
       my $msa = Bio::Easel::MSA->new({
         fileLocation => $out_rfrna_rpstk_file,
-        isDna => 1});  
+        forceText => 1});  
       my $rna_rf = $msa->get_rf();
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
