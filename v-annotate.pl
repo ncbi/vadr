@@ -667,7 +667,7 @@ utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($
 # only check for blastn db file if we need it
 if(($do_blastn_any) || ($do_replace_ns)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-  for my $sfx (".nhr", ".nin", ".nsq") { 
+  foreach my $sfx (".nhr", ".nin", ".nsq") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
 }
