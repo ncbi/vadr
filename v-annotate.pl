@@ -5,7 +5,7 @@
 #
 use strict;
 use warnings;
-use Getopt::Long;
+use Getopt::Long qw(:config no_auto_abbrev);
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
@@ -414,8 +414,8 @@ my $options_okay =
                 'out_sgminfo'   => \$GetOptions_H{"--out_sgminfo"},
                 'out_altinfo'   => \$GetOptions_H{"--out_altinfo"},
 # other expert options
-                'alicheck'      => \$GetOptions_H{"--alicheck"},
-                'execname=s'    => \$GetOptions_H{"--execname"});
+                'execname=s'    => \$GetOptions_H{"--execname"},
+                'alicheck'      => \$GetOptions_H{"--alicheck"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -3821,6 +3821,10 @@ sub add_frameshift_alerts_for_one_sequence {
             for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
               $cds_sgm_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
             }
+            # change RF to DNA
+            my $cds_sgm_msa_rf = $cds_sgm_msa->get_rf();
+            seq_SqstringDnaize(\$cds_sgm_msa_rf);
+            $cds_sgm_msa->set_rf($cds_sgm_msa_rf);
             # output to potentially already existent alignment file
             $cds_sgm_msa->write_msa($stk_file_name, "stockholm", 1); # 1: append to file if it exists
             my $stk_file_key = $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
