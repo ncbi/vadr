@@ -1,4 +1,4 @@
-BLASTN 2.9.0+
+BLASTN 2.10.0+
 
 
 Reference: Zheng Zhang, Scott Schwartz, Lukas Wagner, and Webb
@@ -6284,9 +6284,9 @@ Query  3410  GCATGGATCTGGGTACCACACCAGGTGATTGTGGCTGTCCCTACATCTACAAGAGAGGAA  3469
              ||||||| || || ||||  ||||| ||||||||   ||| ||  |||||||||||| ||
 Sbjct  3687  GCATGGACCTTGGGACCATCCCAGGGGATTGTGGAGCTCCTTATGTCTACAAGAGAGCAA  3746
 
-Query  3470  ATGACTATGTGGTCATTGGAGTCCACACGGCTGCCGCT-CGCGGG--GGCAACACTGTCA  3526
-             ||||||  ||||||  ||| ||  ||||| |||||||| |       |||||||| ||  
-Sbjct  3747  ATGACTGGGTGGTCTGTGGTGT--ACACG-CTGCCGCTACTAAATCAGGCAACACAGTAG  3803
+Query  3470  ATGACTATGTGGTCATTGGAGTCCACACGGCTGCCGCT-C--GCGGGGGCAACACTGTCA  3526
+             ||||||  ||||||  ||| ||  |||| ||||||||| |       |||||||| ||  
+Sbjct  3747  ATGACTGGGTGGTCTGTGGTGT--ACAC-GCTGCCGCTACTAAATCAGGCAACACAGTAG  3803
 
 Query  3527  TATGTGCCACCCAGGGGAGTGAGGGAGAGGCCACACTTGAAGGTGGTGACAA  3578
              | || |||  ||| |  |||||||| ||  |||| |||||||| ||||||||
@@ -6880,7 +6880,7 @@ Effective search space used: 1122975360
 
 
   Database: noro.20.fa
-    Posted date:  Mar 28, 2020  7:27 AM
+    Posted date:  Apr 21, 2020  1:20 PM
   Number of letters in database: 150,390
   Number of sequences in database:  20
 

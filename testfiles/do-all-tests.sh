@@ -6,8 +6,13 @@ sh $VADRSCRIPTSDIR/testfiles/do-fs-tests.sh
 sh $VADRSCRIPTSDIR/testfiles/do-replace-tests.sh
 sh $VADRSCRIPTSDIR/testfiles/do-seed-tests.sh
 sh $VADRSCRIPTSDIR/testfiles/do-outaln-tests.sh
-sh $VADRSCRIPTSDIR/testfiles/do-nindel-tests.sh
-sh $VADRSCRIPTSDIR/testfiles/do-hmmer-tests.sh
 
-# to test if -p will work (requires qsub and qsub flags similar to NCBI internal set-up)
+sh $VADRSCRIPTSDIR/t/do-prove-all-tests.sh teamcity
+
+# If you want to test -p option for parallelization, uncomment the 
+# next 'sh' line.
+# Note: this test requires qsub is in your path and qsub options are
+# configured similarly to ncbi cluster, email eric.nawrocki@nih.gov
+# for information on how to configure for different clusters
+
 # sh $VADRSCRIPTSDIR/testfiles/do-install-tests-parallel.sh
