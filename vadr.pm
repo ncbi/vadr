@@ -1694,10 +1694,22 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "insertnn", "feature",
+                   "INSERTION_OF_NT", # short description
+                   "too large of an insertion in nucleotide-based alignment of CDS feature", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinn", "feature",
+                   "DELETION_OF_NT", # short description
+                   "too large of a deletion in nucleotide-based alignment of CDS feature", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",

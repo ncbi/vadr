@@ -191,82 +191,87 @@ my $g = 0; # option group
 
 # Add all options to %opt_HH and @opt_order_A.
 # This section needs to be kept in sync (manually) with the &GetOptions call below
-#     option            type       default               group   requires incompat    preamble-output                                   help-output    
-opt_Add("-h",           "boolean", 0,                        0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
+#     option            type       default group   requires incompat    preamble-output                                   help-output    
+opt_Add("-h",           "boolean", 0,          0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "basic options";
-opt_Add("-f",           "boolean", 0,                       $g,    undef,undef,       "force directory overwrite",                      "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
-opt_Add("-v",           "boolean", 0,                       $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-#opt_Add("-n",           "integer", 0,                       $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
-opt_Add("--atgonly",    "boolean", 0,                       $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
-opt_Add("--keep",       "boolean", 0,                       $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
+#     option            type       default group   requires incompat    preamble-output                                   help-output    
+opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                      "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
+opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                     "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
+#opt_Add("-n",           "integer", 0,        $g,    undef, "-p",       "use <n> CPUs",                                   "use <n> CPUs", \%opt_HH, \@opt_order_A);
+opt_Add("--atgonly",    "boolean", 0,         $g,    undef, undef,      "only consider ATG a valid start codon",          "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
+opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>",        "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",             "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for specifying classification";
-#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--group",         "string",  undef,                  $g,     undef, undef,     "set expected classification of all seqs to group <s>",             "set expected classification of all seqs to group <s>",            \%opt_HH, \@opt_order_A);
-opt_Add("--subgroup",      "string",  undef,                  $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
+#        option               type   default  group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--group",         "string",  undef,     $g,     undef, undef,     "set expected classification of all seqs to group <s>",             "set expected classification of all seqs to group <s>",            \%opt_HH, \@opt_order_A);
+opt_Add("--subgroup",      "string",  undef,     $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
-#        option               type   default                group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--alt_list",     "boolean",  0,                     $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
-opt_Add("--alt_pass",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
-opt_Add("--alt_fail",      "string",  undef,                 $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
+#        option               type   default  group  requires incompat    preamble-output                                                     help-output    
+opt_Add("--alt_list",     "boolean",  0,         $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
-#        option               type   default                group  requires incompat   preamble-output                                                                   help-output    
-opt_Add("-m",           "string",  undef,                   $g,    undef, undef,       "use CM file <s> instead of default",                                             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-a",           "string",  undef,                   $g,"--addhmmer",undef,     "use HMM file <s> instead of default",                                            "use HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-i",           "string",  undef,                   $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-n",           "string",  undef,                   $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
-opt_Add("-x",           "string",  undef,                   $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--mkey",       "string",  undef,                   $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
-opt_Add("--mdir",       "string",  undef,                   $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
+#        option               type default  group  requires incompat   preamble-output                                                                   help-output    
+opt_Add("-m",           "string",  undef,      $g,    undef, undef,       "use CM file <s> instead of default",                                             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-a",           "string",  undef,      $g, "--hmmer",undef,       "use HMM file <s> instead of default",                                            "use HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
+opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--mkey",       "string",  undef,      $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
+opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
-#        option               type   default                group  requires incompat    preamble-output                                                            help-output    
-opt_Add("--nomisc",       "boolean",  0,                    $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
-opt_Add("--noprotid",     "boolean",  0,                    $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
-opt_Add("--forceid",      "boolean",  0,                    $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
+#        option               type   default group  requires incompat    preamble-output                                                            help-output    
+opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
+opt_Add("--forceid",      "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
-#       option          type         default            group   requires incompat     preamble-output                                                                    help-output    
-opt_Add("--lowsc",      "real",      0.3,                  $g,   undef,   undef,      "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                  \%opt_HH, \@opt_order_A);
-opt_Add("--indefclass", "real",      0.03,                 $g,   undef,   undef,      "indfclas/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",    "indfcls/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",  \%opt_HH, \@opt_order_A);
-opt_Add("--incspec",    "real",      0.2,                  $g,   undef,   undef,      "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",          "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",             \%opt_HH, \@opt_order_A);
-opt_Add("--lowcov",     "real",      0.9,                  $g,   undef,   undef,      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--dupreg",     "integer",   20,                   $g,   undef,   undef,      "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--indefstr",   "real",      25,                   $g,   undef,   undef,      "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimterm", "integer",   15,                   $g,   undef,   undef,      "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",  "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",           \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimint",  "integer",   1,                    $g,   undef,   undef,      "lowsimi{s,f}/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",          "lowsim{i,f}s/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",                     \%opt_HH, \@opt_order_A);
-opt_Add("--biasfract",  "real",      0.25,                 $g,   undef,   undef,      "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
-opt_Add("--indefann",   "real",      0.8,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--indefann_mp","real",      0.6,                  $g,   undef,   undef,      "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",     "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstminnt",   "integer",    6,                    $g,   undef,   undef,      "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--fsthighthr", "real",      0.8,                  $g,   undef,   undef,      "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstlowthr",  "real",      0.3,                  $g,   undef,   undef,      "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
-
-opt_Add("--xalntol",    "integer",   5,                    $g,   undef,   undef,       "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",     "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxins",    "integer",   27,                   $g,   undef,"--skipblastx", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",       "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxdel",    "integer",   27,                   $g,   undef,"--skipblastx", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",         "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,                   $g,   undef,"--skipblastx", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",      "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hlonescore",  "integer",  10,                   $g,"--addhmmer", undef,     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",       "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+#       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
+opt_Add("--lowsc",      "real",      0.3,       $g,   undef,   undef,            "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                         "lowscore/LOW_SCORE bits per nucleotide threshold is <x>",                  \%opt_HH, \@opt_order_A);
+opt_Add("--indefclass", "real",      0.03,      $g,   undef,   undef,            "indfclas/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",    "indfcls/INDEFINITE_CLASSIFICATION bits per nucleotide diff threshold is <x>",  \%opt_HH, \@opt_order_A);
+opt_Add("--incspec",    "real",      0.2,       $g,   undef,   undef,            "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP}' bits/nt threshold is <x>",          "inc{group,subgrp}/INCORRECT_{GROUP,SUBGROUP} bits/nt threshold is <x>",             \%opt_HH, \@opt_order_A);
+opt_Add("--lowcov",     "real",      0.9,       $g,   undef,   undef,            "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",                      "lowcovrg/LOW_COVERAGE fractional coverage threshold is <x>",               \%opt_HH, \@opt_order_A);
+opt_Add("--dupreg",     "integer",   20,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
+opt_Add("--indefstr",   "real",      25,        $g,   undef,   undef,            "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimterm", "integer",   15,        $g,   undef,   undef,            "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",  "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",           \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimint",  "integer",   1,         $g,   undef,   undef,            "lowsimi{s,f}/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",          "lowsim{i,f}s/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",                     \%opt_HH, \@opt_order_A);
+opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminnt",   "integer",    6,        $g,   undef,   undef,            "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,   undef,            "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",              "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstlowthr",  "real",      0.3,       $g,   undef,   undef,            "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",               "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--xalntol",    "integer",   5,         $g,   undef,   undef,            "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",   "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--skip_pv,--hmmer", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",     "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--skip_pv,--hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
+opt_Add("--nmaxins",    "integer",   27,        $g,   undef,   undef,            "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>", "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>",   \%opt_HH, \@opt_order_A);
+opt_Add("--nmaxdel",    "integer",   27,        $g,   undef,   undef,            "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",   "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",     \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--skip_pv,--hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hlonescore",  "integer",  10,        $g,"--hmmer","--skip_pv",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
-#        option               type   default                group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--mxsize",     "integer", 8000,                    $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
-opt_Add("--tau",        "real",    1E-3,                    $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,                       $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
-opt_Add("--nosub",      "boolean", 0,                       $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,                       $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+#        option               type default group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--mxsize",     "integer", 8000,      $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",        "real",    1E-3,      $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,         $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nosub",      "boolean", 0,         $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
-#        option               type   default                group  requires incompat       preamble-output                                                                                 help-output    
-opt_Add("--xmatrix",     "string",   undef,                  $g,     undef,"--skipblastx", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,                     $g,     undef,"--skipblastx", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,                     $g,     undef,"--skipblastx", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,                      $g,     undef,"--skipblastx", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
-opt_Add("--xminntlen",   "integer",  30,                     $g,     undef, undef,         "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>",           "min CDS/mat_peptide/gene length for feature table output and blastx analysis is <n>", \%opt_HH, \@opt_order_A);
-# --xminntlen has implications outside of blast, that's why it's not incompatible with --skipblastx
+#        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
+opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--skip_pv,--hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--skip_pv,--hmmer", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--skip_pv,--hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--skip_pv,--hmmer", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
+#     option       type       default group   requires    incompat   preamble-output                                  help-output    
+opt_Add("--hmmer", "boolean", 0,        $g,     undef,  "--skip_pv", "use hmmer for protein validation, not blastx",  "use hmmer for protein validation, not blastx", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration (-s)";
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
@@ -285,22 +290,18 @@ opt_Add("--r_cdsmpo",     "boolean",      0,   $g,    "-r", undef,    "detect CD
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
-#     option            type       default                group   requires incompat    preamble-output                                                help-output    
-opt_Add("-p",           "boolean", 0,                       $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
-opt_Add("-q",           "string",  undef,                   $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 10,                      $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,                     $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
-opt_Add("--errcheck",   "boolean", 0,                       $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,                    $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+#     option            type       default  group   requires incompat    preamble-output                                                help-output    
+opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 10,         $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
-#     option               type       default            group   requires    incompat                                      preamble-output                                            help-output    
-opt_Add("--skipalign",     "boolean", 0,                    $g,   undef,      "-f,--nkb,--maxnjobs,--wait",                "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skipblastx",    "boolean", 0,                    $g,   undef,      undef,                                       "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
-
-$opt_group_desc_H{++$g} = "options for adding stages";
-#     option               type       default            group   requires      incompat                                      preamble-output                                            help-output    
-opt_Add("--addhmmer",      "boolean", 0,                    $g,"--skipblastx", undef,                                       "use hmmer for protein validation",                        "use hmmer for protein validation", \%opt_HH, \@opt_order_A);
+#     option               type       default group   requires    incompat                        preamble-output                                            help-output    
+opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skip_pv",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                  help-output    
@@ -326,6 +327,7 @@ my $options_okay =
                 'v'             => \$GetOptions_H{"-v"},
 #                'n=s'           => \$GetOptions_H{"-n"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
+                'minpvlen=s'    => \$GetOptions_H{"--minpvlen"},
                 'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
                 'group=s'       => \$GetOptions_H{"--group"},
@@ -364,6 +366,8 @@ my $options_okay =
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
                 'xmaxins=s'     => \$GetOptions_H{"--xmaxins"},
                 'xmaxdel=s'     => \$GetOptions_H{"--xmaxdel"},
+                'nmaxins=s'     => \$GetOptions_H{"--nmaxins"},
+                'nmaxdel=s'     => \$GetOptions_H{"--nmaxdel"},
                 'xlonescore=s'  => \$GetOptions_H{"--xlonescore"},
                 'hlonescore=s'  => \$GetOptions_H{"--hlonescore"},
 # options for controlling cmalign alignment stage 
@@ -377,13 +381,14 @@ my $options_okay =
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
-                'xminntlen=s'   => \$GetOptions_H{"--xminntlen"},
+# options for using hmmer instead of blastx for protein validation
+                'hmmer'         => \$GetOptions_H{"--hmmer"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
-# options related to parallelization
+# options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
                 'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
                 'r_minfract=s'  => \$GetOptions_H{"--r_minfract"},
@@ -398,10 +403,8 @@ my $options_okay =
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
-                'skipalign'     => \$GetOptions_H{"--skipalign"},
-                'skipblastx'    => \$GetOptions_H{"--skipblastx"},
-# options for adding stages
-                'addhmmer'      => \$GetOptions_H{"--addhmmer"},
+                'skip_align'    => \$GetOptions_H{"--skip_align"},
+                'skip_pv'       => \$GetOptions_H{"--skip_pv"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
@@ -447,7 +450,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 # make sure hmmer dir exists if we need it
 ##########################################
 my $env_vadr_hmmer_dir    = undef;
-if(opt_Get("--addhmmer", \%opt_HH)) { 
+if(opt_Get("--hmmer", \%opt_HH)) { 
   $env_vadr_hmmer_dir = utl_DirEnvVarValid("VADRHMMERDIR");
   $execs_H{"hmmfetch"}          = $env_vadr_hmmer_dir    . "/hmmfetch";
   $execs_H{"hmmscan"}           = $env_vadr_hmmer_dir    . "/hmmscan";
@@ -500,8 +503,17 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 #######################################################
 # determine if we are running blastx, hmmer, and blastn
 #######################################################
-my $do_blastx = opt_Get("--skipblastx", \%opt_HH) ? 0 : 1;
-my $do_hmmer  = opt_Get("--addhmmer",   \%opt_HH) ? 1 : 0;
+# set defaults, and change if nec
+my $do_blastx = 1; 
+my $do_hmmer  = 0;
+if(opt_Get("--skip_pv", \%opt_HH)) { 
+  $do_blastx = 0;
+  $do_hmmer  = 0;
+}
+elsif(opt_Get("--hmmer", \%opt_HH)) { 
+  $do_blastx = 0;
+  $do_hmmer  = 1;
+}
 
 my $do_blastn_rpn = (opt_Get("-r", \%opt_HH) && (! opt_Get("--r_prof", \%opt_HH))) ? 1 : 0;
 my $do_blastn_cls = opt_Get("-s", \%opt_HH) ? 1 : 0;
@@ -552,7 +564,7 @@ $extra_H{"\$VADRINFERNALDIR"} = $env_vadr_infernal_dir;
 $extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
 $extra_H{"\$VADRBIOEASELDIR"} = $env_vadr_bioeasel_dir;
 if($do_blastx || $do_blastn_any) { 
-  $extra_H{"\$VADRBLASTDIR"}    = $env_vadr_blast_dir;
+  $extra_H{"\$VADRBLASTDIR"} = $env_vadr_blast_dir;
 }
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -1141,7 +1153,7 @@ if($do_blastx) {
   }
 } # end of 'if($do_blastx)'
 elsif(! $do_hmmer) { 
-  $start_secs = ofile_OutputProgressPrior("Skipping BLASTX step (--skipblastx)", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Skipping protein validation step (--skip_pv)", $progress_w, $log_FH, *STDOUT);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
@@ -1160,7 +1172,6 @@ if($do_hmmer) {
                                         $do_separate_cds_fa_files_for_protein_validation, \%opt_HH, \%ofile_info_HH);
         parse_hmmer_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                   \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-        
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -2847,13 +2858,13 @@ sub cmalign_wrapper_helper {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if($do_parallel) { 
-    if((opt_Exists("--skipalign", $opt_HHR)) && (opt_Get("--skipalign", $opt_HHR))) { 
+    if((opt_Exists("--skip_align", $opt_HHR)) && (opt_Get("--skip_align", $opt_HHR))) { 
       for($s = 0; $s < $nseq_files; $s++) { 
         $success_AR->[$s] = 1; 
       }
     }
     else { 
-      # --skipalign not enabled
+      # --skip_align not enabled
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
@@ -2942,7 +2953,7 @@ sub cmalign_run {
   if(! defined $tfile_file)  { ofile_FAIL("ERROR in $sub_name, tfile  output file name is undefined", 1, $FH_HR); }
   if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
-  if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+  if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
     if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $ifile_file)  { unlink $ifile_file; }
     if(-e $tfile_file)  { unlink $tfile_file; }
@@ -2984,12 +2995,12 @@ sub cmalign_run {
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
-    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+    if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
       vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
   }
   else { 
-    if((! opt_Exists("--skipalign", $opt_HHR)) || (! opt_Get("--skipalign", $opt_HHR))) { 
+    if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
@@ -3443,16 +3454,29 @@ sub add_frameshift_alerts_for_one_sequence {
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $do_output_frameshift_stk = opt_Get("--keep", $opt_HHR);
-  my $fst_min_nt       = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
-  my $fst_high_ppthr   = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
-  my $fst_low_ppthr    = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
+  my $fst_min_nt     = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
+  my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
+  my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
+  my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
+  my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
   my $fsthicnf_is_fatal = $alt_info_HHR->{"fsthicnf"}{"causes_failure"} ? 1 : 0;
   my $fstlocnf_is_fatal = $alt_info_HHR->{"fstlocnf"}{"causes_failure"} ? 1 : 0;
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
+  my $ftr_idx;
+
+  # get info on position-specific insert and delete maximum exceptions if there are any
+  my @nmaxins_exc_AH = ();
+  my @nmaxdel_exc_AH = ();
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    %{$nmaxins_exc_AH[$ftr_idx]} = ();
+    %{$nmaxdel_exc_AH[$ftr_idx]} = ();
+    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "nmaxins_exc", \%{$nmaxins_exc_AH[$ftr_idx]}, $FH_HR);
+    vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "nmaxdel_exc", \%{$nmaxdel_exc_AH[$ftr_idx]}, $FH_HR);
+  }
 
   # for each CDS: determine frame, and report fsthicnf and fstlocnf alerts
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
     my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
     my $ftr_strand = undef; # strand for this feature
@@ -3490,6 +3514,7 @@ sub add_frameshift_alerts_for_one_sequence {
           my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
           my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
           my $strand = $sgm_results_HR->{"strand"};
+          my $cur_delete_len = 0; # current length of deletion
           if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
           if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
           $ftr_sstop = $sstop;
@@ -3545,10 +3570,17 @@ sub add_frameshift_alerts_for_one_sequence {
               $uapos_prv = $uapos;
               $rfpos_prv = $rfpos;
               $F_prv     = $F_cur;
+              if($cur_delete_len > $nmaxdel) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                           sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
+                                                   $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+              }
+              $cur_delete_len = 0;
             }
             else { # rf position is a gap, add 'd' GR frame annotation
               if($strand eq "+") { $gr_frame_str .= "d"; }
               else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
+              $cur_delete_len++;
             }
             # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
             if($strand eq "+") { 
@@ -3567,6 +3599,12 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
               }
             }
+            # add insertnn alert, if nec
+            my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
+            if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
+            }
+
             # increment or decrement rfpos
             if($strand eq "+") { $rfpos++; } 
             else               { $rfpos--; }
@@ -3577,6 +3615,11 @@ sub add_frameshift_alerts_for_one_sequence {
           push(@gr_frame_str_A, $gr_frame_str);
           # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
           # print("$gr_frame_str\n");
+          if($cur_delete_len > $nmaxdel) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                       sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
+                                               $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+          }
         } # end of 'if' entered if segment has a sstart
       } # end of for loop over segments
 
@@ -4610,7 +4653,7 @@ sub add_protein_validation_alerts {
   
   my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
   
-  my $do_hmmer = opt_Get("--addhmmer", $opt_HHR) ? 1 : 0;
+  my $do_hmmer = opt_Get("--hmmer", $opt_HHR) ? 1 : 0;
 
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -4618,22 +4661,22 @@ sub add_protein_validation_alerts {
   my $seq_name;  # name of one sequence
   my $ftr_idx;   # counter over features
   
-  my $aln_tol   = opt_Get("--xalntol",   $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
-  my $xmaxins   = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
-  my $xmaxdel   = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
-  my $xminntlen = opt_Get("--xminntlen", $opt_HHR);
+  my $aln_tol  = opt_Get("--xalntol",   $opt_HHR); # maximum allowed difference between start/end point prediction between CM and blastx
+  my $xmaxins  = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
+  my $xmaxdel  = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
+  my $minpvlen = opt_Get("--minpvlen", $opt_HHR);
   
   # get info on position-specific insert and delete maximum exceptions if there are any
   # skip this if we are using hmmer instead of blastx b/c we don't check for inserts/deletes
   # with hmmer
-  my @maxins_exc_AH = ();
-  my @maxdel_exc_AH = ();
+  my @xmaxins_exc_AH = ();
+  my @xmaxdel_exc_AH = ();
   if(! $do_hmmer) { 
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      %{$maxins_exc_AH[$ftr_idx]} = ();
-      %{$maxdel_exc_AH[$ftr_idx]} = ();
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxins_exc", \%{$maxins_exc_AH[$ftr_idx]}, $FH_HR);
-      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxdel_exc", \%{$maxdel_exc_AH[$ftr_idx]}, $FH_HR);
+      %{$xmaxins_exc_AH[$ftr_idx]} = ();
+      %{$xmaxdel_exc_AH[$ftr_idx]} = ();
+      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxins_exc", \%{$xmaxins_exc_AH[$ftr_idx]}, $FH_HR);
+      vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxdel_exc", \%{$xmaxdel_exc_AH[$ftr_idx]}, $FH_HR);
     }
   }
 
@@ -4641,7 +4684,7 @@ sub add_protein_validation_alerts {
   for($seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     # for each feature
     $seq_name = $seq_name_AR->[$seq_idx];
-    if($seq_len_HR->{$seq_name} >= $xminntlen) { 
+    if($seq_len_HR->{$seq_name} >= $minpvlen) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
           my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
@@ -4682,7 +4725,7 @@ sub add_protein_validation_alerts {
 
           # only proceed if we have a nucleotide prediction >= min length OR
           # we have no nucleotide prediction
-          if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start)) { 
+          if(((defined $n_start) && ($n_len >= $minpvlen)) || (! defined $n_start)) { 
             if((defined $ftr_results_HR->{"p_start"}) && 
                (defined $ftr_results_HR->{"p_stop"})) { 
               $p_start   = $ftr_results_HR->{"p_start"};
@@ -4709,7 +4752,7 @@ sub add_protein_validation_alerts {
             if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
               # no nucleotide-based prediction but there is a protein-based blastx prediction
               # only add this if length meets our minimum
-              if($p_hlen >= $xminntlen) { 
+              if($p_hlen >= $minpvlen) { 
                 $alt_str_H{"indfantp"} = "$p_start to $p_stop with score $p_score";
               }
             }
@@ -4796,7 +4839,7 @@ sub add_protein_validation_alerts {
                     my @p_ins_len_A  = ();
                     my $nins = helper_blastx_breakdown_max_indel_str($p_ins, \@p_ins_qpos_A, \@p_ins_spos_A, \@p_ins_len_A, $FH_HR);
                     for(my $ins_idx = 0; $ins_idx < $nins; $ins_idx++) { 
-                      my $local_xmaxins = defined ($maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $maxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
+                      my $local_xmaxins = defined ($xmaxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]}) ? $xmaxins_exc_AH[$ftr_idx]{$p_ins_spos_A[$ins_idx]} : $xmaxins;
                       if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                         if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                         else                               { $alt_str_H{"insertnp"}  = ""; } # initialize
@@ -4811,7 +4854,7 @@ sub add_protein_validation_alerts {
                     my @p_del_len_A  = ();
                     my $ndel = helper_blastx_breakdown_max_indel_str($p_del, \@p_del_qpos_A, \@p_del_spos_A, \@p_del_len_A, $FH_HR);
                     for(my $del_idx = 0; $del_idx < $ndel; $del_idx++) { 
-                      my $local_xmaxdel = defined ($maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $maxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
+                      my $local_xmaxdel = defined ($xmaxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]}) ? $xmaxdel_exc_AH[$ftr_idx]{$p_del_spos_A[$del_idx]} : $xmaxdel;
                       if($p_del_len_A[$del_idx] > $local_xmaxdel) { 
                         if(defined $alt_str_H{"deletinp"}) { $alt_str_H{"deletinp"} .= ":VADRSEP:"; } # we are adding another instance
                         else                               { $alt_str_H{"deletinp"} = ""; }           # initialize
@@ -4834,10 +4877,10 @@ sub add_protein_validation_alerts {
                 alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
               }
             }
-          } # end of 'if(((defined $n_start) && ($n_len >= $xminntlen)) || (! defined $n_start))'
+          } # end of 'if(((defined $n_start) && ($n_len >= $minpvlen)) || (! defined $n_start))'
         } # end of 'if(featureTypeIsCds($ftr_info_AHR, $ftr_idx))'
       } # end of 'for($ftr_idx' loop
-    } # end of 'if($seq_len_HR->{$seq_name} >= $xminntlen)'
+    } # end of 'if($seq_len_HR->{$seq_name} >= $minpvlen)'
   } # end of 'for($seq_idx' loop
   return;
 }
@@ -4970,7 +5013,7 @@ sub parse_blastx_results {
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
   
   my $line_idx   = 0;
-  my $xminntlen  = opt_Get("--xminntlen",  $opt_HHR);
+  my $minpvlen   = opt_Get("--minpvlen",  $opt_HHR);
   my $xlonescore = opt_Get("--xlonescore", $opt_HHR);
   my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
@@ -5109,7 +5152,7 @@ sub parse_blastx_results {
             #  A. this query/target pair is compatible (query is full sequence or correct CDS feature) 
             #  B. if --xlongest not used: this is the highest scoring hit for this feature for this sequence (query/target pair)? 
             #     if --xlongest is  used: this is the longest hit (query coords) for this feature for this sequence (query/target pair)? 
-            #  C. query length (full length seq or predicted CDS) is at least <x> nt from --xminntlen
+            #  C. query length (full length seq or predicted CDS) is at least <x> nt from --minpvlen
             # 
             #  D. hit score is above minimum (--xlonescore)
             #  E. hit overlaps by at least 1 nt with a nucleotide prediction
@@ -5125,7 +5168,7 @@ sub parse_blastx_results {
                          ($blast_hit_qlen > $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"})) ? 1 : 0; # longest hit
             }
 
-            my $c_true = ($q_len >= $xminntlen) ? 1 : 0; # length >= --xminntlen
+            my $c_true = ($q_len >= $minpvlen) ? 1 : 0; # length >= --minpvlen
             if($a_true && $b_true && $c_true) { 
               my $d_true = ($cur_H{"RAWSCORE"} >= $xlonescore) ? 1 : 0;
               my $e_true = 0; 
@@ -5307,7 +5350,7 @@ sub parse_hmmer_domtblout {
   open(IN, $domtblout_file) || ofile_FileOpenFailure($domtblout_file, $sub_name, $!, "reading", $FH_HR);
   
   my $line_idx   = 0;
-  my $hminntlen  = opt_Get("--xminntlen",  $opt_HHR); # yes, it should be hminntlen = --xminntlen
+  my $hminntlen  = opt_Get("--minpvlen",  $opt_HHR); # yes, it should be hminntlen = --minpvlen
   my $hlonescore = opt_Get("--hlonescore", $opt_HHR);
   my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
@@ -5478,25 +5521,25 @@ sub parse_hmmer_domtblout {
       # we do if A, B, and C are all TRUE and one or both of D or E is TRUE
       #  A. this model/sequence pair is compatible (sequence is full sequence or correct CDS feature for this model) 
       #  B. this is the highest scoring hit for this model for this sequence
-      #  C. query length (full length seq or predicted CDS) is at least <x> nt from --xminntlen
+      #  C. query length (full length seq or predicted CDS) is at least <x> nt from --minpvlen
       # 
       #  D. hit score is above minimum (--hlonescore)
       #  E. hit overlaps by at least 1 nt with a nucleotide prediction
       my $a_true = (($seq_ftr_idx == -1) || ($seq_ftr_idx == $mdl_ftr_idx)) ? 1 : 0; # sequence is full sequence OR model is CDS that pertains to sequence
-      my $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
-                    ($hit_score > $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
-      my $c_true = ($seq_source_len_nt >= $hminntlen) ? 1 : 0; # length >= --xminntlen
+      my $b_true = ((! defined $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_score"}) ||  # first hit, so must be highest score
+                    ($hit_score > $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_score"})) ? 1 : 0; # highest scoring hit
+      my $c_true = ($seq_source_len_nt >= $hminntlen) ? 1 : 0; # length >= --minpvlen
 
       if($a_true && $b_true && $c_true) { 
         my $d_true = ($hit_score >= $hlonescore) ? 1 : 0;
         my $e_true = 0; 
         # only bother determining $e_true if $d_true is 0
         if(! $d_true) { 
-          if((defined $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"n_strand"}) &&
-             ($ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"n_strand"} eq $hmmer_summary_strand)) { 
+          if((defined $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"n_strand"}) &&
+             ($ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"n_strand"} eq $hmmer_summary_strand)) { 
             $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
             $hmmer_nsgm = vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
-            my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$seq_ftr_idx], 
+            my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx], 
                                                                    $hmmer_start_A[0], $hmmer_stop_A[($hmmer_nsgm-1)], $hmmer_summary_strand, $FH_HR);
             if($noverlap > 0) { $e_true = 1; }
           }
@@ -5508,13 +5551,13 @@ sub parse_hmmer_domtblout {
           if(! defined $hmmer_summary_strand) { # if defined, we already calculated it above
             $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
           }
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_start"}  = $hmmer_start_A[0];
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_stop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_strand"} = $hmmer_summary_strand;
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_len"}    = vdr_CoordsLength($hmmer_env_nt_coords, $FH_HR);
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_query"}  = $source_val;
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_score"}  = $hit_score;
-          $ftr_results_HAHR->{$seq_name}[$seq_ftr_idx]{"p_frame"}  = convert_esl_translate_to_blastx_frame($frame, $FH_HR);
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_start"}  = $hmmer_start_A[0];
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_stop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_strand"} = $hmmer_summary_strand;
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_len"}    = vdr_CoordsLength($hmmer_env_nt_coords, $FH_HR);
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_query"}  = $source_val;
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_score"}  = $hit_score;
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_frame"}  = convert_esl_translate_to_blastx_frame($frame, $FH_HR);
         } # end of 'if($d_true || $e_true)'
       } # end of 'if($a_true && $b_true && $c_true)'
     } # end of 'if($line !~ m/^\#/)'
@@ -6303,7 +6346,7 @@ sub alert_add_noftrann {
   my @ftr_min_len_A = (); 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     $ftr_min_len_A[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) ? 
-        opt_Get("--xminntlen", $opt_HHR) : 1;
+        opt_Get("--minpvlen", $opt_HHR) : 1;
   }
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -6794,123 +6837,130 @@ sub output_tabular {
       $nftr = scalar(@{$ftr_info_HAHR->{$seq_mdl1}});
       my $ftr_info_AHR = \@{$ftr_info_HAHR->{$seq_mdl1}}; # for convenience
       for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
-        my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
-        if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
-          $seq_nftr_annot++;
-          my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
-          my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
-          my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
-          my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $ftr_idx);
-          my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
-          my $ftr_n_start  = (defined $ftr_results_HR->{"n_start"})   ? $ftr_results_HR->{"n_start"}   : "-";
-          my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
-          my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
-          if(($ftr_n_stop_c ne "-") && ($ftr_n_stop_c ne "?") && ($ftr_n_stop_c == $ftr_n_stop)) { $ftr_n_stop_c = "-"; }
-          my $ftr_p_start  = (defined $ftr_results_HR->{"p_start"})   ? $ftr_results_HR->{"p_start"}   : "-";
-          my $ftr_p_stop   = (defined $ftr_results_HR->{"p_stop"})    ? $ftr_results_HR->{"p_stop"}    : "-";
-          my $ftr_p_stop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
-          if($ftr_p_stop_c ne "-") { 
-            $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
-          }
-          my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
-          if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
-            $seq_nftr_5trunc++; 
-          }
-          if((defined $ftr_results_HR->{"n_3trunc"}) && ($ftr_results_HR->{"n_3trunc"})) { 
-            $seq_nftr_3trunc++; 
-          }
-
-          my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 1, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
-          if($ftr_alt_str ne "") { 
-            $seq_nftr_alt++; 
-            $seq_nftr_alt += $ftr_alt_str =~ tr/,//; # plus 1 for each comma
-          }
- 
-         my $s_coords_str   = ""; # sequence coordinate string for feature
-          my $m_coords_str   = ""; # model    coordinate string for feature
-          my $ftr_nsgm_annot = 0;
-          my $ftr_len_by_sgm = 0;
-          my $ftr_first_sgm  = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"};
-          my $ftr_final_sgm  = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};
-          my $ftr_nsgm       = $ftr_final_sgm - $ftr_first_sgm + 1;
-          for(my $sgm_idx = $ftr_first_sgm; $sgm_idx <= $ftr_final_sgm; $sgm_idx++) { 
-            if((defined $sgm_results_HHAHR) && 
-               (defined $sgm_results_HHAHR->{$seq_mdl1}) && 
-               (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
-               (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]) && 
-               (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]{"sstart"})) { 
-              $ftr_nsgm_annot++;
-              my $sgm_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
-              my $sgm_results_HR = $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]; # for convenience
-              my $sgm_sstart = $sgm_results_HR->{"sstart"};
-              my $sgm_sstop  = $sgm_results_HR->{"sstop"};
-              my $sgm_mstart = $sgm_results_HR->{"mstart"};
-              my $sgm_mstop  = $sgm_results_HR->{"mstop"};
-              my $sgm_slen   = abs($sgm_sstart - $sgm_sstop) + 1;
-              my $sgm_mlen   = abs($sgm_mstart - $sgm_mstop) + 1;
-              my $sgm_strand = $sgm_results_HR->{"strand"};
-              my $sgm_trunc  = helper_tabular_sgm_results_trunc_string($sgm_results_HR);
-              my $sgm_pp5    = ($sgm_results_HR->{"startpp"} == -1) ? "-" : $sgm_results_HR->{"startpp"};
-              my $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  == -1) ? "-" : $sgm_results_HR->{"stoppp"};
-              my $sgm_gap5   = ($sgm_results_HR->{"startgap"}) ? "yes" : "no";
-              my $sgm_gap3   = ($sgm_results_HR->{"stopgap"})  ? "yes" : "no";
-              
-              if($s_coords_str ne "") { $s_coords_str .= ","; }
-              if($m_coords_str ne "") { $m_coords_str .= ","; }
-              $s_coords_str .= $sgm_sstart . ".." . $sgm_sstop . ":" . $sgm_strand;
-              $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
-              $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
-              
-              if(($sgm_nprinted == 0) && (scalar(@data_sgm_AA) > 0)) { 
-                push(@data_sgm_AA, []); # empty array -> blank line
-              }
-              push(@data_sgm_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
-                                  $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
-                                  $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
-              $sgm_nprinted++;
+        if((defined $ftr_results_HHAHR->{$seq_mdl1}) && 
+           (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
+           (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx])) { 
+          my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
+          my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
+          if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+            $seq_nftr_annot++;
+            my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
+            my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
+            my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
+            my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $ftr_idx);
+            my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
+            my $ftr_n_start  = (defined $ftr_results_HR->{"n_start"})   ? $ftr_results_HR->{"n_start"}   : "-";
+            my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
+            my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
+            if(($ftr_n_stop_c ne "-") && ($ftr_n_stop_c ne "?") && ($ftr_n_stop_c == $ftr_n_stop)) { $ftr_n_stop_c = "-"; }
+            my $ftr_p_start  = (defined $ftr_results_HR->{"p_start"})   ? $ftr_results_HR->{"p_start"}   : "-";
+            my $ftr_p_stop   = (defined $ftr_results_HR->{"p_stop"})    ? $ftr_results_HR->{"p_stop"}    : "-";
+            my $ftr_p_stop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
+            if($ftr_p_stop_c ne "-") { 
+              $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
             }
-          }
-          my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
-          if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
-          if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
+            my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
+            if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
+              $seq_nftr_5trunc++; 
+            }
+            if((defined $ftr_results_HR->{"n_3trunc"}) && ($ftr_results_HR->{"n_3trunc"})) { 
+              $seq_nftr_3trunc++; 
+            }
+            
+            my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 1, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
+            if($ftr_alt_str ne "") { 
+              $seq_nftr_alt++; 
+              $seq_nftr_alt += $ftr_alt_str =~ tr/,//; # plus 1 for each comma
+            }
+            
+            my $s_coords_str   = ""; # sequence coordinate string for feature
+            my $m_coords_str   = ""; # model    coordinate string for feature
+            my $ftr_nsgm_annot = 0;
+            my $ftr_len_by_sgm = 0;
+            my $ftr_first_sgm  = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"};
+            my $ftr_final_sgm  = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};
+            my $ftr_nsgm       = $ftr_final_sgm - $ftr_first_sgm + 1;
+            for(my $sgm_idx = $ftr_first_sgm; $sgm_idx <= $ftr_final_sgm; $sgm_idx++) { 
+              if((defined $sgm_results_HHAHR) && 
+                 (defined $sgm_results_HHAHR->{$seq_mdl1}) && 
+                 (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
+                 (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]) && 
+                 (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]{"sstart"})) { 
+                $ftr_nsgm_annot++;
+                my $sgm_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
+                my $sgm_results_HR = $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]; # for convenience
+                my $sgm_sstart = $sgm_results_HR->{"sstart"};
+                my $sgm_sstop  = $sgm_results_HR->{"sstop"};
+                my $sgm_mstart = $sgm_results_HR->{"mstart"};
+                my $sgm_mstop  = $sgm_results_HR->{"mstop"};
+                my $sgm_slen   = abs($sgm_sstart - $sgm_sstop) + 1;
+                my $sgm_mlen   = abs($sgm_mstart - $sgm_mstop) + 1;
+                my $sgm_strand = $sgm_results_HR->{"strand"};
+                my $sgm_trunc  = helper_tabular_sgm_results_trunc_string($sgm_results_HR);
+                my $sgm_pp5    = ($sgm_results_HR->{"startpp"} == -1) ? "-" : $sgm_results_HR->{"startpp"};
+                my $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  == -1) ? "-" : $sgm_results_HR->{"stoppp"};
+                my $sgm_gap5   = ($sgm_results_HR->{"startgap"}) ? "yes" : "no";
+                my $sgm_gap3   = ($sgm_results_HR->{"stopgap"})  ? "yes" : "no";
+                
+                if($s_coords_str ne "") { $s_coords_str .= ","; }
+                if($m_coords_str ne "") { $m_coords_str .= ","; }
+                $s_coords_str .= $sgm_sstart . ".." . $sgm_sstop . ":" . $sgm_strand;
+                $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
+                $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
+                
+                if(($sgm_nprinted == 0) && (scalar(@data_sgm_AA) > 0)) { 
+                  push(@data_sgm_AA, []); # empty array -> blank line
+                }
+                push(@data_sgm_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
+                                    $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
+                                    $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
+                $sgm_nprinted++;
+              }
+            } # end of 'for' loop over sgms
 
-          if(($ftr_nprinted == 0) && (scalar(@data_ftr_AA) > 0)) { 
-            push(@data_ftr_AA, []); 
-          } # empty array -> blank line
-          push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
-                                  ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, 
-                                  $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
-                                  $ftr_alt_str]);
-          $ftr_nprinted++;
+            my $ftr_nsgm_noannot = $ftr_nsgm - $ftr_nsgm_annot;
+            if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
+            if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
 
-          # print per-feature alerts, if any
-          $alt_nseqftr = 0;
-          if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
-             (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
-            foreach my $alt_code (@ftr_alt_code_A) { 
-              my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
-              if(defined $alt_instance) { 
-                if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
-                  push(@data_alt_AA, []); # empty array -> blank line
-                }
-                if(! defined $alt_seqcode_H{$alt_code}) { 
-                  $alt_seq_ct_H{$alt_code}++; 
-                  $alt_seqcode_H{$alt_code} = 1;
-                }
-                if($alt_nseqftr == 0) { 
-                  $alt_nftr++;
-                }
-                my @instance_str_A = split(":VADRSEP:", $alt_instance);
-                foreach my $instance_str (@instance_str_A) { 
-                  $alt_nseqftr++;
-                  $alt_ct_H{$alt_code}++;
-                  my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
-                  push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
-                                      $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
-                                      helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                      $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
-                  $alt_nprinted++;
+            if(($ftr_nprinted == 0) && (scalar(@data_ftr_AA) > 0)) { 
+              push(@data_ftr_AA, []); 
+            } # empty array -> blank line
+            if($s_coords_str eq "") { $s_coords_str = "-"; } # will happen only for protein-validation only predictions
+            if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
+            push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
+                                ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, 
+                                $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, $s_coords_str, $m_coords_str,
+                                $ftr_alt_str]);
+            $ftr_nprinted++;
+            
+            # print per-feature alerts, if any
+            $alt_nseqftr = 0;
+            if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+               (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+              foreach my $alt_code (@ftr_alt_code_A) { 
+                my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
+                if(defined $alt_instance) { 
+                  if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
+                    push(@data_alt_AA, []); # empty array -> blank line
+                  }
+                  if(! defined $alt_seqcode_H{$alt_code}) { 
+                    $alt_seq_ct_H{$alt_code}++; 
+                    $alt_seqcode_H{$alt_code} = 1;
+                  }
+                  if($alt_nseqftr == 0) { 
+                    $alt_nftr++;
+                  }
+                  my @instance_str_A = split(":VADRSEP:", $alt_instance);
+                  foreach my $instance_str (@instance_str_A) { 
+                    $alt_nseqftr++;
+                    $alt_ct_H{$alt_code}++;
+                    my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                    push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
+                                        $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                        helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                        $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+                    $alt_nprinted++;
+                  }
                 }
               }
             }
@@ -7248,7 +7298,7 @@ sub output_feature_table {
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $do_blastx = opt_Get("--skipblastx", $opt_HHR) ? 0 : 1;
+  my $do_blastx = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--hmmer", $opt_HHR)) ? 0 : 1;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
@@ -7295,7 +7345,7 @@ sub output_feature_table {
     @{$ftr_min_len_HA{$mdl_name}} = ();
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       $ftr_min_len_HA{$mdl_name}[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_HAHR->{$mdl_name}, $ftr_idx)) ?
-          opt_Get("--xminntlen", $opt_HHR) : 1;
+          opt_Get("--minpvlen", $opt_HHR) : 1;
     }
   }
 

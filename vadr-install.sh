@@ -25,7 +25,7 @@ VERSION="1.0.6"
 # bio-easel
 BEVERSION="Bio-Easel-0.12"
 # blast+
-BVERSION="2.9.0"
+BVERSION="2.10.0"
 # infernal
 IVERSION="1.1.3"
 # hmmer
