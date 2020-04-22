@@ -272,6 +272,7 @@ opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--skip_pv,--hmme
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
 #     option       type       default group   requires    incompat   preamble-output                                  help-output    
 opt_Add("--hmmer", "boolean", 0,        $g,     undef,  "--skip_pv", "use hmmer for protein validation, not blastx",  "use hmmer for protein validation, not blastx", \%opt_HH, \@opt_order_A);
+opt_Add("--h_max", "boolean", 0,        $g, "--hmmer",  "--skip_pv", "use --max option with hmmsearch",               "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration (-s)";
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
@@ -384,6 +385,7 @@ my $options_okay =
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
 # options for using hmmer instead of blastx for protein validation
                 'hmmer'         => \$GetOptions_H{"--hmmer"},
+                'h_max'         => \$GetOptions_H{"--h_max"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
@@ -1182,9 +1184,7 @@ if($do_hmmer) {
               $ofile_info_HH{"fullpath"}{$mdl_name . ".pv.hmmer.fa"}, 
               $ofile_info_HH{"fullpath"}{$mdl_name . ".hmmsearch"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".hmmlist"},
-              $ofile_info_HH{"fullpath"}{$mdl_name . ".domtblout"},
-              $ofile_info_HH{"fullpath"}{$mdl_name . ".hmmsearch.stk"}));
-        
+              $ofile_info_HH{"fullpath"}{$mdl_name . ".domtblout"}));
       }                
     }
   }
@@ -1503,7 +1503,7 @@ sub classification_stage {
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"});
   }
   else { # default: use cmscan for classification
-    my $cmscan_opts = " --cpu 0 --trmF3 --noali --hmmonly"; 
+    my $cmscan_opts = " -T 10 --cpu 0 --trmF3 --noali --hmmonly"; 
     my $tot_len_nt  = utl_HSumValues($seq_len_HR);
     cmsearch_or_cmscan_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
                                $cm_file, undef, $fa_file, $cmscan_opts, 
@@ -1653,7 +1653,7 @@ sub coverage_determination_stage {
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   else { # default, not (! $do_blastn) 
-    my $cmsearch_opts = " --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+    my $cmsearch_opts = " -T 10 --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
     if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
     foreach $mdl_name (@cls_mdl_name_A) { 
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
@@ -5289,7 +5289,7 @@ sub run_esl_translate_and_hmmsearch {
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
-  my $esl_translate_opts = "-l 1 -W "; # -W avoids presumed bug in esl-translate for input seqs of length < 3
+  my $esl_translate_opts = "-l 1 -W "; # -W avoids presumed bug in esl-translate for input seqs of length < 3 (see 20_0420_vadr_1p1_models/00LOG.txt)
   if(defined $mdl_info_HR->{"transl_table"}) { 
     $esl_translate_opts .= " -c " . $mdl_info_HR->{"transl_table"};
   }
@@ -5307,15 +5307,16 @@ sub run_esl_translate_and_hmmsearch {
   my $hmmsearch_opts = "";
   my $hmmsearch_out_file       = $out_root . "." . $mdl_name . ".hmmsearch.out";
   my $hmmsearch_domtblout_file = $out_root . "." . $mdl_name . ".hmmsearch.domtblout";
-  my $hmmsearch_stk_file       = $out_root . "." . $mdl_name . ".hmmsearch.stk";
+  #my $hmmsearch_stk_file       = $out_root . "." . $mdl_name . ".hmmsearch.stk";
+  #$hmmsearch_opts .= " -A $hmmsearch_stk_file";
+  if(opt_Get("--h_max", $opt_HHR)) { $hmmsearch_opts .= " --max"; }
   my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " -f $hmm_file $hmm_list_file | ";
-  my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " -A $hmmsearch_stk_file --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
+  my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " --domT -10 -T -10 --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
   utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmlist",        $hmm_list_file,            0, $do_keep, "list of hmm files fetched for model $mdl_name");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmsearch",      $hmmsearch_out_file,       0, $do_keep, "hmmsearch standard output for model $mdl_name");
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".domtblout",      $hmmsearch_domtblout_file, 0, $do_keep, "hmmsearch --domtblout output for model $mdl_name");
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmsearch.stk",  $hmmsearch_stk_file,       0, $do_keep, "hmmsearch -A stockholm output for model $mdl_name");
 
   return;
 }
@@ -5543,9 +5544,9 @@ sub parse_hmmer_domtblout {
         my $e_true = 0; 
         # only bother determining $e_true if $d_true is 0
         if(! $d_true) { 
+          $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
           if((defined $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"n_strand"}) &&
              ($ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"n_strand"} eq $hmmer_summary_strand)) { 
-            $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
             $hmmer_nsgm = vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
             my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx], 
                                                                    $hmmer_start_A[0], $hmmer_stop_A[($hmmer_nsgm-1)], $hmmer_summary_strand, $FH_HR);
@@ -7671,10 +7672,10 @@ sub helper_ftable_coords_prot_only_prediction {
 
   my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_results_HAHR, $FH_HR) = @_;
 
-  # NOTE: for 'indfantp' alerts, the x_start and x_stop are always set at the feature level
+  # NOTE: for 'indfantp' alerts, the p_start and p_stop are always set at the feature level
   if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ||
      (! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"})) { 
-    ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{x_start|x_stop} does not exists", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_start|p_stop} does not exists", 1, $FH_HR);
   }
 
   my @start_A = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"});
