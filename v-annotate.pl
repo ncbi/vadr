@@ -4615,7 +4615,7 @@ sub make_protein_validation_fasta_file {
 # Purpose:    Report protein validation related errors for features of type 'cds'
 #             using data stored in earlier parsing of blast or hmmer results 
 #             in @{$ftr_results_AAH} (filled in parse_blastx_results(), or
-#             parse_hmmsearch_domtblout).
+#             parse_hmmer_domtblout).
 #
 #             Types of alerts added are:
 #             "indfantp": adds this alert if blastx/hmmer has a prediction 
@@ -5289,7 +5289,7 @@ sub run_esl_translate_and_hmmsearch {
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".pv.hmmer.fa", $pv_fa_file, 0, opt_Get("--keep", \%opt_HH), "sequences for protein validation for model $mdl_name");
 
   # now esl-translate it
-  my $esl_translate_opts = "-l 1 ";
+  my $esl_translate_opts = "-l 1 -W "; # -W avoids presumed bug in esl-translate for input seqs of length < 3
   if(defined $mdl_info_HR->{"transl_table"}) { 
     $esl_translate_opts .= " -c " . $mdl_info_HR->{"transl_table"};
   }
