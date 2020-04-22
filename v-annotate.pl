@@ -1085,7 +1085,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     # parse the cmalign alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
-      if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which will exist for any r1 run that fails
+      if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
         cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
                                                    \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
@@ -1099,7 +1099,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # Logic differs significantly depending on -r or not so 
     # we have separate blocks for each.
     if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
-      output_alignments(\%execs_H, \$in_sqfile, \@{$stk_file_HA{$mdl_name}}, $mdl_name, \%rpn_output_HH, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+      if(scalar(@{$stk_file_HA{$mdl_name}}) > 0) { 
+        output_alignments(\%execs_H, \$in_sqfile, \@{$stk_file_HA{$mdl_name}}, $mdl_name, \%rpn_output_HH, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
+      }
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
@@ -7414,8 +7416,8 @@ sub output_feature_table {
           my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
           
           # determine coordinates for the feature
-          $is_5trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}; 
-          $is_3trunc = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}; 
+          $is_5trunc = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"} : 0;
+          $is_3trunc = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"} : 0;
           if(! $defined_n_start) { 
             # $defined_p_start must be TRUE
             $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
