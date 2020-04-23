@@ -955,7 +955,7 @@ my $cur_mdl_fa_file;         # fasta file with sequences to align to current mod
 my $cur_mdl_cmalign_fa_file; # fasta file with sequences to align to current model
 my $cur_mdl_nseq;            # number of sequences assigned to model
 my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless -s
-my $cur_mdl_seq_len_HR;      # ref to hash of current lengths of sequences in $cur_mdl_fa_file;
+my $cur_mdl_tot_seq_len;     # sum of total number of nucleotides we are aligning
 
 # -s related output for .sda file
 my %sda_output_HH = (); # 2D key with info to output related to the  option
@@ -984,14 +984,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign (e.g if $do_blastn_ali))
     $$sqfile_for_analysis_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, $do_keep, "input seqs that match best to model $mdl_name");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name", ($do_replace_ns) ? "replaced " : ""));
     push(@to_remove_A, $cur_mdl_fa_file); 
 
     # set info on seqs we will align, we do this different if $do_blastn_ali or not
     if(! $do_blastn_ali) { 
       $cur_mdl_cmalign_fa_file = $cur_mdl_fa_file;
       $cur_mdl_nalign = $cur_mdl_nseq;
-      $cur_mdl_seq_len_HR = \%mdl_seq_len_H;
+      $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%mdl_seq_len_H, \@{$mdl_seq_name_HA{$mdl_name}})
     }
     else {
       # $do_blastn_ali == 1
@@ -1009,7 +1009,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         my $subseq_key = $mdl_name . ".a.subseq.fa";
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_cmalign_fa_file, 0, $do_keep, "subsequences to align with cmalign for model $mdl_name (created due to -s)");
         push(@to_remove_A, $ofile_info_HH{"fullpath"}{$subseq_key});
-        $cur_mdl_seq_len_HR = \%subseq_len_H;
+        $cur_mdl_tot_seq_len = utl_HSumValues(\%subseq_len_H);
       }
     }
 
@@ -1017,8 +1017,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
       cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                      $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, $cur_mdl_nalign,
-                      utl_HSumValues($cur_mdl_seq_len_HR), $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                      $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, "", $cur_mdl_nalign,
+                      $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                       \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
     }
 
@@ -1027,14 +1027,15 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
-      my @joined_stk_file_A = ();
+      my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
+      my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
       join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
                                               \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                               \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
                                               \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
                                               \@joined_stk_file_A, \%sda_output_HH,
                                               \%alt_seq_instances_HH, \%alt_info_HH,
-                                              $out_root, \%opt_HH, \%ofile_info_HH);
+                                              \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
@@ -1047,8 +1048,26 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         @overflow_seq_A    = @full_overflow_seq_A;
         @overflow_mxsize_A = @full_overflow_mxsize_A;
       }
+
+      # check for unjoinbl alerts, if we have any re-align the full seqs
+      my $cur_unjoinbl_nseq = scalar(@unjoinbl_seq_name_A);
+      if($cur_unjoinbl_nseq > 0) {
+      # at least one sequence had 'unjoinbl' alert, align the full seqs
+        # create fasta file
+        my $unjoinbl_mdl_fa_file = $out_root . "." . $mdl_name . "uj.a.fa";
+        $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
+        $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%mdl_seq_len_H, \@unjoinbl_seq_name_A);
+        cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
+                        $cm_file, $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
+                        $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                        \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+        # append insert file we just made to larger join insert file
+        my $concat_cmd = sprintf("cat %s.%s.uj.align.ifile >> %s.%s.jalign.ifile", $out_root, $mdl_name, $out_root, $mdl_name);
+        utl_RunCommand($concat_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+      }
     }
-    
+
     # add unexdivg errors: sequences that were too divergent to align (cmalign was unable to align with a DP matrix of allowable size)
     $mdl_unexdivg_H{$mdl_name} = scalar(@overflow_seq_A);
     if($mdl_unexdivg_H{$mdl_name} > 0) { 
@@ -2634,6 +2653,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $out_root:              string for naming output files
+#  $extra_key:             extra key for output file names, "" or "uj." (latter for seqs with unjoinbl alerts)
 #  $nseq:                  total number of all seqs in $seq_file
 #  $tot_len_nt:            total length of all nucleotides in $seq_file
 #  $progress_w:            width for outputProgressPrior output
@@ -2650,11 +2670,11 @@ sub populate_per_model_data_structures_given_classification_results {
 ################################################################# 
 sub cmalign_wrapper { 
   my $sub_name = "cmalign_wrapper";
-  my $nargs_expected = 15;
+  my $nargs_expected = 16;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $qsub_prefix, $qsub_suffix, 
-      $mdl_file, $mdl_name, $seq_file, $out_root,
+      $mdl_file, $mdl_name, $seq_file, $out_root, $extra_key, 
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -2700,7 +2720,7 @@ sub cmalign_wrapper {
     $r1_seq_file_A[0] = $seq_file;
   }
   
-  cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $nseq, $progress_w, 
+  cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $extra_key, $nseq, $progress_w, 
                          \@r1_seq_file_A, \@r1_out_file_AH, \@r1_success_A, \@r1_mxsize_A, 
                          $opt_HHR, $ofile_info_HHR);
 
@@ -2745,7 +2765,7 @@ sub cmalign_wrapper {
 
   # do all round 2 runs
   if($nr2 > 0) { 
-    cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $nr2, $progress_w, 
+    cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $extra_key, $nr2, $progress_w, 
                            \@r2_seq_file_A, \@r2_out_file_AH, \@r2_success_A, \@r2_mxsize_A, 
                            $opt_HHR, $ofile_info_HHR);
     # go through all round 2 runs: 
@@ -2772,10 +2792,10 @@ sub cmalign_wrapper {
     
   # concatenate files into one 
   foreach $out_key (@concat_keys_A) { 
-    my $concat_file = sprintf($out_root . ".%salign.$out_key", (defined $mdl_name) ? $mdl_name . "." : "");                                
+    my $concat_file = sprintf($out_root . ".%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);                                
     utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
     # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    my $out_root_key = sprintf(".concat.%salign.$out_key", (defined $mdl_name) ? $mdl_name . "." : "");
+    my $out_root_key = sprintf(".concat.%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);
     ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
   }
   # remove sequence files 
@@ -2801,6 +2821,7 @@ sub cmalign_wrapper {
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $out_root:              string for naming output files
 #  $round:                 round we are on, "1" or "2"
+#  $extra_key:             extra key for output file names, "" or "uj." (latter for seqs with unjoinbl alerts)
 #  $nseq:                  total number of sequences in all seq files in @{$seq_file_AR}
 #  $progress_w:            width for ofile_OutputProgress* subroutines
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
@@ -2821,10 +2842,11 @@ sub cmalign_wrapper {
 ################################################################# 
 sub cmalign_wrapper_helper { 
   my $sub_name = "cmalign_wrapper_helper";
-  my $nargs_expected = 13;
+  my $nargs_expected = 14;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $mdl_file, $mdl_name, $out_root, $round, $nseq, $progress_w, $seq_file_AR, $out_file_AHR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $mdl_file, $mdl_name, $out_root, $round, $extra_key, $nseq, $progress_w, 
+      $seq_file_AR, $out_file_AHR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
@@ -2834,14 +2856,16 @@ sub cmalign_wrapper_helper {
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $stg_desc = "";
   if($do_parallel) { 
-    $stg_desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq seq%s) to the farm%s", 
-                    ($nseq > 1) ? "s" : "",
-                    ($round == 1) ? "" : " to find seqs too divergent to annotate");
+    $stg_desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq %sseq%s) to the farm%s", 
+                        ($nseq > 1) ? "s" : "",
+                        ($extra_key eq "uj.") ? "unjoinbl " : "", 
+                        ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   else { 
-    $stg_desc = sprintf("Aligning sequences ($mdl_name: $nseq seq%s)%s", 
-                    ($nseq > 1) ? "s" : "",
-                    ($round == 1) ? "" : " to find seqs too divergent to annotate");
+    $stg_desc = sprintf("Aligning %ssequences ($mdl_name: $nseq seq%s)%s", 
+                        ($extra_key eq "uj.") ? "unjoinbl " : "", 
+                        ($nseq > 1) ? "s" : "",
+                        ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
 
@@ -2853,7 +2877,7 @@ sub cmalign_wrapper_helper {
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AHR->[$s]} = (); 
     foreach $key (@out_keys_A) { 
-      $out_file_AHR->[$s]{$key} = $out_root . "." . $mdl_name . ".align.r" . $round . ".s" . $s . "." . $key;
+      $out_file_AHR->[$s]{$key} = $out_root . "." . $mdl_name . "." . $extra_key . "align.r" . $round . ".s" . $s . "." . $key;
     }
     $success_AR->[$s] = cmalign_run($execs_HR, $qsub_prefix, $qsub_suffix, 
                                     $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
@@ -4791,7 +4815,7 @@ sub add_protein_validation_alerts {
                     $stop_diff  = $p_qlen - $p_stop;
                     $p_start2print = sprintf("$n_start %s $start_diff", ($n_strand eq "+") ? "+" : "-");
                     $p_stop2print  = sprintf("$n_stop %s $stop_diff",  ($n_strand eq "+") ? "-" : "+");
-                    # printf("HEYA p_blastx_feature_flag: $p_blastx_feature_flag, p_start: $p_start, n_start: $n_start p_stop: $p_stop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
+                    # printf("p_blastx_feature_flag: $p_blastx_feature_flag, p_start: $p_start, n_start: $n_start p_stop: $p_stop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
                   }
                   else { 
                     $start_diff = abs($n_start - $p_start);

@@ -1545,9 +1545,9 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
-                   "UNEXPECTED_DIVERGENCE", # short description
+                   "UNJOINABLE_SUBSEQ_ALIGNMENTS", # short description
                    "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
-                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "noftrann", "sequence",
@@ -3880,22 +3880,24 @@ sub vdr_CmalignWriteInsertFile {
   # <seqname> <spos> <epos>
   # and optionally 
   foreach my $seq_name (@{$seq_name_AR}) {
-    print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
-    if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
-       $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
-      my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
-      foreach my $ins (@ins_A) {
-        # example line:
-        #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
-        if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
-          print OUT ("  " . $1 . " " . $2 . " " . $3);
-        }
-        else {
-          ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+    if(defined $seq_inserts_HHR->{$seq_name}) { 
+      print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
+      if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
+         $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
+        my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
+        foreach my $ins (@ins_A) {
+          # example line:
+          #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+          if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+            print OUT ("  " . $1 . " " . $2 . " " . $3);
+          }
+          else {
+            ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+          }
         }
       }
+      print OUT "\n";
     }
-    print OUT "\n";
   }
   print OUT "//\n";
 

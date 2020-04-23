@@ -1059,6 +1059,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $sda_output_HHR:        REF to 2D hash with information to output to .sda tabular file, ADDED TO HERE
 #  $alt_seq_instances_HHR: REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $unjoinbl_seq_name_AR:  REF to array of sequences with unjoinbl alerts, FILLED HERE
 #  $out_root:              output root for the file names
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
@@ -1070,7 +1071,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub join_alignments_and_add_unjoinbl_alerts { 
   my $sub_name = "join_alignments_and_add_unjoinbl_alerts";
-  my $nargs_exp = 19;
+  my $nargs_exp = 20;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($sqfile, $execs_HR, $cm_file, 
@@ -1078,7 +1079,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
       $mdl_info_AHR, $mdl_idx, $ugp_mdl_HR, $ugp_seq_HR, 
       $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
       $out_stk_file_AR, $sda_output_HHR, 
-      $alt_seq_instances_HHR, $alt_info_HHR,
+      $alt_seq_instances_HHR, $alt_info_HHR, $unjoinbl_seq_name_AR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   # printf("in $sub_name for mdl $mdl_name\n");
@@ -1370,6 +1371,9 @@ sub join_alignments_and_add_unjoinbl_alerts {
         # unjoinbl: 
         $alt_msg = $ali_pp_line; # join_alignments_helper() put the alert msg into the third return value
         alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "unjoinbl", $seq_name, $alt_msg, $FH_HR);
+        push(@{$unjoinbl_seq_name_AR}, $seq_name);
+        # remove insert info for this seq
+        delete($seq_inserts_HH{$seq_name});
       }
     }
     # now we have ali_seq_line and ali_mdl_line for this sequence, unless $alt_msg ne "" in which case
@@ -1406,7 +1410,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
                                 "+", $FH_HR) : undef;
   } # end of 'foreach $seq_name (@{$seq_name_AR})'
 
-  # write the new insert file
+  # write the new insert file, careful not to add insert info for unjoinbl seqs
   vdr_CmalignWriteInsertFile($out_ifile, 0, # do_append = 0
                              $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR,
                              \%seq_inserts_HH, $FH_HR);
