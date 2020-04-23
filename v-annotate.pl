@@ -2672,7 +2672,7 @@ sub cmalign_wrapper {
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
   @concat_keys_A = ("stdout", "ifile"); 
   if($do_parallel) { push(@concat_keys_A, "err");   }
-  if($do_keep)     { push(@concat_keys_A, "tfile"); }
+  #if($do_keep)     { push(@concat_keys_A, "tfile"); }
   foreach $out_key (@concat_keys_A) { 
     @{$concat_HA{$out_key}} = ();
   }    
@@ -2847,7 +2847,8 @@ sub cmalign_wrapper_helper {
 
   my $key; # a file key
   my $s;   # counter over sequence files
-  my @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
+  #my @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
+  my @out_keys_A = ("stdout", "err", "ifile", "stk");
   @{$out_file_AHR} = ();
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AHR->[$s]} = (); 
@@ -2918,7 +2919,7 @@ sub cmalign_wrapper_helper {
 #  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
 #  $out_file_HR:      ref to hash of output files to create
-#                     required keys: "stdout", "ifile", "tfile", "stk", "err"
+#                     required keys: "stdout", "ifile", "stk", "err"
 #  $ret_mxsize_R:     REF to required matrix size, only filled if return value is '0'
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information
@@ -2952,18 +2953,18 @@ sub cmalign_run {
 
   my $stdout_file = $out_file_HR->{"stdout"};
   my $ifile_file  = $out_file_HR->{"ifile"};
-  my $tfile_file  = $out_file_HR->{"tfile"};
+  #my $tfile_file  = $out_file_HR->{"tfile"};
   my $stk_file    = $out_file_HR->{"stk"};
   my $err_file    = $out_file_HR->{"err"};
   if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
   if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
-  if(! defined $tfile_file)  { ofile_FAIL("ERROR in $sub_name, tfile  output file name is undefined", 1, $FH_HR); }
+  #if(! defined $tfile_file)  { ofile_FAIL("ERROR in $sub_name, tfile  output file name is undefined", 1, $FH_HR); }
   if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
   if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
     if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $ifile_file)  { unlink $ifile_file; }
-    if(-e $tfile_file)  { unlink $tfile_file; }
+    #if(-e $tfile_file)  { unlink $tfile_file; }
     if(-e $stk_file)    { unlink $stk_file; }
     if(-e $err_file)    { unlink $err_file; }
   }
@@ -2973,9 +2974,9 @@ sub cmalign_run {
   # determine cmalign options based on command line options
   my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
   # add --tfile $tfile_file, only if --keep 
-  if(opt_Get("--keep", $opt_HHR)) { 
-    $opts .= " --tfile $tfile_file"; 
-  }
+  #if(opt_Get("--keep", $opt_HHR)) { 
+  #$opts .= " --tfile $tfile_file"; 
+  #}
   # add --sub and --notrunc unless --nosub used
   if(! opt_Get("--nosub", $opt_HHR)) { 
     $opts .= " --sub --notrunc"; 
@@ -8537,6 +8538,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     ofile_FAIL("ERROR in $sub_name, file handle for outputting fasta file with replaced sequences is undefined", 1, $FH_HR);
   }
   my $nseq_output = 0; # number of seqs written to the fasta file
+  my $mdl_len = $mdl_info_AHR->[$mdl_idx]{"length"}; 
 
   # variables related to the model consensus sequence, 
   # these are only filled if nec (if we do a N-stretch-replacment for >= 1 seq)
@@ -8656,13 +8658,21 @@ sub parse_cdt_tblout_file_and_replace_ns {
       push(@missing_mdl_stop_A,  $mdl_start_A[($i+1)]-1);
       $rpn_output_HHR->{$seq_name}{"ngaps_int"}++;
     }
-    # check for missing sequence after final aligned region, infer final model position
+    # check for missing sequence after final aligned region, 
+    # infer final model position, if it's longer than our model then 
+    # the region is not the correct length so we don't attemp to 
+    # replace this region. An alternative would be to replace to 
+    # the end of the model, but I think that's too aggressive.
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
-      push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
-      push(@missing_seq_stop_A,  $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
-      push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
-      push(@missing_mdl_stop_A,  ($mdl_stop_A[$i]+1) + $missing_seq_len - 1); 
+      my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
+      if($cur_missing_mdl_stop <= $mdl_len) { 
+        # only add this missing region if it doesn't extend past end of model
+        push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
+        push(@missing_seq_stop_A,  $seq_len);
+        push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
+        push(@missing_mdl_stop_A,  $cur_missing_mdl_stop);
+      }
     }
     my $nmissing = scalar(@missing_seq_start_A);
     $rpn_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
