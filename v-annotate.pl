@@ -4431,16 +4431,16 @@ sub add_low_similarity_alerts {
     # determine number of nucleotides not covered by r2.bs search stage 
     # at 5' and 3' ends
     if((defined $stg_results_HHHR->{$seq_name}) && 
-       (defined $stg_results_HHHR->{$seq_name}{"cdt.bs"}) && 
-       (defined $stg_results_HHHR->{$seq_name}{"cdt.bs"}{"score"})) { 
-      my @tmp_A = split(",", $stg_results_HHHR->{$seq_name}{"cdt.bs"}{"score"}); # only do this to get nhits
+       (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}) && 
+       (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"})) { 
+      my @tmp_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"}); # only do this to get nhits
       my $nhits = scalar(@tmp_A); 
       my $missing_coords = "";
-      my $bstrand = $stg_results_HHHR->{$seq_name}{"cdt.bs"}{"bstrand"};
+      my $bstrand = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"};
       if($nhits == 1) { 
         # only 1 hit
-        my $min_coord = vdr_CoordsMin($stg_results_HHHR->{$seq_name}{"cdt.bs"}{"s_coords"}, $FH_HR);
-        my $max_coord = vdr_CoordsMax($stg_results_HHHR->{$seq_name}{"cdt.bs"}{"s_coords"}, $FH_HR);
+        my $min_coord = vdr_CoordsMin($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
+        my $max_coord = vdr_CoordsMax($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
         if($min_coord != 1) { 
           if($bstrand eq "+") { $missing_coords = vdr_CoordsSegmentCreate(1, $min_coord-1, "+", $FH_HR); }
           else                { $missing_coords = vdr_CoordsSegmentCreate($min_coord-1, 1, "-", $FH_HR); }
@@ -4453,7 +4453,7 @@ sub add_low_similarity_alerts {
       }
       else { 
         # multiple hits
-        $missing_coords .= vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"cdt.bs"}{"s_coords"}, $bstrand, $seq_len, $FH_HR);
+        $missing_coords .= vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $bstrand, $seq_len, $FH_HR);
       }
       if($missing_coords ne "") { 
         my @missing_coords_A = split(",", $missing_coords);
