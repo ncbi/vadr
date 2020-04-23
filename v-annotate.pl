@@ -991,7 +991,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     if(! $do_blastn_ali) { 
       $cur_mdl_cmalign_fa_file = $cur_mdl_fa_file;
       $cur_mdl_nalign = $cur_mdl_nseq;
-      $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%mdl_seq_len_H, \@{$mdl_seq_name_HA{$mdl_name}})
+      $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@{$mdl_seq_name_HA{$mdl_name}});
     }
     else {
       # $do_blastn_ali == 1
@@ -1057,7 +1057,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         my $unjoinbl_mdl_fa_file = $out_root . "." . $mdl_name . "uj.a.fa";
         $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
-        $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%mdl_seq_len_H, \@unjoinbl_seq_name_A);
+        $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
         cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
                         $cm_file, $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                         $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
@@ -2696,6 +2696,8 @@ sub cmalign_wrapper {
   foreach $out_key (@concat_keys_A) { 
     @{$concat_HA{$out_key}} = ();
   }    
+
+  # printf("in $sub_name, tot_len_nt: $tot_len_nt\n");
 
   my $nr1 = 0; # number of runs in round 1 (one per sequence file we create)
   my @r1_out_file_AH = (); # array of hashes ([0..$nr1-1]) of output files for cmalign round 1 runs
