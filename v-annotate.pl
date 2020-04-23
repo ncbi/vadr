@@ -2859,8 +2859,8 @@ sub cmalign_wrapper_helper {
   my $stg_desc = "";
   if($do_parallel) { 
     $stg_desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq %sseq%s) to the farm%s", 
-                        ($nseq > 1) ? "s" : "",
                         ($extra_key eq "uj.") ? "unjoinbl " : "", 
+                        ($nseq > 1) ? "s" : "",
                         ($round == 1) ? "" : " to find seqs too divergent to annotate");
   }
   else { 
