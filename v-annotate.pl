@@ -292,7 +292,7 @@ opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace s
 opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_minfract",      "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in subseq to trigger replacement is <x>",            "minimum fraction of Ns in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
-opt_Add("--r_cdsmpo",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in original sequences, not those w/Ns replaced",   "detect CDS and MP alerts in original sequences, not those w/Ns replaced", \%opt_HH, \@opt_order_A);
+opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",        "detect CDS and MP alerts in sequences w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
@@ -404,7 +404,7 @@ my $options_okay =
                 'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
                 'r_minfract=s'  => \$GetOptions_H{"--r_minfract"},
                 'r_fetchr'      => \$GetOptions_H{"--r_fetchr"},
-                'r_cdsmpo'      => \$GetOptions_H{"--r_cdsmpo"},
+                'r_cdsmpr'      => \$GetOptions_H{"--r_cdsmpr"},
                 'r_prof'        => \$GetOptions_H{"--r_prof"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
@@ -880,12 +880,12 @@ if($do_replace_ns) {
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
 my $fa_file_for_analysis       = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file; # the fasta file we will analyze
 my $sqfile_for_analysis_R      = (defined $rpn_sqfile)  ? \$rpn_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
-my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (! opt_Get("--r_cdsmpo", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
-my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH)))     ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
+my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (opt_Get("--r_cdsmpr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
+my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
 
 # determine if we need to create separate files with cds seqs for the protein validation stage
 # if -r and we replaced at least one sequence, we do (actually, for some combinations of 
-# --r_cdsmpo and --r_fetchr we don't need to, but we do anyway because it's more complicated to
+# --r_cdsmpr and --r_fetchr we don't need to, but we do anyway because it's more complicated to
 # check than it is worth)
 my $do_separate_cds_fa_files_for_protein_validation = (($do_replace_ns) && (defined $rpn_sqfile)) ? 1 : 0; 
     
