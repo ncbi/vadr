@@ -143,9 +143,9 @@ my $env_vadr_scripts_dir  = utl_DirEnvVarValid("VADRSCRIPTSDIR");
 my $env_vadr_model_dir    = utl_DirEnvVarValid("VADRMODELDIR");
 my $env_vadr_blast_dir    = utl_DirEnvVarValid("VADRBLASTDIR");
 my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
+my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 my $env_vadr_bioeasel_dir = utl_DirEnvVarValid("VADRBIOEASELDIR");
-# we check for hmmer dir below after option processing, only if we need it
 
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
@@ -153,6 +153,9 @@ $execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}      = $env_vadr_infernal_dir . "/cmsearch";
+$execs_H{"hmmfetch"}      = $env_vadr_hmmer_dir    . "/hmmfetch";
+$execs_H{"hmmscan"}       = $env_vadr_hmmer_dir    . "/hmmscan";
+$execs_H{"hmmsearch"}     = $env_vadr_hmmer_dir    . "/hmmsearch";
 $execs_H{"esl-alimerge"}  = $env_vadr_easel_dir    . "/esl-alimerge";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"esl-seqstat"}   = $env_vadr_easel_dir    . "/esl-seqstat";
@@ -455,18 +458,6 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
-
-##########################################
-# make sure hmmer dir exists if we need it
-##########################################
-my $env_vadr_hmmer_dir    = undef;
-if(opt_Get("--hmmer", \%opt_HH)) { 
-  $env_vadr_hmmer_dir = utl_DirEnvVarValid("VADRHMMERDIR");
-  $execs_H{"hmmfetch"}          = $env_vadr_hmmer_dir    . "/hmmfetch";
-  $execs_H{"hmmscan"}           = $env_vadr_hmmer_dir    . "/hmmscan";
-  $execs_H{"hmmsearch"}         = $env_vadr_hmmer_dir    . "/hmmsearch";
-  utl_ExecHValidate(\%execs_H, undef);
-}
 
 #######################################
 # deal with --alt_list option, if used
