@@ -1530,7 +1530,7 @@ sub classification_stage {
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"});
   }
   else { # default: use cmscan for classification
-    my $cmscan_opts = " -T " . $opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
+    my $cmscan_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
     my $tot_len_nt  = utl_HSumValues($seq_len_HR);
     cmsearch_or_cmscan_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
                                $cm_file, undef, $fa_file, $cmscan_opts, 
@@ -1680,7 +1680,7 @@ sub coverage_determination_stage {
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   else { # default, not (! $do_blastn) 
-    my $cmsearch_opts = " -T " . $opt_Get("--minbit", $opt_HHR) . " --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+    my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
 
     if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
     foreach $mdl_name (@cls_mdl_name_A) { 
