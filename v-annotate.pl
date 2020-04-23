@@ -271,9 +271,10 @@ opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--skip_pv,--hmme
 opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--skip_pv,--hmmer", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
-#     option       type       default group   requires    incompat   preamble-output                                  help-output    
-opt_Add("--hmmer", "boolean", 0,        $g,     undef,  "--skip_pv", "use hmmer for protein validation, not blastx",  "use hmmer for protein validation, not blastx", \%opt_HH, \@opt_order_A);
-opt_Add("--h_max", "boolean", 0,        $g, "--hmmer",  "--skip_pv", "use --max option with hmmsearch",               "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
+#     option          type       default group   requires    incompat   preamble-output                                     help-output    
+opt_Add("--hmmer",    "boolean", 0,        $g,     undef,  "--skip_pv", "use hmmer for protein validation, not blastx",     "use hmmer for protein validation, not blastx", \%opt_HH, \@opt_order_A);
+opt_Add("--h_max",    "boolean", 0,        $g, "--hmmer",  "--skip_pv", "use --max option with hmmsearch",                  "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
+opt_Add("--h_minbit", "real",    -10,      $g, "--hmmer",  "--skip_pv", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration (-s)";
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
@@ -319,7 +320,8 @@ opt_Add("--out_altinfo",    "boolean", 0,    $g,    undef, undef,   "output inte
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat  preamble-output                                                         help-output    
 opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>",                         "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
-opt_Add("--alicheck",  "boolean",      0,         $g,    undef, undef,   "for debugging, check aligned sequence vs input sequence for identity", "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
+opt_Add("--alicheck",   "boolean", 0,             $g,    undef, undef,   "for debugging, check aligned sequence vs input sequence for identity", "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
+opt_Add("--minbit",     "real",    -10,           $g,    undef, undef,   "set minimum cmsearch/cmscan bit score threshold to <x>",               "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -388,6 +390,7 @@ my $options_okay =
 # options for using hmmer instead of blastx for protein validation
                 'hmmer'         => \$GetOptions_H{"--hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
+                'h_minbit'      => \$GetOptions_H{"--h_minbit"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
@@ -421,7 +424,8 @@ my $options_okay =
                 'out_altinfo'   => \$GetOptions_H{"--out_altinfo"},
 # other expert options
                 'execname=s'    => \$GetOptions_H{"--execname"},
-                'alicheck'      => \$GetOptions_H{"--alicheck"});
+                'alicheck'      => \$GetOptions_H{"--alicheck"},
+                'minbit'        => \$GetOptions_H{"--minbit"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1526,7 +1530,7 @@ sub classification_stage {
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"});
   }
   else { # default: use cmscan for classification
-    my $cmscan_opts = " -T -10 --cpu 0 --trmF3 --noali --hmmonly"; 
+    my $cmscan_opts = " -T " . $opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
     my $tot_len_nt  = utl_HSumValues($seq_len_HR);
     cmsearch_or_cmscan_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
                                $cm_file, undef, $fa_file, $cmscan_opts, 
@@ -1676,7 +1680,8 @@ sub coverage_determination_stage {
     ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
   }
   else { # default, not (! $do_blastn) 
-    my $cmsearch_opts = " -T -10 --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+    my $cmsearch_opts = " -T " . $opt_Get("--minbit", $opt_HHR) . " --cpu 0 --hmmonly "; # cmsearch options for round 2 searches to determine coverage
+
     if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
     foreach $mdl_name (@cls_mdl_name_A) { 
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
@@ -2441,9 +2446,11 @@ sub add_classification_alerts {
                     if(scalar(@s_start_A) == 0) { # first overlap above threshold, fill seq start/stop arrays:
                       vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, undef, $FH_HR);
                     }
-                    $alt_str .= sprintf("%s%s (len %d >= %d) hits %d and %d (model:%d..%d,%d..%d seq:%d..%d,%d..%d)", 
+                    $alt_str .= sprintf("%s%s (len %d >= %d) hits %d (%.1f bits) and %d (%.1f bits) (model:%d..%d,%d..%d seq:%d..%d,%d..%d)", 
                                         ($alt_str eq "") ? "" : ", ",
-                                        $overlap_str, $noverlap, $dupregolp_opt, ($i+1), ($j+1), 
+                                        $overlap_str, $noverlap, $dupregolp_opt, 
+                                        ($i+1), $dupreg_score_A[$i], 
+                                        ($j+1), $dupreg_score_A[$j], 
                                         $m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], 
                                         $s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j]);
                   }
@@ -5349,7 +5356,8 @@ sub run_esl_translate_and_hmmsearch {
   #$hmmsearch_opts .= " -A $hmmsearch_stk_file";
   if(opt_Get("--h_max", $opt_HHR)) { $hmmsearch_opts .= " --max"; }
   my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " -f $hmm_file $hmm_list_file | ";
-  my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " --domT -10 -T -10 --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
+  my $hmmsearch_minbit = opt_Get("--h_minbit", $opt_HHR);
+  my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " --domT $hmmsearch_minbit -T $hmmsearch_minbit --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
   utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
         
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".hmmlist",        $hmm_list_file,            0, $do_keep, "list of hmm files fetched for model $mdl_name");
