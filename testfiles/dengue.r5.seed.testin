@@ -1,0 +1,37 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --alicheck --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue-seed.r5 > va-dengue-seed.r5.out
+desc: annotate-dengue-5-seed
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.pass.tbl 
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.fail.tbl 
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.sqa
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.sqc
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.ftr
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.sgm
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.mdl
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.alt
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.alc
+out: va-dengue-seed.r5/va-dengue-seed.r5.vadr.sda
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-seed.r5/va-dengue-seed.r5.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-seed.r5/va-dengue-seed.r5.vadr.sda
+rmdir: va-dengue-seed.r5

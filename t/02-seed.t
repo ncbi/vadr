@@ -639,6 +639,8 @@ push(@exp_joined_seq_A,     "---A--AAaaAaACCCCCCCCCCACGUACGUACGUACGUACGUGGGGGGGG
 push(@exp_joined_mdl_A,     "xxxxxxxx..x.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..xxxx.xxxxx.");
 push(@exp_joined_pp_A,      "...3..456789***************************************98765.....432.1.0..0..0");
 
+my $mdl_consensus_sqstring = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
 $ntests = scalar(@desc_A);
 my ($cur_joined_seq, $cur_joined_mdl, $cur_joined_pp, $cur_seq_len, $cur_mdl_len, $cur_pp_len);
 for($i = 0; $i < $ntests; $i++) { 
@@ -656,6 +658,7 @@ for($i = 0; $i < $ntests; $i++) {
                              $ugp_seq_coords_A[$i],
                              $ugp_mdl_coords_A[$i],
                              $ugp_seq_A[$i],
+                             $mdl_consensus_sqstring,
                              $seq_len_A[$i],
                              $mdl_len_A[$i],
                              undef);

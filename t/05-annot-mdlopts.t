@@ -12,9 +12,11 @@ is($env_ok, 1, "VADRSCRIPTSDIR env variable set");
 $env_ok = exists $ENV{"VADRMODELDIR"} ? 1 : 0;
 is($env_ok, 1, "VADRMODELDIR env variable set");
 
-# set VADRMODELDIR to default
-# uncomment this if you've set VADRMODELDIR to something other than default, and you want to test that
-$ENV{'VADRMODELDIR'} = '$VADRINSTALLDIR/vadr-models';
+# If desired, set VADRMODELDIR to default by uncommenting the line below.
+# By leaving it commented out you are testing whatever model dir $VADRMODELDIR is set to,
+# this might be $VADRINSTALLDIR/vadr-models (if nobody has modified that var since installation)
+# or it might something else you want to test.
+#$ENV{'VADRMODELDIR'} = '$VADRINSTALLDIR/vadr-models';
 
 # could check for required files here, but there are many, so I just 
 # rely on them being there, if they're not the tests below that 
@@ -75,14 +77,14 @@ push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f -s --mdir \$VADRSCRIPTSDIR/test
 push(@desc_A, "v-annotate.pl noro.subseq.fa -s --mdir --mkey");
 push(@fail_A, "0");
 
-# --mdir --mkey --addhmmer --skipblastx: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --addhmmer --skipblastx \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa -addhmmer --skipblast --mdir --mkey");
+# --mdir --mkey --hmmer: pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --hmmer \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa --hmmer --mdir --mkey");
 push(@fail_A, "0");
 
-# --mdir --mkey -s --addhmmer --skipblastx: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f -s --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --addhmmer --skipblastx \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa -s -addhmmer --skipblast --mdir --mkey");
+# --mdir --mkey -s --hmmer: pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f -s --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --hmmer \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa -s --hmmer --mdir --mkey");
 push(@fail_A, "0");
 
 # valid -m -i -x: pass
@@ -115,14 +117,14 @@ push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -s -f -m \$VADRSCRIPTSDIR/testfile
 push(@desc_A, "v-annotate.pl noro.subseq.fa -s -m -i -x bad -n");
 push(@fail_A, "1");
 
-# --addhmmer --skipblastx and valid -m -i -a: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --addhmmer --skipblastx -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/NC_001959.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa --addhmmer --skipblastx -m -i -a");
+# --hmmer and valid -m -i -a: pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/NC_001959.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa --hmmer -m -i -a");
 push(@fail_A, "0");
 
-# --addhmmer --skipblastx and valid -m -i bad -a: fail
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --addhmmer --skipblastx -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/bogus.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa --addhmmer --skipblastx -m -i bad -a");
+# --hmmer and valid -m -i bad -a: fail
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/bogus.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa --hmmer -m -i bad -a");
 push(@fail_A, "1");
 
 push (@rmdir_A, "va-test");

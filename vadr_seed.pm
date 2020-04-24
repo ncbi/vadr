@@ -7,7 +7,7 @@
 # EPN, Fri Mar 27 10:28:01 2020
 # 
 # Perl module used by v-annotate.pl script related to 
-# the --seed option to use blastn for the classification,
+# the -s option to use blastn for the classification,
 # and coverage determination stages, and to accelerate
 # the alignment stage. Alignment acceleration achieved
 # by using the maximum length ungapped region in the top
@@ -30,24 +30,41 @@
 # - File handles typically start or end with 'FH', e.g. $log_FH, or a hash
 #   of file handles that is used commonly is %FH_HR.
 # 
-#########################
-# Common data structures used in this file:
+## 
 #
-# - $ftr_info_AHR: reference to an array of hashes with feature information for a single model.
-#                   
-# - $sgm_info_AHR: reference to an array of hashes with model-segment information for a single model.
-#                   
-# - $alt_info_HHR: reference to a hash of hashes with alert information.
-#
-########################################################################################
-#
-# List of subroutines in this file, divided into categories. 
+# See vadr.pm for additional notes
 #
 use strict;
 use warnings;
 
 require "vadr.pm"; 
+require "sqp_opts.pm";
+require "sqp_ofile.pm";
+require "sqp_seq.pm";
+require "sqp_seqfile.pm";
+require "sqp_utils.pm";
 
+#########################################################################################
+#
+# List of subroutines in this file, divided into categories. 
+#
+# Subroutines related to running and parsing blastn:
+# run_blastn_and_summarize_output()
+# parse_blastn_results()
+# blastn_pretblout_to_tblout()
+# parse_blastn_indel_strings()
+# parse_blastn_indel_token()
+# parse_blastn_indel_file_to_get_subseq_info()
+# 
+# Subroutines related to joining alignments:
+# join_alignments_and_add_unjoinbl_alerts()
+# join_alignments_helper()
+# update_overflow_info_for_joined_alignments
+# 
+#########################################################################################
+# 
+# List of subroutines in this file
+# 
 #################################################################
 # Subroutine:  run_blastn_and_summarize_output()
 # Incept:      EPN, Fri Mar 27 11:11:24 2020
@@ -62,6 +79,7 @@ require "vadr.pm";
 #  $db_file:         name of blast db file to use
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $out_root:        string for naming output files
+#  $stg_key:         stage key, "rpn.cls" or "std.cls"
 #  $nseq:            number of sequences in $seq_file
 #  $progress_w:      width for outputProgressPrior output
 #  $opt_HHR:         REF to 2D hash of option values, see top of sqp-opts.pm for description
@@ -73,26 +91,31 @@ require "vadr.pm";
 ################################################################# 
 sub run_blastn_and_summarize_output { 
   my $sub_name = "run_blastn_and_summarize_output";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
 
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $db_file, $seq_file, $out_root, 
+  my ($execs_HR, $db_file, $seq_file, $out_root, $stg_key,
       $nseq, $progress_w, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $log_FH = $FH_HR->{"log"}; # for convenience
 
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "std.cls")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls or std.cls", 1, $FH_HR);
+  }
+
   my $do_keep = opt_Get("--keep", $opt_HHR);
-
-  my $start_secs = ofile_OutputProgressPrior(sprintf("Classifying sequences with blastn ($nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-
-  my $blastn_out_file = $out_root . ".r1.blastn.out";
-  my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--blastnws", $opt_HHR); 
+  my $stg_desc = ($stg_key eq "rpn.cls") ? 
+      sprintf("Preprocessing for N replacement: blastn classification ($nseq seq%s)", (($nseq > 1) ? "s" : "")) :
+      sprintf("Classifying sequences with blastn ($nseq seq%s)", (($nseq > 1) ? "s" : ""));
+  my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
+  my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
+  my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn-out", $blastn_out_file, 0, $do_keep, "blastn output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "$stg_key.blastn.out", $blastn_out_file, 0, $do_keep, "blastn output");
 
   # now summarize its output
   # use --splus to skip alignment parsing of hits to negative strand of subject
@@ -102,10 +125,10 @@ sub run_blastn_and_summarize_output {
   # the sequence (actually negative strand of the subject/model but blastn revcomps
   # the subject instead of the query like cmscan would do), and we don't care
   # about negative strand hit indel info.
-  my $blastn_summary_file = $out_root . ".r1.blastn.summary.txt";
+  my $blastn_summary_file = $out_root . ".$stg_key.blastn.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blast"} . " --program n --input $blastn_out_file --splus > $blastn_summary_file";
   utl_RunCommand($parse_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "blastn-summary", $blastn_summary_file, 0, $do_keep, "parsed (summarized) blastn output");
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "$stg_key.blastn.summary", $blastn_summary_file, 0, $do_keep, "parsed (summarized) blastn output");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -124,25 +147,26 @@ sub run_blastn_and_summarize_output {
 #
 #             Output mode 1: 1 file, produced if $seq2mdl_HR is undef
 #
-#             "blastn.r1.pretblout" file: cmscan --trmF3 output format
-#             file with each hit on a separate line and individual hit
-#             scores reported for each hit. This is later processed by
-#             blastn_pretblout_to_tblout() to sum bit scores for all
-#             hits with the same model/seq/strand so we can classify
-#             sequences the same way we do in default mode (cmscan
-#             based classification).
+#             "blastn.{rpn.cls,std.cls}.pretblout" file: cmscan --trmF3 output
+#             format file with each hit on a separate line and
+#             individual hit scores reported for each hit. This is
+#             later processed by blastn_pretblout_to_tblout() to sum
+#             bit scores for all hits with the same model/seq/strand
+#             so we can classify sequences the same way we do in
+#             default mode (cmscan based classification).
 #
-#             Output model 2: 2 files produced per model with >= 1 matching
+#             Output mode 2: 2 files produced per model with >= 1 matching
 #             sequence, produced if $seq2mdl_HR is defined.
 #
-#             "search.r2.<mdlname>.tblout": cmsearch --tblout format
-#             file with each hit for a sequence on + strand that is 
-#             classified to model <mdlname>. 
+#             "search.{rpn.cls,std.cls,rpn.cdt,std.cdt}.<mdlname>.tblout":
+#             cmsearch --tblout format file with each hit for a
+#             sequence on + strand that is classified to model
+#             <mdlname>.
 #
-#             "blastn.r2.<mdlname>.indel.txt": one line per sequence
-#             with all inserts and deletes in all blastn hit
-#             alignments for each sequence that is classified to 
-#             <mdlname> on strand +.
+#             "blastn.{rpn.cls,std.cls,rpn.cdt,std.cdt}.<mdlname>.indel.txt":
+#             one line per sequence with all inserts and deletes in
+#             all blastn hit alignments for each sequence that is
+#             classified to <mdlname> on strand +.
 #
 # Arguments: 
 #  $blastn_summary_file: path to blastn summary file to parse
@@ -153,6 +177,8 @@ sub run_blastn_and_summarize_output {
 #  $mdl_name_AR:         REF to array of model names that are keys in
 #                        %{$seq2mdl_HR}, can be undef if $seq2mdl_HR is undef
 #  $out_root:            output root for the file names
+#  $stg_key:             stage key, "rpn.cls" or "std.cls" for classification
+#                        or "rpn.cdt" or "std.cdt" for coverage determination
 #  $opt_HHR:             REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -163,20 +189,29 @@ sub run_blastn_and_summarize_output {
 ################################################################# 
 sub parse_blastn_results { 
   my $sub_name = "parse_blastn_results";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($blastn_summary_file, $seq_len_HR, $seq2mdl_HR, $mdl_name_AR, 
-      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $out_root, $stg_key, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
+     ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls, rpn.cdt, std.cls, or std.cdt", 1, $FH_HR);
+  }
+  if((($stg_key eq "rpn.cdt") || ($stg_key eq "std.cdt")) && 
+     (! defined $seq2mdl_HR)) { 
+    ofile_FAIL("ERROR in $sub_name, stage key is $stg_key but seq2mdl_HR is undef", 1, $FH_HR);
+  }
 
   my $pretblout_FH = undef; # defined if output mode 1 (if ! defined $seq2mdl_HR)
   my %tblout_FH_H  = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
   my %indel_FH_H   = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
   my $outfile_key  = undef; # a key for an output file in %{$ofile_info_HHR}
   my $small_value  = 0.000001;
-  my $min_bitsc    = opt_Get("--blastnsc", $opt_HHR) - $small_value;
+  my $min_bitsc    = opt_Get("--s_blastnsc", $opt_HHR) - $small_value;
   my $do_keep      = opt_Get("--keep", $opt_HHR) ? 1 : 0;
   my $mdl_name = undef;
   if(! defined $seq2mdl_HR) { 
@@ -188,8 +223,8 @@ sub parse_blastn_results {
     # for that model/strand/strand instead of just the hit score. This
     # way we will match the cmscan --trmF3 output downstream steps
     # expect.
-    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "blastn.r1.pretblout", $out_root . ".blastn.r1.pretblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
-    $pretblout_FH = $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"}; 
+    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "$stg_key.blastn.pretblout", $out_root . ".$stg_key.blastn.pretblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
+    $pretblout_FH = $ofile_info_HHR->{"FH"}{"$stg_key.blastn.pretblout"}; 
     printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
                           "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
   }
@@ -198,11 +233,11 @@ sub parse_blastn_results {
     # coverage determination tblout files in cmsearch --tblout 
     # format (not --trmF3 output format) and the indel files 
     foreach $mdl_name (@{$mdl_name_AR}) { 
-      $outfile_key = "search.r2.$mdl_name.tblout";
+      $outfile_key = "$stg_key.$mdl_name.tblout";
       ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, $do_keep, "blastn output converted to cmsearch tblout format for model $mdl_name");
       $tblout_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
 
-      $outfile_key = "search.r2.$mdl_name.indel";
+      $outfile_key = "$stg_key.$mdl_name.indel";
       ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $outfile_key, $out_root . "." . $outfile_key,  0, $do_keep, "blastn indel information for model $mdl_name");
       $indel_FH_H{$mdl_name} = $ofile_info_HHR->{"FH"}{$outfile_key};
     }
@@ -483,21 +518,21 @@ sub parse_blastn_results {
 
   # close files depending on output mode
   if(defined $pretblout_FH) { 
-    # output mode 1:
+    # output mode 1
     # close the pretblout file
     # then call convert it pretblout to tblout (cmscan --trmF3 format)
     # which will have scores summed for each seq/mdl/strand trio
-    close $ofile_info_HHR->{"FH"}{"blastn.r1.pretblout"};
-    blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"blastn.r1.pretblout"}, 
-                               \%scsum_HHH, $out_root, $opt_HHR, $ofile_info_HHR);
+    close $ofile_info_HHR->{"FH"}{"$stg_key.blastn.pretblout"};
+    blastn_pretblout_to_tblout($ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"}, 
+                               \%scsum_HHH, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
   }
   else { 
     # output mode 2:
     # close the per model files:
     foreach $mdl_name (@{$mdl_name_AR}) { 
-      $outfile_key = "search.r2.$mdl_name.tblout";
+      $outfile_key = "$stg_key.$mdl_name.tblout";
       close $ofile_info_HHR->{"FH"}{$outfile_key};
-      $outfile_key = "search.r2.$mdl_name.indel";
+      $outfile_key = "$stg_key.$mdl_name.indel";
       close $ofile_info_HHR->{"FH"}{$outfile_key};
     }
   }
@@ -527,6 +562,8 @@ sub parse_blastn_results {
 #                          value: summed bit score for all hits for this model/sequence/strand trio
 #                          NOTE: all values in this 3D hash are set to 0. by this subroutine!
 #  $out_root:              output root for the file names
+#  $stg_key:               stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#                          or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
 #
@@ -537,16 +574,21 @@ sub parse_blastn_results {
 ################################################################# 
 sub blastn_pretblout_to_tblout { 
   my $sub_name = "blastn_pretblout_to_tblout";
-  my $nargs_exp = 5;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastn_pretblout_file, $scsum_HHHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($blastn_pretblout_file, $scsum_HHHR, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_keep = opt_Get("--keep", $opt_HHR);
 
-  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "scan.r1.tblout", $out_root . ".blastn.r1.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
-  my $tblout_FH = $FH_HR->{"scan.r1.tblout"}; 
+  if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
+     ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls, rpn.cdt, std.cls, or std.cdt", 1, $FH_HR);
+  }
+
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "$stg_key.tblout", $out_root . ".$stg_key.tblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (summed hit scores)");
+  my $tblout_FH = $FH_HR->{"$stg_key.tblout"}; 
 
   # open and parse input blastn summary file
   utl_FileValidateExistsAndNonEmpty($blastn_pretblout_file, "blastn pretblout file", $sub_name, 1, $FH_HR);
@@ -574,7 +616,7 @@ sub blastn_pretblout_to_tblout {
     }
   }
   close(IN);
-  close $ofile_info_HHR->{"FH"}{"scan.r1.tblout"};
+  close $ofile_info_HHR->{"FH"}{"$stg_key.tblout"};
 }
 
 #################################################################
@@ -851,7 +893,7 @@ sub parse_blastn_indel_token {
 #  $subseq_AAR:      REF to 2D array with subseq info, FILLED HERE
 #  $ugp_mdl_HR:      REF to hash, key is <seq_name>, value is mdl coords
 #                    segment of max ungapped blast aln, FILLED HERE
-#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is mdl coords
+#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is seq coords
 #                    segment of max ungapped blast aln, FILLED HERE
 #  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
 #                    value is array of names of subsequences pertaining to
@@ -876,7 +918,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
       $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
-  my $nt_overhang = opt_Get("--overhang", $opt_HHR);
+  my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
 
   my %processed_H = (); # key: sequence name we want indel info for, 
                         # value: 0 if we have not processed an HSP for this sequence
@@ -994,14 +1036,16 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #
 #              Report unjoinbl alerts for any sequence for which
 #              we are unable to join the alignments (should be rare
-#              if overhang (--overhang) is long enough (>50-100nt))
+#              if overhang (--s_overhang) is long enough (>50-100nt))
 #
 # Arguments: 
 #  $sqfile:                REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $execs_HR:              REF to hash with paths to executables (for cmemit)
+#  $cm_file:               path to the main CM file
 #  $seq_name_AR:           REF to array of original (non subseq) sequence names
 #  $seq_len_HR:            REF to hash of sequence lengths
-#  $mdl_name:              name of model these sequences were assigned to
-#  $mdl_len:               length of model these sequences were assigned to
+#  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
+#  $mdl_idx:               index of model in @{mdl_info_AHR} these sequences were assigned to
 #  $ugp_mdl_HR:            REF to hash, key is <seq_name>, value is mdl coords
 #                          segment of max ungapped blast aln, already filled
 #  $ugp_seq_HR:            REF to hash, key is <seq_name>, value is mdl coords
@@ -1012,9 +1056,10 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $subseq_len_HR:         REF to hash with lengths of subsequences, already filled
 #  $in_stk_file_AR:        REF to array of existing stockholm files, already filled
 #  $out_stk_file_AR:       REF to array of new stockholm files created here, FILLED HERE
-#  $sda_output_HHR:        REF to 2D hash with information to output to .fst tabulare file, ADDED TO HERE
+#  $sda_output_HHR:        REF to 2D hash with information to output to .sda tabular file, ADDED TO HERE
 #  $alt_seq_instances_HHR: REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $unjoinbl_seq_name_AR:  REF to array of sequences with unjoinbl alerts, FILLED HERE
 #  $out_root:              output root for the file names
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
@@ -1026,19 +1071,24 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub join_alignments_and_add_unjoinbl_alerts { 
   my $sub_name = "join_alignments_and_add_unjoinbl_alerts";
-  my $nargs_exp = 17;
+  my $nargs_exp = 20;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($sqfile, $seq_name_AR, $seq_len_HR, $mdl_name, $mdl_len,
-      $ugp_mdl_HR, $ugp_seq_HR, $seq2subseq_HAR, $subseq_len_HR,
-      $in_stk_file_AR, $out_stk_file_AR, $sda_output_HHR, 
-      $alt_seq_instances_HHR, $alt_info_HHR,
+  my ($sqfile, $execs_HR, $cm_file, 
+      $seq_name_AR, $seq_len_HR, 
+      $mdl_info_AHR, $mdl_idx, $ugp_mdl_HR, $ugp_seq_HR, 
+      $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
+      $out_stk_file_AR, $sda_output_HHR, 
+      $alt_seq_instances_HHR, $alt_info_HHR, $unjoinbl_seq_name_AR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   # printf("in $sub_name for mdl $mdl_name\n");
   
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $do_keep = opt_Get("--keep", $opt_HHR);
+  my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+  my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
+  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
 
   # Open all of the input stk files and fetch the aligned sequence strings for all sequences
   my $ninstk = scalar(@{$in_stk_file_AR});
@@ -1301,10 +1351,16 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # in case 3, it will return the blastn alignment and construct the
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
+      if(! defined $mdl_consensus_sqstring) { 
+        my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
+        $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
+        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
+      }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
           join_alignments_helper($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
                                  $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp,
-                                 $ugp_seq_HR->{$seq_name}, $ugp_mdl_HR->{$seq_name}, $ugp_seq,
+                                 $ugp_seq_HR->{$seq_name}, $ugp_mdl_HR->{$seq_name}, $ugp_seq, $mdl_consensus_sqstring, 
                                  $seq_len, $mdl_len, $ofile_info_HHR);
       if(! defined $ali_seq_line) {
         # this means something went wrong when we tried to join the alignments,
@@ -1315,6 +1371,9 @@ sub join_alignments_and_add_unjoinbl_alerts {
         # unjoinbl: 
         $alt_msg = $ali_pp_line; # join_alignments_helper() put the alert msg into the third return value
         alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "unjoinbl", $seq_name, $alt_msg, $FH_HR);
+        push(@{$unjoinbl_seq_name_AR}, $seq_name);
+        # remove insert info for this seq
+        delete($seq_inserts_HH{$seq_name});
       }
     }
     # now we have ali_seq_line and ali_mdl_line for this sequence, unless $alt_msg ne "" in which case
@@ -1351,7 +1410,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
                                 "+", $FH_HR) : undef;
   } # end of 'foreach $seq_name (@{$seq_name_AR})'
 
-  # write the new insert file
+  # write the new insert file, careful not to add insert info for unjoinbl seqs
   vdr_CmalignWriteInsertFile($out_ifile, 0, # do_append = 0
                              $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR,
                              \%seq_inserts_HH, $FH_HR);
@@ -1392,6 +1451,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #  $ugp_seq_coords:         ungapped region sequence coords string
 #  $ugp_mdl_coords:         ungapped region model coords string
 #  $ugp_seq:                ungapped region sequence string
+#  $mdl_consensus_sqstring: the model consensus sequence, as a string
 #  $seq_len:                total sequence length
 #  $mdl_len:                total model length
 #  $ofile_info_HHR:         REF to 2D hash of output file information, ADDED TO HERE
@@ -1413,12 +1473,12 @@ sub join_alignments_and_add_unjoinbl_alerts {
 ################################################################# 
 sub join_alignments_helper { 
   my $sub_name = "join_alignments_helper";
-  my $nargs_exp = 16;
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
       $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp, 
-      $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq,
+      $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq, $mdl_consensus_sqstring, 
       $seq_len, $mdl_len, $ofile_info_HHR) = @_;
 
   my $FH_HR  = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef;
@@ -1507,7 +1567,7 @@ sub join_alignments_helper {
   # ($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff))
   # 
   # variables starting with 'fetch' are in relative coordinate space for whatever they pertain to:
-  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or ugp_{seq}
+  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or ugp_seq
   my $ugp_seq_mdl_diff = $ugp_mdl_start - $ugp_seq_start; # offset between model start and sequence start
   # printf("ugp_seq_mdl_diff: $ugp_seq_mdl_diff\n");
   my $fetch_ali_5p_seq_start = 1;                    
@@ -1516,7 +1576,10 @@ sub join_alignments_helper {
   my $fetch_ali_3p_seq_stop  = length($ali_3p_seq);
   my $fetch_ugp_seq_start    = undef;
   my $fetch_ugp_seq_stop     = undef;
+  my $fetch_ugp_mdl_start    = undef;
+  my $fetch_ugp_mdl_stop     = undef;
   my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
+  my $ugp_mdl_len = ($ugp_mdl_stop - $ugp_mdl_start + 1);
 
   my $alt_msg = ""; # added to if we can't join on 5' and/or 3' end
   if($have_5p) { 
@@ -1524,19 +1587,22 @@ sub join_alignments_helper {
     # *and* 1 model position prior to ungapped region
     if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)) {
       $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
+      $fetch_ugp_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
     }
     else {
       $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
     }
   }
   else { # $have_5p == 0
-    $fetch_ugp_seq_start = $ugp_seq_start; # this is 1
+    $fetch_ugp_seq_start = 1;
+    $fetch_ugp_mdl_start = $ugp_mdl_start; # because mdl_consensus_sqstring is always length of model, and length of sequence is not
   }
   if($have_3p) {
     # usual case, first position of aligned 3' region is just 1 sequence position
     # *and* 1 model position after ungapped region
     if($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff)) {
       $fetch_ugp_seq_stop = $ugp_seq_len - ($ugp_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
+      $fetch_ugp_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
     }
     else {
       $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
@@ -1544,6 +1610,7 @@ sub join_alignments_helper {
   }
   else { # $have_3p == 0
     $fetch_ugp_seq_stop = $ugp_seq_len;
+    $fetch_ugp_mdl_stop = $ugp_mdl_stop; # because mdl_consensus string is always length of model, and length of sequence is not
   }
 
   if($alt_msg ne "") {
@@ -1598,15 +1665,19 @@ sub join_alignments_helper {
     # of seq and model up to the start of ungapped blast alignment
     if($ugp_mdl_start != 1) {
       $joined_seq .= utl_StringMonoChar(($ugp_mdl_start - 1), "-", $FH_HR);
-      $joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
+      #$joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
+      $joined_mdl .= substr($mdl_consensus_sqstring, 0, ($ugp_mdl_start - 1));
       $joined_pp  .= utl_StringMonoChar(($ugp_mdl_start - 1), ".", $FH_HR);
     }
   }
   
-  # printf("fetching ugp %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
+  # printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
+  # printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
   my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
+  my $fetch_ugp_mdl_len = ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1);
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
-  $joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
+  #$joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
+  $joined_mdl .= substr($mdl_consensus_sqstring, $fetch_ugp_mdl_start - 1, $fetch_ugp_mdl_len);
   $joined_pp  .= utl_StringMonoChar($fetch_ugp_seq_len, "*", $FH_HR);
 
   if($have_3p) {
@@ -1620,12 +1691,56 @@ sub join_alignments_helper {
     # of seq and model after the end of the ungapped blast alignment
     if($ugp_mdl_stop != $mdl_len) {
       $joined_seq .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "-", $FH_HR);
-      $joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
+      #$joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
+      $joined_mdl .= substr($mdl_consensus_sqstring, $ugp_mdl_stop);
       $joined_pp  .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), ".", $FH_HR);
     }
   }
   
   return ($joined_seq, $joined_mdl, $joined_pp);
+}
+
+#################################################################
+# Subroutine: update_overflow_info_for_joined_alignments
+# Incept:     EPN, Wed Apr  8 08:18:06 2020
+# Purpose:    Given data in @{$overflow_{seq,mxsize}_AR} filled by cmalign_wrapper()
+#             for subsequences of full seqs aligned due to -s, update
+#             the values so they pertain to full sequences, given the
+#             map from subsequences to full sequences in %{$subseq2seq_HR}.
+#
+# Arguments:
+#  $sub_overflow_seq_AR:      REF to array of subseq names we had overflows for, ALREADY FILLED
+#  $sub_overflow_mxsize_AR:   REF to array of mxsizes of overflows, ALREADY FILLED
+#  $subseq2seq_HR:            REF to hash mapping subsequence names to full seq names, ALREADY FILLED
+#  $full_overflow_seq_AR:     REF to array of full seq names we have overflows for, FILLED HERE
+#  $full_overflow_mxsize_AR:  REF to array of mxsizes of overflows for full seqs, FILLED HERE
+# 
+# Returns:  void, fills @{$full_overflow_seq_AR} and @{$full_overflow_mxsize_AR}
+#
+# Dies:     never
+#
+#################################################################
+sub update_overflow_info_for_joined_alignments { 
+  my $sub_name = "update_overflow_info_for_joined_alignments";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sub_overflow_seq_AR, $sub_overflow_mxsize_AR, $subseq2seq_HR, $full_overflow_seq_AR, $full_overflow_mxsize_AR) = (@_);
+
+  my %added_H = (); # used so we don't add overflow for same full seq twice
+  for(my $i = 0; $i < scalar(@{$sub_overflow_seq_AR}); $i++) {
+    my $subseq_name = $sub_overflow_seq_AR->[$i];
+    if(defined $subseq2seq_HR->{$subseq_name}) { 
+      my $seq_name = $subseq2seq_HR->{$subseq_name};
+      if(! defined $added_H{$seq_name}) { 
+        push(@{$full_overflow_seq_AR},    $seq_name);
+        push(@{$full_overflow_mxsize_AR}, $sub_overflow_mxsize_AR->[$i]);
+        $added_H{$seq_name} = 1;
+      }
+    }
+  }
+
+  return;
 }
 
 ###########################################################################

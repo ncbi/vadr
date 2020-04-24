@@ -1,4 +1,4 @@
-BLASTX 2.9.0+
+BLASTX 2.10.0+
 
 
 Reference: Stephen F. Altschul, Thomas L. Madden, Alejandro A.
@@ -8,7 +8,7 @@ protein database search programs", Nucleic Acids Res. 25:3389-3402.
 
 
 
-Database: NC_039477/NC_039477.vadr.protein.fa
+Database: NC_039477.vadr.protein.fa
            3 sequences; 2,507 total letters
 
 
@@ -2446,8 +2446,8 @@ Lambda      K        H        a         alpha    sigma
 Effective search space used: 543552
 
 
-  Database: NC_039477/NC_039477.vadr.protein.fa
-    Posted date:  Nov 21, 2019  7:41 AM
+  Database: NC_039477.vadr.protein.fa
+    Posted date:  Apr 21, 2020  1:20 PM
   Number of letters in database: 2,507
   Number of sequences in database:  3
 

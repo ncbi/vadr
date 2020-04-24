@@ -38,9 +38,6 @@
 # - $alt_info_HHR: reference to a hash of hashes with alert information.
 #
 ########################################################################################
-#
-# List of subroutines in this file, divided into categories. 
-#
 use strict;
 use warnings;
 use Cwd;
@@ -53,6 +50,8 @@ require "sqp_seqfile.pm";
 require "sqp_utils.pm";
 
 #########################################################################################
+#
+# List of subroutines in this file, divided into categories. 
 #
 # Subroutines related to features or segments:
 # vdr_FeatureInfoImputeCoords()
@@ -67,6 +66,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateParentIndexStrings()
 # vdr_FeatureInfoChildrenArrayOfArrays()
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
+# vdr_FeatureInfoMerge()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -81,8 +81,8 @@ require "sqp_utils.pm";
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
-# vdr_FeatureSummarizeSegment()
 # vdr_FeatureParentIndex()
+# vdr_FeatureSummarizeSegment()
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
@@ -128,9 +128,13 @@ require "sqp_utils.pm";
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
 #
-# Subroutines related to cmalign output files:
+# Subroutines related to cmalign output:
+# vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
+# 
+# Other subroutines related to running infernal programs
+# vdr_CmemitConsensus()
 # 
 # Miscellaneous subroutines:
 # vdr_SplitFastaFile()
@@ -700,6 +704,86 @@ sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
     $ftr_type_idx2ftr_idx_HR->{$ftr_type_idx} = $ftr_idx;
   }
  
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoMerge()
+# Incept:     EPN, Sun May  5 10:32:40 2019
+#
+# Synopsis: Add info in one feature information arrays to another
+#           after validating that they can be merged.
+#
+#           Features to be merged are identified as "consistent"
+#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
+#           defined as those for which there is a subset of >=1
+#           features that are in common (identical qualifier name and
+#           value) between the two.
+#
+#           If any "inconsistent" features are identified between
+#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
+#           die. "Inconsistent" features are those for which a subset
+#           of >=1 qualifiers have identical values but another subset
+#           of >=1 qualifiers have different values.
+# 
+# Arguments:
+#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
+#                       add to $
+#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
+#                    on the features to add to  $ftr_info1_HAHR
+#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if something is inconsistent between the two mdl_info_AHRs or
+#             ftr_info_HAHRs that prevent merging
+#################################################################
+sub vdr_FeatureInfoMerge { 
+  my $sub_name = "vdr_FeatureInfoMerge";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $src_nftr = scalar(@{$src_ftr_info_AHR});
+  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
+  my $src_ftr_key;
+  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
+    my $found_consistent = 0;
+    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
+      my $nconsistent   = 0;
+      my $ninconsistent = 0;
+      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
+             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $nconsistent++;
+          }
+          else { 
+            $ninconsistent++;
+          }
+        }
+      }
+      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
+        # we found a match, merge them
+        if($found_consistent) { 
+          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+        }
+        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
+                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
+          }
+        }
+        $found_consistent = 1;
+      }
+    }
+    if(! $found_consistent) { 
+      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
+    }
+  }
+
   return;
 }
 
@@ -1382,6 +1466,18 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "ambignt5", "sequence",
+                   "N_AT_START", # short description
+                   "first nucleotide is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambignt3", "sequence",
+                   "N_AT_END", # short description
+                   "final nucleotide is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowcovrg", "sequence",
                    "LOW_COVERAGE", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description
@@ -1449,9 +1545,9 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
-                   "UNEXPECTED_DIVERGENCE", # short description
+                   "UNJOINABLE_SUBSEQ_ALIGNMENTS", # short description
                    "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
-                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "noftrann", "sequence",
@@ -1598,10 +1694,22 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "insertnn", "feature",
+                   "INSERTION_OF_NT", # short description
+                   "too large of an insertion in nucleotide-based alignment of CDS feature", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinn", "feature",
+                   "DELETION_OF_NT", # short description
+                   "too large of a deletion in nucleotide-based alignment of CDS feature", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
@@ -2750,9 +2858,10 @@ sub vdr_CoordsCheckIfSpans {
 #  $coords_tok2: coordinate token 2
 #  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Number of positions of overap between <$coords1_tok>
-#            and <$coords2_tok> on the same strand.
-#            '0' if no overlap or the two tokens are on opposite strands.
+# Returns:  Two values:
+#           $noverlap:    Number of nucleotides of overlap between <$coords_tok1>
+#                         and <$coords_tok2> on the same strand, 0 if none
+#           $overlap_reg: region of overlap, "" if none
 #
 # Dies: if unable to parse $coords_tok1 or $coords_tok2
 #
@@ -2770,7 +2879,7 @@ sub vdr_CoordsSegmentOverlap {
   my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($coords_tok2, $FH_HR);
 
   if($strand1 ne $strand2) { # strand mismatch
-    return 0;
+    return (0, "");
   }
 
   if($strand1 eq "-") { # $strand2 must be "-" too
@@ -3548,236 +3657,6 @@ sub vdr_ModelInfoFileParse {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoMerge()
-# Incept:     EPN, Sun May  5 10:32:40 2019
-#
-# Synopsis: Add info in one feature information arrays to another
-#           after validating that they can be merged.
-#
-#           Features to be merged are identified as "consistent"
-#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
-#           defined as those for which there is a subset of >=1
-#           features that are in common (identical qualifier name and
-#           value) between the two.
-#
-#           If any "inconsistent" features are identified between
-#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
-#           die. "Inconsistent" features are those for which a subset
-#           of >=1 qualifiers have identical values but another subset
-#           of >=1 qualifiers have different values.
-# 
-# Arguments:
-#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
-#                       add to $
-#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
-#                    on the features to add to  $ftr_info1_HAHR
-#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       if something is inconsistent between the two mdl_info_AHRs or
-#             ftr_info_HAHRs that prevent merging
-#################################################################
-sub vdr_FeatureInfoMerge { 
-  my $sub_name = "vdr_FeatureInfoMerge";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-  
-  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
-  
-  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
-  my $src_nftr = scalar(@{$src_ftr_info_AHR});
-  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
-  my $src_ftr_key;
-  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
-    my $found_consistent = 0;
-    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
-      my $nconsistent   = 0;
-      my $ninconsistent = 0;
-      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
-        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
-             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-            $nconsistent++;
-          }
-          else { 
-            $ninconsistent++;
-          }
-        }
-      }
-      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
-        # we found a match, merge them
-        if($found_consistent) { 
-          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
-        }
-        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
-          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
-                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
-          }
-        }
-        $found_consistent = 1;
-      }
-    }
-    if(! $found_consistent) { 
-      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
-    }
-  }
-
-  return;
-}
-
-#################################################################
-# Subroutine:  vdr_SplitFastaFile()
-# Incept:      EPN, Tue Mar  1 09:30:10 2016
-#
-# Purpose: Split up a fasta file into <n> smaller files by calling
-#          the esl-ssplit perl script.
-#
-# Arguments: 
-#  $esl_ssplit:      path to the esl-ssplit.pl script to use
-#  $fasta_file:      fasta file to split up
-#  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
-# 
-# Returns:    Number of files actually created (can differ from requested
-#             amount (which is $nfiles)).
-#
-# Dies:       if esl-ssplit command fails
-#
-################################################################# 
-sub vdr_SplitFastaFile { 
-  my $sub_name = "vdr_SplitFastaFile()";
-  my $nargs_expected = 5;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
-
-  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
-  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
-
-  my $outfile = $fasta_file . ".esl-ssplit";
-  my $cmd = undef;
-  if($nfiles == -1) { # special case: put 1 file per sequence
-    $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
-  }
-  else { 
-    $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
-  }
-  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
-
-  # parse output to determine exactly how many files were created:
-  # $esl_ssplit will have output exactly 1 line per fasta file it created
-  my $nfiles_created = utl_FileCountLines($outfile, $FH_HR);
-
-  if(! opt_Get("--keep", $opt_HHR)) { 
-    utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
-  }
-
-  return $nfiles_created;
-}
-
-#################################################################
-# Subroutine: vdr_SplitNumSeqFiles()
-# Incept:     EPN, Mon Mar 18 15:01:44 2019
-#
-# Synopsis: Return number of sequence files we need to split a sequence
-#           file of $tot_nt nucleotides into based on --nkb and 
-#           --maxnjobs options in %{$opt_HHR}.
-#
-# Arguments:
-#  $tot_nt:   total number of nucleotides in the file
-#  $opt_HHR:  REF to 2D hash of option values
-#
-# Returns:    Number of sequence files (>= 1).
-#
-# Dies:       If --nkb or --maxnjobs options do not exist in %{$opt_HHR}.
-#################################################################
-sub vdr_SplitNumSeqFiles { 
-  my $sub_name = "vdr_SplitNumSeqFiles";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($tot_nt, $opt_HHR) = @_;
-
-  my $ret_nseqfiles = int($tot_nt / (opt_Get("--nkb", $opt_HHR) * 1000)); 
-  # int() takes the floor, so there can be a nonzero remainder. We don't add 1 though, 
-  # because splitFastaFile() will return the actual number of sequence files created
-  # and we'll use that as the number of jobs subsequently. $targ_nseqfiles is currently only
-  # the 'target' number of sequence files that we pass into splitFastaFile().
-  # make sure we won't exceed our max number of jobs (from --maxnjobs)
-  if(($ret_nseqfiles) > (opt_Get("--maxnjobs", $opt_HHR))) { 
-    $ret_nseqfiles = int(opt_Get("--maxnjobs", $opt_HHR));
-  }
-  if($ret_nseqfiles == 0) { $ret_nseqfiles = 1; }
-
-  return $ret_nseqfiles;
-}
-
-#################################################################
-# Subroutine: vdr_CdsFetchStockholmToFasta()
-# Incept:     EPN, Thu Mar 14 12:30:33 2019
-# 
-# Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
-#             fetch all the CDS for all sequences in the Stockholm alignment
-#             and create a new output fasta file with just the CDS features.
-#
-# Arguments:
-#   $out_FH:         output file handle
-#   $stk_file:       stockholm file with aligned full length sequences
-#   $ftr_info_AHR:   REF to the feature info, pre-filled
-#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
-#                    
-# Returns: void
-#
-# Dies:    if we have trouble fetching a sequence
-#
-#################################################################
-sub vdr_CdsFetchStockholmToFasta { 
-  my $sub_name = "vdr_CdsFetchStockholmToFasta";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = @_;
-
-  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
-  my $msa_has_rf = $msa->has_rf;
-
-  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
-  my @sgm_start_AA  = ();
-  my @sgm_stop_AA   = ();
-  my @sgm_strand_AA = ();
-  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
-
-  my $nftr = scalar(@{$ftr_info_AHR});
-  my $nseq = $msa->nseq;
-  my $ftr_idx = undef; # feature index
-  my $seq_idx = undef; # feature index
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
-        my $cds_sqstring = "";
-        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) { 
-          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
-          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
-          my $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
-          my $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
-          if($astart > $astop) { utl_Swap(\$astart, \$astop); }
-          my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
-          if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
-            seq_SqstringReverseComplement(\$sgm_sqstring);
-          }
-          $cds_sqstring .= $sgm_sqstring;
-        }
-        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . seq_SqstringAddNewlines($cds_sqstring, 60));
-      }
-    }
-  }
-  return;
-}
-
-#################################################################
 # Subroutine:  vdr_CmalignCheckStdOutput()
 # Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
@@ -3839,41 +3718,6 @@ sub vdr_CmalignCheckStdOutput {
   }
     
   return -1; # NEVER REACHED
-}
-
-#################################################################
-# Subroutine: vdr_ParseSeqFileToSeqHash()
-# Incept:     EPN, Mon May 20 12:19:29 2019
-# 
-# Purpose:    Parse an input sequence file using Bio::Easel::SqFile
-#             and fill %{$seq_HR}. 
-#
-# Arguments:
-#   $infile:   input file
-#   $seq_HR:   sequence hash, key is sequence name, value is string of sequence
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
-#                    
-# Returns: void
-#
-# Dies:    if we have trouble parsing the file
-#
-#################################################################
-sub vdr_ParseSeqFileToSeqHash { 
-  my $sub_name = "vdr_ParseSeqFileToSeqHash";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($infile, $seq_HR, $FH_HR) = @_;
-
-  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infile }); # the sequence file object
-  my $nseq = $sqfile->nseq_ssi;
-
-  for(my $sidx = 0; $sidx < $nseq; $sidx++) {
-    my ($sqname, undef) = $sqfile->fetch_seq_name_and_length_given_ssi_number($sidx);
-    $seq_HR->{$sqname} = $sqfile->fetch_next_seq_to_sqstring();
-  }
-  
-  return;
 }
 
 #################################################################
@@ -4036,26 +3880,263 @@ sub vdr_CmalignWriteInsertFile {
   # <seqname> <spos> <epos>
   # and optionally 
   foreach my $seq_name (@{$seq_name_AR}) {
-    print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
-    if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
-       $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
-      my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
-      foreach my $ins (@ins_A) {
-        # example line:
-        #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
-        if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
-          print OUT ("  " . $1 . " " . $2 . " " . $3);
-        }
-        else {
-          ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+    if(defined $seq_inserts_HHR->{$seq_name}) { 
+      print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
+      if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
+         $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
+        my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
+        foreach my $ins (@ins_A) {
+          # example line:
+          #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+          if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+            print OUT ("  " . $1 . " " . $2 . " " . $3);
+          }
+          else {
+            ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+          }
         }
       }
+      print OUT "\n";
     }
-    print OUT "\n";
   }
   print OUT "//\n";
 
   close OUT;
+}
+
+#################################################################
+# Subroutine:  vdr_CmemitConsensusToFile()
+# Incept:      EPN, Wed Apr 15 09:31:54 2020
+#
+# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
+#             and return the consensus sequence.
+#
+# Arguments: 
+#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
+#  $cm_file:         CM file to fetch from
+#  $mdl_name:        name of CM file to fetch
+#  $cseq_fa_file:    name of output fasta file to create
+#  $opt_HHR:         REF to options 2D hash
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    the consensus sequence as a string
+#
+# Dies:       If cmemit fails or we can't read any sequence from 
+#             the output fasta file
+#
+################################################################# 
+sub vdr_CmemitConsensus {
+  my $sub_name = "vdr_CmemitConsensusToFile";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), opt_Get("--keep", $opt_HHR), $FH_HR);
+
+  # fetch the sequence
+  my @file_lines_A = ();
+  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
+  my $ret_cseq = "";
+  my $nlines = scalar(@file_lines_A);
+  if($nlines <= 1) { 
+    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
+  }
+  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
+    my $seq_line = $file_lines_A[$i];
+    chomp $seq_line;
+    $ret_cseq .= $seq_line;
+  }
+  
+  return $ret_cseq;
+}
+
+#################################################################
+# Subroutine:  vdr_SplitFastaFile()
+# Incept:      EPN, Tue Mar  1 09:30:10 2016
+#
+# Purpose: Split up a fasta file into <n> smaller files by calling
+#          the esl-ssplit perl script.
+#
+# Arguments: 
+#  $esl_ssplit:      path to the esl-ssplit.pl script to use
+#  $fasta_file:      fasta file to split up
+#  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information
+# 
+# Returns:    Number of files actually created (can differ from requested
+#             amount (which is $nfiles)).
+#
+# Dies:       if esl-ssplit command fails
+#
+################################################################# 
+sub vdr_SplitFastaFile { 
+  my $sub_name = "vdr_SplitFastaFile()";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
+
+  # we can only pass $FH_HR to ofile_FAIL if that hash already exists
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $outfile = $fasta_file . ".esl-ssplit";
+  my $cmd = undef;
+  if($nfiles == -1) { # special case: put 1 file per sequence
+    $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
+  }
+  else { 
+    $cmd = "$esl_ssplit -v -r -n $fasta_file $nfiles > $outfile";
+  }
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  # parse output to determine exactly how many files were created:
+  # $esl_ssplit will have output exactly 1 line per fasta file it created
+  my $nfiles_created = utl_FileCountLines($outfile, $FH_HR);
+
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
+  }
+
+  return $nfiles_created;
+}
+
+#################################################################
+# Subroutine: vdr_SplitNumSeqFiles()
+# Incept:     EPN, Mon Mar 18 15:01:44 2019
+#
+# Synopsis: Return number of sequence files we need to split a sequence
+#           file of $tot_nt nucleotides into based on --nkb and 
+#           --maxnjobs options in %{$opt_HHR}.
+#
+# Arguments:
+#  $tot_nt:   total number of nucleotides in the file
+#  $opt_HHR:  REF to 2D hash of option values
+#
+# Returns:    Number of sequence files (>= 1).
+#
+# Dies:       If --nkb or --maxnjobs options do not exist in %{$opt_HHR}.
+#################################################################
+sub vdr_SplitNumSeqFiles { 
+  my $sub_name = "vdr_SplitNumSeqFiles";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($tot_nt, $opt_HHR) = @_;
+
+  my $ret_nseqfiles = int($tot_nt / (opt_Get("--nkb", $opt_HHR) * 1000)); 
+  # int() takes the floor, so there can be a nonzero remainder. We don't add 1 though, 
+  # because splitFastaFile() will return the actual number of sequence files created
+  # and we'll use that as the number of jobs subsequently. $targ_nseqfiles is currently only
+  # the 'target' number of sequence files that we pass into splitFastaFile().
+  # make sure we won't exceed our max number of jobs (from --maxnjobs)
+  if(($ret_nseqfiles) > (opt_Get("--maxnjobs", $opt_HHR))) { 
+    $ret_nseqfiles = int(opt_Get("--maxnjobs", $opt_HHR));
+  }
+  if($ret_nseqfiles == 0) { $ret_nseqfiles = 1; }
+
+  return $ret_nseqfiles;
+}
+
+#################################################################
+# Subroutine: vdr_CdsFetchStockholmToFasta()
+# Incept:     EPN, Thu Mar 14 12:30:33 2019
+# 
+# Purpose:    Given coordinates of all CDS features in %{$ftr_info_AHR}
+#             fetch all the CDS for all sequences in the Stockholm alignment
+#             and create a new output fasta file with just the CDS features.
+#
+# Arguments:
+#   $out_FH:         output file handle
+#   $stk_file:       stockholm file with aligned full length sequences
+#   $ftr_info_AHR:   REF to the feature info, pre-filled
+#   $FH_HR:          REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns: void
+#
+# Dies:    if we have trouble fetching a sequence
+#
+#################################################################
+sub vdr_CdsFetchStockholmToFasta { 
+  my $sub_name = "vdr_CdsFetchStockholmToFasta";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_FH, $stk_file, $ftr_info_AHR, $FH_HR) = @_;
+
+  my $msa = Bio::Easel::MSA->new({ fileLocation => $stk_file, isDna => 1});
+  my $msa_has_rf = $msa->has_rf;
+
+  # precompute start, stop, strand, for all features, so we don't have to redo this for each seq
+  my @sgm_start_AA  = ();
+  my @sgm_stop_AA   = ();
+  my @sgm_strand_AA = ();
+  vdr_FeatureInfoStartStopStrandArrays($ftr_info_AHR, \@sgm_start_AA, \@sgm_stop_AA, \@sgm_strand_AA, $FH_HR);
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nseq = $msa->nseq;
+  my $ftr_idx = undef; # feature index
+  my $seq_idx = undef; # feature index
+  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+        my $cds_sqstring = "";
+        foreach(my $sgm_idx = 0; $sgm_idx < scalar(@{$sgm_start_AA[$ftr_idx]}); $sgm_idx++) { 
+          my $rfstart = $sgm_start_AA[$ftr_idx][$sgm_idx];
+          my $rfstop  = $sgm_stop_AA[$ftr_idx][$sgm_idx];
+          my $astart  = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstart) : $rfstart;
+          my $astop   = ($msa_has_rf) ? $msa->rfpos_to_aligned_pos($rfstop)  : $rfstop;
+          if($astart > $astop) { utl_Swap(\$astart, \$astop); }
+          my $sgm_sqstring = $msa->get_sqstring_unaligned_and_truncated($seq_idx, $astart, $astop);
+          if($sgm_strand_AA[$ftr_idx][$sgm_idx] eq "-") { 
+            seq_SqstringReverseComplement(\$sgm_sqstring);
+          }
+          $cds_sqstring .= $sgm_sqstring;
+        }
+        print $out_FH(">" . $msa->get_sqname($seq_idx) . "/" . $ftr_info_AHR->[$ftr_idx]{"coords"} . "\n" . seq_SqstringAddNewlines($cds_sqstring, 60));
+      }
+    }
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ParseSeqFileToSeqHash()
+# Incept:     EPN, Mon May 20 12:19:29 2019
+# 
+# Purpose:    Parse an input sequence file using Bio::Easel::SqFile
+#             and fill %{$seq_HR}. 
+#
+# Arguments:
+#   $infile:   input file
+#   $seq_HR:   sequence hash, key is sequence name, value is string of sequence
+#   $FH_HR:    REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#                    
+# Returns: void
+#
+# Dies:    if we have trouble parsing the file
+#
+#################################################################
+sub vdr_ParseSeqFileToSeqHash { 
+  my $sub_name = "vdr_ParseSeqFileToSeqHash";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($infile, $seq_HR, $FH_HR) = @_;
+
+  my $sqfile = Bio::Easel::SqFile->new({ fileLocation => $infile }); # the sequence file object
+  my $nseq = $sqfile->nseq_ssi;
+
+  for(my $sidx = 0; $sidx < $nseq; $sidx++) {
+    my ($sqname, undef) = $sqfile->fetch_seq_name_and_length_given_ssi_number($sidx);
+    $seq_HR->{$sqname} = $sqfile->fetch_next_seq_to_sqstring();
+  }
+  
+  return;
 }
 
 ###########################################################################

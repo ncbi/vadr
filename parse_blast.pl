@@ -11,11 +11,11 @@
 
 # Usage: parse_blastx.pl --input <input file>
 
-# vadr 1.0.4 March 2020
+# vadr 1.0.6dev April 2020
 
 use strict;
 use warnings;
-use Getopt::Long;
+use Getopt::Long qw(:config no_auto_abbrev);
 
 require "sqp_opts.pm";
 
