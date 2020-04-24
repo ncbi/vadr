@@ -1,0 +1,8 @@
+>Feature gi|1339273835|gb|MG746117.1|
+1	>1626	gene
+			gene	ORF2
+1	>1626	misc_feature
+			note	similar to VP1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_START: (VP1) expected start codon could not be identified [ANN starting at position 1 on + strand is not a valid start]
