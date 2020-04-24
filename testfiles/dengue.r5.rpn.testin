@@ -34,7 +34,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.rpn
-rmdir: va-dengue.r5
+rmdir: va-dengue-rpn.r5
 # --r_prof
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r --r_prof $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn-prof.r5 > va-dengue-rpn-prof.r5.out
 desc: annotate-dengue-5-rpn-prof
@@ -58,4 +58,4 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn-prof.r5/va-dengue-rpn-prof.r5.vadr.rpn
-rmdir: va-dengue.r5
+rmdir: va-dengue-rpn-prof.r5

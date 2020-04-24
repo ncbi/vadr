@@ -3,7 +3,7 @@
 #---  ----------------------------  ----  ----  ---  ---------  ---------  ---  ---  ---  ---  ---  -----  ------
 1     gi|307574518|dbj|AB525810.1|   338  PASS  yes  NC_029646  Norovirus  GII    5    7    3    2      0  -     
 2     gi|1215708385|gb|KY594653.1|   301  PASS  yes  NC_039477  Norovirus  GII    5    7    5    2      0  -     
-3     gi|507309522|gb|JX439803.1|   1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      1  -     
+3     gi|507309522|gb|JX439803.1|   1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      2  -     
 4     gi|1203184899|gb|KX722332.1|   640  PASS  yes  NC_039477  Norovirus  GII    2   10    2    2      0  -     
 5     gi|959141925|gb|KR107577.1|    387  PASS  yes  NC_039477  Norovirus  GII    5    7    3    2      0  -     
 6     gi|407879400|emb|HE716655.1|   357  PASS  yes  NC_039477  Norovirus  GII    5    7    3    2      0  -     

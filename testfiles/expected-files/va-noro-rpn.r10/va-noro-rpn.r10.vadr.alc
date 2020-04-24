@@ -2,6 +2,7 @@
 #idx  code      failure  description                    type  cases  seqs  description
 #---  --------  -------  -------------------------  --------  -----  ----  -----------
 1     ambignt3  no       N_AT_END                   sequence      1     1  final nucleotide is an N
+2     insertnn  no       INSERTION_OF_NT             feature      1     1  too large of an insertion in nucleotide-based alignment of CDS feature
 #---  --------  -------  -------------------------  --------  -----  ----  -----------
-2     indf3pst  yes      INDEFINITE_ANNOTATION_END   feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+3     indf3pst  yes      INDEFINITE_ANNOTATION_END   feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
 #---  --------  -------  -------------------------  --------  -----  ----  -----------

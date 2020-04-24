@@ -58,4 +58,4 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.rpn
-rmdir: va-noro-rpn.r10
+rmdir: va-noro-rpn-prof.r10
