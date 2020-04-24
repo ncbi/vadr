@@ -1,7 +1,10 @@
-#       seq                                      ftr   ftr   ftr  alert           alert                      alert 
-#idx    name                          model      type  name  idx  code      fail  desc                       detail
-#-----  ----------------------------  ---------  ----  ----  ---  --------  ----  -------------------------  ------
-3.1.1   gi|507309522|gb|JX439803.1|   NC_029646  CDS   VP1     4  insertnn  no    INSERTION_OF_NT            too large of an insertion in nucleotide-based alignment of CDS feature [nucleotide alignment insert of length 30>27 after reference nucleotide posn 5575 on strand +]
-3.1.2   gi|507309522|gb|JX439803.1|   NC_029646  CDS   VP1     4  indf3pst  yes   INDEFINITE_ANNOTATION_END  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75 > 5 (strand:+ CM:1336 blastx:1261, no valid stop codon in CM prediction)]
+#       seq                                      ftr          ftr                        ftr  alert           alert                        alert 
+#idx    name                          model      type         name                       idx  code      fail  desc                         detail
+#-----  ----------------------------  ---------  -----------  -------------------------  ---  --------  ----  ---------------------------  ------
+3.1.1   gi|507309522|gb|JX439803.1|   NC_029646  CDS          VP1                          4  insertnn  no    INSERTION_OF_NT              too large of an insertion in nucleotide-based alignment of CDS feature [nucleotide alignment insert of length 30>27 after reference nucleotide posn 5575 on strand +]
+3.1.2   gi|507309522|gb|JX439803.1|   NC_029646  CDS          VP1                          4  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75 > 5 (strand:+ CM:1336 blastx:1261, no valid stop codon in CM prediction)]
 #
-10.1.1  gi|1339273835|gb|MG746117.1|  NC_039476  -     -       -  ambignt3  no    N_AT_END                   final nucleotide is an N
+10.1.1  gi|1339273835|gb|MG746117.1|  NC_039476  -            -                            -  ambignt3  no    N_AT_END                     final nucleotide is an N
+10.2.1  gi|1339273835|gb|MG746117.1|  NC_039476  CDS          nonstructural_polyprotein    2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [NNN ending at position 20 on + strand is not a valid stop]
+10.3.1  gi|1339273835|gb|MG746117.1|  NC_039476  CDS          VP1                          4  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [ANN starting at position 1 on + strand is not a valid start]
+10.4.1  gi|1339273835|gb|MG746117.1|  NC_039476  mat_peptide  RdRp                        12  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem

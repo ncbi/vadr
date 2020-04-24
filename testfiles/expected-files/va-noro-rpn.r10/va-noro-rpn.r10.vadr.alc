@@ -1,8 +1,11 @@
-#     alert     causes   short                           per    num   num  long       
-#idx  code      failure  description                    type  cases  seqs  description
-#---  --------  -------  -------------------------  --------  -----  ----  -----------
-1     ambignt3  no       N_AT_END                   sequence      1     1  final nucleotide is an N
-2     insertnn  no       INSERTION_OF_NT             feature      1     1  too large of an insertion in nucleotide-based alignment of CDS feature
-#---  --------  -------  -------------------------  --------  -----  ----  -----------
-3     indf3pst  yes      INDEFINITE_ANNOTATION_END   feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
-#---  --------  -------  -------------------------  --------  -----  ----  -----------
+#     alert     causes   short                             per    num   num  long       
+#idx  code      failure  description                      type  cases  seqs  description
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
+1     ambignt3  no       N_AT_END                     sequence      1     1  final nucleotide is an N
+2     insertnn  no       INSERTION_OF_NT               feature      1     1  too large of an insertion in nucleotide-based alignment of CDS feature
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
+3     mutstart  yes      MUTATION_AT_START             feature      1     1  expected start codon could not be identified
+4     mutendcd  yes      MUTATION_AT_END               feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM   feature      1     1  mat_peptide may not be translated because its parent CDS has a problem
+6     indf3pst  yes      INDEFINITE_ANNOTATION_END     feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
