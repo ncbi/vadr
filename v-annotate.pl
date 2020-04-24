@@ -4008,6 +4008,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
+      my $ftr_5nambig = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
+      my $ftr_3nambig = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
 
       my %alt_str_H = (); # added to as we find alerts below
       # mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
@@ -4015,8 +4017,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       # determine if this feature is 5' and/or 3' truncated
       # we do this outside the main loop since the logic is a bit complex:
       # - a feature is 5' truncated if:
-      #   (A) its 5'-most feature with results is not the 5'-most segment of the feature
-      #      (regardless of whether its 5'-most feature is truncated or not) 
+      #   (A) its 5'-most segment with results is not the 5'-most segment of the feature
+      #      (regardless of whether its 5'-most segment is truncated or not) 
       #   OR
       #   (B) its 5'-most feature is truncated
       # - and vice versa for 3' truncation
@@ -4083,6 +4085,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               # slightly wasteful in certain cases, if $ftr_is_5trunc && $ftr_is_3trunc then we won't use this
             }
           }
+
           $ftr_len += $sgm_len;
         } # end of 'if(defined $sgm_results_HAHR->{$seq_name}...'
       } # end of 'for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}...
@@ -4090,7 +4093,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       # printf("in $sub_name seq_idx: $seq_idx ftr_idx: $ftr_idx ftr_len: $ftr_len ftr_start: $ftr_start ftr_stop: $ftr_stop\n");
       if($ftr_len > 0) { 
         # we had a prediction for at least one of the segments for this feature
-        
+
+        # determine the position of the first and final N or n
+        $ftr_sqstring_alt =~ m/[^Nn]/g; # returns position of first non-N/n
+        $ftr_5nambig = pos($ftr_sqstring_alt) - 1;
+        my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
+        $rev_ftr_sqstring_alt =~ m/[^Nn]/g; # returns position of first non-N/n in reversed string
+        $ftr_3nambig = pos($rev_ftr_sqstring_alt) - 1; 
+
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
           ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
@@ -4120,7 +4130,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         }
         # deal with mutendcd for all CDS that are not 3' truncated BUT are 5' truncated
         if((! $ftr_is_3trunc) && ($ftr_is_5trunc)) { 
-          # feature is not 3' truncated, but it is 3' truncated, look for a stop codon if it's a CDS
+          # feature is not 3' truncated, but it is 5' truncated, look for a stop codon if it's a CDS
           if($ftr_is_cds) { 
             if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR))) { 
               $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
@@ -4247,15 +4257,16 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
 
         # update %ftr_results_HR
-        $ftr_results_HR->{"n_strand"} = $ftr_strand;
-        $ftr_results_HR->{"n_start"}  = $ftr_start;
-        $ftr_results_HR->{"n_stop"}   = $ftr_stop;
-        $ftr_results_HR->{"n_stop_c"} = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
-        $ftr_results_HR->{"n_5trunc"} = $ftr_is_5trunc;
-        $ftr_results_HR->{"n_3trunc"} = $ftr_is_3trunc;
+        $ftr_results_HR->{"n_strand"}  = $ftr_strand;
+        $ftr_results_HR->{"n_start"}   = $ftr_start;
+        $ftr_results_HR->{"n_stop"}    = $ftr_stop;
+        $ftr_results_HR->{"n_stop_c"}  = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+        $ftr_results_HR->{"n_5trunc"}  = $ftr_is_5trunc;
+        $ftr_results_HR->{"n_3trunc"}  = $ftr_is_3trunc;
+        $ftr_results_HR->{"n_5nambig"} = $ftr_5nambig;
+        $ftr_results_HR->{"n_3nambig"} = $ftr_3nambig;
         $ftr_results_HR->{"n_len"}    = $ftr_len;
-        #printf("set ftr_results_HR->{n_start} to " . $ftr_results_HR->{"n_start"} . "\n");
-        #printf("set ftr_results_HR->{n_stop}  to " . $ftr_results_HR->{"n_stop"} . "\n");
+        utl_HDump("ftr_results{$seq_name}[$ftr_idx]", $ftr_results_HR, *STDOUT);
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
