@@ -822,6 +822,13 @@ my %rpn_output_HH = (); # 2D key with info to output related to the  option
                         # key1: sequence name, key2 various stats (see output_tabular())
 my $rpn_fa_file = undef;
 if($do_replace_ns) { 
+  # we need to copy the blastn fasta db file, so that we can create a .ssi file to fetch from it
+  my $local_blastn_db_file = $out_root . ".cp." . utl_RemoveDirPath($blastn_db_file);
+  my $cp_blastn_db_cmd = "cp $blastn_db_file $local_blastn_db_file";
+  utl_RunCommand($cp_blastn_db_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  push(@to_remove_A, $local_blastn_db_file);
+  push(@to_remove_A, $local_blastn_db_file . ".ssi");
+
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
   classification_stage(\%execs_H, "rpn.cls", $cm_file, $blastn_db_file, $in_fa_file, \%seq_len_H,
@@ -844,7 +851,7 @@ if($do_replace_ns) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, $blastn_db_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, $local_blastn_db_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                              \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
@@ -8528,20 +8535,20 @@ sub msa_replace_sequences {
 #              Then output that new sequence to a fasta file.
 #
 # Arguments: 
-#  $tblout_file:     tblout file from a 'cvd' stage for a single model
-#  $cm_file:         path to main cm file
-#  $blastn_db_file:  path to blastn db file with consensus sequence for each model
-#  $sqfile_R:        REF to Bio::Easel::SqFile object from main fasta file
-#  $mdl_info_AHR:    REF to model info array of hashes, possibly added to here 
-#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
-#  $mdl_idx:         index of $exp_mdl_name in $mdl_info_AHR
-#  $seq_name_AR:     REF to array of sequences we want to parse indel info for
-#  $seq_len_HR:      REF to hash of sequence lengths
-#  $seq_replaced_HR: REF to hash, key is sequence name, value is 1 if this seq was replaced
-#  $rpn_output_HHR:  REF to 2D hash with information to output to .rpn tabular file, ADDED TO HERE
-#  $out_root:        string for naming output files
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#  $tblout_file:           tblout file from a 'cvd' stage for a single model
+#  $cm_file:               path to main cm file
+#  $local_blastn_db_file:  path to blastn db file with consensus sequence for each model
+#  $sqfile_R:              REF to Bio::Easel::SqFile object from main fasta file
+#  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
+#  $exp_mdl_name:          name of model we expect on all lines of $indel_file
+#  $mdl_idx:               index of $exp_mdl_name in $mdl_info_AHR
+#  $seq_name_AR:           REF to array of sequences we want to parse indel info for
+#  $seq_len_HR:            REF to hash of sequence lengths
+#  $seq_replaced_HR:       REF to hash, key is sequence name, value is 1 if this seq was replaced
+#  $rpn_output_HHR:        REF to 2D hash with information to output to .rpn tabular file, ADDED TO HERE
+#  $out_root:              string for naming output files
+#  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
 #                         
 # Returns:    Number of sequences that had Ns replaced and were output to fasta file
 #
@@ -8553,7 +8560,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
   my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $cm_file, $blastn_db_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
+  my ($tblout_file, $cm_file, $local_blastn_db_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
       $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
@@ -8754,7 +8761,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
             $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
             $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
             if(! defined $mdl_consensus_sqstring) { 
-              my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file }); 
+              my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $local_blastn_db_file }); 
               $mdl_info_AHR->[$mdl_idx]{"cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
               $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
               $blastn_sqfile = undef;
