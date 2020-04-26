@@ -806,7 +806,7 @@ else {
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
-if($do_replace_ns) { 
+if(($do_replace_ns) || ($do_blastn_any)) { 
   # need a copy of the input fasta file that does not have 
   # descriptions because blast{n,x} does not output sequences 
   # and descriptions in a parseable way (see github issue #4)
