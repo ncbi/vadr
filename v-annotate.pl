@@ -325,6 +325,7 @@ $opt_group_desc_H{++$g} = "other expert options";
 opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>",                         "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--alicheck",   "boolean", 0,             $g,    undef, undef,   "for debugging, check aligned sequence vs input sequence for identity", "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
 opt_Add("--minbit",     "real",    -10,           $g,    undef, undef,   "set minimum cmsearch/cmscan bit score threshold to <x>",               "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--origfa",     "boolean",   0,           $g,    undef, undef,   "do not copy fasta file prior to analysis, use original",               "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -428,6 +429,7 @@ my $options_okay =
 # other expert options
                 'execname=s'    => \$GetOptions_H{"--execname"},
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
+                'origfa'        => \$GetOptions_H{"--origfa"},
                 'minbit'        => \$GetOptions_H{"--minbit"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -478,7 +480,7 @@ if(scalar(@ARGV) != 2) {
   exit(1);
 }
 
-my ($in_fa_file, $dir) = (@ARGV);
+my ($orig_in_fa_file, $dir) = (@ARGV);
 
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
@@ -557,7 +559,7 @@ my $out_root = $dir . "/" . $dir_tail . ".vadr";
 #############################################
 # output preamble
 my @arg_desc_A = ("sequence file", "output directory");
-my @arg_A      = ($in_fa_file, $dir);
+my @arg_A      = ($orig_in_fa_file, $dir);
 my %extra_H    = ();
 $extra_H{"\$VADRSCRIPTSDIR"}  = $env_vadr_scripts_dir;
 $extra_H{"\$VADRMODELDIR"}    = $env_vadr_model_dir;
@@ -623,7 +625,7 @@ my $do_replace_ns = opt_Get("-r", \%opt_HH);
 ###########################################
 # Validate that we have all the files we need:
 # fasta file
-utl_FileValidateExistsAndNonEmpty($in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+utl_FileValidateExistsAndNonEmpty($orig_in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 my $opt_mdir_used = opt_IsUsed("--mdir", \%opt_HH);
 my $opt_mkey_used = opt_IsUsed("--mkey", \%opt_HH);
@@ -786,14 +788,40 @@ if($do_blastx) {
 # for any features with if there are any CDS features, validate that the BLAST db files we need exist
 
 
-##################################
-# Validate the input sequence file
-##################################
+###########################################
+# Copy and validate the input sequence file
+###########################################
+my $in_fa_file        = undef;
+my $blastn_in_fa_file = undef;
+if(opt_Get("--origfa", \%opt_HH)) { 
+  # --origfa: analyze original fasta file, do not copy it
+  $in_fa_file = $orig_in_fa_file;
+  if(-e $in_fa_file . ".ssi") { unlink $in_fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
+}
+else { 
+  # default: copy original fasta file and analyze that
+  $in_fa_file = $out_root . ".in.fa";
+  utl_RunCommand("cp $orig_in_fa_file $in_fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cp.in.fasta", $in_fa_file, 1, 1, "copy of input fasta file");
+  push(@to_remove_A, $in_fa_file);
+  push(@to_remove_A, $in_fa_file . ".ssi");
+}
+if(($do_replace_ns) || ($do_blastn_any)) { 
+  # need a copy of the input fasta file that does not have 
+  # descriptions because blast{n,x} does not output sequences 
+  # and descriptions in a parseable way (see github issue #4)
+  # (actually we don't really need this if --r_prof but we 
+  # make it anyway)
+  $blastn_in_fa_file = $out_root . ".blastn.fa";
+  sqf_FastaFileRemoveDescriptions($in_fa_file, $blastn_in_fa_file, \%ofile_info_HH);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, 1, 1, "copy of input fasta file with descriptions removed for blastn");
+  push(@to_remove_A, $blastn_in_fa_file);
+}  
+
 my $seqstat_file = $out_root . ".seqstat";
 my @seq_name_A = (); # [0..$i..$nseq-1]: name of sequence $i in input file
 my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq length
 utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $in_fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-if(-e $in_fa_file . ".ssi") { unlink $in_fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
@@ -824,14 +852,13 @@ my $rpn_fa_file = undef;
 if($do_replace_ns) { 
   # we need to copy the blastn fasta db file, so that we can create a .ssi file to fetch from it
   my $local_blastn_db_file = $out_root . ".cp." . utl_RemoveDirPath($blastn_db_file);
-  my $cp_blastn_db_cmd = "cp $blastn_db_file $local_blastn_db_file";
-  utl_RunCommand($cp_blastn_db_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  utl_RunCommand("cp $blastn_db_file $local_blastn_db_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   push(@to_remove_A, $local_blastn_db_file);
   push(@to_remove_A, $local_blastn_db_file . ".ssi");
 
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
-  classification_stage(\%execs_H, "rpn.cls", $cm_file, $blastn_db_file, $in_fa_file, \%seq_len_H,
+  classification_stage(\%execs_H, "rpn.cls", $cm_file, $blastn_db_file, $blastn_in_fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
   coverage_determination_stage(\%execs_H, "rpn.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
@@ -884,8 +911,46 @@ if($do_replace_ns) {
   ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
 } # end of 'if($do_replace_ns)'
 
+# determine the fasta file we'll use for remaining analysis:
+# --
+# if(! $do_blastn_cls): 
+#   if(defined $rpn_fa_file): use $rpn_fa_file (will only be true if $do_replace_ns AND at least one seq was replaced)
+#   else:                     use $in_fa_file
+# NOTE: even if $do_replace_ns, if no seqs were replaced then $rpn_fa_file will be undef
+# --
+# if($do_blastn_cls): 
+#   if(defined $rpn_fa_file) { (will only be true if $do_replace_ns AND at least one seq was replaced)
+#       need to make copy of $rpn_fa_file of $in_fa_file
+#       with descriptions removed to avoid the issue with 
+#       ambiguity between seq names and seq descriptions 
+#       in blastn parsing (github issue #4).
+#   else { # ! defined $rpn_fa_file
+#       use $blastn_in_fa_file, a copy 
+#       of seq file with descriptions removed that we already
+#       made above
+# --
+my $fa_file_for_analysis = undef; 
+my $blastn_rpn_fa_file   = undef;
+if(! $do_blastn_cls) { 
+  $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
+}
+else { 
+  if(defined $rpn_fa_file) { 
+    # make copy with descriptions removed
+    $blastn_rpn_fa_file = $out_root . ".blastn.rpn.fa";
+    sqf_FastaFileRemoveDescriptions($rpn_fa_file, $blastn_rpn_fa_file, \%ofile_info_HH);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 1, 1, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
+    push(@to_remove_A, $blastn_rpn_fa_file);
+    $fa_file_for_analysis = $blastn_rpn_fa_file;
+  }
+  else { 
+    $fa_file_for_analysis = $blastn_in_fa_file;
+  }
+}  
+
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
-my $fa_file_for_analysis       = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file; # the fasta file we will analyze
+# this is independent of whether we are doing blastn or not because these 
+# are the seqfiles used for fetching not blastn analysis
 my $sqfile_for_analysis_R      = (defined $rpn_sqfile)  ? \$rpn_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
 my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (opt_Get("--r_cdsmpr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
 my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
@@ -1347,7 +1412,9 @@ if(! opt_Get("--keep", \%opt_HH)) {
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+
+exit 0;
 
 ###############
 # SUBROUTINES #

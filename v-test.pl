@@ -205,7 +205,7 @@ for(my $i = 1; $i <= $ncmd; $i++) {
   else { 
     # -s not used, run command
     $start_secs = ofile_OutputProgressPrior(sprintf("Running command %2d [%20s]", $i, $desc_A[($i-1)]), $progress_w, $log_FH, *STDOUT);
-    utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 0, $ofile_info_HH{"FH"});
+    utl_RunCommand($cmd, opt_Get("-v", \%opt_HH), 1, $ofile_info_HH{"FH"}); # 1: do not fail if command fails
   }
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -242,18 +242,17 @@ my $overall_pass = ($nfail == 0) ? 1 : 0;
 ofile_OutputString($log_FH, 1, "#\n#\n");
 if($overall_pass) { 
   ofile_OutputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 }
 else { 
   ofile_OutputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesFail($total_seconds, $dir, \%ofile_info_HH);
   ofile_FAIL("ERROR, at least one test FAILed", 1, undef);
 }
-ofile_OutputString($log_FH, 1, sprintf("#\n"));
-
-$total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 
 exit 0;
-
 #################################################################
 # Subroutine:  parse_test_file()
 # Incept:      EPN, Wed May 16 16:03:40 2018

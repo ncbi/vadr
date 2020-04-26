@@ -272,7 +272,7 @@ ofile_OutputProgressComplete($start_secs, undef, undef, *STDOUT);
 ##########
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, "", \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFilesOk($total_seconds, "", \%ofile_info_HH);
 exit 0;
 
 #################################################################

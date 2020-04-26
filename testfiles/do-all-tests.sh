@@ -13,6 +13,7 @@ for t in \
     do-replace-tests.sh \
     do-seed-tests.sh \
     do-outaln-tests.sh \
+    github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
     if [ $? != 0 ]; then
