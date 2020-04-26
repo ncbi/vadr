@@ -806,10 +806,12 @@ else {
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
-if($do_blastn_any) { 
+if($do_replace_ns) { 
   # need a copy of the input fasta file that does not have 
   # descriptions because blast{n,x} does not output sequences 
   # and descriptions in a parseable way (see github issue #4)
+  # (actually we don't really need this if --r_prof but we 
+  # make it anyway)
   $blastn_in_fa_file = $out_root . ".blastn.fa";
   sqf_FastaFileRemoveDescriptions($in_fa_file, $blastn_in_fa_file, \%ofile_info_HH);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, 1, 1, "copy of input fasta file with descriptions removed for blastn");
@@ -928,7 +930,7 @@ if($do_replace_ns) {
 #       made above
 # --
 my $fa_file_for_analysis = undef; 
-my $blastn_rpn_fa_file = undef;
+my $blastn_rpn_fa_file   = undef;
 if(! $do_blastn_cls) { 
   $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
 }
