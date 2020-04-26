@@ -909,8 +909,46 @@ if($do_replace_ns) {
   ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
 } # end of 'if($do_replace_ns)'
 
+# determine the fasta file we'll use for remaining analysis:
+# --
+# if(! $do_blastn_cls): 
+#   if(defined $rpn_fa_file): use $rpn_fa_file (will only be true if $do_replace_ns AND at least one seq was replaced)
+#   else:                     use $in_fa_file
+# NOTE: even if $do_replace_ns, if no seqs were replaced then $rpn_fa_file will be undef
+# --
+# if($do_blastn_cls): 
+#   if(defined $rpn_fa_file) { (will only be true if $do_replace_ns AND at least one seq was replaced)
+#       need to make copy of $rpn_fa_file of $in_fa_file
+#       with descriptions removed to avoid the issue with 
+#       ambiguity between seq names and seq descriptions 
+#       in blastn parsing (github issue #4).
+#   else { # ! defined $rpn_fa_file
+#       use $blastn_in_fa_file, a copy 
+#       of seq file with descriptions removed that we already
+#       made above
+# --
+my $fa_file_for_analysis = undef; 
+my $blastn_rpn_fa_file = undef;
+if(! $do_blastn_cls) { 
+  $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
+}
+else { 
+  if(defined $rpn_fa_file) { 
+    # make copy with descriptions removed
+    $blastn_rpn_fa_file = $out_root . ".blastn.rpn.fa";
+    sqf_FastaFileRemoveDescriptions($rpn_fa_file, $blastn_rpn_fa_file, \%ofile_info_HH);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 1, 1, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
+    push(@to_remove_A, $blastn_rpn_fa_file);
+    $fa_file_for_analysis = $blastn_rpn_fa_file;
+  }
+  else { 
+    $fa_file_for_analysis = $blastn_in_fa_file;
+  }
+}  
+
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
-my $fa_file_for_analysis       = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file; # the fasta file we will analyze
+# this is independent of whether we are doing blastn or not because these 
+# are the seqfiles used for fetching not blastn analysis
 my $sqfile_for_analysis_R      = (defined $rpn_sqfile)  ? \$rpn_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
 my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (opt_Get("--r_cdsmpr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
 my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
