@@ -13,22 +13,44 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.shortdesc.fa va-shortdesc-iss4 > va-shortdesc-iss4.out
-desc: iss4-blastn-parse-shortdesc
+desc: iss4-opt_s-blastn-parse-shortdesc
 out: va-shortdesc-iss4/va-shortdesc-iss4.vadr.pass.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
 rmdir: va-shortdesc-iss4
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.longdesc.fa va-longdesc-iss4 > va-longdesc-iss4.out
-desc: iss4-blastn-parse-longdesc
+desc: iss4-opt_s-blastn-parse-longdesc
 out: va-longdesc-iss4/va-longdesc-iss4.vadr.pass.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
 rmdir: va-longdesc-iss4
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.shortname.fa va-shortname-iss4 > va-shortname-iss4.out
-desc: iss4-blastn-parse-shortname
+desc: iss4-opt_s-blastn-parse-shortname
 out: va-shortname-iss4/va-shortname-iss4.vadr.pass.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
 rmdir: va-shortname-iss4
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.longname.fa va-longname-iss4 > va-longname-iss4.out
-desc: iss4-blastn-parse-longname
+desc: iss4-opt_s-blastn-parse-longname
 out: va-longname-iss4/va-longname-iss4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-longname-iss4.vadr.pass.tbl
+rmdir: va-longname-iss4
+#########
+# same tests as above but with -r instead of -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.shortdesc.fa va-shortdesc-iss4 > va-shortdesc-iss4.out
+desc: iss4-opt_r-blastn-parse-shortdesc
+out: va-shortdesc-iss4/va-shortdesc-iss4.vadr.pass.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
+rmdir: va-shortdesc-iss4
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.longdesc.fa va-longdesc-iss4 > va-longdesc-iss4.out
+desc: iss4-opt_r-blastn-parse-longdesc
+out: va-longdesc-iss4/va-longdesc-iss4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
+rmdir: va-longdesc-iss4
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.shortname.fa va-shortname-iss4 > va-shortname-iss4.out
+desc: iss4-opt_r-blastn-parse-shortname
+out: va-shortname-iss4/va-shortname-iss4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
+rmdir: va-shortname-iss4
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -r -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.longname.fa va-longname-iss4 > va-longname-iss4.out
+desc: iss4-opt_r-blastn-parse-longname
+out: va-longname-iss4/va-longname-iss4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-longname-iss4.vadr.pass.tbl
 rmdir: va-longname-iss4
