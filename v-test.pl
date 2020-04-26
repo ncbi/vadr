@@ -242,18 +242,17 @@ my $overall_pass = ($nfail == 0) ? 1 : 0;
 ofile_OutputString($log_FH, 1, "#\n#\n");
 if($overall_pass) { 
   ofile_OutputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 }
 else { 
   ofile_OutputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesFail($total_seconds, $dir, \%ofile_info_HH);
   ofile_FAIL("ERROR, at least one test FAILed", 1, undef);
 }
-ofile_OutputString($log_FH, 1, sprintf("#\n"));
-
-$total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
 
 exit 0;
-
 #################################################################
 # Subroutine:  parse_test_file()
 # Incept:      EPN, Wed May 16 16:03:40 2018
