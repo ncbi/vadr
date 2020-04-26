@@ -22,3 +22,13 @@ desc: iss4-blastn-parse-longdesc
 out: va-longdesc-iss4/va-longdesc-iss4.vadr.pass.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
 rmdir: va-longdesc-iss4
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.shortname.fa va-shortname-iss4 > va-shortname-iss4.out
+desc: iss4-blastn-parse-shortname
+out: va-shortname-iss4/va-shortname-iss4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
+rmdir: va-shortname-iss4
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss4/noro.r1.longname.fa va-longname-iss4 > va-longname-iss4.out
+desc: iss4-blastn-parse-longname
+out: va-longname-iss4/va-longname-iss4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss4/va-iss4.vadr.pass.tbl
+rmdir: va-longname-iss4
