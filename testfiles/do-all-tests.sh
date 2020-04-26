@@ -14,6 +14,7 @@ for t in \
     do-seed-tests.sh \
     do-outaln-tests.sh \
     do-nindel-tests.sh \
+    github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
     if [ $? != 0 ]; then

@@ -872,7 +872,7 @@ if(exists $ofile_info_HH{"FH"}{"sgminfo"}) {
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 ###############
