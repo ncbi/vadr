@@ -9,14 +9,11 @@ use Getopt::Long;
 my $usage;
 $usage  = "testin2ncbi.pl\n\n";
 $usage .= "Usage:\n";
-$usage .= "\ttestin2ncbi.pl <v-test.pl .testin input file>\n";
-#$usage .= "\ttestin2ncbi.pl [OPTIONS]\n";
-#$usage .= "\t<v-test.pl .testin input file>\n";
+$usage .= "\ttestin2ncbi.pl [OPTIONS]\n";
+$usage .= "\t<v-test.pl .testin input file>\n";
 
-#my $do_tab    = 0;   # set to '1' if -t used
-#my $add_empty = "-"; # set to <s> if --empty <s>used
-#&GetOptions( "t"       => \$do_tab,
-#             "empty=s" => \$add_empty);
+my $do_noopts = 0;   # set to '1' if --noopts used
+&GetOptions( "noopts"  => \$do_noopts);
 
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($in_testin) = @ARGV;
@@ -52,9 +49,14 @@ for(my $i = 0; $i < $ncmd; $i++) {
   my $is_noro   = ($desc =~ /noro/)   ? 1 : 0;
   my $is_dengue = ($desc =~ /dengue/) ? 1 : 0;
 
-  my $short_cmd; 
-  if($cmd =~ /^perl \$VADRSCRIPTSDIR\/v-annotate.pl\s+(.+)$/) { 
-    $short_cmd = $1;
+  my $short_cmd = undef; # command without executable
+  my ($opts, $arg1, $arg2, $outfile); 
+  # commands need to be in a specific format, or else --noopts won't work
+  # we assume the final two args are the command line args (not options, for v-annotate.pl this will be fasta file and output dir)
+  # and that the output is piped to a file
+  if($cmd =~ /^perl \$VADRSCRIPTSDIR\/v-annotate.pl\s+(.+)\s+(\S+)\s+(\S+)\s+\>\s+(\S+)/) { 
+    ($opts, $arg1, $arg2, $outfile) = ($1, $2, $3, $4);
+    $short_cmd = sprintf("%s%s %s > %s", (($do_noopts) ? "" : $opts . " "), $arg1, $arg2, $outfile);
   }
   else { 
     die "ERROR unable to parse $cmd\n";
@@ -72,7 +74,13 @@ for(my $i = 0; $i < $ncmd; $i++) {
     }
   }
 
-  print "#" . $desc . "\n";
+  printf("#%s%s\n", $desc, ($do_noopts ? " (with all options removed)" : ""));
   #print $exec_path . "/" . $exec_name . " -- " . $short_cmd . "\n";
-  print $exec_name . " -- " . $short_cmd . "\n";
+
+  if($do_noopts) { 
+    print $exec_name . " " .  $short_cmd . "\n";
+  }
+  else { 
+    print $exec_name . " -- " . $short_cmd . "\n";
+  }
 }

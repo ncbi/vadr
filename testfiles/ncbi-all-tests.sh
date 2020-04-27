@@ -1,12 +1,12 @@
+### tests from .testin file dengue.r5.local.testin
+#annotate-dengue-5-local (with all options removed)
+vadr_dengue $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue.r5 > va-dengue.r5.out
+### tests from .testin file noro.r10.local.testin
+#annotate-noro-10-local (with all options removed)
+vadr_noro $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro.r10 > va-noro.r10.out
 ### tests from .testin file dengue.r5.hmmer.testin
 #annotate-dengue-5-hmmer
 vadr_noro -- -f --hmmer --alicheck --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue-hmmer.r5 > va-dengue-hmmer.r5.out
-### tests from .testin file dengue.r5.local.testin
-#annotate-dengue-5-local
-vadr_dengue -- -f --alicheck $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue.r5 > va-dengue.r5.out
-### tests from .testin file dengue.r5.parallel.testin
-#annotate-dengue-5-parallel
-vadr_dengue -- -p -f --alicheck $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue.r5 > va-dengue.r5.out
 ### tests from .testin file dengue.r5.rpn.testin
 #annotate-dengue-5-rpn
 vadr_noro -- -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn.r5 > va-dengue-rpn.r5.out
@@ -47,12 +47,6 @@ vadr_noro -- --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCR
 ### tests from .testin file noro.r10.hmmer.testin
 #annotate-noro-10-hmmer
 vadr_noro -- -f --hmmer --alicheck --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-hmmer.r10 > va-noro-hmmer.r10.out
-### tests from .testin file noro.r10.local.testin
-#annotate-noro-10-local
-vadr_noro -- -f --alicheck $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro.r10 > va-noro.r10.out
-### tests from .testin file noro.r10.parallel.testin
-#annotate-noro-10-local
-vadr_noro -- --alicheck -p -f $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro.r10 > va-noro.r10.out
 ### tests from .testin file noro.r10.rpn.testin
 #annotate-noro-10-rpn
 vadr_noro -- --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn.r10 > va-noro-rpn.r10.out
