@@ -230,6 +230,7 @@ opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                            help-output    
 opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
+opt_Add("--nocdstrim",    "boolean",  0,        $g,    undef,   undef,      "in feature table, do not trim start/end coordinates of CDS due to Ns",    "in feature table, do not trim start/end coordinates of CDS due to Ns",   \%opt_HH, \@opt_order_A);
 opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
 opt_Add("--forceid",      "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
 
@@ -355,6 +356,7 @@ my $options_okay =
                 'mdir=s'        => \$GetOptions_H{"--mdir"}, 
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
+                "nocdstrim"     => \$GetOptions_H{"--nocdstrim"},
                 "noprotid"      => \$GetOptions_H{"--noprotid"},
                 "forceid"       => \$GetOptions_H{"--forceid"},
 # options for controlling alert thresholds
@@ -1490,7 +1492,7 @@ exit 0;
 # output_parent_child_relationships 
 # helper_ftable_coords_from_nt_prediction 
 # helper_ftable_coords_prot_only_prediction 
-# helper_ftable_start_stop_arrays_to_coords 
+# helper_ftable_start_stop_strand_arrays_to_coords 
 # helper_ftable_coords_to_out_str 
 # helper_ftable_add_qualifier_from_ftr_info
 # helper_ftable_add_qualifier_from_ftr_results
@@ -4339,7 +4341,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         $ftr_results_HR->{"n_3trunc"}  = $ftr_is_3trunc;
         $ftr_results_HR->{"n_5nambig"} = $ftr_5nambig;
         $ftr_results_HR->{"n_3nambig"} = $ftr_3nambig;
-        $ftr_results_HR->{"n_len"}    = $ftr_len;
+        $ftr_results_HR->{"n_len"}     = $ftr_len;
         utl_HDump("ftr_results{$seq_name}[$ftr_idx]", $ftr_results_HR, *STDOUT);
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
@@ -6991,11 +6993,13 @@ sub output_tabular {
               $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
             }
             my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
-            if((defined $ftr_results_HR->{"n_5trunc"}) && ($ftr_results_HR->{"n_5trunc"})) { 
+            if(((defined $ftr_results_HR->{"n_5trunc"})  && ($ftr_results_HR->{"n_5trunc"})) ||      # feature is 5' truncated due to sequence end
+               ((defined $ftr_results_HR->{"n_5nambig"}) && ($ftr_results_HR->{"n_5nambig"} > 0))) { # feature starts with >= 1 N
               $seq_nftr_5trunc++; 
             }
-            if((defined $ftr_results_HR->{"n_3trunc"}) && ($ftr_results_HR->{"n_3trunc"})) { 
-              $seq_nftr_3trunc++; 
+            if(((defined $ftr_results_HR->{"n_3trunc"})  && ($ftr_results_HR->{"n_3trunc"})) ||      # feature is 3' truncated due to sequence end
+               ((defined $ftr_results_HR->{"n_3nambig"}) && ($ftr_results_HR->{"n_3nambig"} > 0))) { # feature ends with >= 1 N
+               $seq_nftr_3trunc++; 
             }
             
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 1, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
@@ -7307,11 +7311,26 @@ sub helper_tabular_ftr_results_trunc_string {
      ($ftr_results_HR->{"n_3trunc"})) { 
     return "5'&3'";
   }
-  if($ftr_results_HR->{"n_5trunc"}) { 
+  elsif($ftr_results_HR->{"n_5trunc"}) { 
     return "5'";
   }
-  if($ftr_results_HR->{"n_3trunc"}) { 
-    return "3'";
+  else { 
+    # not 5' or 3' truncated by the sequence terminii
+    # check if it has Ns at the beginning or ends
+    if((! defined $ftr_results_HR->{"n_5nambig"}) ||
+       (! defined $ftr_results_HR->{"n_3nambig"})) { 
+      return "no";
+    }
+    elsif(($ftr_results_HR->{"n_5nambig"} > 0) && 
+          ($ftr_results_HR->{"n_3nambig"} > 0)) { 
+      return "N5'[" . $ftr_results_HR->{"n_5nambig"} . "]&N3'[" . $ftr_results_HR->{"n_3nambig"} . "]";
+    }
+    elsif($ftr_results_HR->{"n_5nambig"} > 0) { 
+      return "N5'[" . $ftr_results_HR->{"n_5nambig"} . "]";
+    }
+    elsif($ftr_results_HR->{"n_3nambig"} > 0) { 
+      return "N3'[" . $ftr_results_HR->{"n_3nambig"} . "]";
+    }
   }
   return "no";
 }
@@ -7346,10 +7365,10 @@ sub helper_tabular_sgm_results_trunc_string {
      ($sgm_results_HR->{"3trunc"})) { 
     return "5'&3'";
   }
-  if($sgm_results_HR->{"5trunc"}) { 
+  elsif($sgm_results_HR->{"5trunc"}) { 
     return "5'";
   }
-  if($sgm_results_HR->{"3trunc"}) { 
+  elsif($sgm_results_HR->{"3trunc"}) { 
     return "3'";
   }
   return "no";
@@ -7386,7 +7405,7 @@ sub helper_tabular_replace_spaces {
 # output_parent_child_relationships 
 # helper_ftable_coords_from_nt_prediction 
 # helper_ftable_coords_prot_only_prediction 
-# helper_ftable_start_stop_arrays_to_coords 
+# helper_ftable_start_stop_strand_arrays_to_coords 
 # helper_ftable_coords_to_out_str 
 # helper_ftable_add_qualifier_from_ftr_info
 # helper_ftable_add_qualifier_from_ftr_results
@@ -7444,9 +7463,10 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
-  my $do_nomisc   = opt_Get("--nomisc",   $opt_HHR); # 1 to never output misc_features
-  my $do_noprotid = opt_Get("--noprotid", $opt_HHR); # 1 to never output protein_id qualifiers
-  my $do_forceid  = opt_Get("--forceid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_nomisc    = opt_Get("--nomisc",   $opt_HHR); # 1 to never output misc_features
+  my $do_nocdstrim = opt_Get("--nocdstrim", $opt_HHR); # 1 to never modify cds coords due to Ns
+  my $do_noprotid  = opt_Get("--noprotid", $opt_HHR); # 1 to never output protein_id qualifiers
+  my $do_forceid   = opt_Get("--forceid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
 
   # determine order of alert codes to print
   my $alt_code;
@@ -7514,8 +7534,12 @@ sub output_feature_table {
         if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
 
           # initialize
-          my $is_5trunc               = 0;  # '1' if this feature is truncated at the 3' end
-          my $is_3trunc               = 0;  # '1' if this feature is truncated at the 3' end
+          my $is_5trunc_term          = 0;  # '1' if this feature is truncated at the 5' end due to sequence terminii
+          my $is_3trunc_term          = 0;  # '1' if this feature is truncated at the 3' end due to sequence terminii
+          my $N_5trunc                = 0;  # number of consecutive Ns at 5' end of feature
+          my $N_3trunc                = 0;  # number of consecutive Ns at 3' end of feature
+          my $is_5trunc_either        = 0;  # '1' if this feature is truncated at the 5' end due to sequence terminii OR >=1 N at 5' end
+          my $is_3trunc_either        = 0;  # '1' if this feature is truncated at the 3' end due to sequence terminii OR >=1 N at 3' end
           my $is_misc_feature         = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
           my $is_skipped_misc_feature = 0;  # '1' if this feature *would be* a misc_feature due to alert(s) but --nomisc prevents it
           my $ftr_coords_str          = ""; # string of coordinates for this feature
@@ -7535,17 +7559,30 @@ sub output_feature_table {
           my $feature_type      = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
           my $orig_feature_type = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
           
+          # determine if feature is 5' and/or 3' truncated
+          # this can either be due to sequence ending in the middle of the feature
+          # or because feature begins or ends with >=1 Ns (unless --nocdstrim is enabled)
+          $is_5trunc_term = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"})  ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"} : 0;
+          $is_3trunc_term = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"})  ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"} : 0;
+          if(opt_Get("--nocdstrim", $opt_HHR)) { 
+            $N_5trunc = 0;
+            $N_3trunc = 0;
+          }
+          else { 
+            $N_5trunc = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nambig"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nambig"} : 0;
+            $N_3trunc = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3nambig"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3nambig"} : 0;
+          }
+          $is_5trunc_either = ($is_5trunc_term || ($N_5trunc > 0)) ? 1 : 0;
+          $is_3trunc_either = ($is_3trunc_term || ($N_3trunc > 0)) ? 1 : 0;
           # determine coordinates for the feature
-          $is_5trunc = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"} : 0;
-          $is_3trunc = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"} : 0;
           if(! $defined_n_start) { 
             # $defined_p_start must be TRUE
-            $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
-                                                                        $ftr_results_HAHR, $FH_HR);
+            $ftr_coords_str = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $is_5trunc_either, $is_3trunc_either, $N_5trunc, $N_3trunc, 
+                                                                        \$min_coord, $ftr_results_HAHR, $FH_HR);
           }
           else { # $defined_n_start is '1'
-            $ftr_coords_str = helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, \$min_coord, 
-                                                                      $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
+            $ftr_coords_str = helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $is_5trunc_either, $is_3trunc_either, $N_5trunc, $N_3trunc,
+                                                                      \$min_coord, $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
           
           # fill an array and strings with all alerts for this sequence/feature combo
@@ -7608,7 +7645,7 @@ sub output_feature_table {
                 }
                 # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
               } 
-              if($is_5trunc) { # only add the codon_start if we are 5' truncated
+              if($is_5trunc_either) { # only add the codon_start if we are 5' truncated
                 $ftr_out_str .= $tmp_str;
               }
             }
@@ -7641,8 +7678,8 @@ sub output_feature_table {
           
           # push to the output hash
           %{$ftout_AH[$ftidx]} = ();
-          $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc;
-          $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc;
+          $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc_either;
+          $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc_either;
           $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
           $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
           $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
@@ -7734,6 +7771,8 @@ sub output_feature_table {
 #  $ftr_idx:           feature index
 #  $is_5trunc:         '1' if feature is 5' truncated, else '0'
 #  $is_3trunc:         '1' if feature is 3' truncated, else '0'
+#  $N_5trunc:          number of consecutive Ns at 5' end of feature
+#  $N_3trunc:          number of consecutive Ns at 3' end of feature
 #  $ret_min_coord:     REF to minimum coordinate, to fill
 #  $ftr_info_AHR:      REF to array of hashes with information on the features, PRE-FILLED
 #  $sgm_results_HAHR:  REF to segment results HAH, PRE-FILLED
@@ -7742,25 +7781,27 @@ sub output_feature_table {
 # Returns:    A string that gives the coordinates for the seq_idx/ftr_idx
 #             pair in feature table format, or "" if no predictions exist.
 #
-# Dies:       Never
+# Dies:       If $N_{5,3}trunc is > 0 and corresponding strand is not "+" or "-"
 ################################################################# 
 sub helper_ftable_coords_from_nt_prediction { 
   my $sub_name = "helper_ftable_coords_from_nt_prediction";
-  my $nargs_exp = 8;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_info_AHR, $sgm_results_HAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $N_5trunc, $N_3trunc, $ret_min_coord, $ftr_info_AHR, $sgm_results_HAHR, $FH_HR) = @_;
 
-  my @start_A = ();
-  my @stop_A  = ();
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
   
   for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
     if(defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}) { 
-      push(@start_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
-      push(@stop_A,  $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
+      push(@start_A,  $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"});
+      push(@stop_A,   $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"});
+      push(@strand_A, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"});
     }
   }
-  return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR);
+  return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, $is_5trunc, $is_3trunc, $N_5trunc, $N_3trunc, $ret_min_coord, $FH_HR);
 }
 
 #################################################################
@@ -7778,6 +7819,8 @@ sub helper_ftable_coords_from_nt_prediction {
 #  $ftr_idx:          feature index
 #  $is_5trunc:        '1' if feature is 5' truncated, else '0'
 #  $is_3trunc:        '1' if feature is 3' truncated, else '0'
+#  $N_5trunc:         number of consecutive Ns at 5' end of feature
+#  $N_3trunc:         number of consecutive Ns at 3' end of feature
 #  $ret_min_coord:    REF to minimum coordinate, to fill
 #  $ftr_results_HAHR: REF to feature results AAH, PRE-FILLED
 #  $FH_HR:            REF to hash of file handles
@@ -7786,13 +7829,14 @@ sub helper_ftable_coords_from_nt_prediction {
 #             pair in feature table format.
 #
 # Dies:       if p_start or p_stop does not exist in the ftr_results_HAHR->{$seq_name}[$ftr_idx] hash
+#             If $N_{5,3}trunc is > 0 and corresponding strand is not "+" or "-"
 ################################################################# 
 sub helper_ftable_coords_prot_only_prediction { 
   my $sub_name = "helper_ftable_coords_prot_only_prediction";
-  my $nargs_exp = 7;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $ret_min_coord, $ftr_results_HAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $is_5trunc, $is_3trunc, $N_5trunc, $N_3trunc, $ret_min_coord, $ftr_results_HAHR, $FH_HR) = @_;
 
   # NOTE: for 'indfantp' alerts, the p_start and p_stop are always set at the feature level
   if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ||
@@ -7800,14 +7844,15 @@ sub helper_ftable_coords_prot_only_prediction {
     ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_start|p_stop} does not exists", 1, $FH_HR);
   }
 
-  my @start_A = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"});
-  my @stop_A  = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"});
+  my @start_A  = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"});
+  my @stop_A   = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"});
+  my @strand_A = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"});
 
-  return helper_ftable_start_stop_arrays_to_coords(\@start_A, \@stop_A, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR);
+  return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, $is_5trunc, $is_3trunc, $N_5trunc, $N_3trunc, $ret_min_coord, $FH_HR);
 }
 
 #################################################################
-# Subroutine:  helper_ftable_start_stop_arrays_to_coords()
+# Subroutine:  helper_ftable_start_stop_strand_arrays_to_coords()
 # Incept:      EPN, Tue Oct 30 12:39:59 2018
 #
 # Purpose:    Given refs to two arrays of start and stop coordinates,
@@ -7816,8 +7861,11 @@ sub helper_ftable_coords_prot_only_prediction {
 # Arguments: 
 #  $start_AR:      REF to array of start coordinates
 #  $stop_AR:       REF to array of stop coordinates
+#  $strand_AR:     REF to array of strands
 #  $is_5trunc:     '1' to do carrot for first start
 #  $is_3trunc:     '1' to do carrot for final stop
+#  $N_5trunc:      number of consecutive Ns at 5' end of feature
+#  $N_3trunc:      number of consecutive Ns at 3' end of feature
 #  $ret_min_coord: REF to minimum coordinate, to fill
 #  $FH_HR:         REF to hash of file handles
 #
@@ -7827,14 +7875,15 @@ sub helper_ftable_coords_prot_only_prediction {
 # Dies: if either @{$start_AR} or @{$stop_AR} are empty
 #       if @{$start_AR} and @{$stop_AR} are different sizes
 #       if $start_AR->[$i] and/or $stop_AR->[$i] eq "?"
+#       if $N_{5,3}trunc is > 0 and corresponding strand is not "+" or "-"
 #
 ################################################################# 
-sub helper_ftable_start_stop_arrays_to_coords { 
-  my $sub_name = "helper_ftable_start_stop_arrays_to_coords";
-  my $nargs_exp = 6;
+sub helper_ftable_start_stop_strand_arrays_to_coords { 
+  my $sub_name = "helper_ftable_start_stop_strand_arrays_to_coords";
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($start_AR, $stop_AR, $is_5trunc, $is_3trunc, $ret_min_coord, $FH_HR) = @_;
+  my ($start_AR, $stop_AR, $strand_AR, $is_5trunc, $is_3trunc, $N_5trunc, $N_3trunc, $ret_min_coord, $FH_HR) = @_;
 
   my $ret_coords_str = "";
   my $ncoord = scalar(@{$start_AR});
@@ -7848,8 +7897,19 @@ sub helper_ftable_start_stop_arrays_to_coords {
   for(my $c = 0; $c < $ncoord; $c++) { 
     my $is_first = ($c == 0)           ? 1 : 0;
     my $is_final = ($c == ($ncoord-1)) ? 1 : 0;
-    my $start = $start_AR->[$c];
-    my $stop  = $stop_AR->[$c];
+    my $start  = $start_AR->[$c];
+    my $stop   = $stop_AR->[$c];
+    my $strand = $strand_AR->[$c];
+    if($is_first && ($N_5trunc > 0)) { 
+      if   ($strand eq "+") { $start += $N_5trunc; }
+      elsif($strand eq "-") { $start -= $N_5trunc; }
+      else { ofile_FAIL("ERROR in $sub_name, strand is not + or - and N_5trunc is not 0", 1, $FH_HR); }
+    }
+    if($is_final && ($N_3trunc > 0)) { 
+      if   ($strand eq "+") { $stop -= $N_3trunc; }
+      elsif($strand eq "-") { $stop += $N_3trunc; }
+      else { ofile_FAIL("ERROR in $sub_name, strand is not + or - and N_3trunc is not 0", 1, $FH_HR); }
+    }
     if((! defined $min_coord) || ($start < $min_coord)) { $min_coord = $start; }
     if((! defined $min_coord) || ($stop  < $min_coord)) { $min_coord = $stop;  }
     $ret_coords_str .= sprintf("%s%d\t%s%d\n", 
