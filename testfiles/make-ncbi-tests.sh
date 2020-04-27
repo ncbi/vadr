@@ -5,7 +5,7 @@ for a in \
 dengue.r5.local \
 noro.r10.local \
 ; do 
-    perl $VADRSCRIPTSDIR/testfiles/testin2ncbi.pl --noopts $VADRSCRIPTSDIR/testfiles/$a.testin
+    perl $VADR_BB_TEST_DIR/regression_tests/testin2ncbi.pl --noopts $VADRSCRIPTSDIR/testfiles/$a.testin
 done
 
 # add the testsuite tests, keeping options 
@@ -23,7 +23,7 @@ noro.r10.rpn \
 noro.r10.seed \
 noro.r3.outaln \
 ; do 
-    perl $VADRSCRIPTSDIR/testfiles/testin2ncbi.pl $VADRSCRIPTSDIR/testfiles/$a.testin
+    perl $VADR_BB_TEST_DIR/regression_tests/testin2ncbi.pl $VADRSCRIPTSDIR/testfiles/$a.testin
 done
 
 
