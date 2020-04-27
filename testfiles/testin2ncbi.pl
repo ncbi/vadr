@@ -12,8 +12,10 @@ $usage .= "Usage:\n";
 $usage .= "\ttestin2ncbi.pl [OPTIONS]\n";
 $usage .= "\t<v-test.pl .testin input file>\n";
 
-my $do_noopts = 0;   # set to '1' if --noopts used
-&GetOptions( "noopts"  => \$do_noopts);
+my $do_noopts = 0;
+my $opt_execname = undef;
+&GetOptions( "noopts"     => \$do_noopts,
+             "execname=s" => \$opt_execname);
 
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($in_testin) = @ARGV;
@@ -62,25 +64,33 @@ for(my $i = 0; $i < $ncmd; $i++) {
     die "ERROR unable to parse $cmd\n";
   }
 
-  # default to vadr_noro unless model directory is not supplied and dengue is in the desc
-  my $exec_name = "vadr_noro";
-  if(($short_cmd !~ /\-\-mdir/) && 
-     (($short_cmd !~ /\-m /) || ($short_cmd !~ /\-i /))) { # model directory not specified
-    if($is_dengue) { 
-      $exec_name = "vadr_dengue";
-    }      
-    elsif(! $is_noro) { 
-      die "ERROR in $in_testin, no --mdir option but desc does not have noro or dengue for desc: $desc and cmd:$cmd\n";
+  # determine name of executable (e.g. vadr_noro)
+  # if --execname was used, use that
+  my $execname = undef;
+  if(defined $opt_execname) { 
+    $execname = $opt_execname;
+  }
+  else { 
+    # default to vadr_noro unless model directory is not supplied and dengue is in the desc
+    $execname = "vadr_noro";
+    if(($short_cmd !~ /\-\-mdir/) && 
+       (($short_cmd !~ /\-m /) || ($short_cmd !~ /\-i /))) { # model directory not specified
+      if($is_dengue) { 
+        $execname = "vadr_dengue";
+      }      
+      elsif(! $is_noro) { 
+        die "ERROR in $in_testin, no --mdir option but desc does not have noro or dengue for desc: $desc and cmd:$cmd\n";
+      }
     }
   }
 
   printf("#%s%s\n", $desc, ($do_noopts ? " (with all options removed)" : ""));
-  #print $exec_path . "/" . $exec_name . " -- " . $short_cmd . "\n";
+  #print $exec_path . "/" . $execname . " -- " . $short_cmd . "\n";
 
   if($do_noopts) { 
-    print $exec_name . " " .  $short_cmd . "\n";
+    print $execname . " " .  $short_cmd . "\n";
   }
   else { 
-    print $exec_name . " -- " . $short_cmd . "\n";
+    print $execname . " -- " . $short_cmd . "\n";
   }
 }

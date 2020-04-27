@@ -24,9 +24,9 @@ vadr_noro -- --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 -
 vadr_noro -- --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs3.fa va-entoy100a-fs3 > va-entoy100a-fs3.out
 ### tests from .testin file entoy100a-nindel.testin
 #annotate-entoy100a-nindel
-vadr_noro -- -f --nmaxdel 1 --nmaxins 2 --alicheck --minpvlen 3 --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2-nindel > va-entoy100a-fs2-nindel.out
+vadr_noro -- -f --nmaxdel 1 --nmaxins 2 --alicheck --xminntlen 3 --skipblast --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2-nindel > va-entoy100a-fs2-nindel.out
 #annotate-entoy100a-nindel-nmaxins_exc
-vadr_noro -- -f --nmaxdel 1 --nmaxins 2 --alicheck --minpvlen 3 --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.nmaxins_exc.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2-nindel-nmaxins_exc > va-entoy100a-fs2-nindel-nmaxins_exc.out
+vadr_noro -- -f --nmaxdel 1 --nmaxins 2 --alicheck --xminntlen 3 --skipblast -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.nmaxins_exc.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2-nindel-nmaxins_exc > va-entoy100a-fs2-nindel-nmaxins_exc.out
 ### tests from .testin file entoy100a-rev-fs.testin
 #annotate-entoy100a-rev-fs1
 vadr_noro -- --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-rev-fs1.fa va-entoy100a-rev-fs1 > va-entoy100a-rev-fs1.out
