@@ -7459,6 +7459,8 @@ sub output_feature_table {
   print $alerts_FH "#sequence\terror\tfeature\terror-description\n";
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
+  my $mdl_name = undef;
+  my $ftr_idx = undef;
 
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
@@ -7488,17 +7490,12 @@ sub output_feature_table {
   # NOTE: $qval_sep == ':GPSEP:' is hard-coded value for separating multiple qualifier values for the same 
   # qualifier (see vadr.pm::vdr_GenBankStoreQualifierValue)
 
-  my %ftr_min_len_HA = (); # hash of arrays with minimum valid length per model/feature, 1D keys are model names, 2D elements are feature indices
-  my $mdl_name = undef;
-  my $ftr_idx = undef;
-  foreach $mdl_name (sort keys (%{$mdl_cls_ct_HR})) { 
-    my $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
-    @{$ftr_min_len_HA{$mdl_name}} = ();
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      $ftr_min_len_HA{$mdl_name}[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_HAHR->{$mdl_name}, $ftr_idx)) ?
-          opt_Get("--minpvlen", $opt_HHR) : 1;
-    }
-  }
+  # two hash of arrays 1D keys: model names, values are arrays
+  # we only fill these for each model as we need it, so as not 
+  # to wastefully fill these for models for which no seqs have been assigned
+  my %ftr_min_len_HA     = (); # hash of arrays with minimum valid length per model/feature, 1D keys are model names, 2D elements are feature indices
+  my %ftr_n_truncable_HA = (); # hash of arrays with info on whether each feature can be truncated due to Ns ("n_5nambig" and "n_3nambig") or not
+                               # this depends on feature type and parent feature type, 1D keys are model names, 2D elements are feature indices
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -7529,6 +7526,22 @@ sub output_feature_table {
       # variables related to protein_id qualifiers for CDS and mat_peptides
       my $nprotein_id = 0; # index of protein_id qualifier, incremented as they are added
       my %ftr_idx2protein_id_idx_H = (); # key is a feature index that is a CDS, value is protein_id index for that feature
+
+      # fill @{$ftr_min_len_HA{$mdl_name}} and @{$ftr_n_truncable_HA{$mdl_name}} for this model, if they're not already filled
+      if(! defined $ftr_min_len_HA{$mdl_name}) { 
+        @{$ftr_min_len_HA{$mdl_name}}     = ();
+        @{$ftr_n_truncable_HA{$mdl_name}} = ();
+        for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+          my $parent_ftr_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx);
+          $ftr_min_len_HA{$mdl_name}[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) ?
+              opt_Get("--minpvlen", $opt_HHR) : 1;
+          $ftr_n_truncable_HA{$mdl_name}[$ftr_idx] = 0;
+          $ftr_n_truncable_HA{$mdl_name}[$ftr_idx] = 
+              ((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) || # feature type is CDS
+               (($parent_ftr_idx != -1) && (vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx)))) # parent feature type is CDS
+              ? 1 : 0;
+        }
+      }
 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
@@ -7564,7 +7577,9 @@ sub output_feature_table {
           # or because feature begins or ends with >=1 Ns (unless --nocdstrim is enabled)
           $is_5trunc_term = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"})  ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"} : 0;
           $is_3trunc_term = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"})  ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"} : 0;
-          if(opt_Get("--nocdstrim", $opt_HHR)) { 
+          if((opt_Get("--nocdstrim", $opt_HHR)) || (! $ftr_n_truncable_HA{$mdl_name}[$ftr_idx])) { 
+            # only allow truncation of start/stop due to Ns if --nocdstrim not used and 
+            # feature is CDS or its parent is CDS (see filling of @{$ftr_n_truncable_HA{$mdl_name} above)
             $N_5trunc = 0;
             $N_3trunc = 0;
           }
