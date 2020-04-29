@@ -293,6 +293,7 @@ opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum l
 opt_Add("--r_minfract",      "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in subseq to trigger replacement is <x>",            "minimum fraction of Ns in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
 opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",        "detect CDS and MP alerts in sequences w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
+opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs", \%opt_HH, \@opt_order_A);
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
@@ -406,6 +407,7 @@ my $options_okay =
                 'r_minfract=s'  => \$GetOptions_H{"--r_minfract"},
                 'r_fetchr'      => \$GetOptions_H{"--r_fetchr"},
                 'r_cdsmpr'      => \$GetOptions_H{"--r_cdsmpr"},
+                'r_pvorig'      => \$GetOptions_H{"--r_pvorig"},
                 'r_prof'        => \$GetOptions_H{"--r_prof"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
@@ -952,8 +954,9 @@ else {
 # this is independent of whether we are doing blastn or not because these 
 # are the seqfiles used for fetching not blastn analysis
 my $sqfile_for_analysis_R      = (defined $rpn_sqfile)  ? \$rpn_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
-my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (opt_Get("--r_cdsmpr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
-my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
+my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (opt_Get("--r_cdsmpr", \%opt_HH)))   ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
+my $sqfile_for_pv_R            = ((defined $rpn_sqfile) && (! opt_Get("--r_pvorig", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from for protein validation
+my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH)))   ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
 
 # determine if we need to create separate files with cds seqs for the protein validation stage
 # if -r and we replaced at least one sequence, we do (actually, for some combinations of 
@@ -1193,7 +1196,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
 
     # fetch the features and add alerts pertaining to CDS and mature peptides
-    fetch_features_and_add_cds_and_mp_alerts($$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, 
+    fetch_features_and_add_cds_and_mp_alerts($$sqfile_for_cds_mp_alerts_R, $$sqfile_for_output_fastas_R, $$sqfile_for_pv_R,
                                              $do_separate_cds_fa_files_for_protein_validation,
                                              $mdl_name, $mdl_tt, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
@@ -4006,10 +4009,12 @@ sub cmalign_store_overflow {
 #            and fetch the corrected feature.
 #
 # Arguments:
-#  $sqfile_for_cds_mp_alerts:  REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
-#                              that we'll fetch CDS and mat_peptides from and analyze for possible alerts 
-#  $sqfile_for_output_fastas:  REF to Bio::Easel::SqFile object, open sequence file containing the *original* 
+#  $sqfile_for_cds_mp_alerts:  REF to Bio::Easel::SqFile object, open sequence file with sequences
+#                              to fetch CDS and mat_peptides from to analyze for possible alerts 
+#  $sqfile_for_output_fastas:  REF to Bio::Easel::SqFile object, open sequence file with sequences
 #                              that we'll fetch feature sequences from to output to per-feature fasta files
+#  $sqfile_for_pv:             REF to Bio::Easel::SqFile object, open sequence file with sequences
+#                              that we'll fetch feature sequences from for protein validation
 #  $do_separate_cds_fa_files:  '1' to output two sets of cds files, one with fetched features from $sqfile_for_output_fastas
 #                              and one for the protein validation stage fetched from $sqfile_for_cds_mp_alerts
 #  $mdl_tt:                    the translation table ('1' for standard)
@@ -4032,10 +4037,10 @@ sub cmalign_store_overflow {
 #################################################################
 sub fetch_features_and_add_cds_and_mp_alerts { 
   my $sub_name = "fetch_features_and_add_cds_and_mp_alerts";
-  my $nargs_exp = 16;
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, 
+  my ($sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
       $do_separate_cds_fa_files, $mdl_name, $mdl_tt, 
       $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
@@ -4057,6 +4062,12 @@ sub fetch_features_and_add_cds_and_mp_alerts {
     $ftr_outroot_A[$ftr_idx]  = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, "#");
   }
 
+  my $sqfile_for_cds_mp_alerts_path = $sqfile_for_cds_mp_alerts->path;
+  my $sqfile_for_output_fastas_path = $sqfile_for_output_fastas->path;
+  my $sqfile_for_pv_path            = $sqfile_for_pv->path;
+
+  
+
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
     my $seq_len  = $seq_len_HR->{$seq_name};
@@ -4069,6 +4080,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $ftr_type_idx     = $ftr_fileroot_A[$ftr_idx];
       my $ftr_sqstring_alt = ""; # fetched from sqfile_for_cds_mp_alerts
       my $ftr_sqstring_out = ""; # fetched from sqfile_for_output_fastas
+      my $ftr_sqstring_pv  = ""; # fetched from sqfile_for_pv
       my $ftr_seq_name = undef;
       my @ftr2org_pos_A = (); # [1..$ftr_pos..$ftr_len] original sequence position that corresponds to this position in the feature
       $ftr2org_pos_A[0] = -1; # invalid
@@ -4137,10 +4149,37 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             $ftr_strand = "!";
           }
           
-          # update $ftr_sqstring_alt, $ftr_sqstring_out, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
+          # update $ftr_sqstring_alt, $ftr_sqstring_out, $ftr_sqstring_pv, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
           my $sgm_len = abs($stop - $start) + 1;
-          $ftr_sqstring_alt .= $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
-          $ftr_sqstring_out .= $sqfile_for_output_fastas->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+
+          ###############
+          # fetch the sequence string, only do this when nec, some files may be identical and we take advantage of that
+          # alt
+          my $cur_ftr_sqstring_alt = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          $ftr_sqstring_alt .= $cur_ftr_sqstring_alt;
+
+          # out
+          my $cur_ftr_sqstring_out = undef;
+          if($sqfile_for_output_fastas_path eq $sqfile_for_cds_mp_alerts_path) { # no need to fetch again
+            $ftr_sqstring_out .= $cur_ftr_sqstring_alt;
+          }
+          else { # fetch
+            $cur_ftr_sqstring_out = $sqfile_for_output_fastas->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+            $ftr_sqstring_out .= $cur_ftr_sqstring_out;
+          }
+
+          # pv
+          if($sqfile_for_pv_path eq $sqfile_for_cds_mp_alerts_path) { # no need to fetch again
+            $ftr_sqstring_pv .= $cur_ftr_sqstring_alt;
+          }
+          elsif($sqfile_for_pv_path eq $sqfile_for_output_fastas_path) { # no need to fetch again
+            $ftr_sqstring_pv .= $cur_ftr_sqstring_out;
+          }
+          else { 
+            $ftr_sqstring_pv .= $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          }
+          ###############
+
           if(! defined $ftr_seq_name) { 
             $ftr_seq_name = $seq_name . "/" . $ftr_type_idx . "/"; 
           }
@@ -4178,7 +4217,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             push(@{$to_remove_AR}, $separate_cds_fa_file);
           }
           print { $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
-                                                                seq_SqstringAddNewlines($ftr_sqstring_alt, 60) . "\n"); 
+                                                                seq_SqstringAddNewlines($ftr_sqstring_pv, 60) . "\n"); 
         }
         
         # deal with mutstart for all CDS that are not 5' truncated
