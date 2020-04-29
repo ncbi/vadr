@@ -114,6 +114,7 @@ require "sqp_utils.pm";
 # vdr_CoordsSegmentOverlap()
 # vdr_CoordsRelativeToAbsolute()
 # vdr_CoordsRelativeSegmentToAbsolute()
+# vdr_CoordsRelativeSingleCoordToAbsolute()
 # vdr_CoordsProteinRelativeToAbsolute()
 # vdr_CoordsProteinToNucleotide()
 # vdr_CoordsMergeAllAdjacentSegments()
@@ -2956,7 +2957,7 @@ sub vdr_CoordsRelativeToAbsolute {
 #
 # Synopsis: Return absolute nucleotide coordinates that correspond to
 #           the relative nucleotide coordinates segment in <$rel_coords_tok>.
-#           with nucleotide sequence with absolute coords <$abs_coords>.
+#           within nucleotide sequence with absolute coords <$abs_coords>.
 #
 #           Examples:
 # 
@@ -3055,6 +3056,53 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
 
   # printf("in $sub_name, returning $ret_coords\n");
   return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsRelativeSingleCoordToAbsolute()
+#
+# Incept:     EPN, Wed Apr 29 06:27:45 2020
+#
+# Synopsis: Return absolute nucleotide coordinate that corresponds to
+#           a single relative nucleotide coordinate <$rel_coord>.
+#           within nucleotide sequence with absolute coords <$abs_coords>.
+#           Single relative coordinate $rel_coord strand is irrelevant
+#           because it is a single position.
+#
+#           Examples:
+# 
+#           abs_coords     rel_coord   returns
+#           "11..100:+"    "6"         "16"
+#           "11..100:+"    "38"        "48"     
+#
+# Arguments:
+#  $abs_coords:     nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_coord:      relative nucleotide coordinate
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Absolute coordinate corresponding to $rel_coord.
+#
+# Dies: if $rel_coord is longer than total length of absolute coords
+#
+#################################################################
+sub vdr_CoordsRelativeSingleCoordToAbsolute { 
+  my $sub_name = "vdr_CoordsRelativeSingleCoordToAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($abs_coords, $rel_coord, $FH_HR) = @_;
+
+  printf("in $sub_name, abs_coords: $abs_coords, rel_coord: $rel_coord\n");
+
+  my $ret_coords = vdr_CoordsRelativeSegmentToAbsolute($abs_coords, vdr_CoordsSegmentCreate($rel_coord, $rel_coord, "+", $FH_HR), $FH_HR);
+  if($ret_coords =~ /^(\d+)\.\.\d+/) { 
+    return $1;
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, problem converting relative coordinate $rel_coord to absolute coords (abs_coords: $abs_coords)", 1, $FH_HR);
+  }
+
+  return; # NEVER REACHED
 }
 
 #################################################################
