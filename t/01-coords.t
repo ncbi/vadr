@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 285;
+use Test::More tests => 413;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -22,7 +22,7 @@ my ($cur_sgm1, $cur_sgm2, $cur_coords);
 my @abs_coords_A  = ();
 my @rel_coords_A = ();
 my @rel_pt_coords_A  = ();
-my ($rel_length, $cur_val_length, $cur_rel_coords);
+my ($rel_length, $cur_val_length, $cur_rel_coords, $cur_rel_coord);
 
 ###########################################
 # vdr_CoordsReverseComplement() tests
@@ -644,14 +644,37 @@ for($i = 0; $i < $ntests; $i++) {
   $cur_val_length = vdr_CoordsLength($cur_val, undef);
   is($cur_val_length, $rel_length, "vdr_CoordsRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 
+  # test vdr_CoordsRelativeSingleCoordToAbsolute()
+  # 5' most position
+  $cur_rel_coord = vdr_Feature5pMostPosition($rel_coords_A[$i], undef);
+  $cur_exp_val   = vdr_Feature5pMostPosition($exp_val_A[$i], undef);
+  $cur_val       = vdr_CoordsRelativeSingleCoordToAbsolute($abs_coords_A[$i], $cur_rel_coord, undef);
+  is($cur_val, $cur_exp_val, "vdr_CoordsRelativeSingleCoordToAbsolute() 5'-most position: $desc_A[$i]");
+  # 3' most position
+  $cur_rel_coord = vdr_Feature3pMostPosition($rel_coords_A[$i], undef);
+  $cur_exp_val   = vdr_Feature3pMostPosition($exp_val_A[$i], undef);
+  $cur_val       = vdr_CoordsRelativeSingleCoordToAbsolute($abs_coords_A[$i], $cur_rel_coord, undef);
+  is($cur_val, $cur_exp_val, "vdr_CoordsRelativeSingleCoordToAbsolute() 3'-most position: $desc_A[$i]");
+
   # reverse complement $rel_coords_A
   $cur_rel_coords = vdr_CoordsReverseComplement($rel_coords_A[$i], 0, undef);
   $cur_val = vdr_CoordsRelativeToAbsolute($abs_coords_A[$i], 
                                           $cur_rel_coords, undef);
   $cur_val = vdr_CoordsReverseComplement($cur_val, 0, undef);
   is($cur_val, $exp_val_A[$i], "vdr_CoordsRelativeToAbsolute() revcomp: $desc_A[$i]");
-}
 
+  # test vdr_CoordsRelativeSingleCoordToAbsolute() on revcomp
+  # 5' most position
+  $cur_rel_coord = vdr_Feature5pMostPosition($cur_rel_coords, undef);
+  $cur_exp_val   = vdr_Feature3pMostPosition($exp_val_A[$i], undef);
+  $cur_val       = vdr_CoordsRelativeSingleCoordToAbsolute($abs_coords_A[$i], $cur_rel_coord, undef);
+  is($cur_val, $cur_exp_val, "vdr_CoordsRelativeSingleCoordToAbsolute() 5'-most position revcomp: $desc_A[$i]");
+  # 3' most position
+  $cur_rel_coord = vdr_Feature3pMostPosition($cur_rel_coords, undef);
+  $cur_exp_val   = vdr_Feature5pMostPosition($exp_val_A[$i], undef);
+  $cur_val       = vdr_CoordsRelativeSingleCoordToAbsolute($abs_coords_A[$i], $cur_rel_coord, undef);
+  is($cur_val, $cur_exp_val, "vdr_CoordsRelativeSingleCoordToAbsolute() 3'-most position revcomp: $desc_A[$i]");
+}
 #############################################
 # vdr_CoordsProteinRelativeToAbsolute() tests
 #
