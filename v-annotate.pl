@@ -7602,8 +7602,10 @@ sub output_feature_table {
             my $ftr_stop_non_n  = undef;
             if($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) { 
               my $trim_idx = ($parent_is_cds) ? $parent_ftr_idx : $ftr_idx; # use parent if parent is a cds (e.g. mat_peptides)
-              $ftr_start_non_n = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"start_non_n"};
-              $ftr_stop_non_n  = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"stop_non_n"};
+              $ftr_start_non_n = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_start_non_n"};
+              $ftr_stop_non_n  = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_stop_non_n"};
+              printf("set ftr_start_non_n for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_n) ? $ftr_start_non_n : "undef");
+              printf("set ftr_stop_non_n  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_n)  ? $ftr_stop_non_n : "undef");
             }
             ($ftr_coords_str, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) = 
@@ -7927,11 +7929,23 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
   my $ret_min_coord = undef; # minimum coordinate output to table
   my $ret_is_5trunc_any_sgm = 0; # set to '1' if any segment is 5' truncated due to seq terminus OR Ns
   my $ret_is_3trunc_any_sgm = 0; # set to '1' if any segment is 5' truncated due to seq terminus OR Ns
-  
+
   my $ncoord = scalar(@{$start_AR});
   if($ncoord == 0) { 
     ofile_FAIL("ERROR in $sub_name, start_A array is empty", 1, $FH_HR);
   }
+
+  print("in $sub_name\n");
+  my ($min_non_n, $max_non_n) = (undef, undef);
+  if((defined $start_non_n) && (defined $stop_non_n)) { 
+    ($min_non_n, $max_non_n) = ($start_non_n, $stop_non_n);
+    if($min_non_n > $max_non_n) { utl_Swap(\$min_non_n, \$max_non_n); }
+    print("\tstart_non_n: $start_non_n\n");
+    print("\tstop_non_n:  $stop_non_n\n");
+    print("\tmin_non_n:   $min_non_n\n");
+    print("\tmax_non_n:   $max_non_n\n");
+  }
+
   for(my $c = 0; $c < $ncoord; $c++) { 
     my $is_first = ($c == 0)           ? 1 : 0;
     my $is_final = ($c == ($ncoord-1)) ? 1 : 0;
@@ -7959,9 +7973,11 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
         my ($min, $max) = ($start, $stop);
         if($min > $max) { utl_Swap(\$min, \$max); }
 
-        my ($min_non_n, $max_non_n) = ($start_non_n, $stop_non_n);
-        if($min_non_n > $max_non_n) { utl_Swap(\$min_non_n, \$max_non_n); }
-
+        print("\t\tc:     $c\n");
+        print("\t\tstart: $start\n");
+        print("\t\tstop:  $stop\n");
+        print("\t\tmin:   $min\n");
+        print("\t\tmax:   $stop\n");
         if(($min > $max_non_n) ||  # $min_non_n <= $max_non_n < $min       <= $max
            ($max < $min_non_n)) {  # $min       <= $max       < $min_non_n <= $max_non_n
           # full sgm is starts/ends before $min_non_n or after $max_non_n, don't output it
