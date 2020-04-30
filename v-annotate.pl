@@ -104,8 +104,8 @@ require "sqp_utils.pm";
 # option is used.
 # 
 # List of subroutines in which alerts are detected and added:
-#  1. alert_add_ambignt5_ambignt3()
-#     ambignt5, ambignt3 (2)
+#  1. alert_add_ambgnt5s_ambgnt3s()
+#     ambgnt5s, ambgnt3s (2)
 #
 #  2. add_classification_alerts()
 #     noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, revcompl, lowcovrg, biasdseq (10)
@@ -844,8 +844,8 @@ my $rpn_sqfile = undef;
 my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
                                # key1: sequence name, key2 alert code, value: alert message
 
-# Add ambignt5 and ambignt3 alerts, if any
-alert_add_ambignt5_ambignt3(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+# Add ambgnt5s and ambgnt3s alerts, if any
+alert_add_ambgnt5s_ambgnt3s(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 my %stg_results_HHH = (); # key 1: sequence name, 
@@ -4221,18 +4221,32 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 
         # determine the position of the first and final N or n
         my $pos_retval = undef;
-        $ftr_sqstring_alt =~ m/[^Nn]/g; # returns position of first non-N/n
-        $pos_retval = pos($ftr_sqstring_alt);
+        $ftr_sqstring_alt =~ m/[^Nn]/g; 
+        $pos_retval = pos($ftr_sqstring_alt); # returns position of first non-N/n
         # if $pos_retval is undef entire sqstring is N or n
-        $ftr_5nlen     = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_5nlen       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
         $ftr_start_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen + 1), $FH_HR) : -1;
+        if($ftr_5nlen != 0) { 
+          my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
+          $alt_str_H{$ambg_alt} = sprintf("first %d positions are Ns, %s", $ftr_5nlen,
+                                          (($ftr_5nlen == $ftr_len) ? 
+                                           (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
+                                           ("first non-N is position $ftr_start_non_n")));
+        }
 
         my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
-        $rev_ftr_sqstring_alt =~ m/[^Nn]/g; # returns position of first non-N/n in reversed string
-        $pos_retval = pos($rev_ftr_sqstring_alt); 
+        $rev_ftr_sqstring_alt =~ m/[^Nn]/g; 
+        $pos_retval = pos($rev_ftr_sqstring_alt); # returns position of first non-N/n in reversed string
         # if $pos_retval is undef entire sqstring is N or n
-        $ftr_3nlen    = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_3nlen      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
         $ftr_stop_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
+        if($ftr_3nlen != 0) { 
+          my $ambg_alt = ($ftr_is_cds) ? "ambgnt3c" : "ambgnt3f";
+          $alt_str_H{$ambg_alt} = sprintf("final %d positions are Ns, %s", $ftr_3nlen,
+                                          (($ftr_3nlen == $ftr_len) ? 
+                                           (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
+                                           ("final non-N is position $ftr_stop_non_n")));
+        }
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -4396,8 +4410,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         $ftr_results_HR->{"n_stop_c"}      = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
         $ftr_results_HR->{"n_5trunc"}      = $ftr_is_5trunc;
         $ftr_results_HR->{"n_3trunc"}      = $ftr_is_3trunc;
-        $ftr_results_HR->{"n_5nlen"}     = $ftr_5nlen;
-        $ftr_results_HR->{"n_3nlen"}     = $ftr_3nlen;
+        $ftr_results_HR->{"n_5nlen"}       = $ftr_5nlen;
+        $ftr_results_HR->{"n_3nlen"}       = $ftr_3nlen;
         $ftr_results_HR->{"n_start_non_n"} = $ftr_start_non_n;
         $ftr_results_HR->{"n_stop_non_n"}  = $ftr_stop_non_n;
         $ftr_results_HR->{"n_len"}         = $ftr_len;
@@ -6694,9 +6708,9 @@ sub alert_add_unexdivg {
 }
 
 #################################################################
-# Subroutine: alert_add_ambignt5_ambignt3()
+# Subroutine: alert_add_ambgnt5s_ambgnt3s()
 # Incept:     EPN, Fri Apr 17 10:31:22 2020
-# Purpose:    Adds ambignt5 and ambignt3 alerts for seqs with 
+# Purpose:    Adds ambgnt5s and ambgnt3s alerts for seqs with 
 #             an N as the first/final nucleotide
 #
 # Arguments:
@@ -6713,7 +6727,7 @@ sub alert_add_unexdivg {
 # Dies:     never
 #
 #################################################################
-sub alert_add_ambignt5_ambignt3 {
+sub alert_add_ambgnt5s_ambgnt3s {
   my $sub_name = "alert_add_unexdivg";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
@@ -6730,11 +6744,33 @@ sub alert_add_ambignt5_ambignt3 {
     my $seq_len = $seq_len_HR->{$seq_name};
     my $first_nt = $$in_sqfile_R->fetch_subseq_to_sqstring($seq_name,        1,        1, 0); # 0: do not reverse complement
     my $final_nt = $$in_sqfile_R->fetch_subseq_to_sqstring($seq_name, $seq_len, $seq_len, 0); # 0: do not reverse complement
+    my $sqstring = undef;
+    my $pos_retval = undef;
     if(($first_nt eq "N") || ($first_nt eq "n")) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambignt5", $seq_name, "VADRNULL", $FH_HR);
+      # determine first non-N
+      $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name);  
+      $sqstring =~ m/[^Nn]/g; # returns position of first non-N/n
+      my $pos_retval = pos($sqstring);
+      # if $pos_retval is undef entire sqstring is N or n
+      my $first_non_n = (defined $pos_retval) ? $pos_retval : -1;
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, 
+                                  sprintf("first %d positions are Ns, %s", $first_non_n-1, 
+                                          (($first_non_n == -1) ? "entire sequence is Ns" : "first non-N is position $first_non_n")), 
+                                  $FH_HR);
     }
     if(($final_nt eq "N") || ($final_nt eq "n")) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambignt3", $seq_name, "VADRNULL", $FH_HR);
+      if(! defined $sqstring) { $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name); }
+      my $rev_sqstring = reverse($sqstring);
+      $rev_sqstring =~ m/[^Nn]/g; 
+      my $pos_retval = pos($rev_sqstring); # returns position of first non-N/n in reversed string
+      # if $pos_retval is undef entire sqstring is N or n
+      my $sqlen = length($sqstring);
+      my $nlen  = (defined $pos_retval) ? $pos_retval : -1;
+      my $final_non_n = $sqlen - $nlen;
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, 
+                                  sprintf("final %d positions are Ns, %s", $nlen,
+                                          (($final_non_n == -1) ? "entire sequence is Ns" : "final non-N is position $final_non_n")), 
+                                  $FH_HR);
     }
   }
 
