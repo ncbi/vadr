@@ -141,6 +141,8 @@ require "sqp_utils.pm";
 # vdr_SplitFastaFile()
 # vdr_SplitNumSeqFiles()
 # vdr_CdsFetchStockholmToFasta()
+# vdr_ParseSeqFileToSeqHash()
+# vdr_FrameAdjust()
 #
 #################################################################
 # Subroutine: vdr_FeatureInfoImputeCoords
@@ -1632,6 +1634,12 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "indfantn", "feature",
                    "INDEFINITE_ANNOTATION", # short description
                    "nucleotide-based search identifies CDS not identified in protein-based search", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "indfantf", "feature",
+                   "INDEFINITE_ANNOTATION", # short description
+                   "nucleotide and protein-based codon start predictions differ for 5' truncated CDS", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
@@ -4214,6 +4222,61 @@ sub vdr_ParseSeqFileToSeqHash {
   }
   
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FrameAdjust
+# Incept:     EPN, Fri May  1 17:46:54 2020
+# Purpose:    Return the frame (1, 2, or 3) implied by a difference 
+#             of <nt_diff> nt relative to <orig_frame>. I find this 
+#             calculation unnervingly difficult to wrap my head around
+#             for some reason.
+#
+# Arguments:
+#  $orig_frame: 1, 2, or 3, you can also think of this as a codon_start
+#               value:
+#               1: first position of sequence is first position to translate
+#                  (first position of first codon)
+#               2: second position of sequence is first position to translate
+#                  (first position of first codon, this implies that first 
+#                  position of sequence is in frame *3* (third position of 
+#                  'previous' codon)
+#               3: third position of sequence is first position to translate
+#                  (first position of first codon, this implies that first 
+#                  position of sequence is in frame *2* (second position of 
+#                  'previous' codon)
+#  $nt_diff:    number of nucleotides in 3' direction to adjust by
+#  $FH_HR:      ref to hash of file handles, including "cmd"
+#
+# Returns:  <ret_frame>: $orig_frame adjusted by $nt_diff nt.
+#
+#           <orig_frame> <nt_diff % 3>  <ret_frame>
+#           1            0              1
+#           1            1              3
+#           1            2              2
+#
+#           2            0              2
+#           2            1              1
+#           2            2              3
+#
+#           3            0              3
+#           3            1              2
+#           3            2              1
+#
+# Dies:     if $orig_frame is not 1, 2, or 3
+#
+#################################################################
+sub vdr_FrameAdjust { 
+  my $sub_name = "frame_adjust";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($orig_frame, $nt_diff, $FH_HR) = (@_);
+
+  
+  my $ret_val = (3 - ($nt_diff % 3) + $orig_frame) % 3;
+  if($ret_val == 0) { $ret_val = 3; }
+  return $ret_val;
 }
 
 ###########################################################################

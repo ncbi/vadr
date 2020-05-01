@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 413;
+use Test::More tests => 422;
 
 BEGIN {
     use_ok( 'vadr' ) || print "Bail out!\n";
@@ -728,3 +728,30 @@ for($i = 0; $i < $ntests; $i++) {
   is($cur_val_length, $rel_length, "vdr_CoordsProteinRelativeToAbsolute() and vdr_CoordsLength(): length sanity check for $desc_A[$i]");
 }
 
+#############################################
+# vdr_FrameAdjust() tests
+# hard-coded
+#############################################
+my ($ret_frame1, $ret_frame2, $ret_frame3) = undef;
+#                               <orig_frame> <nt_diff>
+$ret_frame1 = vdr_FrameAdjust(1,           0,        undef);
+$ret_frame2 = vdr_FrameAdjust(1,           1,        undef);
+$ret_frame3 = vdr_FrameAdjust(1,           2,        undef);
+is($ret_frame1, 1, "vdr_FrameAdjust(): orig_frame:1, nt_diff:0");
+is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff:1");
+is($ret_frame3, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff:2");
+
+$ret_frame1 = vdr_FrameAdjust(2,           0,        undef);
+$ret_frame2 = vdr_FrameAdjust(2,           1,        undef);
+$ret_frame3 = vdr_FrameAdjust(2,           2,        undef);
+is($ret_frame1, 2, "vdr_FrameAdjust(): orig_frame:2, nt_diff:0");
+is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff:1");
+is($ret_frame3, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff:2");
+
+$ret_frame1 = vdr_FrameAdjust(3,           0,        undef);
+$ret_frame2 = vdr_FrameAdjust(3,           1,        undef);
+$ret_frame3 = vdr_FrameAdjust(3,           2,        undef);
+is($ret_frame1, 3, "vdr_FrameAdjust(): orig_frame:3, nt_diff:0");
+is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff:1");
+is($ret_frame3, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff:2");
+  
