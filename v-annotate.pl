@@ -6754,10 +6754,10 @@ sub alert_add_ambgnt5s_ambgnt3s {
       $sqstring =~ m/[^Nn]/g; # returns position of first non-N/n
       my $pos_retval = pos($sqstring);
       # if $pos_retval is undef entire sqstring is N or n
-      my $first_non_n = (defined $pos_retval) ? $pos_retval : -1;
+      my $first_non_n = (defined $pos_retval) ? $pos_retval : $seq_len;
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, 
-                                  sprintf("first %d positions are Ns, %s", $first_non_n-1, 
-                                          (($first_non_n == -1) ? "entire sequence is Ns" : "first non-N is position $first_non_n")), 
+                                  sprintf("first %d positions are Ns, %s", (($first_non_n == $seq_len) ? $seq_len : $first_non_n-1), 
+                                          (($first_non_n == $seq_len) ? "entire sequence is Ns" : "first non-N is position $first_non_n")), 
                                   $FH_HR);
     }
     if(($final_nt eq "N") || ($final_nt eq "n")) { 
@@ -6767,11 +6767,11 @@ sub alert_add_ambgnt5s_ambgnt3s {
       my $pos_retval = pos($rev_sqstring); # returns position of first non-N/n in reversed string
       # if $pos_retval is undef entire sqstring is N or n
       my $sqlen = length($sqstring);
-      my $nlen  = (defined $pos_retval) ? $pos_retval : -1;
-      my $final_non_n = $sqlen - $nlen;
+      my $nlen  = (defined $pos_retval) ? $pos_retval : $seq_len;
+      my $first_non_n = $sqlen - $nlen;
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, 
                                   sprintf("final %d positions are Ns, %s", $nlen,
-                                          (($final_non_n == -1) ? "entire sequence is Ns" : "final non-N is position $final_non_n")), 
+                                          (($first_non_n == 0) ? "entire sequence is Ns" : "final non-N is position $first_non_n")), 
                                   $FH_HR);
     }
   }
