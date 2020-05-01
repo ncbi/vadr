@@ -3604,22 +3604,23 @@ sub add_frameshift_alerts_for_one_sequence {
 
   # for each CDS: determine frame, and report fsthicnf and fstlocnf alerts
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
-    my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
-    my $ftr_strand = undef; # strand for this feature
-    my $ftr_sstart = undef; # starting sequence position of this CDS feature
-    my $ftr_sstop  = undef; # ending   sequence position of this CDS feature
-    my $ftr_mstart = undef; # starting model position of this CDS feature that $ftr_sstart pertains to
-    my $ftr_mstop  = undef; # ending   model position of this CDS feature that $ftr_sstop pertains to
-    my $ftr_start_rfpos = undef; # start model position of this CDS (regardless of where sequence alignment to the CDS starts)
-    my $ftr_stop_rfpos  = undef; # stop  model position of this CDS (regardless of where sequence alignment to the CDS stops)
-    my $nsgm = 0; # number of segments for this CDS
-    my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
-    my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
-    my $rf_diff = 0;  # number of rf positions seen since first rf position aligned to a nt for current CDS
-    my $ua_diff = 0;  # number of nt seen since first nt for current CDS
-    my $F_0 = undef;  # frame of initial nongap RF position for current CDS
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      printf("\nHEYA1 about to set n_frame for ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
+      my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
+      my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
+      my $ftr_strand = undef; # strand for this feature
+      my $ftr_sstart = undef; # starting sequence position of this CDS feature
+      my $ftr_sstop  = undef; # ending   sequence position of this CDS feature
+      my $ftr_mstart = undef; # starting model position of this CDS feature that $ftr_sstart pertains to
+      my $ftr_mstop  = undef; # ending   model position of this CDS feature that $ftr_sstop pertains to
+      my $ftr_start_rfpos = undef; # start model position of this CDS (regardless of where sequence alignment to the CDS starts)
+      my $ftr_stop_rfpos  = undef; # stop  model position of this CDS (regardless of where sequence alignment to the CDS stops)
+      my $nsgm = 0; # number of segments for this CDS
+      my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
+      my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
+      my $rf_diff = 0;  # number of rf positions seen since first rf position aligned to a nt for current CDS
+      my $ua_diff = 0;  # number of nt seen since first nt for current CDS
+      my $F_0 = undef;  # frame of initial nongap RF position for current CDS
       my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
       my @cds_alt_str_A = ();
       my $first_sgm_idx = get_5p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
@@ -3758,6 +3759,7 @@ sub add_frameshift_alerts_for_one_sequence {
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
       $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"} = $dominant_frame;
+      printf("HEYA2 set ftr_results_HAHR->{$seq_name}[$ftr_idx]{n_frame} to $dominant_frame\n");
 
       # deconstruct $frame_tok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the dominant frame together and
@@ -4075,12 +4077,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   my $sqfile_for_output_fastas_path = $sqfile_for_output_fastas->path;
   my $sqfile_for_pv_path            = $sqfile_for_pv->path;
 
-  
-
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
     my $seq_len  = $seq_len_HR->{$seq_name};
-    @{$ftr_results_HAHR->{$seq_name}} = ();
 
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
@@ -4100,7 +4099,6 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $ftr_stop_c = undef; # corrected stop  for the feature, stays undef if no correction needed (no 'trc' or 'ext')
       my $ftr_ofile_key    = $mdl_name . ".pfa." . $ftr_idx;
       my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
-      %{$ftr_results_HAHR->{$seq_name}[$ftr_idx]} = ();
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
       my $ftr_5nlen   = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
@@ -4415,7 +4413,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         $ftr_results_HR->{"n_start_non_n"} = $ftr_start_non_n;
         $ftr_results_HR->{"n_stop_non_n"}  = $ftr_stop_non_n;
         $ftr_results_HR->{"n_len"}         = $ftr_len;
-        utl_HDump("ftr_results{$seq_name}[$ftr_idx]", $ftr_results_HR, *STDOUT);
+        utl_HDump("1 ftr_results{$seq_name}[$ftr_idx]", $ftr_results_HR, *STDOUT);
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
