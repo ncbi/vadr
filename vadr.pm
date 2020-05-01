@@ -3130,8 +3130,6 @@ sub vdr_CoordsRelativeSingleCoordToAbsolute {
 
   my ($abs_coords, $rel_coord, $FH_HR) = @_;
 
-  printf("in $sub_name, abs_coords: $abs_coords, rel_coord: $rel_coord\n");
-
   my $ret_coords = vdr_CoordsRelativeSegmentToAbsolute($abs_coords, vdr_CoordsSegmentCreate($rel_coord, $rel_coord, "+", $FH_HR), $FH_HR);
   if($ret_coords =~ /^(\d+)\.\.\d+/) { 
     return $1;
