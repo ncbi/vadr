@@ -3605,7 +3605,7 @@ sub add_frameshift_alerts_for_one_sequence {
   # for each CDS: determine frame, and report fsthicnf and fstlocnf alerts
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      printf("\nHEYA1 about to set n_frame for ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
+      printf("\nHEYA1 about to set n_codon_start for ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
       my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
       my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
       my $ftr_strand = undef; # strand for this feature
@@ -3758,8 +3758,8 @@ sub add_frameshift_alerts_for_one_sequence {
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"} = $dominant_frame;
-      printf("HEYA2 set ftr_results_HAHR->{$seq_name}[$ftr_idx]{n_frame} to $dominant_frame\n");
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} = $dominant_frame;
+      printf("HEYA2 set ftr_results_HAHR->{$seq_name}[$ftr_idx]{n_codon_start} to $dominant_frame\n");
 
       # deconstruct $frame_tok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the dominant frame together and
@@ -7704,25 +7704,15 @@ sub output_feature_table {
                 $codon_start = 1; # protein only prediction, codon start must be 1
               }
               else { 
-                # n_start is defined, we have a nt prediction, we should have either p_frame or n_frame (usually both)
+                # n_start is defined, we have a nt prediction, we should have n_codon_start
                 # sanity check
-                if((! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}) && 
-                   (! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"})) { 
-                  ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no frame info", 1, $FH_HR);
+                if(! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) { 
+                  ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
                 }
-                if((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}) &&
-                   ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"})) { 
-                  $codon_start = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}) ? 
-                      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"} : 
-                      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"};
-                }
-                else { 
-                  $codon_start = 1; # not 5' truncated, codon_start should be 1 unless n_5len > 0, which we adjust for below
-                }
+                $codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
                 # if we trimmed the CDS start due to Ns update frame for that
-                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $codon_start p_frame: %s n_frame: %s\n", 
-                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"} : "undef",
-                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"} : "undef");
+                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $codon_start n_codon_start: %s\n", 
+                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
                 if(($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
                    ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
