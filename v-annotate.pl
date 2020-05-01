@@ -7608,8 +7608,6 @@ sub output_feature_table {
     my @seq_alert_A = (); # all alerts for this sequence
     my @seq_note_A  = (); # all notes for this sequence
 
-    my $missing_codon_start_flag = 0; # set to 1 if a feature for this sequence should have a codon_start value added but doesn't
-
     # first check for per-sequence alerts
     my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
     helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
@@ -7643,7 +7641,6 @@ sub output_feature_table {
           my $is_5trunc_term_or_n     = 0;  # '1' if this feature is truncated at the 5' end due to sequence terminii or Ns
           my $is_3trunc_term_or_n     = 0;  # '1' if this feature is truncated at the 3' end due to sequence terminii or Ns
           my $is_misc_feature         = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
-          my $is_skipped_misc_feature = 0;  # '1' if this feature *would be* a misc_feature due to alert(s) but --nomisc prevents it
           my $ftr_coords_str          = ""; # string of coordinates for this feature
           my $ftr_out_str             = ""; # output string for this feature
           my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
@@ -7652,6 +7649,7 @@ sub output_feature_table {
           my $parent_is_cds           = ($parent_ftr_idx == -1) ? 0 : vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx);
           my $is_cds_or_parent_is_cds = ($is_cds || $parent_is_cds) ? 1 : 0;
           my $min_coord               = undef; # minimum coord in this feature
+          my $codon_start             = undef; # codon start value, only set for CDS
 
           # sanity check
           if($is_cds && $parent_is_cds) { 
@@ -7696,16 +7694,51 @@ sub output_feature_table {
                  ($feature_type ne "5'UTR") && 
                  ($feature_type ne "3'UTR") && 
                  ($feature_type ne "operon")) { 
-                if($do_nomisc) { # --nomisc enabled
-                  $is_skipped_misc_feature = 1;
-                  # we use this flag *only* to avoid setting $missing_codon_start_flag below
-                }
-                else { 
+                if(! $do_nomisc) { # --nomisc not enabled
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
                 }
               }
             }
+            # determine codon_start if CDS
+            if($is_cds) { 
+              if(! $defined_n_start) { 
+                $codon_start = 1; # protein only prediction, codon start must be 1
+              }
+              else { 
+                # n_start is defined, we have a nt prediction, we should have either p_frame or n_frame (usually both)
+                # sanity check
+                if((! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}) && 
+                   (! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"})) { 
+                  ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no frame info", 1, $FH_HR);
+                }
+                if((defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"}) &&
+                   ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5trunc"})) { 
+                  $codon_start = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}) ? 
+                      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"} : 
+                      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"};
+                }
+                else { 
+                  $codon_start = 1; # not 5' truncated, codon_start should be 1 unless n_5len > 0, which we adjust for below
+                }
+                # if we trimmed the CDS start due to Ns update frame for that
+                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $codon_start p_frame: %s n_frame: %s\n", 
+                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_frame"} : "undef",
+                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_frame"} : "undef");
+                if(($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) &&
+                   (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
+                   ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
+                  printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
+                  printf("\tnew codon_start is ($codon_start - 1 + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
+                         ($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
+                         (($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
+                         ((($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
+                  $codon_start = (($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
+                  printf(" (%d)\n", $codon_start);
+                }
+              } # end of else entered if n_start defined (codon_start block)
+            } # end of 'if($is_cds)' entered to determine codon_start
+            # end codon_start block
             
             # convert coordinate string to output string
             $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
@@ -7734,24 +7767,12 @@ sub output_feature_table {
               
               # add note qualifiers, if any
               $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "note", $qval_sep, $ftr_info_AHR, $FH_HR);
-              
-              # check for existence of "p_frame" value for all CDS, but only actually output them if 5' truncated
-              if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-                my $tmp_str = helper_ftable_add_qualifier_from_ftr_results($seq_name, $ftr_idx, "p_frame", "codon_start", $ftr_results_HAHR, $FH_HR);
-                if($tmp_str eq "") { 
-                  # we didn't have a p_frame value for this CDS, so raise a flag
-                  # we check later that if the sequence PASSes that this flag 
-                  # is *NOT* raised, if it is, something went wrong and we die
-                  if(! $is_skipped_misc_feature) { 
-                    # if $is_skipped_misc_feature, this *would* be a misc_feature but is not due to --nomisc, so we allow missing codon start
-                    $missing_codon_start_flag = 1; 
-                  }
-                  # printf("raising missing_codon_start_flag for $seq_name ftr_idx: $ftr_idx\n");
-                } 
-                if($is_5trunc_term_or_n) { # only add the codon_start if we are 5' truncated
-                  $ftr_out_str .= $tmp_str;
-                }
+
+              # if CDS, append the codon start only if we are truncated
+              if(($is_cds) && ($is_5trunc_term_or_n)) { 
+                $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "codon_start", $codon_start, $FH_HR);
               }
+
               if((! $do_noprotid) && ($is_cds_or_parent_is_cds)) { 
                 # add protein_id if we are a cds or parent is a cds
                 # determine index for th protein_id qualifier
@@ -7815,11 +7836,7 @@ sub output_feature_table {
     # - zero notes and alerts
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
 
-    # sanity check, if we output at least one feature with zero alerts, we should also have set codon_start for all CDS features (if we did the blastx step)
-    if(($cur_noutftr > 0) && ($cur_nalert == 0) && ($missing_codon_start_flag) && ($do_blastx)) { 
-      ofile_FAIL("ERROR in $sub_name, sequence $seq_name set to PASS, but at least one CDS had no codon_start set - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
-    }
-    # another sanity check, our $do_pass value should match what check_if_sequence_passes() returns
+    # sanity check, our $do_pass value should match what check_if_sequence_passes() returns
     # based on alerts
     # TEMPORARILY SKIPPED, example sequence where this test fails: KF201650.1
     #if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
@@ -9614,3 +9631,4 @@ sub get_accession_from_ncbi_seq_name {
 
   
   
+
