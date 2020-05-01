@@ -7646,7 +7646,9 @@ sub output_feature_table {
           my $is_5trunc_term_or_n     = 0;  # '1' if this feature is truncated at the 5' end due to sequence terminii or Ns
           my $is_3trunc_term_or_n     = 0;  # '1' if this feature is truncated at the 3' end due to sequence terminii or Ns
           my $is_misc_feature         = 0;  # '1' if this feature turns into a misc_feature due to alert(s)
-          my $ftr_coords_str          = ""; # string of coordinates for this feature
+          my $ftr_ftbl_coords_str     = "";    # string of coordinates for this feature
+          my $ftr_ftbl_coords_len     = undef; # length of feature, in feature table coords 
+                                               # (possibly shorter than actual feature length due to truncations due to Ns)
           my $ftr_out_str             = ""; # output string for this feature
           my $is_cds_or_mp            = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
           my $is_cds                  = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
@@ -7654,7 +7656,9 @@ sub output_feature_table {
           my $parent_is_cds           = ($parent_ftr_idx == -1) ? 0 : vdr_FeatureTypeIsCds($ftr_info_AHR, $parent_ftr_idx);
           my $is_cds_or_parent_is_cds = ($is_cds || $parent_is_cds) ? 1 : 0;
           my $min_coord               = undef; # minimum coord in this feature
-          my $codon_start             = undef; # codon start value, only set for CDS
+          my $cds_codon_start         = undef; # codon start value, only set for CDS
+          my $is_3trunc_term          = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"}) ? 
+              $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_3trunc"} : 0; 
 
           # sanity check
           if($is_cds && $parent_is_cds) { 
@@ -7669,7 +7673,7 @@ sub output_feature_table {
           # determine coordinates for the feature
           if(! $defined_n_start) { 
             # $defined_p_start must be TRUE
-            ($ftr_coords_str, $min_coord, 
+            ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) 
                 = helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $ftr_results_HAHR, $FH_HR);
             # note: $is_5trunc_term_or_n == 0, we don't try to do truncations for protein only predictions
@@ -7685,12 +7689,12 @@ sub output_feature_table {
               printf("set ftr_start_non_n for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_n) ? $ftr_start_non_n : "undef");
               printf("set ftr_stop_non_n  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_n)  ? $ftr_stop_non_n : "undef");
             }
-            ($ftr_coords_str, $min_coord, 
+            ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) = 
                  helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $ftr_start_non_n, $ftr_stop_non_n, 
                                                          $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
-          if($ftr_coords_str ne "") { # if $ftr_coords_str is "", we won't output the feature because it was entirely Ns
+          if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely Ns
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
             if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
@@ -7708,7 +7712,7 @@ sub output_feature_table {
             # determine codon_start if CDS
             if($is_cds) { 
               if(! $defined_n_start) { 
-                $codon_start = 1; # protein only prediction, codon start must be 1
+                $cds_codon_start = 1; # protein only prediction, codon start must be 1
               }
               else { 
                 # n_start is defined, we have a nt prediction, we should have n_codon_start
@@ -7716,27 +7720,27 @@ sub output_feature_table {
                 if(! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) { 
                   ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
                 }
-                $codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
+                $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
                 # if we trimmed the CDS start due to Ns update frame for that
-                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $codon_start n_codon_start: %s\n", 
+                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $cds_codon_start n_codon_start: %s\n", 
                        (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
                 if(($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
                    ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
                   printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
-                  printf("\tnew codon_start is ($codon_start - 1 + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
-                         ($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
-                         (($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
-                         ((($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
-                  $codon_start = (($codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
-                  printf(" (%d)\n", $codon_start);
+                  printf("\tnew codon_start is ($cds_codon_start - 1 + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
+                         ($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
+                         (($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
+                         ((($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
+                  $cds_codon_start = (($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
+                  printf(" (%d)\n", $cds_codon_start);
                 }
               } # end of else entered if n_start defined (codon_start block)
             } # end of 'if($is_cds)' entered to determine codon_start
             # end codon_start block
             
             # convert coordinate string to output string
-            $ftr_out_str = helper_ftable_coords_to_out_str($ftr_coords_str, $feature_type, $FH_HR);
+            $ftr_out_str = helper_ftable_coords_to_out_str($ftr_ftbl_coords_str, $feature_type, $FH_HR);
             
             # add qualifiers: product, gene, exception and codon_start
             if(! $is_misc_feature) { 
@@ -7744,7 +7748,7 @@ sub output_feature_table {
               if(! $is_cds_or_mp) { 
                 $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "gene", $qval_sep, $ftr_info_AHR, $FH_HR);
               }
-              my $ftr_nsgm = $ftr_coords_str =~ tr/\n//; # counts number of lines of ftr_coords_str (this is number of segments)
+              my $ftr_nsgm = $ftr_ftbl_coords_str =~ tr/\n//; # counts number of lines of ftr_ftbl_coords_str (this is number of segments)
               if($ftr_nsgm > 1) { # only annotate ribsomal_slippage if more than one segments exist
                 $ftr_out_str .= helper_ftable_add_qualifier_from_ftr_info($ftr_idx, "ribosomal_slippage", $qval_sep, $ftr_info_AHR, $FH_HR);
               }
@@ -7765,7 +7769,7 @@ sub output_feature_table {
 
               # if CDS, append the codon start only if we are truncated
               if(($is_cds) && ($is_5trunc_term_or_n)) { 
-                $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "codon_start", $codon_start, $FH_HR);
+                $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "codon_start", $cds_codon_start, $FH_HR);
               }
 
               if((! $do_noprotid) && ($is_cds_or_parent_is_cds)) { 
@@ -7797,17 +7801,112 @@ sub output_feature_table {
             
             # push to the output hash
             %{$ftout_AH[$ftidx]} = ();
-            $ftout_AH[$ftidx]{"5trunc"}          = $is_5trunc_term_or_n;
-            $ftout_AH[$ftidx]{"3trunc"}          = $is_3trunc_term_or_n;
-            $ftout_AH[$ftidx]{"mincoord"}        = $min_coord;
-            $ftout_AH[$ftidx]{"type_priority"}   = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
-            $ftout_AH[$ftidx]{"coords"}          = $ftr_coords_str;
-            $ftout_AH[$ftidx]{"output"}          = $ftr_out_str;
+            $ftout_AH[$ftidx]{"5trunc_either"}  = $is_5trunc_term_or_n;
+            $ftout_AH[$ftidx]{"3trunc_either"}  = $is_3trunc_term_or_n;
+            $ftout_AH[$ftidx]{"mincoord"}       = $min_coord;
+            $ftout_AH[$ftidx]{"type_priority"}  = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
+            $ftout_AH[$ftidx]{"coords"}         = $ftr_ftbl_coords_str;
+            $ftout_AH[$ftidx]{"output"}         = $ftr_out_str;
+            $ftout_AH[$ftidx]{"codon_start"}    = (defined $cds_codon_start) ? $cds_codon_start : undef;
+            $ftout_AH[$ftidx]{"ftbl_len"}       = $ftr_ftbl_coords_len;
+            $ftout_AH[$ftidx]{"3trunc_term"}    = $is_3trunc_term; # only need this to check if CDS annot is (illegally) only a stop codon so we can remove it
+
             $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
             $ftidx++;
-          } # end of 'if($ftr_coords_str ne "")'
+          } # end of 'if($ftr_ftbl_coords_str ne "")'
         } # end of 'if(check_for_valid_feature_prediction('
       } # end of 'for(my $ftr_idx...'
+
+      # Final step before outputting: 
+      # Possibly remove some output from @ftout_AH before outputting
+      # We remove output for the following features:
+      # 1. CDS that are too short to encode a single AA or
+      #    are only 1 AA which is the stop codon.
+      # 2. mat_peptides that are too short to encode a single AA
+      # 3. any feature that has a parent that does not have it's own
+      #    feature output
+      # 
+      # This is mainly necessary because feature table feature lengths
+      # can differ from actual feature lengths due to Ns at the beginning
+      # and end of features, which can make some of them too short to 
+      # encode even one AA.
+      #
+      # We can't do this pruning earlier because mat_peptides need 
+      # to have info (specifically length and codon_start info) 
+      # from their parent CDS in order to determine if they should
+      # be removed. And we do not enforce that children have to 
+      # come after their parents in ftr_info_AHR so we are not 
+      # guaranteed we have this info until we've generated it for
+      # all features.
+      
+      # initialize
+      my @remove_me_A = (); # [0..$i..(scalar(@ftout_AH)-1)]: 1 to remove hash of output with index $i
+      my $pre_remove_noutftr = scalar(@ftout_AH);
+      for($ftidx = 0; $ftidx < $pre_remove_noutftr; $ftidx++) { 
+        $remove_me_A[$ftidx] = 0;
+      }
+      
+      # remove output for CDS and MPs that are too short
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(defined $ftr_idx2ftout_idx_H{$ftr_idx}) {
+          my $is_cds = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) ? 1 : 0;
+          my $is_mp  = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx) ? 1 : 0;
+          my $parent_ftr_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if no parent
+          if($is_cds) { 
+            my $ftr_ftidx       = $ftr_idx2ftout_idx_H{$ftr_idx};
+            my $ftbl_len        = $ftout_AH[$ftr_ftidx]{"ftbl_len"};
+            my $is_3trunc_term  = $ftout_AH[$ftr_ftidx]{"3trunc_term"};
+            my $codon_start     = $ftout_AH[$ftr_ftidx]{"codon_start"};
+            # is it too short? 4 cases:
+            if(($ftbl_len < 3)                            || # less than 1 AA, regardless of frame
+               (($ftbl_len == 3) && ($codon_start != 1))  || # less than 1 AA, frame 2 or 3
+               (($ftbl_len == 4) && ($codon_start == 3))  || # less than 1 AA, frame 3
+               (($ftbl_len < 5)  && (! $is_3trunc_term))) { # only a stop codon
+              $remove_me_A[$ftidx] = 1;
+            }
+          }
+          elsif(($is_mp) && # mat_peptide
+                ($parent_ftr_idx != -1) && # with parent
+                (defined $ftr_idx2ftout_idx_H{$parent_ftr_idx})) { # parent has output 
+            # (if parent does not have output we'll remove this MP in loop below that checks for parentless output)
+            my $ftr_ftidx        = $ftr_idx2ftout_idx_H{$ftr_idx};
+            my $parent_ftr_ftidx = $ftr_idx2ftout_idx_H{$parent_ftr_idx};
+            my $ftbl_len         = $ftout_AH[$ftr_ftidx]{"ftbl_len"};
+            my $is_3trunc_term   = $ftout_AH[$ftr_ftidx]{"3trunc_term"};
+            my $codon_start      = $ftout_AH[$parent_ftr_ftidx]{"codon_start"};
+            # is it too short? 3 cases:
+            if(($ftbl_len < 3)                           || # less than 1 AA, regardless of frame
+               (($ftbl_len == 3) && ($codon_start != 1)) || # less than 1 AA, frame 2 or 3
+               (($ftbl_len == 4) && ($codon_start == 3))) {  # less than 1 AA, frame 3 (don't need to check for only stop codon case for MPs
+              $remove_me_A[$ftidx] = 1;
+            }
+          }
+        }
+      }
+
+      # go back through and remove output for any feature which has a parent that does not have output itself
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(defined $ftr_idx2ftout_idx_H{$ftr_idx}) { 
+          $ftidx = $ftr_idx2ftout_idx_H{$ftr_idx};
+          if(! $remove_me_A[$ftidx]) { # we're not removing this output yet
+            my $parent_ftr_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if no parent
+            if($parent_ftr_idx != -1) { # we have a parent
+              if((! defined $ftr_idx2ftout_idx_H{$parent_ftr_idx}) ||     # parent has no output
+                 ($remove_me_A[$ftr_idx2ftout_idx_H{$parent_ftr_idx}])) { # parent has output but we are removing it
+                $remove_me_A[$ftidx] = 1;
+              }
+            }
+          }
+        }
+      }
+      
+      # actually remove the output
+      for($ftidx = ($pre_remove_noutftr-1); $ftidx >= 0; $ftidx--) { 
+        # descending so we can use splice without messing up indices
+        if($remove_me_A[$ftidx]) { 
+        splice(@ftout_AH, $ftidx, 1);
+        }
+      }
     } # end of 'if(defined $mdl_name)'
 
     #######################################
@@ -7892,12 +7991,13 @@ sub output_feature_table {
 #  $sgm_results_HAHR:  REF to segment results HAH, PRE-FILLED
 #  $FH_HR:             REF to hash of file handles
 #
-# Returns:    Four values:
-#             $ftr_coords_str: string that gives the coordinates for this feature in feature table format
-#                              "" if entire feature is Ns, in this case we won't output it to feature table
-#             $min_coord:      minimum coordinate for feature
-#             $is_5trunc:      always 0, we don't try to truncate for protein only predictions
-#             $is_3trunc:      always 0, we don't try to truncate for protein only predictions
+# Returns:    Five values:
+#             $ftr_ftbl_coords_str: string that gives the coordinates for this feature in feature table format
+#                                   "" if entire feature is Ns, in this case we won't output it to feature table
+#             $ftr_ftbl_coords_len: length in nt of feature in output coords for feature table
+#             $min_coord:           minimum coordinate for feature
+#             $is_5trunc:           always 0, we don't try to truncate for protein only predictions
+#             $is_3trunc:           always 0, we don't try to truncate for protein only predictions
 #
 # Dies:       If $N_{5,3}trunc is > 0 and corresponding strand is not "+" or "-"
 ################################################################# 
@@ -7944,11 +8044,12 @@ sub helper_ftable_coords_from_nt_prediction {
 #  $ftr_results_HAHR: REF to feature results AAH, PRE-FILLED
 #  $FH_HR:            REF to hash of file handles
 #
-# Returns:    Four values:
-#             $ftr_coords_str: string that gives the coordinates for this feature in feature table format
-#             $min_coord:      minimum coordinate for feature
-#             $is_5trunc:      always 0, we don't try to truncate for protein only predictions
-#             $is_3trunc:      always 0, we don't try to truncate for protein only predictions
+# Returns:    Five values:
+#             $ftr_ftbl_coords_str: string that gives the coordinates for this feature in feature table format
+#             $ftr_ftbl_coords_len: length in nt of feature in output coords for feature table
+#             $min_coord:           minimum coordinate for feature
+#             $is_5trunc:           always 0, we don't try to truncate for protein only predictions
+#             $is_3trunc:           always 0, we don't try to truncate for protein only predictions
 # 
 # Dies:       if p_start or p_stop does not exist in the ftr_results_HAHR->{$seq_name}[$ftr_idx] hash
 #             If $N_{5,3}trunc is > 0 and corresponding strand is not "+" or "-"
@@ -7993,12 +8094,13 @@ sub helper_ftable_coords_prot_only_prediction {
 #  $stop_non_n:    final position of feature that is not an N (may be < $start_non_n)
 #  $FH_HR:         REF to hash of file handles
 #
-# Returns:    Four values:
-#             $ftr_coords_str: string that gives the coordinates for this feature in feature table format
-#                              "" if entire feature is Ns, in this case we won't output it to feature table
-#             $min_coord:      minimum coordinate for feature
-#             $is_5trunc:      '1' if any segment is truncated on 5' end
-#             $is_3trunc:      '1' if any segment is truncated on 3' end
+# Returns:    Five values:
+#             $ftr_ftbl_coords_str: string that gives the coordinates for this feature in feature table format
+#                                   "" if entire feature is Ns, in this case we won't output it to feature table
+#             $ftr_ftbl_coords_len: length in nt of feature in output coords for feature table
+#             $min_coord:           minimum coordinate for feature
+#             $is_5trunc:           '1' if any segment is truncated on 5' end
+#             $is_3trunc:           '1' if any segment is truncated on 3' end
 #
 # Dies: if either @{$start_AR} or @{$stop_AR} are empty
 #       if $start_non_n is -1 but stop_non_n is not
@@ -8012,7 +8114,8 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
   my ($start_AR, $stop_AR, $strand_AR, $is_5trunc_AR, $is_3trunc_AR, $start_non_n, $stop_non_n, $FH_HR) = @_;
 
   # return values
-  my $ret_coords_str = "";
+  my $ret_ftr_ftbl_coords_str = "";
+  my $ret_ftr_ftbl_coords_len = 0;
   my $ret_min_coord = undef; # minimum coordinate output to table
   my $ret_is_5trunc_any_sgm = 0; # set to '1' if any segment is 5' truncated due to seq terminus OR Ns
   my $ret_is_3trunc_any_sgm = 0; # set to '1' if any segment is 5' truncated due to seq terminus OR Ns
@@ -8087,16 +8190,17 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
       my $is_3trunc_either = ($is_3trunc_term || $is_3trunc_n) ? 1 : 0;
       if((! defined $ret_min_coord) || ($start < $ret_min_coord)) { $ret_min_coord = $start; }
       if((! defined $ret_min_coord) || ($stop  < $ret_min_coord)) { $ret_min_coord = $stop;  }
-      $ret_coords_str .= sprintf("%s%d\t%s%d\n", 
+      $ret_ftr_ftbl_coords_str .= sprintf("%s%d\t%s%d\n", 
                                  ($is_5trunc_either) ? "<" : "", $start, 
                                  ($is_3trunc_either) ? ">" : "", $stop);
+      $ret_ftr_ftbl_coords_len += abs($stop - $start) + 1;
       if($is_5trunc_either) { $ret_is_5trunc_any_sgm = 1; }
       if($is_3trunc_either) { $ret_is_3trunc_any_sgm = 1; }
     }
   }
   if(! defined $ret_min_coord) { $ret_min_coord = -1; } # irrelevant, caller's responsibility to handle this
 
-  return ($ret_coords_str, $ret_min_coord, $ret_is_5trunc_any_sgm, $ret_is_3trunc_any_sgm);
+  return ($ret_ftr_ftbl_coords_str, $ret_ftr_ftbl_coords_len, $ret_min_coord, $ret_is_5trunc_any_sgm, $ret_is_3trunc_any_sgm);
 }
 
 #################################################################
