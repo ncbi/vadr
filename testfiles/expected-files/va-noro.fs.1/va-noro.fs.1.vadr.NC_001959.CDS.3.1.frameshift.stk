@@ -1,0 +1,68 @@
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 3 segment 1 of 1 for sequence NC_001959.2-manually-added-frameshifts-1 to model NC_001959 with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 nucleotide alignment of positions 7044..7053 (10 nt, avgpp: 0.890) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7043(1),7053(2);
+
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.2 nucleotide alignment of positions 7228..7261 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7227(1),7242(1),7261(1);
+
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.3 nucleotide alignment of positions 7452..7589 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7451(1);
+
+NC_001959.2-manually-added-frameshifts-1         ATGGCCCAAGCCATAATTGGTGCAATTGCTGCTTCCACAGCAGGTAGTGCTCTGGGAGCGGGCATACAGGTTGGTGGCGAAGCGGC-CTCCAAAGCC--AGGTATCAACAAAATTTGCAACTGCAAGAAAATTCTTTTAAACATGACAGGGAAATGATTGGGTATCAGGTTGAAGCTTCAAATCAATTATTGGCTAAAAA
+#=GR NC_001959.2-manually-added-frameshifts-1 PP ***********************************************************************************996.6899****99..59***************************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-1 CS 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111d2222222222dd11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          ATGGCCCAAGCCATAATTGGTGCAATTGCTGCTTCCACAGCAGGTAGTGCTCTGGGAGCGGGCATACAGGTTGGTGGCGAAGCGGCCCTCCAAAGCCAAAGGTATCAACAAAATTTGCAACTGCAAGAAAATTCTTTTAAACATGACAGGGAAATGATTGGGTATCAGGTTGAAGCTTCAAATCAATTATTGGCTAAAAA
+
+NC_001959.2-manually-added-frameshifts-1         TTTGGCAACTAGATATTCACTCCTCCGTGCTGGGGGTTTGACCAGTGCTGATGCAGCAAGATCTGTGGCAGGA-CTCCAGTCACCCGCA-TGTAGATTGGAATGGCGTG-GAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGG
+#=GR NC_001959.2-manually-added-frameshifts-1 PP ***********************************************************************98.89************9.59***************98.89****************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-1 CS 1111111111111111111111111111111111111111111111111111111111111111111111111d222222222222222d3333333333333333333d111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TTTGGCAACTAGATATTCACTCCTCCGTGCTGGGGGTTTGACCAGTGCTGATGCAGCAAGATCTGTGGCAGGAGCTCCAGTCACCCGCATTGTAGATTGGAATGGCGTGAGAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGG
+
+NC_001959.2-manually-added-frameshifts-1         TTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCATTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGAGATTTGGAAATCT-TCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGGTTCAACAGCCTCTTCTACACTGTCTTCTGTGCCACGTGGTTATTTCAAT
+#=GR NC_001959.2-manually-added-frameshifts-1 PP *************************************************************************************************996.69*************************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-1 CS 1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111d222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCATTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGAGATTTGGAAATCTTTCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGGTTCAACAGCCTCTTCTACACTGTCTTCTGTGCCACGTGGTTATTTCAAT
+
+NC_001959.2-manually-added-frameshifts-1         ACAGACAGGTTGCCATTATTCGCAAATAATAGGCGATGA
+#=GR NC_001959.2-manually-added-frameshifts-1 PP ***************************************
+#=GR NC_001959.2-manually-added-frameshifts-1 CS 222222222222222222222222222222222222222
+#=GC SS_cons                                     :::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          ACAGACAGGTTGCCATTATTCGCAAATAATAGGCGATGA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 3 segment 1 of 1 for sequence NC_001959.2-manually-added-frameshifts-2 to model NC_001959 with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 nucleotide alignment of positions 7438..7588 (151 nt, avgpp: 0.960) on + strand are inconsistent with dominant frame (+1); inserts:7438; deletes:7449(2);
+
+NC_001959.2-manually-added-frameshifts-2         ATGGCCCAAGCCATAATTGGTGCAATTGCTGCTTCCACAGCAGGTAGTGCTCTGGGAGCGGGCATACAGGTTGGTGGCGAAGCGGCCCTCCAAAGCCAAAGGTATCAACAAAATTTGCAACTGCAAGAAAATTCTTTTAAACATGACAGGGAAATGATTGGGTATCAGGTTGAAGCTTCAAATCAATTATTGGCTAAAAA
+#=GR NC_001959.2-manually-added-frameshifts-2 PP ********************************************************************************************************************************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          ATGGCCCAAGCCATAATTGGTGCAATTGCTGCTTCCACAGCAGGTAGTGCTCTGGGAGCGGGCATACAGGTTGGTGGCGAAGCGGCCCTCCAAAGCCAAAGGTATCAACAAAATTTGCAACTGCAAGAAAATTCTTTTAAACATGACAGGGAAATGATTGGGTATCAGGTTGAAGCTTCAAATCAATTATTGGCTAAAAA
+
+NC_001959.2-manually-added-frameshifts-2         TTTGGCAACTAGATATTCACTCCTCCGTGCTGGGGGTTTGACCAGTGCTGATGCAGCAAGATCTGTGGCAGGAGCTCCAGTCACCCGCATTGTAGATTGGAATGGCGTGAGAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGG
+#=GR NC_001959.2-manually-added-frameshifts-2 PP ********************************************************************************************************************************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TTTGGCAACTAGATATTCACTCCTCCGTGCTGGGGGTTTGACCAGTGCTGATGCAGCAAGATCTGTGGCAGGAGCTCCAGTCACCCGCATTGTAGATTGGAATGGCGTGAGAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGG
+
+NC_001959.2-manually-added-frameshifts-2         TTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCATTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGATGATTTGGAAAT--TTCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGGTTCAACAGCCTCTTCTACACTGTCTTCTGTGCCACGTGGTTATTTCAA
+#=GR NC_001959.2-manually-added-frameshifts-2 PP **************************************************************************************8689999999986..7899***********************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 111111111111111111111111111111111111111111111111111111111111111111111111111111111111111i33333333333dd222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCATTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGA.GATTTGGAAATCTTTCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGGTTCAACAGCCTCTTCTACACTGTCTTCTGTGCCACGTGGTTATTTCAA
+
+NC_001959.2-manually-added-frameshifts-2         TACAGACAGGTTGCCATTATTCGCAAATAATAGGCGATGA
+#=GR NC_001959.2-manually-added-frameshifts-2 PP ****************************************
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 2222222222222222222222222222222222222222
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TACAGACAGGTTGCCATTATTCGCAAATAATAGGCGATGA
+//
