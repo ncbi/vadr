@@ -36,24 +36,24 @@ require "sqp_utils.pm";
 #     that sequence.
 #
 # (2) coverage determination: each sequence is compared against its
-#    winning model (only) for a second time using a more expensive HMM
-#    scoring algorithm that is local with respect to the model and
-#    sequence. This stage allows statistics related to the coverage of
-#    the sequence and model to be determined, and some alerts can be
-#    reported based on those statisics.
+#     winning model (only) for a second time using a more expensive HMM
+#     scoring algorithm that is local with respect to the model and
+#     sequence. This stage allows statistics related to the coverage of
+#     the sequence and model to be determined, and some alerts can be
+#     reported based on those statisics.
 #
 # (3) alignment/annotation: each sequence is aligned to its winning
-#    model using a still more expensive CM algorithm that takes into
-#    account secondary structure in the model (if any). This algorithm
-#    is aligns the full sequence either locally or globally with
-#    respect to the model. Features are then annotated based on the
-#    alignment coordinates and the known feature coordinates in the 
-#    model (supplied via the modelinfo file). 
+#     model using a still more expensive CM algorithm that takes into
+#     account secondary structure in the model (if any). This algorithm
+#     is aligns the full sequence either locally or globally with
+#     respect to the model. Features are then annotated based on the
+#     alignment coordinates and the known feature coordinates in the 
+#     model (supplied via the modelinfo file). 
 #   
 # (4) blastx CDS validation: CDS features are then validated via
-#    blastx by comparing predicted feature spans from (3) to pre-computed
-#    BLAST databases for the model. Alerts can be reported based on
-#    the blast results. 
+#     blastx by comparing predicted feature spans from (3) to pre-computed
+#     BLAST databases for the model. Alerts can be reported based on
+#     the blast results. 
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Important options that change this behavior:
@@ -117,7 +117,7 @@ require "sqp_utils.pm";
 #     indf5gap, indf5loc, indf3gap, indf3loc (4)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
-#     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn (6)
+#     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
 #
 #  6. add_blastx_alerts()
 #     indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10)
@@ -4110,7 +4110,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $ftr_coords = undef; # coords string with sequence coordinates of all segments of the feature
 
       my %alt_str_H = (); # added to as we find alerts below
-      # mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
+      # ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f, mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
       
       # determine if this feature is 5' and/or 3' truncated
       # we do this outside the main loop since the logic is a bit complex:

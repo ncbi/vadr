@@ -1755,17 +1755,25 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
-  # 3rd argument invalidates the 2nd argument error code, but not vice versa
+  # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
+  # 3rd argument invalidates the 2nd argument alert code, but not vice versa
+  # 
+  # Note: only fatal alerts can be invalidated, and only then by other fatal alerts.
+  # This is because alert-invalidation is only relevant to the feature table and the 
+  # feature table only outputs fatal alerts. See v-annotate.pl:helper_ftable_process_sequence_alerts.
 
-  # cdsstopn, mutendex, mutendns are preferred to mutendcd
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "cdsstopn,mutendex,mutendns", $FH_HR); 
+  # mutstart is invalidated by ambgnt5c
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutstart", "ambgnt5c", $FH_HR); 
+
+  # mutendex, mutendns (and ambgnt3c, below) are invalidated by ambgnt3c
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendex", "ambgnt3c", $FH_HR); 
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendns", "ambgnt3c", $FH_HR); 
+
+  # mutendcd is invalidated by ambgnt3c, cdsstopn, mutendex, mutendns
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "ambgnt3c,cdsstopn,mutendex,mutendns", $FH_HR); 
 
   # unexdivg is preferred to noftrann
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);
-
-  # validate the alert info hash
-  #vdr_AlertInfoValidate($alt_info_HHR, undef, $FH_HR); 
 
   return;
 }
@@ -1869,8 +1877,9 @@ sub vdr_AlertInfoAdd {
 # 
 # Returns: void
 #
-# Dies:    if one of the error codes in $code1 or $code2str do not
-#          exist in %{$alt_info_HHR}.
+# Dies:    - if one of the error codes in $code1 or $code2str do not
+#            exist in %{$alt_info_HHR}
+#          - if $alt_info_HHR->{$code1}{"ftbl_invalid_by"} is already set
 #
 #################################################################
 sub vdr_AlertInfoSetFTableInvalidatedBy {
@@ -1879,6 +1888,11 @@ sub vdr_AlertInfoSetFTableInvalidatedBy {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
   my ($alt_info_HHR, $code1, $code2str, $FH_HR) = (@_);
+
+  if((defined $alt_info_HHR->{$code1}{"ftbl_invalid_by"}) && 
+     ($alt_info_HHR->{$code1}{"ftbl_invalid_by"} ne "")) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship for code $code1, but it is already set", 1, $FH_HR);
+  }
 
   # verify the codes in $code2str
   my @code2_A = split(',', $code2str);
