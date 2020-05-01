@@ -23,6 +23,12 @@ out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sgm
 out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.mdl
 out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alt
 out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alc
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.1.1.frameshift.stk
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.2.1.frameshift.stk
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.2.2.frameshift.stk
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.2.3.frameshift.stk
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.3.1.frameshift.stk
+out: va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.3.2.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.sqa
@@ -32,6 +38,12 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.mdl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.1.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.2.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.2.2.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.2.3.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.3.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.1/va-noro.fs.multisgm.1.vadr.NC_001959.CDS.3.2.frameshift.stk
 rmdir: va-noro.fs.multisgm.1
 ## 
 ## partial sequences extracted from noro.fs.1.fa
@@ -47,6 +59,11 @@ out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sgm
 out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.mdl
 out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alt
 out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alc
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.1.1.frameshift.stk
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.2.1.frameshift.stk
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.2.2.frameshift.stk
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.3.1.frameshift.stk
+out: va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.3.2.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.sqa
@@ -56,4 +73,9 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.mdl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.1.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.2.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.2.2.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.3.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.fs.multisgm.2/va-noro.fs.multisgm.2.vadr.NC_001959.CDS.3.2.frameshift.stk
 rmdir: va-noro.fs.multisgm.2
