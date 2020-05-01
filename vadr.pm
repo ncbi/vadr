@@ -1760,17 +1760,10 @@ sub vdr_AlertInfoInitialize {
   # 
   # Note: only fatal alerts can be invalidated, and only then by other fatal alerts.
   # This is because alert-invalidation is only relevant to the feature table and the 
-  # feature table only outputs fatal alerts. See v-annotate.pl:helper_ftable_process_sequence_alerts.
+  # feature table only outputs fatal alerts. See v-annotate.pl:helper_ftable_process_sequence_alerts().
 
-  # mutstart is invalidated by ambgnt5c
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutstart", "ambgnt5c", $FH_HR); 
-
-  # mutendex, mutendns (and ambgnt3c, below) are invalidated by ambgnt3c
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendex", "ambgnt3c", $FH_HR); 
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendns", "ambgnt3c", $FH_HR); 
-
-  # mutendcd is invalidated by ambgnt3c, cdsstopn, mutendex, mutendns
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "ambgnt3c,cdsstopn,mutendex,mutendns", $FH_HR); 
+  # mutendcd is invalidated by cdsstopn, mutendex, mutendns
+  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "cdsstopn,mutendex,mutendns", $FH_HR); 
 
   # unexdivg is preferred to noftrann
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);

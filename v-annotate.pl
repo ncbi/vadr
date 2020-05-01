@@ -4263,9 +4263,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         }
         
         # deal with mutstart for all CDS that are not 5' truncated
-        if(! $ftr_is_5trunc) { 
+        if(! $ftr_is_5trunc) {
           # feature is not 5' truncated, look for a start codon if it's a CDS
-          if($ftr_is_cds) { 
+          # and no ambgnt5c alert already reported
+          if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt5c"})) { 
             if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
               $alt_str_H{"mutstart"} = sprintf("%s starting at position %d on %s strand is not a valid start", 
                                                substr($ftr_sqstring_alt, 0, 3), 
@@ -4276,7 +4277,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         # deal with mutendcd for all CDS that are not 3' truncated BUT are 5' truncated
         if((! $ftr_is_3trunc) && ($ftr_is_5trunc)) { 
           # feature is not 3' truncated, but it is 5' truncated, look for a stop codon if it's a CDS
-          if($ftr_is_cds) { 
+          # and no ambgnt3c already reported
+          if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt3c"})) { 
             if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR))) { 
               $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
                                                substr($ftr_sqstring_alt, -3, 3), 
@@ -4297,8 +4299,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             if($ftr_is_cds) { 
               my @ftr_nxt_stp_A = ();
               sqstring_find_stops($ftr_sqstring_alt, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-              # check that final add codon is a valid stop, and add 'mutendcd' alert if not
-              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len)) { 
+              # check that final add codon is a valid stop, and add 'mutendcd' alert if not (and ambgnt3c not already reported)
+              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) && (! defined $alt_str_H{"ambg3ntc"})) { 
                 $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
                                                  substr($ftr_sqstring_alt, -3, 3),
                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
@@ -4328,7 +4330,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                       # there is an in-frame stop codon, mutendex alert
                       # determine what position it is
                       $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
-                      $alt_str_H{"mutendex"} = $ftr_stop_c;
+                      if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                        $alt_str_H{"mutendex"} = $ftr_stop_c;
+                      }
                     }
                   } # end of 'if($ftr_stop < $seq_len)'
                   if(! defined $ftr_stop_c) { 
@@ -4336,7 +4340,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                     # or we checked the sequence but didn't find any
                     # either way, we have a mutendns alert:
                     $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-                    $alt_str_H{"mutendns"} = "VADRNULL";
+                    if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                      $alt_str_H{"mutendns"} = "VADRNULL";
+                    }
                   }
                 } # end of 'if($ftr_nxt_stp_A[1] == 0) {' 
                 else { 
@@ -5015,7 +5021,8 @@ sub add_protein_validation_alerts {
                   my $cur_stop_str = undef;
                   my $n_has_stop_codon = 1;
                   if(($ftr_results_HR->{"n_3trunc"}) || 
-                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "mutendcd")))) { 
+                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "mutendcd"))) ||
+                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "ambgnt3c")))) {
                     $n_has_stop_codon = 0; 
                   }                    
                   if($n_has_stop_codon) { 
