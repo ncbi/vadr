@@ -3646,7 +3646,12 @@ sub add_frameshift_alerts_for_one_sequence {
           if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
           $ftr_sstop = $sstop;
           $ftr_mstop = $mstop;
-          if(! defined $F_0) { $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; } # frame of initial nongap RF position for this CDS 
+          if(! defined $F_0) { 
+            $F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; 
+            #if   ($F_0 == 2) { $F_0 = 3; }
+            #elsif($F_0 == 3) { $F_0 = 2; }
+            # $F_0 is frame of initial nongap RF position for this CDS 
+          } 
 
           # sanity checks about strand
           if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
@@ -3680,6 +3685,8 @@ sub add_frameshift_alerts_for_one_sequence {
               $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
               my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
               my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
+              #if   ($F_cur == 2) { $F_cur = 3; }
+              #elsif($F_cur == 3) { $F_cur = 2; }
               #printf("\trf_diff: $rf_diff, ua_diff: $ua_diff, F_0: $F_0, z: $z\n");
               if($strand eq "+") { $gr_frame_str .= $F_cur; }
               else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
@@ -7719,18 +7726,18 @@ sub output_feature_table {
                 }
                 $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
                 # if we trimmed the CDS start due to Ns update frame for that
-                #printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $cds_codon_start n_codon_start: %s\n", 
-                #       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
+                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $cds_codon_start n_codon_start: %s\n", 
+                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
                 if(($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
                    ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
-                  #printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
-                  #printf("\tnew codon_start is ($cds_codon_start - 1 + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
-                  #($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
-                  #(($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
-                  #((($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
-                  $cds_codon_start = (($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
-                  #printf(" (%d)\n", $cds_codon_start);
+                  printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
+                  printf("\tnew codon_start is ($cds_codon_start + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
+                  ($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
+                  (($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
+                  ((($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
+                  $cds_codon_start = (($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
+                  printf(" (%d)\n", $cds_codon_start);
                 }
               } # end of else entered if n_start defined (codon_start block)
             } # end of 'if($is_cds)' entered to determine codon_start
@@ -7845,6 +7852,7 @@ sub output_feature_table {
       # remove output for CDS and MPs that are too short
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(defined $ftr_idx2ftout_idx_H{$ftr_idx}) {
+          $ftidx = $ftr_idx2ftout_idx_H{$ftr_idx};
           my $is_cds = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) ? 1 : 0;
           my $is_mp  = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx) ? 1 : 0;
           my $parent_ftr_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx); # will be -1 if no parent
@@ -7854,11 +7862,19 @@ sub output_feature_table {
             my $is_3trunc_term  = $ftout_AH[$ftr_ftidx]{"3trunc_term"};
             my $codon_start     = $ftout_AH[$ftr_ftidx]{"codon_start"};
             # is it too short? 4 cases:
+            printf("\nHEYA\n");
+            printf("\tftidx:          $ftidx\n");
+            printf("\tis_cds:         $is_cds\n");
+            printf("\tftr_ft_idx:     $ftr_ftidx\n");
+            printf("\tftbl_len:       $ftbl_len\n");
+            printf("\tis_3trunc_term: $is_3trunc_term\n");
+            printf("\tcodon_start:    $codon_start\n");
             if(($ftbl_len < 3)                            || # less than 1 AA, regardless of frame
                (($ftbl_len == 3) && ($codon_start != 1))  || # less than 1 AA, frame 2 or 3
                (($ftbl_len == 4) && ($codon_start == 3))  || # less than 1 AA, frame 3
                (($ftbl_len < 5)  && (! $is_3trunc_term))) { # only a stop codon
               $remove_me_A[$ftidx] = 1;
+              printf("\t\tset remove_me_A[$ftidx] to 1\n");
             }
           }
           elsif(($is_mp) && # mat_peptide
@@ -7899,7 +7915,9 @@ sub output_feature_table {
       # actually remove the output
       for($ftidx = ($pre_remove_noutftr-1); $ftidx >= 0; $ftidx--) { 
         # descending so we can use splice without messing up indices
+        printf("checking ftidx: $ftidx\n");
         if($remove_me_A[$ftidx]) { 
+          printf("splicing ftidx: $ftidx\n");
           splice(@ftout_AH, $ftidx, 1);
         }
       }
