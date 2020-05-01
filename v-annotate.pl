@@ -3605,7 +3605,6 @@ sub add_frameshift_alerts_for_one_sequence {
   # for each CDS: determine frame, and report fsthicnf and fstlocnf alerts
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      printf("\nHEYA1 about to set n_codon_start for ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
       my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
       my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
       my $ftr_strand = undef; # strand for this feature
@@ -3759,7 +3758,6 @@ sub add_frameshift_alerts_for_one_sequence {
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
       $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} = $dominant_frame;
-      printf("HEYA2 set ftr_results_HAHR->{$seq_name}[$ftr_idx]{n_codon_start} to $dominant_frame\n");
 
       # deconstruct $frame_tok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the dominant frame together and
@@ -4300,7 +4298,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               my @ftr_nxt_stp_A = ();
               sqstring_find_stops($ftr_sqstring_alt, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'mutendcd' alert if not (and ambgnt3c not already reported)
-              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) && (! defined $alt_str_H{"ambg3ntc"})) { 
+              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) && (! defined $alt_str_H{"ambgnt3c"})) { 
                 $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
                                                  substr($ftr_sqstring_alt, -3, 3),
                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
@@ -4419,7 +4417,6 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         $ftr_results_HR->{"n_start_non_n"} = $ftr_start_non_n;
         $ftr_results_HR->{"n_stop_non_n"}  = $ftr_stop_non_n;
         $ftr_results_HR->{"n_len"}         = $ftr_len;
-        utl_HDump("1 ftr_results{$seq_name}[$ftr_idx]", $ftr_results_HR, *STDOUT);
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
@@ -7686,8 +7683,8 @@ sub output_feature_table {
               my $trim_idx = ($parent_is_cds) ? $parent_ftr_idx : $ftr_idx; # use parent if parent is a cds (e.g. mat_peptides)
               $ftr_start_non_n = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_start_non_n"};
               $ftr_stop_non_n  = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_stop_non_n"};
-              printf("set ftr_start_non_n for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_n) ? $ftr_start_non_n : "undef");
-              printf("set ftr_stop_non_n  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_n)  ? $ftr_stop_non_n : "undef");
+              #printf("set ftr_start_non_n for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_n) ? $ftr_start_non_n : "undef");
+              #printf("set ftr_stop_non_n  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_n)  ? $ftr_stop_non_n : "undef");
             }
             ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) = 
@@ -7722,18 +7719,18 @@ sub output_feature_table {
                 }
                 $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
                 # if we trimmed the CDS start due to Ns update frame for that
-                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $cds_codon_start n_codon_start: %s\n", 
-                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
+                #printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $cds_codon_start n_codon_start: %s\n", 
+                #       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
                 if(($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
                    ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
-                  printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
-                  printf("\tnew codon_start is ($cds_codon_start - 1 + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
-                         ($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
-                         (($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
-                         ((($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
+                  #printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
+                  #printf("\tnew codon_start is ($cds_codon_start - 1 + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
+                  #($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
+                  #(($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
+                  #((($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
                   $cds_codon_start = (($cds_codon_start - 1 + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
-                  printf(" (%d)\n", $cds_codon_start);
+                  #printf(" (%d)\n", $cds_codon_start);
                 }
               } # end of else entered if n_start defined (codon_start block)
             } # end of 'if($is_cds)' entered to determine codon_start
@@ -7807,10 +7804,9 @@ sub output_feature_table {
             $ftout_AH[$ftidx]{"type_priority"}  = (exists $type_priority_H{$orig_feature_type}) ? $type_priority_H{$orig_feature_type} : $npriority;
             $ftout_AH[$ftidx]{"coords"}         = $ftr_ftbl_coords_str;
             $ftout_AH[$ftidx]{"output"}         = $ftr_out_str;
-            $ftout_AH[$ftidx]{"codon_start"}    = (defined $cds_codon_start) ? $cds_codon_start : undef;
+            $ftout_AH[$ftidx]{"codon_start"}    = (defined $cds_codon_start) ? $cds_codon_start : -1;
             $ftout_AH[$ftidx]{"ftbl_len"}       = $ftr_ftbl_coords_len;
             $ftout_AH[$ftidx]{"3trunc_term"}    = $is_3trunc_term; # only need this to check if CDS annot is (illegally) only a stop codon so we can remove it
-
             $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
             $ftidx++;
           } # end of 'if($ftr_ftbl_coords_str ne "")'
@@ -7904,7 +7900,7 @@ sub output_feature_table {
       for($ftidx = ($pre_remove_noutftr-1); $ftidx >= 0; $ftidx--) { 
         # descending so we can use splice without messing up indices
         if($remove_me_A[$ftidx]) { 
-        splice(@ftout_AH, $ftidx, 1);
+          splice(@ftout_AH, $ftidx, 1);
         }
       }
     } # end of 'if(defined $mdl_name)'
@@ -7918,9 +7914,9 @@ sub output_feature_table {
 
     # sort output
     if($cur_noutftr > 0) { 
-      @ftout_AH = sort { $a->{"mincoord"}      <=> $b->{"mincoord"} or 
-                             $b->{"5trunc"}        <=> $a->{"5trunc"}   or
-                             $a->{"3trunc"}        <=> $b->{"3trunc"}   or
+      @ftout_AH = sort { $a->{"mincoord"}          <=> $b->{"mincoord"} or 
+                             $b->{"5trunc_either"} <=> $a->{"5trunc_either"} or
+                             $a->{"3trunc_either"} <=> $b->{"3trunc_either"} or
                              $a->{"type_priority"} <=> $b->{"type_priority"} 
       } @ftout_AH;
     }              
@@ -8125,15 +8121,10 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
     ofile_FAIL("ERROR in $sub_name, start_A array is empty", 1, $FH_HR);
   }
 
-  print("in $sub_name\n");
   my ($min_non_n, $max_non_n) = (undef, undef);
   if((defined $start_non_n) && (defined $stop_non_n)) { 
     ($min_non_n, $max_non_n) = ($start_non_n, $stop_non_n);
     if($min_non_n > $max_non_n) { utl_Swap(\$min_non_n, \$max_non_n); }
-    print("\tstart_non_n: $start_non_n\n");
-    print("\tstop_non_n:  $stop_non_n\n");
-    print("\tmin_non_n:   $min_non_n\n");
-    print("\tmax_non_n:   $max_non_n\n");
   }
 
   for(my $c = 0; $c < $ncoord; $c++) { 
@@ -8163,11 +8154,6 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
         my ($min, $max) = ($start, $stop);
         if($min > $max) { utl_Swap(\$min, \$max); }
 
-        print("\t\tc:     $c\n");
-        print("\t\tstart: $start\n");
-        print("\t\tstop:  $stop\n");
-        print("\t\tmin:   $min\n");
-        print("\t\tmax:   $stop\n");
         if(($min > $max_non_n) ||  # $min_non_n <= $max_non_n < $min       <= $max
            ($max < $min_non_n)) {  # $min       <= $max       < $min_non_n <= $max_non_n
           # full sgm is starts/ends before $min_non_n or after $max_non_n, don't output it
