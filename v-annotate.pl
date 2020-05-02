@@ -7074,6 +7074,7 @@ sub output_tabular {
           my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
           my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
           if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+            utl_HDump("ftr_results_HR, $seq_name", $ftr_results_HR, *STDOUT);
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
             my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
@@ -7411,6 +7412,9 @@ sub helper_tabular_ftr_results_trunc_string {
   }
   elsif($ftr_results_HR->{"n_5trunc"}) { 
     return "5'";
+  }
+  elsif($ftr_results_HR->{"n_3trunc"}) { 
+    return "3'";
   }
   else { 
     # not 5' or 3' truncated by the sequence terminii
