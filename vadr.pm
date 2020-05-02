@@ -1637,12 +1637,6 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "indfantf", "feature",
-                   "INDEFINITE_ANNOTATION", # short description
-                   "nucleotide and protein-based codon start predictions differ for 5' truncated CDS", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR);
-
   vdr_AlertInfoAdd($alt_info_HHR, "indf5gap", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model is a gap at 5' boundary", # long description

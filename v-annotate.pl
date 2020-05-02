@@ -120,7 +120,7 @@ require "sqp_utils.pm";
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
 #
 #  6. add_protein_validation_alerts()
-#     indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp, indfantf (11)
+#     indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10)
 #
 #  7. alert_add_noftrann()
 #     noftrann (1)
@@ -4820,8 +4820,6 @@ sub make_protein_validation_fasta_file {
 #                         for a feature for which there is no CM/nucleotide based prediction
 #             "indfantn": adds this alert if protein validation of a CDS prediction fails due to
 #                         no blastx hits
-#             "indfantf": adds this alert if protein-based frame prediction differs from nucleotide
-#                         based prediction
 #             "indfstrp": adds this alert if protein validation of a CDS prediction fails due to
 #                         strand mismatch between CM and blastx prediction
 #             "indf5plg": adds this alert if protein validation of a CDS prediction fails due to
@@ -4906,8 +4904,6 @@ sub add_protein_validation_alerts {
           my $n_stop         = undef; # predicted stop   from CM 
           my $n_strand       = undef; # predicted strand from CM 
           my $n_len          = undef; # predicted length from CM (summed over all segments)
-          my $n_codon_start  = undef; # predicted codon start from CM
-          my $n_5trunc       = undef; # is nucleotide feature 5' truncated, only case where we compare n_codon_start and p_frame
           my $p_start        = undef; # predicted start  from blastx
           my $p_stop         = undef; # predicted stop   from blastx
           my $p_start2print  = undef; # predicted start  from blastx, to output
@@ -4922,7 +4918,6 @@ sub add_protein_validation_alerts {
           my $p_hlen         = undef; # length of blastx hit
           my $p_qseq_name    = undef; # query seq name parsed out of blast query $p_query
           my $p_qftr_idx     = undef; # feature idx a blast query pertains to, parsed out of blast query $p_query
-          my $p_frame        = undef; # frame from protein validate results
           my $p_blastx_feature_flag = 0; # set to '1' if $do_hmmer is 0 and $p_query is a fetched feature sequence, not a full length input sequence
           
           my $start_diff = undef; # difference in start values between CM and blastx
@@ -4933,8 +4928,6 @@ sub add_protein_validation_alerts {
             $n_stop        = $ftr_results_HR->{"n_stop"};
             $n_strand      = $ftr_results_HR->{"n_strand"};
             $n_len         = $ftr_results_HR->{"n_len"};
-            $n_codon_start = $ftr_results_HR->{"n_codon_start"};
-            $n_5trunc      = $ftr_results_HR->{"n_5trunc"};
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
@@ -4947,7 +4940,6 @@ sub add_protein_validation_alerts {
               $p_strand  = $ftr_results_HR->{"p_strand"};
               $p_query   = $ftr_results_HR->{"p_query"};
               $p_hlen    = $ftr_results_HR->{"p_len"};
-              $p_frame   = $ftr_results_HR->{"p_frame"};
               if(defined $ftr_results_HR->{"p_ins"})     { $p_ins     = $ftr_results_HR->{"p_ins"};  }
               if(defined $ftr_results_HR->{"p_del"})     { $p_del     = $ftr_results_HR->{"p_del"};  }
               if(defined $ftr_results_HR->{"p_trcstop"}) { $p_trcstop = $ftr_results_HR->{"p_trcstop"}; }
@@ -4970,10 +4962,6 @@ sub add_protein_validation_alerts {
               if($p_hlen >= $minpvlen) { 
                 $alt_str_H{"indfantp"} = "$p_start to $p_stop with score $p_score";
               }
-            }
-            # check for indfantf
-            if((defined $n_codon_start) && (defined $p_frame) && (defined $n_5trunc) && ($n_5trunc == 1) && ($n_codon_start != $p_frame)) { 
-              $alt_str_H{"indfantf"} = "nt:$n_codon_start, prot:$p_frame";
             }
             if(defined $n_start) { 
               # check for indfantn
