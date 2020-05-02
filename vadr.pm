@@ -4263,7 +4263,7 @@ sub vdr_ParseSeqFileToSeqHash {
 #           3            1              2
 #           3            2              1
 #
-# Dies:     if $orig_frame is not 1, 2, or 3
+# Dies:     if $orig_frame is not 1, 2, or 3, or $nt_diff is negative
 #
 #################################################################
 sub vdr_FrameAdjust { 
@@ -4273,9 +4273,18 @@ sub vdr_FrameAdjust {
 
   my ($orig_frame, $nt_diff, $FH_HR) = (@_);
 
-  
-  my $ret_val = (3 - ($nt_diff % 3) + $orig_frame) % 3;
-  if($ret_val == 0) { $ret_val = 3; }
+  if(($orig_frame ne "1") && ($orig_frame ne "2") && ($orig_frame ne "3")) { 
+      ofile_FAIL("ERROR in $sub_name, orig_frame must be 1, 2, or 3, got $orig_frame", 1, $FH_HR);
+  }
+
+  my $ret_val = undef;
+  if($nt_diff < 0) { 
+    $ret_val = (($orig_frame + $nt_diff - 1) % 3) + 1;
+  }
+  else { 
+    $ret_val = (($orig_frame - $nt_diff - 1) % 3) + 1;
+  }
+
   return $ret_val;
 }
 
