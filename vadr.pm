@@ -4250,18 +4250,24 @@ sub vdr_ParseSeqFileToSeqHash {
 #
 # Returns:  <ret_frame>: $orig_frame adjusted by $nt_diff nt.
 #
-#           <orig_frame> <nt_diff % 3>  <ret_frame>
-#           1            0              1
-#           1            1              3
-#           1            2              2
+#           <orig_frame> <nt_diff>  <ret_frame>
+#           1           -2          3
+#           1           -1          2
+#           1            0          1
+#           1            1          3
+#           1            2          2
 #
-#           2            0              2
-#           2            1              1
-#           2            2              3
+#           2           -2          1
+#           2           -1          3
+#           2            0          2
+#           2            1          1
+#           2            2          3
 #
-#           3            0              3
-#           3            1              2
-#           3            2              1
+#           3           -1          1
+#           3           -2          2
+#           3            0          3
+#           3            1          2
+#           3            2          1
 #
 # Dies:     if $orig_frame is not 1, 2, or 3, or $nt_diff is negative
 #
@@ -4277,15 +4283,7 @@ sub vdr_FrameAdjust {
       ofile_FAIL("ERROR in $sub_name, orig_frame must be 1, 2, or 3, got $orig_frame", 1, $FH_HR);
   }
 
-  my $ret_val = undef;
-  if($nt_diff < 0) { 
-    $ret_val = (($orig_frame + $nt_diff - 1) % 3) + 1;
-  }
-  else { 
-    $ret_val = (($orig_frame - $nt_diff - 1) % 3) + 1;
-  }
-
-  return $ret_val;
+  return (($orig_frame - $nt_diff - 1) % 3) + 1;
 }
 
 ###########################################################################

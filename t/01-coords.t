@@ -742,8 +742,8 @@ is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff:1");
 is($ret_frame3, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff:2");
 $ret_frame1 = vdr_FrameAdjust(1,          -1,        undef);
 $ret_frame2 = vdr_FrameAdjust(1,          -2,        undef);
-is($ret_frame1, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff:-2");
-is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff:-1");
+is($ret_frame1, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff:-2");
+is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff:-1");
 
 $ret_frame1 = vdr_FrameAdjust(2,           0,        undef);
 $ret_frame2 = vdr_FrameAdjust(2,           1,        undef);
@@ -753,8 +753,8 @@ is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff:1");
 is($ret_frame3, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff:2");
 $ret_frame1 = vdr_FrameAdjust(2,          -1,        undef);
 $ret_frame2 = vdr_FrameAdjust(2,          -2,        undef);
-is($ret_frame1, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff:-2");
-is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff:-1");
+is($ret_frame1, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff:-2");
+is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff:-1");
 
 $ret_frame1 = vdr_FrameAdjust(3,           0,        undef);
 $ret_frame2 = vdr_FrameAdjust(3,           1,        undef);
@@ -764,8 +764,8 @@ is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff:1");
 is($ret_frame3, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff:2");
 $ret_frame1 = vdr_FrameAdjust(3,          -1,        undef);
 $ret_frame2 = vdr_FrameAdjust(3,          -2,        undef);
-is($ret_frame1, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff:-2");
-is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff:-1");
+is($ret_frame1, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff:-2");
+is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff:-1");
 
 # a few with abs(nt_diff) above 2  
 $ret_frame1 = vdr_FrameAdjust(1,         108,        undef);
@@ -776,8 +776,8 @@ is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff%3:1");
 is($ret_frame3, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff%3:2");
 $ret_frame1 = vdr_FrameAdjust(1,        -109,        undef);
 $ret_frame2 = vdr_FrameAdjust(1,        -110,        undef);
-is($ret_frame1, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff%3:-2");
-is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff%3:-1");
+is($ret_frame1, 2, "vdr_FrameAdjust(): orig_frame:1, nt_diff%3:-2");
+is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:1, nt_diff%3:-1");
 
 $ret_frame1 = vdr_FrameAdjust(2,          72,        undef);
 $ret_frame2 = vdr_FrameAdjust(2,          73,        undef);
@@ -787,8 +787,8 @@ is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff%3:1");
 is($ret_frame3, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff%3:2");
 $ret_frame1 = vdr_FrameAdjust(2,         -73,        undef);
 $ret_frame2 = vdr_FrameAdjust(2,         -74,        undef);
-is($ret_frame1, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff%3:-2");
-is($ret_frame2, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff%3:-1");
+is($ret_frame1, 3, "vdr_FrameAdjust(): orig_frame:2, nt_diff%3:-2");
+is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:2, nt_diff%3:-1");
 
 $ret_frame1 = vdr_FrameAdjust(3,         900,        undef);
 $ret_frame2 = vdr_FrameAdjust(3,         901,        undef);
@@ -798,5 +798,5 @@ is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:1");
 is($ret_frame3, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:2");
 $ret_frame1 = vdr_FrameAdjust(3,        -901,        undef);
 $ret_frame2 = vdr_FrameAdjust(3,        -902,        undef);
-is($ret_frame1, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:-2");
-is($ret_frame2, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:-1");
+is($ret_frame1, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:-2");
+is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:-1");
