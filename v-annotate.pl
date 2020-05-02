@@ -3647,11 +3647,7 @@ sub add_frameshift_alerts_for_one_sequence {
           $ftr_sstop = $sstop;
           $ftr_mstop = $mstop;
           if(! defined $F_0) { 
-            $F_0 = adjust_frame(1, abs($mstart - $sgm_start_rfpos));
-                (3 - ((abs($mstart - $sgm_start_rfpos)) % 3)) + 1; 
-            #$F_0 = (abs($mstart - $sgm_start_rfpos) % 3) + 1; 
-            #if   ($F_0 == 2) { $F_0 = 3; }
-            #elsif($F_0 == 3) { $F_0 = 2; }
+            $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
             # $F_0 is frame of initial nongap RF position for this CDS 
           } 
 
@@ -3685,11 +3681,7 @@ sub add_frameshift_alerts_for_one_sequence {
               # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
               $uapos = $max_uapos_before_AR->[$rfpos]; 
               $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
-              my $z = $rf_diff - $ua_diff; # difference between number of RF positions seen and nucleotides seen
-              my $F_cur = ((($F_0-1) + $z) % 3) + 1; # frame implied by current nt aligned to current rfpos
-              #if   ($F_cur == 2) { $F_cur = 3; }
-              #elsif($F_cur == 3) { $F_cur = 2; }
-              #printf("\trf_diff: $rf_diff, ua_diff: $ua_diff, F_0: $F_0, z: $z\n");
+              my $F_cur = vdr_FrameAdjust($F_0, ($ua_diff - $rf_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
               if($strand eq "+") { $gr_frame_str .= $F_cur; }
               else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
               $frame_ct_A[$F_cur]++;
@@ -4942,7 +4934,7 @@ sub add_protein_validation_alerts {
             $n_strand      = $ftr_results_HR->{"n_strand"};
             $n_len         = $ftr_results_HR->{"n_len"};
             $n_codon_start = $ftr_results_HR->{"n_codon_start"};
-            $n_5trunc = $ftr_results_HR->{"n_5trunc"};
+            $n_5trunc      = $ftr_results_HR->{"n_5trunc"};
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
@@ -7740,18 +7732,10 @@ sub output_feature_table {
                 }
                 $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
                 # if we trimmed the CDS start due to Ns update frame for that
-                printf("\nHEYA\n\tCDS ftr_idx: $ftr_idx, codon_start: $cds_codon_start n_codon_start: %s\n", 
-                       (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) ? $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} : "undef");
                 if(($ftr_trimmable_HA{$mdl_name}[$ftr_idx]) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
                    ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
-                  printf("\ttrimmable and trimmed, n_5nlen: " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . "\n");
-                  printf("\tnew codon_start is ($cds_codon_start + " . $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} . " - 1) = %d mod3 = %d + 1 = %d",
-                  ($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1), 
-                  (($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3), 
-                  ((($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1)); 
-                  $cds_codon_start = (($cds_codon_start + $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} - 1) % 3) + 1;
-                  printf(" (%d)\n", $cds_codon_start);
+                  $cds_codon_start = vdr_FrameAdjust($cds_codon_start, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}, $FH_HR);
                 }
               } # end of else entered if n_start defined (codon_start block)
             } # end of 'if($is_cds)' entered to determine codon_start
