@@ -4229,17 +4229,19 @@ sub vdr_ParseSeqFileToSeqHash {
 # Arguments:
 #  $orig_frame: 1, 2, or 3, you can also think of this as a codon_start
 #               value:
-#               1: first position of sequence is first position to translate
+#               '1': first position of sequence is first position to translate
 #                  (first position of first codon)
-#               2: second position of sequence is first position to translate
+#               '2': second position of sequence is first position to translate
 #                  (first position of first codon, this implies that first 
 #                  position of sequence is in frame *3* (third position of 
 #                  'previous' codon)
-#               3: third position of sequence is first position to translate
+#               '3': third position of sequence is first position to translate
 #                  (first position of first codon, this implies that first 
 #                  position of sequence is in frame *2* (second position of 
 #                  'previous' codon)
-#  $nt_diff:    number of nucleotides in 3' direction to adjust by
+#  $nt_diff:    number of nucleotides to adjust by; if positive, adjusting 
+#               'forwards' (downstream, 3' direction); if negative, adjusting 
+#               'backwards' (upstream, 5' direction)
 #  $FH_HR:      ref to hash of file handles, including "cmd"
 #
 # Returns:  <ret_frame>: $orig_frame adjusted by $nt_diff nt.
@@ -4263,7 +4265,7 @@ sub vdr_ParseSeqFileToSeqHash {
 #           3            1          2
 #           3            2          1
 #
-# Dies:     if $orig_frame is not 1, 2, or 3, or $nt_diff is negative
+# Dies:     if $orig_frame is not 1, 2, or 3
 #
 #################################################################
 sub vdr_FrameAdjust { 
