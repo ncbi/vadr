@@ -20,7 +20,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated beca
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..36 (36 nt, avgpp: 0.944) on + strand are inconsistent with dominant frame (+2); inserts:36; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..36 (36 nt, avgpp: 0.944) on + strand are inconsistent with dominant frame (+1); inserts:36; deletes:none;]
 ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [47 > 5 (strand:+ CM:1 blastx:48)]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
 >Feature NC_001959.2-manually-added-frameshifts-1/5380-6000
@@ -50,8 +50,8 @@ ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend 
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 29..62 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:28(1),43(1),62(1);]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 253..390 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:252(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 29..62 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:28(1),43(1),62(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 253..390 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:252(1);]
 ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137 > 8 (strand:+ CM:390 blastx:253, valid stop codon in CM prediction)]
 >Feature NC_001959.2-manually-added-frameshifts-2/30-80
 <1	>51	gene
@@ -62,7 +62,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend 
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 24..37 (14 nt, avgpp: 0.775) on + strand are inconsistent with dominant frame (+2); inserts:24-25; deletes:37(2);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 24..37 (14 nt, avgpp: 0.775) on + strand are inconsistent with dominant frame (+3); inserts:24-25; deletes:37(2);]
 ERROR: INDEFINITE_ANNOTATION: (nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
 >Feature NC_001959.2-manually-added-frameshifts-2/1000-1500
@@ -76,6 +76,6 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated beca
 			note	similar to NTPase
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..13 (13 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+3); inserts:12-13; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..13 (13 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+1); inserts:12-13; deletes:none;]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem

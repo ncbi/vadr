@@ -155,7 +155,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (stem_loop.1) alignment to homology model is a
 			protein_id	ENTOY100A-3-fs8_3
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..4 (4 nt, avgpp: 0.894) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:4(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..4 (4 nt, avgpp: 0.894) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:4(1);]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: INDEFINITE_ANNOTATION_END: (stem_loop.1) alignment to homology model is a gap at 3' boundary [RF position 19]
@@ -204,7 +204,7 @@ ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_pe
 			protein_id	ENTOY100A-3-fs14_2
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..8 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+1); inserts:8; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..8 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+2); inserts:8; deletes:none;]
 >Feature ENTOY100A-3-fs15
 <1	15	misc_feature
 15	32
@@ -227,7 +227,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.897<0.900]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..7 (7 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+2); inserts:7; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..7 (7 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+1); inserts:7; deletes:none;]
 >Feature ENTOY100A-3-fs16
 1	17	misc_feature
 17	33
@@ -271,7 +271,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			protein_id	ENTOY100A-3-fs17_2
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 8..17 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+2); inserts:8; deletes:17(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 8..17 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+3); inserts:8; deletes:17(1);]
 >Feature ENTOY100A-3-fs18
 <1	15	misc_feature
 15	31
@@ -294,7 +294,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.896<0.900]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 7..16 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+3); inserts:7; deletes:16(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 7..16 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+2); inserts:7; deletes:16(1);]
 >Feature ENTOY100A-3-fs25
 1	17	misc_feature
 17	34
@@ -322,7 +322,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			protein_id	ENTOY100A-3-fs26_1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..8 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+1); inserts:8; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..8 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+2); inserts:8; deletes:none;]
 >Feature ENTOY100A-3-fs27
 <1	15	misc_feature
 15	32
@@ -331,7 +331,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.889<0.900]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..7 (7 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+2); inserts:7; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..7 (7 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+1); inserts:7; deletes:none;]
 >Feature ENTOY100A-3-fs28
 1	17	misc_feature
 17	33
@@ -359,7 +359,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 			protein_id	ENTOY100A-3-fs29_1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 8..17 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+2); inserts:8; deletes:17(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 8..17 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+3); inserts:8; deletes:17(1);]
 >Feature ENTOY100A-3-fs30
 <1	4	gene
 			gene	one

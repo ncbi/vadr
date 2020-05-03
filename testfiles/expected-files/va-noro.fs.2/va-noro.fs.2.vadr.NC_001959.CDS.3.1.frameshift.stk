@@ -34,19 +34,19 @@ NC_001959.2-manually-added-frameshifts-1/7000-7500         CCATTTCTCGAACCACTAGTT
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.1 nucleotide alignment of positions 29..62 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:28(1),43(1),62(1);
+#=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.1 nucleotide alignment of positions 29..62 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:28(1),43(1),62(1);
 
-#=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.2 nucleotide alignment of positions 253..390 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:252(1);
+#=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.2 nucleotide alignment of positions 253..390 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:252(1);
 
 NC_001959.2-manually-added-frameshifts-1/7200-7655         TGCTGATGCAGCAAGATCTGTGGCAGGA-CTCCAGTCACCCGCA-TGTAGATTGGAATGGCGTG-GAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGGTTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCA
 #=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 PP **************************98.89************9.59***************98.89*************************************************************************************************************************************
-#=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 CS 3333333333333333333333333333d111111111111111d2222222222222222222d333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333
+#=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 CS 2222222222222222222222222222d333333333333333d1111111111111111111d222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222
 #=GC SS_cons                                               ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF                                                    TGCTGATGCAGCAAGATCTGTGGCAGGAGCTCCAGTCACCCGCATTGTAGATTGGAATGGCGTGAGAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGGTTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCA
 
 NC_001959.2-manually-added-frameshifts-1/7200-7655         TTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGAGATTTGGAAATCT-TCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGGTTCAACAGCCTCTTCTACACTGTCTTCTGTGCCACGTGGTTATTTCAATACAGACAGGTTGCCATTATTCGCAAATAATAGGCGATGA
 #=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 PP ****************************************************996.69****************************************************************************************************************************************
-#=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 CS 3333333333333333333333333333333333333333333333333333333d111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 CS 2222222222222222222222222222222222222222222222222222222d333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333
 #=GC SS_cons                                               ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF                                                    TTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGAGATTTGGAAATCTTTCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGGTTCAACAGCCTCTTCTACACTGTCTTCTGTGCCACGTGGTTATTTCAATACAGACAGGTTGCCATTATTCGCAAATAATAGGCGATGA
 //
