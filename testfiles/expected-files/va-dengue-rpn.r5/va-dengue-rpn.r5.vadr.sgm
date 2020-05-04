@@ -25,10 +25,10 @@
 3.8.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  membrane_glycoprotein_M               17    1    1   616   840   712    936   225    +  no     0.975  0.975  no   no 
 3.9.1  gi|1044891200|gb|KU550333.1|  2325  PASS  NC_001474  mat_peptide  envelope_protein_E                    18    1    1   841  2325   937   2421  1485    +  no     0.975  0.975  no   no 
 #
-4.1.1  gi|1447973732|gb|MH680297.1|  1485  PASS  NC_001477  gene         POLY                                   3    1    1     1  1485   935   2419  1485    +  5'&3'      -      -  yes  yes
-4.2.1  gi|1447973732|gb|MH680297.1|  1485  PASS  NC_001477  CDS          polyprotein                            4    1    1     1  1485   935   2419  1485    +  5'&3'      -      -  yes  yes
-4.3.1  gi|1447973732|gb|MH680297.1|  1485  PASS  NC_001477  mat_peptide  envelope_protein_E                    18    1    1     1  1485   935   2419  1485    +  no     0.975  0.975  no   no 
+4.1.1  gi|1447973732|gb|MH680297.1|  1485  FAIL  NC_001477  gene         POLY                                   3    1    1     1  1485   935   2419  1485    +  5'&3'      -      -  yes  yes
+4.2.1  gi|1447973732|gb|MH680297.1|  1485  FAIL  NC_001477  CDS          polyprotein                            4    1    1     1  1485   935   2419  1485    +  5'&3'      -      -  yes  yes
+4.3.1  gi|1447973732|gb|MH680297.1|  1485  FAIL  NC_001477  mat_peptide  envelope_protein_E                    18    1    1     1  1485   935   2419  1485    +  no     0.975  0.975  no   no 
 #
-5.1.1  gi|281314094|gb|GU211727.1|     87  PASS  NC_001474  gene         POLY                                   3    1    1     1    87  9979  10065    87    +  5'&3'      -      -  yes  yes
-5.2.1  gi|281314094|gb|GU211727.1|     87  PASS  NC_001474  CDS          polyprotein                            4    1    1     1    87  9979  10065    87    +  5'&3'      -      -  yes  yes
-5.3.1  gi|281314094|gb|GU211727.1|     87  PASS  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1     1    87  9979  10065    87    +  5'&3'      -      -  yes  yes
+5.1.1  gi|281314094|gb|GU211727.1|     87  FAIL  NC_001474  gene         POLY                                   3    1    1     1    87  9979  10065    87    +  5'&3'      -      -  yes  yes
+5.2.1  gi|281314094|gb|GU211727.1|     87  FAIL  NC_001474  CDS          polyprotein                            4    1    1     1    87  9979  10065    87    +  5'&3'      -      -  yes  yes
+5.3.1  gi|281314094|gb|GU211727.1|     87  FAIL  NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5      26    1    1     1    87  9979  10065    87    +  5'&3'      -      -  yes  yes
