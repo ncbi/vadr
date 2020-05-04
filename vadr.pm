@@ -1559,6 +1559,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "noftrant", "sequence",
+                   "NO_FEATURES_ANNOTATED", # short description
+                   "all annotated features are too short to output to feature table", # long description
+                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
