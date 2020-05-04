@@ -1,0 +1,22 @@
+>Feature gi|1447973732|gb|MH680297.1|
+<1	>1485	gene
+			gene	POLY
+<1	>1485	misc_feature
+			note	similar to polyprotein
+1	1485	misc_feature
+			note	similar to envelope protein E
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (polyprotein) first nucleotide of CDS is an N [first 35 positions are Ns, first non-N is position 36]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (envelope protein E) mat_peptide may not be translated because its parent CDS has a problem
+>Feature gi|281314094|gb|GU211727.1|
+<1	>87	gene
+			gene	POLY
+<1	>87	misc_feature
+			note	similar to polyprotein
+<1	>87	misc_feature
+			note	similar to RNA-dependent RNA polymerase NS5
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (polyprotein) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 86]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its parent CDS has a problem
