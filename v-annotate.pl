@@ -122,20 +122,20 @@ require "sqp_utils.pm";
 #  6. add_protein_validation_alerts()
 #     indfantn, indfstrp, indf5plg, indf5pst, indf3plg, indf3pst, insertnp, deletinp, cdsstopp, indfantp (10)
 #
-#  7. alert_add_noftrann()
-#     noftrann (1)
-# 
-#  8. alert_add_parent_based()
+#  7. alert_add_parent_based()
 #     peptrans (1)
 # 
-#  9. add_low_similarity_alerts()
+#  8. add_low_similarity_alerts()
 #     lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
 # 
-# 10. add_frameshift_alerts_for_one_sequence()
+#  9. add_frameshift_alerts_for_one_sequence()
 #     fsthicnf, fstlocnf (2)
 #
-# 11. join_alignments_and_add_unjoinbl_alerts()
+# 10. join_alignments_and_add_unjoinbl_alerts()
 #     unjoinbl (1)
+#
+# 12. output_feature_table()
+#     noftrann, noftrant (1)
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -1295,7 +1295,6 @@ if($do_hmmer) {
 } # end of 'if($do_hmmer)'
 
 ##############################################################
-# Add noftrann alerts for sequences with zero annotated features
 # Add alerts to children features that have parents with 
 # fatal alerts for specific feature combinations:
 # (currently only one such parent/child type relationship
@@ -1308,20 +1307,40 @@ if($do_hmmer) {
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    alert_add_noftrann(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
-                       \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
     alert_add_parent_based(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
                            \%alt_ftr_instances_HHH, "CDS", "mat_peptide", "peptrans", "VADRNULL", \%opt_HH, \%{$ofile_info_HH{"FH"}});
   }
 }
 
-################################################################
-# Add noftrann errors for sequences with zero annotated features
-################################################################
-
 ################################
 # Output annotations and alerts
 ################################
+
+# Output feature table first, because we may add noftranc alerts for
+# sequences for which zero of the annotated features are output to 
+# the feature table file (because they are too short). 
+
+######################
+# feature table file #
+######################
+
+# open files for writing
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
+
+$start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
+my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
+                                 \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
+                                 \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+########################
+# tabular output files #
+########################
+
 # open files for writing
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ant",      $out_root . ".sqa", 1, 1, "per-sequence tabular annotation summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cls",      $out_root . ".sqc", 1, 1, "per-sequence tabular classification summary file");
@@ -1336,19 +1355,8 @@ if($do_blastn_ali) {
 if($do_replace_ns) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
 }
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_tbl",       $out_root . ".pass.tbl",       1, 1, "5 column feature table output for passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_tbl",       $out_root . ".fail.tbl",       1, 1, "5 column feature table output for failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pass_list",      $out_root . ".pass.list",      1, 1, "list of passing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "fail_list",      $out_root . ".fail.list",      1, 1, "list of failing sequences");
-ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . ".alt.list",       1, 1, "list of alerts in the feature tables");
-
-########################
-# tabular output files #
-########################
-my %class_alerts_per_seq_H = ();
 
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
-
 my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
@@ -1357,16 +1365,6 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-######################
-# feature table file #
-######################
-$start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
-
-my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
-                                 \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                 \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
-
-ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ################################
 # output optional output files #
@@ -1488,7 +1486,6 @@ exit 0;
 # alert_feature_instance_add 
 # alert_sequence_instance_fetch
 # alert_feature_instance_fetch
-# alert_add_noftrann 
 # alert_add_unexdivg 
 # alert_instances_check_prevents_annot
 #
@@ -1526,7 +1523,8 @@ exit 0;
 # convert_pp_char_to_pp_avg ()
 # group_subgroup_string_from_classification_results()
 # get_accession_from_ncbi_seq_name() 
-# check_for_valid_feature_prediction()
+# check_for_tabular_ftr_feature_prediction()
+# check_for_valid_ftbl_feature_prediction()
 # check_if_sequence_passes()
 # check_if_sequence_was_annotated()
 # check_for_feature_alert_codes()
@@ -6082,7 +6080,6 @@ sub helper_protein_validation_check_overlap {
 # alert_list_option
 # alert_feature_instance_add 
 # alert_sequence_instance_add 
-# alert_add_noftrann 
 # alert_add_unexdivg 
 # alert_instances_check_prevents_annot
 #
@@ -6521,62 +6518,6 @@ sub alert_feature_instance_fetch {
   }
 
   return undef; # not defined
-}
-
-#################################################################
-# Subroutine: alert_add_noftrann()
-# Incept:     EPN, Thu Jan 24 12:31:16 2019
-# Purpose:    Adds noftrann alerts for sequences with 0 predicted features.
-#
-# Arguments:
-#  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
-#  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
-#  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
-#  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
-#  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, ADDED TO HERE
-#  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
-#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $FH_HR:                   REF to hash of file handles, including 'log'
-#             
-# Returns:  void
-# 
-# Dies:     never
-#
-#################################################################
-sub alert_add_noftrann { 
-  my $sub_name = "alert_add_noftrann";
-  my $nargs_exp = 8;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, 
-      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
-
-  my $nseq = scalar(@{$seq_name_AR});
-  my $nftr = scalar(@{$ftr_info_AHR});
-
-  my @ftr_min_len_A = (); 
-  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_min_len_A[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) ? 
-        opt_Get("--minpvlen", $opt_HHR) : 1;
-  }
-
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name  = $seq_name_AR->[$seq_idx];
-    my $seq_nftr = 0; # number of annotated features for this sequence
-
-    # loop over features
-    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_A[$ftr_idx])) { 
-        $seq_nftr++;
-        $ftr_idx = $nftr; # breaks for $ftr_idx loop
-      } 
-    }
-    if($seq_nftr == 0) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
-    }
-  }
-
-  return;
 }
 
 #################################################################
@@ -7594,7 +7535,8 @@ sub output_feature_table {
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name  = $seq_name_AR->[$seq_idx];
+    my $seq_name = $seq_name_AR->[$seq_idx];
+    my $seq_ntabftr = 0; # number of features for this sequence annotated in tabular .ftr file (may have shorter features than are permitted in .ftbl file)
     
     my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
     my $ftidx         = 0;  # index in @ftout_AH
@@ -7629,8 +7571,10 @@ sub output_feature_table {
       }
 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-        if(check_for_valid_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
-
+        if(check_for_tabular_ftr_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]})) { 
+          $seq_ntabftr++; 
+        }
+        if(check_for_valid_ftbl_feature_prediction(\%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}, $ftr_min_len_HA{$mdl_name}[$ftr_idx])) { 
           # initialize
           my $feature_type            = $ftr_info_AHR->[$ftr_idx]{"type"}; # type of feature, e.g. 'CDS' or 'mat_peptide' or 'gene'
           my $orig_feature_type       = $feature_type;                     # original feature type ($feature_type could be changed to misc_feature)
@@ -7720,7 +7664,6 @@ sub output_feature_table {
                 }
               } # end of else entered if n_start defined (codon_start block)
             } # end of 'if($is_cds)' entered to determine codon_start
-            # end codon_start block
             
             # convert coordinate string to output string
             $ftr_out_str = helper_ftable_coords_to_out_str($ftr_ftbl_coords_str, $feature_type, $FH_HR);
@@ -7796,7 +7739,7 @@ sub output_feature_table {
             $ftr_idx2ftout_idx_H{$ftr_idx} = $ftidx;
             $ftidx++;
           } # end of 'if($ftr_ftbl_coords_str ne "")'
-        } # end of 'if(check_for_valid_feature_prediction('
+        } # end of 'if(check_for_valid_ftbl_feature_prediction('
       } # end of 'for(my $ftr_idx...'
 
       # Final step before outputting: 
@@ -7851,7 +7794,7 @@ sub output_feature_table {
             if(($ftbl_len < 3)                            || # less than 1 AA, regardless of frame
                (($ftbl_len == 3) && ($codon_start != 1))  || # less than 1 AA, frame 2 or 3
                (($ftbl_len == 4) && ($codon_start == 3))  || # less than 1 AA, frame 3
-               (($ftbl_len < 5)  && (! $is_3trunc_term))) { # only a stop codon
+               (($ftbl_len <= 5) && (! $is_3trunc_term))) { # only a stop codon
               $remove_me_A[$ftidx] = 1;
               printf("\t\tset remove_me_A[$ftidx] to 1\n");
             }
@@ -7907,7 +7850,26 @@ sub output_feature_table {
     #######################################
     # done with this sequence, determine what type of output we will have 
     my $cur_noutftr = scalar(@ftout_AH);
-    my $cur_nalert  = scalar(@seq_alert_A);
+
+    # possibly add noftrann or noftranc alerts
+    if($seq_ntabftr == 0) { 
+      printf("HEYAB seqntabftr is 0 for $seq_name, adding noftrann alert\n");
+      # no features annotated, even in eventual .ftr tabular file
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
+      # set @seq_alert_A to this lone alert
+      @seq_alert_A = ();
+      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
+    }
+    elsif($cur_noutftr == 0) { 
+      # >= 1 features annotated in eventual .ftr tbl file, but zero in this .tbl file because 
+      # they were all too short
+      printf("HEYAB cur_noutftr is 0 for $seq_name, adding noftrant alert\n");
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrant", $seq_name, "VADRNULL", $FH_HR);
+      # set @seq_alert_A to this lone alert
+      @seq_alert_A = ();
+      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrant"}{"sdesc"}, $alt_info_HHR->{"noftrant"}{"ldesc"}, ""));
+    }
+    my $cur_nalert = scalar(@seq_alert_A);
 
     # sort output
     if($cur_noutftr > 0) { 
@@ -7922,14 +7884,12 @@ sub output_feature_table {
     # - at least one feature is annotated ($cur_noutftr > 0)
     # - zero notes and alerts
     my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
-
-    # sanity check, our $do_pass value should match what check_if_sequence_passes() returns
-    # based on alerts
-    # TEMPORARILY SKIPPED, example sequence where this test fails: KF201650.1
-    #if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
-    #ofile_FAIL("ERROR in $sub_name, sequence $seq_name, feature table do_pass: $do_pass disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
-    #}
-              
+    
+    # sanity check, our $do_pass value should match what check_if_sequence_passes() returns based on alert instances
+    if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
+      ofile_FAIL("ERROR in $sub_name, sequence $seq_name, feature table do_pass: $do_pass disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
+    }
+      
     if($do_pass) { 
       # print to the passing feature table file
       $ret_npass++;
@@ -8428,9 +8388,6 @@ sub helper_ftable_process_sequence_alerts {
   }
 
   my $ret_nadded = 0;
-  # NOTE: there's some code duplication in this sub with
-  # processFeatureAlertsForFtable(), possibly a chance for additional
-  # subroutines
 
   # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
   my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
@@ -9247,7 +9204,8 @@ sub parse_cdt_tblout_file_and_replace_ns {
 # initialize_ftr_or_sgm_results()
 # convert_pp_char_to_pp_avg()
 # group_subgroup_string_from_classification_results()
-# check_for_valid_feature_prediction()
+# check_for_tabular_ftr_feature_prediction()
+# check_for_valid_ftbl_feature_prediction()
 # check_if_sequence_passes()
 # check_if_sequence_was_annotated()
 # helper_sort_hit_array()
@@ -9376,10 +9334,11 @@ sub group_subgroup_string_from_classification_results {
 }
 
 #################################################################
-# Subroutine: check_for_valid_feature_prediction()
+# Subroutine: check_for_tabular_ftr_feature_prediction()
 # Incept:     EPN, Wed Apr  3 13:40:42 2019
-# Purpose:    Return '1' if we have a valid prediction for
-#             a feature, else return '0'.
+# Purpose:    Return '1' if we have a prediction for >= 1 
+#             features we will output to .ftr tabular file, 
+#             else return '0'.
 #
 # Arguments:
 #  $results_HR:     hash potentially with keys "n_start", "p_start", "n_len";
@@ -9390,8 +9349,38 @@ sub group_subgroup_string_from_classification_results {
 # Dies:     never
 #
 #################################################################
-sub check_for_valid_feature_prediction { 
-  my $sub_name = "check_for_valid_feature_prediction";
+sub check_for_tabular_ftr_feature_prediction { 
+  my $sub_name = "check_for_tabular_ftr_feature_prediction";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($results_HR) = (@_);
+
+  if((defined $results_HR->{"n_start"} || 
+      defined $results_HR->{"p_start"})) { 
+    return 1;
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: check_for_valid_ftbl_feature_prediction()
+# Incept:     EPN, Wed Apr  3 13:40:42 2019
+# Purpose:    Return '1' if we have a valid prediction we could
+#             output to a feature table, else return '0'.
+#
+# Arguments:
+#  $results_HR:     hash potentially with keys "n_start", "p_start", "n_len";
+#  $min_len:        minimum length for the feature, can be 0
+#             
+# Returns:  1 if a valid feature prediction exists, else 0
+#
+# Dies:     never
+#
+#################################################################
+sub check_for_valid_ftbl_feature_prediction { 
+  my $sub_name = "check_for_valid_ftbl_feature_prediction";
   my $nargs_exp = 2;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
