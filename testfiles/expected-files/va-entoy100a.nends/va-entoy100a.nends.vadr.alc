@@ -1,0 +1,13 @@
+#     alert     causes   short                            per    num   num  long       
+#idx  code      failure  description                     type  cases  seqs  description
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+1     ambgnt5f  no       N_AT_FEATURE_START           feature     20     8  first nucleotide of non-CDS feature is an N
+2     ambgnt3f  no       N_AT_FEATURE_END             feature     21     8  final nucleotide of non-CDS feature is an N
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------
+3     mutstart  yes      MUTATION_AT_START            feature      1     1  expected start codon could not be identified
+4     mutendcd  yes      MUTATION_AT_END              feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+5     mutendex  yes      MUTATION_AT_END              feature      1     1  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position
+6     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM  feature     24    12  mat_peptide may not be translated because its parent CDS has a problem
+7     ambgnt5c  yes      N_AT_CDS_START               feature      8     8  first nucleotide of CDS is an N
+8     ambgnt3c  yes      N_AT_CDS_END                 feature      3     3  final nucleotide of CDS is an N
+#---  --------  -------  ---------------------------  -------  -----  ----  -----------

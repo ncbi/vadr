@@ -1,0 +1,74 @@
+>Feature ENTOY100A-pass
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	19	stem_loop
+			note	stem-loop 1
+11	31	gene
+			gene	one
+11	31	CDS
+			product	protein one
+			protein_id	ENTOY100A-pass_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-pass_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-pass_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-pass_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A-pass_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-pass_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A-pass_3
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A-pass_4
+>Feature ENTOY100A-one-second-to-final-posn-R-30-pass
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	19	stem_loop
+			note	stem-loop 1
+11	31	gene
+			gene	one
+11	31	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_2
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_3
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_3
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_3
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_4

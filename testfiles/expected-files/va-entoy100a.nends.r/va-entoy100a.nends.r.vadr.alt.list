@@ -1,0 +1,6 @@
+#sequence	error	feature	error-description
+ENTOY100A/two-cds-all-Ns-but-47-and-48	N_AT_CDS_END	protein two	final nucleotide of CDS is an N [final 24 positions are Ns, final non-N is position 48]
+ENTOY100A/two-cds-all-Ns-but-47-and-48	N_AT_CDS_START	protein two	first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 47]
+ENTOY100A/two-cds-all-Ns-but-47-and-48	N_AT_CDS_START	protein three	first nucleotide of CDS is an N [first 7 positions are Ns, first non-N is position 74]
+ENTOY100A/two-cds-all-Ns-but-47-and-48	PEPTIDE_TRANSLATION_PROBLEM	protein three mp1	mat_peptide may not be translated because its parent CDS has a problem
+ENTOY100A/two-cds-all-Ns-but-47-and-48	PEPTIDE_TRANSLATION_PROBLEM	protein three mp2	mat_peptide may not be translated because its parent CDS has a problem

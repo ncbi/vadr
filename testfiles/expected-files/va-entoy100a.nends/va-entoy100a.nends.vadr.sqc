@@ -1,0 +1,17 @@
+#seq  seq                                           seq                              sub                   seq    mdl         num                     sub   score  diff/  seq   
+#idx  name                                          len  p/f   ant  model1     grp1  grp1  score  sc/nt    cov    cov  bias  hits  str  model2  grp2  grp2   diff     nt  alerts
+#---  --------------------------------------------  ---  ----  ---  ---------  ----  ----  -----  -----  -----  -----  ----  ----  ---  ------  ----  ----  -----  -----  ------
+1     ENTOY100A-pass                                100  PASS  yes  ENTOY100A  toy   A      92.9  0.929  1.000  1.000     0     1    +  -       -     -         -      -  -     
+2     ENTOY100A/one-4Ns-start-11-14                 100  FAIL  yes  ENTOY100A  toy   A      88.1  0.881  1.000  1.000     0     1    +  -       -     -         -      -  -     
+3     ENTOY100A-one-4Ns-end-28-31                   100  FAIL  yes  ENTOY100A  toy   A      86.2  0.862  1.000  1.000     0     1    +  -       -     -         -      -  -     
+4     ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31   100  FAIL  yes  ENTOY100A  toy   A      81.5  0.815  1.000  1.000     0     1    +  -       -     -         -      -  -     
+5     ENTOY100A-one-second-posn-N-12                100  FAIL  yes  ENTOY100A  toy   A      91.9  0.919  1.000  1.000     0     1    +  -       -     -         -      -  -     
+6     ENTOY100A-one-second-to-final-posn-N-30       100  FAIL  yes  ENTOY100A  toy   A      91.2  0.912  1.000  1.000     0     1    +  -       -     -         -      -  -     
+7     ENTOY100A-one-second-to-final-posn-R-30-pass  100  PASS  yes  ENTOY100A  toy   A      91.7  0.917  1.000  1.000     0     1    +  -       -     -         -      -  -     
+8     ENTOY100A-one-first-position-N-11             100  FAIL  yes  ENTOY100A  toy   A      92.2  0.922  1.000  1.000     0     1    +  -       -     -         -      -  -     
+9     ENTOY100A-one-final-position-N                100  FAIL  yes  ENTOY100A  toy   A      91.2  0.912  1.000  1.000     0     1    +  -       -     -         -      -  -     
+10    ENTOY100A-one-12Ns-start                      100  FAIL  yes  ENTOY100A  toy   A      77.7  0.777  1.000  1.000     0     1    +  -       -     -         -      -  -     
+11    ENTOY100A/one-cds-two-codons-len6-26-31       100  FAIL  yes  ENTOY100A  toy   A      73.1  0.731  1.000  1.000     0     1    +  -       -     -         -      -  -     
+12    ENTOY100A/one-cds-only-stop-len5-27-31        100  FAIL  yes  ENTOY100A  toy   A      71.9  0.719  1.000  1.000     0     1    +  -       -     -         -      -  -     
+13    ENTOY100A/one-cds-only-stop-len4-28-31        100  FAIL  yes  ENTOY100A  toy   A      70.7  0.707  1.000  1.000     0     1    +  -       -     -         -      -  -     
+14    ENTOY100A/one-cds-only-stop-len3-29-31        100  FAIL  yes  ENTOY100A  toy   A      69.0  0.690  1.000  1.000     0     1    +  -       -     -         -      -  -     

@@ -1,0 +1,45 @@
+Multi-segment CDS tests for N-ends code (ambg{5,3}{c,f,s} alerts).
+
+
+Two fasta files:
+1. entoy100a.nends.fa:
+   Sequence names are somewhat descriptive.
+   Some of these examples were based on FP-175. See the description of
+   that JIRA ticket.
+
+> esl-seqstat -a $VADRSCRIPTSDIR/testfiles/entoy100a.nends.fa
+= ENTOY100A-pass                 100 
+= ENTOY100A/one-4Ns-start-11-14      100 
+= ENTOY100A-one-4Ns-end-28-31      100 
+= ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31      100 
+= ENTOY100A-one-second-posn-N-12      100 
+= ENTOY100A-one-second-to-final-posn-N-30      100 
+= ENTOY100A-one-second-to-final-posn-R-30-pass      100 
+= ENTOY100A-one-first-position-N-11      100 
+= ENTOY100A-one-final-position-N      100 
+= ENTOY100A-one-12Ns-start       100 
+= ENTOY100A/one-cds-two-codons-len6-26-31      100 
+= ENTOY100A/one-cds-only-stop-len5-27-31      100 
+= ENTOY100A/one-cds-only-stop-len4-28-31      100 
+= ENTOY100A/one-cds-only-stop-len3-29-31      100 
+
+2. entoy100.nends.r.fa: 
+   More complicated examples, run with -r, but that's not especially
+   important. 
+
+> esl-seqstat -a $VADRSCRIPTSDIR/testfiles/entoy100a.nends.r.fa
+= ENTOY100A/pass                 100 
+= ENTOY100A/two-cds-all-Ns-but-47-and-48      100 
+
+= ENTOY100A/two-cds-all-Ns-but-47-and-48: this is a 3nt codon only
+  because position 47 is duplicated in the CDS, like a frameshift.
+
+See $VADRSCRIPTSDIR/testfiles/entoy100a.genematchcds.minfo for
+coordinates of each feature.
+
+TODO: 
+- add more complicated examples from cds two and three in entoy100a
+- add examples on reverse strand in entoy100a.rev, possibly mirror
+  images of the other examples, to test reverse strand.
+
+--

@@ -1,0 +1,9 @@
+#      seq                                                ftr          ftr                ftr  alert           alert                        alert 
+#idx   name                                    model      type         name               idx  code      fail  desc                         detail
+#----  --------------------------------------  ---------  -----------  -----------------  ---  --------  ----  ---------------------------  ------
+2.1.1  ENTOY100A/two-cds-all-Ns-but-47-and-48  ENTOY100A  CDS          protein_two          5  ambgnt5c  yes   N_AT_CDS_START               first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 47]
+2.1.2  ENTOY100A/two-cds-all-Ns-but-47-and-48  ENTOY100A  CDS          protein_two          5  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 24 positions are Ns, final non-N is position 48]
+2.2.1  ENTOY100A/two-cds-all-Ns-but-47-and-48  ENTOY100A  CDS          protein_three        6  ambgnt5c  yes   N_AT_CDS_START               first nucleotide of CDS is an N [first 7 positions are Ns, first non-N is position 74]
+2.3.1  ENTOY100A/two-cds-all-Ns-but-47-and-48  ENTOY100A  mat_peptide  protein_three_mp1    7  ambgnt5f  no    N_AT_FEATURE_START           first nucleotide of non-CDS feature is an N [first 7 positions are Ns, first non-N is position 74]
+2.3.2  ENTOY100A/two-cds-all-Ns-but-47-and-48  ENTOY100A  mat_peptide  protein_three_mp1    7  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
+2.4.1  ENTOY100A/two-cds-all-Ns-but-47-and-48  ENTOY100A  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
