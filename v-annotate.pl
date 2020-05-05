@@ -314,15 +314,13 @@ opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--m
 opt_Add("--skip_pv",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
-#       option       type       default   group  requires incompat  preamble-output                                                  help-output    
-opt_Add("--out_stk",        "boolean", 0,    $g,    undef, undef,   "output per-model full length stockholm alignments (.stk)",      "output per-model full length stockholm alignments (.stk)",      \%opt_HH, \@opt_order_A);
-opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-model full length fasta alignments (.afa)",          "output per-model full length fasta alignments (.afa)",          \%opt_HH, \@opt_order_A);
-opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced", "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
-opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",     "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
-opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",            "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
-opt_Add("--out_ftrinfo",    "boolean", 0,    $g,    undef, undef,   "output internal feature information",   "create file with internal feature information", \%opt_HH, \@opt_order_A);
-opt_Add("--out_sgminfo",    "boolean", 0,    $g,    undef, undef,   "output internal segment information",   "create file with internal segment information", \%opt_HH, \@opt_order_A);
-opt_Add("--out_altinfo",    "boolean", 0,    $g,    undef, undef,   "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
+#       option       type       default   group  requires incompat  preamble-output                                                      help-output    
+opt_Add("--out_stk",        "boolean", 0,    $g,    undef, undef,   "output per-model full length stockholm alignments (.stk)",          "output per-model full length stockholm alignments (.stk)",      \%opt_HH, \@opt_order_A);
+opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-model full length fasta alignments (.afa)",              "output per-model full length fasta alignments (.afa)",          \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced",     "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",         "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",                "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
+opt_Add("--out_debug",      "boolean", 0,    $g,    undef, undef,   "dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",        \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option       type          default     group  requires incompat  preamble-output                                                         help-output    
@@ -431,9 +429,7 @@ my $options_okay =
                 'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
                 'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
                 'out_nofs'      => \$GetOptions_H{"--out_nofs"}, 
-                'out_ftrinfo'   => \$GetOptions_H{"--out_ftrinfo"}, 
-                'out_sgminfo'   => \$GetOptions_H{"--out_sgminfo"},
-                'out_altinfo'   => \$GetOptions_H{"--out_altinfo"},
+                'out_debug'     => \$GetOptions_H{"--out_debug"},
 # other expert options
                 'execname=s'    => \$GetOptions_H{"--execname"},
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
@@ -468,6 +464,9 @@ opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 
 # validate options (check for conflicts)
 opt_ValidateSet(\%opt_HH, \@opt_order_A);
+
+my $do_keep       = opt_Get("--keep", \%opt_HH);
+my $do_replace_ns = opt_Get("-r", \%opt_HH);
 
 #######################################
 # deal with --alt_list option, if used
@@ -609,14 +608,22 @@ my $FH_HR  = $ofile_info_HH{"FH"};
 # to close these first.
 
 # open optional output files
-if(opt_Get("--out_ftrinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo", $out_root . ".ftrinfo", 1, 1, "Feature information (created due to --ftrinfo)");
-}
-if(opt_Get("--out_sgminfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo", $out_root . ".sgminfo", 1, 1, "Segment information (created due to --sgminfo)");
-}
-if(opt_Get("--out_altinfo", \%opt_HH)) { 
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altinfo", $out_root . ".altinfo", 1, 1, "Alert information (created due to --altinfo)");
+if(opt_Get("--out_debug", \%opt_HH)) { 
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrinfo",         $out_root . ".ftrinfo",         1, 1, "per-model feature ftr_info_HAH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgminfo",         $out_root . ".sgminfo",         1, 1, "per-model segment sgm_info_HAH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altinfo",         $out_root . ".altinfo",         1, 1, "per-alert-code alt_info_HH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "stgresults",      $out_root . ".stgresults",      1, 1, "per-sequence stg_results_HHH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "ftrresults",      $out_root . ".ftrresults",      1, 1, "per-sequence, per-feature ftr_results_HHAH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgmresults",      $out_root . ".sgmresults",      1, 1, "per-sequence, per-segment sgm_results_HHAH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altseqinstances", $out_root . ".altseqinstances", 1, 1, "per-sequence-alert alt_seq_instances_HH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "altftrinstances", $out_root . ".altftrinstances", 1, 1, "per-feature-alert alt_ftr_instances_HHH data (created due to --out_debug)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "clsoutput",       $out_root . ".clsoutput",       1, 1, "per-sequence cls_output_HH data (created due to --out_debug)");
+  if(opt_Get("-s", \%opt_HH)) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sdaoutput",     $out_root . ".sdaoutput",       1, 1, "per-sequence sda_output_HH data (created due to --out_debug and -s)");
+  }
+  if(opt_Get("-r", \%opt_HH)) { 
+    ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpnoutput",     $out_root . ".rpnoutput",       1, 1, "per-sequence rpn_output_HH data (created due to --out_debug and -r)");
+  }
 }
 
 # now we have the log file open, output the banner there too
@@ -632,8 +639,6 @@ my $progress_w = 87; # the width of the left hand column in our progress output,
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
-my $do_keep       = opt_Get("--keep", \%opt_HH);
-my $do_replace_ns = opt_Get("-r", \%opt_HH);
 
 ###########################################
 # Validate that we have all the files we need:
@@ -1370,14 +1375,37 @@ ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 # output optional output files #
 ################################
 if(exists $ofile_info_HH{"FH"}{"ftrinfo"}) { 
-  utl_HAHDump("Feature information", \%ftr_info_HAH, $ofile_info_HH{"FH"}{"ftrinfo"});
+  utl_HAHDump($ofile_info_HH{"desc"}{"ftrinfo"}, \%ftr_info_HAH, $ofile_info_HH{"FH"}{"ftrinfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"sgminfo"}) { 
-  utl_HAHDump("Segment information", \%sgm_info_HAH, $ofile_info_HH{"FH"}{"sgminfo"});
+  utl_HAHDump($ofile_info_HH{"desc"}{"sgminfo"}, \%sgm_info_HAH, $ofile_info_HH{"FH"}{"sgminfo"});
 }
 if(exists $ofile_info_HH{"FH"}{"altinfo"}) { 
   vdr_AlertInfoDump(\%alt_info_HH, $ofile_info_HH{"FH"}{"altinfo"});
-  vdr_AlertInfoDump(\%alt_info_HH, *STDOUT);
+}
+if(exists $ofile_info_HH{"FH"}{"stgresults"}) { 
+  utl_HHHDump($ofile_info_HH{"desc"}{"stgresults"}, \%stg_results_HHH, $ofile_info_HH{"FH"}{"stgresults"});
+}
+if(exists $ofile_info_HH{"FH"}{"ftrresults"}) { 
+  utl_HHAHDump($ofile_info_HH{"desc"}{"ftrresults"}, \%ftr_results_HHAH, $ofile_info_HH{"FH"}{"ftrresults"});
+}
+if(exists $ofile_info_HH{"FH"}{"sgmresults"}) { 
+  utl_HHAHDump($ofile_info_HH{"desc"}{"sgmresults"}, \%sgm_results_HHAH, $ofile_info_HH{"FH"}{"sgmresults"});
+}
+if(exists $ofile_info_HH{"FH"}{"altseqinstances"}) { 
+  utl_HHDump($ofile_info_HH{"desc"}{"altseqinstances"}, \%alt_seq_instances_HH, $ofile_info_HH{"FH"}{"altseqinstances"});
+}
+if(exists $ofile_info_HH{"FH"}{"altftrinstances"}) { 
+  utl_HHHDump($ofile_info_HH{"desc"}{"altftrinstances"}, \%alt_ftr_instances_HHH, $ofile_info_HH{"FH"}{"altftrinstances"});
+}
+if(exists $ofile_info_HH{"FH"}{"clsoutput"}) { 
+  utl_HHDump($ofile_info_HH{"desc"}{"clsoutput"}, \%cls_output_HH, $ofile_info_HH{"FH"}{"clsoutput"});
+}
+if(exists $ofile_info_HH{"FH"}{"rpnoutput"}) { 
+  utl_HHDump($ofile_info_HH{"desc"}{"rpnoutput"}, \%rpn_output_HH, $ofile_info_HH{"FH"}{"rpnoutput"});
+}
+if(exists $ofile_info_HH{"FH"}{"sdaoutput"}) { 
+  utl_HHDump($ofile_info_HH{"desc"}{"sdaoutput"}, \%sda_output_HH, $ofile_info_HH{"FH"}{"sdaoutput"});
 }
 
 ############
