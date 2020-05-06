@@ -42,7 +42,10 @@ use strict;
 use warnings;
 use Cwd;
 use LWP::Simple; 
-use LWP::Protocol::Simple::https; 
+# use LWP::Protocol::https; 
+# above line is purposefully commented out, b/c LWP::Protocol::https is only
+# needed for v-build.pl, and many users only use v-annotate.pl only, which can run without it
+# when a better solution for checking for modules during installation is found, uncomment it
 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
