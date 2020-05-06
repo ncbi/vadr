@@ -440,8 +440,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : $0;
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.0.6dev";
-my $releasedate   = "April 2020";
+my $version       = "1.1";
+my $releasedate   = "May 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it

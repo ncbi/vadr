@@ -203,8 +203,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : $0;
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.0.6dev";
-my $releasedate   = "April 2020";
+my $version       = "1.1";
+my $releasedate   = "May 2020";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary

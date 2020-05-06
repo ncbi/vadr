@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.6 [April 2020]
+# version: 1.1 [May 2020]
 #
 # vadr.pm
 # Eric Nawrocki
