@@ -427,7 +427,7 @@ and 1 is for the VP2 CDS. The alert codes are listed in the seventh
 column, along with a brief description in the eight column followed by
 a more detailed description, sometimes with positional information, at
 the end of the line. All possible alerts are listed in the [alert
-table](#alertable).
+table](#alerttable).
 
 In addition to the tabular output files, `v-annotate.pl` also creates 
 5-column tab-delimited feature table files that end with the suffix
@@ -689,7 +689,7 @@ integer.
 In the table below, `<n>` represents a positive interger argument and
 `<x>` represents a positive floating-point argument. 
 
-| ........option........ | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
+| ...........option........... | relevant alert code(s) | relevant error(s) | default value that triggers alert | explanation |
 |---------------------|---------------------|----------------|-----------------------------------|-------------|
 | `--lowsc <x>`       | [*lowscore*](#lowscore1)          | LOW_SCORE                           | < 0.3   | set bits per nt threshold for alert to `<x>` <a name="options-alerts-lowsc"></a> | 
 | `--indefclass <x>`  | [*indfclas*](#indfclas1)          | INDEFINITE_CLASSIFICATION           | < 0.03  | set bits per nt difference threshold for alert between top two models (not in same subgroup) to `<x>` <a name="options-alerts-indefclas"></a> |
@@ -721,7 +721,7 @@ to Infernal's `cmalign` program in the alignment stage. For more information on 
 they control `cmalign`, see the Infernal 
 User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal/Userguide.pdf)
 
-| ......option...... | explanation |
+| .........option......... | explanation |
 |---------------------|--------------------|
 | `--mxsize <n>`      | set maximum allowed DP matrix size to `<n>` Mb before triggering an unexpdivg alert (sets the `cmalign --mxsize` option), default `<n>` is `8000` | 
 | `--tau <x>`         | set the initial tau (probability loss) value to `<x>` (sets the `cmalign --tau` option), default `<x>` is `0.001` | 
@@ -738,7 +738,7 @@ will be passed to `blastx`. For more information on these options and
 how they control `blastx`, see the NCBI BLAST documentation
 (tables C1 and C4 of https://www.ncbi.nlm.nih.gov/books/NBK279684/).
 
-| ......option...... | explanation |
+| .........option......... | explanation |
 |---------------------|--------------------|
 | `--xmatrix <s>`     | use the substitution matrix `<s>` (sets the `blastx -matrix <s>` option), default is to use the default `blastx` matrix | 
 | `--xdrop <n>`       | set the xdrop options to `<n>` (sets the `blastx` `-xdrop_ungap <n>`, `-xdrop_gap <n>` and `-xdrop_gap_final <n>` with the same `<n>`), default is to use default `blastx` values |
@@ -842,7 +842,7 @@ The following options are related to parallel mode.
 
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--out_stk`     | create additional per-model output [stockholm](#formats.md:stockholmformat) alignments with `.stk` suffix |
+| `--out_stk`     | create additional per-model output [stockholm](formats.md#stockholmformat) alignments with `.stk` suffix |
 | `--out_ftrinfo` | create additional output file with `.ftrinfo` suffix with per-model feature information, mainly useful for debugging |
 | `--out_sgminfo` | create additional output file with `.sgminfo` suffix with per-model segment information, mainly useful for debugging |
 | `--out_altinfo` | create additional output file with `.altinfo` suffix with alert information, mainly useful for debugging |
