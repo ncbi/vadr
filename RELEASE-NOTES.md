@@ -8,6 +8,8 @@
     nucleotides where possible, motivated by the high fraction of Ns
     in many SARS-CoV-2 sequences.
   * adds --hmmer option for profile HMM based protein validation
+  * makes fsthicnf alert fatal by default
+  * adds ambgnt5s and ambgnt3s alerts, non-fatal by default
   * several bug fixes and other less significant new options
   * additional tests 
 
