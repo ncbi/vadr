@@ -10,6 +10,7 @@
   * [options for controlling the `cmbuild` step](#options-cmbuild)
   * [options for skipping stages](#options-skip)
   * [options for additional output files](#options-output)
+  * [additional expert options](#options-expert)
 * [Building a VADR model library](#library)
 * [How the VADR 1.0 model library was constructed](#1.0library)
   * [Norovirus models](#1.0library-noro)
@@ -38,9 +39,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 1.0 (Nov 2019)
+# VADR 1.1 (May 2020)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Thu Nov 21 14:23:07 2019
+# date:    Wed May  6 13:47:59 2020
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -66,6 +67,12 @@ an output directory with the same name as the accession:
 v-build.pl NC_039897 NC_039897
 ```
 
+***If you get an (potentially very long) error when you run this
+   command that starts with `Can't locate LWP/Protocol/https.pm in
+   @INC` or something similar. You will need to install one or more
+   perl modules before `v-build.pl` will run as explained more
+   [here](install.md#inline).***
+
 The standard output of `v-build.pl` that is printed to the screen
 (which is also output to the `.log` output file) begins with the
 banner and date again followed by a list of relevant environment
@@ -73,14 +80,14 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              EPN, Thu Nov 21 14:23:18 2019
-# $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
+# date:              Wed May  6 15:01:34 2020
+# $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
 # $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries
 # $VADRSCRIPTSDIR:   /home/nawrocki/vadr-install-dir/vadr
 #
-# accession/model name:           NC_039897
-# output directory:               NC_039897
+# accession/model name:  NC_039897
+# output directory:      NC_039897
 ```
 
 No command line options were used in our example output, but if they
@@ -94,9 +101,9 @@ a FASTA sequence file and feature table file for the input accession
 `NC_039897`. 
 
 ```
-# Fetching FASTA file                                          ... done. [    3.9 seconds]
+# Fetching FASTA file                                          ... done. [    3.3 seconds]
 # Parsing FASTA file                                           ... done. [    0.0 seconds]
-# Fetching feature table file                                  ... done. [    3.1 seconds]
+# Fetching feature table file                                  ... done. [    3.2 seconds]
 # Parsing feature table file                                   ... done. [    0.0 seconds]
 ```
 
@@ -106,60 +113,83 @@ data from GenBank is then pruned to remove information that will
 not be stored in the VADR model files:
 
 ```
-# Fetching and parsing protein feature table file(s)           ... done. [   13.5 seconds]
+# Fetching and parsing protein feature table file(s)           ... done. [    9.4 seconds]
 # Pruning data read from GenBank                               ... done. [    0.0 seconds]
 ```
 
-The fetched FASTA file is then reformatted to Stockholm for input 
-to `cmbuild` to create the model CM file, feature information read
-from the feature tables is finalized internally, and CDS features
-are translated and used to create the BLAST database with `makeblastdb`:
+The fetched FASTA file is then reformatted to Stockholm for input to
+`cmbuild` to create the model CM file, feature information read from
+the feature tables is finalized internally, and CDS features are
+translated and used to create the BLAST database with `makeblastdb`,
+and the HMMER protein HMM database with `hmmbuild`. 
 
 ```
-# Reformatting FASTA file to Stockholm file                    ... done. [    0.2 seconds]
+# Reformatting FASTA file to Stockholm file                    ... done. [    0.3 seconds]
 # Finalizing feature information                               ... done. [    0.0 seconds]
-# Translating CDS and building BLAST DB                        ... done. [    0.2 seconds]
+# Translating CDS                                              ... done. [    0.1 seconds]
+# Building BLAST protein database                              ... done. [    0.2 seconds]
+# Building HMMER protein database                              ... done. [    1.2 seconds]
 ```
 
 Next, the covariance model is built using `cmbuild`. This is by far
 the slowest step of `v-build.pl` and a rough estimate of how long it
 will take is output. The longer the sequence being modeled the longer
 this step will take.  When that completes the cm file is pressed with
-`cmpress` to prepare it for use with `v-annotate.pl` and the final
+`cmpress` to prepare it for use with `v-annotate.pl`, and a BLAST
+nucleotide database is created from the CM consensus sequence. The final
 step is to create the model info file:
 
 ```
-# Building model (should take roughly 10-30 minutes)           ... done. [  818.7 seconds]
-# Pressing CM file                                             ... done. [    0.6 seconds]
+# Building CM (should take roughly 10-30 minutes)              ... done. [  480.6 seconds]
+# Pressing CM file                                             ... done. [    0.3 seconds]
+# Building BLAST nucleotide database of CM consensus           ... done. [    0.3 seconds]
 # Creating model info file                                     ... done. [    0.0 seconds]
 ```
-
 When all steps are complete, `v-build.pl` ends by outputting a list of
 relevant output files with brief descriptions:
 
 ```
-# Output printed to screen saved in:                                NC_039897.vadr.log
-# List of executed commands saved in:                               NC_039897.vadr.cmd
-# List and description of all output files saved in:                NC_039897.vadr.filelist
-# fasta file for NC_039897 saved in:                                NC_039897.vadr.fa
-# feature table format file for NC_039897 saved in:                 NC_039897.vadr.tbl
-# feature table format file for YP_009538340.1 saved in:            NC_039897.vadr.YP_009538340.1.tbl
-# feature table format file for YP_009538341.1 saved in:            NC_039897.vadr.YP_009538341.1.tbl
-# feature table format file for YP_009538342.1 saved in:            NC_039897.vadr.YP_009538342.1.tbl
-# Stockholm alignment file for NC_039897 saved in:                  NC_039897.vadr.stk
-# fasta sequence file for CDS from NC_039897 saved in:              NC_039897.vadr.cds.fa
-# fasta sequence file for translated CDS from NC_039897 saved in:   NC_039897.vadr.protein.fa
-# BLAST db .phr file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.phr
-# BLAST db .pin file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.pin
-# BLAST db .psq file for NC_039897 saved in:                        NC_039897.vadr.protein.fa.psq
-# CM file saved in:                                                 NC_039897.vadr.cm
-# cmbuild output file saved in:                                     NC_039897.vadr.cmbuild
-# binary CM and p7 HMM filter file saved in:                        NC_039897.vadr.cm.i1m
-# SSI index for binary CM file saved in:                            NC_039897.vadr.cm.i1i
-# optimized p7 HMM filters (MSV part) saved in:                     NC_039897.vadr.cm.i1f
-# optimized p7 HMM filters (remainder) saved in:                    NC_039897.vadr.cm.i1p
-# cmpress output file saved in:                                     NC_039897.vadr.cmpress
-# VADR 'model info' format file for NC_039897 saved in:             NC_039897.vadr.minfo
+# Output printed to screen saved in:                                           NC_039897.vadr.log
+# List of executed commands saved in:                                          NC_039897.vadr.cmd
+# List and description of all output files saved in:                           NC_039897.vadr.filelist
+# fasta file for NC_039897 saved in:                                           NC_039897.vadr.fa
+# feature table format file for NC_039897 saved in:                            NC_039897.vadr.tbl
+# feature table format file for YP_009538340.1 saved in:                       NC_039897.vadr.YP_009538340.1.tbl
+# feature table format file for YP_009538341.1 saved in:                       NC_039897.vadr.YP_009538341.1.tbl
+# feature table format file for YP_009538342.1 saved in:                       NC_039897.vadr.YP_009538342.1.tbl
+# Stockholm alignment file for NC_039897 saved in:                             NC_039897.vadr.stk
+# fasta sequence file for CDS from NC_039897 saved in:                         NC_039897.vadr.cds.fa
+# fasta sequence file for translated CDS from NC_039897 saved in:              NC_039897.vadr.protein.fa
+# BLAST db .phr file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.phr
+# BLAST db .pin file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pin
+# BLAST db .psq file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.psq
+# BLAST db .pdb file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pdb
+# BLAST db .pot file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pot
+# BLAST db .ptf file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.ptf
+# BLAST db .pto file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pto
+# HMMER model db file for NC_039897 saved in:                                  NC_039897.vadr.protein.hmm
+# hmmbuild build output (concatenated) saved in:                               NC_039897.vadr.protein.hmmbuild
+# binary HMM and p7 HMM filter file saved in:                                  NC_039897.vadr.protein.hmm.h3m
+# SSI index for binary HMM file saved in:                                      NC_039897.vadr.protein.hmm.h3i
+# optimized p7 HMM filters (MSV part) saved in:                                NC_039897.vadr.protein.hmm.h3f
+# optimized p7 HMM filters (remainder) saved in:                               NC_039897.vadr.protein.hmm.h3p
+# hmmpress output file saved in:                                               NC_039897.vadr.hmmpress
+# CM file saved in:                                                            NC_039897.vadr.cm
+# cmbuild output file saved in:                                                NC_039897.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                                   NC_039897.vadr.cm.i1m
+# SSI index for binary CM file saved in:                                       NC_039897.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                                NC_039897.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                               NC_039897.vadr.cm.i1p
+# cmpress output file saved in:                                                NC_039897.vadr.cmpress
+# fasta sequence file with cmemit consensus sequence for NC_039897 saved in:   NC_039897.vadr.nt.fa
+# BLAST db .nhr file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nhr
+# BLAST db .nin file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nin
+# BLAST db .nsq file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nsq
+# BLAST db .ndb file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.ndb
+# BLAST db .not file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.not
+# BLAST db .ntf file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.ntf
+# BLAST db .nto file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nto
+# VADR 'model info' format file for NC_039897 saved in:                        NC_039897.vadr.minfo
 #
 # All output files created in directory ./NC_039897/
 ```
@@ -173,20 +203,27 @@ the files with the following suffixes:
 
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
-| `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST protein database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.fa.n{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
+| `.hmm` | HMMER 3.x HMM file | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
+| `.hmm.3{m,i,f,p}` | HMMER 3.x covariance model index files, created by `hmmpress` | binary files, not meant to be human-readable |
 | `.minfo`  | VADR model info file | [description of format](formats.md#minfo) |
 
 You can use only this model to annotate sequences
-with `v-annotate.pl` that are similar to `NC_039897` by using the `-m`, `-b` and `-i` options as
-explained in the [`v-annotate.pl` documentation](annotate.md). Alternatively,
-you can combine these files together with analogous files from additional
-`v-build.pl` runs for other accessions to create a VADR model library
-and then use `v-annotate.pl` `-m`, `-b` and `-i` options to 
-specify that library be used. This is explained in more detail 
-[below](#library). The VADR 1.0 library was created in
-this manner, as explained in [another section](#1.0library).
+with `v-annotate.pl` that are similar to `NC_039897` using the
+`--mdir` and `--mkey` options with a command like `v-annotate.pl
+--mdir NC_039897 --mkey NC_039897.vadr <fasta-seq-file> <output-directory>`,
+explained more [here](annotate.md#options-modelfiles).
+
+Alternatively, you can combine these files together with analogous
+files from additional `v-build.pl` runs for other accessions to create
+a VADR model library and then use `v-annotate.pl` `--mdir` and  `--mkey` 
+options to specify that the library be used. This is explained in more
+detail [below](#library). The VADR 1.0 library was created in this
+manner, as explained in [another section](#1.0library).
 
 ---
 ## `v-build.pl` command-line options<a name="options"></a>
@@ -278,7 +315,7 @@ the translation table to use when analyzing CDS predictions.
 
 | ......option...... | explanation | 
 |--------|-------------| 
-| `--tt <s>`   | specify that NCBI translation table `<s>` be used instead of `1` |
+| `--ttbl <n>`   | specify that NCBI translation table `<n>` be used instead of `1` |
 
 Reference on NCBI translation tables:
 https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=cgencodes
@@ -312,35 +349,72 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 | `--sgminfo <s>` | output information on the internal data structure used to keep track of segments of features to `<s>`, mainly useful for debugging |
 | `--ftrinfo <s>` | output information on the internal data structure used to keep track of features to `<s>`, mainly useful for debugging |
 
+### Other `v-build.pl` expert options<a name="options-expert"></a>
+
+| .......option....... | explanation | 
+|--------|-------------| 
+| `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
+
 ---
 ## Building a VADR model library<a name="library"></a>
 
 Follow these steps to build a VADR model library:
 
 1. Run `v-build.pl` multiple (`N>1`) times for different accessions.
-2. Concatenate all resulting `N` `.vadr.minfo` files into a single file, call it `my.vadr.minfo`, for example.
-3. Concatenate all resulting `N` `.vadr.cm` files into a single file, call it `my.vadr.cm`, for example.
-4. Move all resulting BLAST DB files (`.vadr.protein.fa.phr`, `.vadr.protein.fa.pin`, and
-`.vadr.protein.fa.psq`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
-for example.
-5. Run `cmpress` on the `my.vadr.cm` file created in step 3 like this:
+
+2. Create a new directory call it `my-vadr-model-dir`, for example.
+
+3. Concatenate all resulting `N` `.vadr.minfo` files into a single
+file, call it `my.vadr.minfo`, and move it to the
+`my-vadr-model-dir` directory.
+
+4. Concatenate all resulting `N` `.vadr.cm` files into a single file,
+call it `my.vadr.cm`, for example, and move it to the
+`my-vadr-model-dir` directory.
+
+5. Concatenate all resulting `N` `.vadr.hmm` files into a single file,
+call it `my.vadr.hmm`, for example, and move it to the
+`my-vadr-model-dir` directory.
+
+6. Concatenate all resulting `N` `.vadr.fa` files into a single file,
+call it `my.vadr.fa`, for example, and move it to the
+`my-vadr-model-dir` directory, and then create a BLAST nucleotide 
+database from it with the command:
 ```
-$VADRINFERNALDIR/cmpress my.vadr.cm
+$VADRBLASTDIR/makeblastdb -dbtype nt -in my-vadr-model-dir/my.vadr.fa
+```
+
+7. Move all resulting BLAST protein DB files (`.vadr.protein.fa`,
+`.vadr.protein.fa.p{hr,in,sq,db,ot,tf,to}`) from all `N` runs into the same directory, call it `my-vadr-blastdb-dir`
+for example.
+
+8. Run `cmpress` on the `my.vadr.cm` file created in step 3 like this:
+
+```
+$VADRINFERNALDIR/cmpress my-vadr-model-dir/my.vadr.cm
+```
+
+8. Run `hmmpress` on the `my.vadr.hmm` file created in step 3 like this:
+
+```
+$VADRHMMERDIR/hmmpress my-vadr-model-dir/my.vadr.hmm
 ```
 
 You can then use this library with `v-annotate.pl` as follows:
 ```
-v-annotate.pl -m my.vadr.cm -i my.vadr.minfo -b my-vadr-blastdb-dir
+v-annotate.pl --mdir my-vadr-model-dir --mkey my.vadr <fasta-file>
+<output directory>
 ```
 
-Or substitute the full paths to the CM and minfo files and to the
-BLAST DB directory if they are not in the current directory you are
-running `v-annotate.pl` from.
+Or substitute the full paths to `my-vadr-model-dir` if it is not a
+subdirectory of the current directory. Optionally, you can supply the
+paths to each the CM file `<s1>` (`-m <s1>`), HMM file `<s2>` (`-a <s2>`), model info file
+`<s3>` (`-i <s3>`), BLAST nucleotide db `<s4>` (`-n <s4>`) and BLAST
+protein db directory `<s5>` (`-x <s5>`). 
 
-If you move `my.vadr.cm` into a new directory, make sure you also move
-the four `cmpress` output index files (`my.vadr.cm.i1i`, `my.vadr.cm.i1m`, 
-`my.vadr.cm.i1f` and `my.vadr.cm.i1p`) into
-the same directory. 
+If you ever move `.cm`, `.hmm`, or BLAST `.fa` files into new
+directories, make sure you also move the corresponding index files 
+(.cm.*, `.hmm.*`, `.fa.*`) along with them.
 
 ---
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
@@ -355,6 +429,26 @@ Eight of these are Hepatitis C virus Refseq models, listed in
 The remaining 173 are additional *Caliciviridae* and *Flaviviridae*
 RefSeq models, listed in
 [vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list).
+
+The VADR 1.0 library was built with version 1.0 of VADR. Part
+of the motivation for including this documentation is so that the 1.0
+library could be reproduced. If you want to reproduce it exactly, you'll want to install
+version 1.0. The install script is here:
+
+https://raw.githubusercontent.com/nawrockie/vadr/1.0/vadr-install.sh
+
+Additionally, if the RefSeq annotation for any of these 197 VADR
+models has changed since October 2019, then it may not be able to
+identically reproduce the VADR 1.0 model library using the steps
+outlined above. This is because `v-build.pl` fetches the current
+RefSeq annotation data from GenBank when it is run. If necessary,
+contact Eric Nawrocki at eric.nawrocki@nih.gov for additional files
+needed to reproduce the library exactly.
+
+However, the library has changed since version 1.0. For example, the 
+default set of models included with version 1.1 has 205 total models,
+not 197. To see a list of changes, see the
+$VADRMODELDIR/RELEASE-NOTES.txt file.
 
 ### Building the VADR 1.0 library Norovirus models <a name="1.0library-noro"></a>
 
@@ -499,14 +593,6 @@ For example:
 will execute these 173 commands.)
 
 Each of these commands takes roughtly between 10 minutes and an hour. 
-
-Note: if the RefSeq annotation for any of these 197 VADR models has
-changed since October 2019, then it may not be able to identically
-reproduce the VADR 1.0 model library using the steps outlined
-above. This is because `v-build.pl` fetches the current RefSeq
-annotation data from GenBank when it is run. If necessary, contact
-Eric Nawrocki at nawrocke@ncbi.nlm.nih.gov for additional files needed
-to reproduce the library exactly.
 
 ### Concatenating files for the 197 models to create the VADR library <a name="1.0library-concat"></a>
 
