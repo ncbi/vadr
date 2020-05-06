@@ -774,7 +774,7 @@ sequences which are highly similar to the SARS-CoV-2 RefSeq model.
 When `-s` option is used, an additional output file with suffix `.sda` is created,
 with format described [here](formats.md#sda).
 
-| ......option......  | explanation |
+| .........option.........  | explanation |
 |---------------------|--------------------|
 | `-s`                | turn on the seed acceleration heuristic: use the max length ungapped region from blastn to seed the alignment |
 | `--s_blastnws <n>`  | with `-s`, set the blastn `-word_size` parameter to `<n>`, the default value for `<n>` is `7` |
@@ -807,7 +807,7 @@ are then replaced with the expected nucleotide at each corresponding position:
 When `-r` is used, an additional output file with suffix `.rpn` is created,
 with format described [here](formats.md#rpn).
 
-| ......option......  | explanation |
+| ........option........  | explanation |
 |---------------------|--------------------|
 | `-r`                | turn on the replace-N strategy: replace stretches of Ns with expected nucleotides, where possible |
 | `--r_minlen <n>`    | with `-r`, set minimum length subsequence to possibly replace Ns in to `<n>`, the default value for `<n>` is `5` |
@@ -822,7 +822,7 @@ with format described [here](formats.md#rpn).
 The `-p` option specifies that `v-annotate.pl` should be run in [parallel mode](#exampleparallel).
 The following options are related to parallel mode.
 
-| ......option...... | explanation |
+| ........option........ | explanation |
 |---------------------|--------------------|
 | `-p`           | run in parallel mode so that classification, and each per-model coverage determination and alignment step is split into multiple jobs and run in parallel on a cluster | 
 | `-q <s>`       | read cluster information file from file `<s>` instead of from the default file `$VADRSCRIPTSDIR/vadr.qsubinfo` |
@@ -846,7 +846,7 @@ The following options are related to parallel mode.
 | `--out_afa`     | create additional per-model output aligned fasta alignments with `.afa` suffix |
 | `--out_rpstk`   | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
 | `--out_rpafa`   | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
-| `--out_nofs`    | do not output frameshift stockholm alignment files with `.frameshift.stk` suffix |
+| `--out_nofs`    | do not output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
 | `--out_ftrinfo` | create additional output file with `.ftrinfo` suffix with per-model feature information, mainly useful for debugging |
 | `--out_sgminfo` | create additional output file with `.sgminfo` suffix with per-model segment information, mainly useful for debugging |
 | `--out_altinfo` | create additional output file with `.altinfo` suffix with alert information, mainly useful for debugging |
@@ -873,7 +873,7 @@ with sequences organized according to whether they are fatal or not.
 [*Always fatal*](#alertlist-always) alert codes are always fatal and cannot be changed using the 
 `--alt_pass` options. All other alert codes can be changed from *fatal* to *non-fatal*
 by using the `--alt_pass` option, or from *non-fatal* to *fatal* using the `--alt_fail` option.
-An example is included [below](#alerttoggle)
+An example is included [below](#alerttoggle).
 
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
