@@ -670,7 +670,7 @@ integer.
 | .......option....... | explanation | 
 |--------|-------------| 
 | `-m <s>` | use the CM file `<s>`, instead of the default CM file ($VADRMODELDIR/vadr.cm) |
-|  -a <s>  | use HMM file `<s>` instead of the default HMM file ($VADRMODELDIR/vadr.hmm) |
+| `-a <s>` | use HMM file `<s>` instead of the default HMM file ($VADRMODELDIR/vadr.hmm) |
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-n <s>` | use the blastn DB file `<s>` when necessary, instead of the default blastn DB file ($VADRMODELDIR/vadr.fa), only used if `-s` or `-r` is also used |
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
