@@ -57,14 +57,20 @@ instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
 
 ---
-### If installation fails because the `Inline` or `LWP` perl modules are not installed...<a name="inline"></a>
+### If installation or `do-install-tests-local.sh` fails because the `Inline` or `LWP` perl modules are not installed...<a name="inline"></a>
 
-The perl `Inline` and `LWP` modules must be installed prior to installation. You 
-can install `Inline` using `cpan` with two commands:
+The perl `Inline::C`, `LWP::Simple` and `LWP::Protocol::https` modules
+must be installed prior to installation. ([This
+page](https://www.perl.com/article/1/2013/3/24/3-quick-ways-to-find-out-the-version-number-of-an-installed-Perl-module-from-the-terminal/)
+lists three ways to check if a perl module is installed.)
 
-`cpan install Inline`
+You can install these modules using `cpan` with these commands:
 
 `cpan install Inline::C`
+
+`cpan install LWP::Simple`
+
+`cpan install LWP::Protocol::https`
 
 It is possible that you have `Inline` installed but not for `C`, if this is the case, you *might* see an error message like this:
 ```
@@ -78,12 +84,6 @@ I currently only know about the following languages:
 If this is the case, try installing `Inline::C` with this command:
 
 `cpan install Inline::C`
-
-Similarly, you can install `LWP` with:
-
-`cpan install LWP`
-
-`cpan install LWP::Simple`
 
 However, for Mac/OSX these commands may not work if you have
 not installed the "Command line tools for Xcode" or "XCode" packages.

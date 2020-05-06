@@ -42,6 +42,7 @@ use strict;
 use warnings;
 use Cwd;
 use LWP::Simple; 
+use LWP::Protocol::Simple::https; 
 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
