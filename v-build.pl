@@ -676,6 +676,10 @@ if($ncds > 0) {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-phr", $protein_fa_file . ".phr", 1, 1, "BLAST db .phr file for $mdl_name");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pin", $protein_fa_file . ".pin", 1, 1, "BLAST db .pin file for $mdl_name");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-psq", $protein_fa_file . ".psq", 1, 1, "BLAST db .psq file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pdb", $protein_fa_file . ".pdb", 1, 1, "BLAST db .pdb file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pot", $protein_fa_file . ".pot", 1, 1, "BLAST db .pot file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ptf", $protein_fa_file . ".ptf", 1, 1, "BLAST db .ptf file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pto", $protein_fa_file . ".pto", 1, 1, "BLAST db .pto file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -819,6 +823,11 @@ if(! opt_Get("--skipbuild", \%opt_HH)) { # we can only do this step if we built 
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
+
 
   if(! opt_Get("--keep", \%opt_HH)) { 
     utl_FileRemoveUsingSystemRm($cmemit_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
