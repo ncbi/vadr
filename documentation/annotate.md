@@ -13,11 +13,11 @@
   * [options for controlling alert thresholds](#options-alerts)
   * [options for controlling the alignment stage](#options-align)
   * [options for controlling the blastx protein validation stage](#options-blastx)
+  * [options for using hmmer instead of blastx for protein validation](#options-hmmer)
   * [options related to blastn-based seeded alignment acceleration strategy](#options-seed)
   * [options related to pre-processing to replace Ns with expected nucleotides](#options-replace)
   * [options related to parallelization on a compute farm/cluster](#options-parallel)
   * [options for skipping stages](#options-skip)
-  * [options for adding stages](#options-add)
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
@@ -665,7 +665,7 @@ integer.
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
 | `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
 
-### `v-annotate.pl` options related to model files<a name="options-models"></a>
+### `v-annotate.pl` options related to model files<a name="options-modelfiles"></a>
 
 | .......option....... | explanation | 
 |--------|-------------| 
@@ -730,7 +730,7 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 | `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
 ---
 
-### `v-annotate.pl` options for controlling blastx protein validation stage <a name="options-blastx"></a>
+### `v-annotate.pl` options for controlling blastx protein validation stage<a name="options-blastx"></a>
 
 Below is a list of options for controlling the blastx protein
 validaation stage. Several of these control command-line options that
@@ -745,7 +745,7 @@ how they control `blastx`, see the NCBI BLAST documentation
 | `--xnumali <n>`     | specify that the top `<n>` alignments are output by `blastx`, mostly relevant in combination with `--xlongest` (sets the `blastx -num_alignments <n>` option), default `<n>` is 20 | 
 | `--xlongest`        | use the longest `blastx` alignment of those returned (controlled by `--xnumali <n>`), default is to use the highest scoring alignment | 
 
-### `v-annotate.pl` options for using hmmer instead of blastx for protein validation:
+### `v-annotate.pl` options for using hmmer instead of blastx for protein validation <a name="options-hmmer"></a>
 
 Optionally, HMMER's hmmsearch program can be used instead of blastx for the protein validation stage.
 **CAUTION:** This feature is relatively new and untested.
@@ -759,7 +759,7 @@ the HMMER user's guide (http://eddylab.org/software/hmmer/Userguide.pdf).
 | `--h_max`           | use the `--max` option with hmmsearch |
 | `--h_minbit <x>`    | set the minimum hmmsearch bit score threshold to `<x>`, the default `<x>` is `-10`.
 
-### `v-annotate.pl` options related to blastn-derived seeded alignment acceleration (`-s`):
+### `v-annotate.pl` options related to blastn-derived seeded alignment acceleration <a name="options-seed"></a>
 
 The `-s` option turns on an acceleration heuristic based on a
 first-pass blastn alignment of each input sequence.  With `-s`,
@@ -781,7 +781,7 @@ with format described [here](formats.md#sda).
 | `--s_blastnsc <x>`  | with `-s`, set the blastn minimum HSP score to consider to `<x>`, the default value for `<x>` is `50.0` |
 | `--s_overhang <n>`  | with `-s`, set the length, in nt, of overlap between the 5' and 3' regions that are aligned with cmalign and the seed region to `<n>`, the default value for `<n>` is `100` |
 
-### `v-annotate.pl` options related to replacing Ns with expected nucleotides:
+### `v-annotate.pl` options related to replacing Ns with expected nucleotides<a name="options-replace"></a>
 
 The `-r` option adds a pre-processing step to `v-annotate.pl` in which
 stretches of Ns are identified in each sequence and replaced with the
@@ -817,7 +817,7 @@ with format described [here](formats.md#rpn).
 | `--r_pvorig`        | with `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
 | `--r_prof`          | with `-r`, use slower profile methods, not blastn, to identify Ns to replaced |
 
-### `v-annotate.pl` options related to parallelization on a compute farm/cluster <a name="options-parallel"></a>
+### `v-annotate.pl` options related to parallelization on a compute farm/cluster<a name="options-parallel"></a>
 
 The `-p` option specifies that `v-annotate.pl` should be run in [parallel mode](#exampleparallel).
 The following options are related to parallel mode.
@@ -843,10 +843,22 @@ The following options are related to parallel mode.
 | .......option....... | explanation | 
 |--------|-------------| 
 | `--out_stk`     | create additional per-model output [stockholm](formats.md#stockholmformat) alignments with `.stk` suffix |
+| `--out_afa`     | create additional per-model output aligned fasta alignments with `.afa` suffix |
+| `--out_rpstk`   | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
+| `--out_rpafa`   | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
+| `--out_nofs`    | do not output frameshift stockholm alignment files with `.frameshift.stk` suffix |
 | `--out_ftrinfo` | create additional output file with `.ftrinfo` suffix with per-model feature information, mainly useful for debugging |
 | `--out_sgminfo` | create additional output file with `.sgminfo` suffix with per-model segment information, mainly useful for debugging |
 | `--out_altinfo` | create additional output file with `.altinfo` suffix with alert information, mainly useful for debugging |
 
+### Other `v-annotate.pl` expert options<a name="options-expert"></a>
+
+| .......option....... | explanation | 
+|--------|-------------| 
+| `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
+| `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
+| `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
+| `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -894,6 +906,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*unexleng*](#unexleng2)  | feature  | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
 | [*cdsstopn*](#cdsstopn2)  | feature  | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
 | [*cdsstopp*](#cdsstopp2)  | feature  | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
+| [*fsthicnf*](#fsthicnf2)  | feature  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
 | [*peptrans*](#peptrans2)  | feature  | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
 | [*pepadjcy*](#pepadjcy2)  | feature  | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
 | [*indfantp*](#indfantp2)  | feature  | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
@@ -918,11 +931,15 @@ In the table below, the **type** column reports if each alert pertains to an ent
 |------------|-------|------------------------------|------------------|
 | [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  |
 | [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  |
+| [*ambgnt5s*](#ambgnt5s2)  | sequence | N_AT_START                      | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an N |
+| [*ambgnt3s*](#ambgnt3s2)  | sequence | N_AT_END                        | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an N |
 | [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
 | [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
 | [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
-| [*fsthicnf*](#fsthicnf2)  | feature  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
+| [*unjoinbl*](#unjoinbl2)  | sequence | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
 | [*fstlocnf*](#fstlocnf2)  | feature  | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
+| [*insertnn*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
+| [*deletinn*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -962,8 +979,9 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*mutendns*](#mutendns1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendns2"></a> | 
 | [*mutendex*](#mutendex1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendex2"></a> | 
 | [*unexleng*](#unexleng1)  | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - <a name="unexleng2"></a> | 
-| [*cdsstopn*](#cdsstopn1)   | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
+| [*cdsstopn*](#cdsstopn1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
 | [*cdsstopp*](#cdsstopp1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopp2"></a> | 
+| [*fsthicnf*](#fsthicnf1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fsthicnf2"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
 | [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
@@ -988,9 +1006,15 @@ user, this is "-" for alerts that are never omitted from those files.
 |------------|------------------------------|------------------|------------------------|--------------------------------------|
 | [*qstsbgrp*](#qstsbgrp1)  | QUESTIONABLE_SPECIFIED_SUBGROUP | none | - | - <a name="qstsbgrp2"></a> | 
 | [*qstgroup*](#qstgroup1)  | QUESTIONABLE_SPECIFIED_GROUP    | none | - | - <a name="qstgroup2"></a> | 
+| [*ambgnt5s*](#ambgnt5s1)  | N_AT_START                      | none | - | - <a name="ambgnt5s2"></a> | 
+| [*ambgnt3s*](#ambgnt3s1)  | N_AT_END                        | none | - | - <a name="ambgnt3s2"></a> | 
 | [*indfclas*](#indfclas1)  | INDEFINITE_CLASSIFICATION       | [`--indefclas`](#options-alerts-indefclas) | - | - <a name="indfclas2"></a> | 
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
+| [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
+| [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstlocnf2"></a> |
+| [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
+| [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
