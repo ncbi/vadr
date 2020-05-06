@@ -50,10 +50,10 @@ require "sqp_utils.pm";
 #    alignment coordinates and the known feature coordinates in the 
 #    model (supplied via the modelinfo file). 
 #   
-# (4) blastx CDS validation: CDS features are then validated via
-#    blastx by comparing predicted feature spans from (3) to pre-computed
-#    BLAST databases for the model. Alerts can be reported based on
-#    the blast results. 
+# (4) protein validation: CDS features are then validated via
+#    blastx or hmmer by comparing predicted feature spans from (3) to
+#    pre-computed BLAST or HMMER databases for the model. Alerts can
+#    be reported based on the blast/hmmer results. 
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Important options that change this behavior:
@@ -104,8 +104,8 @@ require "sqp_utils.pm";
 # option is used.
 # 
 # List of subroutines in which alerts are detected and added:
-#  1. alert_add_ambignt5_ambignt3()
-#     ambignt5, ambignt3 (2)
+#  1. alert_add_ambgnt5s_ambgnt3s()
+#     ambgnt5s, ambgnt3s (2)
 #
 #  2. add_classification_alerts()
 #     noannotn, lowscore, indfclas, qstsbgrp, qstgroup, incsbgrp, incgroup, revcompl, lowcovrg, biasdseq (10)
@@ -279,7 +279,7 @@ opt_Add("--hmmer",    "boolean", 0,        $g,     undef,  "--skip_pv", "use hmm
 opt_Add("--h_max",    "boolean", 0,        $g, "--hmmer",  "--skip_pv", "use --max option with hmmsearch",                  "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
 opt_Add("--h_minbit", "real",    -10,      $g, "--hmmer",  "--skip_pv", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration (-s)";
+$opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration";
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
 opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
@@ -436,7 +436,7 @@ my $options_okay =
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
-my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
@@ -835,8 +835,8 @@ my $rpn_sqfile = undef;
 my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
                                # key1: sequence name, key2 alert code, value: alert message
 
-# Add ambignt5 and ambignt3 alerts, if any
-alert_add_ambignt5_ambignt3(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+# Add ambgnt5s and ambgnt3s alerts, if any
+alert_add_ambgnt5s_ambgnt3s(\$in_sqfile, \@seq_name_A, \%seq_len_H, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 my %stg_results_HHH = (); # key 1: sequence name, 
@@ -2912,10 +2912,10 @@ sub cmalign_wrapper {
 #  $progress_w:            width for ofile_OutputProgress* subroutines
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
 #  $out_file_AHR:          ref to array of hashes of output file names, FILLED HERE 
-#  $success_AR:            ref to array of success values, can be undef if $executable is "cmsearch"
+#  $success_AR:            ref to array of success values
 #                          $success_AR->[$j] set to '1' if job finishes successfully
 #                                            set to '0' if job fails due to mx overflow (must be cmalign)
-#  $mxsize_AR:             ref to array of required matrix sizes, can be undef if $executable is "cmsearch"
+#  $mxsize_AR:             ref to array of required matrix sizes
 #                          $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
 #                                           else set to '0'
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -6661,9 +6661,9 @@ sub alert_add_unexdivg {
 }
 
 #################################################################
-# Subroutine: alert_add_ambignt5_ambignt3()
+# Subroutine: alert_add_ambgnt5s_ambgnt3s()
 # Incept:     EPN, Fri Apr 17 10:31:22 2020
-# Purpose:    Adds ambignt5 and ambignt3 alerts for seqs with 
+# Purpose:    Adds ambgnt5s and ambgnt3s alerts for seqs with 
 #             an N as the first/final nucleotide
 #
 # Arguments:
@@ -6680,7 +6680,7 @@ sub alert_add_unexdivg {
 # Dies:     never
 #
 #################################################################
-sub alert_add_ambignt5_ambignt3 {
+sub alert_add_ambgnt5s_ambgnt3s {
   my $sub_name = "alert_add_unexdivg";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
@@ -6698,10 +6698,10 @@ sub alert_add_ambignt5_ambignt3 {
     my $first_nt = $$in_sqfile_R->fetch_subseq_to_sqstring($seq_name,        1,        1, 0); # 0: do not reverse complement
     my $final_nt = $$in_sqfile_R->fetch_subseq_to_sqstring($seq_name, $seq_len, $seq_len, 0); # 0: do not reverse complement
     if(($first_nt eq "N") || ($first_nt eq "n")) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambignt5", $seq_name, "VADRNULL", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, "VADRNULL", $FH_HR);
     }
     if(($final_nt eq "N") || ($final_nt eq "n")) { 
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambignt3", $seq_name, "VADRNULL", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, "VADRNULL", $FH_HR);
     }
   }
 
