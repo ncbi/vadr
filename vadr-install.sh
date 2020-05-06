@@ -21,7 +21,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.0.6"
+VERSION="1.1"
 # bio-easel
 BEVERSION="Bio-Easel-0.12"
 # blast+
@@ -79,14 +79,14 @@ echo "Set VADRINSTALLDIR as current directory ($VADRINSTALLDIR)."
 echo "------------------------------------------------"
 # vadr
 echo "Downloading vadr ... "
-curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
+#curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
 # for a test build of a release, comment out above curl and uncomment block below
 # ----------------------------------------------------------------------------
-#git clone https://github.com/nawrockie/vadr.git vadr
-#cd vadr
-#git checkout release-$VERSION
-#rm -rf .git
-#cd ..
+git clone https://github.com/nawrockie/vadr.git vadr
+cd vadr
+git checkout release-$VERSION
+rm -rf .git
+cd ..
 # ----------------------------------------------------------------------------
  
 # sequip and Bio-Easel
