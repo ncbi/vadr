@@ -427,14 +427,14 @@ directories, make sure you also move the corresponding index files
 
 The VADR 1.0 model library consists of 197 VADR models. Nine of these
 are Norovirus RefSeq models, listed in
-[vadr/documentation/build-files/norovirus.9.list](build-files/norovirus.9.list).
+[vadr/documentation/build-files/1p0-models/norovirus.9.list](build-files/1p0-models/norovirus.9.list).
 Four of these are Dengue virus RefSeq models, listed in
-[vadr/documentation/build-files/dengue.4.list](build-files/dengue.4.list).
+[vadr/documentation/build-files/1p0-models/dengue.4.list](build-files/1p0-models/dengue.4.list).
 Eight of these are Hepatitis C virus Refseq models, listed in
-[vadr/documentation/build-files/hcv.8.list](build-files/hcv.8.list).
+[vadr/documentation/build-files/1p0-models/hcv.8.list](build-files/1p0-models/hcv.8.list).
 The remaining 173 are additional *Caliciviridae* and *Flaviviridae*
 RefSeq models, listed in
-[vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list).
+[vadr/documentation/build-files/1p0-models/non-noro-dengue-hcv.173.list](build-files/1p0-models/non-noro-dengue-hcv.173.list).
 
 The VADR 1.0 library was built with version 1.0 of VADR. Part
 of the motivation for including this documentation is so that the 1.0
@@ -461,7 +461,7 @@ listed in the `RELEASE-NOTES.txt` file.
 ### Building the VADR 1.0 library Norovirus models <a name="1.0library-noro"></a>
 
 To build models for each of the nine norovirus RefSeqs listed in 
-[vadr/documentation/build-files/norovirus.9.list](build-files/norovirus.9.list),
+[vadr/documentation/build-files/1p0-models/norovirus.9.list](build-files/1p0-models/norovirus.9.list),
 run `v-build.pl` nine separate times as follows: 
 
 ```
@@ -477,7 +477,7 @@ v-build.pl --group Norovirus --subgroup GII NC_039477 NC_039477
 ```
 
 (The shell script
-[vadr/documentation/build-files/norovirus.9.build.sh](build-files/norovirus.9.build.sh)
+[vadr/documentation/build-files/1p0-models/norovirus.9.build.sh](build-files/1p0-models/norovirus.9.build.sh)
 contains these commands.)
 
 The `--group` and `--subgroup` options specify the group and subgroup
@@ -490,9 +490,9 @@ classified best to a non-norovirus model.
 The `--addminfo` options specify an input file that contains information
 on additional feature attributes not from GenBank that are desired in the output
 `.minfo` file. Those input files are located here:
-[vadr/documentation/build-files/NC_029646.addminfo](build-files/NC_029646.addminfo)
+[vadr/documentation/build-files/1p0-models/NC_029646.addminfo](build-files/1p0-models/NC_029646.addminfo)
 and 
-[vadr/documentation/build-files/NC_039475.addminfo](build-files/NC_039475.addminfo).
+[vadr/documentation/build-files/1p0-models/NC_039475.addminfo](build-files/1p0-models/NC_039475.addminfo).
 The `NC_029646.addminfo` file is in the [`.minfo` format](formats.md#minfo) and looks like this:
 
 ```
@@ -529,7 +529,7 @@ v-build.pl --stk NC_002640.v1.stk --qftradd stem_loop,ncRNA --qadd note,ncRNA_cl
 ```
 
 (The shell script
-[vadr/documentation/build-files/dengue.4.build.sh](build-files/dengue.4.build.sh)
+[vadr/documentation/build-files/1p0-models/dengue.4.build.sh](build-files/1p0-models/dengue.4.build.sh)
 contains these commands.)
 
 The `--qftradd`, `--qadd`, and `--fadd` options all take comma-separated strings
@@ -563,7 +563,7 @@ library exactly do the following:
 ### Building the VADR 1.0 library Hepatitis C virus models <a name="1.0library-hcv"></a>
 
 To build models for each of the eight Hepatitis C RefSeqs listed in 
-[vadr/documentation/build-files/hcv.8.list](build-files/hcv.8.list),
+[vadr/documentation/build-files/1p0-models/hcv.8.list](build-files/1p0-models/hcv.8.list),
 run `v-build.pl` eight separate times as follows: 
 
 ```
@@ -578,7 +578,7 @@ v-build.pl --group HCV --subgroup 7 NC_030791 NC_030791
 ```
 
 (The shell script
-[vadr/documentation/build-files/hcv.8.build.sh](build-files/hcv.8.build.sh)
+[vadr/documentation/build-files/1p0-models/hcv.8.build.sh](build-files/1p0-models/hcv.8.build.sh)
 contains these commands.)
 
 The `--group` and `--subgroup` options are used in a similar way to how they were used
@@ -587,7 +587,7 @@ to build the norovirus models.
 ### Building the VADR 1.0 library models for the other 173 *Caliciviridae* and *Flaviviridae* viral species <a name="1.0library-173"></a>
 
 To build models for the other 173 *Caliciviridae* and *Flaviviridae* models listed in
-[vadr/documentation/build-files/non-noro-dengue-hcv.173.list](build-files/non-noro-dengue-hcv.173.list)
+[vadr/documentation/build-files/1p0-models/non-noro-dengue-hcv.173.list](build-files/1p0-models/non-noro-dengue-hcv.173.list)
 
 Simply run `v-build.pl` from VADR v1.0 using default parameters for each accession.
 For example:
@@ -597,7 +597,7 @@ For example:
 ```
 
 (The shell script
-[vadr/documentation/build-files/non-noro-dengue.hcv.173.build.sh](build-files/non-noro-dengue.hcv.173.build.sh)
+[vadr/documentation/build-files/1p0-models/non-noro-dengue.hcv.173.build.sh](build-files/1p0-models/non-noro-dengue.hcv.173.build.sh)
 will execute these 173 commands.)
 
 Each of these commands takes roughtly between 10 minutes and an hour. 
