@@ -67,11 +67,11 @@ an output directory with the same name as the accession:
 v-build.pl NC_039897 NC_039897
 ```
 
-***If you get an (potentially very long) error when you run this
-   command that starts with `Can't locate LWP/Protocol/https.pm in
-   @INC` or something similar. You will need to install one or more
-   perl modules before `v-build.pl` will run as explained more
-   [here](install.md#inline).***
+***If, when you the above command, it fails and you see a (potentially
+   very long) error that starts with `Can't locate
+   LWP/Protocol/https.pm in @INC` or something similar. You will need
+   to install one or more perl modules before `v-build.pl` will run as
+   explained more [here](install.md#inline).***
 
 The standard output of `v-build.pl` that is printed to the screen
 (which is also output to the `.log` output file) begins with the
@@ -209,7 +209,7 @@ the files with the following suffixes:
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
 | `.hmm` | HMMER 3.x HMM file | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
-| `.hmm.3{m,i,f,p}` | HMMER 3.x covariance model index files, created by `hmmpress` | binary files, not meant to be human-readable |
+| `.hmm.h3{m,i,f,p}` | HMMER 3.x covariance model index files, created by `hmmpress` | binary files, not meant to be human-readable |
 | `.minfo`  | VADR model info file | [description of format](formats.md#minfo) |
 
 You can use only this model to annotate sequences
@@ -381,7 +381,7 @@ call it `my.vadr.fa`, for example, and move it to the
 `my-vadr-model-dir` directory, and then create a BLAST nucleotide 
 database from it with the command:
 ```
-$VADRBLASTDIR/makeblastdb -dbtype nt -in my-vadr-model-dir/my.vadr.fa
+$VADRBLASTDIR/makeblastdb -dbtype nucl -in my-vadr-model-dir/my.vadr.fa
 ```
 
 7. Move all resulting BLAST protein DB files (`.vadr.protein.fa`,
@@ -408,9 +408,15 @@ v-annotate.pl --mdir my-vadr-model-dir --mkey my.vadr <fasta-file>
 
 Or substitute the full paths to `my-vadr-model-dir` if it is not a
 subdirectory of the current directory. Optionally, you can supply the
-paths to each the CM file `<s1>` (`-m <s1>`), HMM file `<s2>` (`-a <s2>`), model info file
-`<s3>` (`-i <s3>`), BLAST nucleotide db `<s4>` (`-n <s4>`) and BLAST
-protein db directory `<s5>` (`-x <s5>`). 
+paths to each of the relevant files or directories, possibly if they
+are in different directories or are not consistently named, using the `-m`,
+`-a`, `-i`, `-n`, and `-x` options as listed
+[here](annotate.md#options-modelfiles), with a command like:
+```
+v-annotate.pl -m my-vadr-model-dir/my.vadr.cm -a my-vadr-model-dir/my.vadr.hmm -i my-vadr-model-dir/my.vadr.minfo -n
+my-vadr-model-dir/my.vadr.fa -x my-vadr-model-dir <fasta-file> <output directory>
+```
+
 
 If you ever move `.cm`, `.hmm`, or BLAST `.fa` files into new
 directories, make sure you also move the corresponding index files 
@@ -442,13 +448,15 @@ models has changed since October 2019, then it may not be able to
 identically reproduce the VADR 1.0 model library using the steps
 outlined above. This is because `v-build.pl` fetches the current
 RefSeq annotation data from GenBank when it is run. If necessary,
-contact Eric Nawrocki at eric.nawrocki@nih.gov for additional files
+email eric.nawrocki@nih.gov for additional files
 needed to reproduce the library exactly.
 
 However, the library has changed since version 1.0. For example, the 
 default set of models included with version 1.1 has 205 total models,
 not 197. To see a list of changes, see the
-$VADRMODELDIR/RELEASE-NOTES.txt file.
+`$VADRMODELDIR/RELEASE-NOTES.txt` file. To reproduce it, you would run
+similar steps to those below but also adding the additional models
+listed in the `RELEASE-NOTES.txt` file.
 
 ### Building the VADR 1.0 library Norovirus models <a name="1.0library-noro"></a>
 
