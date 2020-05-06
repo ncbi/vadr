@@ -652,7 +652,7 @@ integer.
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
 
-| .......option....... | explanation | 
+| ..........option.......... | explanation | 
 |--------|-------------| 
 | `--group <s>`     | specify that the expected classification of all sequences is group `<s>`, sequences determined to *not* be in this group will trigger an *incgroup* alert |
 | `--subgroup <s2>` | specify that the expected classification of all sequences is subgroup `<s>` within group `<s2>` from `--group <s2>`, sequences determined to *not* be in this group will trigger an *incsubgrp* alert; requires `--group` |
@@ -674,8 +674,8 @@ integer.
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-n <s>` | use the blastn DB file `<s>` when necessary, instead of the default blastn DB file ($VADRMODELDIR/vadr.fa), only used if `-s` or `-r` is also used |
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
-| `--mkey <s> | specify that .cm, .minfo, and blastn .fa ffiles in $VADRMODELDIR start with key <s>, not 'vadr' |
-| `--mdir <s> | specify that all model files to use are in the directory <s>, not in $VADRMODELDIR |
+| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa ffiles in $VADRMODELDIR start with key <s>, not 'vadr' |
+| `--mdir <s>` | specify that all model files to use are in the directory <s>, not in $VADRMODELDIR |
 
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
@@ -709,7 +709,7 @@ In the table below, `<n>` represents a positive interger argument and
 | `--xalntol <n>`     | [*indf5pst*](#indf5pst1), [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) <a name="options-alerts-xalntol"></a> |
 | `--xmaxins <n>`     | [*insertnp*](#insertnp1) | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in blastx validation alignment without alert to `<n>` <a name="options-alerts-xmaxins"></a> |
 | `--xmaxdel <n>`     | [*deletinp*](#deletinp1) | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in blastx validation alignment without alert to `<n>` <a name="options-alerts-xmaxdel"></a> |
-| `--nmaxins <n>`     | [*insertnn*](#insertnn1) | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in CDS nt alignment without alert to `<n>` <a name="options-alerts-nmaxins"></a> |
+| `--nmaxins <n>`<a name="options-alerts-nmaxins"></a> | [*insertnn*](#insertnn1) | INSERTION_OF_NT | > 27 | set maximum allowed nucleotide insertion length in CDS nt alignment without alert to `<n>`  |
 | `--nmaxdel <n>`     | [*deletinn*](#deletinn1) | DELETION_OF_NT  | > 27 | set maximum allowed nucleotide deletion length in CDS nt  alignment without alert to `<n>` <a name="options-alerts-nmaxdel"></a> |
 | `--xlonescore <n>`  | [*indfantp*](#indfantp1) | INDEFINITE_ANNOTATION | >= 80 | set minimum blastx *raw* score for a lone blastx hit not supported by CM analysis for alert to `<n>` <a name="options-alerts-xlonescore"></a> | 
 | `--hlonescore <n>`  | [*indfantp*](#indfantp1) | INDEFINITE_ANNOTATION | >= 10 | set minimum hmmer bit score for a lone hmmsearch hit not supported by CM analysis for alert to `<n>` <a name="options-alerts-hlonescore"></a> | 
