@@ -44,7 +44,7 @@
   they have fatal alerts. 
 
 ### VADR 1.0 release (November 2019): First major release
-* The version used in the [VADR manuscript submitted to BMC
+* The version used in the [VADR manuscript currently in press at BMC
   Bioinformatics.](https://www.biorxiv.org/content/10.1101/852657v2)
 
 ---
