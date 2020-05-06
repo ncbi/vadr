@@ -659,7 +659,7 @@ integer.
 
 ### `v-annotate.pl` options for controlling which alerts are *fatal* and cause a sequence to FAIL <a name="options-fatal"></a>
 
-| .......option....... | explanation | 
+| ..........option.......... | explanation | 
 |--------|-------------| 
 | `--alt_list`     | output [summary of all alerts](#alerts) and then exit | 
 | `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
@@ -667,6 +667,8 @@ integer.
 
 ### `v-annotate.pl` options related to model files<a name="options-models"></a>
 
+| .......option....... | explanation | 
+|--------|-------------| 
 | `-m <s>` | use the CM file `<s>`, instead of the default CM file ($VADRMODELDIR/vadr.cm) |
 |  -a <s>  | use HMM file `<s>` instead of the default HMM file ($VADRMODELDIR/vadr.hmm) |
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
