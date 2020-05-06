@@ -73,7 +73,7 @@ my $options_okay =
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
-my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $executable    = (defined $execname_opt) ? $execname_opt : "v-test.pl";
 my $usage         = "Usage: $executable [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
 my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
