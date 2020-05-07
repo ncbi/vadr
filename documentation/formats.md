@@ -234,24 +234,24 @@ These files are named `<outdir>.vadr.<suffix>` where
 of the output files with a brief description and in some cases further
 references on the file type/format. 
 
-| suffix | description | reference |
-|--------|-----------------------|-------------|
-| `.<model_name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model_name> from the `.minfo` file | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
-| `.pass.list` | list of sequences that pass, one line per sequence | no further documentation | 
-| `.pass.tbl` | 5 column tab-delimited feature table of sequences that pass | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.fail.list` | list of sequences that fail, one line per sequence | no further documentation | 
-| `.fail.tbl` | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.alt.list` | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [description of format in this document](#altlist) |
-| `.seqstat` | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | no further documentation |
+| suffix | description | ....example_file.... | reference |
+|--------|-------------|----------------------|-----------|
+| `.<model_name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model_name> from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
+| `.pass.list` | list of sequences that pass, one line per sequence          | [va-noro.9.vadr.pass.list](annotate-files/va-noro.9.vadr.pass.list) | no further documentation | 
+| `.pass.tbl`  | 5 column tab-delimited feature table of sequences that pass | [va-noro.9.vadr.pass.tbl](annotate-files/va-noro.9.vadr.pass.tbl)   | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.fail.list` | list of sequences that fail, one line per sequence          | [va-noro.9.vadr.fail.list](annotate-files/va-noro.9.vadr.fail.list) | no further documentation | 
+| `.fail.tbl`  | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | [va-noro.9.vadr.fail.tbl](annotate-files/va-noro.9.vadr.fail.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
+| `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
 
 ---
 
-There are also seven types of `v-annotate.pl` tabular output files with fields separated by 
+There are also nine types of `v-annotate.pl` tabular output files with fields separated by 
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
-| suffix | description | example file | reference | 
-|--------|-------------|--------------|-----------|
+| suffix | description | ....example_file.... | reference | 
+|--------|-------------|----------------------|-----------|
 | `.alc` | per-alert code information (counts)     | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.alc) | [description of format in this document](#alc) |
 | `.alt` | per-alert instance information          | [va-noro.9.vadr.alt](annotate-files/va-noro.9.vadr.alt) | [description of format in this document](#alt) |
 | `.ftr` | per-feature information                 | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.ftr) | [description of format in this document](#ftr) |
