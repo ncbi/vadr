@@ -612,7 +612,7 @@ When run with the `--keep` option, `v-annotate.pl` will create additional files,
 | `.cm.namelist` | file with list of names of all models in model library | no further documentation | 
 | `.in.fa`       | copy of input fasta file (if `--origfa` is used, this will not exist) | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.fa.ssi`      | Easel sequence index files | binary file, not meant to be human-readable | 
-| `.cls.*.tblout` | tabular output from `cmscan` or `blastn` converted to `cmscan` tblout format from classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cls.*.tblout` | tabular output from `cmscan` (or `blastn` converted to `cmscan` format) from classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cls.*.stdout` | standard output (usually from `cmscan`) in classification stage | no further documentation | 
 | `.cdt.<model_name>.tblout` | tabular output from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cdt.<model_name>.stdout` | standard output (usually from `cmsearch`) from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
