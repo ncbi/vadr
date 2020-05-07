@@ -15,6 +15,8 @@
   * [`.sgm` files](#sgm)
   * [`.sqa` files](#sqa)
   * [`.sqc` files](#sqc)
+  * [`.sda` files](#sda)
+  * [`.rpn` files](#rpn)
   * [`.alt.list` files](#altlist)
   * [extra output files saved with the `--keep` option](#annotate-keep)
 * [VADR `coords` coordinate string format](#coords)
@@ -128,11 +130,17 @@ further below.
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
 | `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
 | `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
-| `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.nt.fa`      | FASTA format sequence file of the consensus sequence output from the CM with `cmemit` | https://en.wikipedia.org/wiki/FASTA_format |
+| `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
 | `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
 | `.cmpress` | Infernal `cmpress` output file | no further documentation |
+| `.hmm` | HMMER 3.x HMM file | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
+| `.hmm.h3{m,i,f,p}` | HMMER 3.x HMM index files, created by `hmmpress` | binary files, not meant to be human-readable |
+| `.hmmbuild` | HMMER `hmmbuild` output file | no further documentation |
+| `.hmmpress` | HMMER `hmmpress` output file | no further documentation |
 
 ---
 ### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo"></a>
@@ -193,7 +201,6 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 | `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
 | `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and also included in output | 
 | `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and also included in output | 
-| `cmfile` | file name for CM file | no | for user reference only | 
 
 #### Common FEATURE line `<key>:<value>` pairs:
 
@@ -243,17 +250,19 @@ There are also seven types of `v-annotate.pl` tabular output files with fields s
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
-| suffix | description | reference | 
-|--------|-------------|-----------|
-| `.alc` | per-alert code information (counts)     | [description of format in this document](#alc) |
-| `.alt` | per-alert instance information          | [description of format in this document](#alt) |
-| `.ftr` | per-feature information                 | [description of format in this document](#ftr) |
-| `.mdl` | per-model information                   | [description of format in this document](#mdl) |
-| `.sgm` | per-segment information                 | [description of format in this document](#sgm) |
-| `.sqa` | per-sequence annotation information     | [description of format in this document](#sqa) |
-| `.sqc` | per-sequence classification information | [description of format in this document](#sqc) |
+| suffix | description | example file | reference | 
+|--------|-------------|--------------|-----------|
+| `.alc` | per-alert code information (counts)     | [va-noro.9.alc](annotate-files/va-noro.9.alc) | [description of format in this document](#alc) |
+| `.alt` | per-alert instance information          | - | [description of format in this document](#alt) |
+| `.ftr` | per-feature information                 | - | [description of format in this document](#ftr) |
+| `.mdl` | per-model information                   | - | [description of format in this document](#mdl) |
+| `.sgm` | per-segment information                 | - | [description of format in this document](#sgm) |
+| `.sqa` | per-sequence annotation information     | - | [description of format in this document](#sqa) |
+| `.sqc` | per-sequence classification information | - | [description of format in this document](#sqc) |
+| `.sda` | per-sequence seed alignment information (only created if `-s` used) | - | [description of format in this document](#sda) |
+| `.rpn` | per-sequence N replacement information (only created if `-r` used)  | - | [description of format in this document](#rpn) |
 
-All seven types of tabular output files share the following
+All nine types of tabular output files share the following
 characteristics: 
 
 1. fields are separated by whitespace (with the possible exception of
@@ -262,7 +271,7 @@ characteristics:
 3. data lines begin with a non-whitespace character other than `#`
 4. all lines are either comment lines or data lines
 
-Each of these seven tabular formats are explained in more detail below.
+Each of these nine tabular formats are explained in more detail below.
 
 ---
 ### Explanation of `.alc`-suffixed output files<a name="alc"></a>
@@ -270,7 +279,7 @@ Each of these seven tabular formats are explained in more detail below.
 `.alc` data lines have 8 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each alert code
 that occurs at least once in the input sequence file that
-`v-annotate.pl` processed.
+`v-annotate.pl` processed. An example file is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9.alc)
 
 
 | idx | field                 | description |
@@ -427,6 +436,42 @@ sequence.
 ### Explanation of `.sqc`-suffixed output files<a name="sqc"></a>
 
 `.sqc` data lines have 21 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**sequence** in the input sequence file file that `v-annotate.pl`
+processed. `.sqc` files include **classification** information for
+each sequence.  `.sqa` files include **annotation** information for
+each sequence. For more information on bit scores and `bias` see the Infernal User's Guide
+(http://eddylab.org/infernal/Userguide.pdf)
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
+|   6 | `model1`              | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   7 | `grp1`                | group of model `model1`, defined in model info file, or `-` if none |
+|   8 | `subgrp1`             | subgroup of model `model1`, defined in model info file, or `-` if none |
+|   9 | `score`               | summed bit score for all hits on strand `str` to model `model1` for this sequence in the classification stage |
+|  10 | `sc/nt`               | bit score per nucleotide; `score` divided by total length (in sequence positions) of all hits to model `model1` on strand `str` in the classification stage |
+|  11 | `seq cov`             | fraction of sequence positions (`seq len`) covered by any hit to model `model1` on strand `str` in the coverage determination stage | 
+|  12 | `mdl cov`             | fraction of model positions (model length - the number of reference positions in `model1`) covered by any hit to model `model1` on strand `str` in the coverage determination stage | 
+|  13 | `bias`                | summed bit score due to biased composition (deviation from expected nucleotide frequencies) of all hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
+|  14 | `num hits`            | number of hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
+|  15 | `str`                 | strand with the top-scoring hit to `model1` for this sequence in the classification stage |
+|  16 | `model2`              | name of the second best-matching model for this sequence, this is the model with the top-scoring hit for this sequence across all hits that are not to `model1` in the classification stage |
+|  17 | `grp2`                | group of model `model2`, defined in model info file, or `-` if none |
+|  18 | `subgrp2`             | subgroup of model `model2`, defined in model info file, or `-`' if none | 
+|  19 | `score diff`          | bit score difference between summed bit score for all hits to `model1` on strand `str` and summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
+|  20 | `diff/nt`             | bit score difference per nucleotide; `sc/nt` minus sc2/nt where sc2/nt is summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
+|  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+
+---
+### Explanation of `.sda`-suffixed output files<a name="sqc"></a>
+
+`.sda` files are only output if the `v-annotate.pl -s` option is used.
+`.sda` data lines have 21 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
 **sequence** in the input sequence file file that `v-annotate.pl`
 processed. `.sqc` files include **classification** information for
