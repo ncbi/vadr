@@ -195,7 +195,7 @@ relevant output files with brief descriptions:
 ```
 
 These files include the FASTA and and their formats are described more
-[here](formats.md).
+[here](formats.md#build).
 
 Only some of these files will be used by `v-annotate.pl`. These are
 the files with the following suffixes:
@@ -425,20 +425,10 @@ directories, make sure you also move the corresponding index files
 ---
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
-The VADR 1.0 model library consists of 197 VADR models. Nine of these
-are Norovirus RefSeq models, listed in
-[vadr/documentation/build-files/1p0-models/norovirus.9.list](build-files/1p0-models/norovirus.9.list).
-Four of these are Dengue virus RefSeq models, listed in
-[vadr/documentation/build-files/1p0-models/dengue.4.list](build-files/1p0-models/dengue.4.list).
-Eight of these are Hepatitis C virus Refseq models, listed in
-[vadr/documentation/build-files/1p0-models/hcv.8.list](build-files/1p0-models/hcv.8.list).
-The remaining 173 are additional *Caliciviridae* and *Flaviviridae*
-RefSeq models, listed in
-[vadr/documentation/build-files/1p0-models/non-noro-dengue-hcv.173.list](build-files/1p0-models/non-noro-dengue-hcv.173.list).
-
-The VADR 1.0 library was built with version 1.0 of VADR. Part
-of the motivation for including this documentation is so that the 1.0
-library could be reproduced. If you want to reproduce it exactly, you'll want to install
+The VADR 1.0 library was built with version 1.0 of VADR. It is included here as 
+an example of how to build a VADR library, but also so it can be reproduced as it is the model library
+used in the [paper on VADR 1.0](../README.md#reference).
+If you want to reproduce it exactly, you'll want to install
 version 1.0. The install script is here:
 
 https://raw.githubusercontent.com/nawrockie/vadr/1.0/vadr-install.sh
@@ -451,12 +441,23 @@ RefSeq annotation data from GenBank when it is run. If necessary,
 email eric.nawrocki@nih.gov for additional files
 needed to reproduce the library exactly.
 
-However, the library has changed since version 1.0. For example, the 
+Also note that the library has changed since version 1.0. For example, the 
 default set of models included with version 1.1 has 205 total models,
 not 197. To see a list of changes, see the
 `$VADRMODELDIR/RELEASE-NOTES.txt` file. To reproduce it, you would run
 similar steps to those below but also adding the additional models
 listed in the `RELEASE-NOTES.txt` file.
+
+The VADR 1.0 model library consists of 197 VADR models. Nine of these
+are Norovirus RefSeq models, listed in
+[vadr/documentation/build-files/1p0-models/norovirus.9.list](build-files/1p0-models/norovirus.9.list).
+Four of these are Dengue virus RefSeq models, listed in
+[vadr/documentation/build-files/1p0-models/dengue.4.list](build-files/1p0-models/dengue.4.list).
+Eight of these are Hepatitis C virus Refseq models, listed in
+[vadr/documentation/build-files/1p0-models/hcv.8.list](build-files/1p0-models/hcv.8.list).
+The remaining 173 are additional *Caliciviridae* and *Flaviviridae*
+RefSeq models, listed in
+[vadr/documentation/build-files/1p0-models/non-noro-dengue-hcv.173.list](build-files/1p0-models/non-noro-dengue-hcv.173.list).
 
 ### Building the VADR 1.0 library Norovirus models <a name="1.0library-noro"></a>
 
