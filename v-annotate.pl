@@ -4217,7 +4217,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             push(@{$to_remove_AR}, $separate_cds_fa_file);
           }
           print { $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
-                                                                seq_SqstringAddNewlines($ftr_sqstring_pv, 60) . "\n"); 
+                                                                seq_SqstringAddNewlines($ftr_sqstring_pv, 60)); 
         }
         
         # deal with mutstart for all CDS that are not 5' truncated
