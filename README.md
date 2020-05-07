@@ -93,7 +93,9 @@ See [this page](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-file
   * [`v-annotate.pl` output files](documentation/formats.md#annotate)
   * [VADR `coords` coordinate string format](documentation/formats.md#coords)
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
-* [Available VADR model files](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
+* [Available VADR model files (github wiki)](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
+* [SARS-CoV-2 annotation (github wiki)](https://github.com/nawrockie/vadr/wiki/Coronavirus-annotation)
+* [Development notes and instructions (github wiki)](https://github.com/nawrockie/vadr/wiki/Development-notes-and-instructions)
 
 ---
 ## Reference <a name="reference"></a>
