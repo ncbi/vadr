@@ -166,7 +166,7 @@ further below.
 | `.vadr.fa` | FASTA format sequence file for single sequence model was built from | [NC_039897.vadr.fa](build-files/NC_039897.vadr.fa) | https://en.wikipedia.org/wiki/FASTA_format |
 | `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | [NC_039897.vadr.cds.fa](build-files/NC_039897.vadr.cds.fa) | https://en.wikipedia.org/wiki/FASTA_format |
 | `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | [NC_039897.vadr.protein.fa](build-files/NC_039897.vadr.protein.fa) | https://en.wikipedia.org/wiki/FASTA_format |
-| `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
+| `.protein.fa.pxx` where `xx` is `hr,in,sq,db,ot,tf,to`| BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
 | `.nt.fa`      | FASTA format sequence file of the consensus sequence output from the CM with `cmemit` | [NC_039897.vadr.nt.fa](build-files/NC_039897.vadr.nt.fa) | https://en.wikipedia.org/wiki/FASTA_format |
 | `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | - | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
