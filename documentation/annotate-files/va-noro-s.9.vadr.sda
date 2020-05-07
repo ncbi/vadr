@@ -1,5 +1,5 @@
-#     seq          seq                       ungapped      ungapped  ungapped    5'unaln     5'unaln   5'unaln       3'unaln       3'unaln   3'unaln
-#idx  name         len  model      fail           seq           mdl  fraction        seq         mdl  fraction           seq           mdl  fraction
+#seq  seq          seq                       ungapped      ungapped  ungapped    5'unaln     5'unaln   5'unaln       3'unaln       3'unaln   3'unaln
+#idx  name         len  model      p/f            seq           mdl  fraction        seq         mdl  fraction           seq           mdl  fraction
 #---  ----------  ----  ---------  ----  ------------  ------------  --------  ---------  ----------  --------  ------------  ------------  --------
 1     KY887602.1  7547  NC_039477  PASS     1..7546:+    22..7567:+     1.000          -           -         -  7447..7547:+  7468..7567:+     0.013
 2     KT818729.1   243  NC_044854  PASS      1..243:+  4625..4867:+     1.000          -           -         -             -             -         -

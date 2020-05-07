@@ -288,15 +288,15 @@ There are also nine types of `v-annotate.pl` tabular output files with fields se
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
-| suffix | description | .....example_file..... | reference | 
+| suffix | description | ..........example_file.......... | reference | 
 |--------|-------------|----------------------|-----------|
 | `.alc` | per-alert code information (counts)     | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.alc) | [description of format in this document](#alc) |
 | `.alt` | per-alert instance information          | [va-noro.9.vadr.alt](annotate-files/va-noro.9.vadr.alt) | [description of format in this document](#alt) |
 | `.ftr` | per-feature information                 | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.ftr) | [description of format in this document](#ftr) |
-| `.mdl` | per-model information                   | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.mdl) | [description of format in this document](#mdl) |
-| `.sgm` | per-segment information                 | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.sgm) | [description of format in this document](#sgm) |
-| `.sqa` | per-sequence annotation information     | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.sqa) | [description of format in this document](#sqa) |
-| `.sqc` | per-sequence classification information | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.sqc) | [description of format in this document](#sqc) |
+| `.mdl` | per-model information                   | [va-noro.9.vadr.mdl](annotate-files/va-noro.9.vadr.mdl) | [description of format in this document](#mdl) |
+| `.sgm` | per-segment information                 | [va-noro.9.vadr.sgm](annotate-files/va-noro.9.vadr.sgm) | [description of format in this document](#sgm) |
+| `.sqa` | per-sequence annotation information     | [va-noro.9.vadr.sqa](annotate-files/va-noro.9.vadr.sqa) | [description of format in this document](#sqa) |
+| `.sqc` | per-sequence classification information | [va-noro.9.vadr.sqc](annotate-files/va-noro.9.vadr.sqc) | [description of format in this document](#sqc) |
 | `.sda` | per-sequence seed alignment information (only created if `-s` used) | [va-noro-s.9.vadr.sda](annotate-files/va-noro-s.9.vadr.sda) | [description of format in this document](#sda) |
 | `.rpn` | per-sequence N replacement information (only created if `-r` used)  | [va-noro-r.9.vadr.rpn](annotate-files/va-noro-r.9.vadr.rpn) | [description of format in this document](#rpn) |
 
@@ -310,6 +310,8 @@ characteristics:
 4. all lines are either comment lines or data lines
 
 Each of these nine tabular formats are explained in more detail below.
+All example files linked to below, except where otherwise stated, were created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
+`v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`.
 
 ---
 ### Explanation of `.alc`-suffixed output files<a name="alc"></a>
@@ -317,10 +319,7 @@ Each of these nine tabular formats are explained in more detail below.
 `.alc` data lines have 8 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each alert code
 that occurs at least once in the input sequence file that
-`v-annotate.pl` processed.
-An example file created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
-`v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`
-is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9.alc).
+`v-annotate.pl` processed. [Example file](annotate-files/va-noro.9.vadr.alc).
 
 
 | idx | field                 | description |
@@ -340,9 +339,7 @@ is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9
 `.alt` data lines have 10 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
-An example file created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
-`v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`
-is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9.alc).
+[Example file](annotate-files/va-noro.9.vadr.alt).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -366,6 +363,7 @@ comment lines in each file. There is one data line for each
 `v-annotate.pl` processed. The set of possible features for each
 input sequence depend on its best-matching model, and can be found in
 the model info file.
+[Example file](annotate-files/va-noro.9.vadr.ftr).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -404,6 +402,7 @@ the input file, plus 2 additional lines, a line with `*all*` in the
 with `*none*` in the `model` field reports the summed counts for all
 sequences that did not match any models. This information is also
 included in the `.log` output file.
+[Example file](annotate-files/va-noro.9.vadr.mdl).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -423,6 +422,7 @@ first two comment lines in each file. There is one data line for each
 file that `v-annotate.pl` processed. Each feature is composed of
 1 or more segments, as defined by the `coords` field in the model info
 file. 
+[Example file](annotate-files/va-noro.9.vadr.sgm).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -457,6 +457,7 @@ first two comment lines in each file. There is one data line for each
 processed. `.sqa` files include **annotation** information for each
 sequence. `.sqc` files include **classification** information for each
 sequence. 
+[Example file](annotate-files/va-noro.9.vadr.sqa).
 
 
 | idx | field                 | description |
@@ -486,6 +487,7 @@ processed. `.sqc` files include **classification** information for
 each sequence.  `.sqa` files include **annotation** information for
 each sequence. For more information on bit scores and `bias` see the Infernal User's Guide
 (http://eddylab.org/infernal/Userguide.pdf)
+[Example file](annotate-files/va-noro.9.vadr.sqc).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -512,47 +514,87 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
-### Explanation of `.sda`-suffixed output files<a name="sqc"></a>
+### Explanation of `.sda`-suffixed output files<a name="sda"></a>
 
 `.sda` files are only output if the `v-annotate.pl -s` option is used.
-`.sda` data lines have 21 fields, the names of which appear in the
+`.sda` data lines have 14 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
 **sequence** in the input sequence file file that `v-annotate.pl`
-processed. `.sqc` files include **classification** information for
-each sequence.  `.sqa` files include **annotation** information for
-each sequence. For more information on bit scores and `bias` see the Infernal User's Guide
-(http://eddylab.org/infernal/Userguide.pdf)
+processed. With `-s`, the largest ungapped region from the top blastn
+hit is fixed, and only the 5' and 3' regions before and after the
+ungapped region are aligned with cmalign as described more
+[here](annotate.md#options-seed).  `.sda` files include information
+about these ungapped, 5' and 3' regions.  Note that the sequence
+length fractions in `ungapped fraction`, `5'unaln fraction`, and
+`3'unaln fraction` will not add up to `1.0` due to overlap between
+these regions, which is typically 100nt, but can be adjusted with the
+[`--s_overhang` option to `v-annotate.pl`](annotate.md#options-seed).
+[Example file created with the command `v-annotate.pl -s
+$VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa
+va-noro-s.9`](annotate-files/va-noro-s.9.vadr.sda).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `seq idx`             | index of sequence in the input file |
 |   2 | `seq name`            | sequence name | 
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
-|   4 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
-|   5 | `ant`                 | `yes` if this sequence was annotated, `no` if not, due to a per-sequence alert that prevents annotation |
-|   6 | `model1`              | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
-|   7 | `grp1`                | group of model `model1`, defined in model info file, or `-` if none |
-|   8 | `subgrp1`             | subgroup of model `model1`, defined in model info file, or `-` if none |
-|   9 | `score`               | summed bit score for all hits on strand `str` to model `model1` for this sequence in the classification stage |
-|  10 | `sc/nt`               | bit score per nucleotide; `score` divided by total length (in sequence positions) of all hits to model `model1` on strand `str` in the classification stage |
-|  11 | `seq cov`             | fraction of sequence positions (`seq len`) covered by any hit to model `model1` on strand `str` in the coverage determination stage | 
-|  12 | `mdl cov`             | fraction of model positions (model length - the number of reference positions in `model1`) covered by any hit to model `model1` on strand `str` in the coverage determination stage | 
-|  13 | `bias`                | summed bit score due to biased composition (deviation from expected nucleotide frequencies) of all hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
-|  14 | `num hits`            | number of hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
-|  15 | `str`                 | strand with the top-scoring hit to `model1` for this sequence in the classification stage |
-|  16 | `model2`              | name of the second best-matching model for this sequence, this is the model with the top-scoring hit for this sequence across all hits that are not to `model1` in the classification stage |
-|  17 | `grp2`                | group of model `model2`, defined in model info file, or `-` if none |
-|  18 | `subgrp2`             | subgroup of model `model2`, defined in model info file, or `-`' if none | 
-|  19 | `score diff`          | bit score difference between summed bit score for all hits to `model1` on strand `str` and summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
-|  20 | `diff/nt`             | bit score difference per nucleotide; `sc/nt` minus sc2/nt where sc2/nt is summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
-|  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+|   4 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   6 | `ungapped seq`        | sequence coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
+|   7 | `ungapped mdl`        | model coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
+|   8 | `ungapped fraction`   | fraction of `seq len` in ungapped region in `ungapped seq` | 
+|   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
+|  10 | `5'unaln mdl`         | model start/stop coordinates for cmalign alignment of 5' region `5'unaln seq`, in vadr coords [format](#coords) |
+|  11 | `5'unaln fraction`    | fraction of `seq len` in 5' region in `5'unaln seq` |
+|  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
+|  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
+|  14 | `3'unaln fraction`    | fraction of `seq len` in 3' region in `3'unaln seq` |
+
+
+---
+### Explanation of `.rpn`-suffixed output files<a name="rpn"></a>
+
+`.rpn` files are only output if the `v-annotate.pl -r` option is used.
+`.rpn` data lines have 16 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**sequence** in the input sequence file file that `v-annotate.pl`
+processed.
+With `-r`, sequences are preprocessed with blastn and missing regions between blastn hits are identified and examined for Ns.
+The Ns in some of these regions are replaced with the expected nucleotides from the model
+as explained more [here](annotate.md#options-replace).
+`.rpn` files include
+information about these missing regions, referred to as gaps in the `.rpn`
+column headers and below.
+[Example file created with the command `v-annotate.pl -r
+$VADRSCRIPTSDIR/documentation/annotate-files/noro.9.r.fa
+va-noro-r.9`](annotate-files/va-noro-r.9.vadr.rpn).
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   6 | `num_Ns tot`          | total number of Ns in the sequence |
+|   7 | `num_Ns rp`           | number of Ns in the sequence replaced with expected nucleotides from the model consensus |
+|   8 | `fract_Ns rp`         | fraction of Ns replaced: `num_Ns rp`/`num_Ns tot` |
+|   9 | `ngaps tot`           | number of gaps between preprocessing stage blastn hits, including gaps at 5' and 3' ends |
+|  10 | `ngaps int`           | number of internal gaps between preprocessing stage blastn hits, `ngaps tot` minus number of gaps at 5' and/or 3' end |
+|  11 | `ngaps rp`            | number of gaps in which one or more Ns were replaced | 
+|  12 | `ngaps rp-full`       | number of gaps in which entire gap was Ns and all Ns were replaced |
+|  13 | `ngaps rp-part`       | number of gaps in which entire gap was not Ns, but all Ns were replaced |
+|  14 | `nnt rp-full`         | number of Ns replaced in the `ngaps rp-full` gaps |
+|  15 | `nnt rp-part`         | number of Ns replaced in the `ngaps rp-part` gaps |
+|  16 | `replaced_coords seq(S),mdl(M),#rp(N) | string indicated location of gaps and number of Ns replaced per gap with one 'token' per `ngaps rp` gaps in which one or more Ns were replaced, with each token in format `S:<s_start>..<s_end>,M:<m_start>..<m..end>,N:<num_Ns>/<num_nts>;`, describing a gap in sequence from `<s_start>` to `<s_end>` corresponding model positions `<m_start>` to `<m_end>` in which `<num_Ns>` of `<num_nts>` nucleotides were Ns are were replaced |
 
 ---
 
 ### Explanation of `.alt.list`-suffixed output files<a name="altlist"></a>
 
 `.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
-lines with 4 tab-delimited fields:
+lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
+
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
