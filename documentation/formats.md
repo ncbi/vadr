@@ -158,8 +158,8 @@ of the output files with a brief description and in some cases further
 references on the file type/format. The `.minfo` file format is documented
 further below. 
 
-| file suffix | description | ....example_file....reference |
-|--------|-----------------------|-------------|
+| file suffix | description | ....example_file....| reference |
+|--------|------------------|---------------------|-----------|
 | `.minfo`  | VADR model info file | [NC_039897.vadr.minfo](build-files/NC_039897.vadr.minfo) | [description of format in this document](#minfo) |
 | `.tbl`  | 5 column tab-delimited feature table | [NC_039897.vadr.tbl](build-files/NC_039897.vadr.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.stk` | Stockholm alignment format | [NC_039897.vadr.stk](build-files/NC_039897.vadr.stk) | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
