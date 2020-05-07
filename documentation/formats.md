@@ -242,7 +242,7 @@ references on the file type/format.
 | `.fail.list` | list of sequences that fail, one line per sequence          | [va-noro.9.vadr.fail.list](annotate-files/va-noro.9.vadr.fail.list) | no further documentation | 
 | `.fail.tbl`  | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | [va-noro.9.vadr.fail.tbl](annotate-files/va-noro.9.vadr.fail.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
-| `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
+| `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.seqstat](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
 
 ---
 
@@ -250,7 +250,7 @@ There are also nine types of `v-annotate.pl` tabular output files with fields se
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
-| suffix | description | ....example_file.... | reference | 
+| suffix | description | .....example_file..... | reference | 
 |--------|-------------|----------------------|-----------|
 | `.alc` | per-alert code information (counts)     | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.alc) | [description of format in this document](#alc) |
 | `.alt` | per-alert instance information          | [va-noro.9.vadr.alt](annotate-files/va-noro.9.vadr.alt) | [description of format in this document](#alt) |
@@ -279,7 +279,10 @@ Each of these nine tabular formats are explained in more detail below.
 `.alc` data lines have 8 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each alert code
 that occurs at least once in the input sequence file that
-`v-annotate.pl` processed. An example file is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9.alc)
+`v-annotate.pl` processed.
+An example file created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
+`v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`
+is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9.alc).
 
 
 | idx | field                 | description |
@@ -299,6 +302,9 @@ that occurs at least once in the input sequence file that
 `.alt` data lines have 10 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
+An example file created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
+`v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`
+is in [vadr/documentation/annotate-files/va-noro.9.alc](annotate-files/va-noro.9.alc).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|

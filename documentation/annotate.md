@@ -65,7 +65,8 @@ populate with output files.
 After that comes a list of all available command-line options. These
 are explained in more detail [below](#options).
 
-Here is an example `v-annotate.pl` command using the fasta file
+<a name="examplebasic"></a>Here is an example `v-annotate.pl` command
+using the fasta file
 [vadr/documentation/annotate-files/noro.9.fa](annotate-files/noro.9.fa)
 with 9 norovirus sequences, and creating an output directory with
 `va-noro.9`:
@@ -523,7 +524,7 @@ JN975492.1	INDEFINITE_ANNOTATION_END	VF1	protein-based alignment does not extend
 JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
 ```
 
-## Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa <a name="examplealtpass"></a>
+##  <a name="examplealtpass"></a>Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
 
 One way to change the behavior of `v-annotate.pl` is to change which
 alerts are fatal or non-fatal.  Most alerts are fatal by default, but
@@ -578,7 +579,7 @@ The `--alt_fail <s>` option works the same way as `alt_pass <s>` but alert codes
 in `<s>` should be [non-fatal by default](#nonfatal1).
 
 ---
-## Example of using the `-p` option to parallelize `v-annotate.pl`<a name="exampleparallel"></a>
+## <a name="exampleparallel"></a>Example of using the `-p` option to parallelize `v-annotate.pl`
 
 The most time-consuming stages of `v-annotate.pl` (classification,
 coverage determination and alignment) can be parallelized on a cluster
