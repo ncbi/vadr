@@ -782,7 +782,7 @@ with format described [here](formats.md#sda).
 | `--s_blastnsc <x>`  | with `-s`, set the blastn minimum HSP score to consider to `<x>`, the default value for `<x>` is `50.0` |
 | `--s_overhang <n>`  | with `-s`, set the length, in nt, of overlap between the 5' and 3' regions that are aligned with cmalign and the seed region to `<n>`, the default value for `<n>` is `100` |
 
-###<a name="options-replace"></a> `v-annotate.pl` options related to replacing Ns with expected nucleotides
+### <a name="options-replace"></a> `v-annotate.pl` options related to replacing Ns with expected nucleotides
 
 The `-r` option adds a pre-processing step to `v-annotate.pl` in which
 stretches of Ns are identified in each sequence and replaced with the
