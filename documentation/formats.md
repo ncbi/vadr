@@ -605,22 +605,23 @@ lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.
 ---
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
 
-When run with the `--keep` option, `v-annotate.pl` will create additional files:
+When run with the `--keep` option, `v-annotate.pl` will create additional files, some of these may change based on command-line options, in particular `-s` and `-r`:
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
 | `.cm.namelist` | file with list of names of all models in model library | no further documentation | 
-| `.scan.r1.tblout` | tabular output from `cmscan` in classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.scan.r1.stdout` | standard output from `cmscan` in classification stage | no further documentation | 
-| `.search.r2.<model_name>.tblout` | tabular output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.search.r2.<model_name>.stdout` | standard output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 3: "Tutorial") | 
+| `.in.fa`       | copy of input fasta file (if `--origfa` is used, this will not exist) | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.fa.ssi`      | Easel sequence index files | binary file, not meant to be human-readable | 
+| `.cls.*.tblout` | tabular output from `cmscan` or `blastn` converted to `cmscan` tblout format from classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cls.*.stdout` | standard output (usually from `cmscan`) in classification stage | no further documentation | 
+| `.cdt.<model_name>.tblout` | tabular output from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cdt.<model_name>.stdout` | standard output (usually from `cmsearch`) from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.a.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | <a name="stockholmformat"></a> https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model_name>` | description of fields at top of file, no further documentation |
-| `.<model_name>.align.*.tfile` | `cmalign` parsetree output file, created with `--tfile` option for 1 or more sequences classified to `<model_name>` | no further documentation |
 | `.<model_name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model_name>` | no further documentation |
-| `.<model_name>.a.blastx.fa` | query fasta file used for `blastx` for sequences classified to `<model_name>`, with full input sequences and predicted CDS subsequences | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames)  |
+| `.<model_name>.pv.blastx.fa` | query fasta file used for `blastx` for sequences classified to `<model_name>`, with full input sequences and predicted CDS subsequences | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames)  |
 | `.<model_name>.blastx.out` | `blastx` output for for sequences classified to `<model_name>` | https://www.ncbi.nlm.nih.gov/books/NBK279684/ |
 | `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
 
