@@ -53,7 +53,7 @@ for more information on using VADR to annotate SARS-CoV-2 sequences.
 
 VADR installation includes a default set of *Flaviviridae* and
 *Caliciviridae* models including Norovirus and Dengue virus.  You can
-also download additional pre-built models to use to validate and
+download additional pre-built models to use to validate and
 annotate viruses, including SARS-CoV-2, or cox1 genes as listed
 below. Importantly, to use a set of models other than the default set
 that is installed with VADR, you will need to use either the `--mdir`
