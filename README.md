@@ -41,23 +41,24 @@ installation](documentation/install.md#top).
 ---
 ## SARS-CoV-2 annotation using VADR
 
-The `v-annotate.pl` scrip in VADR v1.1 has some enhancements
+The `v-annotate.pl` script in VADR v1.1 has some enhancements
 specifically designed for SARs-CoV-2 annotation that increase speed
 (`-s` option) and provide better annotation for sequences with
-stretches of Ns (`-r option). See [this
+stretches of Ns (`-r` option). See [this
 page](https://github.com/nawrockie/vadr/wiki/Coronavirus-annotation)
 for more information on using VADR to annotate SARS-CoV-2 sequences.
 
 ---
 ## Available VADR models <a name="models"></a>
 
-You can download pre-built models to use to validate and annotate
-viruses, including SARS-CoV-2, or cox1 genes as listed
-below. Importantly, to use a set of models other than the
-default set that is installed with VADR, you will need to use either
-the `--mdir` and `--mkey` options, or the the `-m`, `-i`, `-x` and
-possibly `-n` options as described
-[here](documentation/annotate.md#options).
+VADR installation includes a default set of *Flaviviridae* and
+*Caliciviridae* models including Norovirus and Dengue virus.  You can
+also download additional pre-built models to use to validate and
+annotate viruses, including SARS-CoV-2, or cox1 genes as listed
+below. Importantly, to use a set of models other than the default set
+that is installed with VADR, you will need to use either the `--mdir`
+and `--mkey` options, or the the `-m`, `-i`, `-x` and possibly `-n`
+options as described [here](documentation/annotate.md#options).
 
 Pre-built models are available for:
   * SARS-CoV-2 [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/) and other *Coronaviridae* RefSeqs
