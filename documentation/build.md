@@ -426,10 +426,10 @@ directories, make sure you also move the corresponding index files
 ## How the VADR 1.0 model library was constructed <a name="1.0library"></a>
 
 The VADR 1.0 library was built with version 1.0 of VADR. It is included here as 
-an example of how to build a VADR library, but also so it can be reproduced as it is the model library
-used in the [paper on VADR 1.0](../README.md#reference).
+an example of how to build a VADR library, but also so it can be reproduced, because it is the model library
+used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1101/852657).
 If you want to reproduce it exactly, you'll want to install
-version 1.0. The install script is here:
+version 1.0. The install script for v1.0 is here:
 
 https://raw.githubusercontent.com/nawrockie/vadr/1.0/vadr-install.sh
 
@@ -441,12 +441,15 @@ RefSeq annotation data from GenBank when it is run. If necessary,
 email eric.nawrocki@nih.gov for additional files
 needed to reproduce the library exactly.
 
-Also note that the library has changed since version 1.0. For example, the 
-default set of models included with version 1.1 has 205 total models,
-not 197. To see a list of changes, see the
-`$VADRMODELDIR/RELEASE-NOTES.txt` file. To reproduce it, you would run
-similar steps to those below but also adding the additional models
-listed in the `RELEASE-NOTES.txt` file.
+Also note that the library has changed since version 1.0. For example,
+the default set of models included with version 1.1 has 205 total
+models, not 197. To see a list of changes, see the `RELEASE-NOTES.txt`
+file in the directory pointed to by your `$VADRMODELDIR` environment
+variable after installing VADR. To reproduce the construction of the
+1.1 library, you would run similar steps to those below but also
+adding the additional models listed in the `RELEASE-NOTES.txt` file.
+
+### Models in the VADR 1.0 library
 
 The VADR 1.0 model library consists of 197 VADR models. Nine of these
 are Norovirus RefSeq models, listed in
