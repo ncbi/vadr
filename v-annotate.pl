@@ -4209,7 +4209,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
-                                                           seq_SqstringAddNewlines($ftr_sqstring_out, 60) . "\n"); 
+                                                           seq_SqstringAddNewlines($ftr_sqstring_out, 60)); 
         if(($do_separate_cds_fa_files) && ($ftr_is_cds)) { 
           if(! exists $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key}) { 
             my $separate_cds_fa_file = $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".pv.fa"; 
