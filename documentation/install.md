@@ -196,11 +196,11 @@ At a minimum, you should run the
 `vadr/testfiles/do-install-tests-local.sh` script to make sure VADR installed
 correctly. They should pass, as shown below.
 
-To run all tests, run
-the script `vadr/testfiles/do-all-tests.sh`, but be warned that script
-may take up to an hour or so to run. All the tests should all pass.
+The script `vadr/testfiles/do-all-tests.sh` will run all tests, but be
+warned that script may take up to an hour or so to run. All the tests
+should pass.
 
-There is a special test script `do-install-tests-parallel.sh` that you
+There is also special test script `do-install-tests-parallel.sh` that you
 should run if you want to test if you can use the `-p` option to
 `v-annotate.pl` for parallelization on a cluster.  But this test will
 likely only work internally at NCBI or if you happen to have a compute
@@ -208,8 +208,13 @@ farm set-up in a similar way at NCBI. See this
 [example](annotate.md#exampleparallel) for more information.
 `do-install-tests-parallel.sh` is **not** run as part of `do-all-tests.sh`.
 
-To run the recommended `do-install-tests-local.sh` script to test your
-installation, execute:
+To run all tests, execute:
+
+```
+$VADRSCRIPTSDIR/testfiles/do-all-tests.sh
+```
+
+To run only the `do-install-tests-local.sh` script, execute:
 
 ```
 $VADRSCRIPTSDIR/testfiles/do-install-tests-local.sh
