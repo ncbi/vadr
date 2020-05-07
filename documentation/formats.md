@@ -272,7 +272,7 @@ These files are named `<outdir>.vadr.<suffix>` where
 of the output files with a brief description and in some cases further
 references on the file type/format. 
 
-| ..........suffix.......... | ...............description............... | ...............example_file............... | reference |
+| ..........suffix.......... | ...............description............... | ...................example_file................... | reference |
 |--------|-------------|----------------------|-----------|
 | `.pass.list` | list of sequences that pass, one line per sequence          | [va-noro.9.vadr.pass.list](annotate-files/va-noro.9.vadr.pass.list) | no further documentation | 
 | `.pass.tbl`  | 5 column tab-delimited feature table of sequences that pass | [va-noro.9.vadr.pass.tbl](annotate-files/va-noro.9.vadr.pass.tbl)   | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
