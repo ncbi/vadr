@@ -204,7 +204,7 @@ the files with the following suffixes:
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
 | `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST protein database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.fa.n{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
@@ -376,7 +376,7 @@ call it `my.vadr.cm`, for example, and move it to the
 call it `my.vadr.hmm`, for example, and move it to the
 `my-vadr-model-dir` directory.
 
-6. Concatenate all resulting `N` `.vadr.fa` files into a single file,
+6. Concatenate all resulting `N` `.vadr.nt.fa` files into a single file,
 call it `my.vadr.fa`, for example, and move it to the
 `my-vadr-model-dir` directory, and then create a BLAST nucleotide 
 database from it with the command:
