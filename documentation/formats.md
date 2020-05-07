@@ -150,13 +150,14 @@ is:
 ---
 ## Format of `v-build.pl` output files<a name="build"></a>
 
-`v-build.pl` creates many output files. 
-These files are named `<outdir>.vadr.<suffix>` where
-`<outdir>` is the second command line argument given to
-`v-build.pl`. The following table lists many
-of the output files with a brief description and in some cases further
-references on the file type/format. The `.minfo` file format is documented
-further below. 
+`v-build.pl` creates many output files.  These files are named
+`<outdir>.vadr.<suffix>` where `<outdir>` is the second command line
+argument given to `v-build.pl`. The following table lists many of the
+output files with a brief description and in some cases further
+references on the file type/format. The `.minfo` file format is
+documented further below. Example files were all created with the
+`v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897`
+command.
 
 | file suffix | description | ....example_file....| reference |
 |--------|------------------|---------------------|-----------|
@@ -170,11 +171,11 @@ further below.
 | `.nt.fa`      | FASTA format sequence file of the consensus sequence output from the CM with `cmemit` | [NC_039897.vadr.nt.fa](build-files/NC_039897.vadr.nt.fa) | https://en.wikipedia.org/wiki/FASTA_format |
 | `.nt.fa.nhr`, `.nt.fa.nin`, `.nt.fa.nsq`, `.nt.fa.ndb`, `.nt.fa.not`, `.nt.fa.ntf`, `.nt.fa.nto` | BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | - | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | - | binary files, not meant to be human-readable |
+| `.cm.i1m`, `.cm.i1i`, `.cm.i1f`, `.cm.i1p` | Infernal 1.1x covariance model index files, created by `cmpress` | - | binary files, not meant to be human-readable |
 | `.cmbuild` | Infernal `cmbuild` output file | - | no further documentation |
 | `.cmpress` | Infernal `cmpress` output file | - | no further documentation |
 | `.hmm` | HMMER 3.x HMM file | - | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
-| `.hmm.h3{m,i,f,p}` | HMMER 3.x HMM index files, created by `hmmpress` | - | binary files, not meant to be human-readable |
+| `.hmm.h3m`, `.hmm.h3i`, `.hmm.h3f`, `.hmm.h3p` | HMMER 3.x HMM index files, created by `hmmpress` | - | binary files, not meant to be human-readable |
 | `.hmmbuild` | HMMER `hmmbuild` output file | - | no further documentation |
 | `.hmmpress` | HMMER `hmmpress` output file | - | no further documentation |
 
@@ -271,14 +272,14 @@ These files are named `<outdir>.vadr.<suffix>` where
 of the output files with a brief description and in some cases further
 references on the file type/format. 
 
-| suffix | description | ....example_file.... | reference |
+| suffix | ...............description............... | ....example_file.... | reference |
 |--------|-------------|----------------------|-----------|
-| `.<model_name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model_name> from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
 | `.pass.list` | list of sequences that pass, one line per sequence          | [va-noro.9.vadr.pass.list](annotate-files/va-noro.9.vadr.pass.list) | no further documentation | 
 | `.pass.tbl`  | 5 column tab-delimited feature table of sequences that pass | [va-noro.9.vadr.pass.tbl](annotate-files/va-noro.9.vadr.pass.tbl)   | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.fail.list` | list of sequences that fail, one line per sequence          | [va-noro.9.vadr.fail.list](annotate-files/va-noro.9.vadr.fail.list) | no further documentation | 
 | `.fail.tbl`  | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | [va-noro.9.vadr.fail.tbl](annotate-files/va-noro.9.vadr.fail.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
 | `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
+| `.<m>.<f>.<i>.fa` | FASTA format sequence file with predicted sequences for feature type `<f>` number `<i>` annotated using model `<m>` from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
 | `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.seqstat](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
 
 ---
