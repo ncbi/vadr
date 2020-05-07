@@ -28,11 +28,11 @@
 ## `v-annotate.pl` example usage <a name="exampleusage"></a>
 
 `v-annotate.pl` uses previously created VADR models from `v-build.pl`
-and uses them to analyze and annotate sequences in an input sequence
-file. As part of the analysis of the sequences, more than 40 types of
-unexpected characteristics, or *alerts* are detected and reported in
-the output. Most of the alerts are *fatal* in that if a sequence has
-one or more fatal alerts, they will be designated as *failing*
+to analyze and annotate sequences in an input sequence file. As part
+of the analysis of the sequences, more than 40 types of unexpected
+characteristics, or *alerts* are detected and reported in the
+output. Most of the alerts are *fatal* in that if a sequence has one
+or more fatal alerts, they will be designated as *failing*
 sequences. Sequences with zero fatal alerts are designated as
 *passing* sequences. The types of alerts are described further below.
 
