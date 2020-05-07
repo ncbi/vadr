@@ -1,0 +1,12 @@
+#seq  seq          seq                                   sub                    seq    mdl         num                             sub     score  diff/  seq   
+#idx  name         len  p/f   ant  model1     grp1       grp1   score  sc/nt    cov    cov  bias  hits  str  model2     grp2       grp2     diff     nt  alerts
+#---  ----------  ----  ----  ---  ---------  ---------  ----  ------  -----  -----  -----  ----  ----  ---  ---------  ---------  -----  ------  -----  ------
+1     KY887602.1  7547  PASS  yes  NC_039477  Norovirus  GII   8142.8  1.079  1.000  0.997  12.5     1    +  NC_044046  Norovirus  GVIII  4348.2  0.576  -     
+2     KT818729.1   243  PASS  yes  NC_044854  Norovirus  GI     170.4  0.701  0.996  0.031     0     1    +  NC_044932  Norovirus  GII      90.0  0.370  -     
+3     EU437710.1   291  PASS  yes  NC_001959  Norovirus  GI     249.4  0.857  1.000  0.038     0     1    +  NC_044855  Norovirus  GIV     161.5  0.555  -     
+4     DQ288307.1  1094  PASS  yes  NC_029645  Norovirus  GIII   973.4  0.890  1.000  0.150   6.2     1    +  NC_001959  Norovirus  GI      671.1  0.613  -     
+5     AY237464.1   255  PASS  yes  NC_039477  Norovirus  GII    221.1  0.867  1.000  0.034     0     1    +  NC_044047  Norovirus  GVII    113.5  0.445  -     
+6     KF475958.1   275  PASS  yes  NC_044854  Norovirus  GI     248.0  0.902  1.000  0.036     0     1    +  NC_044932  Norovirus  GII     164.0  0.596  -     
+7     AB713840.1   347  PASS  yes  NC_008311  Norovirus  GV     330.6  0.953  1.000  0.047   0.2     1    +  NC_040876  Norovirus  GII     239.5  0.690  -     
+8     JN585032.1   286  PASS  yes  NC_029645  Norovirus  GIII   242.3  0.847  0.997  0.039   0.1     1    +  NC_039897  Norovirus  GI      154.8  0.541  -     
+9     JN975492.1  7286  FAIL  yes  NC_008311  Norovirus  GV    4666.2  0.640  1.000  0.987  16.8     1    +  NC_044047  Norovirus  GVII   3382.8  0.464  -     

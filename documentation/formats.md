@@ -253,14 +253,14 @@ These files are listed in the table below
 | suffix | description | example file | reference | 
 |--------|-------------|--------------|-----------|
 | `.alc` | per-alert code information (counts)     | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.alc) | [description of format in this document](#alc) |
-| `.alt` | per-alert instance information          | - | [description of format in this document](#alt) |
-| `.ftr` | per-feature information                 | - | [description of format in this document](#ftr) |
-| `.mdl` | per-model information                   | - | [description of format in this document](#mdl) |
-| `.sgm` | per-segment information                 | - | [description of format in this document](#sgm) |
-| `.sqa` | per-sequence annotation information     | - | [description of format in this document](#sqa) |
-| `.sqc` | per-sequence classification information | - | [description of format in this document](#sqc) |
-| `.sda` | per-sequence seed alignment information (only created if `-s` used) | - | [description of format in this document](#sda) |
-| `.rpn` | per-sequence N replacement information (only created if `-r` used)  | - | [description of format in this document](#rpn) |
+| `.alt` | per-alert instance information          | [va-noro.9.vadr.alt](annotate-files/va-noro.9.vadr.alt) | [description of format in this document](#alt) |
+| `.ftr` | per-feature information                 | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.ftr) | [description of format in this document](#ftr) |
+| `.mdl` | per-model information                   | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.mdl) | [description of format in this document](#mdl) |
+| `.sgm` | per-segment information                 | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.sgm) | [description of format in this document](#sgm) |
+| `.sqa` | per-sequence annotation information     | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.sqa) | [description of format in this document](#sqa) |
+| `.sqc` | per-sequence classification information | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.sqc) | [description of format in this document](#sqc) |
+| `.sda` | per-sequence seed alignment information (only created if `-s` used) | [va-noro-s.9.vadr.sda](annotate-files/va-noro.9.vadr.sda) | [description of format in this document](#sda) |
+| `.rpn` | per-sequence N replacement information (only created if `-r` used)  | [va-noro-r.9.vadr.rpn](annotate-files/va-noro.9.vadr.rpn) | [description of format in this document](#rpn) |
 
 All nine types of tabular output files share the following
 characteristics: 

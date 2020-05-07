@@ -1,0 +1,64 @@
+#       seq          seq                   ftr          ftr                        ftr  num  sgm   seq   seq   mdl   mdl   sgm                 5'     3'  5'   3' 
+#idx    name         len  p/f   model      type         name                       idx  sgm  idx  from    to  from    to   len  str  trc       pp     pp  gap  gap
+#-----  ----------  ----  ----  ---------  -----------  -------------------------  ---  ---  ---  ----  ----  ----  ----  ----  ---  -----  -----  -----  ---  ---
+1.1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                         1    1    1     1  5083    22  5104  5083    +  5'         -  0.975  yes  no 
+1.2.1   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein    2    1    1     1  5083    22  5104  5083    +  5'         -  0.975  yes  no 
+1.3.1   KY887602.1  7547  PASS  NC_039477  gene         ORF2                         3    1    1  5064  6686  5085  6707  1623    +  no     0.975  0.975  no   no 
+1.4.1   KY887602.1  7547  PASS  NC_039477  CDS          VP1                          4    1    1  5064  6686  5085  6707  1623    +  no     0.975  0.975  no   no 
+1.5.1   KY887602.1  7547  PASS  NC_039477  gene         ORF3                         5    1    1  6686  7492  6707  7513   807    +  no     0.975  0.975  no   no 
+1.6.1   KY887602.1  7547  PASS  NC_039477  CDS          VP2                          6    1    1  6686  7492  6707  7513   807    +  no     0.975  0.975  no   no 
+1.7.1   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                          7    1    1     1   979    22  1000   979    +  5'         -  0.975  yes  no 
+1.8.1   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                       8    1    1   980  2077  1001  2098  1098    +  no     0.975  0.975  no   no 
+1.9.1   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                          9    1    1  2078  2608  2099  2629   531    +  no     0.975  0.975  no   no 
+1.10.1  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         10    1    1  2609  3007  2630  3028   399    +  no     0.975  0.975  no   no 
+1.11.1  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         11    1    1  3008  3550  3029  3571   543    +  no     0.975  0.975  no   no 
+1.12.1  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                        12    1    1  3551  5080  3572  5101  1530    +  no     0.975  0.975  no   no 
+#
+2.1.1   KT818729.1   243  PASS  NC_044854  gene         ORF1                         1    1    1     1   243  4625  4867   243    +  5'&3'      -      -  yes  yes
+2.2.1   KT818729.1   243  PASS  NC_044854  CDS          nonstructural_polyprotein    2    1    1     1   243  4625  4867   243    +  5'&3'      -      -  yes  yes
+2.3.1   KT818729.1   243  PASS  NC_044854  mat_peptide  RdRp                        12    1    1     1   243  4625  4867   243    +  5'&3'      -      -  yes  yes
+#
+3.1.1   EU437710.1   291  PASS  NC_001959  gene         ORF1                         1    1    1     1    13  5362  5374    13    +  5'         -  0.975  yes  no 
+3.2.1   EU437710.1   291  PASS  NC_001959  CDS          nonstructural_polyprotein    2    1    1     1    13  5362  5374    13    +  5'         -  0.975  yes  no 
+3.3.1   EU437710.1   291  PASS  NC_001959  gene         ORF2                         3    1    1     1   291  5362  5652   291    +  5'&3'      -      -  yes  yes
+3.4.1   EU437710.1   291  PASS  NC_001959  CDS          VP1                          4    1    1     1   291  5362  5652   291    +  5'&3'      -      -  yes  yes
+3.5.1   EU437710.1   291  PASS  NC_001959  mat_peptide  RdRp                        12    1    1     1    10  5362  5371    10    +  5'         -  0.975  yes  no 
+#
+4.1.1   DQ288307.1  1094  PASS  NC_029645  gene         ORF1                         1    1    1     1   210  4867  5076   210    +  5'         -  0.975  yes  no 
+4.2.1   DQ288307.1  1094  PASS  NC_029645  CDS          nonstructural_polyprotein    2    1    1     1   210  4867  5076   210    +  5'         -  0.975  yes  no 
+4.3.1   DQ288307.1  1094  PASS  NC_029645  gene         ORF2                         3    1    1   197  1094  5063  5960   898    +  3'     0.975      -  no   yes
+4.4.1   DQ288307.1  1094  PASS  NC_029645  CDS          VP1                          4    1    1   197  1094  5063  5960   898    +  3'     0.975      -  no   yes
+4.5.1   DQ288307.1  1094  PASS  NC_029645  mat_peptide  RdRp                        12    1    1     1   207  4867  5073   207    +  5'         -  0.975  yes  no 
+#
+5.1.1   AY237464.1   255  PASS  NC_039477  gene         ORF2                         3    1    1     1   255  5112  5366   255    +  5'&3'      -      -  yes  yes
+5.2.1   AY237464.1   255  PASS  NC_039477  CDS          VP1                          4    1    1     1   255  5112  5366   255    +  5'&3'      -      -  yes  yes
+#
+6.1.1   KF475958.1   275  PASS  NC_044854  gene         ORF2                         3    1    1     1   275  5379  5653   275    +  5'&3'      -      -  yes  yes
+6.2.1   KF475958.1   275  PASS  NC_044854  CDS          VP1                          4    1    1     1   275  5379  5653   275    +  5'&3'      -      -  yes  yes
+#
+7.1.1   AB713840.1   347  PASS  NC_008311  gene         ORF1                         1    1    1     1    14  5056  5069    14    +  5'         -  0.975  yes  no 
+7.2.1   AB713840.1   347  PASS  NC_008311  CDS          nonstructural_polyprotein    2    1    1     1    14  5056  5069    14    +  5'         -  0.975  yes  no 
+7.3.1   AB713840.1   347  PASS  NC_008311  gene         ORF2                         3    1    1     1   347  5056  5402   347    +  3'     0.975      -  no   yes
+7.4.1   AB713840.1   347  PASS  NC_008311  CDS          VP1                          4    1    1     1   347  5056  5402   347    +  3'     0.975      -  no   yes
+7.5.1   AB713840.1   347  PASS  NC_008311  gene         ORF4                         5    1    1    14   347  5069  5402   334    +  3'     0.975      -  no   yes
+7.6.1   AB713840.1   347  PASS  NC_008311  CDS          VF1                          6    1    1    14   347  5069  5402   334    +  3'     0.975      -  no   yes
+7.7.1   AB713840.1   347  PASS  NC_008311  mat_peptide  RdRp                        14    1    1     1    11  5056  5066    11    +  5'         -  0.975  yes  no 
+#
+8.1.1   JN585032.1   286  PASS  NC_029645  gene         ORF1                         1    1    1     1   286  4722  5007   286    +  5'&3'      -      -  yes  yes
+8.2.1   JN585032.1   286  PASS  NC_029645  CDS          nonstructural_polyprotein    2    1    1     1   286  4722  5007   286    +  5'&3'      -      -  yes  yes
+8.3.1   JN585032.1   286  PASS  NC_029645  mat_peptide  RdRp                        12    1    1     1   286  4722  5007   286    +  5'&3'      -      -  yes  yes
+#
+9.1.1   JN975492.1  7286  FAIL  NC_008311  gene         ORF1                         1    1    1     1  5044    23  5069  5044    +  5'         -  0.975  yes  no 
+9.2.1   JN975492.1  7286  FAIL  NC_008311  CDS          nonstructural_polyprotein    2    1    1     1  5044    23  5069  5044    +  5'         -  0.975  yes  no 
+9.3.1   JN975492.1  7286  FAIL  NC_008311  gene         ORF2                         3    1    1  5031  6656  5056  6681  1626    +  no     0.975  0.975  no   no 
+9.4.1   JN975492.1  7286  FAIL  NC_008311  CDS          VP1                          4    1    1  5031  6656  5056  6681  1626    +  no     0.975  0.975  no   no 
+9.5.1   JN975492.1  7286  FAIL  NC_008311  gene         ORF4                         5    1    1  5044  5685  5069  5710   642    +  no     0.975  0.975  no   no 
+9.6.1   JN975492.1  7286  FAIL  NC_008311  CDS          VF1                          6    1    1  5044  5685  5069  5710   642    +  no     0.975  0.975  no   no 
+9.7.1   JN975492.1  7286  FAIL  NC_008311  gene         ORF3                         7    1    1  6656  7282  6681  7307   627    +  no     0.975  0.975  no   no 
+9.8.1   JN975492.1  7286  FAIL  NC_008311  CDS          VP2                          8    1    1  6656  7282  6681  7307   627    +  no     0.975  0.975  no   no 
+9.9.1   JN975492.1  7286  FAIL  NC_008311  mat_peptide  p48                          9    1    1     1  1000    23  1028  1000    +  5'         -    0.9  yes  no 
+9.10.1  JN975492.1  7286  FAIL  NC_008311  mat_peptide  NTPase                      10    1    1  1001  2092  1029  2120  1092    +  no       0.9  0.975  no   no 
+9.11.1  JN975492.1  7286  FAIL  NC_008311  mat_peptide  p22                         11    1    1  2093  2590  2121  2615   498    +  no     0.975  0.975  no   no 
+9.12.1  JN975492.1  7286  FAIL  NC_008311  mat_peptide  VPg                         12    1    1  2591  2965  2616  2987   375    +  no     0.975  0.975  no   no 
+9.13.1  JN975492.1  7286  FAIL  NC_008311  mat_peptide  Pro                         13    1    1  2966  3514  2988  3536   549    +  no     0.975  0.975  no   no 
+9.14.1  JN975492.1  7286  FAIL  NC_008311  mat_peptide  RdRp                        14    1    1  3515  5041  3537  5066  1527    +  no     0.975  0.975  no   no 
