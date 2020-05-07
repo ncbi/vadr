@@ -66,17 +66,33 @@ output file for the example command `v-build.pl -f --group Norovirus
 --subgroup GI NC_039897 NC_039897` is:
 
 ```
+rm -rf NC_039897
 mkdir NC_039897
-/home/nawrocki/vadr-install/infernal-dev/easel/miniapps/esl-reformat --informat afa stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
-/home/nawrocki/vadr-install/infernal-dev/easel/miniapps/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-reformat --informat afa  stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa.ssi
-/usr/bin/makeblastdb -in NC_039897/NC_039897.vadr.protein.fa -dbtype prot > /dev/null
-/home/nawrocki/vadr-install/infernal-dev/src/cmbuild -n NC_039897 --verbose  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
-/home/nawrocki/vadr-install/infernal-dev/src/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
-# Fri Oct  4 13:25:23 EDT 2019
-# Darwin ericsmac 18.7.0 Darwin Kernel Version 18.7.0: Tue Aug 20 16:57:14 PDT 2019; root:xnu-3273.123.2~2/RELEASE_X86_64 x86_64
+/home/nawrocki/vadr-install-dir/ncbi-blast/bin/makeblastdb -in NC_039897/NC_039897.vadr.protein.fa -dbtype prot > /dev/null
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-sfetch NC_039897/NC_039897.vadr.protein.fa NC_039897.1/5..5404:+ | /home/nawrocki/vadr-install-dir/hmmer/binaries/hmmbuild -n NC_039897/5..5404:+ --informat afa NC_039897/NC_039897.vadr.1.hmm - > NC_039897/NC_039897.vadr.1.hmmbuild
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-sfetch NC_039897/NC_039897.vadr.protein.fa NC_039897.1/5388..7025:+ | /home/nawrocki/vadr-install-dir/hmmer/binaries/hmmbuild -n NC_039897/5388..7025:+ --informat afa NC_039897/NC_039897.vadr.2.hmm - > NC_039897/NC_039897.vadr.2.hmmbuild
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-sfetch NC_039897/NC_039897.vadr.protein.fa NC_039897.1/7025..7672:+ | /home/nawrocki/vadr-install-dir/hmmer/binaries/hmmbuild -n NC_039897/7025..7672:+ --informat afa NC_039897/NC_039897.vadr.3.hmm - > NC_039897/NC_039897.vadr.3.hmmbuild
+cat NC_039897/NC_039897.vadr.1.hmm NC_039897/NC_039897.vadr.2.hmm NC_039897/NC_039897.vadr.3.hmm > NC_039897/NC_039897.vadr.protein.hmm
+rm NC_039897/NC_039897.vadr.1.hmm
+rm NC_039897/NC_039897.vadr.2.hmm
+rm NC_039897/NC_039897.vadr.3.hmm
+cat NC_039897/NC_039897.vadr.1.hmmbuild NC_039897/NC_039897.vadr.2.hmmbuild NC_039897/NC_039897.vadr.3.hmmbuild > NC_039897/NC_039897.vadr.protein.hmmbuild
+rm NC_039897/NC_039897.vadr.1.hmmbuild
+rm NC_039897/NC_039897.vadr.2.hmmbuild
+rm NC_039897/NC_039897.vadr.3.hmmbuild
+/home/nawrocki/vadr-install-dir/hmmer/binaries/hmmpress NC_039897/NC_039897.vadr.protein.hmm > NC_039897/NC_039897.vadr.hmmpress
+/home/nawrocki/vadr-install-dir/infernal/binaries/cmbuild -n NC_039897 --verbose --occfile NC_039897/NC_039897.vadr.cmbuild.occ --cp9occfile NC_039897/NC_039897.vadr.cmbuild.cp9occ --fp7occfile NC_039897/NC_039897.vadr.cmbuild.fp7occ  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
+/home/nawrocki/vadr-install-dir/infernal/binaries/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
+/home/nawrocki/vadr-install-dir/infernal/binaries/cmfetch NC_039897/NC_039897.vadr.cm NC_039897 | /home/nawrocki/vadr-install-dir/infernal/binaries/cmemit -c - > NC_039897/NC_039897.vadr.nt-cseq.fa
+/home/nawrocki/vadr-install-dir/ncbi-blast/bin/makeblastdb -in NC_039897/NC_039897.vadr.nt.fa -dbtype nucl > /dev/null
+rm NC_039897/NC_039897.vadr.nt-cseq.fa
+# Wed May  6 18:24:56 EDT 2020
+# Darwin Erics-MBP.lan 19.0.0 Darwin Kernel Version 19.0.0: Wed Oct 23 18:29:05 PDT 2019; root:xnu-6153.41.3~44/RELEASE_X86_64 x86_64
 [ok]
 ```
 ---
@@ -102,6 +118,18 @@ is:
 # BLAST db .phr file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.phr
 # BLAST db .pin file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pin
 # BLAST db .psq file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.psq
+# BLAST db .pdb file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pdb
+# BLAST db .pot file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pot
+# BLAST db .ptf file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.ptf
+# BLAST db .pto file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pto
+# esl-sfetch index file for Bio::Easel::SqFile=HASH(0x7fe64f03cca0) saved in:      NC_039897.vadr.protein.fa.ssi
+# HMMER model db file for NC_039897 saved in:                                      NC_039897.vadr.protein.hmm
+# hmmbuild build output (concatenated) saved in:                                   NC_039897.vadr.protein.hmmbuild
+# binary HMM and p7 HMM filter file saved in:                                      NC_039897.vadr.protein.hmm.h3m
+# SSI index for binary HMM file saved in:                                          NC_039897.vadr.protein.hmm.h3i
+# optimized p7 HMM filters (MSV part) saved in:                                    NC_039897.vadr.protein.hmm.h3f
+# optimized p7 HMM filters (remainder) saved in:                                   NC_039897.vadr.protein.hmm.h3p
+# hmmpress output file saved in:                                                   NC_039897.vadr.hmmpress
 # CM file saved in:                                                                NC_039897.vadr.cm
 # cmbuild output file saved in:                                                    NC_039897.vadr.cmbuild
 # binary CM and p7 HMM filter file saved in:                                       NC_039897.vadr.cm.i1m
@@ -109,6 +137,14 @@ is:
 # optimized p7 HMM filters (MSV part) saved in:                                    NC_039897.vadr.cm.i1f
 # optimized p7 HMM filters (remainder) saved in:                                   NC_039897.vadr.cm.i1p
 # cmpress output file saved in:                                                    NC_039897.vadr.cmpress
+# fasta sequence file with cmemit consensus sequence for NC_039897 saved in:       NC_039897.vadr.nt.fa
+# BLAST db .nhr file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nhr
+# BLAST db .nin file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nin
+# BLAST db .nsq file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nsq
+# BLAST db .ndb file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.ndb
+# BLAST db .not file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.not
+# BLAST db .ntf file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.ntf
+# BLAST db .nto file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nto
 # VADR 'model info' format file for NC_039897 saved in:                            NC_039897.vadr.minfo
 ```
 ---
@@ -122,26 +158,27 @@ of the output files with a brief description and in some cases further
 references on the file type/format. The `.minfo` file format is documented
 further below. 
 
-| file suffix | description | reference |
+| file suffix | description | ....example_file....reference |
 |--------|-----------------------|-------------|
-| `.minfo`  | VADR model info file | [description of format in this document](#minfo) |
-| `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
-| `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
-| `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
-| `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.nt.fa`      | FASTA format sequence file of the consensus sequence output from the CM with `cmemit` | https://en.wikipedia.org/wiki/FASTA_format |
-| `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
-| `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
-| `.cmpress` | Infernal `cmpress` output file | no further documentation |
-| `.hmm` | HMMER 3.x HMM file | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
-| `.hmm.h3{m,i,f,p}` | HMMER 3.x HMM index files, created by `hmmpress` | binary files, not meant to be human-readable |
-| `.hmmbuild` | HMMER `hmmbuild` output file | no further documentation |
-| `.hmmpress` | HMMER `hmmpress` output file | no further documentation |
+| `.minfo`  | VADR model info file | [NC_039897.vadr.minfo](build-files/NC_039897.vadr.minfo) | [description of format in this document](#minfo) |
+| `.tbl`  | 5 column tab-delimited feature table | [NC_039897.vadr.tbl](build-files/NC_039897.vadr.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.stk` | Stockholm alignment format | [NC_039897.vadr.stk](build-files/NC_039897.vadr.stk) | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.vadr.fa` | FASTA format sequence file for single sequence model was built from | [NC_039897.vadr.fa](build-files/NC_039897.vadr.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | [NC_039897.vadr.cds.fa](build-files/NC_039897.vadr.cds.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | [NC_039897.vadr.protein.fa](build-files/NC_039897.vadr.protein.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
+| `.nt.fa`      | FASTA format sequence file of the consensus sequence output from the CM with `cmemit` | [NC_039897.vadr.nt.fa](build-files/NC_039897.vadr.nt.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
+| `.cm` | Infernal 1.1x covariance model file | - | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | - | binary files, not meant to be human-readable |
+| `.cmbuild` | Infernal `cmbuild` output file | - | no further documentation |
+| `.cmpress` | Infernal `cmpress` output file | - | no further documentation |
+| `.hmm` | HMMER 3.x HMM file | - | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
+| `.hmm.h3{m,i,f,p}` | HMMER 3.x HMM index files, created by `hmmpress` | - | binary files, not meant to be human-readable |
+| `.hmmbuild` | HMMER `hmmbuild` output file | - | no further documentation |
+| `.hmmpress` | HMMER `hmmpress` output file | - | no further documentation |
 
+For examples of file types not included above, see files in the `vadr/testfiles/models` directory.
 ---
 ### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo"></a>
 
