@@ -1,0 +1,16 @@
+= KY887602.1                    7547 Norovirus GII isolate Hu/UK/2015/GII.P16_GII.4_Sydney2012/NOR-2516, partial genome
+= KT818729.1                     243 Norovirus GZ-N1301 RNA-dependent RNA polymerase gene, partial cds
+= EU437710.1                     291 Norovirus water/GI/Gyeonggi/H15/2003/KOR capsid protein (orf2) gene, partial cds
+= DQ288307.1                    1094 Bovine enteric calicivirus strain BoCV/Sa16/04/JP RNA-dependent RNA polymerase and capsid protein genes, partial cds
+= AY237464.1                     255 Lordsdale virus strain 1222 capsid protein mRNA, partial cds
+= KF475958.1                     275 Norovirus GI.6 isolate HuNoVIT13GI.6BZ21 VP1-like gene, partial sequence
+= AB713840.1                     347 Norovirus mouse/Kumamoto/Ku02/2012/JP VP1 gene for capsid protein, partial cds
+= JN585032.1                     286 Norovirus bovine Bo/Nov-5/USA/2010 RNA-dependent RNA polymerase gene, partial cds
+= JN975492.1                    7286 Murine norovirus isolate Mu/NoV/Apo960/UK/2007 polyprotein gene, partial cds; and capsid protein VP1 and small basic protein genes, complete cds
+Format:              FASTA
+Alphabet type:       DNA
+Number of sequences: 9
+Total # residues:    17624
+Smallest:            243
+Largest:             7547
+Average length:      1958.2
