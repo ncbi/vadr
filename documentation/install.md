@@ -101,17 +101,6 @@ reference, but without the actual path to where you ran `vadr-install.sh`
 vadr-install.sh>`)
 
 ---
-### Note to internal NCBI users <a name="ncbi"></a>
-
-Contact Eric Nawrocki (eric.nawrock@nih.gov) to find out the
-path to the centrally installed copy of VADR at NCBI
-(`<ncbi-vadr-install-dir>`).
-
-Then, to set up your environment variables, follow the instructions
-below but replace: `<full path to directory in which you ran
-vadr-install.sh>` with `<ncbi-vadr-install-dir>`
-
----
 
 ### Instructions for setting environment variables output by `vadr-install.sh`
 
