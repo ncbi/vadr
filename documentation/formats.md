@@ -252,7 +252,7 @@ These files are listed in the table below
 
 | suffix | description | example file | reference | 
 |--------|-------------|--------------|-----------|
-| `.alc` | per-alert code information (counts)     | [va-noro.9.alc](annotate-files/va-noro.9.alc) | [description of format in this document](#alc) |
+| `.alc` | per-alert code information (counts)     | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.alc) | [description of format in this document](#alc) |
 | `.alt` | per-alert instance information          | - | [description of format in this document](#alt) |
 | `.ftr` | per-feature information                 | - | [description of format in this document](#ftr) |
 | `.mdl` | per-model information                   | - | [description of format in this document](#mdl) |
