@@ -529,9 +529,8 @@ length fractions in `ungapped fraction`, `5'unaln fraction`, and
 `3'unaln fraction` will not add up to `1.0` due to overlap between
 these regions, which is typically 100nt, but can be adjusted with the
 [`--s_overhang` option to `v-annotate.pl`](annotate.md#options-seed).
-[Example file created with the command `v-annotate.pl -s
-$VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa
-va-noro-s.9`](annotate-files/va-noro-s.9.vadr.sda).
+[Example file](annotate-files/va-noro-s.9.vadr.sda) created with the command `v-annotate.pl -s
+$VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -565,9 +564,9 @@ as explained more [here](annotate.md#options-replace).
 `.rpn` files include
 information about these missing regions, referred to as gaps in the `.rpn`
 column headers and below.
-[Example file created with the command `v-annotate.pl -r
+[Example file](annotate-files/va-noro-r.9.vadr.rpn) created with the command `v-annotate.pl -r
 $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.r.fa
-va-noro-r.9`](annotate-files/va-noro-r.9.vadr.rpn).
+va-noro-r.9`.
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -586,7 +585,7 @@ va-noro-r.9`](annotate-files/va-noro-r.9.vadr.rpn).
 |  13 | `ngaps rp-part`       | number of gaps in which entire gap was not Ns, but all Ns were replaced |
 |  14 | `nnt rp-full`         | number of Ns replaced in the `ngaps rp-full` gaps |
 |  15 | `nnt rp-part`         | number of Ns replaced in the `ngaps rp-part` gaps |
-|  16 | `replaced_coords seq(S),mdl(M),#rp(N) | string indicated location of gaps and number of Ns replaced per gap with one 'token' per `ngaps rp` gaps in which one or more Ns were replaced, with each token in format `S:<s_start>..<s_end>,M:<m_start>..<m..end>,N:<num_Ns>/<num_nts>;`, describing a gap in sequence from `<s_start>` to `<s_end>` corresponding model positions `<m_start>` to `<m_end>` in which `<num_Ns>` of `<num_nts>` nucleotides were Ns are were replaced |
+|  16 | `replaced_coords seq(S),mdl(M),#rp(N)` | string indicated location of gaps and number of Ns replaced per gap with one 'token' per gap in which one or more Ns were replaced (`ngaps rp` total), with each token in format `S:<s_start>..<s_end>,M:<m_start>..<m..end>,N:<num_Ns>/<num_nts>;`, describing a gap in sequence from `<s_start>` to `<s_end>` corresponding to model positions `<m_start>` to `<m_end>` in which `<num_Ns>` of `<num_nts>` nucleotides were Ns are were replaced. |
 
 ---
 
