@@ -2316,12 +2316,18 @@ sub add_classification_alerts {
     my $alt_str = "";
     %{$cls_output_HHR->{$seq_name}} = ();
 
-    # check for noannotn alert: no hits in round 1 search
+    # check for noannotn alert: 3 possibilities
+    # 1) no hits in round 1 search (most common cause of noannotn)
+    # 2) >= 1 hits in -r       classification stage (rpn.cls.1)  but 0 hits in standard classification stage (std.cls.1) (rare)
+    # 3) >= 1 hits in standard classification stage (std.cdt.bs) but 0 hits in coverage determination stage (std.cdt.bs) (rare)
     # or >=1 hits in classification stage but 0 hits in coverage determination stage (should be rare)
-    if((! defined $stg_results_HHHR->{$seq_name}) || 
+    if((! defined $stg_results_HHHR->{$seq_name}) || # case 1
+       ((defined $stg_results_HHHR->{$seq_name}) &&
+        (defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) &&
+        (! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"})) || # case 2
        ((defined $stg_results_HHHR->{$seq_name}) &&
         (defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) &&
-        (! defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}))) { 
+        (! defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}))) { # case 3
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noannotn", $seq_name, "VADRNULL", $FH_HR);
     }
     else { 
