@@ -1,6 +1,6 @@
 #     alert     causes   short             per    num   num  long       
 #idx  code      failure  description      type  cases  seqs  description
 #---  --------  -------  -----------  --------  -----  ----  -----------
-1     ambignt5  no       N_AT_START   sequence      1     1  first nucleotide is an N
-2     ambignt3  no       N_AT_END     sequence      1     1  final nucleotide is an N
+1     ambgnt5s  no       N_AT_START   sequence      1     1  first nucleotide of the sequence is an N
+2     ambgnt3s  no       N_AT_END     sequence      1     1  final nucleotide of the sequence is an N
 #---  --------  -------  -----------  --------  -----  ----  -----------
