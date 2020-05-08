@@ -973,7 +973,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
           my $start_3p = $ugp_seq_stop  - $nt_overhang + 1;
           my $stop_3p  = $seq_len;
           my $subseq_name = undef;
-          if($stop_5p > $start_3p) { # the two regions overlap, just fetch the full sequence
+          if($stop_5p >= $start_3p) { # the two regions overlap, just fetch the full sequence
             $subseq_name = $seq_name . "/1-" . $seq_len;
             push(@{$subseq_AAR}, [ $subseq_name, 1, $seq_len, $seq_name ]);
             @{$seq2subseq_HAR->{$seq_name}} = ($subseq_name);
