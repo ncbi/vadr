@@ -2,6 +2,15 @@
 
 RETVAL=0;
 
+for t in \
+    do-prove-all-tests.sh \
+    ; do
+    sh $VADRSCRIPTSDIR/t/$t teamcity
+    if [ $? != 0 ]; then
+        RETVAL=1;
+    fi   
+done
+
 # If you want to test -p option for parallelization, add
 # do-install-tests-parallel.sh to the following for loop.
 # Note: this test requires qsub is in your path and qsub options are
@@ -16,15 +25,6 @@ for t in \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
-    if [ $? != 0 ]; then
-        RETVAL=1;
-    fi   
-done
-
-for t in \
-    do-prove-all-tests.sh \
-    ; do
-    sh $VADRSCRIPTSDIR/t/$t teamcity
     if [ $? != 0 ]; then
         RETVAL=1;
     fi   
