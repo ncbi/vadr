@@ -1,0 +1,19 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --s_overhang 100 -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 $VADRSCRIPTSDIR/testfiles/github-issues/iss5/iss5.fa va-iss5 > va-iss5.out
+desc: iss5-opt_s-overlap-of-one-with-overhang-of-100
+out: va-iss5/va-iss5.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss5/va-iss5.vadr.fail.tbl
+rmdir: va-iss5
