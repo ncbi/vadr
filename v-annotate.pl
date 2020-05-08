@@ -2320,7 +2320,6 @@ sub add_classification_alerts {
     # 1) no hits in round 1 search (most common cause of noannotn)
     # 2) >= 1 hits in -r       classification stage (rpn.cls.1)  but 0 hits in standard classification stage (std.cls.1) (rare)
     # 3) >= 1 hits in standard classification stage (std.cdt.bs) but 0 hits in coverage determination stage (std.cdt.bs) (rare)
-    # or >=1 hits in classification stage but 0 hits in coverage determination stage (should be rare)
     if((! defined $stg_results_HHHR->{$seq_name}) || # case 1
        ((defined $stg_results_HHHR->{$seq_name}) &&
         (defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) &&
