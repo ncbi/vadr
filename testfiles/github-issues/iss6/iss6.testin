@@ -13,9 +13,16 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss6/iss6-entoy100a.fa va-iss6 > va-iss6.out
-desc: iss6-mutendex-frame
+desc: iss6-mutendex-frame-fwd-strand
 out: va-iss6/va-iss6.vadr.fail.tbl
 out: va-iss6/va-iss6.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss6/va-iss6.vadr.fail.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss6/va-iss6.vadr.alt
 rmdir: va-iss6
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss6/iss6-entoy100a-rev.fa va-iss6-rev > va-iss6-rev.out
+desc: iss6-mutendex-frame-rev-strand
+out: va-iss6-rev/va-iss6-rev.vadr.fail.tbl
+out: va-iss6-ref/va-iss6-rev.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss6/va-iss6-rev.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss6/va-iss6-rev.vadr.alt
+rmdir: va-iss6-rev
