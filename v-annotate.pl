@@ -4276,14 +4276,33 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                   # there are no valid in-frame stops in $ftr_sqstring_alt
                   # we have a 'mutendns' or 'mutendex' alert, to find out which 
                   # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                  if($ftr_stop < $seq_len) { 
+                  if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) ||
+                     (($ftr_strand eq "-") && ($ftr_stop > 1))) { 
                     # we have some sequence left 3' of ftr_stop
                     my $ext_sqstring = undef;
                     if($ftr_strand eq "+") { 
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
+                      # *careful* we don't really want to fetch to the end of the sequence, we want
+                      # to fetch the largest remaining subseq with length that is a multiple of 3
+                      # modulo 3, that's because of how sqstring_find_stops() works - it starts 
+                      # looking for in-frame stops starting at the end of the sequence and assumes 
+                      # final position of the subsequence its examining is frame 3
+                      my $cur_seq_end = $seq_len;
+                      my $cur_seq_len = abs($cur_seq_end - ($ftr_stop+1)) + 1;
+                      while(($cur_seq_len >= 3) && (($cur_seq_len % 3) != 0)) { 
+                        $cur_seq_end--;
+                        $cur_seq_len = abs($cur_seq_end - ($ftr_stop+1)) + 1;
+                      }
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $cur_seq_end, 0); 
                     }
                     else { # negative strand
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                      # see *careful* note above in + strand block for explanation of this code:
+                      my $cur_seq_end = 1;
+                      my $cur_seq_len = abs(($ftr_stop-1) - $cur_seq_end) + 1;
+                      while(($cur_seq_len >= 3) && (($cur_seq_len % 3) != 0)) { 
+                        $cur_seq_end++;
+                        $cur_seq_len = abs(($ftr_stop-1) - $cur_seq_end) + 1;
+                      }
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, $cur_seq_end, 1);
                     }
                     my @ext_nxt_stp_A = ();
                     sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
@@ -4523,7 +4542,7 @@ sub sqstring_find_stops {
   $nxt_stp_AR->[$sqlen]     = 0;
 
 #  for($i = 1; $i <= $sqlen; $i++) { 
-#    printf("position $i: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
+#    printf("position %5d: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
 #  }
 
   return;
