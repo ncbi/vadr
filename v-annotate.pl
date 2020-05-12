@@ -1099,34 +1099,53 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
-      my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
-      my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
-      join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
-                                              \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                              \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
-                                              \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
-                                              \@joined_stk_file_A, \%sda_output_HH,
-                                              \%alt_seq_instances_HH, \%alt_info_HH,
-                                              \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
-      push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
-      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
-
-      # replace any overflow info we have on subseqs to be for full seqs
-      if(scalar(@overflow_seq_A) > 0) { 
+      # first, replace any overflow info we have on subseqs to be for full seqs and remove them from the list of seqs to align
+      my @join_seq_name_A = (); # array of full seqs we'll try to join alignments for, this is all seqs except those with overflows
+      if(scalar(@overflow_seq_A) == 0) { 
+        @join_seq_name_A = @{$mdl_seq_name_HA{$mdl_name}};
+      }
+      else { # at least one overflow
         my @full_overflow_seq_A    = ();  
         my @full_overflow_mxsize_A = ();
         update_overflow_info_for_joined_alignments(\@overflow_seq_A, \@overflow_mxsize_A, \%subseq2seq_H, \@full_overflow_seq_A, \@full_overflow_mxsize_A);
         @overflow_seq_A    = @full_overflow_seq_A;
         @overflow_mxsize_A = @full_overflow_mxsize_A;
+
+        # fill @join_seq_name_A with only seqs that do not have an overflow
+        my %full_seq_overflow_H = ();
+        my $full_seq;
+        foreach $full_seq (@full_overflow_seq_A) { 
+          $full_seq_overflow_H{$full_seq} = 1; 
+        }
+        @join_seq_name_A = ();
+        foreach $full_seq (@{$mdl_seq_name_HA{$mdl_name}}) { 
+          if(! defined $full_seq_overflow_H{$full_seq}) { 
+            push(@join_seq_name_A, $full_seq);
+          }
+        }
       }
+
+      my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
+      my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
+      if(scalar(@join_seq_name_A > 0)) { 
+        join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
+                                                \@join_seq_name_A, \%seq_len_H, 
+                                                \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
+                                                \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
+                                                \@joined_stk_file_A, \%sda_output_HH,
+                                                \%alt_seq_instances_HH, \%alt_info_HH,
+                                                \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
+      }
+      push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
+      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
+      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
 
       # check for unjoinbl alerts, if we have any re-align the full seqs
       my $cur_unjoinbl_nseq = scalar(@unjoinbl_seq_name_A);
       if($cur_unjoinbl_nseq > 0) {
-      # at least one sequence had 'unjoinbl' alert, align the full seqs
+        # at least one sequence had 'unjoinbl' alert, align the full seqs
         # create fasta file
-        my $unjoinbl_mdl_fa_file = $out_root . "." . $mdl_name . "uj.a.fa";
+        my $unjoinbl_mdl_fa_file = $out_root . "." . $mdl_name . ".uj.a.fa";
         $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
@@ -1134,9 +1153,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                         $cm_file, $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                         $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                         \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
-        # append insert file we just made to larger join insert file
-        my $concat_cmd = sprintf("cat %s.%s.uj.align.ifile >> %s.%s.jalign.ifile", $out_root, $mdl_name, $out_root, $mdl_name);
-        utl_RunCommand($concat_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        # append insert file we just made to larger join insert file (if we created it (we may not have if all seqs had overflow error))
+        my $cur_ifile = sprintf("%s.%s.uj.align.ifile", $out_root, $mdl_name);
+        if(-s $cur_ifile) { 
+          my $concat_cmd = sprintf("cat $cur_ifile >> %s.%s.jalign.ifile", $out_root, $mdl_name);
+          utl_RunCommand($concat_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        }
       }
     }
 
