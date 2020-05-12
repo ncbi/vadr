@@ -724,7 +724,7 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 
 | .........option......... | explanation |
 |---------------------|--------------------|
-| `--mxsize <n>`      | set maximum allowed DP matrix size to `<n>` Mb before triggering an unexpdivg alert (sets the `cmalign --mxsize` option), default `<n>` is `8000` | 
+| `--mxsize <n>`      | set maximum allowed cmalign DP matrix size to `<n>` Mb before triggering an unexpdivg alert, default `<n>` is `16000` | 
 | `--tau <x>`         | set the initial tau (probability loss) value to `<x>` (sets the `cmalign --tau` option), default `<x>` is `0.001` | 
 | `--nofixedtau`      | do not fix the tau value, allow it to increase if necessary (removes the `cmalign --fixedtau` option), default is to fix tau with `cmalign --fixedtau` |
 | `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
