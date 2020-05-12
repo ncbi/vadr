@@ -21,7 +21,11 @@ for t in \
     do-fs-tests.sh \
     do-replace-tests.sh \
     do-seed-tests.sh \
+    do-hmmer-tests.sh \
+    do-nindel-tests.sh \
     do-outaln-tests.sh \
+    do-mxsize-tests.sh \
+    do-uj-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
