@@ -1,0 +1,32 @@
+>Feature NC_001959/3000-5000.1
+<1	305	mat_peptide
+			product	VPg
+			protein_id	NC_001959/3000-5000.1_1
+<1	>2001	gene
+			gene	ORF1
+<1	>2001	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	NC_001959/3000-5000.1_1
+306	848	mat_peptide
+			product	Pro
+			protein_id	NC_001959/3000-5000.1_1
+849	>2001	mat_peptide
+			product	RdRp
+			protein_id	NC_001959/3000-5000.1_1
+>Feature NC_001959/3000-5000.2
+<1	305	mat_peptide
+			product	VPg
+			protein_id	NC_001959/3000-5000.2_1
+<1	>2001	gene
+			gene	ORF1
+<1	>2001	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	NC_001959/3000-5000.2_1
+306	848	mat_peptide
+			product	Pro
+			protein_id	NC_001959/3000-5000.2_1
+849	>2001	mat_peptide
+			product	RdRp
+			protein_id	NC_001959/3000-5000.2_1

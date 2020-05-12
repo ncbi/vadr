@@ -1,0 +1,68 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, etc.
+#
+# 
+# unjoinbl, then unexdivg because cmalign matrix requires more than 1 Mb
+# unjoinbl can only happen with -s, so 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --mxsize 1 -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models noro.uj.1.fa va-noro-uj-s-1 > va-noro-uj-s-1.out
+desc: annotate-noro-uj-s-1
+out: va-noro-uj-s-1/va-noro-uj-s-1.vadr.pass.tbl 
+out: va-noro-uj-s-1/va-noro-uj-s-1.vadr.fail.tbl 
+out: va-noro-uj-s-1/va-noro-uj-s-1.vadr.alt.list
+out: va-noro-uj-s-1/va-noro-uj-s-1.vadr.sda
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.sda
+rmdir: va-noro-uj-s-1
+# 
+# -s: same as 1 but with a passing sequence, which comes first
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --mxsize 1 -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models noro.uj.2a.fa va-noro-uj-s-2a > va-noro-uj-s-2a.out
+desc: annotate-noro-uj-s-2a
+out: va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.pass.tbl 
+out: va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.fail.tbl 
+out: va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.alt.list
+out: va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.sda
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.sda
+rmdir: va-noro-uj-s-2a
+#
+# -s: same as 1 but with a passing sequence, which comes second
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --mxsize 1 -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models noro.uj.2b.fa va-noro-uj-s-2b > va-noro-uj-s-2b.out
+desc: annotate-noro-uj-s-2b
+out: va-noro-uj-s-2b/va-noro-uj-s-2b.vadr.pass.tbl 
+out: va-noro-uj-s-2b/va-noro-uj-s-2b.vadr.fail.tbl 
+out: va-noro-uj-s-2b/va-noro-uj-s-2b.vadr.alt.list
+out: va-noro-uj-s-2b/va-noro-uj-s-2b.vadr.sda
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-2a/va-noro-uj-s-2a.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-1/va-noro-uj-s-1.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-2b/va-noro-uj-s-2b.vadr.sda
+rmdir: va-noro-uj-s-2b
+#
+# -s: same as 2a but with each seq occuring twice, so 4 seqs total
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --nkb 1 --mxsize 1 -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models noro.uj.4.fa va-noro-uj-s-4 > va-noro-uj-s-4.out
+desc: annotate-noro-uj-s-4
+out: va-noro-uj-s-4/va-noro-uj-s-4.vadr.pass.tbl 
+out: va-noro-uj-s-4/va-noro-uj-s-4.vadr.fail.tbl 
+out: va-noro-uj-s-4/va-noro-uj-s-4.vadr.alt.list
+out: va-noro-uj-s-4/va-noro-uj-s-4.vadr.sda
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-4/va-noro-uj-s-4.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-4/va-noro-uj-s-4.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-4/va-noro-uj-s-4.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-uj-s-4/va-noro-uj-s-4.vadr.sda
+rmdir: va-noro-uj-s-4
+# 
