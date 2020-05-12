@@ -8735,7 +8735,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
 
   # variables related to the model consensus sequence, 
   # these are only filled if nec (if we do a N-stretch-replacment for >= 1 seq)
-  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"blastn_cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"blastn_cseq"} : undef;
   my @mdl_consensus_sqstring_A = (); 
 
   open(IN, $tblout_file) || ofile_FileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
@@ -8914,8 +8914,8 @@ sub parse_cdt_tblout_file_and_replace_ns {
             $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
             if(! defined $mdl_consensus_sqstring) { 
               my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $local_blastn_db_file }); 
-              $mdl_info_AHR->[$mdl_idx]{"cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
-              $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+              $mdl_info_AHR->[$mdl_idx]{"blastn_cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
+              $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"blastn_cseq"};
               $blastn_sqfile = undef;
             }
             # fill in non-replaced region since previous replacement 

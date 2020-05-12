@@ -1088,7 +1088,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
   my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
-  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"} : undef;
+  # note: cmemit_cseq is different from blastn_cseq, the former may have lowercase, the latter may be all uppercase
 
   # Open all of the input stk files and fetch the aligned sequence strings for all sequences
   my $ninstk = scalar(@{$in_stk_file_AR});
@@ -1353,8 +1354,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # first, fetch the ungapped region of the sequence
       if(! defined $mdl_consensus_sqstring) { 
         my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-        $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
-        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+        $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
+        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"};
         ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
       }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
