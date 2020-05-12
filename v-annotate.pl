@@ -260,7 +260,7 @@ opt_Add("--hlonescore",  "integer",  10,        $g,"--hmmer","--skip_pv",       
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--mxsize",     "integer", 8000,      $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 16000,     $g,    undef, undef,      "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-3,      $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nofixedtau", "boolean", 0,         $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,         $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
@@ -3109,7 +3109,8 @@ sub cmalign_run {
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   # determine cmalign options based on command line options
-  my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
+  my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize $cmalign_mxsize", opt_Get("--tau", $opt_HHR));
   # add --tfile $tfile_file, only if --keep 
   #if(opt_Get("--keep", $opt_HHR)) { 
   #$opts .= " --tfile $tfile_file"; 
@@ -3138,7 +3139,7 @@ sub cmalign_run {
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
+    my $mem_gb = opt_Get("--mxsize", $opt_HHR) / 1000.;
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
       vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
