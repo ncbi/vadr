@@ -1,6 +1,9 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 3487;
+use Test::More tests => 102;
+
+# if we test each line
+#use Test::More tests => 3487;
 
 BEGIN {
     use_ok( 'vadr' )      || print "Bail out!\n";
@@ -57,12 +60,16 @@ foreach my $line_type (@line_types_A) {
   $cur_val = `grep ^" . $line_type . " $tmp_blastx_out`;
   $cur_nlines = $cur_val =~ tr/\n//;
   $exp_nlines = $exp_val =~ tr/\n//;
-  is($cur_nlines, $exp_nlines, "blastn test 1 $line_type num lines match expected");
-  my @cur_A = split(/\n/, $cur_val);
-  my @exp_A = split(/\n/, $exp_val);
-  for(my $i = 0; $i < scalar(@exp_A); $i++) { 
-    is($cur_A[$i], $exp_A[$i], "blastn test 1 $line_type lines $i match expected");
-  }
+  is($cur_nlines, $exp_nlines, "blastx test 1 $line_type num lines match expected");
+  is($cur_val,    $exp_val,    "blastx test 1 $line_type lines matche expected");
+  # to test each line, uncomment block below
+  # begin block
+  #my @cur_A = split(/\n/, $cur_val);
+  #my @exp_A = split(/\n/, $exp_val);
+  #for(my $i = 0; $i < scalar(@exp_A); $i++) { 
+  #  is($cur_A[$i], $exp_A[$i], "blastn test 1 $line_type lines $i match expected");
+  # }
+  # end block
 }
   
 ####################################
@@ -88,10 +95,10 @@ if($? != 0) { die "ERROR command $cmd failed"; }
 
 # grep all line types from the output file and compare with expected output file
 @line_types_A = ("BITSCORE", "DEL", "END_MATCH", "EVALUE", "GAPS",
-                    "HACC", "HDEF", "HLEN", "HSP", "IDENT",
-                    "INS", "MATCH", "MAXDE", "MAXIN", "QACC",
-                    "QDEF", "QLEN", "QRANGE", "QSTRAND", "RAWSCORE",
-                    "SLEN", "SRANGE", "SSTRAND", "STOP");
+                 "HACC", "HDEF", "HLEN", "HSP", "IDENT",
+                 "INS", "MATCH", "MAXDE", "MAXIN", "QACC",
+                 "QDEF", "QLEN", "QRANGE", "QSTRAND", "RAWSCORE",
+                 "SLEN", "SRANGE", "SSTRAND", "STOP");
 
 foreach my $line_type (@line_types_A) {
   $exp_val = `grep ^$line_type $blastn_sum_path`;
@@ -101,14 +108,18 @@ foreach my $line_type (@line_types_A) {
   $cur_nlines = $cur_val =~ tr/\n//;
   $exp_nlines = $exp_val =~ tr/\n//;
   is($cur_nlines, $exp_nlines, "blastn test 1 $line_type num lines match expected");
-  my @cur_A = split(/\n/, $cur_val);
-  my @exp_A = split(/\n/, $exp_val);
-  for(my $i = 0; $i < scalar(@exp_A); $i++) { 
-    is($cur_A[$i], $exp_A[$i], "blastn test 1 $line_type lines $i match expected");
-  }
+  is($cur_val,    $exp_val,    "blastn test 1 $line_type lines matche expected");
+  # to test each line, uncomment block below
+  # begin block
+  #my @cur_A = split(/\n/, $cur_val);
+  #my @exp_A = split(/\n/, $exp_val);
+  #for(my $i = 0; $i < scalar(@exp_A); $i++) { 
+  #  is($cur_A[$i], $exp_A[$i], "blastn test 1 $line_type lines $i match expected");
+  #}
+  # end block
 }
 
 foreach my $tmp_file (@to_remove_A) {
-#  unlink $tmp_file;
+  unlink $tmp_file;
 }
 

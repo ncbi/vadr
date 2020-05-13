@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.6 [April 2020]
+# version: 1.1 [May 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -42,6 +42,10 @@ use strict;
 use warnings;
 use Cwd;
 use LWP::Simple; 
+# use LWP::Protocol::https; 
+# above line is purposefully commented out, b/c LWP::Protocol::https is only
+# needed for v-build.pl, and many users only use v-annotate.pl only, which can run without it
+# when a better solution for checking for modules during installation is found, uncomment it
 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
@@ -1466,15 +1470,15 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  vdr_AlertInfoAdd($alt_info_HHR, "ambignt5", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
                    "N_AT_START", # short description
-                   "first nucleotide is an N", # long  description
+                   "first nucleotide of the sequence is an N", # long  description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  vdr_AlertInfoAdd($alt_info_HHR, "ambignt3", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
                    "N_AT_END", # short description
-                   "final nucleotide is an N", # long  description
+                   "final nucleotide of the sequence is an N", # long  description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -1592,22 +1596,22 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
+                   "CDS_HAS_STOP_CODON", # short description
+                   "stop codon in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
                    "high confidence potential frameshift in CDS", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
                    "low confidence potential frameshift in CDS", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
-                   "CDS_HAS_STOP_CODON", # short description
-                   "stop codon in protein-based alignment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",

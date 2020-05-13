@@ -1,5 +1,5 @@
-#     seq                            seq                    ungapped      ungapped  ungapped   5'unaln       5'unaln   5'unaln      3'unaln       3'unaln   3'unaln
-#idx  name                           len  model      fail        seq           mdl  fraction       seq           mdl  fraction          seq           mdl  fraction
+#seq  seq                            seq                    ungapped      ungapped  ungapped   5'unaln       5'unaln   5'unaln      3'unaln       3'unaln   3'unaln
+#idx  name                           len  model      p/f         seq           mdl  fraction       seq           mdl  fraction          seq           mdl  fraction
 #---  ----------------------------  ----  ---------  ----  ---------  ------------  --------  --------  ------------  --------  -----------  ------------  --------
 1     gi|307574518|dbj|AB525810.1|   338  NC_029646  PASS   2..338:+  5030..5366:+     0.997  1..101:+  5029..5129:+     0.299            -             -         -
 2     gi|1215708385|gb|KY594653.1|   301  NC_039477  PASS   1..301:+  5089..5389:+     1.000         -             -         -            -             -         -

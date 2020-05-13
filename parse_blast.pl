@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Converted from parse_blastx.pl to parse_blastn.pl 
+# Converted from parse_blastx.pl to parse_blast.pl 
 # 
 # program written by Alejandro Schaffer to convert a blastx 
 # output file to a structured file that can be more easily
@@ -8,10 +8,14 @@
 # of parsing blastpgp output files. Some of the code is
 # reused from my parse_vecscreen.pl program in the
 # VecScreen_plus_taxonomy package
-
-# Usage: parse_blastx.pl --input <input file>
-
-# vadr 1.0.6dev April 2020
+#
+# Modifications in vadr package by Eric Nawrocki
+# https://github.com/nawrockie/vadr
+# 
+# Usage: parse_blast.pl --program x --input <blastx output file>
+# OR     parse_blast.pl --program n --input <blastn output file>
+#        
+# vadr 1.1 May 2020
 
 use strict;
 use warnings;
