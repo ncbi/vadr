@@ -1088,10 +1088,20 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
   my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
-  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"} : undef;
-  # note: cmemit_cseq is different from blastn_cseq, the former may have lowercase, the latter may be all uppercase
-
-  # Open all of the input stk files and fetch the aligned sequence strings for all sequences
+  my $mdl_consensus_sqstring;
+  if(opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR)) { 
+    # We may already have cseq from the blastn -r alignment, but even
+    # if we do if we are outputting an alignment eventually then we
+    # want to recreate it from cmemit because we are going to
+    # eventually merge the alignments in which case we need all RF
+    # annotation to be identical (equal to cmemit seq) Open all of the
+    # input stk files and fetch the aligned sequence strings for all
+    # sequences
+    $mdl_consensus_sqstring = undef;
+  }
+  else { # if we're not going to output, then use it if we already have it
+    $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  }
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq
@@ -1354,8 +1364,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # first, fetch the ungapped region of the sequence
       if(! defined $mdl_consensus_sqstring) { 
         my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-        $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
-        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cmemit_cseq"};
+        $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
+        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
         ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
       }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
