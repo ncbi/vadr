@@ -1209,8 +1209,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
 
     # Create option-defined output alignments, if any. 
-    # Logic differs significantly depending on -r or not so 
-    # we have separate blocks for each.
     if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
       if(scalar(@{$stk_file_HA{$mdl_name}}) > 0) { 
         output_alignments(\%execs_H, \$in_sqfile, \@{$stk_file_HA{$mdl_name}}, $mdl_name, \%rpn_output_HH, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
@@ -5324,9 +5322,6 @@ sub parse_blastx_results {
       }
       elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"}) || (! defined $cur_H{"FRAME"})) { 
-          foreach my $z ("QACC", "HACC", "HSP", "RAWSCORE", "FRAME") { 
-            printf("$z defined: %d\n", (defined $cur_H{$z}) ? 1 : 0);
-          }
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, RAWSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         if(($value ne "") && ($value ne "BLASTNULL")) { 
