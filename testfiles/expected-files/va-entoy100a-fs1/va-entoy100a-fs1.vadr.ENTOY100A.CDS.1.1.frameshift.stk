@@ -1,0 +1,192 @@
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs1 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs1 DE single segment 1nt insertion that breaks frame, not fixed (CDS1, RFPOS13+1)
+
+#=GS ENTOY100A-fs1 FS.1 nucleotide alignment of positions 11..14 (4 nt, avgpp: 0.887) on + strand are inconsistent with dominant frame (+3); inserts:14; deletes:none;
+
+ENTOY100A-fs1         ATGCGTGATCGCTTTACCATAA
+#=GR ENTOY100A-fs1 PP **889*****************
+#=GR ENTOY100A-fs1 CS 111i333333333333333333
+#=GC SS_cons          <<_____>>:::::::::::::
+#=GC RF               atG.GTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs2 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs2 DE single segment 5nt insertion that breaks frame, not fixed (CDS1, RFPOS13+5)
+
+#=GS ENTOY100A-fs2 FS.1 nucleotide alignment of positions 11..18 (8 nt, avgpp: 0.856) on + strand are inconsistent with dominant frame (+2); inserts:14-18; deletes:none;
+
+ENTOY100A-fs2         ATGCCCCCGTGATCGCTTTACCATAA
+#=GR ENTOY100A-fs2 PP **9888889*****************
+#=GR ENTOY100A-fs2 CS 111iiiii222222222222222222
+#=GC SS_cons          <<_________>>:::::::::::::
+#=GC RF               atG.....GTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs3 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs3 DE single segment 1nt insertion that breaks frame, fixed by 2nt insertion (CDS1, RFPOS13+1,21+2)
+
+#=GS ENTOY100A-fs3 FS.1 nucleotide alignment of positions 14..24 (11 nt, avgpp: 0.843) on + strand are inconsistent with dominant frame (+1); inserts:14,23-24; deletes:none;
+
+ENTOY100A-fs3         ATGCGTGATCGCGGTTTACCATAA
+#=GR ENTOY100A-fs3 PP **889*****87669*********
+#=GR ENTOY100A-fs3 CS 111i33333333ii1111111111
+#=GC SS_cons          <<_____>>:::::::::::::::
+#=GC RF               atG.GTGatCGC..TTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs4 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs4 DE single segment 5nt insertion that breaks frame, fixed by 1nt insertion (CDS1, RFPOS13+5,21+1)
+
+#=GS ENTOY100A-fs4 FS.1 nucleotide alignment of positions 14..27 (14 nt, avgpp: 0.875) on + strand are inconsistent with dominant frame (+1); inserts:14-18,27; deletes:none;
+
+ENTOY100A-fs4         ATGCCCCCGTGATCGCGTTTACCATAA
+#=GR ENTOY100A-fs4 PP **9888889******96789*******
+#=GR ENTOY100A-fs4 CS 111iiiii22222222i1111111111
+#=GC SS_cons          <<_________>>::::::::::::::
+#=GC RF               atG.....GTGatCGC.TTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs5 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs5 DE single segment 1nt insertion that breaks frame, fixed by 1nt deletion  (CDS1, RFPOS13+1,21-)
+
+#=GS ENTOY100A-fs5 FS.1 nucleotide alignment of positions 14..21 (8 nt, avgpp: 0.934) on + strand are inconsistent with dominant frame (+1); inserts:14; deletes:21(1);
+
+ENTOY100A-fs5         ATGCGTGATCG-TTTACCATAA
+#=GR ENTOY100A-fs5 PP **889*****9.678*******
+#=GR ENTOY100A-fs5 CS 111i3333333d1111111111
+#=GC SS_cons          <<_____>>:::::::::::::
+#=GC RF               atG.GTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs6 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs6 DE single segment 5nt insertion that breaks frame, fixed by 2nt deletion  (CDS1, RFPOS13+5,21-,22-)
+
+#=GS ENTOY100A-fs6 FS.1 nucleotide alignment of positions 14..25 (12 nt, avgpp: 0.890) on + strand are inconsistent with dominant frame (+1); inserts:14-18; deletes:25(2);
+
+ENTOY100A-fs6         ATGCCCCCGTGATCG--TTACCATAA
+#=GR ENTOY100A-fs6 PP **9888889*****9..68*******
+#=GR ENTOY100A-fs6 CS 111iiiii2222222dd111111111
+#=GC SS_cons          <<_________>>:::::::::::::
+#=GC RF               atG.....GTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs7 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs7 DE single segment 1nt deletion that breaks frame, not fixed (CDS1, RFPOS13-)
+
+#=GS ENTOY100A-fs7 FS.1 nucleotide alignment of positions 11..12 (2 nt, avgpp: 0.975) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:12(1);
+
+ENTOY100A-fs7         AT-GTGATCGCTTTACCATAA
+#=GR ENTOY100A-fs7 PP **.69****************
+#=GR ENTOY100A-fs7 CS 11d222222222222222222
+#=GC SS_cons          <<____>>:::::::::::::
+#=GC RF               atGGTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs8 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs8 DE single segment 2nt deletion that breaks frame, not fixed (CDS1, RFPOS13-,14-)
+
+#=GS ENTOY100A-fs8 FS.1 nucleotide alignment of positions 11..12 (2 nt, avgpp: 0.975) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:12(2);
+
+ENTOY100A-fs8         AT--TGATCGCTTTACCATAA
+#=GR ENTOY100A-fs8 PP **..78***************
+#=GR ENTOY100A-fs8 CS 11dd33333333333333333
+#=GC SS_cons          <<____>>:::::::::::::
+#=GC RF               atGGTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs9 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs9 DE single segment 1nt deletion that breaks frame, fixed by 2nt deletion (CDS1, RFPOS13-,21-,22-)
+
+#=GS ENTOY100A-fs9 FS.1 nucleotide alignment of positions 13..19 (7 nt, avgpp: 0.900) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(1),19(2);
+
+ENTOY100A-fs9         AT-GTGATCG--TTACCATAA
+#=GR ENTOY100A-fs9 PP **.69****9..68*******
+#=GR ENTOY100A-fs9 CS 11d2222222dd111111111
+#=GC SS_cons          <<____>>:::::::::::::
+#=GC RF               atGGTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs10 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs10 DE single segment 2nt deletion that breaks frame, fixed by 1nt deletion (CDS1, RFPOS13-,14-,21-)
+
+#=GS ENTOY100A-fs10 FS.1 nucleotide alignment of positions 13..18 (6 nt, avgpp: 0.888) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:12(2),18(1);
+
+ENTOY100A-fs10         AT--TGATCG-TTTACCATAA
+#=GR ENTOY100A-fs10 PP **..78***9.678*******
+#=GR ENTOY100A-fs10 CS 11dd333333d1111111111
+#=GC SS_cons           <<____>>:::::::::::::
+#=GC RF                atGGTGatCGCTTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs11 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs11 DE single segment 1nt deletion that breaks frame, fixed by 1nt insertion (CDS1, RFPOS13-,21+1)
+
+#=GS ENTOY100A-fs11 FS.1 nucleotide alignment of positions 13..21 (9 nt, avgpp: 0.875) on + strand are inconsistent with dominant frame (+1); inserts:21; deletes:12(1);
+
+ENTOY100A-fs11         AT-GTGATCGCGTTTACCATAA
+#=GR ENTOY100A-fs11 PP **.69*****96789*******
+#=GR ENTOY100A-fs11 CS 11d22222222i1111111111
+#=GC SS_cons           <<____>>::::::::::::::
+#=GC RF                atGGTGatCGC.TTTACCATAA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 1 segment 1 of 1 for sequence ENTOY100A-fs12 to model ENTOY100A with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS ENTOY100A-fs12 DE single segment 2nt deletion that breaks frame, fixed by 2nt insertion (CDS1, RFPOS13-,14-,21+2)
+
+#=GS ENTOY100A-fs12 FS.1 nucleotide alignment of positions 13..21 (9 nt, avgpp: 0.733) on + strand are inconsistent with dominant frame (+1); inserts:20-21; deletes:12(2);
+
+ENTOY100A-fs12         AT--TGATCGCGGTTTACCATAA
+#=GR ENTOY100A-fs12 PP **..7799976669*********
+#=GR ENTOY100A-fs12 CS 11dd3333333ii1111111111
+#=GC SS_cons           <<____>>:::::::::::::::
+#=GC RF                atGGTGatCGC..TTTACCATAA
+//

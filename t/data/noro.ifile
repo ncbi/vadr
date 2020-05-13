@@ -1,0 +1,1931 @@
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175394.1 7511 3 7513  2560 2553 3  2583 2579 3
+JQ911595.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC409277.1 7511 3 7513  2560 2553 3  2583 2579 3
+HF952132.1 7559 1 7560  2564 2556 6  2584 2582 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541244.1 7509 5 7513  2545 2536 2  2583 2576 4
+AB933757.1 7509 5 7513  2562 2550 6  2584 2578 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933708.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB083781.1 7535 1 7560  2560 2555 3  2583 2580 4
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+JX445168.1 7515 21 7535  2563 2535 6  2584 2562 3
+MF140696.1 7499 17 7515  2564 2540 6  2584 2566 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+MF140695.1 7540 17 7557  2564 2540 6  2584 2566 3
+AB972485.1 7509 5 7513  2573 2564 4  2583 2578 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933745.1 7509 5 7513  2564 2552 6  2584 2578 3
+KM198565.1 7443 5 7447  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+MF140691.1 7505 22 7526  2564 2535 6  2583 2560 3
+MF140690.1 7497 17 7513  2564 2540 6  2584 2566 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541237.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB665364.1 7542 19 7560  2564 2541 3  2588 2568 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC409244.1 7511 3 7513  2560 2553 3  2583 2579 3
+KM198585.1 7431 17 7447  2560 2539 3  2583 2565 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+JX459903.1 7559 1 7560  2564 2556 6  2583 2581 3
+KC409268.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC577175.1 7547 1 7547  2573 2568 4  2583 2582 2
+KC409270.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933681.1 7509 5 7513  2560 2551 3  2589 2583 3
+AB541310.1 7509 5 7513  2564 2552 6  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB972500.1 7509 5 7513  2564 2552 6  2584 2578 3
+MF140672.1 7426 25 7450  2573 2544 4  2583 2558 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KM198560.1 7443 5 7447  2562 2553 3  2583 2577 3
+AB933649.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KJ685411.1 7442 72 7513  2564 2485 6  2584 2511 3
+JX445155.1 7484 37 7520  2563 2519 6  2583 2545 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933726.1 7509 5 7513  2560 2551 3  2583 2577 3
+KC409291.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933702.1 7509 5 7513  2560 2551 3  2583 2577 3
+KM258128.1 7560 1 7560  2573 2568 4  2583 2582 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+MF140656.1 7492 17 7508  2563 2539 6  2583 2565 3
+JN400618.2 7479 5 7513  2562 2550 6  2584 2578 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933713.1 7509 5 7513  2560 2551 3  2589 2583 3
+KC175403.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541245.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB541231.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933682.1 7509 5 7513  2560 2551 3  2583 2577 3
+HF952135.1 7559 1 7560  2564 2556 6  2584 2582 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933740.1 7509 5 7513  2562 2550 6  2584 2578 3
+KM198487.1 7425 23 7447  2560 2533 3  2583 2559 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541293.1 7509 5 7513  2547 2538 3  2583 2577 3
+MF140640.1 7487 20 7506  2573 2549 4  2583 2563 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB972498.1 7509 5 7513  2573 2564 4  2583 2578 2
+KC409283.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541347.1 7509 5 7513  2560 2551 3  2583 2577 3
+KC409249.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB972489.1 7509 5 7513  2573 2564 4  2583 2578 2
+KJ196293.1 7559 1 7560  2573 2568 4  2583 2582 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933722.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB541224.1 7509 5 7513  2563 2554 3  2589 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541290.1 7509 5 7513  2549 2540 3  2583 2577 3
+KC409309.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933645.1 7509 5 7513  2563 2551 6  2583 2577 3
+KY905331.1 7546 1 7551  2 3 1  2564 2557 6  2584 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC409289.1 7511 3 7513  2560 2553 3  2583 2579 3
+KM198577.1 7443 5 7447  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175382.1 7511 3 7513  2564 2554 6  2583 2579 3
+AB541214.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175350.1 7511 3 7513  2560 2553 3  2583 2579 3
+AB447453.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC409299.1 7511 3 7513  2564 2554 6  2583 2579 3
+KC175408.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933748.1 7509 5 7513  2564 2552 6  2583 2577 3
+JN400619.2 7509 5 7513  2562 2550 6  2584 2578 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB972497.1 7509 5 7513  2573 2564 4  2583 2578 2
+JQ613552.2 7559 1 7560  2562 2554 6  2584 2582 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541299.1 7509 5 7513  2563 2554 3  2589 2583 3
+AB541254.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541284.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB933655.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+GQ845367.2 7559 1 7560  2562 2554 6  2584 2582 3
+HF952123.1 7559 1 7560  2564 2556 6  2584 2582 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541263.1 7509 5 7513  2560 2551 3  2589 2583 3
+KF429784.1 7509 5 7513  2560 2551 3  2583 2576 4
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175359.1 7511 3 7513  2560 2553 3  2583 2579 3
+AB933737.1 7509 5 7513  2564 2552 6  2584 2578 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+JX445162.1 7500 36 7535  2563 2523 3  2583 2546 3
+AB541343.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+HF952119.1 7559 1 7560  2562 2554 6  2584 2582 3
+AB541336.1 7509 5 7513  2560 2551 3  2589 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541360.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB541353.1 7509 5 7513  2563 2554 3  2589 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KT202794.1 7513 1 7513  2573 2568 4  2583 2582 2
+AB933687.1 7509 5 7513  2549 2540 3  2588 2582 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541313.1 7509 5 7513  2560 2551 3  2583 2577 3
+AB541350.1 7509 5 7513  2563 2554 3  2589 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541349.1 7509 5 7513  2549 2540 3  2583 2577 3
+KC175363.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+MG214988.1 7513 1 7513  2573 2568 4  2583 2582 2
+JX445154.1 7495 39 7535  2564 2515 6  2583 2539 4  7525 7485 1
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175405.1 7511 3 7513  2560 2553 3  2583 2579 3
+JN400613.1 7509 5 7513  2560 2551 3  2588 2582 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+JX846928.1 7497 37 7533  2547 2506 3  2584 2546 3
+AB447434.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC576912.1 7509 5 7513  2563 2554 3  2583 2577 3
+KC576909.1 7509 5 7513  2563 2554 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KM198508.1 7443 5 7447  2560 2551 3  2583 2577 3
+KC175365.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541306.1 7509 5 7513  2560 2551 3  2589 2583 3
+KM198516.1 7431 17 7447  2564 2540 6  2583 2565 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541269.1 7509 5 7513  2560 2551 3  2583 2577 3
+KM198515.1 7431 17 7447  2562 2541 3  2583 2565 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175380.1 7511 3 7513  2564 2554 6  2583 2579 3
+AB541337.1 7509 5 7513  2560 2551 3  2583 2577 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC409254.1 7511 3 7513  2560 2553 3  2583 2579 3
+MG002631.1 7522 23 7544
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KM198535.1 7431 17 7447  2560 2539 3  2583 2565 3
+AB972502.1 7509 5 7513  2573 2564 4  2583 2578 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC409316.1 7511 3 7513  2560 2553 3  2583 2579 3
+AB447438.1 7511 3 7513  2564 2557 3  2588 2584 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541232.1 7509 5 7513  2549 2540 3  2583 2577 3
+KC409298.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933712.1 7509 5 7513  2560 2551 3  2589 2583 3
+AB933769.1 7509 5 7513  2564 2552 6  2584 2578 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KF429768.1 7503 5 7513  2564 2552 6  2583 2577 3
+AB541302.1 7509 5 7513  2560 2551 3  2589 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175343.1 7511 3 7513  2560 2553 3  2583 2579 3
+AB447443.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KC175371.1 7511 3 7513  2560 2553 3  2583 2579 3
+KC409260.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KP784693.1 7570 1 7567  2563 2555 6  2584 2582 3  7562 7562 4
+AB933733.1 7509 5 7513  2564 2552 6  2584 2578 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KF429778.1 7509 5 7513  2564 2552 6  2584 2578 3
+KF429780.1 7450 64 7513  2560 2492 3  2583 2517 4
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933763.1 7512 5 7513  2564 2552 6  2576 2570 6
+KC894942.1 7556 3 7559  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+KF429766.1 7509 5 7513  2564 2552 6  2584 2578 3
+AB933749.1 7512 5 7513  2564 2552 6  2584 2578 3  5433 5430 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB447436.1 7511 3 7513  2562 2555 3  2583 2579 3
+KC175351.1 7511 3 7513  2560 2553 3  2583 2579 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB541281.1 7509 5 7513  2560 2551 3  2583 2577 3
+LN854565.1 7511 3 7513  2549 2542 3  2577 2573 1  2584 2581 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_039477 7567
+AB933678.1 7509 5 7513  2560 2551 3  2589 2583 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_008311 7382
+JF320646.1 7383 1 7382  7325 7326 1
+EU004662.1 7382 1 7382
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_008311 7382
+EU004655.1 7382 1 7382
+DQ223041.1 7383 1 7382  7325 7326 1
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_008311 7382
+FJ446720.1 7384 1 7382  7321 7322 1  7357 7359 1
+KF113526.1 7382 1 7382  7325 7323 2  7381 7379 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_008311 7382
+JF320649.1 7383 1 7382  7325 7326 1
+EU854589.1 7383 1 7382  7325 7326 1
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_008311 7382
+DQ223042.1 7383 1 7382  7325 7326 1
+JX048594.1 7402 1 7382  7325 7326 1  7381 7383 19
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+MF140687.1 7495 17 7487  5948 5933 8  5964 5957 1  5970 5964 4  5971 5969 23  6250 6268 3  6256 6277 6  7108 7125 1  7181 7193 1  7192 7205 5
+MF140686.1 7479 17 7471  5948 5933 8  5964 5957 1  5970 5964 4  5971 5969 23  6250 6268 3  6256 6277 6  7173 7182 3  7181 7193 1  7192 7205 5
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+AB220922.1 7533 27 7518  6117 6086 1  6118 6088 2  6266 6238 18  6410 6395 5  6596 6584 2  6806 6796 13  6809 6812 20  7079 7092 3  7235 7240 12  7470 7487 2
+GP426696.1 7556 1 7518  6111 6102 4  6125 6120 3  6275 6273 15  6405 6410 8  6588 6599 2  6806 6819 13  6809 6835 20  7103 7142 5  7122 7165 3  7207 7235 3  7225 7256 10  7470 7510 2
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+KY442319.1 7527 1 7497  169 170 6  5948 5955 8  5964 5979 1  5970 5986 13  5975 6004 14  6250 6290 3  6255 6298 3  7169 7197 3  7181 7212 1  7192 7224 5  7240 7270 1
+AB039775.1 7521 1 7518  7507 7508 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+KJ196284.1 7491 1 7501  5952 5953 2  5962 5965 2  5969 5974 2  6105 6106 9  6201 6205 3  6265 6272 6  6409 6420 2  7153 7158 2  7192 7190 3  7237 7229 3
+EU921389.2 7547 1 7518  5948 5949 8  5964 5973 1  5970 5980 4  5972 5986 8  5975 5997 15  6250 6284 3  6257 6294 3  7173 7195 3  7192 7217 6  7237 7261 1  7493 7518 1  7508 7534 1  7512 7539 3
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+KJ196294.1 7521 1 7518  7507 7508 3
+KF306213.1 7578 1 7518  5948 5949 8  5964 5973 1  5970 5980 4  5972 5986 9  5975 5998 14  6250 6284 3  6261 6298 3  7179 7201 3  7192 7217 6  7497 7522 13  7517 7548 30
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+KC597139.1 7441 1 7429  5984 5982 6  6103 6107 9  6250 6260 3  6263 6276 3  7053 7069 2  7131 7126 1  7134 7130 2  7151 7149 6  7196 7200 6  7248 7258 5  7265 7280 1  7266 7282 1
+JX846924.1 7527 1 7497  166 167 6  5948 5955 8  5964 5979 1  5975 5991 27  6250 6290 3  6255 6298 3  7090 7124 2  7169 7197 3  7185 7216 1  7192 7224 5
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+FJ537135.1 7576 1 7515  6112 6103 1  6152 6144 6  6275 6273 15  6405 6410 2  6409 6416 6  6590 6601 2  6829 6842 18  6830 6860 1  6832 6861 17  7075 7113 7  7163 7199 1  7208 7236 3  7225 7256 10  7469 7509 2  7513 7555 20
+AB933728.1 7467 5 7471  5974 5964 1  6111 6101 4  6272 6266 15  6388 6397 1  6590 6597 2  6813 6822 33  7040 7079 3  7075 7107 3  7123 7156 6  7124 7163 3  7162 7204 8
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+U07611.2 7513 1 7518
+KM198554.1 7421 5 7401  5948 5945 8  5964 5969 1  5970 5976 4  5972 5982 8  5975 5993 15  6250 6280 3  6255 6288 3  7109 7135 1  7173 7191 3  7180 7201 1  7192 7214 5
+//
+# Insert information file created by cmalign.
+# This file includes 2+<nseq> non-'#' pre-fixed lines per model used for alignment,
+# where <nseq> is the number of sequences in the target file.
+# The first non-'#' prefixed line per model includes 2 tokens, separated by a single space (' '):
+# The first token is the model name and the second is the consensus length of the model (<clen>).
+# The following <nseq> lines include (4+3*<n>) whitespace delimited tokens per line.
+# The format for these <nseq> lines is:
+#   <seqname> <seqlen> <spos> <epos> <c_1> <u_1> <i_1> <c_2> <u_2> <i_2> .... <c_x> <u_x> <i_x> .... <c_n> <u_n> <i_n>
+#   indicating <seqname> has >= 1 inserted residues after <n> different consensus positions,
+#   <seqname> is the name of the sequence
+#   <seqlen>  is the unaligned length of the sequence
+#   <spos>    is the first (5'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <epos>    is the final (3'-most) consensus position filled by a nongap for this sequence (-1 if 0 nongap consensus posns)
+#   <c_x> is a consensus position (between 0 and <clen>; if 0: inserts before 1st consensus posn)
+#   <u_x> is the *unaligned* position (b/t 1 and <seqlen>) in <seqname> of the first inserted residue after <c_x>.
+#   <i_x> is the number of inserted residues after position <c_x> for <seqname>.
+# Lines for sequences with 0 inserted residues will include only <seqname> <seqlen> <spos> <epos>.
+# The final non-'#' prefixed line per model includes only '//', indicating the end of info for a model.
+#
+NC_029646 7518
+AB045603.2 7521 1 7518  7507 7508 3
+KC662537.1 7492 1 7504  5993 5991 3  6120 6118 2  6124 6124 3  6126 6129 1  6133 6137 9  6265 6274 7  6298 6314 1  6390 6406 3  6394 6413 3  7102 7112 3  7137 7140 2  7153 7158 2  7478 7455 1  7484 7462 11
+//

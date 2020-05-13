@@ -15,7 +15,7 @@
 # 
 # set 1, single segment CDS, positive strand
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --xminntlen 3 --keep -v --skipblast -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-fs1 > va-entoy100a-fs1.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-fs1 > va-entoy100a-fs1.out
 desc: annotate-entoy100a-fs1
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.tbl 
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.tbl
@@ -26,6 +26,7 @@ out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.sgm
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.mdl
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.alt
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.alc
+out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.ENTOY100A.CDS.1.1.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.sqa
@@ -35,11 +36,12 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.mdl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.ENTOY100A.CDS.1.1.frameshift.stk
 rmdir: va-entoy100a-fs1
 # 
 # set 2, multi-segment CDS, positive strand
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --xminntlen 3 --keep -v --skipblast -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2 > va-entoy100a-fs2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2 > va-entoy100a-fs2.out
 desc: annotate-entoy100a-fs2
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.pass.tbl 
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.fail.tbl
@@ -50,6 +52,12 @@ out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.sgm
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.mdl
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.alt
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.alc
+out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.2.1.frameshift.stk
+out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.2.2.frameshift.stk
+out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.2.3.frameshift.stk
+out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.3.1.frameshift.stk
+out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.3.2.frameshift.stk
+out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.4.1.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.sqa
@@ -59,11 +67,17 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.mdl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.2.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.2.2.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.2.3.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.3.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.3.2.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs2/va-entoy100a-fs2.vadr.ENTOY100A.CDS.4.1.frameshift.stk
 rmdir: va-entoy100a-fs2
 # 
 # set 3, partial sequence, single and multi-segment CDS, positive strand
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --xminntlen 3 --keep -v --skipblast -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs3.fa va-entoy100a-fs3 > va-entoy100a-fs3.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs3.fa va-entoy100a-fs3 > va-entoy100a-fs3.out
 desc: annotate-entoy100a-fs3
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.pass.tbl 
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.fail.tbl
@@ -74,6 +88,10 @@ out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.sgm
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.mdl
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.alt
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.alc
+out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.1.1.frameshift.stk
+out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.1.frameshift.stk
+out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.2.frameshift.stk
+out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.3.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.sqa
@@ -83,4 +101,8 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.mdl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.1.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.1.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.2.frameshift.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.3.frameshift.stk
 rmdir: va-entoy100a-fs3

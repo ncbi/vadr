@@ -1,0 +1,8 @@
+#seq  seq                            seq             best               sub                             seq   
+#idx  name                           len  p/f   ant  model      grp     grp  nfa  nfn  nf5  nf3  nfalt  alerts
+#---  ----------------------------  ----  ----  ---  ---------  ------  ---  ---  ---  ---  ---  -----  ------
+1     gi|770146038|gb|KM031079.1|    515  PASS  yes  NC_001474  Dengue  2      3   23    3    3      0  -     
+2     gi|1126644957|gb|KX577695.1|  2325  PASS  yes  NC_001474  Dengue  2      9   17    0    2      0  -     
+3     gi|1044891200|gb|KU550333.1|  2325  PASS  yes  NC_001474  Dengue  2      9   17    0    2      0  -     
+4     gi|1447973732|gb|MH680297.1|  1485  PASS  yes  NC_001477  Dengue  1      3   23    2    2      0  N_AT_START(ambgnt5s)
+5     gi|281314094|gb|GU211727.1|     87  PASS  yes  NC_001474  Dengue  2      3   23    3    3      0  N_AT_END(ambgnt3s)

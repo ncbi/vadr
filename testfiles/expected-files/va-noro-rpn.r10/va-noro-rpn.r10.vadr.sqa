@@ -1,0 +1,13 @@
+#seq  seq                            seq             best                  sub                             seq   
+#idx  name                           len  p/f   ant  model      grp        grp  nfa  nfn  nf5  nf3  nfalt  alerts
+#---  ----------------------------  ----  ----  ---  ---------  ---------  ---  ---  ---  ---  ---  -----  ------
+1     gi|307574518|dbj|AB525810.1|   338  PASS  yes  NC_029646  Norovirus  GII    5    7    3    2      0  -     
+2     gi|1215708385|gb|KY594653.1|   301  PASS  yes  NC_039477  Norovirus  GII    5    7    5    2      0  -     
+3     gi|507309522|gb|JX439803.1|   1336  FAIL  yes  NC_029646  Norovirus  GII    5    7    3    2      2  -     
+4     gi|1203184899|gb|KX722332.1|   640  PASS  yes  NC_039477  Norovirus  GII    2   10    2    2      0  -     
+5     gi|959141925|gb|KR107577.1|    387  PASS  yes  NC_039477  Norovirus  GII    5    7    3    2      0  -     
+6     gi|407879400|emb|HE716655.1|   357  PASS  yes  NC_039477  Norovirus  GII    5    7    3    2      0  -     
+7     gi|260065694|gb|FJ913901.1|    285  PASS  yes  NC_039477  Norovirus  GII    5    7    3    2      0  -     
+8     gi|125971647|gb|EF141133.1|    285  PASS  yes  NC_029646  Norovirus  GII    3    9    3    3      0  -     
+9     gi|1150565489|gb|KX514171.1|  1620  PASS  yes  NC_039477  Norovirus  GII    7    5    3    2      0  -     
+10    gi|1339273835|gb|MG746117.1|  1626  FAIL  yes  NC_039476  Norovirus  GII    5    7    3    2      3  N_AT_END(ambgnt3s)

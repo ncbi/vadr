@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -p -f $VADRSCRIPTSDIR/testfiles/dengue.r100.fa va-dengue.r100 > va-dengue.r100.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --alicheck $VADRSCRIPTSDIR/testfiles/dengue.r100.fa va-dengue.r100 > va-dengue.r100.out
 desc: annotate-dengue-100-local
 out: va-dengue.r100/va-dengue.r100.vadr.pass.tbl 
 out: va-dengue.r100/va-dengue.r100.vadr.fail.tbl

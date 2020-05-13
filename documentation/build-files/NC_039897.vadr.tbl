@@ -1,0 +1,25 @@
+>Feature ref|NC_039897.1|
+1	4	5'UTR
+5	5404	gene
+			gene	ORF1
+			locus_tag	EHS36_gp1
+			db_xref	GeneID:38388759
+5	5404	CDS
+			product	nonstructural polyprotein
+			protein_id	ref|YP_009538340.1|
+5388	7025	gene
+			gene	ORF2
+			locus_tag	EHS36_gp2
+			db_xref	GeneID:38388758
+5388	7025	CDS
+			product	VP1
+			protein_id	ref|YP_009538341.1|
+7025	7672	gene
+			gene	ORF3
+			locus_tag	EHS36_gp3
+			db_xref	GeneID:38388757
+7025	7672	CDS
+			product	VP2
+			protein_id	ref|YP_009538342.1|
+7673	7745	3'UTR
+

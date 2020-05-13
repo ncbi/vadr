@@ -1,0 +1,13 @@
+>Feature NC_001959/1-5000,5230-7654
+5	4999	misc_feature
+			note	similar to nonstructural polyprotein
+5129	6718	misc_feature
+			note	similar to VP1
+6721	7356	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: UNEXPECTED_DIVERGENCE: (*sequence*) sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 1.81 Mb]
+ERROR: INDEFINITE_ANNOTATION: (nonstructural polyprotein) protein-based search identifies CDS not identified in nucleotide-based search [5 to 4999 with score 9003]
+ERROR: INDEFINITE_ANNOTATION: (VP1) protein-based search identifies CDS not identified in nucleotide-based search [5129 to 6718 with score 2789]
+ERROR: INDEFINITE_ANNOTATION: (VP2) protein-based search identifies CDS not identified in nucleotide-based search [6721 to 7356 with score 1096]

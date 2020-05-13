@@ -1,0 +1,34 @@
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 2 segment 2 of 3 for sequence NC_001959.2-manually-added-frameshifts-1 to model NC_001959 with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 nucleotide alignment of positions 5380..5394 (15 nt, avgpp: 0.627) on + strand are inconsistent with dominant frame (+1); inserts:5380,5388,5394; deletes:none;
+
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.2 nucleotide alignment of positions 6951..6958 (8 nt, avgpp: 0.762) on + strand are inconsistent with dominant frame (+1); inserts:6951-6952; deletes:none;
+
+NC_001959.2-manually-added-frameshifts-1         TGAGGTGCCTTTGGAAGATGTTAGGAATGTTCTCTTTCATAATAATGATAGAAATCAACAAACCATGCGCCTTGTGTGCATGCTGTACACCCCCCTCCGCACTGGTGGTGGTACTGGTGATTCTTTTGTAGTTGCAGGGCGAGTTATGACTTGCCCCAGTCCTGATTTTA
+#=GR NC_001959.2-manually-added-frameshifts-1 PP **************************************************************************************************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-1 CS 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TGAGGTGCCTTTGGAAGATGTTAGGAATGTTCTCTTTCATAATAATGATAGAAATCAACAAACCATGCGCCTTGTGTGCATGCTGTACACCCCCCTCCGCACTGGTGGTGGTACTGGTGATTCTTTTGTAGTTGCAGGGCGAGTTATGACTTGCCCCAGTCCTGATTTTA
+//
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.3
+#=GF CC Alignment of CDS 2 segment 2 of 3 for sequence NC_001959.2-manually-added-frameshifts-2 to model NC_001959 with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).
+#=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
+#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 nucleotide alignment of positions 5396..5425 (30 nt, avgpp: 0.858) on + strand are inconsistent with dominant frame (+1); inserts:5408-5409,5424-5425; deletes:5395(1);
+
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 nucleotide alignment of positions 5448..5458 (11 nt, avgpp: 0.845) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:5447(2),5458(1);
+
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.3 nucleotide alignment of positions 6877..6951 (75 nt, avgpp: 0.913) on + strand are inconsistent with dominant frame (+1); inserts:6891-6895; deletes:6876(4);
+
+NC_001959.2-manually-added-frameshifts-2         TGAGGTGCCTTTGGAAGATGTTAGGAATGTTCTCTTTCATAATAATGATAGAAATCAACAAACCATGCGCCTTGTGTGCATGCTGTACACCCCCCTCCGCACTGGTGGTGGTACTGGTGATTCTTTTGTAGTTGCAGGGCGAGTTATGACTTGCCCCAGTCCTGATTTTA
+#=GR NC_001959.2-manually-added-frameshifts-2 PP **************************************************************************************************************************************************************************
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+#=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                                          TGAGGTGCCTTTGGAAGATGTTAGGAATGTTCTCTTTCATAATAATGATAGAAATCAACAAACCATGCGCCTTGTGTGCATGCTGTACACCCCCCTCCGCACTGGTGGTGGTACTGGTGATTCTTTTGTAGTTGCAGGGCGAGTTATGACTTGCCCCAGTCCTGATTTTA
+//

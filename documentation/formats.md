@@ -5,7 +5,7 @@
   * [`.cmd` files](#cmd)
   * [`.filelist` files](#filelist)
 * [`v-build.pl` output files](#build)
-  * [`.minfo files](#minfo)
+  * [`.minfo` files](#minfo)
 * [`v-annotate.pl` output files](#annotate)
   * [basic output files](#annotate)
   * [`.alc` files](#alc)
@@ -15,6 +15,8 @@
   * [`.sgm` files](#sgm)
   * [`.sqa` files](#sqa)
   * [`.sqc` files](#sqc)
+  * [`.sda` files](#sda)
+  * [`.rpn` files](#rpn)
   * [`.alt.list` files](#altlist)
   * [extra output files saved with the `--keep` option](#annotate-keep)
 * [VADR `coords` coordinate string format](#coords)
@@ -64,17 +66,33 @@ output file for the example command `v-build.pl -f --group Norovirus
 --subgroup GI NC_039897 NC_039897` is:
 
 ```
+rm -rf NC_039897
 mkdir NC_039897
-/home/nawrocki/vadr-install/infernal-dev/easel/miniapps/esl-reformat --informat afa stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
-/home/nawrocki/vadr-install/infernal-dev/easel/miniapps/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-reformat --informat afa  stockholm NC_039897/NC_039897.vadr.fa > NC_039897/NC_039897.vadr.stk
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-translate  -M -l 3 --watson NC_039897/NC_039897.vadr.cds.fa > NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.1.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa
 rm NC_039897/NC_039897.vadr.cds.esl-translate.2.fa.ssi
-/usr/bin/makeblastdb -in NC_039897/NC_039897.vadr.protein.fa -dbtype prot > /dev/null
-/home/nawrocki/vadr-install/infernal-dev/src/cmbuild -n NC_039897 --verbose  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
-/home/nawrocki/vadr-install/infernal-dev/src/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
-# Fri Oct  4 13:25:23 EDT 2019
-# Darwin ericsmac 18.7.0 Darwin Kernel Version 18.7.0: Tue Aug 20 16:57:14 PDT 2019; root:xnu-3273.123.2~2/RELEASE_X86_64 x86_64
+/home/nawrocki/vadr-install-dir/ncbi-blast/bin/makeblastdb -in NC_039897/NC_039897.vadr.protein.fa -dbtype prot > /dev/null
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-sfetch NC_039897/NC_039897.vadr.protein.fa NC_039897.1/5..5404:+ | /home/nawrocki/vadr-install-dir/hmmer/binaries/hmmbuild -n NC_039897/5..5404:+ --informat afa NC_039897/NC_039897.vadr.1.hmm - > NC_039897/NC_039897.vadr.1.hmmbuild
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-sfetch NC_039897/NC_039897.vadr.protein.fa NC_039897.1/5388..7025:+ | /home/nawrocki/vadr-install-dir/hmmer/binaries/hmmbuild -n NC_039897/5388..7025:+ --informat afa NC_039897/NC_039897.vadr.2.hmm - > NC_039897/NC_039897.vadr.2.hmmbuild
+/home/nawrocki/vadr-install-dir/infernal/binaries/esl-sfetch NC_039897/NC_039897.vadr.protein.fa NC_039897.1/7025..7672:+ | /home/nawrocki/vadr-install-dir/hmmer/binaries/hmmbuild -n NC_039897/7025..7672:+ --informat afa NC_039897/NC_039897.vadr.3.hmm - > NC_039897/NC_039897.vadr.3.hmmbuild
+cat NC_039897/NC_039897.vadr.1.hmm NC_039897/NC_039897.vadr.2.hmm NC_039897/NC_039897.vadr.3.hmm > NC_039897/NC_039897.vadr.protein.hmm
+rm NC_039897/NC_039897.vadr.1.hmm
+rm NC_039897/NC_039897.vadr.2.hmm
+rm NC_039897/NC_039897.vadr.3.hmm
+cat NC_039897/NC_039897.vadr.1.hmmbuild NC_039897/NC_039897.vadr.2.hmmbuild NC_039897/NC_039897.vadr.3.hmmbuild > NC_039897/NC_039897.vadr.protein.hmmbuild
+rm NC_039897/NC_039897.vadr.1.hmmbuild
+rm NC_039897/NC_039897.vadr.2.hmmbuild
+rm NC_039897/NC_039897.vadr.3.hmmbuild
+/home/nawrocki/vadr-install-dir/hmmer/binaries/hmmpress NC_039897/NC_039897.vadr.protein.hmm > NC_039897/NC_039897.vadr.hmmpress
+/home/nawrocki/vadr-install-dir/infernal/binaries/cmbuild -n NC_039897 --verbose --occfile NC_039897/NC_039897.vadr.cmbuild.occ --cp9occfile NC_039897/NC_039897.vadr.cmbuild.cp9occ --fp7occfile NC_039897/NC_039897.vadr.cmbuild.fp7occ  --noss NC_039897/NC_039897.vadr.cm NC_039897/NC_039897.vadr.stk > NC_039897/NC_039897.vadr.cmbuild
+/home/nawrocki/vadr-install-dir/infernal/binaries/cmpress NC_039897/NC_039897.vadr.cm > NC_039897/NC_039897.vadr.cmpress
+/home/nawrocki/vadr-install-dir/infernal/binaries/cmfetch NC_039897/NC_039897.vadr.cm NC_039897 | /home/nawrocki/vadr-install-dir/infernal/binaries/cmemit -c - > NC_039897/NC_039897.vadr.nt-cseq.fa
+/home/nawrocki/vadr-install-dir/ncbi-blast/bin/makeblastdb -in NC_039897/NC_039897.vadr.nt.fa -dbtype nucl > /dev/null
+rm NC_039897/NC_039897.vadr.nt-cseq.fa
+# Wed May  6 18:24:56 EDT 2020
+# Darwin Erics-MBP.lan 19.0.0 Darwin Kernel Version 19.0.0: Wed Oct 23 18:29:05 PDT 2019; root:xnu-6153.41.3~44/RELEASE_X86_64 x86_64
 [ok]
 ```
 ---
@@ -100,6 +118,18 @@ is:
 # BLAST db .phr file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.phr
 # BLAST db .pin file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pin
 # BLAST db .psq file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.psq
+# BLAST db .pdb file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pdb
+# BLAST db .pot file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pot
+# BLAST db .ptf file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.ptf
+# BLAST db .pto file for NC_039897 saved in:                                       NC_039897.vadr.protein.fa.pto
+# esl-sfetch index file for Bio::Easel::SqFile=HASH(0x7fe64f03cca0) saved in:      NC_039897.vadr.protein.fa.ssi
+# HMMER model db file for NC_039897 saved in:                                      NC_039897.vadr.protein.hmm
+# hmmbuild build output (concatenated) saved in:                                   NC_039897.vadr.protein.hmmbuild
+# binary HMM and p7 HMM filter file saved in:                                      NC_039897.vadr.protein.hmm.h3m
+# SSI index for binary HMM file saved in:                                          NC_039897.vadr.protein.hmm.h3i
+# optimized p7 HMM filters (MSV part) saved in:                                    NC_039897.vadr.protein.hmm.h3f
+# optimized p7 HMM filters (remainder) saved in:                                   NC_039897.vadr.protein.hmm.h3p
+# hmmpress output file saved in:                                                   NC_039897.vadr.hmmpress
 # CM file saved in:                                                                NC_039897.vadr.cm
 # cmbuild output file saved in:                                                    NC_039897.vadr.cmbuild
 # binary CM and p7 HMM filter file saved in:                                       NC_039897.vadr.cm.i1m
@@ -107,33 +137,49 @@ is:
 # optimized p7 HMM filters (MSV part) saved in:                                    NC_039897.vadr.cm.i1f
 # optimized p7 HMM filters (remainder) saved in:                                   NC_039897.vadr.cm.i1p
 # cmpress output file saved in:                                                    NC_039897.vadr.cmpress
+# fasta sequence file with cmemit consensus sequence for NC_039897 saved in:       NC_039897.vadr.nt.fa
+# BLAST db .nhr file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nhr
+# BLAST db .nin file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nin
+# BLAST db .nsq file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nsq
+# BLAST db .ndb file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.ndb
+# BLAST db .not file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.not
+# BLAST db .ntf file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.ntf
+# BLAST db .nto file for NC_039897 saved in:                                       NC_039897.vadr.nt.fa.nto
 # VADR 'model info' format file for NC_039897 saved in:                            NC_039897.vadr.minfo
 ```
 ---
 ## Format of `v-build.pl` output files<a name="build"></a>
 
-`v-build.pl` creates many output files. 
-These files are named `<outdir>.vadr.<suffix>` where
-`<outdir>` is the second command line argument given to
-`v-build.pl`. The following table lists many
-of the output files with a brief description and in some cases further
-references on the file type/format. The `.minfo` file format is documented
-further below. 
+`v-build.pl` creates many output files.  These files are named
+`<outdir>.vadr.<suffix>` where `<outdir>` is the second command line
+argument given to `v-build.pl`. The following table lists many of the
+output files with a brief description and in some cases further
+references on the file type/format. The `.minfo` file format is
+documented further below. Example files were all created with the
+`v-build.pl -f --group Norovirus --subgroup GI NC_039897 NC_039897`
+command.
 
-| file suffix | description | reference |
-|--------|-----------------------|-------------|
-| `.minfo`  | VADR model info file | [description of format in this document](#minfo) |
-| `.tbl`  | 5 column tab-delimited feature table | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.stk` | Stockholm alignment format | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.vadr.fa` | FASTA format sequence file for single sequence model was built from | https://en.wikipedia.org/wiki/FASTA_format |
-| `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | https://en.wikipedia.org/wiki/FASTA_format |
-| `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | https://en.wikipedia.org/wiki/FASTA_format |
-| `.protein.fa.p{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
-| `.cmbuild` | Infernal `cmbuild` output file | no further documentation |
-| `.cmpress` | Infernal `cmpress` output file | no further documentation |
+| file suffix | description | ....example_file....| reference |
+|--------|------------------|---------------------|-----------|
+| `.minfo`  | VADR model info file | [NC_039897.vadr.minfo](build-files/NC_039897.vadr.minfo) | [description of format in this document](#minfo) |
+| `.tbl`  | 5 column tab-delimited feature table | [NC_039897.vadr.tbl](build-files/NC_039897.vadr.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.stk` | Stockholm alignment format | [NC_039897.vadr.stk](build-files/NC_039897.vadr.stk) | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.vadr.fa` | FASTA format sequence file for single sequence model was built from | [NC_039897.vadr.fa](build-files/NC_039897.vadr.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.cds.fa` | FASTA format sequence file for CDS features extracted from `.vadr.fa` file, translated to get `.protein.fa` files | [NC_039897.vadr.cds.fa](build-files/NC_039897.vadr.cds.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa` | FASTA format sequence file for protein translations of `.cds.fa` file | [NC_039897.vadr.protein.fa](build-files/NC_039897.vadr.protein.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.protein.fa.phr`, `.protein.fa.pin`, `.protein.fa.psq`, `.protein.fa.pdb`, `.protein.fa.pot`, `.protein.fa.ptf`, `.protein.fa.pto`| BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
+| `.nt.fa`      | FASTA format sequence file of the consensus sequence output from the CM with `cmemit` | [NC_039897.vadr.nt.fa](build-files/NC_039897.vadr.nt.fa) | https://en.wikipedia.org/wiki/FASTA_format |
+| `.nt.fa.nhr`, `.nt.fa.nin`, `.nt.fa.nsq`, `.nt.fa.ndb`, `.nt.fa.not`, `.nt.fa.ntf`, `.nt.fa.nto` | BLAST database index files, created by `makeblastdb` | - | binary files, not meant to be human-readable |
+| `.cm` | Infernal 1.1x covariance model file | - | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cm.i1m`, `.cm.i1i`, `.cm.i1f`, `.cm.i1p` | Infernal 1.1x covariance model index files, created by `cmpress` | - | binary files, not meant to be human-readable |
+| `.cmbuild` | Infernal `cmbuild` output file | - | no further documentation |
+| `.cmpress` | Infernal `cmpress` output file | - | no further documentation |
+| `.hmm` | HMMER 3.x HMM file | - | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
+| `.hmm.h3m`, `.hmm.h3i`, `.hmm.h3f`, `.hmm.h3p` | HMMER 3.x HMM index files, created by `hmmpress` | - | binary files, not meant to be human-readable |
+| `.hmmbuild` | HMMER `hmmbuild` output file | - | no further documentation |
+| `.hmmpress` | HMMER `hmmpress` output file | - | no further documentation |
 
+For examples of file types not included above, see files in the `vadr/testfiles/models` directory.
 ---
 ### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo"></a>
 
@@ -177,6 +223,14 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 * `<key>:<value>` pairs must be separated by one or more whitespace characters.
 * `<modelname>` and the first `<key>:<value>` pair must be separated by one or more whitespace characters.
 
+To create multiple qualifier values for the same qualifier
+(e.g. multiple 'note' qualifier values), separate each qualifier
+value by the string `:GBSEP:` in the `<value>` field. For example:
+
+```
+FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" product:"RdRp" note:"this is note 1:GBSEP:this is note 2"
+```
+
 #### Common MODEL line `<key>:<value>` pairs:
 
 | \<key\> | \<value\> | required? | relevance |
@@ -185,7 +239,6 @@ contain 0 or more `<key>:<value>` pairs meeting the following criteria:
 | `blastdb` | file name root of the BLAST DB (not including the directory path) | only if model has >=1 CDS feature | important for protein-validation stage of `v-annotate.pl` |
 | `group` | group for this model (e.g. `Norovirus`) | only if `subgroup` `<key>` is also present | for `v-annotate.pl`, useful for enforcing expected group and also included in output | 
 | `subgroup` | subgroup for this model (e.g. `GI`) | no | for `v-annotate.pl`, useful for enforcing expected subgroup and also included in output | 
-| `cmfile` | file name for CM file | no | for user reference only | 
 
 #### Common FEATURE line `<key>:<value>` pairs:
 
@@ -219,33 +272,35 @@ These files are named `<outdir>.vadr.<suffix>` where
 of the output files with a brief description and in some cases further
 references on the file type/format. 
 
-| suffix | description | reference |
-|--------|-----------------------|-------------|
-| `.<model_name>.<feature-type>.<type-idx>.fa` | FASTA format sequence file with predicted sequences for feature type <feature-type> number <type-idx> annotated using model <model_name> from the `.minfo` file | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
-| `.pass.list` | list of sequences that pass, one line per sequence | no further documentation | 
-| `.pass.tbl` | 5 column tab-delimited feature table of sequences that pass | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.fail.list` | list of sequences that fail, one line per sequence | no further documentation | 
-| `.fail.tbl` | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
-| `.alt.list` | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [description of format in this document](#altlist) |
-| `.seqstat` | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | no further documentation |
+| ..........suffix.......... | ...............description............... | ...................example_file................... | reference |
+|--------|-------------|----------------------|-----------|
+| `.pass.list` | list of sequences that pass, one line per sequence          | [va-noro.9.vadr.pass.list](annotate-files/va-noro.9.vadr.pass.list) | no further documentation | 
+| `.pass.tbl`  | 5 column tab-delimited feature table of sequences that pass | [va-noro.9.vadr.pass.tbl](annotate-files/va-noro.9.vadr.pass.tbl)   | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.fail.list` | list of sequences that fail, one line per sequence          | [va-noro.9.vadr.fail.list](annotate-files/va-noro.9.vadr.fail.list) | no further documentation | 
+| `.fail.tbl`  | 5 column tab-delimited feature table of sequences that fail, with information on fatal alerts | [va-noro.9.vadr.fail.tbl](annotate-files/va-noro.9.vadr.fail.tbl) | https://www.ncbi.nlm.nih.gov/Sequin/table.html | 
+| `.alt.list`  | tab-delimited file of all fatal alerts listed in `.fail.tbl` | [va-noro.9.vadr.alt.list](annotate-files/va-noro.9.vadr.alt.list) | [description of format in this document](#altlist) |
+| `.<m>.<f>.<i>.fa` | FASTA format sequence file with predicted sequences for feature type `<f>` number `<i>` annotated using model `<m>` from the `.minfo` file | [va-noro.9.vadr.NC_039477.CDS.2.fa](annotate-files/va-noro.9.vadr.NC_039477.CDS.2.fa) | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames) |
+| `.seqstat`   | output of `esl-seqstat -a` run on input sequence file, with lengths of all sequences | [va-noro.9.vadr.seqstat](annotate-files/va-noro.9.vadr.seqstat) | no further documentation |
 
 ---
 
-There are also seven types of `v-annotate.pl` tabular output files with fields separated by 
+There are also nine types of `v-annotate.pl` tabular output files with fields separated by 
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
-| suffix | description | reference | 
-|--------|-------------|-----------|
-| `.alc` | per-alert code information (counts)     | [description of format in this document](#alc) |
-| `.alt` | per-alert instance information          | [description of format in this document](#alt) |
-| `.ftr` | per-feature information                 | [description of format in this document](#ftr) |
-| `.mdl` | per-model information                   | [description of format in this document](#mdl) |
-| `.sgm` | per-segment information                 | [description of format in this document](#sgm) |
-| `.sqa` | per-sequence annotation information     | [description of format in this document](#sqa) |
-| `.sqc` | per-sequence classification information | [description of format in this document](#sqc) |
+| suffix | description | ..........example_file.......... | reference | 
+|--------|-------------|----------------------|-----------|
+| `.alc` | per-alert code information (counts)     | [va-noro.9.vadr.alc](annotate-files/va-noro.9.vadr.alc) | [description of format in this document](#alc) |
+| `.alt` | per-alert instance information          | [va-noro.9.vadr.alt](annotate-files/va-noro.9.vadr.alt) | [description of format in this document](#alt) |
+| `.ftr` | per-feature information                 | [va-noro.9.vadr.ftr](annotate-files/va-noro.9.vadr.ftr) | [description of format in this document](#ftr) |
+| `.mdl` | per-model information                   | [va-noro.9.vadr.mdl](annotate-files/va-noro.9.vadr.mdl) | [description of format in this document](#mdl) |
+| `.sgm` | per-segment information                 | [va-noro.9.vadr.sgm](annotate-files/va-noro.9.vadr.sgm) | [description of format in this document](#sgm) |
+| `.sqa` | per-sequence annotation information     | [va-noro.9.vadr.sqa](annotate-files/va-noro.9.vadr.sqa) | [description of format in this document](#sqa) |
+| `.sqc` | per-sequence classification information | [va-noro.9.vadr.sqc](annotate-files/va-noro.9.vadr.sqc) | [description of format in this document](#sqc) |
+| `.sda` | per-sequence seed alignment information (only created if `-s` used) | [va-noro-s.9.vadr.sda](annotate-files/va-noro-s.9.vadr.sda) | [description of format in this document](#sda) |
+| `.rpn` | per-sequence N replacement information (only created if `-r` used)  | [va-noro-r.9.vadr.rpn](annotate-files/va-noro-r.9.vadr.rpn) | [description of format in this document](#rpn) |
 
-All seven types of tabular output files share the following
+All nine types of tabular output files share the following
 characteristics: 
 
 1. fields are separated by whitespace (with the possible exception of
@@ -254,7 +309,9 @@ characteristics:
 3. data lines begin with a non-whitespace character other than `#`
 4. all lines are either comment lines or data lines
 
-Each of these seven tabular formats are explained in more detail below.
+Each of these nine tabular formats are explained in more detail below.
+All example files linked to below, except where otherwise stated, were created by the `v-annotate.pl` [example command](annotate.md#examplebasic)
+`v-annotate.pl $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro.9`.
 
 ---
 ### Explanation of `.alc`-suffixed output files<a name="alc"></a>
@@ -262,7 +319,7 @@ Each of these seven tabular formats are explained in more detail below.
 `.alc` data lines have 8 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each alert code
 that occurs at least once in the input sequence file that
-`v-annotate.pl` processed.
+`v-annotate.pl` processed. [Example file](annotate-files/va-noro.9.vadr.alc).
 
 
 | idx | field                 | description |
@@ -282,6 +339,7 @@ that occurs at least once in the input sequence file that
 `.alt` data lines have 10 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
+[Example file](annotate-files/va-noro.9.vadr.alt).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -305,6 +363,7 @@ comment lines in each file. There is one data line for each
 `v-annotate.pl` processed. The set of possible features for each
 input sequence depend on its best-matching model, and can be found in
 the model info file.
+[Example file](annotate-files/va-noro.9.vadr.ftr).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -343,6 +402,7 @@ the input file, plus 2 additional lines, a line with `*all*` in the
 with `*none*` in the `model` field reports the summed counts for all
 sequences that did not match any models. This information is also
 included in the `.log` output file.
+[Example file](annotate-files/va-noro.9.vadr.mdl).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -362,6 +422,7 @@ first two comment lines in each file. There is one data line for each
 file that `v-annotate.pl` processed. Each feature is composed of
 1 or more segments, as defined by the `coords` field in the model info
 file. 
+[Example file](annotate-files/va-noro.9.vadr.sgm).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -396,6 +457,7 @@ first two comment lines in each file. There is one data line for each
 processed. `.sqa` files include **annotation** information for each
 sequence. `.sqc` files include **classification** information for each
 sequence. 
+[Example file](annotate-files/va-noro.9.vadr.sqa).
 
 
 | idx | field                 | description |
@@ -425,6 +487,7 @@ processed. `.sqc` files include **classification** information for
 each sequence.  `.sqa` files include **annotation** information for
 each sequence. For more information on bit scores and `bias` see the Infernal User's Guide
 (http://eddylab.org/infernal/Userguide.pdf)
+[Example file](annotate-files/va-noro.9.vadr.sqc).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -451,11 +514,86 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |  21 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
+### Explanation of `.sda`-suffixed output files<a name="sda"></a>
+
+`.sda` files are only output if the `v-annotate.pl -s` option is used.
+`.sda` data lines have 14 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**sequence** in the input sequence file file that `v-annotate.pl`
+processed. With `-s`, the largest ungapped region from the top blastn
+hit is fixed, and only the 5' and 3' regions before and after the
+ungapped region are aligned with cmalign as described more
+[here](annotate.md#options-seed).  `.sda` files include information
+about these ungapped, 5' and 3' regions.  Note that the sequence
+length fractions in `ungapped fraction`, `5'unaln fraction`, and
+`3'unaln fraction` will not add up to `1.0` due to overlap between
+these regions, which is typically 100nt, but can be adjusted with the
+[`--s_overhang` option to `v-annotate.pl`](annotate.md#options-seed).
+[Example file](annotate-files/va-noro-s.9.vadr.sda) created with the command `v-annotate.pl -s
+$VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   6 | `ungapped seq`        | sequence coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
+|   7 | `ungapped mdl`        | model coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
+|   8 | `ungapped fraction`   | fraction of `seq len` in ungapped region in `ungapped seq` | 
+|   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
+|  10 | `5'unaln mdl`         | model start/stop coordinates for cmalign alignment of 5' region `5'unaln seq`, in vadr coords [format](#coords) |
+|  11 | `5'unaln fraction`    | fraction of `seq len` in 5' region in `5'unaln seq` |
+|  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
+|  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
+|  14 | `3'unaln fraction`    | fraction of `seq len` in 3' region in `3'unaln seq` |
+
+
+---
+### Explanation of `.rpn`-suffixed output files<a name="rpn"></a>
+
+`.rpn` files are only output if the `v-annotate.pl -r` option is used.
+`.rpn` data lines have 16 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**sequence** in the input sequence file file that `v-annotate.pl`
+processed.
+With `-r`, sequences are preprocessed with blastn and missing regions between blastn hits are identified and examined for Ns.
+The Ns in some of these regions are replaced with the expected nucleotides from the model
+as explained more [here](annotate.md#options-replace).
+`.rpn` files include
+information about these missing regions, referred to as gaps in the `.rpn`
+column headers and below.
+[Example file](annotate-files/va-noro-r.9.vadr.rpn) created with the command `v-annotate.pl -r
+$VADRSCRIPTSDIR/documentation/annotate-files/noro.9.r.fa
+va-noro-r.9`.
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `seq idx`             | index of sequence in the input file |
+|   2 | `seq name`            | sequence name | 
+|   3 | `seq len`             | length of the sequence with name `seq name` | 
+|   4 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
+|   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
+|   6 | `num_Ns tot`          | total number of Ns in the sequence |
+|   7 | `num_Ns rp`           | number of Ns in the sequence replaced with expected nucleotides from the model consensus |
+|   8 | `fract_Ns rp`         | fraction of Ns replaced: `num_Ns rp`/`num_Ns tot` |
+|   9 | `ngaps tot`           | number of gaps between preprocessing stage blastn hits, including gaps at 5' and 3' ends |
+|  10 | `ngaps int`           | number of internal gaps between preprocessing stage blastn hits, `ngaps tot` minus number of gaps at 5' and/or 3' end |
+|  11 | `ngaps rp`            | number of gaps in which one or more Ns were replaced | 
+|  12 | `ngaps rp-full`       | number of gaps in which entire gap was Ns and all Ns were replaced |
+|  13 | `ngaps rp-part`       | number of gaps in which entire gap was not Ns, but all Ns were replaced |
+|  14 | `nnt rp-full`         | number of Ns replaced in the `ngaps rp-full` gaps |
+|  15 | `nnt rp-part`         | number of Ns replaced in the `ngaps rp-part` gaps |
+|  16 | `replaced_coords seq(S),mdl(M),#rp(N)` | string indicated location of gaps and number of Ns replaced per gap with one 'token' per gap in which one or more Ns were replaced (`ngaps rp` total), with each token in format `S:<s_start>..<s_end>,M:<m_start>..<m..end>,N:<num_Ns>/<num_nts>;`, describing a gap in sequence from `<s_start>` to `<s_end>` corresponding to model positions `<m_start>` to `<m_end>` in which `<num_Ns>` of `<num_nts>` nucleotides were Ns are were replaced. |
+
+---
 
 ### Explanation of `.alt.list`-suffixed output files<a name="altlist"></a>
 
 `.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
-lines with 4 tab-delimited fields:
+lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
+
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -467,22 +605,23 @@ lines with 4 tab-delimited fields:
 ---
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
 
-When run with the `--keep` option, `v-annotate.pl` will create additional files:
+When run with the `--keep` option, `v-annotate.pl` will create additional files, some of these may change based on command-line options, in particular `-s` and `-r`:
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
 | `.cm.namelist` | file with list of names of all models in model library | no further documentation | 
-| `.scan.r1.tblout` | tabular output from `cmscan` in classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.scan.r1.stdout` | standard output from `cmscan` in classification stage | no further documentation | 
-| `.search.r2.<model_name>.tblout` | tabular output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
-| `.search.r2.<model_name>.stdout` | standard output from `cmsearch` in coverage determination stage | http://eddylab.org/infernal/Userguide.pdf (section 3: "Tutorial") | 
+| `.in.fa`       | copy of input fasta file (if `--origfa` is used, this will not exist) | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.fa.ssi`      | Easel sequence index files | binary file, not meant to be human-readable | 
+| `.cls.*.tblout` | tabular output from `cmscan` (or `blastn` converted to `cmscan` format) from classification stage | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cls.*.stdout` | standard output (usually from `cmscan`) in classification stage | no further documentation | 
+| `.cdt.<model_name>.tblout` | tabular output from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.cdt.<model_name>.stdout` | standard output (usually from `cmsearch`) from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.a.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
-| `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
+| `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | <a name="stockholmformat"></a> https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model_name>` | description of fields at top of file, no further documentation |
-| `.<model_name>.align.*.tfile` | `cmalign` parsetree output file, created with `--tfile` option for 1 or more sequences classified to `<model_name>` | no further documentation |
 | `.<model_name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model_name>` | no further documentation |
-| `.<model_name>.a.blastx.fa` | query fasta file used for `blastx` for sequences classified to `<model_name>`, with full input sequences and predicted CDS subsequences | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames)  |
+| `.<model_name>.pv.blastx.fa` | query fasta file used for `blastx` for sequences classified to `<model_name>`, with full input sequences and predicted CDS subsequences | https://en.wikipedia.org/wiki/FASTA_format, sequence naming conventions described [here](#seqnames)  |
 | `.<model_name>.blastx.out` | `blastx` output for for sequences classified to `<model_name>` | https://www.ncbi.nlm.nih.gov/books/NBK279684/ |
 | `.<model_name>.blastx.summary.txt` | summary of `blastx` output used internally by `v-annotate.pl` | no further documentation |
 

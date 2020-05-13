@@ -5,10 +5,12 @@
 #
 use strict;
 use warnings;
-use Getopt::Long;
+use Getopt::Long qw(:config no_auto_abbrev);
 use Time::HiRes qw(gettimeofday);
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
+use LWP::Simple; 
+use LWP::Protocol::https; 
 
 require "vadr.pm";
 require "sqp_opts.pm";
@@ -42,14 +44,19 @@ require "sqp_utils.pm";
 my $env_vadr_scripts_dir  = utl_DirEnvVarValid("VADRSCRIPTSDIR");
 my $env_vadr_blast_dir    = utl_DirEnvVarValid("VADRBLASTDIR");
 my $env_vadr_infernal_dir = utl_DirEnvVarValid("VADRINFERNALDIR");
+my $env_vadr_hmmer_dir    = utl_DirEnvVarValid("VADRHMMERDIR");
 my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
-
 
 # make sure the required executables exist and are executable
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
+$execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
+$execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmpress"}       = $env_vadr_infernal_dir . "/cmpress";
+$execs_H{"hmmbuild"}      = $env_vadr_hmmer_dir    . "/hmmbuild";
+$execs_H{"hmmpress"}      = $env_vadr_hmmer_dir    . "/hmmpress";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
+$execs_H{"esl-sfetch"}    = $env_vadr_easel_dir    . "/esl-sfetch";
 $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 utl_ExecHValidate(\%execs_H, undef);
@@ -132,7 +139,7 @@ opt_Add("--cminfile", "string",  undef,       $g,   undef,  "--skipbuild",      
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #       option             type       default     group requires   incompat  preamble-output                                    help-output    
-opt_Add("--skipbuild",     "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild step", \%opt_HH, \@opt_order_A);
+opt_Add("--skipbuild",     "boolean", 0,         $g,    undef,     undef,    "skip the cmbuild step",                           "skip the cmbuild and blastn db creation steps", \%opt_HH, \@opt_order_A);
 opt_Add("--onlyurl",       "boolean", 0,         $g,    undef,"--stk,--ingb,--inft",  "output genbank file url for accession and exit",  "output genbank file url for accession and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
@@ -194,12 +201,12 @@ my $options_okay =
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another ofile_SecondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
-my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.0.6";
-my $releasedate   = "April 2020";
+my $version       = "1.1";
+my $releasedate   = "May 2020";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -601,7 +608,7 @@ else {
   # --stk not used, we create it from the fasta file we read
   $start_secs = ofile_OutputProgressPrior("Reformatting FASTA file to Stockholm file", $progress_w, $log_FH, *STDOUT);
 
-  sqf_EslReformatRun($execs_H{"esl-reformat"}, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
+  sqf_EslReformatRun($execs_H{"esl-reformat"}, undef, $fa_file, $stk_file, "afa", "stockholm", \%opt_HH, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "stk", $stk_file, 1, 1, "Stockholm alignment file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -638,13 +645,19 @@ vdr_SegmentInfoPopulate(\@sgm_info_AH, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ###################################
-# Translate the CDS, if we have any
+# If any CDS: 
+# - translate the CDS
+# - build BLAST DB
+# - build HMMER DB
 ###################################
 my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS");
 my $cds_fa_file = undef;
 my $protein_fa_file = undef;
+my $hmm_file = undef;
+my $hmmbuild_file = undef;
 if($ncds > 0) { 
-  $start_secs = ofile_OutputProgressPrior("Translating CDS and building BLAST DB", $progress_w, $log_FH, *STDOUT);
+  # translate CDS
+  $start_secs = ofile_OutputProgressPrior("Translating CDS ", $progress_w, $log_FH, *STDOUT);
 
   $cds_fa_file  = $out_root . ".cds.fa";
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "cdsfasta", $cds_fa_file, 1, 1, "fasta sequence file for CDS from $mdl_name");
@@ -656,13 +669,71 @@ if($ncds > 0) {
   sqf_EslTranslateCdsToFastaFile($ofile_info_HH{"FH"}{"proteinfasta"}, $execs_H{"esl-translate"}, $cds_fa_file, 
                                  $out_root, \@{$ftr_info_HAH{$mdl_name}}, \%opt_HH, $FH_HR);
   close $ofile_info_HH{"FH"}{"proteinfasta"};
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-  sqf_BlastDbProteinCreate($execs_H{"makeblastdb"}, $protein_fa_file, \%opt_HH, $FH_HR);
+  # build blast db
+  $start_secs = ofile_OutputProgressPrior("Building BLAST protein database ", $progress_w, $log_FH, *STDOUT);
+
+  sqf_BlastDbCreate($execs_H{"makeblastdb"}, "prot", $protein_fa_file, \%opt_HH, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-phr", $protein_fa_file . ".phr", 1, 1, "BLAST db .phr file for $mdl_name");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pin", $protein_fa_file . ".pin", 1, 1, "BLAST db .pin file for $mdl_name");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-psq", $protein_fa_file . ".psq", 1, 1, "BLAST db .psq file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pdb", $protein_fa_file . ".pdb", 1, 1, "BLAST db .pdb file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pot", $protein_fa_file . ".pot", 1, 1, "BLAST db .pot file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ptf", $protein_fa_file . ".ptf", 1, 1, "BLAST db .ptf file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-pto", $protein_fa_file . ".pto", 1, 1, "BLAST db .pto file for $mdl_name");
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  # build hmmer db, need to build one HMM per CDS and concatenate them
+  $start_secs = ofile_OutputProgressPrior("Building HMMER protein database ", $progress_w, $log_FH, *STDOUT);
+
+  # run esl-seqstat and parse it
+  my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $protein_fa_file";
+  my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $protein_fa_file });
+  my $nhmm = 0;
+  my @hmm_file_A      = (); # array of names of individual HMM files to be concatenated to make the library
+  my @hmmbuild_file_A = (); # array of names of individual hmmbuild output files to be concatenated to make the library
+  for(my $i = 0; $i < $ncds; $i++) { 
+    my $seq_name = $protein_sqfile->fetch_seq_name_given_ssi_number($i);
+    my $hmm_name = undef;
+    # remove version from $hmm_name
+    if($seq_name =~ /^(.+)\.\d+(\/[^\/]+)$/) { 
+      $hmm_name = $1 . $2;
+    }
+    else { 
+      ofile_FAIL("ERROR, unable to parse protein sequence name $seq_name to make HMM model name", 1, $FH_HR);
+    }
+    my $tmp_hmm_file      = $out_root . "." . ($nhmm+1) . ".hmm";
+    my $tmp_hmmbuild_file = $out_root . "." . ($nhmm+1) . ".hmmbuild";
+    my $sfetch_to_hmmbuild_cmd = $execs_H{"esl-sfetch"} . " $protein_fa_file $seq_name | ";
+    $sfetch_to_hmmbuild_cmd   .= $execs_H{"hmmbuild"} . " -n $hmm_name --informat afa $tmp_hmm_file - > $tmp_hmmbuild_file";
+    utl_RunCommand($sfetch_to_hmmbuild_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+    push(@hmm_file_A,      $tmp_hmm_file);
+    push(@hmmbuild_file_A, $tmp_hmmbuild_file);
+    $nhmm++;
+  }
+  $hmm_file      = $out_root . ".protein.hmm";
+  $hmmbuild_file = $out_root . ".protein.hmmbuild";
+  utl_ConcatenateListOfFiles(\@hmm_file_A,      $hmm_file,      "v-build.pl main()", \%opt_HH, $FH_HR);
+  utl_ConcatenateListOfFiles(\@hmmbuild_file_A, $hmmbuild_file, "v-build.pl main()", \%opt_HH, $FH_HR);
+
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "proteinindex", $protein_fa_file . ".ssi", 0, 1, "esl-sfetch index file for $protein_sqfile");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "hmmdb",        $hmm_file,                 1, 1, "HMMER model db file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "hmmbuild",     $hmmbuild_file,            1, 1, "hmmbuild build output (concatenated)");
+
+  # run hmmpress on it
+  my $hmmpress_file = $out_root . ".hmmpress";
+  my $hmmpress_cmd  = $execs_H{"hmmpress"} . " $hmm_file > $hmmpress_file";
+  utl_RunCommand($hmmpress_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "h3m",      $hmm_file . ".h3m", 1, 1, "binary HMM and p7 HMM filter file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "h3i",      $hmm_file . ".h3i", 1, 1, "SSI index for binary HMM file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "h3f",      $hmm_file . ".h3f", 1, 1, "optimized p7 HMM filters (MSV part)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "h3p",      $hmm_file . ".h3p", 1, 1, "optimized p7 HMM filters (remainder)");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "hmmpress", $hmmpress_file,     1, 1, "hmmpress output file");
+
+  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 }
 
 ##############
@@ -682,9 +753,13 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   elsif($clen_times_cmn >  500000) { $cmbuild_str = "(should take roughly 5-10 minutes)"; }
   else                             { $cmbuild_str = "(shouldn't take more than a few minutes)"; }
 
-  $start_secs = ofile_OutputProgressPrior("Building model $cmbuild_str", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Building CM $cmbuild_str", $progress_w, $log_FH, *STDOUT);
 
-  my $cmbuild_opts = "-n $mdl_name --verbose ";
+  my $cmbuild_occ_file = $out_root . ".cmbuild.occ";
+  my $cmbuild_cp9occ_file = $out_root . ".cmbuild.cp9occ";
+  my $cmbuild_fp7occ_file = $out_root . ".cmbuild.fp7occ";
+
+  my $cmbuild_opts = "-n $mdl_name --verbose --occfile $cmbuild_occ_file --cp9occfile $cmbuild_cp9occ_file --fp7occfile $cmbuild_fp7occ_file ";
   if((! defined $stk_has_ss) || (! $stk_has_ss)) { $cmbuild_opts .= " --noss"; }
   if(opt_IsUsed("--cmn",       \%opt_HH)) { $cmbuild_opts .= " --EgfN "    . opt_Get("--cmn", \%opt_HH); }
   if(opt_IsUsed("--cmp7ml",    \%opt_HH)) { $cmbuild_opts .= " --p7ml"; }
@@ -726,6 +801,41 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, 1, "optimized p7 HMM filters (MSV part)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, 1, "optimized p7 HMM filters (remainder)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, 1, "cmpress output file");
+}
+
+#####################################################################
+# Build the blastn database, using the consensus sequence from the CM
+#####################################################################
+if(! opt_Get("--skipbuild", \%opt_HH)) { # we can only do this step if we built the CM
+  
+  $start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database of CM consensus ", $progress_w, $log_FH, *STDOUT);
+
+  # emit the consensus sequence to a file
+  my $cmemit_fa_file = $out_root . ".nt-cseq.fa";
+  my $cmemit_cseq = vdr_CmemitConsensus(\%execs_H, $cm_file, $mdl_name, $cmemit_fa_file, \%opt_HH, \%ofile_info_HH);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmemit-fasta", $cmemit_fa_file, 0, opt_Get("--keep", \%opt_HH), "cmemit -c output");
+
+  # make a new fasta file with same sequence but new name ($mdl_name)
+  my $blastn_fa_file = $out_root . ".nt.fa";
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "fasta sequence file with cmemit consensus sequence for $mdl_name");
+  printf { $ofile_info_HH{"FH"}{"blastn-fa"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($cmemit_cseq, 60);
+  close $ofile_info_HH{"FH"}{"blastn-fa"};
+
+  sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $blastn_fa_file, \%opt_HH, $FH_HR);
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
+
+
+  if(! opt_Get("--keep", \%opt_HH)) { 
+    utl_FileRemoveUsingSystemRm($cmemit_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
+  }
+
+  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 }
 
 ########################
@@ -773,7 +883,7 @@ if(exists $ofile_info_HH{"FH"}{"sgminfo"}) {
 }
 
 $total_seconds += ofile_SecondsSinceEpoch();
-ofile_OutputConclusionAndCloseFiles($total_seconds, $dir, \%ofile_info_HH);
+ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 exit 0;
 
 ###############
@@ -950,7 +1060,7 @@ sub fetch_and_parse_cds_protein_feature_tables {
         # first, convert protein coords to nucleotide coords (before
         # checking if it already exists or not)
         if($prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"type"} ne "CDS") { 
-          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} = vdr_CoordsProtToNuc($ftr_info_AHR->[$ftr_idx]{"coords"}, $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}, $FH_HR);
+          $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"} = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, $prot_ftr_info_HAH{$prot_accver}[$prot_ftr_idx]{"coords"}, $FH_HR);
           my $found_ftr_idx = -1;
           for(my $chk_ftr_idx = 0; $chk_ftr_idx < scalar(@{$ftr_info_AHR}); $chk_ftr_idx++) { 
             if($found_ftr_idx == -1) { 

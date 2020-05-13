@@ -1,0 +1,5 @@
+#sequence	error	feature	error-description
+NC_001959/1-5000,5230-7654	UNEXPECTED_DIVERGENCE	*sequence*	sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 1.81 Mb]
+NC_001959/1-5000,5230-7654	INDEFINITE_ANNOTATION	nonstructural polyprotein	protein-based search identifies CDS not identified in nucleotide-based search [5 to 4999 with score 9003]
+NC_001959/1-5000,5230-7654	INDEFINITE_ANNOTATION	VP1	protein-based search identifies CDS not identified in nucleotide-based search [5129 to 6718 with score 2789]
+NC_001959/1-5000,5230-7654	INDEFINITE_ANNOTATION	VP2	protein-based search identifies CDS not identified in nucleotide-based search [6721 to 7356 with score 1096]

@@ -1,0 +1,6 @@
+#      seq                                      ftr   ftr   ftr  alert           alert       alert 
+#idx   name                          model      type  name  idx  code      fail  desc        detail
+#----  ----------------------------  ---------  ----  ----  ---  --------  ----  ----------  ------
+4.1.1  gi|1447973732|gb|MH680297.1|  NC_001477  -     -       -  ambgnt5s  no    N_AT_START  first nucleotide of the sequence is an N
+#
+5.1.1  gi|281314094|gb|GU211727.1|   NC_001474  -     -       -  ambgnt3s  no    N_AT_END    final nucleotide of the sequence is an N

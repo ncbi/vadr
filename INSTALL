@@ -1,11 +1,11 @@
 Brief installation instructions 
-VADR 1.0.6; April 2020
+VADR 1.1; May 2020
 -------------------------------------------------------------
 
 These are quick installation instructions. For complete documentation,
-please see the file 
+please go to:
 
-https://raw.githubusercontent.com/nawrockie/vadr/master/documentation/install.md
+https://github.com/nawrockie/vadr/blob/master/documentation/install.md
 
 ------------
 Installation
@@ -32,7 +32,7 @@ $VADRSCRIPTSDIR/testfiles/do-install-tests-local.sh
 
 ---
 See 
-https://raw.githubusercontent.com/nawrockie/vadr/master/documentation/install.md
+https://github.com/nawrockie/vadr/blob/master/documentation/install.md
 for more details and information on troubleshooting.
 
 ---

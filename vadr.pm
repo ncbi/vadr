@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# version: 1.0.6 [April 2020]
+# version: 1.1 [May 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -38,13 +38,14 @@
 # - $alt_info_HHR: reference to a hash of hashes with alert information.
 #
 ########################################################################################
-#
-# List of subroutines in this file, divided into categories. 
-#
 use strict;
 use warnings;
 use Cwd;
 use LWP::Simple; 
+# use LWP::Protocol::https; 
+# above line is purposefully commented out, b/c LWP::Protocol::https is only
+# needed for v-build.pl, and many users only use v-annotate.pl only, which can run without it
+# when a better solution for checking for modules during installation is found, uncomment it
 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
@@ -53,6 +54,8 @@ require "sqp_seqfile.pm";
 require "sqp_utils.pm";
 
 #########################################################################################
+#
+# List of subroutines in this file, divided into categories. 
 #
 # Subroutines related to features or segments:
 # vdr_FeatureInfoImputeCoords()
@@ -66,6 +69,8 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoValidateCoords()
 # vdr_FeatureInfoValidateParentIndexStrings()
 # vdr_FeatureInfoChildrenArrayOfArrays()
+# vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
+# vdr_FeatureInfoMerge()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -80,8 +85,8 @@ require "sqp_utils.pm";
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
 # vdr_Feature3pMostPosition()
-# vdr_FeatureSummarizeSegment()
 # vdr_FeatureParentIndex()
+# vdr_FeatureSummarizeSegment()
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
@@ -99,19 +104,25 @@ require "sqp_utils.pm";
 # vdr_WaitForFarmJobsToFinish()
 #
 # Subroutines related to sequence and model coordinates: 
-# vdr_CoordsTokenParse()
-# vdr_CoordsTokenCreate()
+# vdr_CoordsSegmentParse()
+# vdr_CoordsSegmentCreate()
+# vdr_CoordsAppendSegment()
 # vdr_CoordsLength()
 # vdr_CoordsFromLocation()
-# vdr_CoordsFromLocationWithCarrots()
-# vdr_CoordsComplement()
-# vdr_CoordsComplementWithCarrots()
+# vdr_CoordsReverseComplement()
+# vdr_CoordsSegmentReverseComplement()
 # vdr_CoordsMin()
 # vdr_CoordsMax()
 # vdr_CoordsMissing()
 # vdr_CoordsCheckIfSpans()
-# vdr_CoordsTokenOverlap()
-# vdr_CoordsProtToNuc
+# vdr_CoordsSegmentOverlap()
+# vdr_CoordsRelativeToAbsolute()
+# vdr_CoordsRelativeSegmentToAbsolute()
+# vdr_CoordsProteinRelativeToAbsolute()
+# vdr_CoordsProteinToNucleotide()
+# vdr_CoordsMergeAllAdjacentSegments()
+# vdr_CoordsMergeTwoSegmentsIfAdjacent()
+# vdr_CoordsMaxLengthSegment()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -120,6 +131,14 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
+#
+# Subroutines related to cmalign output:
+# vdr_CmalignCheckStdOutput()
+# vdr_CmalignParseInsertFile()
+# vdr_CmalignWriteInsertFile()
+# 
+# Other subroutines related to running infernal programs
+# vdr_CmemitConsensus()
 # 
 # Miscellaneous subroutines:
 # vdr_SplitFastaFile()
@@ -146,6 +165,8 @@ sub vdr_FeatureInfoImputeCoords {
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
 
+  my $do_carrots = 0; # do not include carrots in coords strings, even if they exist in location strings
+
   my ($ftr_info_AHR, $FH_HR) = @_;
   
   # ftr_info_AHR should already have array data for keys "type", "location"
@@ -153,7 +174,7 @@ sub vdr_FeatureInfoImputeCoords {
   my $nftr = utl_AHValidate($ftr_info_AHR, \@keys_A, "ERROR in $sub_name", $FH_HR);
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $FH_HR);
+    $ftr_info_AHR->[$ftr_idx]{"coords"} = vdr_CoordsFromLocation($ftr_info_AHR->[$ftr_idx]{"location"}, $do_carrots, $FH_HR);
   }
 
   return;
@@ -661,6 +682,116 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
 }
 
 #################################################################
+# Subroutine:  vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
+# Incept:      EPN, Wed Mar 18 08:15:06 2020
+#
+# Purpose:    Map ftr_type_idx values (e.g. CDS.4) to feature indices
+#             (ftr_idx) in \@{$ftr_info_AHR}.
+#
+# Arguments: 
+#  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
+#  $ftr_type_idx2ftr_idx_HR: REF to hash to fill, key is ftr_type_idx (e.g. CDS.4) value is 
+#  $FH_HR:                   REF to hash of file handles, including "log" and "cmd", can be undef, PRE-FILLED
+#
+# Returns:    void
+#
+################################################################# 
+sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
+  my $sub_name = "vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  my ($ftr_info_AHR, $ftr_type_idx2ftr_idx_HR, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $ftr_type_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".");
+    $ftr_type_idx2ftr_idx_HR->{$ftr_type_idx} = $ftr_idx;
+  }
+ 
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoMerge()
+# Incept:     EPN, Sun May  5 10:32:40 2019
+#
+# Synopsis: Add info in one feature information arrays to another
+#           after validating that they can be merged.
+#
+#           Features to be merged are identified as "consistent"
+#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
+#           defined as those for which there is a subset of >=1
+#           features that are in common (identical qualifier name and
+#           value) between the two.
+#
+#           If any "inconsistent" features are identified between
+#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
+#           die. "Inconsistent" features are those for which a subset
+#           of >=1 qualifiers have identical values but another subset
+#           of >=1 qualifiers have different values.
+# 
+# Arguments:
+#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
+#                       add to $
+#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
+#                    on the features to add to  $ftr_info1_HAHR
+#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if something is inconsistent between the two mdl_info_AHRs or
+#             ftr_info_HAHRs that prevent merging
+#################################################################
+sub vdr_FeatureInfoMerge { 
+  my $sub_name = "vdr_FeatureInfoMerge";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $src_nftr = scalar(@{$src_ftr_info_AHR});
+  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
+  my $src_ftr_key;
+  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
+    my $found_consistent = 0;
+    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
+      my $nconsistent   = 0;
+      my $ninconsistent = 0;
+      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
+             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $nconsistent++;
+          }
+          else { 
+            $ninconsistent++;
+          }
+        }
+      }
+      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
+        # we found a match, merge them
+        if($found_consistent) { 
+          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+        }
+        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
+          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
+            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
+                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
+          }
+        }
+        $found_consistent = 1;
+      }
+    }
+    if(! $found_consistent) { 
+      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: vdr_SegmentInfoPopulate()
 # Incept:     EPN, Wed Mar 13 13:55:56 2019
 #
@@ -1134,7 +1265,7 @@ sub vdr_FeatureSummarizeSegment {
 #  $strand_AR:    REF to strand array to fill here with "+" or "-", FILLED here, can be undef
 #  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    void
+# Returns:    number of segments
 #
 # Dies: if unable to parse $coords
 #
@@ -1156,8 +1287,8 @@ sub vdr_FeatureStartStopStrandArrays {
   my @coords_A  = split(",", $coords);
   my $nsgm = scalar(@coords_A);
   for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
-    ($start, $stop, $strand) = vdr_CoordsTokenParse($coords_A[$sgm_idx], $FH_HR);
-    # vdr_CoordsTokenParse() will fail if unable to parse $coords_A[$sgm_idx]
+    ($start, $stop, $strand) = vdr_CoordsSegmentParse($coords_A[$sgm_idx], $FH_HR);
+    # vdr_CoordsSegmentParse() will fail if unable to parse $coords_A[$sgm_idx]
     push(@start_A,  $start);
     push(@stop_A,   $stop);
     push(@strand_A, $strand); 
@@ -1167,7 +1298,7 @@ sub vdr_FeatureStartStopStrandArrays {
   if(defined $stop_AR)   { @{$stop_AR}    = @stop_A;   }
   if(defined $strand_AR) { @{$strand_AR}  = @strand_A;  }
 
-  return;
+  return $nsgm;
 }
 
 #################################################################
@@ -1178,7 +1309,7 @@ sub vdr_FeatureStartStopStrandArrays {
 #             by parsing the "coords" value.
 # 
 # Arguments:
-#   $coords:   coords string to complement
+#   $coords:   coords string
 #   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    "+" if all segments in $coords are "+"
@@ -1213,6 +1344,7 @@ sub vdr_FeatureSummaryStrand {
     else { ofile_FAIL("ERROR in $sub_name, unable to determine strands in coords $coords", 1, $FH_HR); }
   }
 
+  if(($npos >  0) && ($nneg >  0)) { return "!"; }
   if(($npos >  0) && ($nneg == 0)) { return "+"; }
   if(($npos == 0) && ($nneg >  0)) { return "-"; }
   if(($npos == 0) && ($nneg == 0)) { 
@@ -1338,6 +1470,18 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
+                   "N_AT_START", # short description
+                   "first nucleotide of the sequence is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
+                   "N_AT_END", # short description
+                   "final nucleotide of the sequence is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowcovrg", "sequence",
                    "LOW_COVERAGE", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description
@@ -1404,6 +1548,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 1, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
+                   "UNJOINABLE_SUBSEQ_ALIGNMENTS", # short description
+                   "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "noftrann", "sequence",
                    "NO_FEATURES_ANNOTATED", # short description
                    "sequence similarity to homology model does not overlap with any features", # long description
@@ -1446,22 +1596,22 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
+                   "CDS_HAS_STOP_CODON", # short description
+                   "stop codon in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
                    "high confidence potential frameshift in CDS", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
                    "low confidence potential frameshift in CDS", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
-                   "CDS_HAS_STOP_CODON", # short description
-                   "stop codon in protein-based alignment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",
@@ -1548,10 +1698,22 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "insertnn", "feature",
+                   "INSERTION_OF_NT", # short description
+                   "too large of an insertion in nucleotide-based alignment of CDS feature", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinn", "feature",
+                   "DELETION_OF_NT", # short description
+                   "too large of a deletion in nucleotide-based alignment of CDS feature", # long description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
@@ -2083,7 +2245,7 @@ sub vdr_WaitForFarmJobsToFinish {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsTokenParse()
+# Subroutine: vdr_CoordsSegmentParse()
 # Incept:     EPN, Tue Mar 26 06:15:09 2019
 #
 # Synopsis: Given a single coords token, validate it, 
@@ -2101,8 +2263,8 @@ sub vdr_WaitForFarmJobsToFinish {
 # Dies: if unable to parse $coords
 #
 #################################################################
-sub vdr_CoordsTokenParse {
-  my $sub_name = "vdr_CoordsTokenParse";
+sub vdr_CoordsSegmentParse {
+  my $sub_name = "vdr_CoordsSegmentParse";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2119,7 +2281,7 @@ sub vdr_CoordsTokenParse {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsTokenCreate()
+# Subroutine: vdr_CoordsSegmentCreate()
 # Incept:     EPN, Mon Apr 29 14:07:26 2019
 #
 # Synopsis: Create a coords token from a given start, stop, strand
@@ -2136,8 +2298,8 @@ sub vdr_CoordsTokenParse {
 #        if $strand is not "+" or "-"
 #
 #################################################################
-sub vdr_CoordsTokenCreate {
-  my $sub_name = "vdr_CoordsTokenCreate";
+sub vdr_CoordsSegmentCreate {
+  my $sub_name = "vdr_CoordsSegmentCreate";
   my $nargs_expected = 4;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2147,6 +2309,37 @@ sub vdr_CoordsTokenCreate {
   if(($strand ne "+") && ($strand ne "-")) { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", 1, $FH_HR); }
 
   return $start . ".." . $stop . ":" . $strand;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsAppendSegment()
+#
+# Incept:     EPN, Fri Mar 20 09:11:03 2020
+#
+# Synopsis: Append a segment $coords_sgm to $coords and return 
+#           the result, after potentially adding a ',' before
+#           $coords_sgm. If $coords is undef, return $coords_sgm.
+#
+# Arguments:
+#  $coords:     existing coords string, can be undef or ""
+#  $coords_sgm: segment to append, not checked for validity
+#
+# Returns:   Coords string with $coords_sgm appended.
+#
+# Dies: never
+#
+#################################################################
+sub vdr_CoordsAppendSegment { 
+  my $sub_name = "vdr_CoordsAppendSegment";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $coords_sgm) = @_;
+
+  if((! defined $coords) || ($coords eq "")) { 
+    return $coords_sgm;
+  }
+  return $coords . "," . $coords_sgm;
 }
 
 #################################################################
@@ -2177,7 +2370,7 @@ sub vdr_CoordsLength {
 
   # if there's no comma, we should have a single span
   if($coords !~ m/\,/) { 
-    my ($start, $stop, undef) = vdr_CoordsTokenParse($coords, $FH_HR);
+    my ($start, $stop, undef) = vdr_CoordsSegmentParse($coords, $FH_HR);
     return abs($start - $stop) + 1;
   }
   # else, split it up and sum length of all
@@ -2185,7 +2378,7 @@ sub vdr_CoordsLength {
   my ($start, $stop);
   my $ret_len = 0;
   foreach my $coords_tok (@coords_A) { 
-    ($start, $stop, undef) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    ($start, $stop, undef) = vdr_CoordsSegmentParse($coords_tok, $FH_HR);
     $ret_len += abs($start - $stop) + 1;
   }
 
@@ -2200,17 +2393,37 @@ sub vdr_CoordsLength {
 #             a coords string in the format:
 #             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
 # 
-#             Any carrots before start/stop positions in the 
-#             location string are removed.
-#             See vdr_CoordsFromLocationWithCarrots() for 
-#             a similar subroutine that keeps carrots.
+#             <startN>: may begin with "<" carrot.
+#             <stopN>: may begin with ">" carrot.
+#
+#             If $do_carrots is 1: include them in the
+#             appropriate position in the returned
+#             $coords string
+#             Else: remove carrots
 #
 #             This function has to call itself recursively in some
 #             cases.
 # 
+# Examples:
+#                                      $do_carrots=0        $do_carrots=1
+# $location                            return value         return value
+# ---------------------------------    -----------------    ----------------
+# 1..200                               1..200:+             1..200:+
+# <1..200                              1..200:+             <1..200:+
+# 100..>200                            100..200:+           100..>200:+
+# <1..>200                             1..200:+             <1..>200:+
+# complement(1..200)                   200..1:-             200..1:-           
+# join(1..200,300..400)                1..200:+,300..400:+  1..200:+,300..400:+  
+# complement(join(1..200,300..400))    400..300:-,200..1:-  400..300:-,200..1:-
+# join(1..200,complement(<300..400))   1..200:+,400..300:-  1..200:+,400..>300:-
+# join(complement(300..>400),<1..>200) 400..300:-,1..200:+  <400..300:-,<1..>200:+
+#
+# See t/01-coords.t for additional examples
+# 
 # Arguments:
-#   $location: GenBank file location string
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#   $location:   GenBank file location string
+#   $do_carrots: '1' to have return values include carrots, '0' not to
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 # 
@@ -2222,241 +2435,191 @@ sub vdr_CoordsLength {
 #################################################################
 sub vdr_CoordsFromLocation { 
   my $sub_name = "vdr_CoordsFromLocation";
-  my $nargs_expected = 2;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($location, $FH_HR) = @_;
-
-  # Examples we can parse: 
-  # $location                          return value
-  # ---------------------------------  -----------------
-  # 1..200                             1..200:+
-  # <1..200                            1..200:+
-  # 100..>200                          100..200:+
-  # <1..>200                           1..200:+
-  # complement(1..200)                 200..1:-
-  # join(1..200,300..400)              1..200:+,300..400:+
-  # complement(join(1..200,300..400))  400..300:-,200..1:-
-  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
-  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
+  my ($location, $do_carrots, $FH_HR) = @_;
 
   my $ret_val = "";
   if($location =~ /^join\((.+)\)$/) { 
     my $location_to_join = $1;
-    $ret_val = vdr_CoordsFromLocation($location_to_join, $FH_HR);
+    $ret_val = vdr_CoordsFromLocation($location_to_join, $do_carrots, $FH_HR);
   }
   elsif($location =~ /^complement\((.+)\)$/) { 
     my $location_to_complement = $1;
-    my $coords_to_complement = vdr_CoordsFromLocation($location_to_complement, $FH_HR);
-    $ret_val = vdr_CoordsComplement($coords_to_complement, $FH_HR);
+    my $coords_to_complement = vdr_CoordsFromLocation($location_to_complement, $do_carrots, $FH_HR);
+    $ret_val = vdr_CoordsReverseComplement($coords_to_complement, $do_carrots, $FH_HR);
   }
   elsif($location =~ /\,/) { 
     # not wrapped in join() or complement(), but multiple segments
     foreach my $location_el (split(",", $location)) { 
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= vdr_CoordsFromLocation($location_el, $FH_HR);
+      $ret_val = vdr_CoordsAppendSegment($ret_val, vdr_CoordsFromLocation($location_el, $do_carrots, $FH_HR));
     }
   }
-  elsif($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
-    $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
+  elsif($do_carrots) { 
+    # only difference with this block and following block ($do_carrot == 0)
+    # is that the carrots are possibly included in the $ret_val in this block
+    if($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
+      $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^(\<?\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^(\>?\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+    }
   }
-  elsif($location =~ /^\<?(\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  elsif($location =~ /^\>?(\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+  else { # $do_carrot is 0
+    if($location =~ /^\<?(\d+)\.\.\>?(\d+)$/) { 
+      $ret_val = $1 . ".." . $2 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^\<?(\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    elsif($location =~ /^\>?(\d+)$/) { # single nucleotide
+      $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
+    }
+    else { 
+      ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
+    }
   }
 
   return $ret_val;
 }
 
 #################################################################
-# Subroutine: vdr_CoordsFromLocationWithCarrots
-# Incept:     EPN, Fri Apr 12 11:51:16 2019
-# 
-# Purpose:    Convert a GenBank file 'location' value to 
-#             a coords string in the format:
-#             <start1>-<stop2>:<strand1>,<start2>-<stop2>:<strand2>,...,<startN>-<stopN>:<strandN>
-#             
-#             <startN>: may begin with "<" carrot.
-#             <stopN>: may begin with ">" carrot.
-#
-#             vdr_CoordsFromLocation() does the same thing but 
-#             removes carrots.
-#
-#             This function has to call itself recursively in some
-#             cases.
-# 
-# Arguments:
-#   $location: GenBank file location string
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-# 
-# Dies:       if unable to parse $location
-#
-# Ref: GenBank release notes (release 230.0) as of this writing
-#      and
-#      https://www.ncbi.nlm.nih.gov/genbank/samplerecord/
-#################################################################
-sub vdr_CoordsFromLocationWithCarrots { 
-  my $sub_name = "vdr_CoordsFromLocationWithCarrots";
-  my $nargs_expected = 2;
-  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
- 
-  my ($location, $FH_HR) = @_;
-
-  # Examples we can parse: 
-  # $location                          return value
-  # ---------------------------------  -----------------
-  # 1..200                             1..200:+
-  # <1..200                            <1..200:+
-  # 100..>200                          100..>200:+
-  # <1..>200                           <1..>200:+
-  # complement(1..200)                 200..1:-
-  # join(1..200,300..400)              1..200:+,300..400:+
-  # complement(join(1..200,300..400))  400..300:-,200..1:-
-  # join(1..200,complement(300..400))  1..200:+,400..300:- ! NOT SURE IF THIS IS CORRECT !
-  # join(complement(300..400),1..200)  400..300:-,1..200:+ ! NOT SURE IF THIS IS CORRECT !
-
-  my $ret_val = "";
-  if($location =~ /^join\((.+)\)$/) { 
-    my $location_to_join = $1;
-    $ret_val = vdr_CoordsFromLocationWithCarrots($location_to_join, $FH_HR);
-  }
-  elsif($location =~ /^complement\((.+)\)$/) { 
-    my $location_to_complement = $1;
-    my $coords_to_complement = vdr_CoordsFromLocationWithCarrots($location_to_complement, $FH_HR);
-    $ret_val = vdr_CoordsComplementWithCarrots($coords_to_complement, $FH_HR);
-  }
-  elsif($location =~ /\,/) { 
-    # not wrapped in join() or complement(), but multiple segments
-    foreach my $location_el (split(",", $location)) { 
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= vdr_CoordsFromLocationWithCarrots($location_el, $FH_HR);
-    }
-  }
-  elsif($location =~ /^(\<?\d+\.\.\>?\d+)$/) { 
-    $ret_val = $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  elsif($location =~ /^(\<?\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  elsif($location =~ /^(\>?\d+)$/) { # single nucleotide
-    $ret_val = $1 . ".." . $1 . ":+"; # a recursive call due to the complement() may complement this
-  }
-  else { 
-    ofile_FAIL("ERROR in $sub_name, unable to parse location token $location", 1, $FH_HR);
-  }
-
-  return $ret_val;
-}
-
-#################################################################
-# Subroutine: vdr_CoordsComplement
+# Subroutine: vdr_CoordsReverseComplement
 # Incept:     EPN, Wed Mar 13 15:00:24 2019
 # 
-# Purpose:    Complement a coords string by complementing all
-#             elements within it. Removes carrots "<" and ">"
-#             before start and stop positions, if they exist.
-#             See vdr_CoordsComplementWithCarrots() to keep
-#             carrots.
-# 
-# Arguments:
-#   $coords:   coords string to complement
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# Purpose:    Reverse complement a coords string by reverse complementing
+#             all tokens within it (by calling 
+#             vdr_CoordsSegmentReverseComplement()), then reversing 
+#             the order of the resulting tokens, concatenating them
+#             and returning that concatenated string.
 #
-# Returns:    complemented $coords
+#             If $do_carrots is 1: include "<" before start and
+#             ">" before stop if they exist. 
+#             Else: remove carrots
 # 
-# Dies:       if unable to parse $coords, or any segment in $coords
-#             is already on the negative strand.
+# 
+# Examples:
+#                          $do_carrots=0         $do_carrots=1
+# $coords                  return value          return value
+# ---------------------    -----------------     ----------------
+# 1..200:+                 200..1:-              200..1:-
+# <1..200:+                200..1:-              200..>1:-
+# 100..>200:+              200..100:-            <200..100:-
+# <1..>200                 200..1:-              <200..>1:-
+# 200..1:-                 1..200:+              1..200:+
+# 1..200:+,300..400:+      400..300:-,200..1:-   400..300:-,200..1:-
+# 400..300:-,200..1:-      1..200:+,300..400:+   1..200:+,300..400:+
+# 1..200:+,400..>300:-     300..400:+,200..1:-   <300..400:+,200..1:-
+# <400..300:-,1..200:+     200..1:-,300.. 400:+  200..1:-,300..>400:+
+# 
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#   $coords:     coords string to complement
+#   $do_carrots: '1' to have return values include carrots, '0' not to
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    reverse complemented $coords
+# 
+# Dies:       if unable to parse $coords
 #
 #################################################################
-sub vdr_CoordsComplement { 
-  my $sub_name = "vdr_CoordsComplement";
-  my $nargs_expected = 2;
+sub vdr_CoordsReverseComplement { 
+  my $sub_name = "vdr_CoordsReverseComplement";
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($coords, $FH_HR) = @_;
+  my ($coords, $do_carrots, $FH_HR) = @_;
 
-  # Examples we can parse: 
-  # $coords                  return value
-  # -----------------------  -----------------
-  # 1-200:+                  200-1:-
-  # 1-200:+,300-400:+        400-300:-,200-1:-
+  my @tok_A = split(",", $coords);
+  my $ntok = scalar(@tok_A);
+  my @ret_coords_tok_A = (); 
 
-  my $ret_val = "";
-  my @el_A = split(",", $coords);
-  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
-    if($el_A[$i] =~ /^\<?(\d+)\.\.\>?(\d+)\:\+/) { 
-      my ($start, $stop) = ($1, $2, $3, $4);
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= $stop . ".." . $start . ":-";
-    }
-    else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
-    }
+  for(my $i = 0; $i < $ntok; $i++) { 
+    push(@ret_coords_tok_A, vdr_CoordsSegmentReverseComplement($tok_A[$i], $do_carrots, $FH_HR));
   }
-
+  
+  # concatenate the tokens in reverse order
+  my $ret_val = "";
+  for(my $i = $ntok-1; $i >= 0; $i--) { 
+    $ret_val = vdr_CoordsAppendSegment($ret_val, $ret_coords_tok_A[$i]);
+  }
   # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
-
+      
   return $ret_val;
 }
 
 #################################################################
-# Subroutine: vdr_CoordsComplementWithCarrots
-# Incept:     EPN, Fri Apr 12 11:49:06 2019
+# Subroutine: vdr_CoordsSegmentReverseComplement
+# Incept:     EPN, Thu Mar 19 15:29:22 2020
 # 
-# Purpose:    Complement a coords string by complementing all
-#             elements within it, and reverse any carrots. 
-#             Just like vdr_CoordsComplement() but keeps
-#             and complements carrots.
-# 
-# Arguments:
-#   $coords:   coords string to complement
-#   $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+# Purpose:    Reverse complement a single coords tokenn by 
+#             reverse complementing it. 
 #
-# Returns:    complemented $coords
+#             If $do_carrots is 1: include "<" before start and
+#             ">" before stop if they exist. 
+#             Else: remove carrots
 # 
-# Dies:       if unable to parse $coords, or any segment in $coords
-#             is already on the negative strand.
+# 
+# Examples:
+#                  $do_carrots=0         $do_carrots=1
+# $coords          return value          return value
+# -------------    -----------------     ----------------
+# 1..200:+         200..1:-              200..1:-
+# <1..200:+        200..1:-              200..>1:-
+# 100..>200:+      200..100:-            <200..100:-
+# <1..>200         200..1:-              <200..>1:-
+# 200..1:-         1..200:+              1..200:+
+# 
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#   $coords_tok: coords string to complement
+#   $do_carrots: '1' to have return values include carrots, '0' not to
+#   $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    reverse complemented $coords_tok
+# 
+# Dies:       if we are unable to parse $coords_tok (including if it 
+#             has a ',' in it implying it is multiple segments)
 #
 #################################################################
-sub vdr_CoordsComplementWithCarrots { 
-  my $sub_name = "vdr_CoordsComplementWithCarrots";
-  my $nargs_expected = 2;
+sub vdr_CoordsSegmentReverseComplement { 
+  my $sub_name = "vdr_CoordsSegmentReverseComplement";
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($coords, $FH_HR) = @_;
+  my ($coords_tok, $do_carrots, $FH_HR) = @_;
 
-  # Examples we can parse: 
-  # $coords                  return value
-  # -----------------------  -----------------
-  # 1-200:+                  200-1:-
-  # 1-200:+,300-400:+        400-300:-,200-1:-
-
-  my $ret_val = "";
-  my @el_A = split(",", $coords);
-  for(my $i = scalar(@el_A)-1; $i >= 0; $i--) { 
-    if($el_A[$i] =~ /^(\<?)(\d+)\.\.(\>?)(\d+)\:\+/) { 
-      my ($start_carrot, $start, $stop_carrot, $stop) = ($1, $2, $3, $4);
-      if($start_carrot eq "<") { $start_carrot = ">"; }
-      if($stop_carrot  eq ">") { $stop_carrot  = "<"; }
-      if($ret_val ne "") { $ret_val .= ","; }
-      $ret_val .= $stop_carrot . $stop . ".." . $start_carrot . $start . ":-";
+  if($coords_tok =~ /^(\<?)(\d+)\.\.(\>?)(\d+)\:([\+\-])$/) { 
+    my ($start_carrot, $start, $stop_carrot, $stop, $strand) = ($1, $2, $3, $4, $5);
+    if($do_carrots) { 
+      if($start_carrot ne "") { $start_carrot = ">"; } # swap it from < to >
+      if($stop_carrot  ne "") { $stop_carrot  = "<"; } # swap it from > to <
     }
     else { 
-      ofile_FAIL("ERROR in $sub_name, unable to parse coords token $coords", 1, $FH_HR);
-    }
+      $start_carrot = "";
+      $stop_carrot  = "";
+    }    
+    my $ret_strand = "?";
+    if   ($strand eq "+") { $ret_strand = "-"; }
+    elsif($strand eq "-") { $ret_strand = "+"; }
+
+    return $stop_carrot . $stop . ".." . $start_carrot . $start . ":" . $ret_strand;
   }
-
-  # printf("\tin $sub_name, coords: $coords ret_val: $ret_val\n");
-
-  return $ret_val;
+  else { 
+    ofile_FAIL("ERROR in $sub_name, unable to parse input coords token: $coords_tok", 1, $FH_HR); 
+  }
+  return ""; # NEVER REACHED
 }
+
 
 #################################################################
 # Subroutine: vdr_CoordsMin()
@@ -2486,7 +2649,7 @@ sub vdr_CoordsMin {
 
   # if there's no comma, we should have a single span
   if($coords !~ m/\,/) { 
-    my ($start, $stop, undef) = vdr_CoordsTokenParse($coords, $FH_HR);
+    my ($start, $stop, undef) = vdr_CoordsSegmentParse($coords, $FH_HR);
     return utl_Min($start, $stop);
   }
   # else, split it up and find minimum
@@ -2494,7 +2657,7 @@ sub vdr_CoordsMin {
   my ($start, $stop);
   my $ret_min = undef;
   foreach my $coords_tok (@coords_A) { 
-    ($start, $stop, undef) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    ($start, $stop, undef) = vdr_CoordsSegmentParse($coords_tok, $FH_HR);
     if(! defined $ret_min) { 
       $ret_min = utl_Min($start, $stop);
     }
@@ -2534,7 +2697,7 @@ sub vdr_CoordsMax {
 
   # if there's no comma, we should have a single span
   if($coords !~ m/\,/) { 
-    my ($start, $stop, undef) = vdr_CoordsTokenParse($coords, $FH_HR);
+    my ($start, $stop, undef) = vdr_CoordsSegmentParse($coords, $FH_HR);
     return utl_Max($start, $stop);
   }
   # else, split it up and find maximum
@@ -2542,7 +2705,7 @@ sub vdr_CoordsMax {
   my ($start, $stop);
   my $ret_max = undef;
   foreach my $coords_tok (@coords_A) { 
-    ($start, $stop, undef) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    ($start, $stop, undef) = vdr_CoordsSegmentParse($coords_tok, $FH_HR);
     if(! defined $ret_max) { 
       $ret_max = utl_Max($start, $stop);
     }
@@ -2604,7 +2767,7 @@ sub vdr_CoordsMissing {
 
   # fill @covered_A based on @coords_A
   foreach my $coords_tok (@coords_A) { 
-    ($start, $stop, $strand) = vdr_CoordsTokenParse($coords_tok, $FH_HR);
+    ($start, $stop, $strand) = vdr_CoordsSegmentParse($coords_tok, $FH_HR);
     if(($start < 0) || ($start > $in_length)) { 
       ofile_FAIL("ERROR in $sub_name, start is invalid ($start in_length: $in_length)", 1, $FH_HR); 
     }
@@ -2624,8 +2787,7 @@ sub vdr_CoordsMissing {
       $start = $i;
       while((($i+1) <= $in_length) && ($covered_A[($i+1)] == 0)) { $i++; }
       $stop = $i; 
-      if($ret_coords ne "") { $ret_coords .= ","; }
-      $ret_coords .= vdr_CoordsTokenCreate($start, $stop, $in_strand, $FH_HR);
+      $ret_coords = vdr_CoordsAppendSegment($ret_coords, vdr_CoordsSegmentCreate($start, $stop, $in_strand, $FH_HR));
     }
   }
 
@@ -2669,7 +2831,7 @@ sub vdr_CoordsCheckIfSpans {
     my $coords2_tok_len = vdr_CoordsLength($coords2_tok, $FH_HR);
     foreach my $coords1_tok (@coords1_A) { 
       if(! $found_overlap) { 
-        my ($noverlap, undef) = vdr_CoordsTokenOverlap($coords2_tok, $coords1_tok, $FH_HR);
+        my ($noverlap, undef) = vdr_CoordsSegmentOverlap($coords2_tok, $coords1_tok, $FH_HR);
         if($noverlap == $coords2_tok_len) { 
           $found_overlap = 1;
         }
@@ -2688,7 +2850,7 @@ sub vdr_CoordsCheckIfSpans {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsTokenOverlap()
+# Subroutine: vdr_CoordsSegmentOverlap()
 # Incept:     EPN, Tue May 21 10:06:26 2019
 #
 # Synopsis: Return number of positions of overlap between 
@@ -2700,15 +2862,16 @@ sub vdr_CoordsCheckIfSpans {
 #  $coords_tok2: coordinate token 2
 #  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Number of positions of overap between <$coords1_tok>
-#            and <$coords2_tok> on the same strand.
-#            '0' if no overlap or the two tokens are on opposite strands.
+# Returns:  Two values:
+#           $noverlap:    Number of nucleotides of overlap between <$coords_tok1>
+#                         and <$coords_tok2> on the same strand, 0 if none
+#           $overlap_reg: region of overlap, "" if none
 #
 # Dies: if unable to parse $coords_tok1 or $coords_tok2
 #
 #################################################################
-sub vdr_CoordsTokenOverlap { 
-  my $sub_name = "vdr_CoordsTokenOverlap";
+sub vdr_CoordsSegmentOverlap { 
+  my $sub_name = "vdr_CoordsSegmentOverlap";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2716,11 +2879,11 @@ sub vdr_CoordsTokenOverlap {
   if(! defined $coords_tok1) { ofile_FAIL("ERROR in $sub_name, coords_tok1 is undefined", 1, $FH_HR); }
   if(! defined $coords_tok2) { ofile_FAIL("ERROR in $sub_name, coords_tok2 is undefined", 1, $FH_HR); }
 
-  my ($start1, $stop1, $strand1) = vdr_CoordsTokenParse($coords_tok1, $FH_HR);
-  my ($start2, $stop2, $strand2) = vdr_CoordsTokenParse($coords_tok2, $FH_HR);
+  my ($start1, $stop1, $strand1) = vdr_CoordsSegmentParse($coords_tok1, $FH_HR);
+  my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($coords_tok2, $FH_HR);
 
   if($strand1 ne $strand2) { # strand mismatch
-    return 0;
+    return (0, "");
   }
 
   if($strand1 eq "-") { # $strand2 must be "-" too
@@ -2732,16 +2895,183 @@ sub vdr_CoordsTokenOverlap {
 }
 
 #################################################################
-# Subroutine: vdr_CoordsProtToNuc()
+# Subroutine: vdr_CoordsRelativeToAbsolute()
+#             formerly vdr_CoordsProtToNuc() (pre v1.0.5)
+#
 # Incept:     EPN, Wed May 22 09:49:30 2019
 #
-# Synopsis: Return nucleotide coordinates that correspond to the 
-#           protein coordinates in the coords string <$pt_coords>
-#           for a protein that is encoded by the the nucleotide
-#           coordinates in the coords string <$nt_coords>.
-#  
+# Synopsis: Return absolute nucleotide coordinates that correspond to
+#           the relative nucleotide coordinates in <$rel_coords>.
+#           Work is done by calling vdr_CoordsRelativeSegmentToAbsolute()
+#           for each segment in <$rel_coords>, concatenating all the 
+#           returned coords, and then condensing them to combine any
+#           adjacent segments.
+#
+# Arguments:
+#  $abs_coords:  nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_coords:  relative nucleotide coordinates within $abs_coords
+#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Absolute coordinates coords string corresponding to $rel_coords.
+#
+# Dies: if $rel_coords has a position that is longer than
+#       total length of absolute coords 
+#       (dies within vdr_CoordsRelativeSegmentToAbsolute())
+#
+#################################################################
+sub vdr_CoordsRelativeToAbsolute { 
+  my $sub_name = "vdr_CoordsRelativeToAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($abs_coords, $rel_coords, $FH_HR) = @_;
+
+  # check to make sure we have identical strands for all segments in both
+  # $abs_coords and $rel_coords
+  # the code may work even if we don't but I didn't add tests for these
+  # mixed strand cases, so I'm disallowing them here.
+  # If you want to allow mixed strand in the future, add tests in
+  # 01-coords.t (see note in that file as well dated Fri Mar 20, 2020)
+  my $abs_summary_strand = vdr_FeatureSummaryStrand($abs_coords, $FH_HR); # will be + if 
+  my $rel_summary_strand = vdr_FeatureSummaryStrand($rel_coords, $FH_HR);
+  # $*_summary_strand values will be + if all segments are +, - if all segments are -, else !
+  if($abs_summary_strand eq "!") { 
+    ofile_FAIL("ERROR in $sub_name, in abs_coords $abs_coords not all segments are the same strand", 1, $FH_HR);
+  }
+  if($rel_summary_strand eq "!") { 
+    ofile_FAIL("ERROR in $sub_name, in rel_coords $rel_coords not all segments are the same strand", 1, $FH_HR);
+  }
+
+  my @rel_coords_sgm_A = split(",", $rel_coords);
+  my $ret_coords = "";
+  foreach my $rel_coords_sgm (@rel_coords_sgm_A) { 
+    $ret_coords = vdr_CoordsAppendSegment($ret_coords, vdr_CoordsRelativeSegmentToAbsolute($abs_coords, $rel_coords_sgm, $FH_HR));
+  }
+  $ret_coords = vdr_CoordsMergeAllAdjacentSegments($ret_coords, $FH_HR);
+  
+  return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsRelativeSegmentToAbsolute()
+#             formerly vdr_CoordsProtToNuc() (pre v1.0.5)
+#
+# Incept:     EPN, Wed May 22 09:49:30 2019
+#
+# Synopsis: Return absolute nucleotide coordinates that correspond to
+#           the relative nucleotide coordinates segment in <$rel_coords_tok>.
+#           with nucleotide sequence with absolute coords <$abs_coords>.
+#
 #           Examples:
-#           nt_coords             pt_coords          returns
+# 
+#           abs_coords     rel_coords  returns
+#           "11..100:+"    "6..38:+"   "16..48:+"     
+#
+# Arguments:
+#  $abs_coords:     nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_coords_sgm: relative nucleotide coordinates (single segment) within $abs_coords
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Absolute coordinates coords string corresponding to $rel_coords_sgm.
+#
+# Dies: if $rel_coords_sgm has a position that is longer than
+#       total length of absolute coords
+#
+#################################################################
+sub vdr_CoordsRelativeSegmentToAbsolute { 
+  my $sub_name = "vdr_CoordsRelativeSegmentToAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($abs_coords, $rel_coords_sgm, $FH_HR) = @_;
+
+  # printf("in $sub_name, abs_coords: $abs_coords, rel_coords_sgm: $rel_coords_sgm\n");
+
+  my $ret_coords = ""; # return value 
+
+  # $rel_coords_sgm should not be multiple segments (i.e have any ',' characters)
+  if($rel_coords_sgm =~ m/\,/) { 
+    ofile_FAIL("ERROR in $sub_name, rel_coords_sgm: $rel_coords_sgm seems to be multiple segments (has at least one ',')", 1, $FH_HR); 
+  }
+
+  # breakdown the absolute and relative coords
+  my $abs_len = vdr_CoordsLength($abs_coords, $FH_HR);
+  my $rel_len = vdr_CoordsLength($rel_coords_sgm, $FH_HR);
+  my ($orig_rel_start, $orig_rel_stop, $orig_rel_strand) = vdr_CoordsSegmentParse($rel_coords_sgm, $FH_HR);
+
+  my @abs_start_A  = (); # array of starts  for $abs_coords segments
+  my @abs_stop_A   = (); # array of stops   for $abs_coords segments
+  my @abs_strand_A = (); # array of strands for $abs_coords segments
+  my $nsgm_abs = vdr_FeatureStartStopStrandArrays($abs_coords, \@abs_start_A, \@abs_stop_A, \@abs_strand_A, $FH_HR);
+
+  # if $orig_rel_strand is -, reverse complement the relative coords, we will reverse complement comp $ret_coords back at the end prior to return
+  my ($rel_start, $rel_stop, $rel_strand); 
+  if   ($orig_rel_strand eq "+") { ($rel_start, $rel_stop, $rel_strand) = ($orig_rel_start, $orig_rel_stop, "+"); }
+  elsif($orig_rel_strand eq "-") { ($rel_start, $rel_stop, $rel_strand) = ($orig_rel_stop, $orig_rel_start, "-"); }
+  else                           { ofile_FAIL("ERROR in $sub_name, relative coords segment $rel_coords_sgm is not + or - strand", 1, $FH_HR); }
+
+  # make sure our relative start and stop are <= $abs_len
+  if($rel_start > $abs_len) { ofile_FAIL("ERROR in $sub_name, relative coords segment has a position $rel_start that exceeds absolute coords ($abs_coords) length: $abs_len", 1, $FH_HR); }
+  if($rel_stop  > $abs_len) { ofile_FAIL("ERROR in $sub_name, relative coords segment has a position $rel_stop  that exceeds absolute coords ($abs_coords) length: $abs_len", 1, $FH_HR); }
+  
+  # do the conversion, one absolute segment at a time
+  my $cur_len_to_convert = abs($rel_stop - $rel_start) + 1; # number of positions left to convert from relative to absolute coords
+  my $cur_abs_offset = $rel_start - 1; # number of nucleotides to skip from start of $abs_coords_tok when converting coords
+  my $conv_start = undef; # a start position converted from relative to absolute coords
+  my $conv_stop  = undef; # a stop  position converted from relative to absolute coords
+  for(my $a = 0; $a < $nsgm_abs; $a++) { 
+    if($cur_len_to_convert > 0) { # only need to look at this token if we still have sequence left to convert
+      my ($abs_start, $abs_stop, $abs_strand) = ($abs_start_A[$a], $abs_stop_A[$a], $abs_strand_A[$a]);
+      my $abs_sgm_len = abs($abs_start - $abs_stop) + 1;
+      if($cur_abs_offset < $abs_sgm_len) { 
+        # this abs token has >= 1 nt corresponding to $rel_coords_sgm
+        if($abs_strand eq "+") { 
+          $conv_start = $abs_start + $cur_abs_offset;
+          $conv_stop  = $conv_start + $cur_len_to_convert - 1;
+          # make sure we didn't go off the end of the abs token
+          if($conv_stop > $abs_stop) { $conv_stop = $abs_stop; }
+        }
+        elsif($abs_strand eq "-") { 
+          $conv_start = $abs_start - $cur_abs_offset;
+          $conv_stop  = $conv_start - $cur_len_to_convert + 1;
+          # make sure we didn't go off the end of the nt token
+          if($conv_stop < $abs_stop) { $conv_stop = $abs_stop; }
+        }          
+        else { 
+          ofile_FAIL("ERROR in $sub_name, abs_coords token $abs_start..$abs_stop:$abs_strand has strand $abs_strand that is not either + or -", 1, $FH_HR); 
+        }
+        # update length of $rel_coords_sgm we still have to convert
+        $cur_len_to_convert -= abs($conv_stop - $conv_start) + 1;
+        
+        # append converted token to return coords string
+        if($ret_coords ne "") { $ret_coords .= ","; }
+        $ret_coords .= vdr_CoordsSegmentCreate($conv_start, $conv_stop, $abs_strand, $FH_HR);
+      }
+      # adjust nt offset so that for next nt coords token we start at the proper position
+      $cur_abs_offset -= $abs_sgm_len;
+      if($cur_abs_offset < 0) { $cur_abs_offset = 0; }
+    } # end of 'if($cur_len_to_convert > 0)
+  } # end of 'for(my $a = 0; $a < $nsgm_abs; $a++)'
+
+  if($orig_rel_strand eq "-") { 
+    $ret_coords = vdr_CoordsReverseComplement($ret_coords, 0, $FH_HR); # 0: do not include carrots
+  }
+
+  # printf("in $sub_name, returning $ret_coords\n");
+  return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsProteinRelativeToAbsoluate()
+#
+# Incept:     EPN, Fri Mar 20 07:12:19 2020
+#
+# Synopsis: Return absolute nucleotide coordinates that correspond to
+#           the relative protein coordinates in the coords string
+#           <$rel_coords> for a protein encoded by the nucleotide
+#           sequence with absolute coordinates <$abs_coords>
+#  
+#           abs_nt_coords          rel_pt_coords     returns
 #           "11..100:+"            "2..11:+"         "14..43:+"     
 #           "100..11:-"            "2..11:+"         "97..68:-"
 #           "11..40:+,42..101:+"   "2..11:+"         "14..40:+,42..44:+"
@@ -2749,88 +3079,261 @@ sub vdr_CoordsTokenOverlap {
 #           "100..11:-"            "2..3:+,5..11:+"  "97..92:-,88..68:-"
 #           "11..40:+,42..101:+"   "2..3:+,5..11:+"  "14..19:+,23..40:+,42..44:+"
 #
+# See t/01-coords.t for additional examples
+#
 # Arguments:
-#  $nt_coords:  nucleotide coordinates
-#  $pt_coords: protein coordinates to convert to nucleotide coordinates
-#  $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#  $abs_nt_coords:  nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_pt_coords:  relative protein coordinates 
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:   Coords string corresponding to $pt_coords in nucleotide 
-#            coordinates relative to $nt_coords.
-#            '0' if no overlap or the two tokens are on opposite strands.
+# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
+#            coordinates relative to $abs_nt_coords.
 #
-# Dies: if protein coordinates imply positions outside nucleotide coordinates
-#       (protein is too long)
-#       if protein coordinates have a segment on the negative strand
+# Dies: if $rel_pt_coords coordinates imply positions outside 
+#       $abs_nt_coords nucleotide coordinates (protein is too long)
 #
 #################################################################
-sub vdr_CoordsProtToNuc { 
-  my $sub_name = "vdr_CoordsProtToNuc";
+sub vdr_CoordsProteinRelativeToAbsolute { 
+  my $sub_name = "vdr_CoordsProteinRelativeToAbsolute";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($nt_coords, $pt_coords, $FH_HR) = @_;
-  if(! defined $nt_coords) { ofile_FAIL("ERROR in $sub_name, nt_coords is undefined", 1, $FH_HR); }
-  if(! defined $pt_coords) { ofile_FAIL("ERROR in $sub_name, pt_coords is undefined", 1, $FH_HR); }
+  my ($abs_nt_coords, $rel_pt_coords, $FH_HR) = @_;
 
-  my @nt_coords_tok_A = split(",", $nt_coords);
-  my @pt_coords_tok_A = split(",", $pt_coords);
-  my $nt_len = vdr_CoordsLength($nt_coords, $FH_HR);
-  my $pt_len = vdr_CoordsLength($pt_coords, $FH_HR);
-  if(($pt_len * 3) > $nt_len) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, protein length * 3 (%d) exceeds nucleotide length (%d) for protein coords: $pt_coords and nucleotide coords: $nt_coords", (3 * $pt_len), $nt_len), 1, $FH_HR); }
+  my $rel_nt_coords = vdr_CoordsProteinToNucleotide($rel_pt_coords, $FH_HR);
+  return vdr_CoordsRelativeToAbsolute($abs_nt_coords, $rel_nt_coords, $FH_HR);
+}
 
-  my $ret_coords = "";
+#################################################################
+# Subroutine: vdr_CoordsProteinToNucleotide()
+#
+# Incept:     EPN, Fri Mar 20 07:40:19 2020
+#
+# Synopsis: Return nucleotide coordinates that correspond to the
+#           protein coordinates in <$pt_coords>. 
+#
+#           Restricted to only work for plus strand segments, because
+#           it doesn't make sense to have negative strand proteins but
+#           code should be easily adaptable to work for minus strand
+#           if desired.
+#
+#           A protein start position corresponds to the first
+#           nucleotide position of the codon that encodes the first
+#           amino acid of the protein. A protein stop position
+#           corresponds to the third nucleotide position of the codon
+#           that encodes the final amino acid of the protein.
+#  
+#           pt_coords            returns 
+#           "1..10:+"            "1..30:+"
+#           "1..10:+,15..30:+"   "1..30:+,43..90");
+#
+# See t/01-coords.t for additional examples
+#
+# Arguments:
+#  $pt_coords:  protein coordinates 
+#  $FH_HR:      REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string corresponding to $rel_pt_coords in nucleotide 
+#            coordinates relative to $abs_nt_coords.
+#
+# Dies: if a segment in $pt_coords has a strand that is not "+"
+#
+#################################################################
+sub vdr_CoordsProteinToNucleotide { 
+  my $sub_name = "vdr_CoordsProteinToNucleotide";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  # printf("in $sub_name, nt_coords: $nt_coords, pt_coords: $pt_coords\n");
-  foreach my $pt_coords_tok (@pt_coords_tok_A) { 
-    # printf("pt_coords_tok: $pt_coords_tok\n");
-    my ($pt_start, $pt_stop, $pt_strand) = vdr_CoordsTokenParse($pt_coords_tok, $FH_HR);
-    if($pt_strand ne "+")      { ofile_FAIL("ERROR in $sub_name, protein strand is not + for token $pt_coords_tok in coords string $pt_coords", 1, $FH_HR); }
-    if($pt_start > $pt_stop) { ofile_FAIL("ERROR in $sub_name, protein strand is + but start coordinate is after stop coordinate ($pt_start > $pt_stop)", 1, $FH_HR); }
+  my ($pt_coords, $FH_HR) = @_;
 
-    my $pt_tok_len = 
-    my $remaining_conv_tok_nt_len = (($pt_stop - $pt_start) + 1) * 3; # number of nucleotide positions left to convert from protein coords to nt coords
-    my $cur_nt_offset = ($pt_start - 1) * 3; # number of nucleotides to skip from start of $nt_coords_tok when converting protein coords
-    # 
-    foreach my $nt_coords_tok (@nt_coords_tok_A) { 
-      if($remaining_conv_tok_nt_len > 0) { # only need to look at this token if we still have sequence left to convert
-        my ($nt_start, $nt_stop, $nt_strand) = vdr_CoordsTokenParse($nt_coords_tok, $FH_HR);
-        my $nt_coords_tok_len = abs($nt_start - $nt_stop) + 1;
-        my ($conv_start, $conv_stop) = (undef, undef); 
-        if($cur_nt_offset <= $nt_coords_tok_len) { # this nt token has >= 1 nt corresponding to $pt_coords_tok
-          if($nt_strand eq "+") { 
-            $conv_start = $nt_start + $cur_nt_offset;
-            $conv_stop  = $conv_start + $remaining_conv_tok_nt_len - 1;
-            # make sure we didn't go off the end of the nt token
-            if($conv_stop > $nt_stop) { $conv_stop = $nt_stop; }
-          }
-          elsif($nt_strand eq "-") { 
-            $conv_start = $nt_start - $cur_nt_offset;
-            $conv_stop  = $conv_start - $remaining_conv_tok_nt_len + 1;
-            # make sure we didn't go off the end of the nt token
-            if($conv_stop < $nt_stop) { $conv_stop = $nt_stop; }
-          }          
-          else { 
-            ofile_FAIL("ERROR in $sub_name, nt_coords token $nt_coords_tok has strand $nt_strand that is not either + or -", 1, $FH_HR); 
-          }
-          # determine how many more nt we have to cover for this protein coord token
-          $remaining_conv_tok_nt_len -= abs($conv_stop - $conv_start) + 1;
-          
-          # append converted token to return coords string
-          if($ret_coords ne "") { $ret_coords .= ","; }
-          $ret_coords .= vdr_CoordsTokenCreate($conv_start, $conv_stop, $nt_strand, $FH_HR);
-        }   
-        # adjust nt offset so that for next nt coords token we start at the proper position
-        $cur_nt_offset -= $nt_coords_tok_len;
-        if($cur_nt_offset < 0) { 
-          $cur_nt_offset = 0;
-        }
-      }
+  my @start_A  = ();
+  my @stop_A   = ();
+  my @strand_A = ();
+  vdr_FeatureStartStopStrandArrays($pt_coords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+  my $nt_coords = "";
+  my $start_coord = undef;
+  my $stop_coord  = undef;
+  my $nseg = scalar(@start_A);
+  for(my $s = 0; $s < $nseg; $s++) { 
+    if($nt_coords ne "") { $nt_coords .= ","; }
+    if($strand_A[$s] ne "+") { 
+      ofile_FAIL("ERROR in $sub_name, protein has segment that is not on + strand in coords string: $pt_coords", 1, $FH_HR);
     }
+    my $start_coord = ($start_A[$s] * 3) - 2;
+    my $stop_coord  = ($stop_A[$s] * 3);
+    $nt_coords .= $start_coord . ".." . $stop_coord . ":+";
   }
 
-  # printf("in $sub_name, returning $ret_coords\n");
+  return $nt_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMergeAllAdjacentSegments()
+#
+# Incept:     EPN, Fri Mar 20 09:17:06 2020
+#
+# Synopsis: Merge any 'adjacent' segments in <$coords_str> and
+#           return the possibly modified resulting coords string.
+#           Actual work is done by vdr_CoordsMergeTwoSegmentsIfAdjacent()
+#
+# Arguments:
+#  $coords: coords string to merge adjacent segments in
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Coords string with all adjacent segments merged together
+#
+# Dies: never
+#
+#################################################################
+sub vdr_CoordsMergeAllAdjacentSegments { 
+  my $sub_name = "vdr_CoordsMergeAllAdjacentSegments";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+
+  my @sgm_A = split(",", $coords);
+  my $nsgm = scalar(@sgm_A);
+
+  # only 1 segment, can't merge anything 
+  if($nsgm == 1) { return $coords; }
+
+  my $ret_coords = "";
+  my $cur_sgm = $sgm_A[0];
+  my $merged_sgm = undef;
+  for(my $i = 1; $i < $nsgm; $i++) { 
+    $merged_sgm = vdr_CoordsMergeTwoSegmentsIfAdjacent($cur_sgm, $sgm_A[$i], $FH_HR);
+    if($merged_sgm ne "") { 
+      # we merged two segments, don't append yet
+      $cur_sgm = $merged_sgm;
+      # printf("in $sub_name, cur_sgm is merged_sum: $cur_sgm\n");
+    }
+    else { # did not merge, append $cur_sgm, then update $cur_sgm
+      $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
+      $cur_sgm = $sgm_A[$i];
+    }
+  }
+  # add the final segment
+  $ret_coords = vdr_CoordsAppendSegment($ret_coords, $cur_sgm);
+
+  # printf("in $sub_name, input coords: $coords returning $ret_coords\n");
   return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMergeTwoSegmentsIfAdjacent()
+#
+# Incept:     EPN, Fri Mar 20 09:39:35 2020
+#
+# Synopsis: Merge two segments into one if they are 'adjacent'.
+#           Two segments 1 and 2 are adjacent if they are either:
+#           a) both are same strand and have fwd direction and
+#              $coords_str and start_2 == (stop_1+1)
+#           OR
+#           b) both are same strand and have bck direction and
+#              $coords_str and start_2 == (stop_1-1)
+#
+#           Where direction is defined as:
+#           if strand is +
+#             "fwd" if start_i <= stop_i
+#             "bck" if start_i >  stop_i
+#           if strand is -
+#             "fwd" if start_i >= stop_i
+#             "bck" if start_i <  stop_i
+#       
+#
+# Arguments:
+#  $sgm1:   segment 1
+#  $sgm2:   segment 2
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  A merged segment of segment 1 and 2 if they are adjacent
+#           else "" if they are not adjacent
+#
+# Dies: If either $sgm1 or $sgm2 is not parseable
+#
+#################################################################
+sub vdr_CoordsMergeTwoSegmentsIfAdjacent { 
+  my $sub_name = "vdr_CoordsMergeTwoSegmentsIfAdjacent";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($sgm1, $sgm2, $FH_HR) = @_;
+
+  my ($start1, $stop1, $strand1) = vdr_CoordsSegmentParse($sgm1, $FH_HR);
+  my ($start2, $stop2, $strand2) = vdr_CoordsSegmentParse($sgm2, $FH_HR);
+  my $dir1 = undef;
+  my $dir2 = undef;
+  if($strand1 eq "+") { 
+    $dir1 = ($start1 <= $stop1) ? "fwd" : "bck";
+  }
+  else { 
+    $dir1 = ($start1 >= $stop1) ? "bck" : "fwd";
+  }
+  if($strand2 eq "+") { 
+    $dir2 = ($start2 <= $stop2) ? "fwd" : "bck";
+  }
+  else { 
+    $dir2 = ($start2 >= $stop2) ? "bck" : "fwd";
+  }
+
+  # printf("in $sub_name, sgm1: $sgm1 sgm2: $sgm2 dir1: $dir1 dir2: $dir2\n");
+
+  # return quick if we can
+  if(($strand1 ne $strand2) || 
+     ($dir1    ne $dir2)) { 
+    return "";
+  }
+
+  # if we get here, $strand1 eq $strand2 and $dir1 eq $dir2
+  if((($dir1 eq "fwd") && ($start2 == ($stop1+1))) ||
+     (($dir1 eq "bck") && ($start2 == ($stop1-1)))) { 
+    return vdr_CoordsSegmentCreate($start1, $stop2, $strand1, $FH_HR);
+  }
+
+  return "";  
+}
+
+#################################################################
+# Subroutine: vdr_CoordsMaxLengthSegment()
+#
+# Incept:     EPN, Mon Mar 30 17:32:32 2020
+#
+# Synopsis: Return the maximum length segment and its length
+#           from a coords string of one or more segments.
+#           If multiple coords segments are tied for the maximum
+#           length, return the first one. 
+#
+# Arguments:
+#  $coords: segment 1
+#  $FH_HR:  REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  Two values:
+#           1. $argmax_sgm: he coords segment of maximum length 
+#           2. $max_sgm_len: length of $argmax_coords_sgm
+#
+# Dies: If unable to parse $coords
+#
+#################################################################
+sub vdr_CoordsMaxLengthSegment { 
+  my $sub_name = "vdr_CoordsMaxLengthSegment";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($coords, $FH_HR) = @_;
+
+  my @coords_tok_A  = split(",", $coords);
+  my $nsgm = scalar(@coords_tok_A);
+  my $argmax_sgm = $coords_tok_A[0];
+  my $max_sgm_len = vdr_CoordsLength($coords_tok_A[0], $FH_HR);
+  for(my $i = 1; $i < $nsgm; $i++) {
+    my $sgm_len = vdr_CoordsLength($coords_tok_A[$i], $FH_HR);
+    if($sgm_len > $max_sgm_len) {
+      $max_sgm_len = $sgm_len;
+      $argmax_sgm = $coords_tok_A[$i];
+    }
+  }
+  return ($argmax_sgm, $max_sgm_len);
 }
 
 #################################################################
@@ -3068,6 +3571,8 @@ sub vdr_ModelInfoFileParse {
   $format_str   .= "# <key> must not include any whitespace or ':' characters\n";
   $format_str   .= "# <value> must start *and* end with '\"' but include no other '\"'\n";
   $format_str   .= "# characters (but <value> may include whitespace characters).\n";
+  $format_str   .= "# To include multiple values for the same <key>, e.g. multiple 'note' qualifiers\n";
+  $format_str   .= "# separate each qualifier value by the string ':GBSEP:' in the <value> field.\n";
   $format_str   .= "# <key>:<value> pairs must be separated by one or more whitespace characters.\n";
   $format_str   .= "# <modelname> and the first <key>:<value> pair must be separated by one or\n";
   $format_str   .= "# more whitespace characters.\n";
@@ -3129,7 +3634,7 @@ sub vdr_ModelInfoFileParse {
           }
           else { # feature line
             if(exists $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key}) {
-              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on MODEL line; line:\n$orig_line\n", 1, $FH_HR);
+              ofile_FAIL("ERROR in $sub_name, problem parsing $in_file, read multiple values for key $key on FEATURE line; line:\n$orig_line\n", 1, $FH_HR);
             }
             $ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} = $value;
             # printf("\tadded ftr_info_HAHR->{$mdl_name}[$ftr_idx]{$key} as $value\n");
@@ -3156,83 +3661,301 @@ sub vdr_ModelInfoFileParse {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoMerge()
-# Incept:     EPN, Sun May  5 10:32:40 2019
+# Subroutine:  vdr_CmalignCheckStdOutput()
+# Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
-# Synopsis: Add info in one feature information arrays to another
-#           after validating that they can be merged.
-#
-#           Features to be merged are identified as "consistent"
-#           features between src_ftr_info_AHR and dst_ftr_info_AHR,
-#           defined as those for which there is a subset of >=1
-#           features that are in common (identical qualifier name and
-#           value) between the two.
-#
-#           If any "inconsistent" features are identified between
-#           src_ftr_info_AHR and dst_ftr_info_AHR the subroutine will
-#           die. "Inconsistent" features are those for which a subset
-#           of >=1 qualifiers have identical values but another subset
-#           of >=1 qualifiers have different values.
+# Purpose:     Check cmalign output to see if it indicates that 
+#              a cmalign run finished successfully, in error, or 
+#              has not yet finished.
+#              
+# Arguments: 
+#  $stdout_file:      path to the stdout file we will check
+#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
+#  $FH_HR:            REF to hash of file handles
 # 
-# Arguments:
-#  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
-#                       add to $
-#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
-#                    on the features to add to  $ftr_info1_HAHR
-#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
+#              '0' if $stdout_file indicates cmalign job finished in error but in
+#                  a way that is allowed, fills $$ret_mxsize_R
+#             '-1' if $stdout_file indicates cmalign job is not yet finished
+#                  or failed in some way we aren't looking for
+#
+# Dies: If $stdout_file does not exist or is empty
+# 
+################################################################# 
+sub vdr_CmalignCheckStdOutput { 
+  my $sub_name = "vdr_CmalignCheckStdOutput";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
+  if(defined $ret_mxsize_R) { 
+    $$ret_mxsize_R = 0; # overwritten below if nec
+  }
+
+  if(! -e $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
+  }
+  if(! -s $stdout_file) { 
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
+  }
+
+  # if we get here, the file exists and is non-empty
+  my $final_line = `tail -n 1 $stdout_file`;
+  chomp $final_line;
+  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+  if($final_line =~ m/\Q# CPU time/) { 
+    return 1; 
+  }
+  else { 
+    # job did NOT finish successfully, check for mx overflow error
+    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
+    if($error_line =~ m/\r$/) { chop $error_line; } # remove ^M if it exists
+    if($error_line =~ /Error: .+ alignment mxes need (\d+\.\d+)/) { 
+      if(defined $ret_mxsize_R) { 
+        $$ret_mxsize_R = $1;
+      }
+      return 0;
+    }
+    else { 
+      return -1;
+    }
+  }
+    
+  return -1; # NEVER REACHED
+}
+
+#################################################################
+# Subroutine : vdr_CmalignParseInsertFile()
+# Incept:      EPN, Thu Jan 31 13:06:54 2019
+#
+# Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
+#             results in %{$seq_inserts_HHR}.
+#
+#             
+# Arguments: 
+#  $ifile_file:       ifile file to parse
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, added to here, must be defined
+#                     key 1: sequence name
+#                     key 2: one of 'spos', 'epos', 'ins'
+#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                     for n inserts, where insert x is defined by:
+#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                     <uapos_x> is unaligned sequence position of the first aligned nt
+#                     <inslen_x> is length of the insert
+#  $mdl_name_HR:      REF to hash of model name hash to fill, added to here, can be undef
+#                     key: sequence name, value: name of model this sequence was aligned to
+#  $seq_name_AR:      REF to array of sequence names, in order read, added to here, can be undef
+#  $seq_len_HR:       REF to hash of sequence lengths to fill, added to here, can be undef
+#  $mdl_len_HR:       REF to hash of model name hash to fill, added to here, can be undef
+#                     key: *model* name, value: length of model
+#  $FH_HR:            REF to hash of file handles
 #
 # Returns:    void
 #
-# Dies:       if something is inconsistent between the two mdl_info_AHRs or
-#             ftr_info_HAHRs that prevent merging
-#################################################################
-sub vdr_FeatureInfoMerge { 
-  my $sub_name = "vdr_FeatureInfoMerge";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+# Dies:       if unable to parse the ifile
+#             if $seq_inserts_HHR is undef upon entry
+#             if the same model exists twice in the ifile with
+#             different lengths and $mdl_len_HR is defined
+#
+################################################################# 
+sub vdr_CmalignParseInsertFile { 
+  my $sub_name = "vdr_CmalignParseInsertFile()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($src_ftr_info_AHR, $dst_ftr_info_AHR, $FH_HR) = @_;
+  my ($ifile_file, $seq_inserts_HHR, $mdl_name_HR, $seq_name_AR, $seq_len_HR, $mdl_len_HR, $FH_HR) = @_;
   
-  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
-  my $src_nftr = scalar(@{$src_ftr_info_AHR});
-  my $dst_nftr = scalar(@{$dst_ftr_info_AHR});
-  my $src_ftr_key;
-  for(my $src_ftr_idx = 0; $src_ftr_idx < $src_nftr; $src_ftr_idx++) { 
-    my $found_consistent = 0;
-    for(my $dst_ftr_idx = 0; $dst_ftr_idx < $dst_nftr; $dst_ftr_idx++) { 
-      my $nconsistent   = 0;
-      my $ninconsistent = 0;
-      foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
-        if(defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-          if($src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key} eq
-             $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-            $nconsistent++;
+  open(IN, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, "reading", $FH_HR);
+
+  if(! defined $seq_inserts_HHR) {
+    ofile_FAIL("ERROR in $sub_name, seq_inserts_HHR is undef upon entry", 1, $FH_HR);
+  }
+    
+  my $line_ctr = 0;  # counts lines in ifile_file
+  my $mdl_name = undef;
+  my $mdl_len  = undef;
+  while(my $line = <IN>) { 
+    $line_ctr++;
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      if($line =~ m/\r$/) { chop $line; } # remove ^M if it exists
+      # 2 types of lines, those with 2 tokens, and those with 4 or more tokens
+      #norovirus.NC_039477 7567
+      #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+      my @el_A = split(/\s+/, $line);
+      if(scalar(@el_A) == 2) {
+        ($mdl_name, $mdl_len) = (@el_A);
+        if(defined $mdl_len_HR) {
+          if((defined $mdl_len_HR->{$mdl_name}) &&
+             ($mdl_len_HR->{$mdl_name} != $mdl_len)) {
+            ofile_FAIL("ERROR in $sub_name, model $mdl_name appears multiple times with different lengths $mdl_len and " . $mdl_len_HR->{$mdl_name}, 1, $FH_HR);
           }
-          else { 
-            $ninconsistent++;
-          }
+          $mdl_len_HR->{$mdl_name} = $mdl_len;
         }
       }
-      if(($nconsistent > 0) && ($ninconsistent == 0)) { 
-        # we found a match, merge them
-        if($found_consistent) { 
-          ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but found more than one feature consistent with it", 1, $FH_HR);
+      elsif(scalar(@el_A) >= 4) { 
+        if((! defined $mdl_name) || (! defined $mdl_len)) { 
+          ofile_FAIL("ERROR in $sub_name, read sequence line for sequence " . $el_A[0] . "before model line", 1, $FH_HR);
         }
-        foreach $src_ftr_key (sort keys (%{$src_ftr_info_AHR->[$src_ftr_idx]})) { 
-          if(! defined $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key}) { 
-            $dst_ftr_info_AHR->[$dst_ftr_idx]{$src_ftr_key} = 
-                $src_ftr_info_AHR->[$src_ftr_idx]{$src_ftr_key};
-          }
+        my $nel = scalar(@el_A); 
+        if((($nel - 4) % 3) != 0) { # check number of elements makes sense
+          ofile_FAIL("ERROR in $sub_name, unexpected number of elements ($nel) in ifile line in $ifile_file on line $line_ctr:\n$line\n", 1, $FH_HR);
+        }          
+        my ($seq_name, $seq_len, $spos, $epos) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3]);
+        if(! defined $seq_inserts_HHR->{$seq_name}) { 
+          # initialize
+          %{$seq_inserts_HHR->{$seq_name}} = ();
+          if(defined $mdl_name_HR) { $mdl_name_HR->{$seq_name} = $mdl_name; }
+          if(defined $seq_name_AR) { push(@{$seq_name_AR}, $seq_name); }
+          if(defined $seq_len_HR)  { $seq_len_HR->{$seq_name} = $seq_len; }
         }
-        $found_consistent = 1;
+        # create the insert string
+        my $insert_str = "";
+        for(my $el_idx = 4; $el_idx < scalar(@el_A); $el_idx += 3) { 
+          $insert_str .= $el_A[$el_idx] . ":" . $el_A[$el_idx+1] . ":" . $el_A[$el_idx+2] . ";"; 
+        }
+        $seq_inserts_HHR->{$seq_name}{"spos"} = $spos;
+        $seq_inserts_HHR->{$seq_name}{"epos"} = $epos;
+        $seq_inserts_HHR->{$seq_name}{"ins"}  = $insert_str;
       }
-    }
-    if(! $found_consistent) { 
-      ofile_FAIL("ERROR in $sub_name, trying to merge feature number " . ($src_ftr_idx + 1) . " but did not find any features consistent with it (we can't add new features like this)", 1, $FH_HR);
     }
   }
-
+  close(IN);
+  
   return;
+}
+
+#################################################################
+# Subroutine : vdr_CmalignWriteInsertFile()
+# Incept:      EPN, Fri Apr  3 11:17:49 2020
+#
+# Purpose:    Write an Infernal 1.1 cmalign --ifile given
+#             insert information in %{$seq_inserts_HHR}.
+#
+# Arguments: 
+#  $ifile_file:       ifile file to write to
+#  $do_append:        '1' to append to if file exists, '0' to create new file
+#  $mdl_name:         name of model for model line, all seqs should have insert info relative to this model
+#  $mdl_len:          length of model for model line,
+#  $seq_name_AR:      REF to array of sequence names to output data for from seq_inserts_HHR
+#  $seq_len_HR:       REF to hash of sequence lengths
+#  $seq_inserts_HHR:  REF to hash of hashes with insert information, already filled
+#                     key 1: sequence name
+#                     key 2: one of 'spos', 'epos', 'ins'
+#                     $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
+#                     $seq_inserts_HHR->{}{"epos"} is ending model position of alignment
+#                     $seq_inserts_HHR->{}{"ins"} is the insert string in the format:
+#                     <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                     for n inserts, where insert x is defined by:
+#                     <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                     <uapos_x> is unaligned sequence position of the first aligned nt
+#                     <inslen_x> is length of the insert
+#  $FH_HR:            REF to hash of file handles
+#
+# Returns:    void
+#
+# Dies:       if unable to parse the ifile
+#
+################################################################# 
+sub vdr_CmalignWriteInsertFile { 
+  my $sub_name = "vdr_CmalignWriteInsertFile()";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ifile_file, $do_append, $mdl_name, $mdl_len, $seq_name_AR, $seq_len_HR, $seq_inserts_HHR, $FH_HR) = @_;
+
+  # print("in $sub_name\n");
+  # utl_HHDump("seq_inserts_HH", $seq_inserts_HHR, *STDOUT);
+  
+  my $out_mode = (($do_append) && (-s $ifile_file)) ? ">>" : ">";
+  open(OUT, $out_mode, $ifile_file) || ofile_FileOpenFailure($ifile_file, $sub_name, $!, (($out_mode eq ">") ? "writing" : "appending"), $FH_HR);
+
+  my $line_ctr = 0;  # counts lines in ifile_file
+
+  # model line: 2 tokens
+  #<modelname> <modellen>
+  #norovirus.NC_039477 7567
+  print OUT $mdl_name . " " . $mdl_len . "\n";
+
+  # per-sequence lines, each has at least 3 tokens:
+  # <seqname> <spos> <epos>
+  # and optionally 
+  foreach my $seq_name (@{$seq_name_AR}) {
+    if(defined $seq_inserts_HHR->{$seq_name}) { 
+      print OUT ($seq_name . " " . $seq_len_HR->{$seq_name} . " " . $seq_inserts_HHR->{$seq_name}{"spos"} . " " . $seq_inserts_HHR->{$seq_name}{"epos"});
+      if((defined $seq_inserts_HHR->{$seq_name}{"ins"}) &&
+         $seq_inserts_HHR->{$seq_name}{"ins"} ne "") {
+        my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
+        foreach my $ins (@ins_A) {
+          # example line:
+          #gi|669176088|gb|KM198574.1| 7431 17 7447  2560 2539 3  2583 2565 3
+          if($ins =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+            print OUT ("  " . $1 . " " . $2 . " " . $3);
+          }
+          else {
+            ofile_FAIL("ERROR in $sub_name, unable to parse insert string " . $seq_inserts_HHR->{$seq_name}{"ins"} . " at token $ins", 1, $FH_HR);
+          }
+        }
+      }
+      print OUT "\n";
+    }
+  }
+  print OUT "//\n";
+
+  close OUT;
+}
+
+#################################################################
+# Subroutine:  vdr_CmemitConsensusToFile()
+# Incept:      EPN, Wed Apr 15 09:31:54 2020
+#
+# Purpose:    Run cmemit -c for model $mdl_name fetched from $cm_file
+#             and return the consensus sequence.
+#
+# Arguments: 
+#  $execs_HR:        REF to a hash with "blastx" and "parse_blastx.pl""
+#  $cm_file:         CM file to fetch from
+#  $mdl_name:        name of CM file to fetch
+#  $cseq_fa_file:    name of output fasta file to create
+#  $opt_HHR:         REF to options 2D hash
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#
+# Returns:    the consensus sequence as a string
+#
+# Dies:       If cmemit fails or we can't read any sequence from 
+#             the output fasta file
+#
+################################################################# 
+sub vdr_CmemitConsensus {
+  my $sub_name = "vdr_CmemitConsensusToFile";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $cmd = $execs_HR->{"cmfetch"} . " $cm_file $mdl_name | " . $execs_HR->{"cmemit"} . " -c - > $cseq_fa_file";
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), opt_Get("--keep", $opt_HHR), $FH_HR);
+
+  # fetch the sequence
+  my @file_lines_A = ();
+  utl_FileLinesToArray($cseq_fa_file, 1, \@file_lines_A, $FH_HR);
+  my $ret_cseq = "";
+  my $nlines = scalar(@file_lines_A);
+  if($nlines <= 1) { 
+    ofile_FAIL("ERROR in $sub_name, read 0 seq data from $cseq_fa_file", 1, $FH_HR); 
+  }
+  for(my $i = 1; $i < $nlines; $i++) { # start at $i == 1, skip header line
+    my $seq_line = $file_lines_A[$i];
+    chomp $seq_line;
+    $ret_cseq .= $seq_line;
+  }
+  
+  return $ret_cseq;
 }
 
 #################################################################
@@ -3383,70 +4106,6 @@ sub vdr_CdsFetchStockholmToFasta {
     }
   }
   return;
-}
-
-#################################################################
-# Subroutine:  vdr_CmalignCheckStdOutput()
-# Incept:      EPN, Wed Feb  6 14:18:59 2019
-#
-# Purpose:     Check cmalign output to see if it indicates that 
-#              a cmalign run finished successfully, in error, or 
-#              has not yet finished.
-#              
-# Arguments: 
-#  $stdout_file:      path to the stdout file we will check
-#  $ret_mxsize_R:     REF to required matrix size, only filled meaningfully if return value is '0'
-#  $FH_HR:            REF to hash of file handles
-# 
-# Returns:     '1' if $stdout_file indicates cmalign job finished successfully
-#              '0' if $stdout_file indicates cmalign job finished in error but in
-#                  a way that is allowed, fills $$ret_mxsize_R
-#             '-1' if $stdout_file indicates cmalign job is not yet finished
-#                  or failed in some way we aren't looking for
-#
-# Dies: If $stdout_file does not exist or is empty
-# 
-################################################################# 
-sub vdr_CmalignCheckStdOutput { 
-  my $sub_name = "vdr_CmalignCheckStdOutput";
-  my $nargs_expected = 3;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($stdout_file, $ret_mxsize_R, $FH_HR) = @_;
-  if(defined $ret_mxsize_R) { 
-    $$ret_mxsize_R = 0; # overwritten below if nec
-  }
-
-  if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
-  }
-  if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
-  }
-
-  # if we get here, the file exists and is non-empty
-  my $final_line = `tail -n 1 $stdout_file`;
-  chomp $final_line;
-  if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-  if($final_line =~ m/\Q# CPU time/) { 
-    return 1; 
-  }
-  else { 
-    # job did NOT finish successfully, check for mx overflow error
-    my $error_line = `grep ^Error $stdout_file | tail -n 1`;
-    if($error_line =~ m/\r$/) { chop $error_line; } # remove ^M if it exists
-    if($error_line =~ /Error: .+ alignment mxes need (\d+\.\d+)/) { 
-      if(defined $ret_mxsize_R) { 
-        $$ret_mxsize_R = $1;
-      }
-      return 0;
-    }
-    else { 
-      return -1;
-    }
-  }
-    
-  return -1; # NEVER REACHED
 }
 
 #################################################################
