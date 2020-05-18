@@ -5,6 +5,8 @@ RETVAL=0;
 for i in \
     iss3 \
     iss4 \
+    iss5 \
+    iss6 \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then

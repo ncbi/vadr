@@ -1,0 +1,7 @@
+#sequence	error	feature	error-description
+gi|924919779|gb|KR052021.1|	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.883<0.900]
+gi|924919779|gb|KR052021.1|	LOW_SIMILARITY_END	*sequence*	significant similarity not detected at 3' end of the sequence [low similarity region of length 480 (3661..4140)]
+gi|924919779|gb|KR052021.1|	UNEXPECTED_DIVERGENCE	*sequence*	sequence is too divergent to confidently assign nucleotide-based annotation [required matrix size: 26.12 Mb]
+gi|924919779|gb|KR052021.1|	INDEFINITE_ANNOTATION	nonstructural polyprotein	protein-based search identifies CDS not identified in nucleotide-based search [5 to 1687 with score 2064]
+gi|924919779|gb|KR052021.1|	INDEFINITE_ANNOTATION	VP1	protein-based search identifies CDS not identified in nucleotide-based search [1674 to 3284 with score 1138]
+gi|924919779|gb|KR052021.1|	INDEFINITE_ANNOTATION	VP2	protein-based search identifies CDS not identified in nucleotide-based search [3341 to 4051 with score 299]

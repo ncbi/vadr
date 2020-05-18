@@ -1,5 +1,5 @@
-#     seq                            seq                   num_Ns  num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
-#idx  name                           len  model      fail     tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
+#seq  seq                            seq                   num_Ns  num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
+#idx  name                           len  model      p/f      tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
 #---  ----------------------------  ----  ---------  ----  ------  ------  --------  -----  -----  -----  -------  -------  -------  -------  ---------------------
 1     gi|307574518|dbj|AB525810.1|   338  NC_029646  PASS       0       0         -      1      0      0        0        0        0        0  -                    
 2     gi|1215708385|gb|KY594653.1|   301  NC_039477  PASS      70       0     0.000      0      0      0        0        0        0        0  -                    

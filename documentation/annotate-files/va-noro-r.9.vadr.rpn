@@ -1,0 +1,12 @@
+#seq  seq          seq                   num_Ns  num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
+#idx  name         len  model      p/f      tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
+#---  ----------  ----  ---------  ----  ------  ------  --------  -----  -----  -----  -------  -------  -------  -------  ---------------------
+1     KY887602.1  7547  NC_039477  PASS     280     280     1.000      1      1      1        1        0      280        0  S:3151..3430,M:3172..3451,N:280/280;
+2     KT818729.1   243  NC_044854  PASS       0       0         -      0      0      0        0        0        0        0  -                    
+3     EU437710.1   291  NC_001959  PASS       0       0         -      0      0      0        0        0        0        0  -                    
+4     DQ288307.1  1094  NC_029645  PASS       0       0         -      0      0      0        0        0        0        0  -                    
+5     AY237464.1   255  NC_039477  PASS       0       0         -      0      0      0        0        0        0        0  -                    
+6     KF475958.1   275  NC_044854  PASS       0       0         -      0      0      0        0        0        0        0  -                    
+7     AB713840.1   347  NC_008311  PASS       0       0         -      0      0      0        0        0        0        0  -                    
+8     JN585032.1   286  NC_029645  PASS       0       0         -      1      0      0        0        0        0        0  -                    
+9     JN975492.1  7286  NC_008311  FAIL       3       0     0.000      1      0      0        0        0        0        0  -                    

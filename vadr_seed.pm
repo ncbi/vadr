@@ -973,7 +973,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
           my $start_3p = $ugp_seq_stop  - $nt_overhang + 1;
           my $stop_3p  = $seq_len;
           my $subseq_name = undef;
-          if($stop_5p > $start_3p) { # the two regions overlap, just fetch the full sequence
+          if($stop_5p >= $start_3p) { # the two regions overlap, just fetch the full sequence
             $subseq_name = $seq_name . "/1-" . $seq_len;
             push(@{$subseq_AAR}, [ $subseq_name, 1, $seq_len, $seq_name ]);
             @{$seq2subseq_HAR->{$seq_name}} = ($subseq_name);
@@ -1088,9 +1088,20 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
   my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
-  my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
-
-  # Open all of the input stk files and fetch the aligned sequence strings for all sequences
+  my $mdl_consensus_sqstring;
+  if(opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR)) { 
+    # We may already have cseq from the blastn -r alignment, but even
+    # if we do if we are outputting an alignment eventually then we
+    # want to recreate it from cmemit because we are going to
+    # eventually merge the alignments in which case we need all RF
+    # annotation to be identical (equal to cmemit seq) Open all of the
+    # input stk files and fetch the aligned sequence strings for all
+    # sequences
+    $mdl_consensus_sqstring = undef;
+  }
+  else { # if we're not going to output, then use it if we already have it
+    $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  }
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq

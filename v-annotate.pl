@@ -50,10 +50,10 @@ require "sqp_utils.pm";
 #     alignment coordinates and the known feature coordinates in the 
 #     model (supplied via the modelinfo file). 
 #   
-# (4) blastx CDS validation: CDS features are then validated via
-#     blastx by comparing predicted feature spans from (3) to pre-computed
-#     BLAST databases for the model. Alerts can be reported based on
-#     the blast results. 
+# (4) protein validation: CDS features are then validated via
+#    blastx or hmmer by comparing predicted feature spans from (3) to
+#    pre-computed BLAST or HMMER databases for the model. Alerts can
+#    be reported based on the blast/hmmer results. 
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Important options that change this behavior:
@@ -262,7 +262,7 @@ opt_Add("--hlonescore",  "integer",  10,        $g,"--hmmer","--skip_pv",       
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--mxsize",     "integer", 8000,      $g,    undef, undef,      "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb",    "set max allowed dp matrix size --mxsize value for cmalign calls to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 16000,     $g,    undef, undef,      "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
 opt_Add("--tau",        "real",    1E-3,      $g,    undef, undef,      "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--nofixedtau", "boolean", 0,         $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,         $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
@@ -281,7 +281,7 @@ opt_Add("--hmmer",    "boolean", 0,        $g,     undef,  "--skip_pv", "use hmm
 opt_Add("--h_max",    "boolean", 0,        $g, "--hmmer",  "--skip_pv", "use --max option with hmmsearch",                  "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
 opt_Add("--h_minbit", "real",    -10,      $g, "--hmmer",  "--skip_pv", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
-$opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration (-s)";
+$opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration";
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
 opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
@@ -438,12 +438,12 @@ my $options_okay =
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
-my $executable    = (defined $execname_opt) ? $execname_opt : $0;
+my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.0.6dev";
-my $releasedate   = "April 2020";
+my $version       = "1.1";
+my $releasedate   = "May 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -1115,34 +1115,53 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
-      my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
-      my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
-      join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
-                                              \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                              \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
-                                              \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
-                                              \@joined_stk_file_A, \%sda_output_HH,
-                                              \%alt_seq_instances_HH, \%alt_info_HH,
-                                              \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
-      push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
-      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
-      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
-
-      # replace any overflow info we have on subseqs to be for full seqs
-      if(scalar(@overflow_seq_A) > 0) { 
+      # first, replace any overflow info we have on subseqs to be for full seqs and remove them from the list of seqs to align
+      my @join_seq_name_A = (); # array of full seqs we'll try to join alignments for, this is all seqs except those with overflows
+      if(scalar(@overflow_seq_A) == 0) { 
+        @join_seq_name_A = @{$mdl_seq_name_HA{$mdl_name}};
+      }
+      else { # at least one overflow
         my @full_overflow_seq_A    = ();  
         my @full_overflow_mxsize_A = ();
         update_overflow_info_for_joined_alignments(\@overflow_seq_A, \@overflow_mxsize_A, \%subseq2seq_H, \@full_overflow_seq_A, \@full_overflow_mxsize_A);
         @overflow_seq_A    = @full_overflow_seq_A;
         @overflow_mxsize_A = @full_overflow_mxsize_A;
+
+        # fill @join_seq_name_A with only seqs that do not have an overflow
+        my %full_seq_overflow_H = ();
+        my $full_seq;
+        foreach $full_seq (@full_overflow_seq_A) { 
+          $full_seq_overflow_H{$full_seq} = 1; 
+        }
+        @join_seq_name_A = ();
+        foreach $full_seq (@{$mdl_seq_name_HA{$mdl_name}}) { 
+          if(! defined $full_seq_overflow_H{$full_seq}) { 
+            push(@join_seq_name_A, $full_seq);
+          }
+        }
       }
+
+      my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
+      my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
+      if(scalar(@join_seq_name_A > 0)) { 
+        join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
+                                                \@join_seq_name_A, \%seq_len_H, 
+                                                \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
+                                                \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
+                                                \@joined_stk_file_A, \%sda_output_HH,
+                                                \%alt_seq_instances_HH, \%alt_info_HH,
+                                                \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
+      }
+      push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
+      ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
+      @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
 
       # check for unjoinbl alerts, if we have any re-align the full seqs
       my $cur_unjoinbl_nseq = scalar(@unjoinbl_seq_name_A);
       if($cur_unjoinbl_nseq > 0) {
-      # at least one sequence had 'unjoinbl' alert, align the full seqs
+        # at least one sequence had 'unjoinbl' alert, align the full seqs
         # create fasta file
-        my $unjoinbl_mdl_fa_file = $out_root . "." . $mdl_name . "uj.a.fa";
+        my $unjoinbl_mdl_fa_file = $out_root . "." . $mdl_name . ".uj.a.fa";
         $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
@@ -1150,9 +1169,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                         $cm_file, $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                         $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                         \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
-        # append insert file we just made to larger join insert file
-        my $concat_cmd = sprintf("cat %s.%s.uj.align.ifile >> %s.%s.jalign.ifile", $out_root, $mdl_name, $out_root, $mdl_name);
-        utl_RunCommand($concat_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        # append insert file we just made to larger join insert file (if we created it (we may not have if all seqs had overflow error))
+        my $cur_ifile = sprintf("%s.%s.uj.align.ifile", $out_root, $mdl_name);
+        if(-s $cur_ifile) { 
+          my $concat_cmd = sprintf("cat $cur_ifile >> %s.%s.jalign.ifile", $out_root, $mdl_name);
+          utl_RunCommand($concat_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+        }
       }
     }
 
@@ -1203,8 +1225,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     }
 
     # Create option-defined output alignments, if any. 
-    # Logic differs significantly depending on -r or not so 
-    # we have separate blocks for each.
     if(opt_Get("--keep", \%opt_HH) || opt_Get("--out_stk", \%opt_HH) || opt_Get("--out_afa", \%opt_HH) || opt_Get("--out_rpstk", \%opt_HH) || opt_Get("--out_rpafa", \%opt_HH)) { 
       if(scalar(@{$stk_file_HA{$mdl_name}}) > 0) { 
         output_alignments(\%execs_H, \$in_sqfile, \@{$stk_file_HA{$mdl_name}}, $mdl_name, \%rpn_output_HH, $out_root, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
@@ -2353,12 +2373,17 @@ sub add_classification_alerts {
     my $alt_str = "";
     %{$cls_output_HHR->{$seq_name}} = ();
 
-    # check for noannotn alert: no hits in round 1 search
-    # or >=1 hits in classification stage but 0 hits in coverage determination stage (should be rare)
-    if((! defined $stg_results_HHHR->{$seq_name}) || 
+    # check for noannotn alert: 3 possibilities
+    # 1) no hits in round 1 search (most common cause of noannotn)
+    # 2) >= 1 hits in -r       classification stage (rpn.cls.1)  but 0 hits in standard classification stage (std.cls.1) (rare)
+    # 3) >= 1 hits in standard classification stage (std.cdt.bs) but 0 hits in coverage determination stage (std.cdt.bs) (rare)
+    if((! defined $stg_results_HHHR->{$seq_name}) || # case 1
+       ((defined $stg_results_HHHR->{$seq_name}) &&
+        (defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) &&
+        (! defined $stg_results_HHHR->{$seq_name}{"std.cls.1"})) || # case 2
        ((defined $stg_results_HHHR->{$seq_name}) &&
         (defined $stg_results_HHHR->{$seq_name}{"std.cls.1"}) &&
-        (! defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}))) { 
+        (! defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}))) { # case 3
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noannotn", $seq_name, "VADRNULL", $FH_HR);
     }
     else { 
@@ -2949,10 +2974,10 @@ sub cmalign_wrapper {
 #  $progress_w:            width for ofile_OutputProgress* subroutines
 #  $seq_file_AR:           ref to array of sequence file names for each cmalign/nhmmscan call, PRE-FILLED
 #  $out_file_AHR:          ref to array of hashes of output file names, FILLED HERE 
-#  $success_AR:            ref to array of success values, can be undef if $executable is "cmsearch"
+#  $success_AR:            ref to array of success values
 #                          $success_AR->[$j] set to '1' if job finishes successfully
 #                                            set to '0' if job fails due to mx overflow (must be cmalign)
-#  $mxsize_AR:             ref to array of required matrix sizes, can be undef if $executable is "cmsearch"
+#  $mxsize_AR:             ref to array of required matrix sizes
 #                          $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
 #                                           else set to '0'
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -3119,7 +3144,8 @@ sub cmalign_run {
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   # determine cmalign options based on command line options
-  my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize %s", opt_Get("--tau", $opt_HHR), opt_Get("--mxsize", $opt_HHR));
+  my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
+  my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize $cmalign_mxsize", opt_Get("--tau", $opt_HHR));
   # add --tfile $tfile_file, only if --keep 
   #if(opt_Get("--keep", $opt_HHR)) { 
   #$opts .= " --tfile $tfile_file"; 
@@ -3148,7 +3174,7 @@ sub cmalign_run {
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
-    my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.) * 3; # multiply --mxsize Gb by 3 to be safe
+    my $mem_gb = opt_Get("--mxsize", $opt_HHR) / 1000.;
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
       vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
@@ -4278,7 +4304,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
-                                                           seq_SqstringAddNewlines($ftr_sqstring_out, 60) . "\n"); 
+                                                           seq_SqstringAddNewlines($ftr_sqstring_out, 60)); 
         if(($do_separate_cds_fa_files) && ($ftr_is_cds)) { 
           if(! exists $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key}) { 
             my $separate_cds_fa_file = $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".pv.fa"; 
@@ -4286,7 +4312,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
             push(@{$to_remove_AR}, $separate_cds_fa_file);
           }
           print { $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
-                                                                seq_SqstringAddNewlines($ftr_sqstring_pv, 60) . "\n"); 
+                                                                seq_SqstringAddNewlines($ftr_sqstring_pv, 60)); 
         }
         
         # deal with mutstart for all CDS that are not 5' truncated
@@ -4342,14 +4368,33 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                   # there are no valid in-frame stops in $ftr_sqstring_alt
                   # we have a 'mutendns' or 'mutendex' alert, to find out which 
                   # we need to fetch the sequence ending at $fstop to the end of the sequence 
-                  if($ftr_stop < $seq_len) { 
+                  if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) ||
+                     (($ftr_strand eq "-") && ($ftr_stop > 1))) { 
                     # we have some sequence left 3' of ftr_stop
                     my $ext_sqstring = undef;
                     if($ftr_strand eq "+") { 
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
+                      # *careful* we don't really want to fetch to the end of the sequence, we want
+                      # to fetch the largest remaining subseq with length that is a multiple of 3
+                      # modulo 3, that's because of how sqstring_find_stops() works - it starts 
+                      # looking for in-frame stops starting at the end of the sequence and assumes 
+                      # final position of the subsequence its examining is frame 3
+                      my $cur_seq_end = $seq_len;
+                      my $cur_seq_len = abs($cur_seq_end - ($ftr_stop+1)) + 1;
+                      while(($cur_seq_len >= 3) && (($cur_seq_len % 3) != 0)) { 
+                        $cur_seq_end--;
+                        $cur_seq_len = abs($cur_seq_end - ($ftr_stop+1)) + 1;
+                      }
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $cur_seq_end, 0); 
                     }
                     else { # negative strand
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                      # see *careful* note above in + strand block for explanation of this code:
+                      my $cur_seq_end = 1;
+                      my $cur_seq_len = abs(($ftr_stop-1) - $cur_seq_end) + 1;
+                      while(($cur_seq_len >= 3) && (($cur_seq_len % 3) != 0)) { 
+                        $cur_seq_end++;
+                        $cur_seq_len = abs(($ftr_stop-1) - $cur_seq_end) + 1;
+                      }
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, $cur_seq_end, 1);
                     }
                     my @ext_nxt_stp_A = ();
                     sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
@@ -4595,7 +4640,7 @@ sub sqstring_find_stops {
   $nxt_stp_AR->[$sqlen]     = 0;
 
 #  for($i = 1; $i <= $sqlen; $i++) { 
-#    printf("position $i: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
+#    printf("position %5d: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
 #  }
 
   return;
@@ -5355,9 +5400,6 @@ sub parse_blastx_results {
       }
       elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"}) || (! defined $cur_H{"FRAME"})) { 
-          foreach my $z ("QACC", "HACC", "HSP", "RAWSCORE", "FRAME") { 
-            printf("$z defined: %d\n", (defined $cur_H{$z}) ? 1 : 0);
-          }
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, RAWSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         if(($value ne "") && ($value ne "BLASTNULL")) { 
@@ -5435,13 +5477,13 @@ sub parse_blastx_results {
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = $cur_H{"DEL"};
                 }
                 else { 
-                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = undef;
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = undef;
                 }
                 if(defined $cur_H{"STOP"}) { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
                 }
                 else { 
-                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = undef;
                 }
               }
             }
@@ -6921,16 +6963,16 @@ sub output_tabular {
   my $do_sda = opt_Get("-s", $opt_HHR) ? 1 : 0;
   my @head_sda_AA = ();
   my @data_sda_AA = ();
-  @{$head_sda_AA[0]} = ("",    "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
-  @{$head_sda_AA[1]} = ("idx", "name",   "len", "model", "fail",  "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
+  @{$head_sda_AA[0]} = ("seq", "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
+  @{$head_sda_AA[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
   my @clj_sda_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
 
   # optional .rpn file
   my $do_rpn = opt_Get("-r", $opt_HHR) ? 1 : 0;
   my @head_rpn_AA = ();
   my @data_rpn_AA = ();
-  @{$head_rpn_AA[0]} = ("",    "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
-  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "fail",  "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
+  @{$head_rpn_AA[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
+  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "p/f",   "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
   my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,         0,        0,          0,       0,        0,         0,         0,         0,         0,         1);
 
   my $zero_classifications = 1; # set to '0' below if we have >= 1 seqs that are classified ($seq_mdl1 ne "-")

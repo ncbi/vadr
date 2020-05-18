@@ -1,0 +1,7 @@
+#seq  seq                             seq                    ungapped      ungapped  ungapped  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln
+#idx  name                            len  model      p/f         seq           mdl  fraction      seq      mdl  fraction      seq      mdl  fraction
+#---  -----------------------------  ----  ---------  ----  ---------  ------------  --------  -------  -------  --------  -------  -------  --------
+1     NC_001959.2/3000-4000.1        1001  NC_001959  PASS  1..1001:+  3000..4000:+     1.000        -        -         -        -        -         -
+2     gi|924919779|gb|KR052021.1|.1  4140  NC_001959  FAIL          -             -         -        -        -         -        -        -         -
+3     NC_001959.2/3000-4000.2        1001  NC_001959  PASS  1..1001:+  3000..4000:+     1.000        -        -         -        -        -         -
+4     gi|924919779|gb|KR052021.1|.2  4140  NC_001959  FAIL          -             -         -        -        -         -        -        -         -

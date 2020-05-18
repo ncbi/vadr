@@ -61,8 +61,8 @@ rmdir: va-noro-rpn-fetchr.r2
 # --r_cdsmpr
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_cdsmpr --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-cdsmpr.r2 > va-noro-rpn-cdsmpr.r2.out
 desc: annotate-noro-2-rpn-cdsmpr
-out: va-noro-rpn.r2/va-noro-rpn.r2.vadr.pass.tbl
-out: va-noro-rpn.r2/va-noro-rpn.r2.vadr.fail.tbl
+out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.pass.tbl
+out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.fail.tbl
 out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.NC_029646.CDS.1.fa
 out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.NC_029646.CDS.1.pv.fa
 out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.NC_029646.pv.blastx.fa
