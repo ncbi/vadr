@@ -7088,7 +7088,7 @@ sub output_tabular {
           my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
           my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
           if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
-            utl_HDump("ftr_results_HR, $seq_name", $ftr_results_HR, *STDOUT);
+            # HEYAB utl_HDump("ftr_results_HR, $seq_name", $ftr_results_HR, *STDOUT);
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
             my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
@@ -7851,19 +7851,20 @@ sub output_feature_table {
             my $is_3trunc_term_or_n = $ftout_AH[$ftr_ftidx]{"3trunc_term_or_n"}; # 3' truncated due to sequence terminus and/or Ns
             my $codon_start         = $ftout_AH[$ftr_ftidx]{"codon_start"};
             # is it too short? 4 cases:
-            printf("\nHEYA\n");
-            printf("\tftidx:               $ftidx\n");
-            printf("\tis_cds:              $is_cds\n");
-            printf("\tftr_ft_idx:          $ftr_ftidx\n");
-            printf("\tftbl_len:            $ftbl_len\n");
-            printf("\tis_3trunc_term_or_n: $is_3trunc_term_or_n\n");
-            printf("\tcodon_start:         $codon_start\n");
+            # HEYAB
+            #printf("\nHEYA\n");
+            #printf("\tftidx:               $ftidx\n");
+            #printf("\tis_cds:              $is_cds\n");
+            #printf("\tftr_ft_idx:          $ftr_ftidx\n");
+            #printf("\tftbl_len:            $ftbl_len\n");
+            #printf("\tis_3trunc_term_or_n: $is_3trunc_term_or_n\n");
+            #printf("\tcodon_start:         $codon_start\n");
             if(($ftbl_len < 3)                            || # less than 1 AA, regardless of frame
                (($ftbl_len == 3) && ($codon_start != 1))  || # less than 1 AA, frame 2 or 3
                (($ftbl_len == 4) && ($codon_start == 3))  || # less than 1 AA, frame 3
                (($ftbl_len <= 5) && (! $is_3trunc_term_or_n))) { # only a stop codon
               $remove_me_A[$ftidx] = 1;
-              printf("\t\tset remove_me_A[$ftidx] to 1\n");
+              # HEYAB printf("\t\tset remove_me_A[$ftidx] to 1\n");
             }
           }
           elsif(($is_mp) && # mat_peptide
@@ -7903,9 +7904,9 @@ sub output_feature_table {
       # actually remove the output
       for($ftidx = ($pre_remove_noutftr-1); $ftidx >= 0; $ftidx--) { 
         # descending so we can use splice without messing up indices
-        printf("checking ftidx: $ftidx\n");
+        # printf("HEYAB checking ftidx: $ftidx\n");
         if($remove_me_A[$ftidx]) { 
-          printf("splicing ftidx: $ftidx\n");
+          # printf("HEYAB splicing ftidx: $ftidx\n");
           splice(@ftout_AH, $ftidx, 1);
         }
       }
@@ -7919,7 +7920,7 @@ sub output_feature_table {
 
     # possibly add noftrann or noftranc alerts
     if($seq_ntabftr == 0) { 
-      printf("HEYAB seqntabftr is 0 for $seq_name, adding noftrann alert\n");
+      # printf("HEYAB seqntabftr is 0 for $seq_name, adding noftrann alert\n");
       # no features annotated, even in eventual .ftr tabular file
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
       # set @seq_alert_A to this lone alert
@@ -7929,7 +7930,7 @@ sub output_feature_table {
     elsif($cur_noutftr == 0) { 
       # >= 1 features annotated in eventual .ftr tbl file, but zero in this .tbl file because 
       # they were all too short
-      printf("HEYAB cur_noutftr is 0 for $seq_name, adding noftrant alert\n");
+      # printf("HEYAB cur_noutftr is 0 for $seq_name, adding noftrant alert\n");
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrant", $seq_name, "VADRNULL", $FH_HR);
       # set @seq_alert_A to this lone alert
       @seq_alert_A = ();
