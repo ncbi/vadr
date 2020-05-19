@@ -1,5 +1,0 @@
-#seq  seq                                     seq             best            sub                             seq   
-#idx  name                                    len  p/f   ant  model      grp  grp  nfa  nfn  nf5  nf3  nfalt  alerts
-#---  --------------------------------------  ---  ----  ---  ---------  ---  ---  ---  ---  ---  ---  -----  ------
-1     ENTOY100A/pass                          100  PASS  yes  ENTOY100A  toy  A     11    0    0    0      0  -     
-2     ENTOY100A/two-cds-all-Ns-but-47-and-48  100  FAIL  yes  ENTOY100A  toy  A     11    0    3    1      6  -     

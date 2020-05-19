@@ -1,9 +1,0 @@
-#     alert     causes   short                            per    num   num  long       
-#idx  code      failure  description                     type  cases  seqs  description
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
-1     ambgnt5f  no       N_AT_FEATURE_START           feature      1     1  first nucleotide of non-CDS feature is an N
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
-2     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM  feature      2     1  mat_peptide may not be translated because its parent CDS has a problem
-3     ambgnt5c  yes      N_AT_CDS_START               feature      2     1  first nucleotide of CDS is an N
-4     ambgnt3c  yes      N_AT_CDS_END                 feature      1     1  final nucleotide of CDS is an N
-#---  --------  -------  ---------------------------  -------  -----  ----  -----------
