@@ -13,10 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-# set 1, single segment CDS, positive strand
-# 
-# no -r
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --nomisc --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.genematchcds.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a.nends.fa va-entoy100a.nends > va-entoy100a.nends.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --nomisc --minpvlen 3 --keep --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.genematchcds.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a.nends.fa va-entoy100a.nends > va-entoy100a.nends.out
 desc: annotate-entoy100a.nends
 out: va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
 out: va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl
@@ -31,20 +28,3 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.n
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
 rmdir: va-entoy100a.nends
-#
-# -r, with different sequence file
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --nomisc --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.genematchcds.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a.nends.r.fa va-entoy100a.nends.r > va-entoy100a.nends.r.out
-desc: annotate-entoy100a.nends.r
-out: va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.pass.tbl 
-out: va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.fail.tbl
-out: va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.ftr
-out: va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.sgm
-out: va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.alt
-out: va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.alt.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends.r/va-entoy100a.nends.r.vadr.alt.list
-rmdir: va-entoy100a.nends.r

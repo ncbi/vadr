@@ -1,6 +1,5 @@
 Multi-segment CDS tests for N-ends code (ambg{5,3}{c,f,s} alerts).
 
-
 Two fasta files:
 1. entoy100a.nends.fa:
    Sequence names are somewhat descriptive.
@@ -23,18 +22,17 @@ Two fasta files:
 = ENTOY100A/one-cds-only-stop-len4-28-31      100 
 = ENTOY100A/one-cds-only-stop-len3-29-31      100 
 
-2. entoy100.nends.r.fa: 
-   More complicated examples, run with -r, but that's not especially
-   important. 
+2. entoy100a-rev.nends.fa:
+   Same as 1 but reverse complemented for use with entoy100a-rev model
+   which is identical to entoy100a but is reverse complemented. 
+   This seq file was created with this set of commads:
 
-> esl-seqstat -a $VADRSCRIPTSDIR/testfiles/entoy100a.nends.r.fa
-= ENTOY100A/pass                 100 
-= ENTOY100A/two-cds-all-Ns-but-47-and-48      100 
+   $ esl-seqstat -a entoy100a.nends.fa | grep ^= | awk '{ print $2 }' | awk '{ printf("%s-rev 100 1 %s\n", $1, $1); }' | esl-sfetch -Cf entoy100a.nends.fa - > entoy100a-rev.nends.fa
 
-= ENTOY100A/two-cds-all-Ns-but-47-and-48: this is a 3nt codon only
-  because position 47 is duplicated in the CDS, like a frameshift.
+--
 
-See $VADRSCRIPTSDIR/testfiles/entoy100a.genematchcds.minfo for
+See $VADRSCRIPTSDIR/testfiles/entoy100a.genematchcds.minfo and
+$VADRSCRIPTSDIR/testfiles/entoy100a-rev.genematchcds.minfo and for
 coordinates of each feature.
 
 TODO: 
