@@ -135,7 +135,7 @@ require "sqp_utils.pm";
 #     unjoinbl (1)
 #
 # 12. output_feature_table()
-#     noftrann, noftrant (1)
+#     noftrann, noftrant, ftskipfl (1)
 #
 #######################################################################################
 # make sure required environment variables are set
@@ -1558,8 +1558,8 @@ exit 0;
 # helper_ftable_process_feature_alerts
 #
 # Other output-related subroutines:
-# helper_output_sequence_alert_strings
-# helper_output_feature_alert_strings
+# helper_output_sequence_alert_strings()
+# helper_output_feature_alert_strings()
 # output_alignments()
 # msa_replace_sequences()
 # 
@@ -7936,7 +7936,27 @@ sub output_feature_table {
       @seq_alert_A = ();
       push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrant"}{"sdesc"}, $alt_info_HHR->{"noftrant"}{"ldesc"}, ""));
     }
-    my $cur_nalert = scalar(@seq_alert_A);
+
+    # determine if the sequence will pass
+    # the sequences only pass if:
+    # 1) at least one feature is annotated ($cur_noutftr > 0)
+    # 2) zero fatal sequence alerts and feature alerts for features annotated in the feature table
+    # 3) zero fatal feature alerts for features NOT annotated in the feature table (because they are too short)
+    # we need criteria 3 so that all seqs that FAIL in tabular output files also FAIL in feature table files 
+    # (e.g. are listed in fail.tbl instead of .pass.tbl)
+    my $do_pass = (($cur_noutftr > 0) && ((scalar(@seq_alert_A)) == 0)) ? 1 : 0; # checks only that criteria 1 and 2 are met
+
+    # next line checks for criteria 3 (only if first 2 criteria have been met)
+    if($do_pass && (! check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR))) { 
+      # sequence has zero fatal sequence alerts *and* zero fatal feature alerts for all features output to feature table
+      # BUT at least one fatal alert for a feature NOT output to feature table (e.g. a feature that is too short to meet
+      # minimum length requirements for the feature table). We throw a special alert here (ftskipfl) for this
+      # so the sequence fails both in tabular and feature table output.
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "see .ftr and .alt output files for details", $FH_HR);
+      # set @seq_alert_A to this lone alert
+      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, " [" . $alt_seq_instances_HHR->{$seq_name}{"ftskipfl"} . "]"));
+      $do_pass = 0; # this seq fails
+    }
 
     # sort output
     if($cur_noutftr > 0) { 
@@ -7946,16 +7966,6 @@ sub output_feature_table {
                              $a->{"type_priority"}    <=> $b->{"type_priority"} 
       } @ftout_AH;
     }              
-
-    # sequences only pass if:
-    # - at least one feature is annotated ($cur_noutftr > 0)
-    # - zero notes and alerts
-    my $do_pass = (($cur_noutftr > 0) && ($cur_nalert == 0)) ? 1 : 0;
-    
-    # sanity check, our $do_pass value should match what check_if_sequence_passes() returns based on alert instances
-    if($do_pass != check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) { 
-      ofile_FAIL("ERROR in $sub_name, sequence $seq_name, feature table do_pass: $do_pass disagrees with PASS/FAIL designation based on alert instances - shouldn't happen.", 1, $ofile_info_HHR->{"FH"});
-    }
       
     if($do_pass) { 
       # print to the passing feature table file
@@ -7974,7 +7984,7 @@ sub output_feature_table {
         # print 
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
       }
-      if($cur_nalert > 0) { 
+      if((scalar(@seq_alert_A)) > 0) { 
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_alert_A); $e++) { 
           my $error_line = $seq_alert_A[$e];

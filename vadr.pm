@@ -1569,6 +1569,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
+                   "UNREPORTED_FEATURE_PROBLEM", # short description
+                   "only fatal alerts are for feature(s) not output to feature table", # long description
+                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
