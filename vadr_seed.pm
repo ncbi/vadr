@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # 
 # version: 1.0.6 [April 2020]
 #
