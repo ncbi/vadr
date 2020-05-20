@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # Converted from parse_blastx.pl to parse_blast.pl 
 # 
 # program written by Alejandro Schaffer to convert a blastx 
