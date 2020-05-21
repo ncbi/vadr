@@ -1,0 +1,2 @@
+#sequence	error	feature	error-description
+LC312762.1	UNREPORTED_FEATURE_PROBLEM	*sequence*	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]

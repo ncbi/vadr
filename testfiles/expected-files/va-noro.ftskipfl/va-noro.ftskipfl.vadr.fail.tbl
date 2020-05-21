@@ -1,0 +1,9 @@
+>Feature LC312762.1
+<1	>190	gene
+			gene	ORF2
+<1	>190	CDS
+			product	VP1
+			protein_id	LC312762.1_1
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]

@@ -27,6 +27,8 @@ for t in \
     do-mxsize-tests.sh \
     do-uj-tests.sh \
     do-nindel-tests.sh \
+    do-nends-tests.sh \
+    do-ftskipfl-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
