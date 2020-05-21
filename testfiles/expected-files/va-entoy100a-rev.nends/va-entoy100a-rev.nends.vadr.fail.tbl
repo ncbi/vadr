@@ -1,0 +1,677 @@
+>Feature ENTOY100A/one-4Ns-start-11-14-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_2
+<86	70	gene
+			gene	one
+<86	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_1
+<86	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 86]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-4Ns-end-28-31-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_2
+90	>74	gene
+			gene	one
+90	>74	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_1
+78	>74	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-4Ns-end-28-31-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein one) final nucleotide of CDS is an N [final 4 positions are Ns, final non-N is position 74]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_2
+<86	>74	gene
+			gene	one
+<86	>74	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_1
+78	>74	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_1
+<86	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein one) final nucleotide of CDS is an N [final 4 positions are Ns, final non-N is position 74]
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 86]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-second-posn-N-12-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-second-posn-N-12-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_START: (protein one) expected start codon could not be identified [ANG starting at position 90 on - strand is not a valid start]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-second-to-final-posn-N-30-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-second-to-final-posn-N-30-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [28]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-first-position-N-11-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-first-position-N-11-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-first-position-N-11-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-first-position-N-11-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-first-position-N-11-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-first-position-N-11-rev_2
+<89	70	gene
+			gene	one
+<89	70	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-first-position-N-11-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-first-position-N-11-rev_1
+<89	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-first-position-N-11-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 1 positions are Ns, first non-N is position 89]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-final-position-N-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-final-position-N-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-final-position-N-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-final-position-N-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-final-position-N-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-final-position-N-rev_2
+90	>71	gene
+			gene	one
+90	>71	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-final-position-N-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-final-position-N-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-one-final-position-N-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein one) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 71]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-one-12Ns-start-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A-one-12Ns-start-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A-one-12Ns-start-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A-one-12Ns-start-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-one-12Ns-start-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A-one-12Ns-start-rev_2
+<78	70	gene
+			gene	one
+<78	70	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-12Ns-start-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-one-12Ns-start-rev_1
+96	>91	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	>91	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 12 positions are Ns, first non-N is position 78]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A/one-cds-two-codons-len6-26-31-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_2
+<75	70	gene
+			gene	one
+<75	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_1
+<75	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_1
+96	>91	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	>91	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 75]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A/one-cds-only-stop-len5-27-31-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31-rev_2
+<74	70	gene
+			gene	one
+96	>91	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	>91	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 16 positions are Ns, first non-N is position 74]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A/one-cds-only-stop-len4-28-31-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31-rev_2
+<73	70	gene
+			gene	one
+96	>91	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	>91	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 17 positions are Ns, first non-N is position 73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A/one-cds-only-stop-len3-29-31-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31-rev_4
+34	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31-rev_3
+34	26	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31-rev_3
+69	54	CDS
+54	37
+35	28
+			product	protein two
+			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31-rev_2
+<72	70	gene
+			gene	one
+96	>91	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	>91	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 72]
+>Feature ENTOY100A/two-cds-all-Ns-but-47-and-48-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_4
+<27	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_3
+<54	54	CDS
+54	>53
+			product	protein two
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 24 positions are Ns, final non-N is position 53]
+ERROR: N_AT_CDS_START: (protein two) first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 54]
+ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 7 positions are Ns, first non-N is position 27]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A/two-cds-all-Ns-but-47-rev
+3	17	CDS
+			product	protein four
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_4
+<27	22	CDS
+16	6
+			product	protein three
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_3
+25	22	mat_peptide
+16	9
+			product	protein three mp2
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_3
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 25 positions are Ns, final non-N is position 54]
+ERROR: N_AT_CDS_START: (protein two) first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 54]
+ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 7 positions are Ns, first non-N is position 27]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A/three-cds-two-codons-len6-90-95-rev
+3	>11	CDS
+			product	protein four
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_4
+<11	6	CDS
+			product	protein three
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_3
+<11	9	mat_peptide
+			product	protein three mp2
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_3
+69	54	CDS
+54	37
+35	>35
+			product	protein two
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 35]
+ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 11]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 6 positions are Ns, final non-N is position 11]
+>Feature ENTOY100A/three-cds-only-stop-len5-91-95-rev
+3	>10	CDS
+			product	protein four
+			protein_id	ENTOY100A/three-cds-only-stop-len5-91-95-rev_4
+69	54	CDS
+54	37
+35	>35
+			product	protein two
+			protein_id	ENTOY100A/three-cds-only-stop-len5-91-95-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/three-cds-only-stop-len5-91-95-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/three-cds-only-stop-len5-91-95-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/three-cds-only-stop-len5-91-95-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 35]
+ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 19 positions are Ns, first non-N is position 10]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 10]
+>Feature ENTOY100A/three-cds-only-stop-len4-92-95-rev
+3	>9	CDS
+			product	protein four
+			protein_id	ENTOY100A/three-cds-only-stop-len4-92-95-rev_4
+69	54	CDS
+54	37
+35	>35
+			product	protein two
+			protein_id	ENTOY100A/three-cds-only-stop-len4-92-95-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/three-cds-only-stop-len4-92-95-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/three-cds-only-stop-len4-92-95-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/three-cds-only-stop-len4-92-95-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.690<0.900]
+ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 35]
+ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 20 positions are Ns, first non-N is position 9]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 8 positions are Ns, final non-N is position 9]
+>Feature ENTOY100A/three-cds-only-stop-len3-93-95-rev
+3	>8	CDS
+			product	protein four
+			protein_id	ENTOY100A/three-cds-only-stop-len3-93-95-rev_4
+69	54	CDS
+54	37
+35	>35
+			product	protein two
+			protein_id	ENTOY100A/three-cds-only-stop-len3-93-95-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A/three-cds-only-stop-len3-93-95-rev_1
+78	73	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A/three-cds-only-stop-len3-93-95-rev_1
+90	79	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A/three-cds-only-stop-len3-93-95-rev_1
+96	79	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+91	82	stem_loop
+			note	stem-loop 1
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.680<0.900]
+ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 35]
+ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 21 positions are Ns, first non-N is position 8]
+ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 9 positions are Ns, final non-N is position 8]
