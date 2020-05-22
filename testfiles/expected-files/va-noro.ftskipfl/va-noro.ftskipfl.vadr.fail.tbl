@@ -3,6 +3,7 @@
 			gene	ORF2
 <1	>190	CDS
 			product	VP1
+			codon_start	1
 			protein_id	LC312762.1_1
 
 Additional note(s) to submitter:

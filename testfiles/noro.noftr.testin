@@ -58,4 +58,23 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr2/va-noro-noftr2.vad
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr2-notrim/va-noro-noftr2-notrim.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr2/va-noro-noftr2.vadr.rpn
 rmdir: va-noro-noftr2-notrim
+#######
+#
+# noftr, third set, ftskipfl tests
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --skip_pv --nomisc --minpvlen 30 --alicheck -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.noftr.ftskipfl.fa va-noro-noftr-ftskipfl > va-noro-noftr-ftskipfl.out
+desc: annotate-noro-noftr-ftskipfl
+out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.pass.tbl 
+out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.fail.tbl
+out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.alt.list
+out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.alt
+out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.ftr
+out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.sgm
+rmdir: va-noro-noftr-ftskipfl
+#
 
