@@ -8149,8 +8149,8 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
   my $ret_ftr_ftbl_coords_str = "";
   my $ret_ftr_ftbl_coords_len = 0;
   my $ret_min_coord = undef; # minimum coordinate output to table
-  my $ret_is_5trunc_term_or_n_first_sgm = 0; # set to '1' if first segment is 5' truncated due to sequence terminus or Ns
-  my $ret_is_3trunc_term_or_n_final_sgm = 0; # set to '1' if final segment is 3' truncated due to sequence terminus or Ns
+  my $ret_is_5trunc_term_or_n_first_sgm = undef; # set to '1' if first segment is 5' truncated due to sequence terminus or Ns, '0' if not
+  my $ret_is_3trunc_term_or_n_final_sgm = undef; # set to '1' if final segment is 3' truncated due to sequence terminus or Ns, '0' if not
 
   my $ncoord = scalar(@{$start_AR});
   if($ncoord == 0) { 
@@ -8223,6 +8223,9 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
       $ret_ftr_ftbl_coords_len += abs($stop - $start) + 1;
     }
   }
+  if(! defined $ret_min_coord)                     { $ret_min_coord = -1; } # irrelevant, caller's responsibility to handle this
+  if(! defined $ret_is_5trunc_term_or_n_first_sgm) { $ret_is_5trunc_term_or_n_first_sgm =  0; } # irrelevant, caller's responsibility to handle this
+  if(! defined $ret_is_3trunc_term_or_n_final_sgm) { $ret_is_3trunc_term_or_n_final_sgm =  0; } # irrelevant, caller's responsibility to handle this
   if(! defined $ret_min_coord) { $ret_min_coord = -1; } # irrelevant, caller's responsibility to handle this
 
   return ($ret_ftr_ftbl_coords_str, $ret_ftr_ftbl_coords_len, $ret_min_coord, 
