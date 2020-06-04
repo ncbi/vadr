@@ -322,11 +322,12 @@ opt_Add("--out_sgminfo",    "boolean", 0,    $g,    undef, undef,   "output inte
 opt_Add("--out_altinfo",    "boolean", 0,    $g,    undef, undef,   "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
-#       option       type          default     group  requires incompat  preamble-output                                                         help-output    
-opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>",                         "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
-opt_Add("--alicheck",   "boolean", 0,             $g,    undef, undef,   "for debugging, check aligned sequence vs input sequence for identity", "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
-opt_Add("--minbit",     "real",    -10,           $g,    undef, undef,   "set minimum cmsearch/cmscan bit score threshold to <x>",               "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--origfa",     "boolean",   0,           $g,    undef, undef,   "do not copy fasta file prior to analysis, use original",               "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
+#       option            type          default     group  requires incompat  preamble-output                                                          help-output    
+opt_Add("--execname",     "string",  undef,         $g,    undef,   undef,    "define executable name of this script as <s>",                           "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--alicheck",     "boolean", 0,             $g,    undef,   undef,    "for debugging, check aligned sequence vs input sequence for identity",   "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
+opt_Add("--noseqnamemax", "boolean", 0,             $g,    undef,   undef,    "do not enforce a maximum length of 50 for sequence names (GenBank max)", "do not enforce a maximum length of 50 for sequence names (GenBank max)", \%opt_HH, \@opt_order_A);
+opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch/cmscan bit score threshold to <x>",                 "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -432,6 +433,7 @@ my $options_okay =
                 'execname=s'    => \$GetOptions_H{"--execname"},
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'origfa'        => \$GetOptions_H{"--origfa"},
+                'noseqnamemax'  => \$GetOptions_H{"--noseqnamemax"},
                 'minbit'        => \$GetOptions_H{"--minbit"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -828,7 +830,7 @@ ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1,
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
 # make sure that no sequence names exceed our max_length
-my $max_seqname_length = (opt_Get("
+#my $max_seqname_length = (opt_Get("
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
