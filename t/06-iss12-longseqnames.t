@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 11;
+use Test::More tests => 36;
 
 # make sure the VADRINSTALLDIR, VADRSCRIPTSDIR and VADRMODELDIR env variables are set
 my $env_ok = exists $ENV{"VADRINSTALLDIR"} ? 1 : 0;
@@ -61,13 +61,35 @@ for(my $i = 0; $i < $ncmd; $i++) {
 
 ###############################################################
 #### tests of maximum protein id length in output feature table
-# default with noro.subseq.fa with long name, should fail
+# seqs in the noro.subseq-namelen50.fa file have sequence names of length, 48, 49 and 50
 @cmd_A = ();
 @desc_A = ();
 @fail_A = ();
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq-namelen50.fa va-test > /dev/null 2>&1");
-push(@desc_A, "feature table check: v-annotate.pl noro.subseq.fa name length 50");
-push(@fail_A, 0);
+my @longok_A = (); # 0 if it is NOT okay to have long protein_ids > 50 chars, 1 if it is 
+
+# default, protein_ids should have lengths <= 50
+push(@cmd_A,    "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq-namelen50.fa va-test > /dev/null 2>&1");
+push(@desc_A,   "feature table check: v-annotate.pl default noro.subseq.fa name length 48, 49, 50");
+push(@fail_A,   0);
+push(@longok_A, 0);
+
+# --forceprotid, protein_ids should have lengths >= 50
+push(@cmd_A,    "\$VADRSCRIPTSDIR/v-annotate.pl -f --forceprotid \$VADRSCRIPTSDIR/testfiles/noro.subseq-namelen50.fa va-test > /dev/null 2>&1");
+push(@desc_A,   "feature table check: v-annotate.pl --forceprotid noro.subseq.fa name length 48, 49, 50");
+push(@fail_A,   0);
+push(@longok_A, 1);
+
+# --noseqnamemax, protein_ids should have lengths >= 50
+push(@cmd_A,    "\$VADRSCRIPTSDIR/v-annotate.pl -f --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq-namelen50.fa va-test > /dev/null 2>&1");
+push(@desc_A,   "feature table check: v-annotate.pl --noseqnamemax noro.subseq.fa name length 48, 49, 50");
+push(@fail_A,   0);
+push(@longok_A, 1);
+
+# --forceprotid and --noseqnamemax, protein_ids should have lengths >= 50
+push(@cmd_A,    "\$VADRSCRIPTSDIR/v-annotate.pl -f --forceprotid --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq-namelen50.fa va-test > /dev/null 2>&1");
+push(@desc_A,   "feature table check: v-annotate.pl --forceprotid --noseqnamemax noro.subseq.fa name length 48, 49, 50");
+push(@fail_A,   0);
+push(@longok_A, 1);
 
 $ncmd = scalar(@cmd_A);
 $retval = undef;
@@ -83,8 +105,21 @@ for(my $i = 0; $i < $ncmd; $i++) {
     if($line =~ /^\s+protein_id\s+(\S+)/) {
       my $prot_id_value = $1;
       my $len = length($prot_id_value);
-      my $less_than_50 = ($len <= 50) ? 1 : 0;
-      is($less_than_50, 1, "$desc_A[$i] protein_id $prot_id_value, length $len <= 50");
+      my $more_than_50 = ($len > 50) ? 1 : 0;
+      my $exactly_50 = ($len == 50) ? 1 : 0;
+      if($longok_A[$i]) { 
+        if($prot_id_value =~ /48/) { 
+          # 48 char name should go to 50
+          is($exactly_50, 1, "$desc_A[$i] protein_id $prot_id_value, length $len == 50, as expected");
+        }
+        else { 
+          # 49 and 50 char names should go to more than 50
+          is($more_than_50, 1, "$desc_A[$i] protein_id $prot_id_value, length $len > 50, as expected");
+        }
+      }
+      else { # longid not okay, all ids should be 50 chars
+        is($exactly_50, 1, "$desc_A[$i] protein_id $prot_id_value, length $len == 50, as expected");
+      }
     }
   }
   close(IN);
