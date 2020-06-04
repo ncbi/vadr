@@ -32,7 +32,7 @@ push(@desc_A, "v-annotate.pl noro.subseq.fa short name, --noseqnamemax not used"
 push(@fail_A, "0");
 
 # default with noro.subseq.fa with short name and --noseqnamemax, should pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
 push(@desc_A, "v-annotate.pl noro.subseq.fa short name, --noseqnamemax used");
 push(@fail_A, "0");
 
@@ -42,7 +42,7 @@ push(@desc_A, "v-annotate.pl noro.subseq.fa long name, --noseqnamemax not used")
 push(@fail_A, "1");
 
 # default with noro.subseq.fa with long name and --noseqnamemax, should pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq-longname.fa va-test > /dev/null 2>&1");
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq-longname.fa va-test > /dev/null 2>&1");
 push(@desc_A, "v-annotate.pl noro.subseq.fa long name, --noseqnamemax used");
 push(@fail_A, "0");
 

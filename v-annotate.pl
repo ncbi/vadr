@@ -829,8 +829,15 @@ utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $in_fa_file > $seqstat_file"
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
-# make sure that no sequence names exceed our max_length
-#my $max_seqname_length = (opt_Get("
+# make sure that no sequence names exceed our max_length, unless --noseqnamemax used
+my $max_seqname_length = 50; # hard-coded
+if(! opt_Get("--noseqnamemax", \%opt_HH)) { 
+  foreach my $seq_name (@seq_name_A) { 
+    if(length($seq_name) > $max_seqname_length) { 
+      ofile_FAIL("ERROR, at least one sequence name exceeds the maximum GenBank allowed length of $max_seqname_length:\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
+    }
+  }
+}
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
