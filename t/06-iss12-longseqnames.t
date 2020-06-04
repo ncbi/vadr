@@ -26,6 +26,9 @@ push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -h > /dev/null");
 push(@desc_A, "v-annotate.pl -h");
 push(@fail_A, "0");
 
+#######################
+# tests of maximum sequence length in input sequence file
+
 # default with noro.subseq.fa with short name, should pass
 push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
 push(@desc_A, "v-annotate.pl noro.subseq.fa short name, --noseqnamemax not used");
@@ -56,7 +59,40 @@ for(my $i = 0; $i < $ncmd; $i++) {
   is($retval, $fail_A[$i], sprintf("%s: expected %s", $desc_A[$i], ($fail_A[$i] ? "fail" : "return code 0 (pass)")));
 }
 
+###############################################################
+#### tests of maximum protein id length in output feature table
+# default with noro.subseq.fa with long name, should fail
+@cmd_A = ();
+@desc_A = ();
+@fail_A = ();
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq-namelen50.fa va-test > /dev/null 2>&1");
+push(@desc_A, "feature table check: v-annotate.pl noro.subseq.fa name length 50");
+push(@fail_A, 0);
+
+$ncmd = scalar(@cmd_A);
+$retval = undef;
+my $ftbl_file = "va-test/va-test.vadr.pass.tbl";
+for(my $i = 0; $i < $ncmd; $i++) { 
+  $retval = system($cmd_A[$i]);
+  if($retval != 0) { $retval = 1; }
+  is($retval, $fail_A[$i], sprintf("%s: expected %s", $desc_A[$i], ($fail_A[$i] ? "fail" : "return code 0 (pass)")));
+  # parse the pass.tbl to get the protein_id values
+  open(IN, $ftbl_file) || die "ERROR unable to open $ftbl_file";
+  my $j = 1;
+  while(my $line = <IN>) { 
+    if($line =~ /^\s+protein_id\s+(\S+)/) {
+      my $prot_id_value = $1;
+      my $len = length($prot_id_value);
+      my $less_than_50 = ($len <= 50) ? 1 : 0;
+      is($less_than_50, 1, "$desc_A[$i] protein_id $prot_id_value, length $len <= 50");
+    }
+  }
+  close(IN);
+}
+
+# add test with >= 10 protein_ids, or just manually test
+
 my $dir;
 foreach $dir (@rmdir_A) { 
-  system("rm -rf $dir");
+#  system("rm -rf $dir");
 }
