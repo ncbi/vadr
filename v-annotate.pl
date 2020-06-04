@@ -231,7 +231,7 @@ $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                            help-output    
 opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
 opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
-opt_Add("--forceid",      "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
+opt_Add("--forceprotid",      "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
@@ -357,7 +357,7 @@ my $options_okay =
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
                 "noprotid"      => \$GetOptions_H{"--noprotid"},
-                "forceid"       => \$GetOptions_H{"--forceid"},
+                "forceprotid"   => \$GetOptions_H{"--forceprotid"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -826,6 +826,9 @@ my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq 
 utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $in_fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
+
+# make sure that no sequence names exceed our max_length
+my $max_seqname_length = (opt_Get("
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
@@ -7514,9 +7517,9 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
-  my $do_nomisc   = opt_Get("--nomisc",   $opt_HHR); # 1 to never output misc_features
-  my $do_noprotid = opt_Get("--noprotid", $opt_HHR); # 1 to never output protein_id qualifiers
-  my $do_forceid  = opt_Get("--forceid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_nomisc      = opt_Get("--nomisc",      $opt_HHR); # 1 to never output misc_features
+  my $do_noprotid    = opt_Get("--noprotid",    $opt_HHR); # 1 to never output protein_id qualifiers
+  my $do_forceprotid = opt_Get("--forceprotid", $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
 
   # determine order of alert codes to print
   my $alt_code;
@@ -7701,7 +7704,7 @@ sub output_feature_table {
                 $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx} = $protein_id_idx;
               }
               $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", 
-                                                                    sprintf("%s" . "_" . "%d", (($do_forceid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx), 
+                                                                    sprintf("%s" . "_" . "%d", (($do_forceprotid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx), 
                                                                     $FH_HR);
             }
           }
