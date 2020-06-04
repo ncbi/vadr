@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 23;
+use Test::More tests => 11;
 
 # make sure the VADRINSTALLDIR, VADRSCRIPTSDIR and VADRMODELDIR env variables are set
 my $env_ok = exists $ENV{"VADRINSTALLDIR"} ? 1 : 0;

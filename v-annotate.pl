@@ -7526,9 +7526,11 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
-  my $do_nomisc      = opt_Get("--nomisc",      $opt_HHR); # 1 to never output misc_features
-  my $do_noprotid    = opt_Get("--noprotid",    $opt_HHR); # 1 to never output protein_id qualifiers
-  my $do_forceprotid = opt_Get("--forceprotid", $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_nomisc       = opt_Get("--nomisc",       $opt_HHR); # 1 to never output misc_features
+  my $do_noprotid     = opt_Get("--noprotid",     $opt_HHR); # 1 to never output protein_id qualifiers
+  my $do_forceprotid  = opt_Get("--forceprotid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_noseqnamemax = opt_Get("--noseqnamemax", $opt_HHR); # 1 to allow protein_id values of any length
+  my $max_protein_id_length = 50; # hard-coded
 
   # determine order of alert codes to print
   my $alt_code;
@@ -7712,9 +7714,31 @@ sub output_feature_table {
                 $protein_id_idx = $nprotein_id;
                 $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx} = $protein_id_idx;
               }
-              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", 
-                                                                    sprintf("%s" . "_" . "%d", (($do_forceprotid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx), 
-                                                                    $FH_HR);
+              # determine the protein_id value
+              # - this cannot exceed $max_protein_id_length (50) characters as per GenBank rules (see github issue #12)
+              #   so we shorten it to 50 characters if necessary UNLESS --forceprotid OR --noseqnamemax are used in which 
+              #   case we assume user doesn't care about GenBank maximum
+              # - first we try <seqname>_<index_of_protein_id_for_this_seq>, if this is <= $max_protein_id_length then we use that,
+              #   if not, then we add a new suffix "_seq<seqidx>_<index_of_protein_id_for_this_seq>" at prepend the 
+              #   first $max_protein_id_length - length(suffix) characters of the sequence name to it
+              my $protein_id_value = sprintf("%s" . "_" . "%d", (($do_forceprotid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx);
+              if((! $do_forceprotid) && (! $do_noseqnamemax)) { # neither --forceprotid and --noseqnamemax used
+                # make sure length of protein_id_value doesn't exceed the maximum, if so, shorten it.
+                if((length($protein_id_value)) > $max_protein_id_length) { 
+                  my $new_sfx = sprintf("_seq%d_%d", ($seq_idx + 1), $protein_id_idx);
+                  my $len_new_sfx = length($new_sfx);
+                  if($len_new_sfx > $max_protein_id_length) { 
+                    ofile_FAIL("ERROR in $sub_name, suffix being used to prevent protein id from exceeding $max_protein_id_length characters is itself more than $max_protein_id_length characters:\n$new_sfx\n", 1, $FH_HR);
+                  }
+                  if((length($seq_name) + $len_new_sfx) <= $max_protein_id_length) { 
+                    $protein_id_value = $seq_name . $new_sfx;
+                  }
+                  else { 
+                    $protein_id_value = substr($seq_name, 0, ($max_protein_id_length - $len_new_sfx)) . $new_sfx;
+                  }
+                }
+              }
+              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", $protein_id_value, $FH_HR);
             }
           }
           else { # we are a misc_feature, add the 'similar to X' note
