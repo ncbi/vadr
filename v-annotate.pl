@@ -231,7 +231,7 @@ $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                            help-output    
 opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",  \%opt_HH, \@opt_order_A);
 opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides", \%opt_HH, \@opt_order_A);
-opt_Add("--forceid",      "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
+opt_Add("--forceprotid",      "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
@@ -322,11 +322,12 @@ opt_Add("--out_sgminfo",    "boolean", 0,    $g,    undef, undef,   "output inte
 opt_Add("--out_altinfo",    "boolean", 0,    $g,    undef, undef,   "output internal alert information",     "create file with internal alert information", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
-#       option       type          default     group  requires incompat  preamble-output                                                         help-output    
-opt_Add("--execname",   "string",  undef,         $g,    undef, undef,   "define executable name of this script as <s>",                         "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
-opt_Add("--alicheck",   "boolean", 0,             $g,    undef, undef,   "for debugging, check aligned sequence vs input sequence for identity", "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
-opt_Add("--minbit",     "real",    -10,           $g,    undef, undef,   "set minimum cmsearch/cmscan bit score threshold to <x>",               "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--origfa",     "boolean",   0,           $g,    undef, undef,   "do not copy fasta file prior to analysis, use original",               "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
+#       option            type          default     group  requires incompat  preamble-output                                                          help-output    
+opt_Add("--execname",     "string",  undef,         $g,    undef,   undef,    "define executable name of this script as <s>",                           "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--alicheck",     "boolean", 0,             $g,    undef,   undef,    "for debugging, check aligned sequence vs input sequence for identity",   "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
+opt_Add("--noseqnamemax", "boolean", 0,             $g,    undef,   undef,    "do not enforce a maximum length of 50 for sequence names (GenBank max)", "do not enforce a maximum length of 50 for sequence names (GenBank max)", \%opt_HH, \@opt_order_A);
+opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch/cmscan bit score threshold to <x>",                 "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -357,7 +358,7 @@ my $options_okay =
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
                 "noprotid"      => \$GetOptions_H{"--noprotid"},
-                "forceid"       => \$GetOptions_H{"--forceid"},
+                "forceprotid"   => \$GetOptions_H{"--forceprotid"},
 # options for controlling alert thresholds
                 "lowsc=s"       => \$GetOptions_H{"--lowsc"},
                 'indefclass=s'  => \$GetOptions_H{"--indefclass"},
@@ -432,6 +433,7 @@ my $options_okay =
                 'execname=s'    => \$GetOptions_H{"--execname"},
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'origfa'        => \$GetOptions_H{"--origfa"},
+                'noseqnamemax'  => \$GetOptions_H{"--noseqnamemax"},
                 'minbit'        => \$GetOptions_H{"--minbit"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
@@ -826,6 +828,24 @@ my %seq_len_H = ();  # key: sequence name (guaranteed to be unique), value: seq 
 utl_RunCommand($execs_H{"esl-seqstat"} . " --dna -a $in_fa_file > $seqstat_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
 ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "seqstat", $seqstat_file, 1, 1, "esl-seqstat -a output for input fasta file");
 sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
+
+# make sure that no sequence names exceed our max_length, unless --noseqnamemax used
+my $max_seqname_length = 50; # hard-coded
+my $lcl_max_seqname_length = $max_seqname_length + length("lcl|"); # NCBI allows length 54 if it starts with lcl|
+if(! opt_Get("--noseqnamemax", \%opt_HH)) { 
+  foreach my $seq_name (@seq_name_A) { 
+    if($seq_name =~ /^lcl\|/) { 
+      if(length($seq_name) > $lcl_max_seqname_length) { 
+        ofile_FAIL("ERROR, at least one sequence name that begins with lcl| exceeds the maximum GenBank allowed length of $lcl_max_seqname_length\nfor seq names that start 'lcl|' (otherwise max length is $max_seqname_length):\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
+      }
+    }
+    else { 
+      if(length($seq_name) > $max_seqname_length) { 
+        ofile_FAIL("ERROR, at least one sequence name exceeds the maximum GenBank allowed length of $max_seqname_length:\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
+      }
+    }
+  }
+}
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
@@ -7514,9 +7534,11 @@ sub output_feature_table {
   my $nseq = scalar(@{$seq_name_AR}); # nseq: number of sequences
   my $nalt = scalar(keys %{$alt_info_HHR});
 
-  my $do_nomisc   = opt_Get("--nomisc",   $opt_HHR); # 1 to never output misc_features
-  my $do_noprotid = opt_Get("--noprotid", $opt_HHR); # 1 to never output protein_id qualifiers
-  my $do_forceid  = opt_Get("--forceid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_nomisc       = opt_Get("--nomisc",       $opt_HHR); # 1 to never output misc_features
+  my $do_noprotid     = opt_Get("--noprotid",     $opt_HHR); # 1 to never output protein_id qualifiers
+  my $do_forceprotid  = opt_Get("--forceprotid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
+  my $do_noseqnamemax = opt_Get("--noseqnamemax", $opt_HHR); # 1 to allow protein_id values of any length
+  my $max_protein_id_length = 50; # hard-coded
 
   # determine order of alert codes to print
   my $alt_code;
@@ -7700,9 +7722,32 @@ sub output_feature_table {
                 $protein_id_idx = $nprotein_id;
                 $ftr_idx2protein_id_idx_H{$protein_id_ftr_idx} = $protein_id_idx;
               }
-              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", 
-                                                                    sprintf("%s" . "_" . "%d", (($do_forceid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx), 
-                                                                    $FH_HR);
+              # determine the protein_id value
+              # - this cannot exceed $max_protein_id_length (50) characters as per GenBank rules (see github issue #12)
+              #   so we shorten it to 50 characters if necessary UNLESS --forceprotid OR --noseqnamemax are used in which 
+              #   case we assume user doesn't care about GenBank maximum
+              # - first we try <seqname>_<index_of_protein_id_for_this_seq>, if this is <= $max_protein_id_length then we use that,
+              #   if not, then we add a new suffix "_seq<seqidx>_<index_of_protein_id_for_this_seq>" at prepend the 
+              #   first $max_protein_id_length - length(suffix) characters of the sequence name to it
+              my $protein_id_value = sprintf("%s" . "_" . "%d", (($do_forceprotid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx);
+              if((! $do_forceprotid) && (! $do_noseqnamemax)) { # neither --forceprotid and --noseqnamemax used
+                # make sure length of protein_id_value doesn't exceed the maximum, if so, shorten it.
+                if((length($protein_id_value)) > $max_protein_id_length) { 
+                  my $new_sfx = sprintf("...seq%d_%d", ($seq_idx + 1), $protein_id_idx);
+                  my $len_new_sfx = length($new_sfx);
+                  if($len_new_sfx > $max_protein_id_length) { 
+                    ofile_FAIL("ERROR in $sub_name, suffix being used to prevent protein id from exceeding $max_protein_id_length characters is itself more than $max_protein_id_length characters:\n$new_sfx\n", 1, $FH_HR);
+                  }
+                  my $alt_seq_name = get_accession_from_ncbi_seq_name($seq_name);
+                  if((length($alt_seq_name) + $len_new_sfx) <= $max_protein_id_length) { 
+                    $protein_id_value = $alt_seq_name . $new_sfx;
+                  }
+                  else { 
+                    $protein_id_value = substr($alt_seq_name, 0, ($max_protein_id_length - $len_new_sfx)) . $new_sfx;
+                  }
+                }
+              }
+              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", $protein_id_value, $FH_HR);
             }
           }
           else { # we are a misc_feature, add the 'similar to X' note
