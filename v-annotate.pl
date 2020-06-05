@@ -7733,16 +7733,17 @@ sub output_feature_table {
               if((! $do_forceprotid) && (! $do_noseqnamemax)) { # neither --forceprotid and --noseqnamemax used
                 # make sure length of protein_id_value doesn't exceed the maximum, if so, shorten it.
                 if((length($protein_id_value)) > $max_protein_id_length) { 
-                  my $new_sfx = sprintf("_seq%d_%d", ($seq_idx + 1), $protein_id_idx);
+                  my $new_sfx = sprintf("..._seq%d_%d", ($seq_idx + 1), $protein_id_idx);
                   my $len_new_sfx = length($new_sfx);
                   if($len_new_sfx > $max_protein_id_length) { 
                     ofile_FAIL("ERROR in $sub_name, suffix being used to prevent protein id from exceeding $max_protein_id_length characters is itself more than $max_protein_id_length characters:\n$new_sfx\n", 1, $FH_HR);
                   }
-                  if((length($seq_name) + $len_new_sfx) <= $max_protein_id_length) { 
-                    $protein_id_value = $seq_name . $new_sfx;
+                  my $alt_seq_name = get_accession_from_ncbi_seq_name($seq_name);
+                  if((length($alt_seq_name) + $len_new_sfx) <= $max_protein_id_length) { 
+                    $protein_id_value = $alt_seq_name . $new_sfx;
                   }
                   else { 
-                    $protein_id_value = substr($seq_name, 0, ($max_protein_id_length - $len_new_sfx)) . $new_sfx;
+                    $protein_id_value = substr($alt_seq_name, 0, ($max_protein_id_length - $len_new_sfx)) . $new_sfx;
                   }
                 }
               }
