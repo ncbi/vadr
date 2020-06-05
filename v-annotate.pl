@@ -831,10 +831,18 @@ sqf_EslSeqstatOptAParse($seqstat_file, \@seq_name_A, \%seq_len_H, $FH_HR);
 
 # make sure that no sequence names exceed our max_length, unless --noseqnamemax used
 my $max_seqname_length = 50; # hard-coded
+my $lcl_max_seqname_length = $max_seqname_length + length("lcl|"); # NCBI allows length 54 if it starts with lcl|
 if(! opt_Get("--noseqnamemax", \%opt_HH)) { 
   foreach my $seq_name (@seq_name_A) { 
-    if(length($seq_name) > $max_seqname_length) { 
-      ofile_FAIL("ERROR, at least one sequence name exceeds the maximum GenBank allowed length of $max_seqname_length:\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
+    if($seq_name =~ /^lcl\|/) { 
+      if(length($seq_name) > $lcl_max_seqname_length) { 
+        ofile_FAIL("ERROR, at least one sequence name that begins with lcl| exceeds the maximum GenBank allowed length of $lcl_max_seqname_length\nfor seq names that start 'lcl|' (otherwise max length is $max_seqname_length):\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
+      }
+    }
+    else { 
+      if(length($seq_name) > $max_seqname_length) { 
+        ofile_FAIL("ERROR, at least one sequence name exceeds the maximum GenBank allowed length of $max_seqname_length:\n$seq_name\nTo bypass this restriction, rerun with the --noseqnamemax option enabled.\n", 1, $FH_HR);
+      }
     }
   }
 }
