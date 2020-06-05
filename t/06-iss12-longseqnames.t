@@ -1,6 +1,6 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 36;
+use Test::More tests => 64;
 
 # make sure the VADRINSTALLDIR, VADRSCRIPTSDIR and VADRMODELDIR env variables are set
 my $env_ok = exists $ENV{"VADRINSTALLDIR"} ? 1 : 0;
@@ -47,6 +47,26 @@ push(@fail_A, "1");
 # default with noro.subseq.fa with long name and --noseqnamemax, should pass
 push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq-longname.fa va-test > /dev/null 2>&1");
 push(@desc_A, "v-annotate.pl noro.subseq.fa long name, --noseqnamemax used");
+push(@fail_A, "0");
+
+# default with noro.subseq.fa with 54 char name that starts with lcl|, should pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq-lclname.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa 54 char name starts with lcl|, --noseqnamemax not used");
+push(@fail_A, "0");
+
+# default with noro.subseq.fa with 54 char name that starts with lcl| and --noseqnamemax, should pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq-lclname.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa 54 char name starts with lcl|, --noseqnamemax used");
+push(@fail_A, "0");
+
+# default with noro.subseq.fa with 54 char name that starts with lc|, should fail
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f \$VADRSCRIPTSDIR/testfiles/noro.subseq-lcname.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa 54 char name starts with lc|, --noseqnamemax not used");
+push(@fail_A, "1");
+
+# default with noro.subseq.fa with 54 char name that starts with lc| and --noseqnamemax, should pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --noseqnamemax \$VADRSCRIPTSDIR/testfiles/noro.subseq-lcname.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa 54 char name starts with lc|, --noseqnamemax used");
 push(@fail_A, "0");
 
 push (@rmdir_A, "va-test");
@@ -108,7 +128,7 @@ for(my $i = 0; $i < $ncmd; $i++) {
       my $more_than_50 = ($len > 50) ? 1 : 0;
       my $exactly_50 = ($len == 50) ? 1 : 0;
       if($longok_A[$i]) { 
-        if($prot_id_value =~ /48/) { 
+        if(($prot_id_value =~ /48/) && ($prot_id_value !~ /^lcl\|/)) { 
           # 48 char name should go to 50
           is($exactly_50, 1, "$desc_A[$i] protein_id $prot_id_value, length $len == 50, as expected");
         }

@@ -7733,7 +7733,7 @@ sub output_feature_table {
               if((! $do_forceprotid) && (! $do_noseqnamemax)) { # neither --forceprotid and --noseqnamemax used
                 # make sure length of protein_id_value doesn't exceed the maximum, if so, shorten it.
                 if((length($protein_id_value)) > $max_protein_id_length) { 
-                  my $new_sfx = sprintf("..._seq%d_%d", ($seq_idx + 1), $protein_id_idx);
+                  my $new_sfx = sprintf("...seq%d_%d", ($seq_idx + 1), $protein_id_idx);
                   my $len_new_sfx = length($new_sfx);
                   if($len_new_sfx > $max_protein_id_length) { 
                     ofile_FAIL("ERROR in $sub_name, suffix being used to prevent protein id from exceeding $max_protein_id_length characters is itself more than $max_protein_id_length characters:\n$new_sfx\n", 1, $FH_HR);
