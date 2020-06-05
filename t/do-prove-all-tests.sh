@@ -33,6 +33,7 @@ for test in \
     03-parseblast.t \
     04-ifile.t \
     05-annot-mdlopts.t \
+    06-iss12-longseqnames.t \
 ; do
     if [ $do_teamcity == 1 ]; then
         echo "##teamcity[testStarted name=\"$test\" captureStandardOutput='true']"
