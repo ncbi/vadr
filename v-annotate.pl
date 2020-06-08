@@ -7912,33 +7912,6 @@ sub output_feature_table {
                (($ftbl_len == 4) && ($codon_start == 3))  || # less than 1 AA, frame 3
                (($ftbl_len <= 5) && (! $is_3trunc_term_or_n))) { # only a stop codon
               $remove_me_A[$ftidx] = 1;
-              # HEYAB printf("\t\tset remove_me_A[$ftidx] to 1\n");
-              # determine the protein_id value
-              # - this cannot exceed $max_protein_id_length (50) characters as per GenBank rules (see github issue #12)
-              #   so we shorten it to 50 characters if necessary UNLESS --forceprotid OR --noseqnamemax are used in which 
-              #   case we assume user doesn't care about GenBank maximum
-              # - first we try <seqname>_<index_of_protein_id_for_this_seq>, if this is <= $max_protein_id_length then we use that,
-              #   if not, then we add a new suffix "_seq<seqidx>_<index_of_protein_id_for_this_seq>" at prepend the 
-              #   first $max_protein_id_length - length(suffix) characters of the sequence name to it
-              my $protein_id_value = sprintf("%s" . "_" . "%d", (($do_forceprotid) ? $seq_name : get_accession_from_ncbi_seq_name($seq_name)), $protein_id_idx);
-              if((! $do_forceprotid) && (! $do_noseqnamemax)) { # neither --forceprotid and --noseqnamemax used
-                # make sure length of protein_id_value doesn't exceed the maximum, if so, shorten it.
-                if((length($protein_id_value)) > $max_protein_id_length) { 
-                  my $new_sfx = sprintf("...seq%d_%d", ($seq_idx + 1), $protein_id_idx);
-                  my $len_new_sfx = length($new_sfx);
-                  if($len_new_sfx > $max_protein_id_length) { 
-                    ofile_FAIL("ERROR in $sub_name, suffix being used to prevent protein id from exceeding $max_protein_id_length characters is itself more than $max_protein_id_length characters:\n$new_sfx\n", 1, $FH_HR);
-                  }
-                  my $alt_seq_name = get_accession_from_ncbi_seq_name($seq_name);
-                  if((length($alt_seq_name) + $len_new_sfx) <= $max_protein_id_length) { 
-                    $protein_id_value = $alt_seq_name . $new_sfx;
-                  }
-                  else { 
-                    $protein_id_value = substr($alt_seq_name, 0, ($max_protein_id_length - $len_new_sfx)) . $new_sfx;
-                  }
-                }
-              }
-              $ftr_out_str .= helper_ftable_add_qualifier_specified($ftr_idx, "protein_id", $protein_id_value, $FH_HR);
             }
           }
           elsif(($is_mp) && # mat_peptide
