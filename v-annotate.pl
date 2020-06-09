@@ -7598,6 +7598,9 @@ sub output_feature_table {
     foreach my $ftr_type (@noftrtrim_A) { $noftrtrim_H{$ftr_type} = 1; }
   }
   # may want to add 5'UTR and 3'UTR to %noftrtrim_H by default in future
+  # don't add mat_peptide to this, even though we don't trim mat_peptide
+  # coords, that happens because we trim the parent ftr for child features
+  # like mat_peptides, search for 'my $trim_idx' below for details
 
   # determine order of alert codes to print
   my $alt_code;
@@ -7623,8 +7626,6 @@ sub output_feature_table {
   # we only fill these for each model as we need it, so as not 
   # to wastefully fill these for models for which no seqs have been assigned
   my %ftr_min_len_HA     = (); # hash of arrays with minimum valid length per model/feature, 1D keys are model names, 2D elements are feature indices
-  my %ftr_trimmable_HA = (); # hash of arrays with info on whether each feature can be truncated due to Ns ("n_5nlen" and "n_3nlen") or not
-                               # this depends on feature type and parent feature type, 1D keys are model names, 2D elements are feature indices
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
