@@ -22,6 +22,7 @@
 			gene	one
 <86	70	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A/one-4Ns-start-11-14-rev_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -106,6 +107,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <86	>74	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev_1
 78	>74	mat_peptide
 			product	protein one mp2
@@ -233,6 +235,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <89	70	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A-one-first-position-N-11-rev_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -317,6 +320,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <78	70	CDS
 			product	protein one
+			codon_start	1
 			protein_id	ENTOY100A-one-12Ns-start-rev_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -355,6 +359,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <75	70	CDS
 			product	protein one
+			codon_start	1
 			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31-rev_1
 <75	73	mat_peptide
 			product	protein one mp2
@@ -471,6 +476,7 @@ ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 18 p
 <27	22	CDS
 16	6
 			product	protein three
+			codon_start	3
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_3
 25	22	mat_peptide
 16	9
@@ -479,6 +485,7 @@ ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 18 p
 <54	54	CDS
 54	>53
 			product	protein two
+			codon_start	1
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48-rev_2
 90	70	gene
 			gene	one
@@ -511,6 +518,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 <27	22	CDS
 16	6
 			product	protein three
+			codon_start	3
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-rev_3
 25	22	mat_peptide
 16	9
@@ -546,6 +554,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_4
 <11	6	CDS
 			product	protein three
+			codon_start	1
 			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95-rev_3
 <11	9	mat_peptide
 			product	protein three mp2

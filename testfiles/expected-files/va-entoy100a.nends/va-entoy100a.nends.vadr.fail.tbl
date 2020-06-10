@@ -9,6 +9,7 @@
 			gene	one
 <15	31	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A/one-4Ns-start-11-14_1
 <15	22	mat_peptide
 			product	protein one mp1
@@ -96,6 +97,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <15	>27	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31_1
 23	>27	mat_peptide
 			product	protein one mp2
@@ -220,6 +222,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <12	31	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A-one-first-position-N-11_1
 <12	22	mat_peptide
 			product	protein one mp1
@@ -304,6 +307,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <23	31	CDS
 			product	protein one
+			codon_start	1
 			protein_id	ENTOY100A-one-12Ns-start_1
 23	28	mat_peptide
 			product	protein one mp2
@@ -342,6 +346,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			gene	one
 <26	31	CDS
 			product	protein one
+			codon_start	1
 			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31_1
 <26	28	mat_peptide
 			product	protein one mp2
@@ -485,10 +490,12 @@ ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 18 p
 <47	47	CDS
 47	>48
 			product	protein two
+			codon_start	1
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48_2
 <74	79	CDS
 85	95
 			product	protein three
+			codon_start	3
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48_3
 76	79	mat_peptide
 85	92
@@ -525,6 +532,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 <74	79	CDS
 85	95
 			product	protein three
+			codon_start	3
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47_3
 76	79	mat_peptide
 85	92
@@ -565,6 +573,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95_2
 <90	95	CDS
 			product	protein three
+			codon_start	1
 			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95_3
 <90	92	mat_peptide
 			product	protein three mp2

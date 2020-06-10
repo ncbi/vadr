@@ -1,7 +1,7 @@
 #       seq                                      ftr          ftr                        ftr  alert           alert                        alert 
 #idx    name                          model      type         name                       idx  code      fail  desc                         detail
 #-----  ----------------------------  ---------  -----------  -------------------------  ---  --------  ----  ---------------------------  ------
-10.1.1  gi|1339273835|gb|MG746117.1|  NC_039476  -            -                            -  ambgnt3s  no    N_AT_END                     final nucleotide is an N [final 4 positions are Ns, final non-N is position 1622]
+10.1.1  gi|1339273835|gb|MG746117.1|  NC_039476  -            -                            -  ambgnt3s  no    N_AT_END                     final nucleotide of the sequence is an N [final 4 positions are Ns, final non-N is position 1622]
 10.2.1  gi|1339273835|gb|MG746117.1|  NC_039476  gene         ORF1                         1  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 19 positions are Ns, final non-N is position 1]
 10.3.1  gi|1339273835|gb|MG746117.1|  NC_039476  CDS          nonstructural_polyprotein    2  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 19 positions are Ns, final non-N is position 1]
 10.4.1  gi|1339273835|gb|MG746117.1|  NC_039476  gene         ORF2                         3  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 3 positions are Ns, final non-N is position 1623]
