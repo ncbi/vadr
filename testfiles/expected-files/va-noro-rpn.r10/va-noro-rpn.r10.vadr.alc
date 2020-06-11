@@ -3,9 +3,10 @@
 #---  --------  -------  ---------------------------  --------  -----  ----  -----------
 1     ambgnt3s  no       N_AT_END                     sequence      1     1  final nucleotide of the sequence is an N
 2     insertnn  no       INSERTION_OF_NT               feature      1     1  too large of an insertion in nucleotide-based alignment of CDS feature
+3     ambgnt3f  no       N_AT_FEATURE_END              feature      3     1  final nucleotide of non-CDS feature is an N
 #---  --------  -------  ---------------------------  --------  -----  ----  -----------
-3     mutstart  yes      MUTATION_AT_START             feature      1     1  expected start codon could not be identified
-4     mutendcd  yes      MUTATION_AT_END               feature      1     1  expected stop codon could not be identified, predicted CDS stop by homology is invalid
+4     mutstart  yes      MUTATION_AT_START             feature      1     1  expected start codon could not be identified
 5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM   feature      1     1  mat_peptide may not be translated because its parent CDS has a problem
 6     indf3pst  yes      INDEFINITE_ANNOTATION_END     feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
+7     ambgnt3c  yes      N_AT_CDS_END                  feature      2     1  final nucleotide of CDS is an N
 #---  --------  -------  ---------------------------  --------  -----  ----  -----------

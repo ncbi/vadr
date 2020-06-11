@@ -1,0 +1,3 @@
+#sequence	error	feature	error-description
+NC_001959.2/6900-6979-bad-start	MUTATION_AT_START	VP2	expected start codon could not be identified [AAG starting at position 51 on + strand is not a valid start]
+NC_001959.2/6900-6978-bad-start	UNREPORTED_FEATURE_PROBLEM	*sequence*	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]

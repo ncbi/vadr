@@ -148,6 +148,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-stop-mut-at-30-len97_2
 <97	84	CDS
 			product	protein four
+			codon_start	3
 			protein_id	ENTOY100A-stop-mut-at-30-len97_3
 
 Additional note(s) to submitter:

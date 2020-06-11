@@ -3,13 +3,13 @@
 RETVAL=0;
 
 # noro r100
-$VADRSCRIPTSDIR/v-test.pl -f $VADRSCRIPTSDIR/testfiles/noro.r100.local.testin n100-local
+$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/noro.r100.local.testin n100-local
 if [ $? != 0 ]; then
    RETVAL=1;
 fi   
 
 # dengue r100
-$VADRSCRIPTSDIR/v-test.pl -f $VADRSCRIPTSDIR/testfiles/dengue.r100.local.testin d100-local
+$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/dengue.r100.local.testin d100-local
 if [ $? != 0 ]; then
    RETVAL=1;
 fi   

@@ -1,0 +1,50 @@
+>Feature NC_001959/6890-7500-cds-first-60-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-first-60-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 60 positions are Ns, first non-N is position 121]
+>Feature NC_001959/6890-7500-cds-all-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-all-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (VP2) final nucleotide of CDS is an N [final 551 positions are Ns, entire CDS is Ns]
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 551 positions are Ns, entire CDS is Ns]
+>Feature NC_001959/6890-7500-cds-all-but-1-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-all-but-1-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 550 positions are Ns, first non-N is position 611]
+>Feature NC_001959/6890-7500-cds-all-but-2-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-all-but-2-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 549 positions are Ns, first non-N is position 610]
+>Feature NC_001959/6890-7500-cds-all-but-3-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-all-but-3-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 548 positions are Ns, first non-N is position 609]
+>Feature NC_001959/6890-7500-cds-all-but-4-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-all-but-4-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 547 positions are Ns, first non-N is position 608]
+>Feature NC_001959/6890-7500-cds-all-but-5-Ns
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-all-but-5-Ns_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 546 positions are Ns, first non-N is position 607]

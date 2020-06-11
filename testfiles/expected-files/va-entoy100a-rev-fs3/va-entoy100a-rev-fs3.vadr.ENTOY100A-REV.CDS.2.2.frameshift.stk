@@ -18,11 +18,11 @@ ENTOY100A-REV-3-fs13         TATGGCACCGCAAGATGC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs14 FS.1 nucleotide alignment of positions 69..62 (8 nt, avgpp: 0.944) on - strand are inconsistent with dominant frame (-1); inserts:62; deletes:none;
+#=GS ENTOY100A-REV-3-fs14 FS.1 nucleotide alignment of positions 69..62 (8 nt, avgpp: 0.944) on - strand are inconsistent with dominant frame (-2); inserts:62; deletes:none;
 
 ENTOY100A-REV-3-fs14         TATGGCACCGCAAGATGC
 #=GR ENTOY100A-REV-3-fs14 PP ******************
-#=GR ENTOY100A-REV-3-fs14 CS 111111111111111111
+#=GR ENTOY100A-REV-3-fs14 CS 222222222222222222
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -32,11 +32,11 @@ ENTOY100A-REV-3-fs14         TATGGCACCGCAAGATGC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs15 FS.1 nucleotide alignment of positions 68..62 (7 nt, avgpp: 0.939) on - strand are inconsistent with dominant frame (-2); inserts:62; deletes:none;
+#=GS ENTOY100A-REV-3-fs15 FS.1 nucleotide alignment of positions 68..62 (7 nt, avgpp: 0.939) on - strand are inconsistent with dominant frame (-1); inserts:62; deletes:none;
 
 ENTOY100A-REV-3-fs15         TATGGCACCGCAAGATGC
 #=GR ENTOY100A-REV-3-fs15 PP ******************
-#=GR ENTOY100A-REV-3-fs15 CS 222222222222222222
+#=GR ENTOY100A-REV-3-fs15 CS 111111111111111111
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -60,11 +60,11 @@ ENTOY100A-REV-3-fs16         TATGGCACCGCAAGA-GC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs17 FS.1 nucleotide alignment of positions 61..52 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-2); inserts:61; deletes:52(1);
+#=GS ENTOY100A-REV-3-fs17 FS.1 nucleotide alignment of positions 61..52 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-3); inserts:61; deletes:52(1);
 
 ENTOY100A-REV-3-fs17         TATGGCACCGCAAGA-GC
 #=GR ENTOY100A-REV-3-fs17 PP **************8.9*
-#=GR ENTOY100A-REV-3-fs17 CS 222222222222222d11
+#=GR ENTOY100A-REV-3-fs17 CS 333333333333333d22
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -74,11 +74,11 @@ ENTOY100A-REV-3-fs17         TATGGCACCGCAAGA-GC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs18 FS.1 nucleotide alignment of positions 61..52 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-3); inserts:61; deletes:52(1);
+#=GS ENTOY100A-REV-3-fs18 FS.1 nucleotide alignment of positions 61..52 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-2); inserts:61; deletes:52(1);
 
 ENTOY100A-REV-3-fs18         TATGGCACCGCAAGA-GC
 #=GR ENTOY100A-REV-3-fs18 PP **************8.9*
-#=GR ENTOY100A-REV-3-fs18 CS 333333333333333d22
+#=GR ENTOY100A-REV-3-fs18 CS 222222222222222d11
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -102,11 +102,11 @@ ENTOY100A-REV-3-fs25         TATGGCACCGCAAGATGC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs26 FS.1 nucleotide alignment of positions 38..31 (8 nt, avgpp: 0.944) on - strand are inconsistent with dominant frame (-1); inserts:31; deletes:none;
+#=GS ENTOY100A-REV-3-fs26 FS.1 nucleotide alignment of positions 38..31 (8 nt, avgpp: 0.944) on - strand are inconsistent with dominant frame (-2); inserts:31; deletes:none;
 
 ENTOY100A-REV-3-fs26         TATGGCACCGCAAGATGC
 #=GR ENTOY100A-REV-3-fs26 PP ******************
-#=GR ENTOY100A-REV-3-fs26 CS 111111111111111111
+#=GR ENTOY100A-REV-3-fs26 CS 222222222222222222
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -116,11 +116,11 @@ ENTOY100A-REV-3-fs26         TATGGCACCGCAAGATGC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs27 FS.1 nucleotide alignment of positions 36..30 (7 nt, avgpp: 0.939) on - strand are inconsistent with dominant frame (-2); inserts:30; deletes:none;
+#=GS ENTOY100A-REV-3-fs27 FS.1 nucleotide alignment of positions 36..30 (7 nt, avgpp: 0.939) on - strand are inconsistent with dominant frame (-1); inserts:30; deletes:none;
 
 ENTOY100A-REV-3-fs27         TATGGCACCGCAAGATGC
 #=GR ENTOY100A-REV-3-fs27 PP ******************
-#=GR ENTOY100A-REV-3-fs27 CS 222222222222222222
+#=GR ENTOY100A-REV-3-fs27 CS 111111111111111111
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -144,11 +144,11 @@ ENTOY100A-REV-3-fs28         TATGGCACCGCAAGA-GC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs29 FS.1 nucleotide alignment of positions 30..21 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-2); inserts:30; deletes:21(1);
+#=GS ENTOY100A-REV-3-fs29 FS.1 nucleotide alignment of positions 30..21 (10 nt, avgpp: 0.942) on - strand are inconsistent with dominant frame (-3); inserts:30; deletes:21(1);
 
 ENTOY100A-REV-3-fs29         TATGGCACCGCAAGA-GC
 #=GR ENTOY100A-REV-3-fs29 PP **************8.9*
-#=GR ENTOY100A-REV-3-fs29 CS 222222222222222d11
+#=GR ENTOY100A-REV-3-fs29 CS 333333333333333d22
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //

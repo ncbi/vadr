@@ -12,6 +12,8 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
+#
+# -r only
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn.r5 > va-dengue-rpn.r5.out
 desc: annotate-dengue-5-rpn
 out: va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.pass.tbl 
@@ -35,6 +37,32 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.rpn
 rmdir: va-dengue-rpn.r5
+#
+# -r --notrim
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r --notrim $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn-notrim.r5 > va-dengue-rpn-notrim.r5.out
+desc: annotate-dengue-5-rpn-notrim
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.pass.tbl 
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.fail.tbl 
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.sqa
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.sqc
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.ftr
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.sgm
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.mdl
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.alt
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.alc
+out: va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn-notrim.r5/va-dengue-rpn-notrim.r5.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue-rpn.r5/va-dengue-rpn.r5.vadr.rpn
+rmdir: va-dengue-rpn-notrim.r5
+#
 # --r_prof
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 --alicheck -r --r_prof $VADRSCRIPTSDIR/testfiles/dengue.r5.rpn.fa va-dengue-rpn-prof.r5 > va-dengue-rpn-prof.r5.out
 desc: annotate-dengue-5-rpn-prof
