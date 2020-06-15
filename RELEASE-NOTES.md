@@ -2,6 +2,8 @@
 
 ### VADR 1.1.1 release (June 2020): Minor update
 
+  * in .ftr output file, adds two new columns that list number of
+    consecutive Ns at beginning and end of each feature (often 0)
   * in feature table output (only) features that start and/or end with
     one or more ambiguous 'N' nucleotides now have their start and
     stop positions 'trimmed' to the first or final non-N to be
