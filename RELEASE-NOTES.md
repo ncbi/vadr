@@ -8,8 +8,13 @@
     consisent with how GenBank annotates such features, and adds
     related --noftrtrim and --notrim options to turn this off for some
     or all types of features
-  * adds ambgnt5c, ambgnt3c alerts, fatal by default
-  * adds ambgnt5f, ambgnt3f alerts, non-fatal by default
+  * adds ambgnt5c, ambgnt3c alerts for CDS features that start/end
+    with one or more Ns, fatal by default
+  * adds ambgnt5f, ambgnt3f alerts for non-CDS features that start/end
+    with one or more Ns, non-fatal by default
+  * adds ftskipfl alert for rare case that >= 1 per-feature fatal
+    alerts exist, but none of those features are included in the
+    output feature table
   * sequence names must now be 50 characters or less to be consistent
     with GenBank submission rules, adds --noseqnamemax option to relax
     this restriction
