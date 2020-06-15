@@ -7311,7 +7311,9 @@ sub output_tabular {
   }
 
   # add data to the model table
-  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
+  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} or 
+                                    $a cmp $b 
+                         } keys (%{$mdl_cls_ct_HR}));
   my $mdl_tbl_idx = 0;
   my $sum_mdl_cls_ct     = 0;
   my $sum_mdl_pass_ct    = 0;
