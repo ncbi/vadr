@@ -681,9 +681,11 @@ integer.
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--nomisc`     | in feature table, never change feature to `misc_feature` | 
-| `--noprotid`   | in feature table, don't add protein_id for CDS and mat_peptide features |
-| `--forceid`    | in feature table, force protein_id value to be sequence name, then idx |
+| `--nomisc`        | in feature table, never change feature to `misc_feature` | 
+| `--notrim`        | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for all feature types | 
+| `--noftrtrim <s>` | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for feature types listed in the comma-delimited string `<s>` (no spaces) | 
+| `--noprotid`      | in feature table, don't add protein_id for CDS and mat_peptide features |
+| `--forceprotid`   | in feature table, force protein_id value to be sequence name, then idx |
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 
@@ -858,6 +860,7 @@ The following options are related to parallel mode.
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
 | `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
+| `--noseqnamemax` | do not enforce the GenBank maximum length of 50 characters for sequence names |
 | `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
 
