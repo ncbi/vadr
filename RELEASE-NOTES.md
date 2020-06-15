@@ -1,5 +1,21 @@
 # VADR 1.x release notes 
 
+### VADR 1.1.1 release (June 2020): Minor update
+
+  * in feature table output (only) features that start and/or end with
+    one or more ambiguous 'N' nucleotides now have their start and
+    stop positions 'trimmed' to the first or final non-N to be
+    consisent with how GenBank annotates such features, and adds
+    related --noftrtrim and --notrim options to turn this off for some
+    or all types of features
+  * adds ambgnt5c, ambgnt3c alerts, fatal by default
+  * adds ambgnt5f, ambgnt3f alerts, non-fatal by default
+  * sequence names must now be 50 characters or less to be consistent
+    with GenBank submission rules, adds --noseqnamemax option to relax
+    this restriction
+
+---
+
 ### VADR 1.1 release (May 2020): Major update
   * adds -s option for accelerating v-annotate.pl, using fixed
     alignment regions derived from blastn, mainly useful for
