@@ -357,7 +357,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
 
-`.ftr` data lines have 23 fields, the names of which appear in the first two
+`.ftr` data lines have 25 fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each
 **feature** that is annotated for each input sequence file that
 `v-annotate.pl` processed. The set of possible features for each

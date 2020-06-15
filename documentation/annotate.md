@@ -675,14 +675,14 @@ integer.
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-n <s>` | use the blastn DB file `<s>` when necessary, instead of the default blastn DB file ($VADRMODELDIR/vadr.fa), only used if `-s` or `-r` is also used |
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
-| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa ffiles in $VADRMODELDIR start with key <s>, not 'vadr' |
-| `--mdir <s>` | specify that all model files to use are in the directory <s>, not in $VADRMODELDIR |
+| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa files in $VADRMODELDIR start with key `<s>`, not 'vadr' |
+| `--mdir <s>` | specify that all model files to use are in the directory `<s>`, not in $VADRMODELDIR |
 
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
 |--------|-------------| 
 | `--nomisc`        | in feature table, never change feature to `misc_feature` | 
-| `--notrim`        | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for all feature types | 
+| `--notrim`        | <a name="options-alert-ambg"></a> in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for all feature types | 
 | `--noftrtrim <s>` | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for feature types listed in the comma-delimited string `<s>` (no spaces) | 
 | `--noprotid`      | in feature table, don't add protein_id for CDS and mat_peptide features |
 | `--forceprotid`   | in feature table, force protein_id value to be sequence name, then idx |
@@ -929,6 +929,8 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
 | [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
 | [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
+| [*ambgnt5c*](#ambgnt5c2)  | feature  | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
+| [*ambgnt3c*](#ambgnt3c2)  | feature  | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type | short description/error name | long description |
@@ -944,6 +946,8 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*fstlocnf*](#fstlocnf2)  | feature  | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
 | [*insertnn*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
 | [*deletinn*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
+| [*ambgnt5f*](#ambgnt5f2)  | feature  | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
+| [*ambgnt3f*](#ambgnt3f2)  | feature  | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1004,6 +1008,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
 | [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
 | [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | N_AT_CDS_START                  | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | N_AT_CDS_END                    | none | CDS | - <a name="ambgnt3c2"></a> | 
 
 #### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
@@ -1019,6 +1025,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstlocnf2"></a> |
 | [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
+| [*ambgnt5f*](#ambgnt5s1)  | N_AT_FEATURE_START              | none | - | - <a name="ambgnt5s2"></a> | 
+| [*ambgnt3f*](#ambgnt3s1)  | N_AT_FEATURE_END                | none | - | - <a name="ambgnt3s2"></a> | 
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
