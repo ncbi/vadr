@@ -190,9 +190,9 @@ the best matching model to one or more sequences:
 #idx  model      group      subgroup  seqs  pass  fail
 #---  ---------  ---------  --------  ----  ----  ----
 1     NC_008311  Norovirus  GV           2     1     1
-2     NC_044854  Norovirus  GI           2     2     0
+2     NC_029645  Norovirus  GIII         2     2     0
 3     NC_039477  Norovirus  GII          2     2     0
-4     NC_029645  Norovirus  GIII         2     2     0
+4     NC_044854  Norovirus  GI           2     2     0
 5     NC_001959  Norovirus  GI           1     1     0
 #---  ---------  ---------  --------  ----  ----  ----
 -     *all*      -          -            9     8     1
