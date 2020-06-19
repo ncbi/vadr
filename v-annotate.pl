@@ -2627,7 +2627,7 @@ sub add_classification_alerts {
           my $seq_hit_order_str = undef;
           # if blastn was used, we allow overlaps in the seq hits because blastn can report these but cmsearch cannot
           if($do_blastn_cdt) { 
-            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are not allowed
+            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 1 means duplicate values in best array are not allowed
           }
           else { 
             $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
@@ -2648,13 +2648,17 @@ sub add_classification_alerts {
             # hit 3 seq 21..30,+  model 100..110,+
             # seq order: 1,2,3
             # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
-            if(($x ne $y) && # hits are not the same order
-               ($mdl_hit_coords_A[($x-1)] ne
-                $mdl_hit_coords_A[($y-1)])) { # hit is not identical to hit in correct order
-                 # I think I need to check if it is identical in model but not sequence, or identical in sequence but not model (because it can't ever be identical in both), and if either of those is try, then allow it to be out of order, if both of those is not true, then it is truly out of order
-#               ((($mdl_hit_coords_A[($x-1)] ne $mdl_hit_coords_A[($y-1)]) && ($seq_hit_coords_A[($x-1)] eq $seq_hit_coords_A[($y-1)])) || # hit is identical in sequence but not model to hit in correct order
-              $out_of_order_flag = 1;
-              $i = $nhits; # breaks 'for i' loop, slight optimization
+            if($x ne $y) { # hits are not the same order
+              my $mdl_identical_flag = ($mdl_hit_coords_A[($x-1)] eq $mdl_hit_coords_A[($y-1)]) ? 1 : 0;
+              my $seq_identical_flag = ($seq_hit_coords_A[($x-1)] eq $seq_hit_coords_A[($y-1)]) ? 1 : 0;
+              if($mdl_identical_flag && $seq_identical_flag) { 
+                ofile_FAIL("ERROR in $sub_name, found two hits identical in both seq and mdl coords for seq $seq_name seq_coords: " . $seq_hit_coords_A[($x-1)] . ", mdl_coords: " . $mdl_hit_coords_A[($x-1)], 1, $FH_HR);
+              }
+              if((! $mdl_identical_flag) && (! $seq_identical_flag)) { 
+                # hit is not identical in either mdl or seq coords to hit in correct order
+                $out_of_order_flag = 1;
+                $i = $nhits; # breaks 'for i' loop, slight optimization
+              }
             }
           }
           if($out_of_order_flag) { 
