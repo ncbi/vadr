@@ -2627,7 +2627,7 @@ sub add_classification_alerts {
           my $seq_hit_order_str = undef;
           # if blastn was used, we allow overlaps in the seq hits because blastn can report these but cmsearch cannot
           if($do_blastn_cdt) { 
-            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 1 means duplicate values in best array are not allowed
+            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are not allowed
           }
           else { 
             $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
