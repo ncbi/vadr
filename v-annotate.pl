@@ -444,8 +444,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1dev1";
-my $releasedate   = "May 2020";
+my $version       = "1.1dev2";
+my $releasedate   = "June 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -2383,6 +2383,10 @@ sub add_classification_alerts {
   my $incspec_opt2print    = sprintf("%.3f", opt_Get("--incspec",    $opt_HHR));
   my $dupregsc_opt2print   = sprintf("%.1f", opt_Get("--dupregsc",   $opt_HHR));
 
+  # if we used blastn for the cdt stage, we may have overlapping hits in sequence coords, 
+  # this is relevant if/when we call helper_sort_hit_array for the dupregin alert below
+  my $do_blastn_cdt = opt_Get("-s", \%opt_HH) ? 1 : 0;
+
   %{$cls_output_HHR} = ();
   foreach my $seq_name (sort keys(%{$seq_len_HR})) { 
     my $seq_len  = $seq_len_HR->{$seq_name};
@@ -2620,11 +2624,18 @@ sub add_classification_alerts {
           my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
           my @seq_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"});
           my @mdl_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"});
-          my $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+          my $seq_hit_order_str = undef;
+          # if blastn was used, we allow overlaps in the seq hits because blastn can report these but cmsearch cannot
+          if($do_blastn_cdt) { 
+            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are not allowed
+          }
+          else { 
+            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+          }
           my $mdl_hit_order_str = helper_sort_hit_array(\@mdl_hit_coords_A, \@mdl_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are allowed
           # check if the hits are out of order we don't just check for equality of the
           # two strings because it's possible (but rare) that there could be duplicates in the model
-          # order array (but not in the sequence array), so we need to allow for that.
+          # order array and sequence order array, so we need to allow for that.
           my $out_of_order_flag = 0;
           for($i = 0; $i < $nhits; $i++) { 
             my $x = $mdl_hit_order_A[$i];
@@ -2637,11 +2648,17 @@ sub add_classification_alerts {
             # hit 3 seq 21..30,+  model 100..110,+
             # seq order: 1,2,3
             # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
-            if(($x ne $y) && # hits are not the same order
-               ($mdl_hit_coords_A[($x-1)] ne
-                $mdl_hit_coords_A[($y-1)])) { # hit is not identical to hit in correct order
-              $out_of_order_flag = 1;
-              $i = $nhits; # breaks 'for i' loop, slight optimization
+            if($x ne $y) { # hits are not the same order
+              my $mdl_identical_flag = ($mdl_hit_coords_A[($x-1)] eq $mdl_hit_coords_A[($y-1)]) ? 1 : 0;
+              my $seq_identical_flag = ($seq_hit_coords_A[($x-1)] eq $seq_hit_coords_A[($y-1)]) ? 1 : 0;
+              if($mdl_identical_flag && $seq_identical_flag) { 
+                ofile_FAIL("ERROR in $sub_name, found two hits identical in both seq and mdl coords for seq $seq_name seq_coords: " . $seq_hit_coords_A[($x-1)] . ", mdl_coords: " . $mdl_hit_coords_A[($x-1)], 1, $FH_HR);
+              }
+              if((! $mdl_identical_flag) && (! $seq_identical_flag)) { 
+                # hit is not identical in either mdl or seq coords to hit in correct order
+                $out_of_order_flag = 1;
+                $i = $nhits; # breaks 'for i' loop, slight optimization
+              }
             }
           }
           if($out_of_order_flag) { 
@@ -9608,7 +9625,7 @@ sub check_if_sequence_was_annotated {
 #
 # Args:
 #  $tosort_AR:   ref of array to sort, PRE-FILLED
-#  $order_AR:    ref to array of original indices corresponding to @{$tosort_AR}, FILLED HERE
+#  $order_AR:    ref to array of original indices corresponding to @{$tosort_AR}, [1..$nhit] (not 0..$nhit-1) FILLED HERE
 #  $allow_dups:  '1' to allow duplicates in $tosort_AR, '0' to not and die if
 #                they're found
 #  $FH_HR:       ref to hash of file handles, including "cmd"
