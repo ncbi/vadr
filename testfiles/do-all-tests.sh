@@ -2,10 +2,21 @@
 
 RETVAL=0;
 
+# Run tests in t/ subdir
 for t in \
     do-prove-all-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/t/$t teamcity
+    if [ $? != 0 ]; then
+        RETVAL=1;
+    fi   
+done
+
+# Run sequip tests in sequip/t/ subdir
+for t in \
+    do-prove-all-tests-from-vadr.sh \
+    ; do
+    sh $VADRSEQUIPDIR/t/$t teamcity
     if [ $? != 0 ]; then
         RETVAL=1;
     fi   
