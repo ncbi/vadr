@@ -1997,9 +1997,11 @@ sub cmsearch_or_cmscan_wrapper {
       my $concat_file = $out_root . "." . $concat_key;
       my @concat_A = ();
       utl_ArrayOfHashesToArray(\@out_file_AH, \@concat_A, $out_key);
-      utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-      # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $concat_key, $concat_file, 0, $do_keep, sprintf("stage $stg_key $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+      if(scalar(@concat_A) > 0) { 
+        utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+        # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $concat_key, $concat_file, 0, $do_keep, sprintf("stage $stg_key $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+      }
     }
   }
 
@@ -2977,11 +2979,13 @@ sub cmalign_wrapper {
     
   # concatenate files into one 
   foreach $out_key (@concat_keys_A) { 
-    my $concat_file = sprintf($out_root . ".%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);                                
-    utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    my $out_root_key = sprintf(".concat.%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+    if(scalar(@{$concat_HA{$out_key}}) > 0) { 
+      my $concat_file = sprintf($out_root . ".%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);                                
+      utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+      # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
+      my $out_root_key = sprintf(".concat.%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+    }
   }
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
