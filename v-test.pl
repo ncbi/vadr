@@ -196,6 +196,7 @@ my $nfail = 0;
 my $w_cmpcat = 20;
 my @data_pertest_AA = (); # pertest file data, only used if -m
 my @data_perline_AA = (); # perline file data, only used if -m
+my @data_perval_AA  = (); # perval file data, only used if -m
 
 for(my $i = 1; $i <= $ncmd; $i++) { 
   my $cmd  = $cmd_A[($i-1)];
@@ -227,7 +228,7 @@ for(my $i = 1; $i <= $ncmd; $i++) {
       my @cmpfields_A = ();
       my ($cmpcat, $cmpfile) = parse_cmpstr($cmpstr_AR->[$j], \@outfields_A, \@cmpfields_A, $ofile_info_HH{"FH"});
       my $desccat = $desc . ":" . $cmpcat;
-      my ($nlines, $nidentical, $ndifferent) = compare_two_files($desccat, $i.".".($j+1), $outfile_AR->[$j], $cmpfile, \@outfields_A, \@cmpfields_A, \@data_perline_AA, $ofile_info_HH{"FH"});
+      my ($nlines, $nidentical, $ndifferent) = compare_two_files($desccat, $i.".".($j+1), $outfile_AR->[$j], $cmpfile, \@outfields_A, \@cmpfields_A, \@data_perline_AA, \@data_perval_AA, $ofile_info_HH{"FH"});
       my $idx = $i . "." . ($j+1);
       push(@data_pertest_AA, [$idx, $cmpcat, $nlines, $nidentical, $ndifferent, 
                               sprintf("%7.5f", ($nidentical / $nlines)),
@@ -299,6 +300,16 @@ else {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "perline", $out_root . ".perline", 1, 1, "per-line tabular summary file");
   ofile_TableHumanOutput(\@data_perline_AA, \@head_perline_AA, \@clj_perline_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"perline"}, undef, $FH_HR);
   close($ofile_info_HH{"FH"}{"perline"}); 
+
+  my @head_perval_AA = ();
+  @{$head_perval_AA[0]} = ("value",    "description+",    "",            "number",      "number",    "number",    "fraction",  "fraction");
+  @{$head_perval_AA[1]} = ("index",    "category",        "value",       "comparisons", "identical", "different", "identical", "different");
+  my @clj_perval_A      = (1,          1,                 1,             0,             0,           0,           0,           0);
+  # data already added to @data_perval_AA above
+
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "perval", $out_root . ".perval", 1, 1, "per-value tabular summary file");
+  ofile_TableHumanOutput(\@data_perval_AA, \@head_perval_AA, \@clj_perval_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"perval"}, undef, $FH_HR);
+  close($ofile_info_HH{"FH"}{"perval"}); 
 
   my @conclude_A = ();
   push(@conclude_A, "#");
@@ -616,6 +627,7 @@ sub diff_two_files {
 #   $outfields_AR:     ref to array of fields from out file to compare
 #   $cmpfields_AR:     ref to array of fields from cmp file to compare
 #   $data_perline_AAR: ref to 2D array of perline data
+#   $data_perval_AAR:  ref to 2D array of perval data
 #   $FH_HR:            ref to hash of file handles, including "log" and "cmd"
 #
 # Returns:    '1' if $outfile is identical to $expfile as determined by diff
@@ -625,10 +637,10 @@ sub diff_two_files {
 #################################################################
 sub compare_two_files { 
   my $sub_name = "compare_two_files";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($desccat, $prefix, $out_file, $cmp_file, $outfields_AR, $cmpfields_AR, $data_perline_AAR, $FH_HR) = @_;
+  my ($desccat, $prefix, $out_file, $cmp_file, $outfields_AR, $cmpfields_AR, $data_perline_AAR, $data_perval_AAR, $FH_HR) = @_;
   
   if(! -s $cmp_file) { 
     ofile_FAIL("ERROR in $sub_name, compare file $cmp_file does not exist or is empty", 1, $FH_HR) ;
@@ -656,6 +668,9 @@ sub compare_two_files {
   my $nidentical = 0; 
   my $ndifferent = 0; 
   my $id_or_df = "";
+  my %nidentical_perval_H = (); # key is a outdataN_A[$i] value, value is number of identities with $cmpdataN_A[$i]
+  my %ndifferent_perval_H = (); # key is a outdataN_A[$i] value, value is number of differents with $cmpdataN_A[$i]
+  my %ntotal_perval_H     = (); # key is a outdataN_A[$i] value, value is number of comparisons with $cmpdataN_A[$i]
   for (my $i = 0; $i < $noutlines; $i++) { 
     # first field should always be identical
     if($outdata0_A[$i] ne $cmpdata0_A[$i]) { 
@@ -665,15 +680,44 @@ sub compare_two_files {
     # remaining fields (which were concatenated together (after separating by ;) by get_field_data_from_file, may be different
     if($outdataN_A[$i] eq $cmpdataN_A[$i]) { 
       $nidentical++;
+      if(! defined $ntotal_perval_H{$outdataN_A[$i]}) { 
+        $nidentical_perval_H{$outdataN_A[$i]} = 1;
+        $ndifferent_perval_H{$outdataN_A[$i]} = 0;
+        $ntotal_perval_H{$outdataN_A[$i]} = 1;
+      }
+      else { 
+        $nidentical_perval_H{$outdataN_A[$i]}++;
+        $ntotal_perval_H{$outdataN_A[$i]}++;
+      }
       $id_or_df = "identical";
     }
     else { 
       $ndifferent++;
+      if(! defined $ndifferent_perval_H{$outdataN_A[$i]}) { 
+        $ndifferent_perval_H{$outdataN_A[$i]} = 1;
+        $nidentical_perval_H{$outdataN_A[$i]} = 0;
+        $ntotal_perval_H{$outdataN_A[$i]} = 1;
+      }
+      else { 
+        $ndifferent_perval_H{$outdataN_A[$i]}++;
+        $ntotal_perval_H{$outdataN_A[$i]}++;
+      }
       $id_or_df = "different";
     }
     push(@{$data_perline_AAR}, [sprintf("%s.%d", $prefix, ($i+1)), $desccat, $cmpdata0_A[$i], $cmpdataN_A[$i], $outdataN_A[$i], $id_or_df]);
   }
   push(@{$data_perline_AAR}, []); # empty array -> blank line
+
+  # add perval data
+  my $i = 1;
+  foreach my $val (sort { $ntotal_perval_H{$b} <=> $ntotal_perval_H{$a} } keys %ntotal_perval_H) { 
+    push(@{$data_perval_AAR}, [sprintf("%s.%d", $prefix, $i), $desccat, $val, $ntotal_perval_H{$val}, 
+                               $nidentical_perval_H{$val}, $ndifferent_perval_H{$val}, 
+                               sprintf("%7.5f", $nidentical_perval_H{$val} / $ntotal_perval_H{$val}), 
+                               sprintf("%7.5f", $ndifferent_perval_H{$val} / $ntotal_perval_H{$val})]);
+    $i++;
+  }
+  push(@{$data_perval_AAR}, []); # empty array -> blank line
 
   return ($noutlines, $nidentical, $ndifferent);
 }
