@@ -20,15 +20,15 @@ require "sqp_utils.pm";
 #         2D key: string denoting type of information 
 #                 (one of "type", "default", "group", "requires", "incompatible", "preamble", "help")
 #         value:  string explaining 2D key:
-#                 "type":          "boolean", "string", "int" or "real"
-#                 "default":       default value for option
-#                 "group":         integer denoting group number this option belongs to
-#                 "requires":      string of 0 or more other options this option requires to work, each separated by a ','
-#                 "incompatiable": string of 0 or more other options this option is incompatible with, each separated by a ','
-#                 "preamble":      string describing option for preamble section (beginning of output from script)
-#                 "help":          string describing option for help section (printed if -h used)
-#                 "setby":         '1' if option set by user, else 'undef'
-#                 "value":         value for option, can be undef if default is undef
+#                 "type":         "boolean", "string", "int" or "real"
+#                 "default":      default value for option
+#                 "group":        integer denoting group number this option belongs to
+#                 "requires":     string of 0 or more other options this option requires to work, each separated by a ','
+#                 "incompatible": string of 0 or more other options this option is incompatible with, each separated by a ','
+#                 "preamble":     string describing option for preamble section (beginning of output from script)
+#                 "help":         string describing option for help section (printed if -h used)
+#                 "setby":        '1' if option set by user, else 'undef'
+#                 "value":        value for option, can be undef if default is undef
 #
 # opt_order_A: array of options in the order they should be processed
 # 
@@ -45,6 +45,7 @@ opt_Add("-h",           "boolean", 0,                        0,    undef, undef,
 opt_Add("-f",           "boolean", 0,                        1,    undef, undef,      "forcing directory overwrite",        "force; if dir <output directory> exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,                        1,    undef, undef,      "be verbose",                         "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("-s",           "boolean", 0,                        1,    undef, "--rmout",  "skip commands, they were already run, just compare files",  "skip commands, they were already run, just compare files",   \%opt_HH, \@opt_order_A);
+opt_Add("-m",           "boolean", 0,                        1,"--noteamcity", undef, "benchmark mode: compare certain fields, do not diff", "benchmark mode: compare certain fields, do not diff files",   \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"2"} = "options for defining variables in testing files";
 #       option       type        default                group  requires incompat          preamble-output                                              help-output    
 opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef,       "build directory, replaces !dirbuild! in test file with <s>", "build directory, replaces !dirbuild! in test file with <s>", \%opt_HH, \@opt_order_A);
@@ -64,6 +65,7 @@ my $options_okay =
                 'v'            => \$GetOptions_H{"-v"},
                 'f'            => \$GetOptions_H{"-f"},
                 's'            => \$GetOptions_H{"-s"},
+                'm'            => \$GetOptions_H{"-m"},
                 'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'rmout'        => \$GetOptions_H{"--rmout"},
                 'keep'         => \$GetOptions_H{"--keep"},
@@ -77,7 +79,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-test.pl";
 my $usage         = "Usage: $executable [-options] <input test file e.g. testfiles/testin.1> <output directory to create>\n";
 my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
-my $version       = "1.1dev3";
+my $version       = "1.1dev4";
 my $releasedate   = "June 2020";
 my $pkgname       = "VADR";
 
@@ -173,6 +175,9 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
+# are we running in 'benchmark' mode?
+my $do_mark = opt_Get("-m", \%opt_HH);
+
 # read in the test file
 my $progress_w = 50; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Parsing test file", $progress_w, $log_FH, *STDOUT);
@@ -180,13 +185,17 @@ my @cmd_A      = (); # array of the commands to run
 my @desc_A     = (); # array of the descriptions for the commands
 my @outfile_AA = (); # array of arrays of output files to compare for each command
 my @expfile_AA = (); # array of arrays of expected files to compare output to for each command
+my @cmpstr_AA  = (); # array of arrays of 'compare' strings, to compare output to for each command, used only in benchmark mode (-m)
 my @rmdir_AA   = (); # array of directories to remove after each command is completed
 my $do_teamcity = opt_Get("--noteamcity", \%opt_HH) ? 0 : 1;
-my $ncmd = parse_test_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@rmdir_AA, \%opt_HH, $ofile_info_HH{"FH"});
+my $ncmd = parse_test_or_mark_file($test_file, \@cmd_A, \@desc_A, \@outfile_AA, \@expfile_AA, \@cmpstr_AA, \@rmdir_AA, \%opt_HH, $ofile_info_HH{"FH"});
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 my $npass = 0;
 my $nfail = 0;
+my $w_cmpcat = 20;
+my @data_pertest_AA = (); # pertest file data, only used if -m
+
 for(my $i = 1; $i <= $ncmd; $i++) { 
   my $cmd  = $cmd_A[($i-1)];
   my $desc = $desc_A[($i-1)];
@@ -194,7 +203,8 @@ for(my $i = 1; $i <= $ncmd; $i++) {
     ofile_OutputString($log_FH, 1, sprintf("##teamcity[testStarted name='$desc' captureStandardOutput='true']\n"));
   }
   my $outfile_AR = \@{$outfile_AA[($i-1)]};
-  my $expfile_AR = \@{$expfile_AA[($i-1)]};
+  my $expfile_AR = ($do_mark) ? undef : \@{$expfile_AA[($i-1)]};
+  my $cmpstr_AR  = ($do_mark) ? \@{$cmpstr_AA[($i-1)]} : undef;
   my $rmdir_AR   = \@{$rmdir_AA[($i-1)]};
   my $npass_i    = 0; # number of tests that passed for current cmd
   my $nfail_i    = 0; # number of tests that failed for current cmd
@@ -211,10 +221,22 @@ for(my $i = 1; $i <= $ncmd; $i++) {
 
   my $nout = scalar(@{$outfile_AR});
   for(my $j = 0; $j < $nout; $j++) { 
-    my $diff_file = $out_root . "." . $i . "." . ($j+1) . ".diff";
-    my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, \%opt_HH, $ofile_info_HH{"FH"});
-    if($pass) { $npass++; $npass_i++; }
-    else      { $nfail++; $nfail_i++; }
+    if($do_mark) { 
+      my @outfields_A = ();
+      my @cmpfields_A = ();
+      my ($cmpcat, $cmpfile) = parse_cmpstr($cmpstr_AR->[$j], \@outfields_A, \@cmpfields_A, $ofile_info_HH{"FH"});
+      my ($nlines, $nidentical, $ndifferent) = compare_two_files($outfile_AR->[$j], $cmpfile, \@outfields_A, \@cmpfields_A, $ofile_info_HH{"FH"});
+      my $idx = $i . "." . ($j+1);
+      push(@data_pertest_AA, [$idx, $cmpcat, $nlines, $nidentical, $ndifferent, 
+                              sprintf("%7.5f", ($nidentical / $nlines)),
+                              sprintf("%7.5f", ($ndifferent / $nlines))]);
+    }
+    else { # default -m not enabled
+      my $diff_file = $out_root . "." . $i . "." . ($j+1) . ".diff";
+      my $pass = diff_two_files($outfile_AR->[$j], $expfile_AR->[$j], $diff_file, \%opt_HH, $ofile_info_HH{"FH"});
+      if($pass) { $npass++; $npass_i++; }
+      else      { $nfail++; $nfail_i++; }
+    }
   }
 
   if(($nfail_i == 0) && (! opt_Get("--keep", \%opt_HH))) { # only remove dir if no tests failed
@@ -237,28 +259,55 @@ for(my $i = 1; $i <= $ncmd; $i++) {
 ##########
 # Conclude
 ##########
-# summarize number of files checked and passed
-my $overall_pass = ($nfail == 0) ? 1 : 0;
-ofile_OutputString($log_FH, 1, "#\n#\n");
-if($overall_pass) { 
-  ofile_OutputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
-  $total_seconds += ofile_SecondsSinceEpoch();
-  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+
+if(! $do_mark) { 
+  # summarize number of files checked and passed
+  my $overall_pass = ($nfail == 0) ? 1 : 0;
+  ofile_OutputString($log_FH, 1, "#\n#\n");
+  if($overall_pass) { 
+    ofile_OutputString($log_FH, 1, "# PASS: all $npass files were created correctly.\n");
+    $total_seconds += ofile_SecondsSinceEpoch();
+    ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+  }
+  else { 
+    ofile_OutputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
+    $total_seconds += ofile_SecondsSinceEpoch();
+    ofile_OutputConclusionAndCloseFilesFail($total_seconds, $dir, \%ofile_info_HH);
+    ofile_FAIL("ERROR, at least one test FAILed", 1, undef);
+  }
 }
 else { 
-  ofile_OutputString($log_FH, 1, sprintf("# FAIL: %d of %d files were not created correctly.\n", $nfail, $npass+$nfail));
-  $total_seconds += ofile_SecondsSinceEpoch();
-  ofile_OutputConclusionAndCloseFilesFail($total_seconds, $dir, \%ofile_info_HH);
-  ofile_FAIL("ERROR, at least one test FAILed", 1, undef);
+  # -m enabled, output summary files
+  my @head_pertest_AA = ();
+  @{$head_pertest_AA[0]} = ("test",     "",         "number",      "number",    "number",    "fraction",  "fraction");
+  @{$head_pertest_AA[1]} = ("index",    "category", "comparisons", "identical", "different", "identical", "different");
+  my @clj_pertest_A      = (1,          1,          0,             0,           0,           0,           0);
+  # data already added to @data_pertest_AA above
+
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "pertest", $out_root . ".pertest", 1, 1, "per-test tabular summary file");
+  ofile_TableHumanOutput(\@data_pertest_AA, \@head_pertest_AA, \@clj_pertest_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"pertest"}, undef, $FH_HR);
+  close($ofile_info_HH{"FH"}{"pertest"}); 
+
+  my @conclude_A = ();
+  push(@conclude_A, "#");
+  push(@conclude_A, "# Summary of comparison tests:");
+  push(@conclude_A, "#");
+  my @file_A = ();
+  utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"pertest"}, 1, \@file_A, $FH_HR);
+  push(@conclude_A, @file_A);
+  push(@conclude_A, "#");
+  foreach my $line (@conclude_A) { 
+    ofile_OutputString($log_FH, 1, $line . "\n");
+  }
 }
 
 exit 0;
 #################################################################
-# Subroutine:  parse_test_file()
+# Subroutine:  parse_test_or_mark_file()
 # Incept:      EPN, Wed May 16 16:03:40 2018
 #
-# Purpose:     Parse an input test file and store the relevant information
-#              in passed in array references.
+# Purpose:     Parse an input test or mark file and store the relevant
+#              information in passed in array references.
 #
 # Arguments:
 #   $testfile:    name of file to parse
@@ -266,6 +315,7 @@ exit 0;
 #   $desc_AR:     ref to array of descriptions to fill here
 #   $outfile_AAR: ref to 2D array of output files to fill here
 #   $expfile_AAR: ref to 2D array of expected files to fill here
+#   $cmpstr_AAR:  ref to 2D array of compare strings to fill here, only if -m
 #   $rmdir_AAR:   ref to 2D array of directories to remove after calling each command
 #   $opt_HHR:     ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $FH_HR:       ref to hash of file handles, including "log" and "cmd"
@@ -278,12 +328,14 @@ exit 0;
 #             - if there are 0 output files for a given command
 #             - if output file already exists
 #################################################################
-sub parse_test_file { 
-  my $sub_name = "parse_test_file";
-  my $nargs_expected = 8;
+sub parse_test_or_mark_file { 
+  my $sub_name = "parse_test_or_mark_file";
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($testfile, $cmd_AR, $desc_AR, $outfile_AAR, $expfile_AAR, $rmdir_AAR, $opt_HHR, $FH_HR) = @_;
+  my ($testfile, $cmd_AR, $desc_AR, $outfile_AAR, $expfile_AAR, $cmpstr_AAR, $rmdir_AAR, $opt_HHR, $FH_HR) = @_;
+
+  my $do_mark = opt_Get("-m", $opt_HHR);
 
   open(IN, $testfile) || ofile_FileOpenFailure($testfile, $sub_name, $!, "reading", $FH_HR);
   my $ncmd = 0;
@@ -308,11 +360,20 @@ sub parse_test_file {
         if($ncmd > 0) { 
           # make sure we have read >= 1 outfiles and expfiles for previous command
           if(! (@{$outfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
-          if(! (@{$expfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
           my $nout_prv = scalar(@{$outfile_AAR->[($ncmd-1)]});
-          my $nexp_prv = scalar(@{$expfile_AAR->[($ncmd-1)]});
-          if($nout_prv != $nexp_prv) { 
-            ofile_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
+          if($do_mark) { 
+            if(! (@{$cmpstr_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any cmp: lines for command " . ($ncmd+1), 1, $FH_HR); }
+            my $ncmp_prv = scalar(@{$cmpstr_AAR->[($ncmd-1)]});
+            if($nout_prv != $ncmp_prv) { 
+              ofile_FAIL("ERROR different number of output and compare lines for command " . ($ncmd+1), 1, $FH_HR);
+            }
+          }
+          else { 
+            if(! (@{$expfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
+            my $nexp_prv = scalar(@{$expfile_AAR->[($ncmd-1)]});
+            if($nout_prv != $nexp_prv) { 
+              ofile_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
+            }
           }
         }
         # replace !<s>! with value of --<s> from options, die if it wasn't set or doesn't exist
@@ -358,6 +419,7 @@ sub parse_test_file {
         }
       }
       elsif($line =~ s/^exp\:\s+//) { 
+        if($do_mark) { ofile_FAIL("ERROR, read exp line but -m enabled", 1, $FH_HR); }
         $expfile = $line;
         $expfile =~ s/^\s+//;
         $expfile =~ s/\s+$//;
@@ -373,6 +435,29 @@ sub parse_test_file {
         }
         push(@{$expfile_AAR->[($ncmd-1)]}, $expfile);
         if(! -e $expfile) { ofile_FAIL("ERROR, expected file $expfile does not exist", 1, $FH_HR); }
+      }
+      elsif($line =~ s/^cmp\:\s+//) { 
+        if(! $do_mark) { ofile_FAIL("ERROR, read cmp line but -m not enabled", 1, $FH_HR); }
+        # expect 4 tokens:
+        # cmp: <category>:<comma-separated-out-fields>:<comma-separated-cmp-fields>:<cmp-file-path>
+        my $cmpstr = $line;
+        $cmpstr =~ s/^\s+//;
+        $cmpstr =~ s/\s+$//;
+        # replace @<s>@ with value of $ENV{'<s>'}
+        while($cmpstr =~ /\@(\w+)\@/) { 
+          my $envvar = $1;
+          my $replacevalue = $ENV{"$envvar"};
+          $cmpstr =~ s/\@$envvar\@/$replacevalue/g;
+        }
+
+        if($cmpstr =~ m/\s/) { ofile_FAIL("ERROR compare string has spaces: $expfile", 1, $FH_HR) }
+        if(scalar(@{$cmpstr_AAR}) < $ncmd) { 
+          @{$cmpstr_AAR->[($ncmd-1)]} = ();
+        }
+        push(@{$cmpstr_AAR->[($ncmd-1)]}, $cmpstr);
+
+        # validate the line, we don't store this info, we reparse it when needed
+        my ($cmpcat, $cmpfile) = parse_cmpstr($line, undef, undef, $FH_HR);
       }
       elsif($line =~ s/^rmdir\:\s+//) { 
         $rmdir = $line;
@@ -394,15 +479,25 @@ sub parse_test_file {
 
   # for final command, check that number of exp and out files is equal
   if(! (@{$outfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any out: lines for command " . ($ncmd+1), 1, $FH_HR); }
-  if(! (@{$expfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
   my $nout_prv = scalar(@{$outfile_AAR->[($ncmd-1)]});
-  my $nexp_prv = scalar(@{$expfile_AAR->[($ncmd-1)]});
-  if($nout_prv != $nexp_prv) { 
-    ofile_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
+  if($do_mark) { 
+    if(! (@{$cmpstr_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any cmp: lines for command " . ($ncmd+1), 1, $FH_HR); }
+    my $ncmp_prv = scalar(@{$cmpstr_AAR->[($ncmd-1)]});
+    if($nout_prv != $ncmp_prv) { 
+      ofile_FAIL("ERROR different number of output and compare lines for command " . ($ncmd+1), 1, $FH_HR);
+    }
+  }
+  else { 
+    if(! (@{$expfile_AAR->[($ncmd-1)]})) { ofile_FAIL("ERROR did not read any exp: lines for command " . ($ncmd+1), 1, $FH_HR); }
+    my $nexp_prv = scalar(@{$expfile_AAR->[($ncmd-1)]});
+    if($nout_prv != $nexp_prv) { 
+      ofile_FAIL("ERROR different number of output and expected lines for command " . ($ncmd+1), 1, $FH_HR);
+    }
   }
 
   return $ncmd;
 }
+
 
 #################################################################
 # Subroutine:  diff_two_files()
@@ -487,7 +582,206 @@ sub diff_two_files {
 
   return $pass;
 }
+
+#################################################################
+# Subroutine:  compare_two_files()
+# Incept:      EPN, Tue Jul  7 11:20:56 2020
+#
+# Purpose:     Compares ceratin fields of two files
+#
+# Arguments:
+#   $out_file:     name of output file
+#   $cmp_file:     name of compare file
+#   $outfields_AR: ref to array of fields from out file to compare
+#   $cmpfields_AR: ref to array of fields from cmp file to compare
+#   $FH_HR:        ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    '1' if $outfile is identical to $expfile as determined by diff
+#
+# Dies:       If an expected file does not exist or is empty.
+#
+#################################################################
+sub compare_two_files { 
+  my $sub_name = "compare_two_files";
+  my $nargs_expected = 5;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($out_file, $cmp_file, $outfields_AR, $cmpfields_AR, $FH_HR) = @_;
   
+  if(! -s $cmp_file) { 
+    ofile_FAIL("ERROR in $sub_name, compare file $cmp_file does not exist or is empty", 1, $FH_HR) ;
+  }
+  if(! -s $out_file) { 
+    ofile_FAIL("ERROR in $sub_name, output file $out_file does not exist or is empty", 1, $FH_HR) ;
+  }
+    
+  # ofile_OutputString($FH_HR->{"log"}, 1, sprintf("#\tchecking %-100s ... ", $out_file));
+
+  # read in fields of out file
+  my @outdata0_A = (); # value  from field 0 from outfile
+  my @outdataN_A = (); # values from fields 1->N from outfile, concatenated and separated by ';'
+  my @cmpdata0_A = (); # value  from field 0 from cmpfile
+  my @cmpdataN_A = (); # values from fields 1->N from cmpfile, concatenated and separated by ';'
+  get_field_data_from_file($out_file, $outfields_AR, \@outdata0_A, \@outdataN_A);
+  get_field_data_from_file($cmp_file, $cmpfields_AR, \@cmpdata0_A, \@cmpdataN_A);
+
+  my $noutlines = scalar(@outdata0_A);
+  my $ncmplines = scalar(@cmpdata0_A);
+  if($noutlines ne $ncmplines) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, when trying to compare $out_file and $cmp_file, number of lines differ: out: %d != cmp: %d\n", scalar(@outdata0_A), scalar(@cmpdata0_A)), 1, $FH_HR);
+  }
+
+  my $nidentical = 0; 
+  my $ndifferent = 0; 
+  for (my $i = 0; $i < $noutlines; $i++) { 
+    # first field should always be identical
+    if($outdata0_A[$i] ne $cmpdata0_A[$i]) { 
+      ofile_FAIL(sprintf("ERROR in $sub_name, when trying to compare $out_file and $cmp_file, line %d, first token differs: out: %s != cmp: %s\n", $i+1, $outdata0_A[$i], $cmpdata0_A[$i]), 1, $FH_HR);
+    }
+
+    # remaining fields (which were concatenated together (after separating by ;) by get_field_data_from_file, may be different
+    if($outdataN_A[$i] eq $cmpdataN_A[$i]) { 
+      $nidentical++;
+    }
+    else { 
+      $ndifferent++;
+    }
+  }
+
+  return ($noutlines, $nidentical, $ndifferent);
+}
+
+#################################################################
+# Subroutine:  get_field_data_from_file()
+# Incept:      EPN, Tue Jul  7 11:52:33 2020
+#
+# Purpose:     Fill arrays with data from specific fields from a file
+#
+# Arguments:
+#   $in_file:    name of output file
+#   $fields_AR:  ref to array with field indices
+#   $data0_AR:   REF to array to fill with per-line data from $fields_AR[0]
+#   $dataN_AR:   REF to array to fill with per-line data from all fields $fields_AR[$i] with $i>0, 
+#
+# Returns:    void, fills @{$data0_AR} and @{$dataN_AR}
+#
+# Dies:       If a non-# comment line of the file does not have enough fields
+#
+#################################################################
+sub get_field_data_from_file {
+  my $sub_name = "get_field_data_from_file";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($in_file, $fields_AR, $data0_AR, $dataN_AR) = @_;
+
+  if(! -s $in_file) { 
+    ofile_FAIL("ERROR in $sub_name, file $in_file does not exist or is empty", 1, $FH_HR) ;
+  }
+
+  open(IN, $in_file) || ofile_FileOpenFailure($in_file, $sub_name, $!, "reading", $FH_HR);
+  while(my $line = <IN>) { 
+    if($line !~ m/^\#/) { 
+      chomp $line;
+      my @el_A = split(/\s+/, $line);
+      my $nfields = scalar(@el_A);
+      my $data0 = "";
+      my $dataN = "";
+      for(my $i = 0; $i < scalar(@{$fields_AR}); $i++) { 
+        my $act_field = $fields_AR->[$i]-1;
+        if($act_field >= $nfields) { 
+          ofile_FAIL("ERROR in $sub_name, trying to get token $fields_AR->[$i] but only read $nfields on line $line of $in_file", 1, $FH_HR); 
+        }
+        if($i == 0) { 
+          $data0 = $el_A[$act_field]; 
+        }
+        else { 
+          if($dataN ne "") { $dataN .= ";"; }
+          $dataN .= $el_A[$act_field];
+        }
+      }
+      push(@{$data0_AR}, $data0);
+      push(@{$dataN_AR}, $dataN);
+    }
+  }
+  close(IN);
+
+  return;
+}
+  
+#################################################################
+# Subroutine:  parse_cmpstr()
+# Incept:      EPN, Tue Jul  7 09:57:23 2020
+#
+# Purpose:     Validate and parse a 'compare string'. 
+#              Format should be 4 ':' delimited tokens:
+#              <category>:<comma-separated-out-fields>:<comma-separated-cmp-fields>:<cmp-file-path>
+#              Checks that <comma-separated-out-fields> and 
+#              <comma-separated-cmp-fields> have the same number 
+#              of fields. Validates that the file <cmp-file-path> 
+#              exists and is non empty. 
+#              Fill @{$outfields_AR} with field indices from 
+#              <comma-separated-out-fields> [0..nfields-1]
+#              Fill @{$cmpfields_AR} with field indices from 
+#              <comma-separated-cmp-fields> [0..nfields-1]
+#              
+#
+# Arguments:
+#   $cmpstr:       name of output sqtable file
+#   $outfields_AR: ref to array of out file field indices
+#   $cmpfields_AR: ref to array of cmp file field indices
+#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Two values: 
+#             <category>:      first ':'-delimited token from $cmpstr
+#             <cmp-file-path>: path to cmpfile 
+#
+# Dies:       If cmpstr is not parseable or invalid
+#             If <cmp-file-path> file does not exist or is empty.
+#
+#################################################################
+sub parse_cmpstr { 
+  my $sub_name = "parse_cmpstr";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($cmpstr, $outfields_AR, $cmpfields_AR, $FH_HR) = @_;
+
+  my @el_A = split(":", $cmpstr);
+  if(scalar(@el_A) != 4) { 
+    ofile_FAIL(sprintf("ERROR unable to parse cmp: string $cmpstr, expected 4 ':' delimited tokens got: %d", scalar(@el_A)), 1, $FH_HR);
+  }
+  my ($category, $outfields_str, $cmpfields_str, $cmpfile) = (@el_A);
+
+  my @outfields_A = split(",", $outfields_str); 
+  my @cmpfields_A = split(",", $cmpfields_str); 
+  my $nout = scalar(@outfields_A);
+  my $ncmp = scalar(@cmpfields_A);
+  if($nout == 1) { 
+    ofile_FAIL("ERROR unable to parse cmp: string $cmpstr, read only 1 field in outfields str $outfields_str, must be at least 2", 1, $FH_HR);
+  }
+  if($ncmp == 1) { 
+    ofile_FAIL("ERROR unable to parse cmp: string $cmpstr, read only 1 field in cmpfields str $cmpfields_str, must be at least 2", 1, $FH_HR);
+  }
+  if($nout != $ncmp) { 
+    ofile_FAIL("ERROR unable to parse cmp: string $cmpstr, different numbers of comma-delimited tokens in outfields str $outfields_str and cmpfields str $cmpfields_str", 1, $FH_HR);
+  }
+  for(my $i = 0; $i < $nout; $i++) { 
+    if($outfields_A[$i] !~ m/^\d+$/) { 
+      ofile_FAIL("ERROR unable to parse cmp: string $cmpstr, found non-positive-integer in outfields str $outfields_str: $outfields_A[$i]", 1, $FH_HR);
+    }
+    if($cmpfields_A[$i] !~ m/^\d+$/) { 
+      ofile_FAIL("ERROR unable to parse cmp: string $cmpstr, found non-positive-integer in cmpfields str $cmpfields_str: $cmpfields_A[$i]", 1, $FH_HR);
+    }
+  }
+  if(defined $outfields_AR) { @{$outfields_AR} = @outfields_A; }
+  if(defined $cmpfields_AR) { @{$cmpfields_AR} = @cmpfields_A; }
+
+  if(! -e $cmpfile) { ofile_FAIL("ERROR, problem with cmp: string $cmpstr, expected file $cmpfile does not exist", 1, $FH_HR); }
+
+  return ($category, $cmpfile); 
+}
+
 #################################################################
 # Subroutine:  compare_two_sqtable_files()
 # Incept:      EPN, Mon Jun 11 09:42:11 2018
@@ -706,287 +1000,6 @@ sub compare_two_sqtable_files {
       }
     }
   }
-  close(DIFFOUT);
-  return;
-}
-
-#################################################################
-# Subroutine:  OLD_compare_two_sqtable_files()
-# Incept:      EPN, Mon Jun 11 09:42:11 2018
-#
-# Purpose:     Compare two sqtable files outputting the number of 
-#              lost, added, and changed features.
-#
-# Arguments:
-#   $out_file:    name of output sqtable file
-#   $exp_file:    name of expected sqtable file
-#   $diff_file:   name of file to create with differences
-#   $FH_HR:       REF to hash of file handles, including "log" and "cmd"
-#
-# Returns:    void
-#
-# Dies:       If sequences are not in the same order in the two files
-#
-#################################################################
-sub OLD_compare_two_sqtable_files { 
-  my $sub_name = "OLD_compare_two_sqtable_files";
-  my $nargs_expected = 4;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($out_file, $exp_file, $diff_file, $FH_HR) = @_;
-
-  my $out_file_exists   = (-e $out_file) ? 1 : 0;
-  my $exp_file_exists   = (-e $exp_file) ? 1 : 0;
-  my $out_file_nonempty = (-s $out_file) ? 1 : 0;
-  my $exp_file_nonempty = (-s $exp_file) ? 1 : 0;
-
-  my $conclusion = "";
-  my $pass = 0;
-
-  if(! $exp_file_exists) { 
-    ofile_FAIL("ERROR in $sub_name, expected file $exp_file does not exist", 1, $FH_HR) ;
-  }
-  if(! $exp_file_nonempty) { 
-    ofile_FAIL("ERROR in $sub_name, expected file $exp_file exists but is empty", 1, $FH_HR);
-  }
-    
-  my @out_line_A = ();  # array of all lines in out file
-  my @exp_line_A = ();  # array of all lines in exp file
-  my $out_line;         # single line from out file
-  my $exp_line;         # single line from exp file
-
-  my %exp_seq_lidx_H = (); # key: sequence name, value line index where sequence annotation starts for key in $exp_file
-  my @exp_seq_A      = (); # array of all sequence name keys in order in %exp_seq_lidx_H
-
-  my %out_seq_lidx_H = (); # key: sequence name, value line index where sequence annotation starts for key in $out_file
-  my @out_seq_A      = (); # array of all sequence name keys in order in %out_seq_lidx_H
-
-  my %seq_exists_H = ();   # key is a sequence name, value is '1' if sequence exists in either @exp_seq_A or @out_seq_A
-
-  my $lidx = 0; # line index
-  my $seq;      # a sequence name         
-
-  my $nseq = 0; # total number of sequences
-  my $tot_nseq_ftr_identical = 0; # number of sequences with all features identically annotated between output and expected
-  my $tot_nseq_ftr_diff      = 0; # number of sequences with >=1 feature differently annotated between output and expected
-  my $tot_nseq_ftr_out_only  = 0; # number of sequences with >=1 feature only in the output file (not in the expected file)
-  my $tot_nseq_ftr_exp_only  = 0; # number of sequences with >=1 feature only in the expected file (not in the output file)
-
-  my $tot_nseq_note_identical = 0; # number of sequences with all notes identically annotated between output and expected
-  my $tot_nseq_note_diff      = 0; # number of sequences with >=1 note differently annotated between output and expected
-  my $tot_nseq_note_out_only  = 0; # number of sequences with >=1 note only in the output file (not in the expected file)
-  my $tot_nseq_note_exp_only  = 0; # number of sequences with >=1 note only in the expected file (not in the output file)
-
-  if($out_file_nonempty) { 
-    open(OUT, $out_file) || ofile_FileOpenFailure($out_file, $sub_name, $!, "reading", $FH_HR);
-    $lidx = 0;
-    while($out_line = <OUT>) { 
-      if($out_line =~ m/^\>/) { 
-        $seq = $out_line;
-        chomp $seq;
-        push(@out_seq_A, $seq);
-        $out_seq_lidx_H{$seq} = $lidx;
-        if(! exists $seq_exists_H{$seq}) { 
-          $seq_exists_H{$seq} = 1;
-        }
-      }
-      push(@out_line_A, $out_line);
-      $lidx++;
-    }
-    close(OUT);
-
-    open(EXP, $exp_file) || ofile_FileOpenFailure($exp_file, $sub_name, $!, "reading", $FH_HR);
-    $lidx = 0;
-    while($exp_line = <EXP>) { 
-      if($exp_line =~ m/^\>/) { 
-        $seq = $exp_line;
-        chomp $seq;
-        push(@exp_seq_A, $seq);
-        $exp_seq_lidx_H{$seq} = $lidx;
-        if(! exists $seq_exists_H{$seq}) { 
-          $seq_exists_H{$seq} = 1;
-        }
-      }
-      push(@exp_line_A, $exp_line);
-      $lidx++;
-    }
-    close(EXP);
-
-    # make sure all sequences existed in both files
-    foreach $seq (sort keys %seq_exists_H) { 
-      if(! exists $out_seq_lidx_H{$seq}) { 
-        ofile_FAIL("ERROR in $sub_name, $seq not in out_seq_lidx_H", 1, $FH_HR);
-      }
-      if(! exists $exp_seq_lidx_H{$seq}) { 
-        ofile_FAIL("ERROR in $sub_name, $seq not in exp_seq_lidx_H", 1, $FH_HR);
-      }
-    }
-    # make sure all sequences are in the same order in both files
-    $nseq = scalar(@out_seq_A);
-    my $s;
-    for($s = 0; $s < $nseq; $s++) { 
-      if($out_seq_A[$s] ne $exp_seq_A[$s]) { 
-        ofile_FAIL("ERROR in $sub_name, $seq not in same order in both files", 1, $FH_HR);
-      }
-      printf("HEYA $out_seq_A[$s] " . $out_seq_lidx_H{$out_seq_A[$s]} . " " . $exp_seq_lidx_H{$out_seq_A[$s]} . "\n");
-    }
-    
-    open(DIFFOUT, ">", $diff_file) || ofile_FileOpenFailure($diff_file, $sub_name, $!, "writing", $FH_HR);
-
-    # for each sequence, compare the annotations
-    my $lidx;        # counter over lines
-    my $first_lidx;  # first line index of annotation for a sequence
-    my $final_lidx;  # final line index of annotation for a sequence
-    my %cur_out_H = ();    # key: feature line, value: current annotation in out file for that feature
-    my %cur_exp_H = ();    # key: feature line, value: current annotation in exp file for that feature
-    my %cur_exists_H = (); # key: feature line, value '1'
-    my @cur_A = ();        # array of feature lines in order they were read
-
-    for($s = 0; $s < $nseq; $s++) { 
-      $seq = $out_seq_A[$s];
-      printf("\ns: $s\n");
-      %cur_exists_H = ();
-      @cur_A = ();
-
-      # parse information from out_file
-      %cur_out_H = ();
-      $first_lidx = $out_seq_lidx_H{$seq} + 1; # first line after a sequence is the beginning of its annotation
-      if($s < ($nseq-1)) { $final_lidx = $out_seq_lidx_H{$out_seq_A[($s+1)]} - 1; }
-      else               { $final_lidx = scalar(@out_line_A) - 1; }
-      my $fline = undef;
-      my $cline = undef;
-      my $cur_cline = "";
-      printf("OUT $first_lidx..$final_lidx\n");
-      for($lidx = $first_lidx; $lidx <= $final_lidx; $lidx++) { 
-        printf("OUT line: $out_line_A[$lidx]\n");
-        if($out_line_A[$lidx] =~ m/^\<?\d+/) { 
-          # coordinate line
-          $cline = $out_line_A[$lidx];
-          $cur_cline .= $cline;
-        }
-        else { 
-          # feature line
-          $fline = $out_line_A[$lidx];
-          $cur_out_H{$fline} = $cur_cline;
-          printf("HEYA-OUT read fline: $fline added cline: $cur_cline\n");
-          if(! exists $cur_exists_H{$fline}) { 
-            push(@cur_A, $fline);
-            $cur_exists_H{$fline} = 1;
-          }
-          $cur_cline = "";
-        }
-      }
-      exit 0;
-
-      # parse information from exp_file
-      %cur_exp_H = ();
-      $first_lidx = $exp_seq_lidx_H{$seq} + 1; # first line after a sequence is the beginning of its annotation
-      if($s < ($nseq-1)) { $final_lidx = $exp_seq_lidx_H{$exp_seq_A[($s+1)]} - 1; }
-      else               { $final_lidx = scalar(@exp_line_A) - 1; }
-      $fline = undef;
-      $cline = undef;
-      $cur_cline = "";
-      printf("EXP $first_lidx..$final_lidx\n");
-      for($lidx = $first_lidx; $lidx <= $final_lidx; $lidx++) { 
-        printf("EXP line: $exp_line_A[$lidx]\n");
-        if($exp_line_A[$lidx] =~ m/^\<?\d+/) { 
-          # coordinate line
-          $cline = $exp_line_A[$lidx];
-          $cur_cline .= $cline;
-        }
-        else { 
-          # feature line
-          $fline = $exp_line_A[$lidx];
-          $cur_exp_H{$fline} = $cur_cline;
-          if(! exists $cur_exists_H{$fline}) { 
-            push(@cur_A, $fline);
-            $cur_exists_H{$fline} = 1;
-          }
-          $cur_cline = "";
-        }
-      }
-      
-      # compare annotation from exp_file and out_file
-      my $cur_ftr_nidentical  = 0; # number of features that are identical (all lines) between output and expected
-      my $cur_ftr_ndiff       = 0; # number of features that are different (at least one line different) between output and expected
-      my $cur_ftr_nout_only   = 0; # number of features that are only in output file
-      my $cur_ftr_nexp_only   = 0; # number of features that are only in expected file
-      my $cur_nftr            = 0; # number of features in the sequence
-      my $cur_outstr          = ""; # output string
-
-      my $cur_note_nidentical  = 0; # number of 'notes' that are identical (all lines) between output and expected
-      my $cur_note_ndiff       = 0; # number of 'notes' that are different (at least one line different) between output and expected
-      my $cur_note_nout_only   = 0; # number of 'notes' that are only in output file
-      my $cur_note_nexp_only   = 0; # number of 'notes' that are only in expected file
-      my $cur_nnote            = 0; # number of 'notes' in the sequence
-
-      my $is_note = 0; # '1' if this line is a note, '0' if it is a feature
-
-      foreach $fline (@cur_A) { 
-        # determine if it is a 'note' or not, we treat them differently
-        $is_note = ($fline =~ m/^\s+note/) ? 1 : 0;
-
-        if($is_note) { 
-          $cur_nnote++;
-        }
-        else { 
-          $cur_nftr++;
-        }
-
-        if((! exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
-          ofile_FAIL("ERROR in $sub_name, $fline does not exist in either exp or out", 1, $FH_HR);
-        }
-        elsif((exists $cur_exp_H{$fline}) && (! exists $cur_out_H{$fline})) { 
-          if($is_note) { $cur_note_nexp_only++; }
-          else         { $cur_ftr_nexp_only++; }
-          $cur_outstr .= "EXP only: $fline$cur_exp_H{$fline}"; 
-        }
-        elsif((! exists $cur_exp_H{$fline}) && (exists $cur_out_H{$fline})) { 
-          if($is_note) { $cur_note_nout_only++; }
-          else         { $cur_ftr_nout_only++; }
-          $cur_outstr .= "OUT only: $fline$cur_out_H{$fline}"; 
-        }
-        elsif($cur_exp_H{$fline} ne $cur_out_H{$fline}) { 
-          if($is_note) { $cur_note_ndiff++; }
-          else         { $cur_ftr_ndiff++; }
-          if(! exists $cur_exp_H{$fline}) { 
-            printf("exp does not exists $fline\n");
-          }
-          if(! exists $cur_out_H{$fline}) { 
-            printf("out does not exists $fline\n");
-          }
-          $cur_outstr .= "DIFFERENT: " . $fline . "OUT:\n$cur_out_H{$fline}EXP:\n$cur_exp_H{$fline}"; 
-        }
-        else { 
-          if($is_note) { $cur_note_nidentical++; }
-          else         { $cur_ftr_nidentical++; }
-        }
-      }
-      printf DIFFOUT ("%s %s %-50s %2d features [%2d %2d %2d %2d] %2d notes [%2d %2d %2d %2d]\n", 
-                      ($cur_ftr_nidentical == $cur_nftr)   ? "FTR-IDENTICAL" : "FTR-DIFFERENT", 
-                      ($cur_note_nidentical == $cur_nnote) ? "NOTE-IDENTICAL" : "NOTE-DIFFERENT", 
-                      $seq,
-                      $cur_nftr, $cur_ftr_nidentical, $cur_ftr_ndiff, $cur_ftr_nout_only, $cur_ftr_nexp_only, 
-                      $cur_nnote, $cur_note_nidentical, $cur_note_ndiff, $cur_note_nout_only, $cur_note_nexp_only);
-      if($cur_outstr ne "") { 
-        printf DIFFOUT $cur_outstr;
-      }
-      if($cur_ftr_nidentical == $cur_nftr) { $tot_nseq_ftr_identical++; }
-      if($cur_ftr_ndiff > 0)               { $tot_nseq_ftr_diff++; }
-      if($cur_ftr_nout_only > 0)           { $tot_nseq_ftr_out_only++; }
-      if($cur_ftr_nexp_only > 0)           { $tot_nseq_ftr_exp_only++; }
-
-      if($cur_note_nidentical == $cur_nftr) { $tot_nseq_note_identical++; }
-      if($cur_note_ndiff > 0)               { $tot_nseq_note_diff++; }
-      if($cur_note_nout_only > 0)           { $tot_nseq_note_out_only++; }
-      if($cur_note_nexp_only > 0)           { $tot_nseq_note_exp_only++; }
-    }
-  }
-
-  printf DIFFOUT ("SUMMARY %5d sequences FEATURES: [identical:%5d;  different:%5d;  out-only:%5d;  exp-only:%5d;] NOTES: [identical:%5d;  different:%5d;  out-only:%5d;  exp-only:%5d;]\n", $nseq,
-                  $tot_nseq_ftr_identical, $tot_nseq_ftr_diff, $tot_nseq_ftr_out_only, $tot_nseq_ftr_exp_only, 
-                  $tot_nseq_note_identical, $tot_nseq_note_diff, $tot_nseq_note_out_only, $tot_nseq_note_exp_only);
-
   close(DIFFOUT);
   return;
 }
