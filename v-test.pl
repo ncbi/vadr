@@ -678,29 +678,30 @@ sub compare_two_files {
     }
 
     # remaining fields (which were concatenated together (after separating by ;) by get_field_data_from_file, may be different
+    my $perval_key = $cmpdataN_A[$i];
     if($outdataN_A[$i] eq $cmpdataN_A[$i]) { 
       $nidentical++;
-      if(! defined $ntotal_perval_H{$outdataN_A[$i]}) { 
-        $nidentical_perval_H{$outdataN_A[$i]} = 1;
-        $ndifferent_perval_H{$outdataN_A[$i]} = 0;
-        $ntotal_perval_H{$outdataN_A[$i]} = 1;
+      if(! defined $ntotal_perval_H{$perval_key}) { 
+        $nidentical_perval_H{$perval_key} = 1;
+        $ndifferent_perval_H{$perval_key} = 0;
+        $ntotal_perval_H{$perval_key} = 1;
       }
       else { 
-        $nidentical_perval_H{$outdataN_A[$i]}++;
-        $ntotal_perval_H{$outdataN_A[$i]}++;
+        $nidentical_perval_H{$perval_key}++;
+        $ntotal_perval_H{$perval_key}++;
       }
       $id_or_df = "identical";
     }
     else { 
       $ndifferent++;
-      if(! defined $ndifferent_perval_H{$outdataN_A[$i]}) { 
-        $ndifferent_perval_H{$outdataN_A[$i]} = 1;
-        $nidentical_perval_H{$outdataN_A[$i]} = 0;
-        $ntotal_perval_H{$outdataN_A[$i]} = 1;
+      if(! defined $ndifferent_perval_H{$perval_key}) { 
+        $ndifferent_perval_H{$perval_key} = 1;
+        $nidentical_perval_H{$perval_key} = 0;
+        $ntotal_perval_H{$perval_key} = 1;
       }
       else { 
-        $ndifferent_perval_H{$outdataN_A[$i]}++;
-        $ntotal_perval_H{$outdataN_A[$i]}++;
+        $ndifferent_perval_H{$perval_key}++;
+        $ntotal_perval_H{$perval_key}++;
       }
       $id_or_df = "different";
     }
