@@ -1,0 +1,50 @@
+>Feature NC_001959/6890-7500-cds-first-18-Ns
+<1	>60	gene
+			gene	ORF2
+<1	>60	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959/6890-7500-cds-first-18-Ns_1
+<79	>611	gene
+			gene	ORF3
+<79	>611	CDS
+			product	VP2
+			codon_start	1
+			protein_id	NC_001959/6890-7500-cds-first-18-Ns_2
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (VP1) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]
+>Feature NC_001959/6890-7500-cds-final-18-Ns
+<1	61	gene
+			gene	ORF2
+<1	61	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959/6890-7500-cds-final-18-Ns_1
+61	>593	gene
+			gene	ORF3
+61	>593	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-cds-final-18-Ns_2
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (VP2) final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
+>Feature NC_001959/6890-7500-cds-first-and-final-18-Ns
+<1	>60	gene
+			gene	ORF2
+<1	>60	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959/6890-7500-cds-first-and-final-18-Ns_1
+<79	>593	gene
+			gene	ORF3
+<79	>593	CDS
+			product	VP2
+			codon_start	1
+			protein_id	NC_001959/6890-7500-cds-first-and-final-18-Ns_2
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (VP1) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
+ERROR: N_AT_CDS_END: (VP2) final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]

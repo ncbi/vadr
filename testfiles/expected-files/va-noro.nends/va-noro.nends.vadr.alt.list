@@ -1,0 +1,7 @@
+#sequence	error	feature	error-description
+NC_001959/6890-7500-cds-first-18-Ns	N_AT_CDS_END	VP1	final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
+NC_001959/6890-7500-cds-first-18-Ns	N_AT_CDS_START	VP2	first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]
+NC_001959/6890-7500-cds-final-18-Ns	N_AT_CDS_END	VP2	final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
+NC_001959/6890-7500-cds-first-and-final-18-Ns	N_AT_CDS_END	VP1	final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
+NC_001959/6890-7500-cds-first-and-final-18-Ns	N_AT_CDS_END	VP2	final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
+NC_001959/6890-7500-cds-first-and-final-18-Ns	N_AT_CDS_START	VP2	first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]

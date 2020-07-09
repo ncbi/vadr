@@ -1,0 +1,12 @@
+>Feature NC_001959/6890-7500-pass
+<1	61	gene
+			gene	ORF2
+<1	61	CDS
+			product	VP1
+			codon_start	2
+			protein_id	NC_001959/6890-7500-pass_1
+61	>611	gene
+			gene	ORF3
+61	>611	CDS
+			product	VP2
+			protein_id	NC_001959/6890-7500-pass_2
