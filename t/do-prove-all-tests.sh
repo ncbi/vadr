@@ -1,5 +1,8 @@
 #!/bin/bash
 
+RETVAL=0;
+CURRETVAL=0;
+
 # we require 0 or 1 args, if 1 arg, it must be 'teamcity'
 do_teamcity=0
 if [ $# != 0 ]; then
@@ -40,12 +43,24 @@ for test in \
     fi
 
     prove -v $VADRSCRIPTSDIR/t/$test;
-    ret_val=$?
+    CURRETVAL=$?
 
     if [ $do_teamcity == 1 ]; then 
-        if [ $ret_val != 0 ]; then
+        if [ $CURRETVAL != 0 ]; then
             echo "##teamcity[testFailed name=\"$test\" message=\"v-test.pl failure\"]"
         fi
         echo "##teamcity[testFinished name=\"$test\"]"
     fi
+
+    if [ $CURRETVAL != 0 ]; then
+        RETVAL=1
+    fi
 done
+
+if [ $RETVAL == 0 ]; then
+   echo "Success: all tests passed"
+   exit 0
+else 
+   echo "FAIL: at least one test failed"
+   exit 1
+fi

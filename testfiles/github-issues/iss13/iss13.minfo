@@ -1,0 +1,2 @@
+MODEL NC_006577.2500-4000 cmfile:"iss13.cm" length:"1501"
+FEATURE NC_006577.2500-4000 type:"gene" coords:"500..1000:+" parent_idx_str:"GBNULL" gene:"madeup"

@@ -206,7 +206,7 @@ my $usage         = "Usage: $executable [-options] <accession> <path to output d
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
 my $version       = "1.1.1";
-my $releasedate   = "June 2020";
+my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary

@@ -445,7 +445,7 @@ my $usage         = "Usage: $executable [-options] <fasta file to annotate> <out
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
 my $version       = "1.1.1";
-my $releasedate   = "June 2020";
+my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -1997,9 +1997,11 @@ sub cmsearch_or_cmscan_wrapper {
       my $concat_file = $out_root . "." . $concat_key;
       my @concat_A = ();
       utl_ArrayOfHashesToArray(\@out_file_AH, \@concat_A, $out_key);
-      utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-      # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $concat_key, $concat_file, 0, $do_keep, sprintf("stage $stg_key $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+      if(scalar(@concat_A) > 0) { 
+        utl_ConcatenateListOfFiles(\@concat_A, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+        # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $concat_key, $concat_file, 0, $do_keep, sprintf("stage $stg_key $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+      }
     }
   }
 
@@ -2383,6 +2385,10 @@ sub add_classification_alerts {
   my $incspec_opt2print    = sprintf("%.3f", opt_Get("--incspec",    $opt_HHR));
   my $dupregsc_opt2print   = sprintf("%.1f", opt_Get("--dupregsc",   $opt_HHR));
 
+  # if we used blastn for the cdt stage, we may have overlapping hits in sequence coords, 
+  # this is relevant if/when we call helper_sort_hit_array for the dupregin alert below
+  my $do_blastn_cdt = opt_Get("-s", \%opt_HH) ? 1 : 0;
+
   %{$cls_output_HHR} = ();
   foreach my $seq_name (sort keys(%{$seq_len_HR})) { 
     my $seq_len  = $seq_len_HR->{$seq_name};
@@ -2620,11 +2626,18 @@ sub add_classification_alerts {
           my @mdl_hit_order_A = (); # array of model    boundary hit indices in sorted order [0..nhits-1] values are in range 1..nhits
           my @seq_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"});
           my @mdl_hit_coords_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"});
-          my $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+          my $seq_hit_order_str = undef;
+          # if blastn was used, we allow overlaps in the seq hits because blastn can report these but cmsearch cannot
+          if($do_blastn_cdt) { 
+            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are not allowed
+          }
+          else { 
+            $seq_hit_order_str = helper_sort_hit_array(\@seq_hit_coords_A, \@seq_hit_order_A, 0, $FH_HR); # 0 means duplicate values in best array are not allowed
+          }
           my $mdl_hit_order_str = helper_sort_hit_array(\@mdl_hit_coords_A, \@mdl_hit_order_A, 1, $FH_HR); # 1 means duplicate values in best array are allowed
           # check if the hits are out of order we don't just check for equality of the
           # two strings because it's possible (but rare) that there could be duplicates in the model
-          # order array (but not in the sequence array), so we need to allow for that.
+          # order array and sequence order array, so we need to allow for that.
           my $out_of_order_flag = 0;
           for($i = 0; $i < $nhits; $i++) { 
             my $x = $mdl_hit_order_A[$i];
@@ -2637,11 +2650,17 @@ sub add_classification_alerts {
             # hit 3 seq 21..30,+  model 100..110,+
             # seq order: 1,2,3
             # mdl order: 1,3,2 (or 1,2,3) we want both to be ok (not FAIL)
-            if(($x ne $y) && # hits are not the same order
-               ($mdl_hit_coords_A[($x-1)] ne
-                $mdl_hit_coords_A[($y-1)])) { # hit is not identical to hit in correct order
-              $out_of_order_flag = 1;
-              $i = $nhits; # breaks 'for i' loop, slight optimization
+            if($x ne $y) { # hits are not the same order
+              my $mdl_identical_flag = ($mdl_hit_coords_A[($x-1)] eq $mdl_hit_coords_A[($y-1)]) ? 1 : 0;
+              my $seq_identical_flag = ($seq_hit_coords_A[($x-1)] eq $seq_hit_coords_A[($y-1)]) ? 1 : 0;
+              if($mdl_identical_flag && $seq_identical_flag) { 
+                ofile_FAIL("ERROR in $sub_name, found two hits identical in both seq and mdl coords for seq $seq_name seq_coords: " . $seq_hit_coords_A[($x-1)] . ", mdl_coords: " . $mdl_hit_coords_A[($x-1)], 1, $FH_HR);
+              }
+              if((! $mdl_identical_flag) && (! $seq_identical_flag)) { 
+                # hit is not identical in either mdl or seq coords to hit in correct order
+                $out_of_order_flag = 1;
+                $i = $nhits; # breaks 'for i' loop, slight optimization
+              }
             }
           }
           if($out_of_order_flag) { 
@@ -2960,11 +2979,13 @@ sub cmalign_wrapper {
     
   # concatenate files into one 
   foreach $out_key (@concat_keys_A) { 
-    my $concat_file = sprintf($out_root . ".%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);                                
-    utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-    # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
-    my $out_root_key = sprintf(".concat.%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+    if(scalar(@{$concat_HA{$out_key}}) > 0) { 
+      my $concat_file = sprintf($out_root . ".%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);                                
+      utl_ConcatenateListOfFiles($concat_HA{$out_key}, $concat_file, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+      # utl_ConcatenateListOfFiles() removes individual files unless --keep enabled
+      my $out_root_key = sprintf(".concat.%s%salign.$out_key", ((defined $mdl_name) ? $mdl_name . "." : ""), $extra_key);
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $out_root_key, $concat_file, 0, $do_keep, sprintf("align $out_key file%s", (defined $mdl_name) ? "for model $mdl_name" : ""));
+    }
   }
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
@@ -4174,10 +4195,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
-      my $ftr_5nlen   = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
-      my $ftr_3nlen   = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
-      my $ftr_start_non_n = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
-      my $ftr_stop_non_n  = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
+      my $ftr_5nlen    = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
+      my $ftr_3nlen    = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
+      my $ftr_5nlen_pv = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
+      my $ftr_3nlen_pv = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
+      my $ftr_start_non_n    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
+      my $ftr_stop_non_n     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
+      my $ftr_start_non_n_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is Ns
+      my $ftr_stop_non_n_pv  = undef; # sequence position of first non-N on 3' end in protein validation sqstring, commonly $ftr_stop, -1 if complete feature is Ns
       my $ftr_coords = undef; # coords string with sequence coordinates of all segments of the feature
 
       my %alt_str_H = (); # added to as we find alerts below
@@ -4290,7 +4315,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       if($ftr_len > 0) { 
         # we had a prediction for at least one of the segments for this feature
 
-        # determine the position of the first and final N or n
+        # determine the position of the first and final N or n in ftr_sqstring_alt and ftr_sqstring_pv
+        # we use ftr_sqstring_alt values for alerts
+        # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
         my $pos_retval = undef;
         $ftr_sqstring_alt =~ m/[^Nn]/g; 
         $pos_retval = pos($ftr_sqstring_alt); # returns position of first non-N/n
@@ -4305,6 +4332,13 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                                            ("first non-N is position $ftr_start_non_n")));
         }
 
+        # same drill for ftr_sqstring_pv
+        $ftr_sqstring_pv =~ m/[^Nn]/g; 
+        $pos_retval = pos($ftr_sqstring_pv); # returns position of first non-N/n
+        # if $pos_retval is undef entire sqstring is N or n
+        $ftr_5nlen_pv       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_start_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
+
         my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
         $rev_ftr_sqstring_alt =~ m/[^Nn]/g; 
         $pos_retval = pos($rev_ftr_sqstring_alt); # returns position of first non-N/n in reversed string
@@ -4318,6 +4352,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                                            (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
                                            ("final non-N is position $ftr_stop_non_n")));
         }
+
+        # same drill for ftr_sqstring_pv
+        my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
+        $rev_ftr_sqstring_pv =~ m/[^Nn]/g; 
+        $pos_retval = pos($rev_ftr_sqstring_pv); # returns position of first non-N/n in reversed string
+        # if $pos_retval is undef entire sqstring is N or n
+        $ftr_3nlen_pv      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_stop_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -4500,17 +4542,21 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
 
         # update %ftr_results_HR
-        $ftr_results_HR->{"n_strand"}      = $ftr_strand;
-        $ftr_results_HR->{"n_start"}       = $ftr_start;
-        $ftr_results_HR->{"n_stop"}        = $ftr_stop;
-        $ftr_results_HR->{"n_stop_c"}      = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
-        $ftr_results_HR->{"n_5trunc"}      = $ftr_is_5trunc;
-        $ftr_results_HR->{"n_3trunc"}      = $ftr_is_3trunc;
-        $ftr_results_HR->{"n_5nlen"}       = $ftr_5nlen;
-        $ftr_results_HR->{"n_3nlen"}       = $ftr_3nlen;
-        $ftr_results_HR->{"n_start_non_n"} = $ftr_start_non_n;
-        $ftr_results_HR->{"n_stop_non_n"}  = $ftr_stop_non_n;
-        $ftr_results_HR->{"n_len"}         = $ftr_len;
+        $ftr_results_HR->{"n_strand"}         = $ftr_strand;
+        $ftr_results_HR->{"n_start"}          = $ftr_start;
+        $ftr_results_HR->{"n_stop"}           = $ftr_stop;
+        $ftr_results_HR->{"n_stop_c"}         = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+        $ftr_results_HR->{"n_5trunc"}         = $ftr_is_5trunc;
+        $ftr_results_HR->{"n_3trunc"}         = $ftr_is_3trunc;
+        $ftr_results_HR->{"n_5nlen"}          = $ftr_5nlen;
+        $ftr_results_HR->{"n_3nlen"}          = $ftr_3nlen;
+        $ftr_results_HR->{"n_5nlen_pv"}       = $ftr_5nlen_pv;
+        $ftr_results_HR->{"n_3nlen_pv"}       = $ftr_3nlen_pv;
+        $ftr_results_HR->{"n_start_non_n"}    = $ftr_start_non_n;
+        $ftr_results_HR->{"n_stop_non_n"}     = $ftr_stop_non_n;
+        $ftr_results_HR->{"n_start_non_n_pv"} = $ftr_start_non_n_pv;
+        $ftr_results_HR->{"n_stop_non_n_pv"}  = $ftr_stop_non_n_pv;
+        $ftr_results_HR->{"n_len"}            = $ftr_len;
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
@@ -4965,6 +5011,17 @@ sub add_protein_validation_alerts {
   my $xmaxins  = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
   my $xmaxdel  = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
   my $minpvlen = opt_Get("--minpvlen", $opt_HHR);
+
+  # determine if we are trimming CDS eventually in the ftr table output, if
+  # so we'll change the tolerance on endpoints between nucleotide and protein
+  # if the CDS has Ns at beginning/end
+  my $do_notrim   = opt_Get("--notrim",   $opt_HHR); # 1 to never trim any features
+  my %noftrtrim_H = (); # key is feature type read from --noftrtrim <s> option, value is 1 to not trim start/end due to Ns
+  if(opt_IsUsed("--noftrtrim", $opt_HHR)) { 
+    my @noftrtrim_A  = split(",", opt_Get("--noftrtrim", $opt_HHR));
+    foreach my $ftr_type (@noftrtrim_A) { $noftrtrim_H{$ftr_type} = 1; }
+  }
+  my $do_cds_trim = (($do_notrim) || (defined $noftrtrim_H{"CDS"})) ? 0 : 1; 
   
   # get info on position-specific insert and delete maximum exceptions if there are any
   # skip this if we are using hmmer instead of blastx b/c we don't check for inserts/deletes
@@ -4997,6 +5054,8 @@ sub add_protein_validation_alerts {
           my $n_stop         = undef; # predicted stop   from CM 
           my $n_strand       = undef; # predicted strand from CM 
           my $n_len          = undef; # predicted length from CM (summed over all segments)
+          my $n_5nlen_pv     = undef; # number of Ns at 5' end of CDS
+          my $n_3nlen_pv     = undef; # number of Ns at 3' end of CDS
           my $p_start        = undef; # predicted start  from blastx
           my $p_stop         = undef; # predicted stop   from blastx
           my $p_start2print  = undef; # predicted start  from blastx, to output
@@ -5017,10 +5076,12 @@ sub add_protein_validation_alerts {
           my $stop_diff  = undef; # difference in start values between CM and blastx
           
           if(defined $ftr_results_HR->{"n_start"}) { 
-            $n_start       = $ftr_results_HR->{"n_start"};
-            $n_stop        = $ftr_results_HR->{"n_stop"};
-            $n_strand      = $ftr_results_HR->{"n_strand"};
-            $n_len         = $ftr_results_HR->{"n_len"};
+            $n_start    = $ftr_results_HR->{"n_start"};
+            $n_stop     = $ftr_results_HR->{"n_stop"};
+            $n_strand   = $ftr_results_HR->{"n_strand"};
+            $n_len      = $ftr_results_HR->{"n_len"};
+            $n_5nlen_pv = $ftr_results_HR->{"n_5nlen_pv"};
+            $n_3nlen_pv = $ftr_results_HR->{"n_3nlen_pv"};
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
@@ -5057,6 +5118,22 @@ sub add_protein_validation_alerts {
               }
             }
             if(defined $n_start) { 
+              my $cur_5aln_tol = $aln_tol;
+              my $cur_3aln_tol = $aln_tol;
+
+              if($do_cds_trim) { 
+                # adjust the tolerance to allow the Ns at the ends to be missed by the protein validation step
+                $cur_5aln_tol += $n_5nlen_pv;
+                $cur_3aln_tol += $n_3nlen_pv;
+                # if the tolerance is within 3 of the full length, reset it to the default
+                if($cur_5aln_tol >= ($n_len - 3)) { 
+                  $cur_5aln_tol = $aln_tol;
+                }
+                if($cur_3aln_tol >= ($n_len - 3)) { 
+                  $cur_3aln_tol = $aln_tol;
+                }
+              }
+
               # check for indfantn
               if(! defined $p_start) { 
                 $alt_str_H{"indfantn"} = "VADRNULL";
@@ -5093,10 +5170,10 @@ sub add_protein_validation_alerts {
                       (($n_strand eq "-") && ($p_start > $n_start)))) { 
                     $alt_str_H{"indf5plg"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
                   }
-                  # check for 'indf5pst': blastx 5' end too short, not within $aln_tol nucleotides
+                  # check for 'indf5pst': blastx 5' end too short, not within $cur_5aln_tol nucleotides
                   if(! exists $alt_str_H{"indf5plg"}) { # only add indf5pst if indf5plg does not exist
-                    if($start_diff > $aln_tol) { 
-                      $alt_str_H{"indf5pst"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
+                    if($start_diff > $cur_5aln_tol) { 
+                      $alt_str_H{"indf5pst"} = "$start_diff > $cur_5aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
                     }                
                   }
                   # check for 'indf3plg': blastx alignment extends outside of nucleotide/CM alignment on 3' end
@@ -5105,7 +5182,7 @@ sub add_protein_validation_alerts {
                       (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
                     $alt_str_H{"indf3plg"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
                   }
-                  # check for 'indf3pst': blastx 3' end too short, not within $aln_tol nucleotides
+                  # check for 'indf3pst': blastx 3' end too short, not within $cur_3aln_tol nucleotides
                   # for the stop coordinates, we do this differently if the nucleotide prediction 
                   # includes the stop codon or not, if it does, we allow 3 more positions different
                   my $cur_aln_tol = undef;
@@ -5117,11 +5194,11 @@ sub add_protein_validation_alerts {
                     $n_has_stop_codon = 0; 
                   }                    
                   if($n_has_stop_codon) { 
-                    $cur_aln_tol  = $aln_tol + 3;
+                    $cur_aln_tol  = $cur_3aln_tol + 3;
                     $cur_stop_str = "valid stop codon";
                   }
                   else { 
-                    $cur_aln_tol  = $aln_tol;
+                    $cur_aln_tol  = $cur_3aln_tol;
                     $cur_stop_str = "no valid stop codon";
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
@@ -9610,7 +9687,7 @@ sub check_if_sequence_was_annotated {
 #
 # Args:
 #  $tosort_AR:   ref of array to sort, PRE-FILLED
-#  $order_AR:    ref to array of original indices corresponding to @{$tosort_AR}, FILLED HERE
+#  $order_AR:    ref to array of original indices corresponding to @{$tosort_AR}, [1..$nhit] (not 0..$nhit-1) FILLED HERE
 #  $allow_dups:  '1' to allow duplicates in $tosort_AR, '0' to not and die if
 #                they're found
 #  $FH_HR:       ref to hash of file handles, including "cmd"

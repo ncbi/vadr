@@ -78,7 +78,7 @@ my $usage         = "Usage: $executable [-options] <input test file e.g. testfil
 my $synopsis      = "$executable :: test VADR scripts [TEST SCRIPT]";
 my $date          = scalar localtime();
 my $version       = "1.1.1";
-my $releasedate   = "June 2020";
+my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
