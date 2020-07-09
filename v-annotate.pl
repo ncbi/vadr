@@ -444,8 +444,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1dev3";
-my $releasedate   = "June 2020";
+my $version       = "1.1dev4";
+my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -4195,10 +4195,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
-      my $ftr_5nlen   = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
-      my $ftr_3nlen   = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
-      my $ftr_start_non_n = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
-      my $ftr_stop_non_n  = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
+      my $ftr_5nlen    = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
+      my $ftr_3nlen    = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
+      my $ftr_5nlen_pv = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
+      my $ftr_3nlen_pv = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
+      my $ftr_start_non_n    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
+      my $ftr_stop_non_n     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
+      my $ftr_start_non_n_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is Ns
+      my $ftr_stop_non_n_pv  = undef; # sequence position of first non-N on 3' end in protein validation sqstring, commonly $ftr_stop, -1 if complete feature is Ns
       my $ftr_coords = undef; # coords string with sequence coordinates of all segments of the feature
 
       my %alt_str_H = (); # added to as we find alerts below
@@ -4311,7 +4315,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       if($ftr_len > 0) { 
         # we had a prediction for at least one of the segments for this feature
 
-        # determine the position of the first and final N or n
+        # determine the position of the first and final N or n in ftr_sqstring_alt and ftr_sqstring_pv
+        # we use ftr_sqstring_alt values for alerts
+        # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
         my $pos_retval = undef;
         $ftr_sqstring_alt =~ m/[^Nn]/g; 
         $pos_retval = pos($ftr_sqstring_alt); # returns position of first non-N/n
@@ -4326,6 +4332,13 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                                            ("first non-N is position $ftr_start_non_n")));
         }
 
+        # same drill for ftr_sqstring_pv
+        $ftr_sqstring_pv =~ m/[^Nn]/g; 
+        $pos_retval = pos($ftr_sqstring_pv); # returns position of first non-N/n
+        # if $pos_retval is undef entire sqstring is N or n
+        $ftr_5nlen_pv       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_start_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
+
         my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
         $rev_ftr_sqstring_alt =~ m/[^Nn]/g; 
         $pos_retval = pos($rev_ftr_sqstring_alt); # returns position of first non-N/n in reversed string
@@ -4339,6 +4352,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                                            (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
                                            ("final non-N is position $ftr_stop_non_n")));
         }
+
+        # same drill for ftr_sqstring_pv
+        my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
+        $rev_ftr_sqstring_pv =~ m/[^Nn]/g; 
+        $pos_retval = pos($rev_ftr_sqstring_pv); # returns position of first non-N/n in reversed string
+        # if $pos_retval is undef entire sqstring is N or n
+        $ftr_3nlen_pv      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_stop_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -4521,17 +4542,21 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
 
         # update %ftr_results_HR
-        $ftr_results_HR->{"n_strand"}      = $ftr_strand;
-        $ftr_results_HR->{"n_start"}       = $ftr_start;
-        $ftr_results_HR->{"n_stop"}        = $ftr_stop;
-        $ftr_results_HR->{"n_stop_c"}      = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
-        $ftr_results_HR->{"n_5trunc"}      = $ftr_is_5trunc;
-        $ftr_results_HR->{"n_3trunc"}      = $ftr_is_3trunc;
-        $ftr_results_HR->{"n_5nlen"}       = $ftr_5nlen;
-        $ftr_results_HR->{"n_3nlen"}       = $ftr_3nlen;
-        $ftr_results_HR->{"n_start_non_n"} = $ftr_start_non_n;
-        $ftr_results_HR->{"n_stop_non_n"}  = $ftr_stop_non_n;
-        $ftr_results_HR->{"n_len"}         = $ftr_len;
+        $ftr_results_HR->{"n_strand"}         = $ftr_strand;
+        $ftr_results_HR->{"n_start"}          = $ftr_start;
+        $ftr_results_HR->{"n_stop"}           = $ftr_stop;
+        $ftr_results_HR->{"n_stop_c"}         = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+        $ftr_results_HR->{"n_5trunc"}         = $ftr_is_5trunc;
+        $ftr_results_HR->{"n_3trunc"}         = $ftr_is_3trunc;
+        $ftr_results_HR->{"n_5nlen"}          = $ftr_5nlen;
+        $ftr_results_HR->{"n_3nlen"}          = $ftr_3nlen;
+        $ftr_results_HR->{"n_5nlen_pv"}       = $ftr_5nlen_pv;
+        $ftr_results_HR->{"n_3nlen_pv"}       = $ftr_3nlen_pv;
+        $ftr_results_HR->{"n_start_non_n"}    = $ftr_start_non_n;
+        $ftr_results_HR->{"n_stop_non_n"}     = $ftr_stop_non_n;
+        $ftr_results_HR->{"n_start_non_n_pv"} = $ftr_start_non_n_pv;
+        $ftr_results_HR->{"n_stop_non_n_pv"}  = $ftr_stop_non_n_pv;
+        $ftr_results_HR->{"n_len"}            = $ftr_len;
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
@@ -4986,6 +5011,17 @@ sub add_protein_validation_alerts {
   my $xmaxins  = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
   my $xmaxdel  = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
   my $minpvlen = opt_Get("--minpvlen", $opt_HHR);
+
+  # determine if we are trimming CDS eventually in the ftr table output, if
+  # so we'll change the tolerance on endpoints between nucleotide and protein
+  # if the CDS has Ns at beginning/end
+  my $do_notrim   = opt_Get("--notrim",   $opt_HHR); # 1 to never trim any features
+  my %noftrtrim_H = (); # key is feature type read from --noftrtrim <s> option, value is 1 to not trim start/end due to Ns
+  if(opt_IsUsed("--noftrtrim", $opt_HHR)) { 
+    my @noftrtrim_A  = split(",", opt_Get("--noftrtrim", $opt_HHR));
+    foreach my $ftr_type (@noftrtrim_A) { $noftrtrim_H{$ftr_type} = 1; }
+  }
+  my $do_cds_trim = (($do_notrim) || (defined $noftrtrim_H{"CDS"})) ? 0 : 1; 
   
   # get info on position-specific insert and delete maximum exceptions if there are any
   # skip this if we are using hmmer instead of blastx b/c we don't check for inserts/deletes
@@ -5018,6 +5054,8 @@ sub add_protein_validation_alerts {
           my $n_stop         = undef; # predicted stop   from CM 
           my $n_strand       = undef; # predicted strand from CM 
           my $n_len          = undef; # predicted length from CM (summed over all segments)
+          my $n_5nlen_pv     = undef; # number of Ns at 5' end of CDS
+          my $n_3nlen_pv     = undef; # number of Ns at 3' end of CDS
           my $p_start        = undef; # predicted start  from blastx
           my $p_stop         = undef; # predicted stop   from blastx
           my $p_start2print  = undef; # predicted start  from blastx, to output
@@ -5038,10 +5076,12 @@ sub add_protein_validation_alerts {
           my $stop_diff  = undef; # difference in start values between CM and blastx
           
           if(defined $ftr_results_HR->{"n_start"}) { 
-            $n_start       = $ftr_results_HR->{"n_start"};
-            $n_stop        = $ftr_results_HR->{"n_stop"};
-            $n_strand      = $ftr_results_HR->{"n_strand"};
-            $n_len         = $ftr_results_HR->{"n_len"};
+            $n_start    = $ftr_results_HR->{"n_start"};
+            $n_stop     = $ftr_results_HR->{"n_stop"};
+            $n_strand   = $ftr_results_HR->{"n_strand"};
+            $n_len      = $ftr_results_HR->{"n_len"};
+            $n_5nlen_pv = $ftr_results_HR->{"n_5nlen_pv"};
+            $n_3nlen_pv = $ftr_results_HR->{"n_3nlen_pv"};
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
@@ -5078,6 +5118,22 @@ sub add_protein_validation_alerts {
               }
             }
             if(defined $n_start) { 
+              my $cur_5aln_tol = $aln_tol;
+              my $cur_3aln_tol = $aln_tol;
+
+              if($do_cds_trim) { 
+                # adjust the tolerance to allow the Ns at the ends to be missed by the protein validation step
+                $cur_5aln_tol += $n_5nlen_pv;
+                $cur_3aln_tol += $n_3nlen_pv;
+                # if the tolerance is within 3 of the full length, reset it to the default
+                if($cur_5aln_tol >= ($n_len - 3)) { 
+                  $cur_5aln_tol = $aln_tol;
+                }
+                if($cur_3aln_tol >= ($n_len - 3)) { 
+                  $cur_3aln_tol = $aln_tol;
+                }
+              }
+
               # check for indfantn
               if(! defined $p_start) { 
                 $alt_str_H{"indfantn"} = "VADRNULL";
@@ -5114,10 +5170,10 @@ sub add_protein_validation_alerts {
                       (($n_strand eq "-") && ($p_start > $n_start)))) { 
                     $alt_str_H{"indf5plg"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
                   }
-                  # check for 'indf5pst': blastx 5' end too short, not within $aln_tol nucleotides
+                  # check for 'indf5pst': blastx 5' end too short, not within $cur_5aln_tol nucleotides
                   if(! exists $alt_str_H{"indf5plg"}) { # only add indf5pst if indf5plg does not exist
-                    if($start_diff > $aln_tol) { 
-                      $alt_str_H{"indf5pst"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
+                    if($start_diff > $cur_5aln_tol) { 
+                      $alt_str_H{"indf5pst"} = "$start_diff > $cur_5aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
                     }                
                   }
                   # check for 'indf3plg': blastx alignment extends outside of nucleotide/CM alignment on 3' end
@@ -5126,7 +5182,7 @@ sub add_protein_validation_alerts {
                       (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
                     $alt_str_H{"indf3plg"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
                   }
-                  # check for 'indf3pst': blastx 3' end too short, not within $aln_tol nucleotides
+                  # check for 'indf3pst': blastx 3' end too short, not within $cur_3aln_tol nucleotides
                   # for the stop coordinates, we do this differently if the nucleotide prediction 
                   # includes the stop codon or not, if it does, we allow 3 more positions different
                   my $cur_aln_tol = undef;
@@ -5138,11 +5194,11 @@ sub add_protein_validation_alerts {
                     $n_has_stop_codon = 0; 
                   }                    
                   if($n_has_stop_codon) { 
-                    $cur_aln_tol  = $aln_tol + 3;
+                    $cur_aln_tol  = $cur_3aln_tol + 3;
                     $cur_stop_str = "valid stop codon";
                   }
                   else { 
-                    $cur_aln_tol  = $aln_tol;
+                    $cur_aln_tol  = $cur_3aln_tol;
                     $cur_stop_str = "no valid stop codon";
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
