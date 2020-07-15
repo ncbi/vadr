@@ -13,7 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --nomisc --keep -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -f $VADRSCRIPTSDIR/testfiles/noro.nends.fa va-noro.nends > va-noro.nends.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_pass ambgnt5s,ambgnt3s --alt_fail ambgnt5c,ambgnt3c --alicheck --nomisc --keep -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -f $VADRSCRIPTSDIR/testfiles/noro.nends.fa va-noro.nends > va-noro.nends.out
 desc: annotate-noro.nends
 out: va-noro.nends/va-noro.nends.vadr.pass.tbl 
 out: va-noro.nends/va-noro.nends.vadr.fail.tbl
@@ -29,7 +29,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.nends/va-noro.nends.vadr.
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.nends/va-noro.nends.vadr.alt.list
 rmdir: va-noro.nends
 # --notrim
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --notrim --alicheck --nomisc --keep -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -f $VADRSCRIPTSDIR/testfiles/noro.nends.fa va-noro.notrim.nends > va-noro.notrim.nends.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_pass ambgnt5s,ambgnt3s --alt_fail ambgnt5c,ambgnt3c --notrim --alicheck --nomisc --keep -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -f $VADRSCRIPTSDIR/testfiles/noro.nends.fa va-noro.notrim.nends > va-noro.notrim.nends.out
 desc: annotate-noro.nends.notrim
 out: va-noro.notrim.nends/va-noro.notrim.nends.vadr.pass.tbl 
 out: va-noro.notrim.nends/va-noro.notrim.nends.vadr.fail.tbl
@@ -45,7 +45,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.notrim.nends/va-noro.notr
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.notrim.nends/va-noro.notrim.nends.vadr.alt.list
 rmdir: va-noro.notrim.nends
 # --noftrtrim CDS
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --noftrtrim CDS,gene --alicheck --nomisc --keep -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -f $VADRSCRIPTSDIR/testfiles/noro.nends.fa va-noro.noftrtrim.nends > va-noro.noftrtrim.nends.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_pass ambgnt5s,ambgnt3s --alt_fail ambgnt5c,ambgnt3c --noftrtrim CDS,gene --alicheck --nomisc --keep -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -f $VADRSCRIPTSDIR/testfiles/noro.nends.fa va-noro.noftrtrim.nends > va-noro.noftrtrim.nends.out
 desc: annotate-noro.nends.noftrtrim
 out: va-noro.noftrtrim.nends/va-noro.noftrtrim.nends.vadr.pass.tbl 
 out: va-noro.noftrtrim.nends/va-noro.noftrtrim.nends.vadr.fail.tbl
