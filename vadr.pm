@@ -1476,13 +1476,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
                    "N_AT_START", # short description
                    "first nucleotide of the sequence is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
                    "N_AT_END", # short description
                    "final nucleotide of the sequence is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowcovrg", "sequence",
@@ -1764,13 +1764,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
                    "N_AT_CDS_START", # short description
                    "first nucleotide of CDS is an N", # long  description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
                    "N_AT_CDS_END", # short description
                    "final nucleotide of CDS is an N", # long  description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
