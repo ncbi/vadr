@@ -929,8 +929,6 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
 | [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
 | [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
-| [*ambgnt5c*](#ambgnt5c2)  | feature  | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
-| [*ambgnt3c*](#ambgnt3c2)  | feature  | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type | short description/error name | long description |
@@ -948,6 +946,8 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*deletinn*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
 | [*ambgnt5f*](#ambgnt5f2)  | feature  | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
 | [*ambgnt3f*](#ambgnt3f2)  | feature  | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
+| [*ambgnt5c*](#ambgnt5c2)  | feature  | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
+| [*ambgnt3c*](#ambgnt3c2)  | feature  | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1008,8 +1008,6 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
 | [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
 | [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
-| [*ambgnt5c*](#ambgnt5c1)  | N_AT_CDS_START                  | none | CDS | - <a name="ambgnt5c2"></a> | 
-| [*ambgnt3c*](#ambgnt3c1)  | N_AT_CDS_END                    | none | CDS | - <a name="ambgnt3c2"></a> | 
 
 #### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
@@ -1027,6 +1025,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
 | [*ambgnt5f*](#ambgnt5s1)  | N_AT_FEATURE_START              | none | - | - <a name="ambgnt5s2"></a> | 
 | [*ambgnt3f*](#ambgnt3s1)  | N_AT_FEATURE_END                | none | - | - <a name="ambgnt3s2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | N_AT_CDS_START                  | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | N_AT_CDS_END                    | none | CDS | - <a name="ambgnt3c2"></a> | 
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
