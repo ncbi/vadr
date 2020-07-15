@@ -14,7 +14,7 @@
 # file, etc.
 #
 # noftr, first set, without --notrim
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alt_pass ambgnt5s,ambgnt3s --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.nogenes.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr.fa va-noro-noftr > va-noro-noftr.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.nogenes.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr.fa va-noro-noftr > va-noro-noftr.out
 desc: annotate-noro-noftr
 out: va-noro-noftr/va-noro-noftr.vadr.pass.tbl 
 out: va-noro-noftr/va-noro-noftr.vadr.fail.tbl
@@ -25,7 +25,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr/va-noro-noftr.vadr.
 rmdir: va-noro-noftr
 #
 # noftr, first set, with --notrim
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --notrim --alt_fail ambgnt5c,ambgnt3c --alt_pass ambgnt5s,ambgnt3s --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.nogenes.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr.fa va-noro-noftr-notrim > va-noro-noftr-notrim.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --notrim --alt_fail ambgnt5c,ambgnt3c --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.nogenes.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr.fa va-noro-noftr-notrim > va-noro-noftr-notrim.out
 desc: annotate-noro-noftr-notrim
 out: va-noro-noftr-notrim/va-noro-noftr-notrim.vadr.pass.tbl 
 out: va-noro-noftr-notrim/va-noro-noftr-notrim.vadr.fail.tbl
@@ -38,7 +38,7 @@ rmdir: va-noro-noftr-notrim
 #######
 #
 # noftr, second set, without --notrim
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alt_pass ambgnt5s,ambgnt3s --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.onecdsonly.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr2.fa va-noro-noftr2 > va-noro-noftr2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.onecdsonly.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr2.fa va-noro-noftr2 > va-noro-noftr2.out
 desc: annotate-noro-noftr2
 out: va-noro-noftr2/va-noro-noftr2.vadr.pass.tbl 
 out: va-noro-noftr2/va-noro-noftr2.vadr.fail.tbl
@@ -49,7 +49,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-noftr2/va-noro-noftr2.vad
 rmdir: va-noro-noftr2
 #
 # noftr, second set, with --notrim
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alt_pass ambgnt5s,ambgnt3s --notrim --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.onecdsonly.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr2.fa va-noro-noftr2-notrim > va-noro-noftr2-notrim.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --notrim --nomisc -r --minpvlen 30 --alicheck -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -x $VADRSCRIPTSDIR/testfiles/models -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.onecdsonly.minfo $VADRSCRIPTSDIR/testfiles/noro.noftr2.fa va-noro-noftr2-notrim > va-noro-noftr2-notrim.out
 desc: annotate-noro-noftr2-notrim
 out: va-noro-noftr2-notrim/va-noro-noftr2-notrim.vadr.pass.tbl 
 out: va-noro-noftr2-notrim/va-noro-noftr2-notrim.vadr.fail.tbl
@@ -61,7 +61,7 @@ rmdir: va-noro-noftr2-notrim
 #######
 #
 # noftr, third set, ftskipfl tests
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alt_pass ambgnt5s,ambgnt3s --skip_pv --nomisc --minpvlen 30 --alicheck -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.noftr.ftskipfl.fa va-noro-noftr-ftskipfl > va-noro-noftr-ftskipfl.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --skip_pv --nomisc --minpvlen 30 --alicheck -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.noftr.ftskipfl.fa va-noro-noftr-ftskipfl > va-noro-noftr-ftskipfl.out
 desc: annotate-noro-noftr-ftskipfl
 out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.pass.tbl 
 out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.fail.tbl
