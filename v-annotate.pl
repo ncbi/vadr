@@ -543,6 +543,13 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # they are all turned on/off with -a in case future changes
 # only need some but not all
 
+######################################
+# ensure --s_overhang <n> value is > 0
+######################################
+if((opt_IsUsed("--s_overhang", \%opt_HH)) && ((opt_Get("--s_overhang", \%opt_HH) <= 0))) { 
+  die "ERROR, with --s_overhang <n>, <n> must be > 0";
+}
+
 #############################
 # create the output directory
 #############################
