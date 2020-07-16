@@ -1856,8 +1856,8 @@ sub join_alignments_helper_trust_blast {
   if($have_5p) { print("\nali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
   if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
 
-  if($have_5p) { print("\nali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
-  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
+  if($have_5p) { print("\nali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\nali_5p_mdl: $ali_5p_mdl\n"); }
+  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\nali_3p_mdl: $ali_3p_mdl\n"); }
 
   print("\nugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
   print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
@@ -1883,13 +1883,18 @@ sub join_alignments_helper_trust_blast {
   my $ugp_seq_mdl_diff = $ugp_mdl_start - $ugp_seq_start; # offset between model start and sequence start
   printf("ugp_seq_mdl_diff: $ugp_seq_mdl_diff\n");
   my $fetch_ali_5p_seq_start = 1;                    
-  my $fetch_ali_5p_seq_stop  = length($ali_5p_seq);
-  my $fetch_ali_3p_seq_start = 1;                   
+#  my $fetch_ali_5p_seq_stop  = length($ali_5p_seq);
+  my $fetch_ali_5p_seq_stop  = undef;
+#  my $fetch_ali_3p_seq_start = 1;                   
+  my $fetch_ali_3p_seq_start = undef;                   
   my $fetch_ali_3p_seq_stop  = length($ali_3p_seq);
-  my $fetch_ugp_seq_start    = undef;
+
+  # NEED TO CHANGE THESE 4, BUT NOT SURE WHAT TO...
+  my $fetch_ugp_seq_start    = 1;
   my $fetch_ugp_seq_stop     = undef;
   my $fetch_ugp_mdl_start    = undef;
   my $fetch_ugp_mdl_stop     = undef;
+
   my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
   my $ugp_mdl_len = ($ugp_mdl_stop - $ugp_mdl_start + 1);
 
@@ -1904,8 +1909,40 @@ sub join_alignments_helper_trust_blast {
   # check that ugp_seq_start = ali_5p_mdl_start + - ugp_seq_mdl_diff = $ali_5p_seq_startali_5p_seq 
 
   if($have_5p) { 
-    # usual case, final position of aligned 5' region is just 1 sequence position
-    # *and* 1 model position prior to ungapped region
+    # usual case, final position of aligned 5' region prior to first position of ungapped region 
+    # (prior to overhang) is just 1 model position prior to ungapped region
+
+    # find model position of ali_5p_mdl that corresponds to ugp_seq_start - 1
+    my @ali_5p_seq_A = split("", $ali_5p_seq);
+    my @ali_5p_mdl_A = split("", $ali_5p_mdl);
+    my $ali_5p_len = scalar(@ali_5p_seq_A); 
+    my $spos = 0;
+    my $mpos = 0;
+    my $apos = 0;
+    my $save_apos = undef;
+    for($apos = 0; $apos < $ali_5p_len; $apos++) { 
+      if($ali_5p_seq_A[$apos] =~ /[^\.\-\~]/) { $spos++; }
+      if($spos == $ugp_seq_start) { 
+        $save_apos = $apos;
+        $apos = $ali_5p_len; # breaks loop
+      }
+      else { 
+        if($ali_5p_mdl_A[$apos] =~ /[^\.\-\~]/) { $mpos++; }
+      }
+    }
+    if(! defined $save_apos) { 
+      # we didn't find the first position of the ungapped region in the aligned region, this shouldn't happen
+      ofile_FAIL("ERROR in $sub_name, unable to find overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 5p region ($ali_5p_seq_start .. $ali_5p_seq_stop)", 1, $FH_HR);
+    }
+    if($mpos == ($ugp_mdl_start - 1)) { 
+      printf("mpos: $mpos\n");
+      $fetch_ali_5p_seq_stop = $save_apos;
+      printf("fetch_ali_5p_seq_stop = $fetch_ali_5p_seq_stop\n");
+    }
+    else { 
+      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+    }
+
     if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)) {
       $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
       $fetch_ugp_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
