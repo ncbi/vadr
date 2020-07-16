@@ -1698,10 +1698,10 @@ sub join_alignments_helper_trust_cm {
     }
   }
   
-  # printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
-  # printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
   my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
   my $fetch_ugp_mdl_len = ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1);
+  printf("fetching ugp seq %d to %d from %s (fetch len: %d)\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords, $fetch_ugp_seq_len);
+  printf("fetching ugp mdl %d to %d from %s (fetch len: %d)\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords, $fetch_ugp_mdl_len);
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
   #$joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
   $joined_mdl .= substr($mdl_consensus_sqstring, $fetch_ugp_mdl_start - 1, $fetch_ugp_mdl_len);
@@ -1859,8 +1859,8 @@ sub join_alignments_helper_trust_blast {
   if($have_5p) { print("\nali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\nali_5p_mdl: $ali_5p_mdl\n"); }
   if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\nali_3p_mdl: $ali_3p_mdl\n"); }
 
-  print("\nugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
-  print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
+  printf("\nugp_seq: $ugp_seq_start .. $ugp_seq_stop\nugp_len: %d\n", length($ugp_seq));
+  printf("\nugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n", length($ugp_seq));
 
   ################################################
   # Check to make sure aligned overlapping (overhang) regions
@@ -1889,14 +1889,16 @@ sub join_alignments_helper_trust_blast {
   my $fetch_ali_3p_seq_start = undef;                   
   my $fetch_ali_3p_seq_stop  = length($ali_3p_seq);
 
-  # NEED TO CHANGE THESE 4, BUT NOT SURE WHAT TO...
+  # NOT SURE IF THESE 4 ARE CORRECT...
   my $fetch_ugp_seq_start    = 1;
-  my $fetch_ugp_seq_stop     = undef;
-  my $fetch_ugp_mdl_start    = undef;
-  my $fetch_ugp_mdl_stop     = undef;
+  my $fetch_ugp_seq_stop     = length($ugp_seq);
+  my $fetch_ugp_mdl_start    = $ugp_mdl_start;
+  my $fetch_ugp_mdl_stop     = $ugp_mdl_stop;
 
   my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
   my $ugp_mdl_len = ($ugp_mdl_stop - $ugp_mdl_start + 1);
+  printf("HEYA fetch_ugp_seq_len: %d\n", ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1));
+  printf("HEYA fetch_ugp_mdl_len: %d\n", ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1));
 
   my $alt_msg = ""; # added to if we can't join on 5' and/or 3' end
 
@@ -1909,16 +1911,15 @@ sub join_alignments_helper_trust_blast {
   # check that ugp_seq_start = ali_5p_mdl_start + - ugp_seq_mdl_diff = $ali_5p_seq_startali_5p_seq 
 
   if($have_5p) { 
-    # usual case, final position of aligned 5' region prior to first position of ungapped region 
-    # (prior to overhang) is just 1 model position prior to ungapped region
-
-    # find model position of ali_5p_mdl that corresponds to ugp_seq_start - 1
+    # check for usual case: final position of aligned 5' region prior
+    # to first position of ungapped region (prior to overhang) is just
+    # 1 model position prior to ungapped region
     my @ali_5p_seq_A = split("", $ali_5p_seq);
     my @ali_5p_mdl_A = split("", $ali_5p_mdl);
     my $ali_5p_len = scalar(@ali_5p_seq_A); 
     my $spos = 0;
     my $mpos = 0;
-    my $apos = 0;
+    my $apos = undef;
     my $save_apos = undef;
     for($apos = 0; $apos < $ali_5p_len; $apos++) { 
       if($ali_5p_seq_A[$apos] =~ /[^\.\-\~]/) { $spos++; }
@@ -1941,34 +1942,53 @@ sub join_alignments_helper_trust_blast {
     }
     else { 
       $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
-    }
-
-    if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)) {
-      $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
-      $fetch_ugp_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
-    }
-    else {
-      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+      printf("HEYAHEYA 3' UNJOINABLE alt_msg: $alt_msg\n");
     }
   }
   else { # $have_5p == 0
-    $fetch_ugp_seq_start = 1;
-    $fetch_ugp_mdl_start = $ugp_mdl_start; # because mdl_consensus_sqstring is always length of model, and length of sequence is not
+    $fetch_ali_5p_seq_stop = length($ali_5p_seq);
   }
   if($have_3p) {
-    # usual case, first position of aligned 3' region is just 1 sequence position
-    # *and* 1 model position after ungapped region
-    if($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff)) {
-      $fetch_ugp_seq_stop = $ugp_seq_len - ($ugp_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
-      $fetch_ugp_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
+    # check for usual case: first position of 3' region after 
+    # final position oof ungapped region (after overhang) is just
+    # 1 model position prior to ungapped region
+    my @ali_3p_seq_A = split("", $ali_3p_seq);
+    my @ali_3p_mdl_A = split("", $ali_3p_mdl);
+    my $ali_3p_len = scalar(@ali_3p_seq_A); 
+    my $spos = $seq_len + 1;
+    my $mpos = $mdl_len + 1;
+    my $apos = undef;
+    my $save_apos = undef;
+    for($apos = $ali_3p_len - 1; $apos >= 0; $apos--) { 
+      printf("apos: $apos\n");
+      if($ali_3p_seq_A[$apos] =~ /[^\.\-\~]/) { $spos--; }
+      if($spos == $ugp_seq_stop) { 
+        $save_apos = $apos + 1;
+        printf("set save_apos to $save_apos\n");
+        $apos = -1; # breaks loop
+      }
+      else { 
+        if($ali_3p_mdl_A[$apos] =~ /[^\.\-\~]/) { $mpos--; }
+      }
     }
-    else {
+    if(! defined $save_apos) { 
+      # we didn't find the final position of the ungapped region in the aligned region, this shouldn't happen
+      ofile_FAIL("ERROR in $sub_name, unable to find overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 3p region ($ali_3p_seq_start .. $ali_3p_seq_stop)", 1, $FH_HR);
+    }
+    printf("mpos: $mpos\nugp_mdl_stop: $ugp_mdl_stop\n");
+    if($mpos == ($ugp_mdl_stop + 1)) { 
+      printf("mpos: $mpos\n");
+      $fetch_ali_3p_seq_start = $save_apos + 1;
+      printf("fetch_ali_3p_seq_start = $fetch_ali_3p_seq_start\n");
+      printf("fetch_ali_3p_seq_stop  = $fetch_ali_3p_seq_stop\n");
+    }
+    else { 
       $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+      printf("HEYAHEYA 3' UNJOINABLE alt_msg: $alt_msg\n");
     }
   }
   else { # $have_3p == 0
-    $fetch_ugp_seq_stop = $ugp_seq_len;
-    $fetch_ugp_mdl_stop = $ugp_mdl_stop; # because mdl_consensus string is always length of model, and length of sequence is not
+    $fetch_ali_3p_seq_start = 1;
   }
 
   if($alt_msg ne "") {
@@ -2029,10 +2049,10 @@ sub join_alignments_helper_trust_blast {
     }
   }
   
-  # printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
-  # printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
   my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
   my $fetch_ugp_mdl_len = ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1);
+  printf("fetching ugp seq %d to %d from %s (fetch len: %d)\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords, $fetch_ugp_seq_len);
+  printf("fetching ugp mdl %d to %d from %s (fetch len: %d)\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords, $fetch_ugp_mdl_len);
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
   #$joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
   $joined_mdl .= substr($mdl_consensus_sqstring, $fetch_ugp_mdl_start - 1, $fetch_ugp_mdl_len);
@@ -2054,6 +2074,11 @@ sub join_alignments_helper_trust_blast {
       $joined_pp  .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), ".", $FH_HR);
     }
   }
+  
+  #printf("\n\nin $sub_name, returning:\n");
+  #printf("joined_seq: $joined_seq\n");
+  #printf("joined_mdl: $joined_mdl\n");
+  #printf("joined_pp:  $joined_pp\n");
   
   return ($joined_seq, $joined_mdl, $joined_pp);
 }
