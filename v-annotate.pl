@@ -287,6 +287,7 @@ opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use ma
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_trustcm",    "boolean",      0,   $g,       "-s", undef,    "for -s, trust cmalign alignment ends, not blastn alignment",       "for -s, trust cmalign alignment ends, not blastn alignment", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
@@ -405,6 +406,7 @@ my $options_okay =
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
+                's_trustcm'     => \$GetOptions_H{"--s_trustcm"},
 # options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
                 'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
