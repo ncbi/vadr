@@ -1720,6 +1720,12 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
+                   "DELETION_OF_FEATURE_REGION", # short description
+                   "deletion of complete feature or complete feature segment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
