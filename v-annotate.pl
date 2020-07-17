@@ -3546,7 +3546,26 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       $start_uapos = ($sgm_strand eq "+") ? $min_uapos_after_A[$sgm_start_rfpos] : $max_uapos_before_A[$sgm_start_rfpos];
       $stop_uapos  = ($sgm_strand eq "+") ? $max_uapos_before_A[$sgm_stop_rfpos] : $min_uapos_after_A[$sgm_stop_rfpos];
 
-      if(($start_rfpos != -1) && ($stop_rfpos != -1)) { 
+      printf("HEYA start_rfpos: $start_rfpos\n");
+      printf("HEYA stop_rfpos:  $stop_rfpos\n");
+      printf("\n");
+
+      # determine if we have a valid annotation for this segment
+      my $is_valid = 1; # assume we do, and check for 3 cases in which we don't below
+      if(($start_rfpos == -1) || ($stop_rfpos == -1)) { 
+        # alignment doesn't span segment RF positions
+        $is_valid = 0; 
+      }
+      elsif(($sgm_strand eq "+") && ($start_rfpos > $stop_rfpos)) { 
+        # + strand, entire segment is deleted
+        $is_valid = 0; 
+      }
+      elsif(($sgm_strand eq "-") && ($start_rfpos < $stop_rfpos)) { 
+        # - strand, entire segment is deleted
+        $is_valid = 0; 
+      }
+
+      if($is_valid) { 
         if($sgm_strand eq "+") { 
           $p_5seqflush = ($start_uapos == 1)        ? 1 : 0;
           $p_3seqflush = ($stop_uapos  == $seq_len) ? 1 : 0;
@@ -3721,6 +3740,7 @@ sub add_frameshift_alerts_for_one_sequence {
       my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       if($first_sgm_idx != -1) { 
         for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
+          # HERE HERE HERE, check if sgm is valid, it's possible this segment was skipped
           push(@sgm_idx_A, $sgm_idx); # store this segment index
           my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
           my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
