@@ -3740,131 +3740,136 @@ sub add_frameshift_alerts_for_one_sequence {
       my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       if($first_sgm_idx != -1) { 
         for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
-          # HERE HERE HERE, check if sgm is valid, it's possible this segment was skipped
-          push(@sgm_idx_A, $sgm_idx); # store this segment index
-          my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
-          my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
-          my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
-          my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
-          my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
-          my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
-          if(! defined $ftr_start_rfpos) { $ftr_start_rfpos = $sgm_start_rfpos; }
-          $ftr_stop_rfpos  = $sgm_stop_rfpos;
-          my $sgm_strand   = $sgm_info_AHR->[$sgm_idx]{"strand"};
-          my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
-          my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
-          my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
-          my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
-          my $strand = $sgm_results_HR->{"strand"};
-          my $cur_delete_len = 0; # current length of deletion
-          if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
-          if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
-          $ftr_sstop = $sstop;
-          $ftr_mstop = $mstop;
-          if(! defined $F_0) { 
-            $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
-            # $F_0 is frame of initial nongap RF position for this CDS 
-          } 
+          #check if sgm is valid, it's possible this segment was completely deleted and thus has no results
+          # *even if other segments in this feature* do have results (this is related to the github issue #21 bug)
+          if((defined $sgm_results_HAHR->{$seq_name}) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+            push(@sgm_idx_A, $sgm_idx); # store this segment index
+            my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
+            my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
+            my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
+            my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
+            my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
+            my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
+            if(! defined $ftr_start_rfpos) { $ftr_start_rfpos = $sgm_start_rfpos; }
+            $ftr_stop_rfpos  = $sgm_stop_rfpos;
+            my $sgm_strand   = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
+            my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
+            my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
+            my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
+            my $strand = $sgm_results_HR->{"strand"};
+            my $cur_delete_len = 0; # current length of deletion
+            if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
+            if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
+            $ftr_sstop = $sstop;
+            $ftr_mstop = $mstop;
+            if(! defined $F_0) { 
+              $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
+              # $F_0 is frame of initial nongap RF position for this CDS 
+            } 
 
-          # sanity checks about strand
-          if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
-            ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
-          }
-          $ftr_strand = $strand;
-          if($strand ne $sgm_strand) { 
-            ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
-          }
-          my $F_prv = undef;     # frame of previous RF position 
-          my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
-          my $rfpos_prv = undef; # previous RF position
-          if(($strand ne "+") && ($strand ne "-")) { 
-            ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
-          }
-          # for each RF position covered by the predicted segment
-          # we want to deal with both + and - strands with same code block, 
-          # so can't use a simple for loop 
-          my $rfpos = $mstart;
-          my $uapos = undef;
-          while(($strand eq "+" && $rfpos <= $mstop) || 
-                ($strand eq "-" && $rfpos >= $mstop)) { 
-            $rf_diff++; # number of RF positions seen since first nt in this CDS
-            if($rfpos_pp_AR->[$rfpos] ne ".") { 
-              # this rfpos is not aligned to a gap in the sequence
-              # determine uapos, the unaligned sequence position that aligns to RF pos $rfpos
-              # $max_uapos_before_AR->[$rfpos] actually gives you the maximum unaligned seq position that 
-              # aligns at or inserts before $rfpos, but we know it aligns at $rfpos because we just 
-              # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
-              $uapos = $max_uapos_before_AR->[$rfpos]; 
-              $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
-              my $F_cur = vdr_FrameAdjust($F_0, ($ua_diff - $rf_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
-              if($strand eq "+") { $gr_frame_str .= $F_cur; }
-              else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
-              $frame_ct_A[$F_cur]++;
-              if((! defined $F_prv) || ($F_cur != $F_prv)) { 
-                # frame changed, 
-                # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
-                if(defined $F_prv) { 
-                  $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
-                  # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
-                } 
-                # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                $frame_tok_str .= $F_cur . ":" . $uapos . "-";
-              }
-              $uapos_prv = $uapos;
-              $rfpos_prv = $rfpos;
-              $F_prv     = $F_cur;
-              if($cur_delete_len > $nmaxdel) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                           sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
-                                                   $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
-              }
-              $cur_delete_len = 0;
+            # sanity checks about strand
+            if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
+              ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
             }
-            else { # rf position is a gap, add 'd' GR frame annotation
-              if($strand eq "+") { $gr_frame_str .= "d"; }
-              else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
-              $cur_delete_len++;
+            $ftr_strand = $strand;
+            if($strand ne $sgm_strand) { 
+              ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
-            # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
-            if($strand eq "+") { 
-              if(($rfpos < $mstop) && ($rf2ilen_AR->[$rfpos] > 0)) { 
-                for(my $ipos = 0; $ipos < $rf2ilen_AR->[$rfpos]; $ipos++) { 
-                  $gr_frame_str .= "i"; 
-                  $ua_diff++; # increment number of seq positions seen
+            my $F_prv = undef;     # frame of previous RF position 
+            my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
+            my $rfpos_prv = undef; # previous RF position
+            if(($strand ne "+") && ($strand ne "-")) { 
+              ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
+            }
+            # for each RF position covered by the predicted segment
+            # we want to deal with both + and - strands with same code block, 
+            # so can't use a simple for loop 
+            my $rfpos = $mstart;
+            my $uapos = undef;
+            while(($strand eq "+" && $rfpos <= $mstop) || 
+                  ($strand eq "-" && $rfpos >= $mstop)) { 
+              $rf_diff++; # number of RF positions seen since first nt in this CDS
+              if($rfpos_pp_AR->[$rfpos] ne ".") { 
+                # this rfpos is not aligned to a gap in the sequence
+                # determine uapos, the unaligned sequence position that aligns to RF pos $rfpos
+                # $max_uapos_before_AR->[$rfpos] actually gives you the maximum unaligned seq position that 
+                # aligns at or inserts before $rfpos, but we know it aligns at $rfpos because we just 
+                # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
+                $uapos = $max_uapos_before_AR->[$rfpos]; 
+                $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
+                my $F_cur = vdr_FrameAdjust($F_0, ($ua_diff - $rf_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
+                if($strand eq "+") { $gr_frame_str .= $F_cur; }
+                else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
+                $frame_ct_A[$F_cur]++;
+                if((! defined $F_prv) || ($F_cur != $F_prv)) { 
+                  # frame changed, 
+                  # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
+                  if(defined $F_prv) { 
+                    $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
+                    # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
+                  } 
+                  # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
+                  $frame_tok_str .= $F_cur . ":" . $uapos . "-";
+                }
+                $uapos_prv = $uapos;
+                $rfpos_prv = $rfpos;
+                $F_prv     = $F_cur;
+                if($cur_delete_len > $nmaxdel) { 
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                             sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
+                                                     $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+                }
+                $cur_delete_len = 0;
+              }
+              else { # rf position is a gap, add 'd' GR frame annotation
+                if($strand eq "+") { $gr_frame_str .= "d"; }
+                else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
+                $cur_delete_len++;
+              }
+              # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
+              if($strand eq "+") { 
+                if(($rfpos < $mstop) && ($rf2ilen_AR->[$rfpos] > 0)) { 
+                  for(my $ipos = 0; $ipos < $rf2ilen_AR->[$rfpos]; $ipos++) { 
+                    $gr_frame_str .= "i"; 
+                    $ua_diff++; # increment number of seq positions seen
+                  }
                 }
               }
-            }
-            else { # negative strand, look for inserts that occur before this position
-              if(($rfpos > $mstop) && ($rf2ilen_AR->[($rfpos-1)] > 0)) { 
-                for(my $ipos = 0; $ipos < $rf2ilen_AR->[($rfpos-1)]; $ipos++) { 
-                  $gr_frame_str =  "i" . $gr_frame_str; # prepend for negative strand
-                  $ua_diff++; # increment number of seq positions seen
+              else { # negative strand, look for inserts that occur before this position
+                if(($rfpos > $mstop) && ($rf2ilen_AR->[($rfpos-1)] > 0)) { 
+                  for(my $ipos = 0; $ipos < $rf2ilen_AR->[($rfpos-1)]; $ipos++) { 
+                    $gr_frame_str =  "i" . $gr_frame_str; # prepend for negative strand
+                    $ua_diff++; # increment number of seq positions seen
+                  }
                 }
               }
-            }
-            # add insertnn alert, if nec
-            my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
-            if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
-              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
-            }
+              # add insertnn alert, if nec
+              my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
+              if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
+              }
 
-            # increment or decrement rfpos
-            if($strand eq "+") { $rfpos++; } 
-            else               { $rfpos--; }
-          }
-          # complete final frame token
-          $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-          $nsgm++;
-          push(@gr_frame_str_A, $gr_frame_str);
-          # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
-          # print("$gr_frame_str\n");
-          if($cur_delete_len > $nmaxdel) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                       sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
-                                               $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
-          }
-        } # end of 'if' entered if segment has a sstart
-      } # end of for loop over segments
+              # increment or decrement rfpos
+              if($strand eq "+") { $rfpos++; } 
+              else               { $rfpos--; }
+            }
+            # complete final frame token
+            $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            $nsgm++;
+            push(@gr_frame_str_A, $gr_frame_str);
+            # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+            # print("$gr_frame_str\n");
+            if($cur_delete_len > $nmaxdel) { 
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                         sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
+                                                 $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+            }
+          } # end of 'if' entered if segment has valid results 
+        } # end of 'for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) {' 
+      } # end of 'if($first_sgm_idx != -1)'
 
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
