@@ -22,12 +22,12 @@ out: va-iss21-delcds/va-iss21-delcds.vadr.ftr
 out: va-iss21-delcds/va-iss21-delcds.vadr.sgm
 out: va-iss21-delcds/va-iss21-delcds.vadr.alt
 out: va-iss21-delcds/va-iss21-delcds.vadr.alt.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds.vadr.alt.list
 rmdir: va-iss21-delcds
 # 
 # deleted stem_loop, fwd strand
@@ -39,12 +39,12 @@ out: va-iss21-delstemloop/va-iss21-delstemloop.vadr.ftr
 out: va-iss21-delstemloop/va-iss21-delstemloop.vadr.sgm
 out: va-iss21-delstemloop/va-iss21-delstemloop.vadr.alt
 out: va-iss21-delstemloop/va-iss21-delstemloop.vadr.alt.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop.vadr.alt.list
 rmdir: va-iss21-delstemloop
 #
 ##################################################
@@ -58,12 +58,12 @@ out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.ftr
 out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.sgm
 out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.alt
 out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.alt.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds-rev.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds-rev.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds-rev.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds-rev.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds-rev.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delcds-rev.vadr.alt.list
 rmdir: va-iss21-delcds-rev
 # 
 # deleted stem_loop, rev strand
@@ -75,10 +75,10 @@ out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.ftr
 out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.sgm
 out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.alt
 out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.alt.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop-rev.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop-rev.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop-rev.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop-rev.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop-rev.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss21-delcds/expected-files/va-iss21-delstemloop-rev.vadr.alt.list
 rmdir: va-iss21-delstemloop-rev
