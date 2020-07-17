@@ -1221,16 +1221,17 @@ sub vdr_FeatureParentIndex {
 # Subroutine: vdr_FeatureSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
-# Purpose:    Return a string indicating what model this is
-#             for features that are covered by multiple model spans.
+# Purpose:    Return a string indicating what segment this is
+#             for features with multiple segments and return 
+#             the empty string for features with 1 segment.
 #
 # Arguments: 
 #  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
 #  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
 #  $sgm_idx:      model index
 #
-# Returns:    "" if this is the only model for this feature
-#             string like ", model 1 of 2", if not
+# Returns:    "" if this is the only segment for this feature
+#             string like ", segment 1 of 2", if not
 # 
 # Dies:       never; does not validate anything.
 #
@@ -1243,12 +1244,12 @@ sub vdr_FeatureSummarizeSegment {
   my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx) = @_;
 
   my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
-  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
-  if($nmdl > 1) { 
-    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nmdl);
+  my $nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
+  if($nsgm > 1) { 
+    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nsgm);
   }
 
-  return ""; # return "" if $nmdl == 1;
+  return ""; # return "" if $nsgm == 1;
 }
 
 
