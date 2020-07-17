@@ -3556,14 +3556,16 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
         # alignment doesn't span segment RF positions
         $is_valid = 0; 
       }
-      elsif(($sgm_strand eq "+") && ($start_rfpos > $stop_rfpos)) { 
-        # + strand, entire segment is deleted
+      elsif((($sgm_strand eq "+") && ($start_rfpos > $stop_rfpos)) || # complete segment deleted on + strand
+            (($sgm_strand eq "-") && ($start_rfpos < $stop_rfpos))) { # complete segment deleted on - strand
         $is_valid = 0; 
-      }
-      elsif(($sgm_strand eq "-") && ($start_rfpos < $stop_rfpos)) { 
-        # - strand, entire segment is deleted
-        $is_valid = 0; 
-      }
+        # report deletinf alert
+        my $ftr_nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
+        my $alt_msg = ($ftr_nsgm > 1) ? 
+            sprintf("segment %d of %d deleted", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $ftr_nsgm) : 
+            "complete single segment feature deleted";
+        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+      }  
 
       if($is_valid) { 
         if($sgm_strand eq "+") { 

@@ -13,8 +13,8 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-# deleted CDS
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss21-delcds/iss21-delcds.fa va-iss21-delcds > va-iss21-delcds.out
+# deleted CDS, fwd strand
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --noseqnamemax --minpvlen  3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss21-delcds/iss21-delcds.fa va-iss21-delcds > va-iss21-delcds.out
 desc: annotate-entoy.delcds
 out: va-iss21-delcds/va-iss21-delcds.vadr.pass.tbl 
 out: va-iss21-delcds/va-iss21-delcds.vadr.fail.tbl
@@ -30,8 +30,8 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.n
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
 rmdir: va-iss21-delcds
 # 
-# deleted stem_loop
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delstemloop.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss21-delcds/iss21-delcds.fa va-iss21-delstemloop > va-iss21-delstemloop.out
+# deleted stem_loop, fwd strand
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --noseqnamemax --minpvlen  3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delstemloop.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss21-delcds/iss21-delcds.fa va-iss21-delstemloop > va-iss21-delstemloop.out
 desc: annotate-entoy.delstemloop
 out: va-iss21-delstemloop/va-iss21-delstemloop.vadr.pass.tbl 
 out: va-iss21-delstemloop/va-iss21-delstemloop.vadr.fail.tbl
@@ -46,3 +46,39 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.n
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
 rmdir: va-iss21-delstemloop
+#
+##################################################
+# 
+# deleted CDS, rev strand
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --noseqnamemax --minpvlen  3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delcds-rev.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss21-delcds/iss21-delcds-rev.fa va-iss21-delcds-rev > va-iss21-delcds-rev.out
+desc: annotate-entoy.delcds-rev
+out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.pass.tbl 
+out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.fail.tbl
+out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.ftr
+out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.sgm
+out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.alt
+out: va-iss21-delcds-rev/va-iss21-delcds-rev.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+rmdir: va-iss21-delcds-rev
+# 
+# deleted stem_loop, rev strand
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --noseqnamemax --minpvlen 3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delstemloop-rev.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss21-delcds/iss21-delcds-rev.fa va-iss21-delstemloop-rev > va-iss21-delstemloop-rev.out
+desc: annotate-entoy.delstemloop-rev
+out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.pass.tbl 
+out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.fail.tbl
+out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.ftr
+out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.sgm
+out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.alt
+out: va-iss21-delstemloop-rev/va-iss21-delstemloop-rev.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+rmdir: va-iss21-delstemloop-rev
