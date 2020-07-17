@@ -13,6 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
+# deleted CDS
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.minfo -f $VADRSCRIPTSDIR/testfiles/entoy.delcds.fa va-entoy.delcds > va-entoy.delcds.out
 desc: annotate-entoy.delcds
 out: va-entoy.delcds/va-entoy.delcds.vadr.pass.tbl 
@@ -28,4 +29,20 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.n
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
 rmdir: va-entoy.delcds
-
+# 
+# deleted stem_loop
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --alicheck --skip_pv --keep -m $VADRSCRIPTSDIR/testfiles/models/entoy.delcds.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy.delstemloop.minfo -f $VADRSCRIPTSDIR/testfiles/entoy.delcds.fa va-entoy.delstemloop > va-entoy.delstemloop.out
+desc: annotate-entoy.delstemloop
+out: va-entoy.delcds/va-entoy.delcds.vadr.pass.tbl 
+out: va-entoy.delcds/va-entoy.delcds.vadr.fail.tbl
+out: va-entoy.delcds/va-entoy.delcds.vadr.ftr
+out: va-entoy.delcds/va-entoy.delcds.vadr.sgm
+out: va-entoy.delcds/va-entoy.delcds.vadr.alt
+out: va-entoy.delcds/va-entoy.delcds.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a.nends/va-entoy100a.nends.vadr.alt.list
+rmdir: va-entoy.delstemloop
