@@ -3558,6 +3558,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
       elsif((($sgm_strand eq "+") && ($start_rfpos > $stop_rfpos)) || # complete segment deleted on + strand
             (($sgm_strand eq "-") && ($start_rfpos < $stop_rfpos))) { # complete segment deleted on - strand
+        printf("HEYAHEYAHEYA!!! is_valid false\n");
         $is_valid = 0; 
         # report deletinf alert
         my $ftr_nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
@@ -7305,36 +7306,40 @@ sub output_tabular {
                                 $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
             $ftr_nprinted++;
+          }
+        } # end of 'if' entered if ftr_results_HHAHR is valid for this seq_mdl1/seq_name/ftr_idx trio
             
-            # print per-feature alerts, if any
-            $alt_nseqftr = 0;
-            if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
-               (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
-              foreach my $alt_code (@ftr_alt_code_A) { 
-                my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
-                if(defined $alt_instance) { 
-                  if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
-                    push(@data_alt_AA, []); # empty array -> blank line
-                  }
-                  if(! defined $alt_seqcode_H{$alt_code}) { 
-                    $alt_seq_ct_H{$alt_code}++; 
-                    $alt_seqcode_H{$alt_code} = 1;
-                  }
-                  if($alt_nseqftr == 0) { 
-                    $alt_nftr++;
-                  }
-                  my @instance_str_A = split(":VADRSEP:", $alt_instance);
-                  foreach my $instance_str (@instance_str_A) { 
-                    $alt_nseqftr++;
-                    $alt_ct_H{$alt_code}++;
-                    my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
-                    push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
-                                        $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
-                                        helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                        $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
-                    $alt_nprinted++;
-                  }
-                }
+        # print per-feature alerts, if any, this is outside the 'if ftr has results' if block because
+        # it is possible to have alerts for features without results (deletinf - full feature is deleted)
+        $alt_nseqftr = 0;
+        if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+           (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+          my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
+          my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
+          my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
+          foreach my $alt_code (@ftr_alt_code_A) { 
+            my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
+            if(defined $alt_instance) { 
+              if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
+                push(@data_alt_AA, []); # empty array -> blank line
+              }
+              if(! defined $alt_seqcode_H{$alt_code}) { 
+                $alt_seq_ct_H{$alt_code}++; 
+                $alt_seqcode_H{$alt_code} = 1;
+              }
+              if($alt_nseqftr == 0) { 
+                $alt_nftr++;
+              }
+              my @instance_str_A = split(":VADRSEP:", $alt_instance);
+              foreach my $instance_str (@instance_str_A) { 
+                $alt_nseqftr++;
+                $alt_ct_H{$alt_code}++;
+                my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
+                                    $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                    helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                    $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+                $alt_nprinted++;
               }
             }
           }
@@ -8091,7 +8096,7 @@ sub output_feature_table {
       # BUT at least one fatal alert for a feature NOT output to feature table (e.g. a feature that is too short to meet
       # minimum length requirements for the feature table). We throw a special alert here (ftskipfl) for this
       # so the sequence fails both in tabular and feature table output.
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "see .ftr and .alt output files for details", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "see .alt and possibly .ftr output files for details", $FH_HR);
       # set @seq_alert_A to this lone alert
       push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, " [" . $alt_seq_instances_HHR->{$seq_name}{"ftskipfl"} . "]"));
       $do_pass = 0; # this seq fails
