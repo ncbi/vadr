@@ -7306,46 +7306,43 @@ sub output_tabular {
                                 $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
             $ftr_nprinted++;
-          }
-        } # end of 'if' entered if ftr_results_HHAHR is valid for this seq_mdl1/seq_name/ftr_idx trio
-            
-        # print per-feature alerts, if any, this is outside the 'if ftr has results' if block because
-        # it is possible to have alerts for features without results (deletinf - full feature is deleted)
-        $alt_nseqftr = 0;
-        if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
-           (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
-          my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
-          my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
-          my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
-          foreach my $alt_code (@ftr_alt_code_A) { 
-            my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
-            if(defined $alt_instance) { 
-              if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
-                push(@data_alt_AA, []); # empty array -> blank line
-              }
-              if(! defined $alt_seqcode_H{$alt_code}) { 
-                $alt_seq_ct_H{$alt_code}++; 
-                $alt_seqcode_H{$alt_code} = 1;
-              }
-              if($alt_nseqftr == 0) { 
-                $alt_nftr++;
-              }
-              my @instance_str_A = split(":VADRSEP:", $alt_instance);
-              foreach my $instance_str (@instance_str_A) { 
-                $alt_nseqftr++;
-                $alt_ct_H{$alt_code}++;
-                my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
-                push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
-                                    $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
-                                    helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                    $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
-                $alt_nprinted++;
+
+            # print per-feature alerts, if any
+            $alt_nseqftr = 0;
+            if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+               (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+              foreach my $alt_code (@ftr_alt_code_A) { 
+                my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
+                if(defined $alt_instance) { 
+                  if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
+                    push(@data_alt_AA, []); # empty array -> blank line
+                  }
+                  if(! defined $alt_seqcode_H{$alt_code}) { 
+                    $alt_seq_ct_H{$alt_code}++; 
+                    $alt_seqcode_H{$alt_code} = 1;
+                  }
+                  if($alt_nseqftr == 0) { 
+                    $alt_nftr++;
+                  }
+                  my @instance_str_A = split(":VADRSEP:", $alt_instance);
+                  foreach my $instance_str (@instance_str_A) { 
+                    $alt_nseqftr++;
+                    $alt_ct_H{$alt_code}++;
+                    my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                    push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
+                                        $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                        helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                        $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+                    $alt_nprinted++;
+                  }
+                }
               }
             }
           }
         }
       }
     }
+
     my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 1, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
     if($seq_alt_str ne "") { 
       $seq_nseq_alt = 1;
