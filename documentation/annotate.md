@@ -926,7 +926,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*insertnp*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature |
 | [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
 | [*insertnp*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="insertnn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature |
-| [*deletinf*](#deletinf2)  | feature  | DELETION_OF_FEATURE_SEGMENT     | <a name="deletinf1"></a> internal deletion of a complete segment in a multi-segment feature |
+| [*deletinf*](#deletinf2)  | feature  | DELETION_OF_FEATURE_SEGMENT     | <a name="deletinf1"></a> internal deletion of a complete segment in a multi-segment feature with other segment(s) annotated |
 | [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
 | [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
 | [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |

@@ -1740,7 +1740,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
                    "DELETION_OF_FEATURE_SEGMENT", # short description
-                   "internal deletion of a complete segment in multi-segment feature", # long description
+                   "internal deletion of complete segment in multi-segment feature with other segment(s) annotated", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
