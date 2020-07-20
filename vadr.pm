@@ -1576,6 +1576,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "deletins", "sequence",
+                   "DELETION_OF_FEATURE", # short description
+                   "internal deletion of a complete feature", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
@@ -1720,12 +1726,6 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
-                   "DELETION_OF_FEATURE_REGION", # short description
-                   "deletion of complete feature or complete feature segment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR);
-
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
@@ -1736,6 +1736,12 @@ sub vdr_AlertInfoInitialize {
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in nucleotide-based alignment of CDS feature", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
+                   "DELETION_OF_FEATURE_SEGMENT", # short description
+                   "internal deletion of a complete segment in multi-segment feature", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",

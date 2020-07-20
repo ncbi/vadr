@@ -114,7 +114,7 @@ require "sqp_utils.pm";
 #     unexdivg (1)
 #
 #  4. cmalign_parse_stk_and_add_alignment_alerts()
-#     indf5gap, indf5loc, indf3gap, indf3loc (4)
+#     indf5gap, indf5loc, indf3gap, indf3loc, deletinf, deletins (6)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
@@ -1239,7 +1239,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                    \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                    \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                   \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
+                                                   \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, $mdl_name, $out_root, 
+                                                   \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
     }
@@ -3259,6 +3260,7 @@ sub cmalign_run {
 #  $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
 #  $sgm_results_HAHR:       REF to results HAH, FILLED HERE
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
+#  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
 #  $mdl_name:               model name this alignment pertains to
 #  $out_root:               string for naming output files
@@ -3272,12 +3274,13 @@ sub cmalign_run {
 ################################################################# 
 sub cmalign_parse_stk_and_add_alignment_alerts { 
   my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 14;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
-      $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $mdl_name, $out_root, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
@@ -3507,6 +3510,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
     # now we have all the info we need for this sequence to determine sequence boundaries for each model segment
     my $sgm_idx; 
     my $ftr_idx;
+    my %ftr_alt_msg_HA = (); # key is $ftr_idx, value is an array of alert messages for deletinf alerts, one per 
+                             # segment for $ftr_idx that is completely deleted. This is rare and *not identifying*
+                             # these is github issue 21
     for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
       my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
       my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
@@ -3546,10 +3552,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       $start_uapos = ($sgm_strand eq "+") ? $min_uapos_after_A[$sgm_start_rfpos] : $max_uapos_before_A[$sgm_start_rfpos];
       $stop_uapos  = ($sgm_strand eq "+") ? $max_uapos_before_A[$sgm_stop_rfpos] : $min_uapos_after_A[$sgm_stop_rfpos];
 
-      printf("HEYA start_rfpos: $start_rfpos\n");
-      printf("HEYA stop_rfpos:  $stop_rfpos\n");
-      printf("\n");
-
       # determine if we have a valid annotation for this segment
       my $is_valid = 1; # assume we do, and check for 3 cases in which we don't below
       if(($start_rfpos == -1) || ($stop_rfpos == -1)) { 
@@ -3558,14 +3560,22 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
       elsif((($sgm_strand eq "+") && ($start_rfpos > $stop_rfpos)) || # complete segment deleted on + strand
             (($sgm_strand eq "-") && ($start_rfpos < $stop_rfpos))) { # complete segment deleted on - strand
-        printf("HEYAHEYAHEYA!!! is_valid false\n");
         $is_valid = 0; 
-        # report deletinf alert
+        # keep track that this segment is completely deleted, by constructing its 
+        # alert message for a possible deletinf alert. However we can't report it yet
+        # because if all segments for this feature are deleted we will report a 
+        # deletins (per-sequence) alert instead. So we just store the possible
+        # deletinf alert here in %ftr_alt_msg_HA and then deal with it after
+        # the 'for($sgm_idx=0..$nsgm-1)' block below
         my $ftr_nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
         my $alt_msg = ($ftr_nsgm > 1) ? 
             sprintf("segment %d of %d deleted", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $ftr_nsgm) : 
             "complete single segment feature deleted";
-        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+        if(! defined $ftr_alt_msg_HA{$ftr_idx}) { 
+          @{$ftr_alt_msg_HA{$ftr_idx}} = (); 
+        }
+        push(@{$ftr_alt_msg_HA{$ftr_idx}}, $alt_msg);
+        #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
       }  
 
       if($is_valid) { 
@@ -3627,6 +3637,31 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
+    # report any deletinf/deletins alerts
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(defined $ftr_alt_msg_HA{$ftr_idx}) { 
+        my $nsgm_alt = scalar(@{$ftr_alt_msg_HA{$ftr_idx}});
+        my $nsgm_tot = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+        if($nsgm_alt == $nsgm_tot) { 
+          # all segments are deleted, report deletins (per-sequence) alert, 
+          # we do NOT report any deletinf alerts, one reason is there is no 
+          # feature annotation for $ftr_idx in this case
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
+                                      sprintf("feature number %d (%s)", ($ftr_idx+1), $ftr_info_AHR->[$ftr_idx]{"outname"}), 
+                                      $FH_HR);
+        }
+        else { 
+          # at least one but not all segments are deleted, report 1 or more deletinf (per-feature)
+          # alerts, we do NOT report a deletins alert because this feature is 
+          # annotated, just not all segments are.
+          # NOTE: this won't happen if a segment is not annotated because it is truncated
+          # away due to a sequence terminus (i.e. should exist before/after start/end of sequence)
+          foreach my $alt_msg (@{$ftr_alt_msg_HA{$ftr_idx}}) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+          }
+        }
+      }
+    }
     # detect and report any frameshifts for this sequence
     add_frameshift_alerts_for_one_sequence($msa, $seq_name, $i, \@rf2a_A, \@rfpos_pp_A, \@rf2ilen_A, 
                                            \@max_uapos_before_A, \@{$sgm_info_HAH{$mdl_name}},
@@ -7353,7 +7388,7 @@ sub output_tabular {
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
 
     push(@data_ant_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
-                            $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
+                        $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
     
     push(@data_cls_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
                             helper_tabular_replace_spaces($seq_grp1), 
@@ -8587,7 +8622,7 @@ sub helper_ftable_class_model_for_sequence {
 #             process that string to determine what (if any) 
 #             alerts should be added to the feature table
 #             for this sequence. Note that we do not add any 'notes'
-#             as we possibly could in processFeatureAlertsForFTable() 
+#             as we possibly could in helper_ftable_process_feature_alerts()
 #             because we are dealing with the full sequence and not
 #             a feature for a sequence.
 #
