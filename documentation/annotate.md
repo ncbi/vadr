@@ -900,6 +900,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*lowsim5s*](#lowsim5s2)  | sequence | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
 | [*lowsim3s*](#lowsim3s2)  | sequence | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
 | [*lowsimis*](#lowsimis2)  | sequence | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
+| [*deletins*](#deletins2)  | sequence | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature |
 | [*mutstart*](#mutstart2)  | feature  | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
 | [*mutendcd*](#mutendcd2)  | feature  | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid | 
 | [*mutendns*](#mutendns2)  | feature  | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | 
@@ -922,7 +923,10 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*indf3pst*](#indf3pst2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
 | [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
 | [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
+| [*insertnp*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature |
 | [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
+| [*insertnp*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="insertnn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature |
+| [*deletinf*](#deletinf2)  | feature  | DELETION_OF_FEATURE_SEGMENT     | <a name="deletinf1"></a> internal deletion of a complete segment in a multi-segment feature with other segment(s) annotated |
 | [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
 | [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
 | [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
@@ -975,6 +979,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim5s2"></a> | 
 | [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
+| [*deletinf*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
 | [*mutendcd*](#mutendcd1)  | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* <a name="mutendcd2"></a> | 
 | [*mutendns*](#mutendns1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendns2"></a> | 
@@ -997,7 +1002,10 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf3pst2"></a> | 
 | [*indfstrp*](#indfstrp1)  | INDEFINITE_STRAND               | none | CDS | - <a name="indfstrp2"></a> | 
 | [*insertnp*](#insertnp1)  | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts-xmaxins) | CDS | - <a name="insertnp2"></a> | 
+| [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> | 
 | [*deletinp*](#deletinp1)  | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts-xmaxdel) | CDS | - <a name="deletinp2"></a> | 
+| [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> | 
+| [*deletinf*](#deletinf1)  | DELETION_OF_FEATURE_SEGMENT     | none | all | - <a name="deletinf2"></a> | 
 | [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
 | [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
 | [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
