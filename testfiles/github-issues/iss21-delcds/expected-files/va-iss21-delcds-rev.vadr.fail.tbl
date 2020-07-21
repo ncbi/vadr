@@ -20,7 +20,7 @@ ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature
 			protein_id	entoy.delcds/cds3-sgm1-deleted/1-70,79-123/115-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 1 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
 ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model is a gap at 5' boundary [RF position 44, segment 2 of 3]
 >Feature entoy.delcds/cds3-sgm2-deleted/1-79,84-123/119-1
 47	42	misc_feature
@@ -34,7 +34,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model 
 			protein_id	entoy.delcds/cds3-sgm2-deleted/1-79,84-123/119-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 2 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]
 >Feature entoy.delcds/cds3-sgm3-deleted/1-83,97-123/110-1
 38	33	misc_feature
 31	29
@@ -47,7 +47,7 @@ ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complet
 			protein_id	entoy.delcds/cds3-sgm3-deleted/1-83,97-123/110-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 3 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]
 >Feature entoy.delcds/cds3-sgm1and2-deleted/1-65,87-123/102-1
 37	31	misc_feature
 			note	similar to protein three
@@ -59,8 +59,8 @@ ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complet
 			protein_id	entoy.delcds/cds3-sgm1and2-deleted/1-65,87-123/102-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 1 of 3 deleted]
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 2 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]
 ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model is a gap at 5' boundary [RF position 39, segment 3 of 3]
 >Feature entoy.delcds/cds3-sgm2and3-deleted/1-79,97-123/106-1
 34	29	misc_feature
@@ -73,8 +73,8 @@ ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model 
 			protein_id	entoy.delcds/cds3-sgm2and3-deleted/1-79,97-123/106-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 2 of 3 deleted]
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 3 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]
 >Feature entoy.delcds/cds3-sgm1and3-deleted/1-70,79..84,97-123/102-1
 61	41	CDS
 			product	protein two
@@ -84,7 +84,7 @@ ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complet
 			protein_id	entoy.delcds/cds3-sgm1and3-deleted/1-70,79..84,97-123/102-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 1 of 3 deleted]
-ERROR: DELETION_OF_FEATURE_SEGMENT: (protein three) internal deletion of complete segment in multi-segment feature with other segment(s) annotated [segment 3 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (protein three) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]
 ERROR: INDEFINITE_ANNOTATION_END: (protein three) alignment to homology model has low confidence at 3' boundary [0.50 < 0.80, RF position 42, segment 2 of 3]
 ERROR: INDEFINITE_ANNOTATION_START: (protein three) alignment to homology model has low confidence at 5' boundary [0.50 < 0.80, RF position 44, segment 2 of 3]
