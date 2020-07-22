@@ -1,0 +1,11 @@
+>Feature entoy.delcds
+11	31	CDS
+			product	protein one
+			protein_id	entoy.delcds_1
+42	62	CDS
+			product	protein two
+			protein_id	entoy.delcds_2
+73	78	stem_loop
+80	82
+85	93
+			product	SL1

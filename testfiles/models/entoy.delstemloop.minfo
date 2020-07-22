@@ -1,0 +1,4 @@
+MODEL entoy.delcds group:"toy" length:"123" subgroup:"A"
+FEATURE entoy.delcds type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE entoy.delcds type:"CDS" coords:"42..62:+" parent_idx_str:"GBNULL" gene:"two" product:"protein two"
+FEATURE entoy.delcds type:"stem_loop" coords:"73..78:+,80..82:+,85..93:+" parent_idx_str:"GBNULL" product:"SL1"
