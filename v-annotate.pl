@@ -444,7 +444,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1dev8";
+my $version       = "1.1.1";
 my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
@@ -7452,7 +7452,9 @@ sub output_tabular {
   }
 
   # add data to the model table
-  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
+  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} or 
+                                    $a cmp $b 
+                         } keys (%{$mdl_cls_ct_HR}));
   my $mdl_tbl_idx = 0;
   my $sum_mdl_cls_ct     = 0;
   my $sum_mdl_pass_ct    = 0;

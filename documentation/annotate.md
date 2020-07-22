@@ -190,9 +190,9 @@ the best matching model to one or more sequences:
 #idx  model      group      subgroup  seqs  pass  fail
 #---  ---------  ---------  --------  ----  ----  ----
 1     NC_008311  Norovirus  GV           2     1     1
-2     NC_044854  Norovirus  GI           2     2     0
+2     NC_029645  Norovirus  GIII         2     2     0
 3     NC_039477  Norovirus  GII          2     2     0
-4     NC_029645  Norovirus  GIII         2     2     0
+4     NC_044854  Norovirus  GI           2     2     0
 5     NC_001959  Norovirus  GI           1     1     0
 #---  ---------  ---------  --------  ----  ----  ----
 -     *all*      -          -            9     8     1
@@ -675,15 +675,17 @@ integer.
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-n <s>` | use the blastn DB file `<s>` when necessary, instead of the default blastn DB file ($VADRMODELDIR/vadr.fa), only used if `-s` or `-r` is also used |
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
-| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa ffiles in $VADRMODELDIR start with key <s>, not 'vadr' |
-| `--mdir <s>` | specify that all model files to use are in the directory <s>, not in $VADRMODELDIR |
+| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa files in $VADRMODELDIR start with key `<s>`, not 'vadr' |
+| `--mdir <s>` | specify that all model files to use are in the directory `<s>`, not in $VADRMODELDIR |
 
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--nomisc`     | in feature table, never change feature to `misc_feature` | 
-| `--noprotid`   | in feature table, don't add protein_id for CDS and mat_peptide features |
-| `--forceid`    | in feature table, force protein_id value to be sequence name, then idx |
+| `--nomisc`        | in feature table, never change feature to `misc_feature` | 
+| `--notrim`        | <a name="options-alert-ambg"></a> in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for all feature types | 
+| `--noftrtrim <s>` | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for feature types listed in the comma-delimited string `<s>` (no spaces) | 
+| `--noprotid`      | in feature table, don't add protein_id for CDS and mat_peptide features |
+| `--forceprotid`   | in feature table, force protein_id value to be sequence name, then idx |
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 
@@ -858,6 +860,7 @@ The following options are related to parallel mode.
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
 | `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
+| `--noseqnamemax` | do not enforce the GenBank maximum length of 50 characters for sequence names |
 | `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
 
@@ -945,6 +948,10 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*fstlocnf*](#fstlocnf2)  | feature  | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
 | [*insertnn*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
 | [*deletinn*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
+| [*ambgnt5f*](#ambgnt5f2)  | feature  | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
+| [*ambgnt3f*](#ambgnt3f2)  | feature  | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
+| [*ambgnt5c*](#ambgnt5c2)  | feature  | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
+| [*ambgnt3c*](#ambgnt3c2)  | feature  | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1024,6 +1031,10 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstlocnf2"></a> |
 | [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
+| [*ambgnt5f*](#ambgnt5s1)  | N_AT_FEATURE_START              | none | - | - <a name="ambgnt5s2"></a> | 
+| [*ambgnt3f*](#ambgnt3s1)  | N_AT_FEATURE_END                | none | - | - <a name="ambgnt3s2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | N_AT_CDS_START                  | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | N_AT_CDS_END                    | none | CDS | - <a name="ambgnt3c2"></a> | 
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
