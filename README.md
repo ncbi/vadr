@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.1.1; June 2020
+#### Version 1.1.1; July 2020
 #### https://github.com/nawrockie/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences

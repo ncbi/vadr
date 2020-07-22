@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.1.1 [June 2020]
+# version: 1.1.1 [July 2020]
 #
 # vadr.pm
 # Eric Nawrocki
