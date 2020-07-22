@@ -1,25 +1,33 @@
 # VADR 1.x release notes 
 
-### VADR 1.1.1 release (June 2020): Minor update
+### VADR 1.1.1 release (July 2020): Minor update
 
-  * in .ftr output file, adds two new columns that list number of
-    consecutive Ns at beginning and end of each feature (often 0)
   * in feature table output (only) features that start and/or end with
     one or more ambiguous 'N' nucleotides now have their start and
     stop positions 'trimmed' to the first or final non-N to be
     consisent with how GenBank annotates such features, and adds
     related --noftrtrim and --notrim options to turn this off for some
     or all types of features
+  * in .ftr output file, adds two new columns that list number of
+    consecutive Ns at beginning and end of each feature (often 0)
   * adds ambgnt5c, ambgnt3c alerts for CDS features that start/end
-    with one or more Ns, fatal by default
+    with one or more Ns, non-fatal by default
   * adds ambgnt5f, ambgnt3f alerts for non-CDS features that start/end
     with one or more Ns, non-fatal by default
   * adds ftskipfl alert for rare case that >= 1 per-feature fatal
     alerts exist, but none of those features are included in the
     output feature table
+  * adds deletinf alert for a sequence that has a feature with a
+    complete segment deleted, fatal by default
+  * adds deletins alert for a sequence that has a complete feature
+    deleted, fatal by default
   * sequence names must now be 50 characters or less to be consistent
     with GenBank submission rules, adds --noseqnamemax option to relax
-    this restriction
+    this restriction (github issue #12)
+  * fixes bug with deleted features causing v-annotate.pl to fail
+    (github issue #21) 
+  * fixes bug with -s and duplicate blastn hits in models with
+    repetitive regions (github issue #13)
 
 ---
 
