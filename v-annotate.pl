@@ -3645,7 +3645,7 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           # we do NOT report any deletinf alerts, one reason is there is no 
           # feature annotation for $ftr_idx in this case
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
-                                      sprintf("feature number %d (%s number %s: %s)", ($ftr_idx+1), 
+                                      sprintf("%s feature number %s: %s",
                                               $ftr_info_AHR->[$ftr_idx]{"type"}, 
                                               vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx), 
                                               $ftr_info_AHR->[$ftr_idx]{"outname"}), 
