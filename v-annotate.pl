@@ -1349,7 +1349,6 @@ if($do_hmmer) {
 #      ---------------  -------------- -----------
 #      CDS              mat_peptide    peptrans
 ##############################################################
-# add per-sequence 'noftrann' errors (zero annotated features)
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
@@ -3838,7 +3837,7 @@ sub add_frameshift_alerts_for_one_sequence {
                 # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
                 $uapos = $max_uapos_before_AR->[$rfpos]; 
                 $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
-                my $F_cur = vdr_FrameAdjust($F_0, ($ua_diff - $rf_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
+                my $F_cur = vdr_FrameAdjust($F_0, ($rf_diff - $ua_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
                 if($strand eq "+") { $gr_frame_str .= $F_cur; }
                 else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
                 $frame_ct_A[$F_cur]++;
@@ -7784,7 +7783,7 @@ sub output_feature_table {
 
     # first check for per-sequence alerts
     my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
-    helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
+    my $prevents_annot_flag = helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
 
     $mdl_name = helper_ftable_class_model_for_sequence($stg_results_HHHR, $seq_name);
     if(defined $mdl_name) { 
@@ -8101,10 +8100,14 @@ sub output_feature_table {
     # possibly add noftrann or noftranc alerts
     if($seq_ntabftr == 0) { 
       # no features annotated, even in eventual .ftr tabular file
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
-      # set @seq_alert_A to this lone alert
-      @seq_alert_A = ();
-      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
+      # first check to see if any per-sequence alerts that prevent annotation have already been reported,
+      # if so, we don't report noftrann because there is no annotation at all for this sequence
+      if(! $prevents_annot_flag) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
+        # set @seq_alert_A to this lone alert
+        @seq_alert_A = ();
+        push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
+      }
     }
     elsif($cur_noutftr == 0) { 
       # >= 1 features annotated in eventual .ftr tbl file, but zero in this .tbl file because 
@@ -8130,7 +8133,7 @@ sub output_feature_table {
       # BUT at least one fatal alert for a feature NOT output to feature table (e.g. a feature that is too short to meet
       # minimum length requirements for the feature table). We throw a special alert here (ftskipfl) for this
       # so the sequence fails both in tabular and feature table output.
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "see .alt and possibly .ftr output files for details", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "see .ftr and .alt output files for details", $FH_HR);
       # set @seq_alert_A to this lone alert
       push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, " [" . $alt_seq_instances_HHR->{$seq_name}{"ftskipfl"} . "]"));
       $do_pass = 0; # this seq fails
@@ -8636,7 +8639,9 @@ sub helper_ftable_class_model_for_sequence {
 #   $ret_alert_AR:           REF to array of alerts, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns: number of alerts added to $ret_alert_AR
+# Returns: '1' if any alert added to $ret_alert_AR has the 'prevents_annot'
+#          flag as '1', else '0'. Returns '0' if no alerts are added to 
+#          $ret_alert_AR.
 #
 # Dies: Never
 #################################################################
@@ -8651,7 +8656,7 @@ sub helper_ftable_process_sequence_alerts {
     return 0; 
   }
 
-  my $ret_nadded = 0;
+  my $ret_prevents_annot_flag = 0;
 
   # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
   my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
@@ -8677,6 +8682,10 @@ sub helper_ftable_process_sequence_alerts {
       }
     }
     if($do_report) { 
+      # determine if prevents_annot flag is '1'
+      if($alt_info_HHR->{$alt_code}{"prevents_annot"}) { 
+        $ret_prevents_annot_flag = 1;
+      }
       # we could have more than one instance of this sequence/alert pair
       my @instance_str_A = split(":VADRSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
       foreach my $instance_str (@instance_str_A) { 
@@ -8688,13 +8697,12 @@ sub helper_ftable_process_sequence_alerts {
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
           push(@{$ret_alert_AR}, $alert_str); 
-          $ret_nadded++;
         }
       }
     }
   }
 
-  return $ret_nadded;
+  return $ret_prevents_annot_flag;
 }
 
 #################################################################

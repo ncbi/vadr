@@ -1796,9 +1796,6 @@ sub vdr_AlertInfoInitialize {
   # mutendcd is invalidated by cdsstopn, mutendex, mutendns
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "cdsstopn,mutendex,mutendns", $FH_HR); 
 
-  # unexdivg is preferred to noftrann
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);
-
   return;
 }
 
