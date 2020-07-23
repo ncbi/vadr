@@ -3574,7 +3574,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           @{$ftr_alt_msg_HA{$ftr_idx}} = (); 
         }
         push(@{$ftr_alt_msg_HA{$ftr_idx}}, $alt_msg);
-        #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
       }  
 
       if($is_valid) { 
@@ -3646,7 +3645,10 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
           # we do NOT report any deletinf alerts, one reason is there is no 
           # feature annotation for $ftr_idx in this case
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
-                                      sprintf("feature number %d (%s)", ($ftr_idx+1), $ftr_info_AHR->[$ftr_idx]{"outname"}), 
+                                      sprintf("feature number %d (%s number %s: %s)", ($ftr_idx+1), 
+                                              $ftr_info_AHR->[$ftr_idx]{"type"}, 
+                                              vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx), 
+                                              $ftr_info_AHR->[$ftr_idx]{"outname"}), 
                                       $FH_HR);
         }
         else { 
