@@ -44,3 +44,7 @@ my $dir;
 foreach $dir (@rmdir_A) { 
   system("rm -rf $dir");
 }
+my $errfile;
+foreach $errfile (@errfile_A) { 
+  system("rm $errfile");
+}
