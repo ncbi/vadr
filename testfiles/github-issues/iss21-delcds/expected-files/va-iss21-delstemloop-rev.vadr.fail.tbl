@@ -7,7 +7,7 @@
 			protein_id	entoy.delcds/cds3-deleted/1-70,96-123/98-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature [feature number 3 (SL1)]
+ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature [stem_loop feature number 1: SL1]
 >Feature entoy.delcds/cds3-sgm1-deleted/1-70,79-123/115-1
 43	42	misc_feature
 39	31

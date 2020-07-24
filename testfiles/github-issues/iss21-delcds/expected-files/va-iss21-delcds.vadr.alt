@@ -1,7 +1,7 @@
 #      seq                                                                  ftr   ftr            ftr  alert           alert                        alert 
 #idx   name                                                   model         type  name           idx  code      fail  desc                         detail
 #----  -----------------------------------------------------  ------------  ----  -------------  ---  --------  ----  ---------------------------  ------
-2.1.1  entoy.delcds/cds3-deleted/1-70,96-123                  entoy.delcds  -     -                -  deletins  yes   DELETION_OF_FEATURE          internal deletion of a complete feature [feature number 3 (protein three)]
+2.1.1  entoy.delcds/cds3-deleted/1-70,96-123                  entoy.delcds  -     -                -  deletins  yes   DELETION_OF_FEATURE          internal deletion of a complete feature [CDS feature number 3: protein three]
 #
 3.1.1  entoy.delcds/cds3-sgm1-deleted/1-70,79-123             entoy.delcds  CDS   protein_three    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 80, segment 2 of 3]
 3.1.2  entoy.delcds/cds3-sgm1-deleted/1-70,79-123             entoy.delcds  CDS   protein_three    3  deletinf  yes   DELETION_OF_FEATURE_SECTION  internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
