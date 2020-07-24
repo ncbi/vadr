@@ -226,6 +226,10 @@ if(scalar(@ARGV) != 2) {
 }
 my ($mdl_name, $dir) = (@ARGV);
 
+if($mdl_name =~ [\(\)]/) { 
+  die "ERROR, accession cannot contain '(' or ')'";
+}
+
 # set options in opt_HH
 opt_SetFromUserHash(\%GetOptions_H, \%opt_HH);
 
@@ -700,6 +704,9 @@ if($ncds > 0) {
     # remove version from $hmm_name
     if($seq_name =~ /^(.+)\.\d+(\/[^\/]+)$/) { 
       $hmm_name = $1 . $2;
+      if($hmm_name =~ /[\(\)]/) { 
+        ofile_FAIL("ERROR, illegal sequence name in $protein_fa_file, sequence names can't have ')' or '(' in them", 1, $FH_HR);
+      }
     }
     else { 
       ofile_FAIL("ERROR, unable to parse protein sequence name $seq_name to make HMM model name", 1, $FH_HR);
