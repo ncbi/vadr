@@ -501,10 +501,10 @@ alerts occur, only one is output to reduce the number of overlapping
 or redundant problems reported to the submitter/user. In this case the
 `mutendcd` (`MUTATION_AT_END`) alert is omitted in the `.fail.tbl`
 file because it occurs in combination with a `cdsstopn`
-(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only two alerts
-(`noftrann` and `mutendcd`) can possibly be omitted. See the
+(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only one alert
+(`mutendcd`) can possibly be omitted. See the
 far right column of the [this table](#alerts2) for which alerts,
-when present in combination with `noftrann` or `mutendcd` cause them
+when present in combination with `mutendcd` causes it
 to be omitted. Only alerts output to the `.fail.tbl`
 table are output to the `.alt.list` file. 
 
@@ -890,6 +890,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*revcompl*](#revcompl2)  | sequence | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
 | [*unexdivg*](#unexdivg2)  | sequence | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
 | [*noftrann*](#noftrann2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
+| [*noftrant*](#noftrant2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
 | alert code | type | short description/error name | long description |
@@ -972,7 +973,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*noannotn*](#noannotn1)  | NO_ANNOTATION                | none | - | - <a name="noannotn2"></a> | 
 | [*revcompl*](#revcompl1)  | REVCOMPLEM                   | none | - | - <a name="revcompl2"></a> |  
 | [*unexdivg*](#unexdivg1)  | UNEXPECTED_DIVERGENCE        | none | - | - <a name="unexdivg2"></a> |  
-| [*noftrann*](#noftrann1)  | NO_FEATURES_ANNOTATED        | none | - | *unexdivg* <a name="noftrann2"></a> | 
+| [*noftrann*](#noftrann1)  | NO_FEATURES_ANNOTATED        | none | - | - <a name="noftrann2"></a> | 
+| [*noftrant*](#noftrant1)  | NO_FEATURES_ANNOTATED        | none | - | - <a name="noftrant2"></a> | 
 
 #### More information on alerts that are *fatal* by default <a name="fatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 

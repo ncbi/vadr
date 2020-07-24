@@ -34,7 +34,7 @@
 			note	stem-loop 1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 91..88 (4 nt, avgpp: 0.863) on - strand are inconsistent with dominant frame (-3); inserts:88; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 91..88 (4 nt, avgpp: 0.863) on - strand are inconsistent with dominant frame (-2); inserts:88; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
@@ -75,7 +75,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			note	stem-loop 1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 95..88 (8 nt, avgpp: 0.781) on - strand are inconsistent with dominant frame (-2); inserts:92-88; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 95..88 (8 nt, avgpp: 0.781) on - strand are inconsistent with dominant frame (-3); inserts:92-88; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [26]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
@@ -272,7 +272,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (enRNA) alignment to homology model is a gap a
 			note	stem-loop 1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 89..88 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:88(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 89..88 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:88(1);]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
@@ -313,7 +313,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			note	stem-loop 1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 88..87 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:87(2);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein one) high confidence potential frameshift in CDS [nucleotide alignment of positions 88..87 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:87(2);]
 ERROR: MUTATION_AT_START: (protein one) expected start codon could not be identified [ATT starting at position 88 on - strand is not a valid start]
 ERROR: UNEXPECTED_LENGTH: (protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [19]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem

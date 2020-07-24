@@ -37,7 +37,7 @@
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 39 nt)]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..39 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+3); inserts:39; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..39 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+2); inserts:39; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]
 >Feature ENTOY100A-2-fs2
 5	22	ncRNA
@@ -118,7 +118,7 @@ Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 39 nt)]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 70..74 (5 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+1); inserts:70; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 67..70 (4 nt, avgpp: 0.913) on + strand are inconsistent with dominant frame (+3); inserts:70; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 67..70 (4 nt, avgpp: 0.913) on + strand are inconsistent with dominant frame (+2); inserts:70; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [25]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10]
@@ -161,7 +161,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			protein_id	ENTOY100A-2-fs4_3
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..37 (6 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:37(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..37 (6 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:37(1);]
 ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]
 >Feature ENTOY100A-2-fs5
 5	22	ncRNA
@@ -241,7 +241,7 @@ Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..66 (stop shifted 6 nt)]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 69..72 (4 nt, avgpp: 0.838) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:68(1);]
 ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 67..68 (2 nt, avgpp: 0.938) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:68(1);]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 67..68 (2 nt, avgpp: 0.938) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:68(1);]
 ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [23]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [8]
@@ -403,7 +403,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential fr
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..67 (stop shifted 9 nt)]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 53..73 (21 nt, avgpp: 0.919) on + strand are inconsistent with dominant frame (+1); inserts:53,72-73; deletes:none;]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 68..73 (6 nt, avgpp: 0.871) on + strand are inconsistent with dominant frame (+2); inserts:72-73; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein three) high confidence potential frameshift in CDS [nucleotide alignment of positions 68..73 (6 nt, avgpp: 0.871) on + strand are inconsistent with dominant frame (+3); inserts:72-73; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [26]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: UNEXPECTED_LENGTH: (protein three mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
@@ -447,7 +447,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 37 nt)]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..46 (15 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..46 (15 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:none;]
 ERROR: INDEFINITE_ANNOTATION_END: (protein two) alignment to homology model is a gap at 3' boundary [RF position 47, segment 1 of 3]
 ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is a gap at 5' boundary [RF position 47, segment 2 of 3]
 ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [40]
@@ -531,7 +531,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (protein two) alignment to homology model is
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 39 nt)]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..48 (17 nt, avgpp: 0.943) on + strand are inconsistent with dominant frame (+3); inserts:48; deletes:none;]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (protein two) high confidence potential frameshift in CDS [nucleotide alignment of positions 32..48 (17 nt, avgpp: 0.943) on + strand are inconsistent with dominant frame (+2); inserts:48; deletes:none;]
 ERROR: UNEXPECTED_LENGTH: (protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]
 >Feature ENTOY100A-2-fs16
 5	22	ncRNA

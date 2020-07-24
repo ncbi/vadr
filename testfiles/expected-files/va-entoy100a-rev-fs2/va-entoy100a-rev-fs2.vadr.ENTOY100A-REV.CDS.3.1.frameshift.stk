@@ -6,11 +6,11 @@
 
 #=GS ENTOY100A-REV-2-fs3 DE multi-segment, segment 3, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS31+1)
 
-#=GS ENTOY100A-REV-2-fs3 FS.1 nucleotide alignment of positions 35..32 (4 nt, avgpp: 0.888) on - strand are inconsistent with dominant frame (-3); inserts:32; deletes:none;
+#=GS ENTOY100A-REV-2-fs3 FS.1 nucleotide alignment of positions 35..32 (4 nt, avgpp: 0.888) on - strand are inconsistent with dominant frame (-2); inserts:32; deletes:none;
 
 ENTOY100A-REV-2-fs3         CAATTTCTACGCAT
 #=GR ENTOY100A-REV-2-fs3 PP *********979**
-#=GR ENTOY100A-REV-2-fs3 CS 3333333333i111
+#=GR ENTOY100A-REV-2-fs3 CS 2222222222i111
 #=GC SS_cons                ::::::::::::::
 #=GC RF                     CAATTTCTAC.CAT
 //
@@ -22,11 +22,11 @@ ENTOY100A-REV-2-fs3         CAATTTCTACGCAT
 
 #=GS ENTOY100A-REV-2-fs6 DE multi-segment, segment 3, 1nt deletion that breaks frame, not fixed (CDS2, RFPOS32-)
 
-#=GS ENTOY100A-REV-2-fs6 FS.1 nucleotide alignment of positions 33..32 (2 nt, avgpp: 0.938) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:32(1);
+#=GS ENTOY100A-REV-2-fs6 FS.1 nucleotide alignment of positions 33..32 (2 nt, avgpp: 0.938) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:32(1);
 
 ENTOY100A-REV-2-fs6         CAATTTCTAC-AT
 #=GR ENTOY100A-REV-2-fs6 PP ********95.9*
-#=GR ENTOY100A-REV-2-fs6 CS 2222222222d11
+#=GR ENTOY100A-REV-2-fs6 CS 3333333333d11
 #=GC SS_cons                :::::::::::::
 #=GC RF                     CAATTTCTACCAT
 //
@@ -38,11 +38,11 @@ ENTOY100A-REV-2-fs6         CAATTTCTAC-AT
 
 #=GS ENTOY100A-REV-2-fs12 DE multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion different segment (CDS2, RFPOS48+1,30+2)
 
-#=GS ENTOY100A-REV-2-fs12 FS.1 nucleotide alignment of positions 36..31 (6 nt, avgpp: 0.871) on - strand are inconsistent with dominant frame (-2); inserts:32-31; deletes:none;
+#=GS ENTOY100A-REV-2-fs12 FS.1 nucleotide alignment of positions 36..31 (6 nt, avgpp: 0.871) on - strand are inconsistent with dominant frame (-3); inserts:32-31; deletes:none;
 
 ENTOY100A-REV-2-fs12         CAATTTCTAGGCCAT
 #=GR ENTOY100A-REV-2-fs12 PP ********9779***
-#=GR ENTOY100A-REV-2-fs12 CS 222222222ii1111
+#=GR ENTOY100A-REV-2-fs12 CS 333333333ii1111
 #=GC SS_cons                 :::::::::::::::
 #=GC RF                      CAATTTCTA..CCAT
 //
@@ -58,7 +58,7 @@ ENTOY100A-REV-2-fs12         CAATTTCTAGGCCAT
 
 ENTOY100A-REV-2-fs17         CAATTTTCTACCAT
 #=GR ENTOY100A-REV-2-fs17 PP 99862579******
-#=GR ENTOY100A-REV-2-fs17 CS 3333i111111111
+#=GR ENTOY100A-REV-2-fs17 CS 2222i111111111
 #=GC SS_cons                 ::::::::::::::
 #=GC RF                      CAAT.TTCTACCAT
 //
@@ -74,7 +74,7 @@ ENTOY100A-REV-2-fs17         CAATTTTCTACCAT
 
 ENTOY100A-REV-2-fs18         CAATTTTCTACCAT
 #=GR ENTOY100A-REV-2-fs18 PP *9972579******
-#=GR ENTOY100A-REV-2-fs18 CS 3333i111111111
+#=GR ENTOY100A-REV-2-fs18 CS 2222i111111111
 #=GC SS_cons                 ::::::::::::::
 #=GC RF                      CAAT.TTCTACCAT
 //

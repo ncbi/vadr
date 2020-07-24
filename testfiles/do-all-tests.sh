@@ -37,7 +37,6 @@ for t in \
     do-outaln-tests.sh \
     do-mxsize-tests.sh \
     do-uj-tests.sh \
-    do-nindel-tests.sh \
     do-noftr-tests.sh \
     do-nends-tests.sh \
     do-ftskipfl-tests.sh \
