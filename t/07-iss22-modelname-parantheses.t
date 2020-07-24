@@ -36,7 +36,7 @@ for(my $i = 0; $i < $ncmd; $i++) {
   is($retval, $fail_A[$i], sprintf("%s: expected %s", $desc_A[$i], ($fail_A[$i] ? "fail" : "return code 0 (pass)")));
   my $errmsg = `cat $errfile_A[$i]`;
   my $errmatch = 0;
-  if($errmsg =~ "not allowed in model names") { $errmatch = 1; }
+  if($errmsg =~ /not allowed in model names/) { $errmatch = 1; }
   is($errmatch, 1, "error message as expected");
 }
 
