@@ -1,0 +1,48 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+#
+# --fstlowthr and --fsthighthr added to avoid POSSIBLE_FRAMESHIFT errors which report a pp value that could differ by 0.001 or so between builds
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --fstlowthr 0.8 --fsthighthr 0.9 --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 $VADRSCRIPTSDIR/testfiles/noro.ftskipfl.1.fa va-noro.ftskipfl > va-noro.ftskipfl.out
+desc: annotate-ftskipfl
+out: va-noro.ftskipfl/va-noro.ftskipfl.vadr.pass.tbl
+out: va-noro.ftskipfl/va-noro.ftskipfl.vadr.fail.tbl
+out: va-noro.ftskipfl/va-noro.ftskipfl.vadr.alt.list
+out: va-noro.ftskipfl/va-noro.ftskipfl.vadr.alt
+out: va-noro.ftskipfl/va-noro.ftskipfl.vadr.ftr
+out: va-noro.ftskipfl/va-noro.ftskipfl.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.sgm
+rmdir: va-noro.ftskipfl
+# 
+# same as above but with --minpvlen 3 so short feature is output to feature table and ftskipfl alert goes away
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --fstlowthr 0.8 --fsthighthr 0.9 --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 $VADRSCRIPTSDIR/testfiles/noro.ftskipfl.1.fa va-noro.ftskipfl.min3 > va-noro.ftskipfl.min3.out
+desc: annotate-ftskipfl
+out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.pass.tbl
+out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.fail.tbl
+out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.alt.list
+out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.alt
+out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.ftr
+out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.ftskipfl/va-noro.ftskipfl.vadr.sgm
+rmdir: va-noro.ftskipfl.min3

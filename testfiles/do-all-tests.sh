@@ -2,10 +2,21 @@
 
 RETVAL=0;
 
+# Run tests in t/ subdir
 for t in \
     do-prove-all-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/t/$t teamcity
+    if [ $? != 0 ]; then
+        RETVAL=1;
+    fi   
+done
+
+# Run sequip tests in sequip/t/ subdir
+for t in \
+    do-prove-all-tests-from-vadr.sh \
+    ; do
+    sh $VADRSEQUIPDIR/t/$t teamcity
     if [ $? != 0 ]; then
         RETVAL=1;
     fi   
@@ -26,6 +37,9 @@ for t in \
     do-outaln-tests.sh \
     do-mxsize-tests.sh \
     do-uj-tests.sh \
+    do-noftr-tests.sh \
+    do-nends-tests.sh \
+    do-ftskipfl-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t

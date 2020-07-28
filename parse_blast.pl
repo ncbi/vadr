@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # Converted from parse_blastx.pl to parse_blast.pl 
 # 
 # program written by Alejandro Schaffer to convert a blastx 
@@ -15,7 +15,7 @@
 # Usage: parse_blast.pl --program x --input <blastx output file>
 # OR     parse_blast.pl --program n --input <blastn output file>
 #        
-# vadr 1.1 May 2020
+# vadr 1.1.1 June 2020
 
 use strict;
 use warnings;

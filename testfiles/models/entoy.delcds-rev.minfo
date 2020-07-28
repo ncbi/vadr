@@ -1,0 +1,4 @@
+MODEL entoy.delcds-rev group:"toy" length:"123" subgroup:"A"
+FEATURE entoy.delcds-rev type:"CDS" coords:"113..93:-" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE entoy.delcds-rev type:"CDS" coords:"82..62:-" parent_idx_str:"GBNULL" gene:"two" product:"protein two"
+FEATURE entoy.delcds-rev type:"CDS" coords:"51..46:-,44..42:-,39..31:-" parent_idx_str:"GBNULL" gene:"three" product:"protein three"

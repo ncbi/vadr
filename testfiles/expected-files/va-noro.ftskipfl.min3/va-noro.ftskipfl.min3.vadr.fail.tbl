@@ -1,0 +1,20 @@
+>Feature LC312762.1
+<1	15	gene
+			gene	ORF1
+<1	15	misc_feature
+			note	similar to nonstructural polyprotein
+<1	11	misc_feature
+			note	similar to RdRp
+<1	>190	gene
+			gene	ORF2
+<1	>190	CDS
+			product	VP1
+			codon_start	1
+			protein_id	LC312762.1_1
+
+Additional note(s) to submitter:
+ERROR: INDEFINITE_ANNOTATION_END: (ORF1) alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 5374]
+ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 5374]
+ERROR: INDEFINITE_ANNOTATION: (nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search
+ERROR: MUTATION_AT_END: (nonstructural polyprotein) expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAA ending at position 15 on + strand is not a valid stop]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RdRp) mat_peptide may not be translated because its parent CDS has a problem

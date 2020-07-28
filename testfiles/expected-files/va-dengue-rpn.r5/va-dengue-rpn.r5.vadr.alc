@@ -1,6 +1,12 @@
-#     alert     causes   short             per    num   num  long       
-#idx  code      failure  description      type  cases  seqs  description
-#---  --------  -------  -----------  --------  -----  ----  -----------
-1     ambgnt5s  no       N_AT_START   sequence      1     1  first nucleotide of the sequence is an N
-2     ambgnt3s  no       N_AT_END     sequence      1     1  final nucleotide of the sequence is an N
-#---  --------  -------  -----------  --------  -----  ----  -----------
+#     alert     causes   short                             per    num   num  long       
+#idx  code      failure  description                      type  cases  seqs  description
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
+1     ambgnt5s  no       N_AT_START                   sequence      1     1  first nucleotide of the sequence is an N
+2     ambgnt3s  no       N_AT_END                     sequence      1     1  final nucleotide of the sequence is an N
+3     ambgnt5f  no       N_AT_FEATURE_START            feature      2     1  first nucleotide of non-CDS feature is an N
+4     ambgnt3f  no       N_AT_FEATURE_END              feature      2     1  final nucleotide of non-CDS feature is an N
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------
+5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM   feature      2     2  mat_peptide may not be translated because its parent CDS has a problem
+6     ambgnt5c  yes      N_AT_CDS_START                feature      1     1  first nucleotide of CDS is an N
+7     ambgnt3c  yes      N_AT_CDS_END                  feature      1     1  final nucleotide of CDS is an N
+#---  --------  -------  ---------------------------  --------  -----  ----  -----------

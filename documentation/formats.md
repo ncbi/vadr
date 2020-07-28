@@ -357,7 +357,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
 
-`.ftr` data lines have 23 fields, the names of which appear in the first two
+`.ftr` data lines have 25 fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each
 **feature** that is annotated for each input sequence file that
 `v-annotate.pl` processed. The set of possible features for each
@@ -379,17 +379,19 @@ the model info file.
 |  10 | `str`                 | strand on which the feature is annotated: `+` for positive/forward/Watson strand, `-` for negative/reverse/Crick strand |
 |  11 | `n_from`              | nucleotide start position for this feature in input sequence |
 |  12 | `n_to`                | nucleotide end position for this feature in input sequence, for CDS features this is typically the final position of a stop codon if CDS is not 3' truncated |
-|  13 | `n_instp`             | nucleotide position of stop codon not at `n_to`, or `-` if none, will be 5' of `n_to` if early stop (`cdsstopn` alert), or 3' of `n_to` if first stop is 3' of `n_to` (`mutendex` alert), or `?` if no in-frame stop exists 3' of `n_from`; will always be `-` if `trunc` is not `no`; |
+|  13 | `n_instp`             | nucleotide position of stop codon not at `n_to`, or `-` if none, will be 5' of `n_to` if early stop (`cdsstopn` alert), or 3' of `n_to` if first stop is 3' of `n_to` (`mutendex` or `ambgnt3c` alert), or `?` if no in-frame stop exists 3' of `n_from`; will always be `-` if `trunc` is not `no`; |
 |  14 | `trc`                 | indicates whether the feature is truncated or not, where one or both ends of the feature are missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
-|  15 | `p_from`              | if a CDS feature, the nucleotide start position for this feature based on the blastx protein-validation step, this will always be the first position of a codon in the blastx-predicted translated region| 
-|  16 | `p_to`                | if a CDS feature, nucleotide stop position for this feature based on the blastx protein-validation step, this will always be the final position of a codon in the blastx-predicted translated region, typically the final position of the codon *immediately upstream (prior)* of the stop codon if CDS is not 3' truncated | 
-|  17 | `p_instp`             | nucleotide position of stop codon 5' of `p_to` if an in-frame stop exists before `p_to` |
-|  18 | `p_sc`                | raw score of best blastx alignment |
-|  19 | `nsa`                 | number of segments annotated for this feature |
-|  20 | `nsn`                 | number of segments not annotated for this feature |
-|  21 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings(#coords)] |
-|  22 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings(#coords)] |
-|  23 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+|  15 | `5'N`                 | number of consecutive N ambiguous nucleotide characters at 5' end, starting at `n_from`, `0` for none |
+|  16 | `3'N`                 | number of consecutive N ambiguous nucleotide characters at 3' end, ending at `n_to`, `0` for none |
+|  17 | `p_from`              | if a CDS feature, the nucleotide start position for this feature based on the blastx protein-validation step, this will always be the first position of a codon in the blastx-predicted translated region| 
+|  18 | `p_to`                | if a CDS feature, nucleotide stop position for this feature based on the blastx protein-validation step, this will always be the final position of a codon in the blastx-predicted translated region, typically the final position of the codon *immediately upstream (prior)* of the stop codon if CDS is not 3' truncated | 
+|  19 | `p_instp`             | nucleotide position of stop codon 5' of `p_to` if an in-frame stop exists before `p_to` |
+|  20 | `p_sc`                | raw score of best blastx alignment |
+|  21 | `nsa`                 | number of segments annotated for this feature |
+|  22 | `nsn`                 | number of segments not annotated for this feature |
+|  23 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings](#coords) |
+|  24 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings](#coords) |
+|  25 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
 ### Explanation of `.mdl`-suffixed output files<a name="mdl"></a>
@@ -475,7 +477,7 @@ sequence.
 |  11 | `nf5`                 | number of annotated features that are 5' truncated |
 |  12 | `nf3`                 | number of annotated features that are 3' truncated |
 |  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
-|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one distinct alert, and only listed once per alert type (even if multiple instances of same alert type), `-` if none |
 
 ---
 ### Explanation of `.sqc`-suffixed output files<a name="sqc"></a>

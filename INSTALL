@@ -1,5 +1,5 @@
 Brief installation instructions 
-VADR 1.1; May 2020
+VADR 1.1.1; July 2020
 -------------------------------------------------------------
 
 These are quick installation instructions. For complete documentation,
@@ -22,7 +22,7 @@ Alternatively, if you are installing on a Mac/OSX, execute the command:
 
 sh ./vadr-install.sh macosx
 
-Next, set your envirnoment variables as explained at the end of the
+Next, set your environment variables as explained at the end of the
 output of the above command.
 
 Finally, run tests to verify that your installation was successful by

@@ -1,0 +1,28 @@
+>Feature NC_001959/7589-7650
+
+Additional note(s) to submitter:
+ERROR: NO_FEATURES_ANNOTATED: (*sequence*) sequence similarity to homology model does not overlap with any features
+>Feature NC_001959/7560-7650
+
+Additional note(s) to submitter:
+ERROR: NO_FEATURES_ANNOTATED: (*sequence*) all annotated features are too short to output to feature table
+>Feature NC_001959/7559-7650-Ns-1-onlystop
+
+Additional note(s) to submitter:
+ERROR: NO_FEATURES_ANNOTATED: (*sequence*) all annotated features are too short to output to feature table
+>Feature NC_001959/7559-7650-Ns-2-4withstop
+
+Additional note(s) to submitter:
+ERROR: NO_FEATURES_ANNOTATED: (*sequence*) all annotated features are too short to output to feature table
+>Feature NC_001959/7559-7650-Ns-2-5withstop
+
+Additional note(s) to submitter:
+ERROR: NO_FEATURES_ANNOTATED: (*sequence*) all annotated features are too short to output to feature table
+>Feature NC_001959/7559-7650-Ns-2-6withstop
+<25	30	CDS
+			product	VP2
+			codon_start	1
+			protein_id	NC_001959/7559-7650-Ns-2-6withstop_1
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 24 positions are Ns, first non-N is position 25]
