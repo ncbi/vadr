@@ -190,9 +190,9 @@ the best matching model to one or more sequences:
 #idx  model      group      subgroup  seqs  pass  fail
 #---  ---------  ---------  --------  ----  ----  ----
 1     NC_008311  Norovirus  GV           2     1     1
-2     NC_044854  Norovirus  GI           2     2     0
+2     NC_029645  Norovirus  GIII         2     2     0
 3     NC_039477  Norovirus  GII          2     2     0
-4     NC_029645  Norovirus  GIII         2     2     0
+4     NC_044854  Norovirus  GI           2     2     0
 5     NC_001959  Norovirus  GI           1     1     0
 #---  ---------  ---------  --------  ----  ----  ----
 -     *all*      -          -            9     8     1
@@ -501,10 +501,10 @@ alerts occur, only one is output to reduce the number of overlapping
 or redundant problems reported to the submitter/user. In this case the
 `mutendcd` (`MUTATION_AT_END`) alert is omitted in the `.fail.tbl`
 file because it occurs in combination with a `cdsstopn`
-(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only two alerts
-(`noftrann` and `mutendcd`) can possibly be omitted. See the
+(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only one alert
+(`mutendcd`) can possibly be omitted. See the
 far right column of the [this table](#alerts2) for which alerts,
-when present in combination with `noftrann` or `mutendcd` cause them
+when present in combination with `mutendcd` causes it
 to be omitted. Only alerts output to the `.fail.tbl`
 table are output to the `.alt.list` file. 
 
@@ -675,15 +675,17 @@ integer.
 | `-i <s>` | use the VADR model info file `<s>`, instead of the default model info file ($VADRMODELDIR/vadr.minfo) |
 | `-n <s>` | use the blastn DB file `<s>` when necessary, instead of the default blastn DB file ($VADRMODELDIR/vadr.fa), only used if `-s` or `-r` is also used |
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
-| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa ffiles in $VADRMODELDIR start with key <s>, not 'vadr' |
-| `--mdir <s>` | specify that all model files to use are in the directory <s>, not in $VADRMODELDIR |
+| `--mkey <s>` | specify that .cm, .minfo, and blastn .fa files in $VADRMODELDIR start with key `<s>`, not 'vadr' |
+| `--mdir <s>` | specify that all model files to use are in the directory `<s>`, not in $VADRMODELDIR |
 
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
 |--------|-------------| 
-| `--nomisc`     | in feature table, never change feature to `misc_feature` | 
-| `--noprotid`   | in feature table, don't add protein_id for CDS and mat_peptide features |
-| `--forceid`    | in feature table, force protein_id value to be sequence name, then idx |
+| `--nomisc`        | in feature table, never change feature to `misc_feature` | 
+| `--notrim`        | <a name="options-alert-ambg"></a> in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for all feature types | 
+| `--noftrtrim <s>` | in feature table, do not trim coordinate start and stops due to Ns at beginning or end of features for feature types listed in the comma-delimited string `<s>` (no spaces) | 
+| `--noprotid`      | in feature table, don't add protein_id for CDS and mat_peptide features |
+| `--forceprotid`   | in feature table, force protein_id value to be sequence name, then idx |
 
 ### `v-annotate.pl` options for controlling thresholds related to alerts <a name="options-alerts"></a>
 
@@ -858,6 +860,7 @@ The following options are related to parallel mode.
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
 | `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
+| `--noseqnamemax` | do not enforce the GenBank maximum length of 50 characters for sequence names |
 | `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
 
@@ -887,6 +890,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*revcompl*](#revcompl2)  | sequence | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
 | [*unexdivg*](#unexdivg2)  | sequence | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
 | [*noftrann*](#noftrann2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
+| [*noftrant*](#noftrant2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
 | alert code | type | short description/error name | long description |
@@ -900,6 +904,7 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*lowsim5s*](#lowsim5s2)  | sequence | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
 | [*lowsim3s*](#lowsim3s2)  | sequence | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
 | [*lowsimis*](#lowsimis2)  | sequence | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
+| [*deletins*](#deletins2)  | sequence | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature |
 | [*mutstart*](#mutstart2)  | feature  | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
 | [*mutendcd*](#mutendcd2)  | feature  | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid | 
 | [*mutendns*](#mutendns2)  | feature  | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | 
@@ -922,7 +927,10 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*indf3pst*](#indf3pst2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
 | [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
 | [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
+| [*insertnp*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature |
 | [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
+| [*insertnp*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="insertnn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature |
+| [*deletinf*](#deletinf2)  | feature  | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated |
 | [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
 | [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
 | [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
@@ -941,6 +949,10 @@ In the table below, the **type** column reports if each alert pertains to an ent
 | [*fstlocnf*](#fstlocnf2)  | feature  | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
 | [*insertnn*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
 | [*deletinn*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
+| [*ambgnt5f*](#ambgnt5f2)  | feature  | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
+| [*ambgnt3f*](#ambgnt3f2)  | feature  | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
+| [*ambgnt5c*](#ambgnt5c2)  | feature  | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
+| [*ambgnt3c*](#ambgnt3c2)  | feature  | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -961,7 +973,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*noannotn*](#noannotn1)  | NO_ANNOTATION                | none | - | - <a name="noannotn2"></a> | 
 | [*revcompl*](#revcompl1)  | REVCOMPLEM                   | none | - | - <a name="revcompl2"></a> |  
 | [*unexdivg*](#unexdivg1)  | UNEXPECTED_DIVERGENCE        | none | - | - <a name="unexdivg2"></a> |  
-| [*noftrann*](#noftrann1)  | NO_FEATURES_ANNOTATED        | none | - | *unexdivg* <a name="noftrann2"></a> | 
+| [*noftrann*](#noftrann1)  | NO_FEATURES_ANNOTATED        | none | - | - <a name="noftrann2"></a> | 
+| [*noftrant*](#noftrant1)  | NO_FEATURES_ANNOTATED        | none | - | - <a name="noftrant2"></a> | 
 
 #### More information on alerts that are *fatal* by default <a name="fatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
@@ -975,6 +988,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim5s2"></a> | 
 | [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
+| [*deletinf*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
 | [*mutendcd*](#mutendcd1)  | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* <a name="mutendcd2"></a> | 
 | [*mutendns*](#mutendns1)  | MUTATION_AT_END                 | none | CDS | - <a name="mutendns2"></a> | 
@@ -997,7 +1011,10 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf3pst2"></a> | 
 | [*indfstrp*](#indfstrp1)  | INDEFINITE_STRAND               | none | CDS | - <a name="indfstrp2"></a> | 
 | [*insertnp*](#insertnp1)  | INSERTION_OF_NT                 | [`--xmaxins`](#options-alerts-xmaxins) | CDS | - <a name="insertnp2"></a> | 
+| [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> | 
 | [*deletinp*](#deletinp1)  | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts-xmaxdel) | CDS | - <a name="deletinp2"></a> | 
+| [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> | 
+| [*deletinf*](#deletinf1)  | DELETION_OF_FEATURE_SECTION     | none | all | - <a name="deletinf2"></a> | 
 | [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
 | [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
 | [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
@@ -1016,6 +1033,10 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstlocnf2"></a> |
 | [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
+| [*ambgnt5f*](#ambgnt5s1)  | N_AT_FEATURE_START              | none | - | - <a name="ambgnt5s2"></a> | 
+| [*ambgnt3f*](#ambgnt3s1)  | N_AT_FEATURE_END                | none | - | - <a name="ambgnt3s2"></a> | 
+| [*ambgnt5c*](#ambgnt5c1)  | N_AT_CDS_START                  | none | CDS | - <a name="ambgnt5c2"></a> | 
+| [*ambgnt3c*](#ambgnt3c1)  | N_AT_CDS_END                    | none | CDS | - <a name="ambgnt3c2"></a> | 
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

@@ -6,11 +6,11 @@
 
 #=GS ENTOY100A-REV-2-fs1 DE multi-segment, segment 1, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS62+1)
 
-#=GS ENTOY100A-REV-2-fs1 FS.1 nucleotide alignment of positions 70..63 (8 nt, avgpp: 0.919) on - strand are inconsistent with dominant frame (-3); inserts:63; deletes:none;
+#=GS ENTOY100A-REV-2-fs1 FS.1 nucleotide alignment of positions 70..63 (8 nt, avgpp: 0.919) on - strand are inconsistent with dominant frame (-2); inserts:63; deletes:none;
 
 ENTOY100A-REV-2-fs1         TATGGCACCGCAAGATGC
 #=GR ENTOY100A-REV-2-fs1 PP ******************
-#=GR ENTOY100A-REV-2-fs1 CS 333333333333333333
+#=GR ENTOY100A-REV-2-fs1 CS 222222222222222222
 #=GC SS_cons                ::::::::::::::::::
 #=GC RF                     TATGGCACCGCAAGATGC
 //
@@ -26,7 +26,7 @@ ENTOY100A-REV-2-fs1         TATGGCACCGCAAGATGC
 
 ENTOY100A-REV-2-fs2         TATGGCACCGCATAGATGC
 #=GR ENTOY100A-REV-2-fs2 PP ***********878*****
-#=GR ENTOY100A-REV-2-fs2 CS 333333333333i111111
+#=GR ENTOY100A-REV-2-fs2 CS 222222222222i111111
 #=GC SS_cons                :::::::::::::::::::
 #=GC RF                     TATGGCACCGCA.AGATGC
 //
@@ -54,11 +54,11 @@ ENTOY100A-REV-2-fs3         TATGGCACCGCAAGATGC
 
 #=GS ENTOY100A-REV-2-fs4 DE multi-segment, segment 1, 1nt deletion that breaks frame, not fixed (CDS2, RFPOS63-)
 
-#=GS ENTOY100A-REV-2-fs4 FS.1 nucleotide alignment of positions 68..63 (6 nt, avgpp: 0.962) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:63(1);
+#=GS ENTOY100A-REV-2-fs4 FS.1 nucleotide alignment of positions 68..63 (6 nt, avgpp: 0.962) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:63(1);
 
 ENTOY100A-REV-2-fs4         TATGGCACCGCAAGATGC
 #=GR ENTOY100A-REV-2-fs4 PP ******************
-#=GR ENTOY100A-REV-2-fs4 CS 222222222222222222
+#=GR ENTOY100A-REV-2-fs4 CS 333333333333333333
 #=GC SS_cons                ::::::::::::::::::
 #=GC RF                     TATGGCACCGCAAGATGC
 //
@@ -74,7 +74,7 @@ ENTOY100A-REV-2-fs4         TATGGCACCGCAAGATGC
 
 ENTOY100A-REV-2-fs5         TATGGCACCGCA-GATGC
 #=GR ENTOY100A-REV-2-fs5 PP **********95.9****
-#=GR ENTOY100A-REV-2-fs5 CS 222222222222d11111
+#=GR ENTOY100A-REV-2-fs5 CS 333333333333d11111
 #=GC SS_cons                ::::::::::::::::::
 #=GC RF                     TATGGCACCGCAAGATGC
 //
@@ -122,7 +122,7 @@ ENTOY100A-REV-2-fs7         -ATGGCACCGCAAGATGC
 
 ENTOY100A-REV-2-fs9         TATGAAGCACCGCATAGATGC
 #=GR ENTOY100A-REV-2-fs9 PP ***86689*****878*****
-#=GR ENTOY100A-REV-2-fs9 CS 1111ii33333333i111111
+#=GR ENTOY100A-REV-2-fs9 CS 1111ii22222222i111111
 #=GC SS_cons                :::::::::::::::::::::
 #=GC RF                     TATG..GCACCGCA.AGATGC
 //
@@ -138,7 +138,7 @@ ENTOY100A-REV-2-fs9         TATGAAGCACCGCATAGATGC
 
 ENTOY100A-REV-2-fs11         TATGGC-CCGCAAGATGC
 #=GR ENTOY100A-REV-2-fs11 PP *****9.89*********
-#=GR ENTOY100A-REV-2-fs11 CS 111111d33333333333
+#=GR ENTOY100A-REV-2-fs11 CS 111111d22222222222
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -154,7 +154,7 @@ ENTOY100A-REV-2-fs11         TATGGC-CCGCAAGATGC
 
 ENTOY100A-REV-2-fs12         TATGGCACCGCATAGATGC
 #=GR ENTOY100A-REV-2-fs12 PP ***********878*****
-#=GR ENTOY100A-REV-2-fs12 CS 333333333333i111111
+#=GR ENTOY100A-REV-2-fs12 CS 222222222222i111111
 #=GC SS_cons                 :::::::::::::::::::
 #=GC RF                      TATGGCACCGCA.AGATGC
 //
@@ -166,11 +166,11 @@ ENTOY100A-REV-2-fs12         TATGGCACCGCATAGATGC
 
 #=GS ENTOY100A-REV-2-fs13 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, not fixed (CDS2, RFPOS54-)
 
-#=GS ENTOY100A-REV-2-fs13 FS.1 nucleotide alignment of positions 68..54 (15 nt, avgpp: 0.963) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:none;
+#=GS ENTOY100A-REV-2-fs13 FS.1 nucleotide alignment of positions 68..54 (15 nt, avgpp: 0.963) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:none;
 
 ENTOY100A-REV-2-fs13         TATGGCACCGCAAGATG-
 #=GR ENTOY100A-REV-2-fs13 PP ****************9.
-#=GR ENTOY100A-REV-2-fs13 CS 33333333333333333d
+#=GR ENTOY100A-REV-2-fs13 CS 22222222222222222d
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -186,7 +186,7 @@ ENTOY100A-REV-2-fs13         TATGGCACCGCAAGATG-
 
 ENTOY100A-REV-2-fs14         TATGGCACC-CAAGATG-
 #=GR ENTOY100A-REV-2-fs14 PP *******98.99****9.
-#=GR ENTOY100A-REV-2-fs14 CS 111111111d3333333d
+#=GR ENTOY100A-REV-2-fs14 CS 111111111d2222222d
 #=GC SS_cons                 ::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATGC
 //
@@ -198,11 +198,11 @@ ENTOY100A-REV-2-fs14         TATGGCACC-CAAGATG-
 
 #=GS ENTOY100A-REV-2-fs15 DE multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, not fixed (CDS2, RFPOS53+1)
 
-#=GS ENTOY100A-REV-2-fs15 FS.1 nucleotide alignment of positions 70..54 (17 nt, avgpp: 0.943) on - strand are inconsistent with dominant frame (-3); inserts:54; deletes:none;
+#=GS ENTOY100A-REV-2-fs15 FS.1 nucleotide alignment of positions 70..54 (17 nt, avgpp: 0.943) on - strand are inconsistent with dominant frame (-2); inserts:54; deletes:none;
 
 ENTOY100A-REV-2-fs15         TATGGCACCGCAAGATGTC
 #=GR ENTOY100A-REV-2-fs15 PP ****************968
-#=GR ENTOY100A-REV-2-fs15 CS 33333333333333333i1
+#=GR ENTOY100A-REV-2-fs15 CS 22222222222222222i1
 #=GC SS_cons                 :::::::::::::::::::
 #=GC RF                      TATGGCACCGCAAGATG.C
 //
@@ -218,7 +218,7 @@ ENTOY100A-REV-2-fs15         TATGGCACCGCAAGATGTC
 
 ENTOY100A-REV-2-fs16         TATGGCACCTTGCAAGATGTC
 #=GR ENTOY100A-REV-2-fs16 PP *******97669******968
-#=GR ENTOY100A-REV-2-fs16 CS 111111111ii33333333i1
+#=GR ENTOY100A-REV-2-fs16 CS 111111111ii22222222i1
 #=GC SS_cons                 :::::::::::::::::::::
 #=GC RF                      TATGGCACC..GCAAGATG.C
 //

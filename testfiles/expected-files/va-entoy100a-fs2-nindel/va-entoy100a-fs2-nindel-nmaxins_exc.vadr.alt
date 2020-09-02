@@ -3,7 +3,7 @@
 #-----  ----------------  ---------  -----------  -----------------  ---  --------  ----  -----------------------------  ------
 2.1.1   ENTOY100A-2-fs1   ENTOY100A  CDS          protein_two          5  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]
 2.1.2   ENTOY100A-2-fs1   ENTOY100A  CDS          protein_two          5  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 39 nt)]
-2.1.3   ENTOY100A-2-fs1   ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..39 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+3); inserts:39; deletes:none;]
+2.1.3   ENTOY100A-2-fs1   ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..39 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+2); inserts:39; deletes:none;]
 #
 3.1.1   ENTOY100A-2-fs2   ENTOY100A  CDS          protein_two          5  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]
 3.1.2   ENTOY100A-2-fs2   ENTOY100A  CDS          protein_two          5  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 39 nt)]
@@ -17,7 +17,7 @@
 4.4.1   ENTOY100A-2-fs3   ENTOY100A  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
 #
 5.1.1   ENTOY100A-2-fs4   ENTOY100A  CDS          protein_two          5  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]
-5.1.2   ENTOY100A-2-fs4   ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..37 (6 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:37(1);]
+5.1.2   ENTOY100A-2-fs4   ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..37 (6 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:37(1);]
 #
 6.1.1   ENTOY100A-2-fs5   ENTOY100A  CDS          protein_two          5  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]
 6.1.2   ENTOY100A-2-fs5   ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 52..72 (21 nt, avgpp: 0.949) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:51(1);]
@@ -41,14 +41,14 @@
 13.1.1  ENTOY100A-2-fs12  ENTOY100A  CDS          protein_two          5  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..67 (stop shifted 9 nt)]
 13.1.2  ENTOY100A-2-fs12  ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 53..73 (21 nt, avgpp: 0.919) on + strand are inconsistent with dominant frame (+1); inserts:53,72-73; deletes:none;]
 13.2.1  ENTOY100A-2-fs12  ENTOY100A  CDS          protein_three        6  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [26]
-13.2.2  ENTOY100A-2-fs12  ENTOY100A  CDS          protein_three        6  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 68..73 (6 nt, avgpp: 0.871) on + strand are inconsistent with dominant frame (+2); inserts:72-73; deletes:none;]
+13.2.2  ENTOY100A-2-fs12  ENTOY100A  CDS          protein_three        6  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 68..73 (6 nt, avgpp: 0.871) on + strand are inconsistent with dominant frame (+3); inserts:72-73; deletes:none;]
 13.3.1  ENTOY100A-2-fs12  ENTOY100A  mat_peptide  protein_three_mp1    7  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
 13.3.2  ENTOY100A-2-fs12  ENTOY100A  mat_peptide  protein_three_mp1    7  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
 13.4.1  ENTOY100A-2-fs12  ENTOY100A  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM    mat_peptide may not be translated because its parent CDS has a problem
 #
 14.1.1  ENTOY100A-2-fs13  ENTOY100A  CDS          protein_two          5  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [40]
 14.1.2  ENTOY100A-2-fs13  ENTOY100A  CDS          protein_two          5  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 37 nt)]
-14.1.3  ENTOY100A-2-fs13  ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..46 (15 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:none;]
+14.1.3  ENTOY100A-2-fs13  ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..46 (15 nt, avgpp: 0.963) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:none;]
 14.1.4  ENTOY100A-2-fs13  ENTOY100A  CDS          protein_two          5  indf5gap  yes   INDEFINITE_ANNOTATION_START    alignment to homology model is a gap at 5' boundary [RF position 47, segment 2 of 3]
 14.1.5  ENTOY100A-2-fs13  ENTOY100A  CDS          protein_two          5  indf3gap  yes   INDEFINITE_ANNOTATION_END      alignment to homology model is a gap at 3' boundary [RF position 47, segment 1 of 3]
 #
@@ -58,7 +58,7 @@
 #
 16.1.1  ENTOY100A-2-fs15  ENTOY100A  CDS          protein_two          5  unexleng  yes   UNEXPECTED_LENGTH              length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]
 16.1.2  ENTOY100A-2-fs15  ENTOY100A  CDS          protein_two          5  cdsstopn  yes   CDS_HAS_STOP_CODON             in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..35 (stop shifted 39 nt)]
-16.1.3  ENTOY100A-2-fs15  ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..48 (17 nt, avgpp: 0.943) on + strand are inconsistent with dominant frame (+3); inserts:48; deletes:none;]
+16.1.3  ENTOY100A-2-fs15  ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 32..48 (17 nt, avgpp: 0.943) on + strand are inconsistent with dominant frame (+2); inserts:48; deletes:none;]
 #
 17.1.1  ENTOY100A-2-fs16  ENTOY100A  CDS          protein_two          5  fsthicnf  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  high confidence potential frameshift in CDS [nucleotide alignment of positions 48..58 (11 nt, avgpp: 0.841) on + strand are inconsistent with dominant frame (+1); inserts:48,57-58; deletes:none;]
 #

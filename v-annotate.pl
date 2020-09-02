@@ -114,7 +114,7 @@ require "sqp_utils.pm";
 #     unexdivg (1)
 #
 #  4. cmalign_parse_stk_and_add_alignment_alerts()
-#     indf5gap, indf5loc, indf3gap, indf3loc (4)
+#     indf5gap, indf5loc, indf3gap, indf3loc, deletinf, deletins (6)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
@@ -444,8 +444,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1dev3";
-my $releasedate   = "June 2020";
+my $version       = "1.1.1";
+my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -1239,7 +1239,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                    \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                                    \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                                    \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                   \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
+                                                   \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, $mdl_name, $out_root, 
+                                                   \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
     }
@@ -1348,7 +1349,6 @@ if($do_hmmer) {
 #      ---------------  -------------- -----------
 #      CDS              mat_peptide    peptrans
 ##############################################################
-# add per-sequence 'noftrann' errors (zero annotated features)
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
@@ -3259,6 +3259,7 @@ sub cmalign_run {
 #  $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
 #  $sgm_results_HAHR:       REF to results HAH, FILLED HERE
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
+#  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
 #  $mdl_name:               model name this alignment pertains to
 #  $out_root:               string for naming output files
@@ -3272,12 +3273,13 @@ sub cmalign_run {
 ################################################################# 
 sub cmalign_parse_stk_and_add_alignment_alerts { 
   my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 14;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
-      $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $mdl_name, $out_root, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
@@ -3507,6 +3509,9 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
     # now we have all the info we need for this sequence to determine sequence boundaries for each model segment
     my $sgm_idx; 
     my $ftr_idx;
+    my %ftr_alt_msg_HA = (); # key is $ftr_idx, value is an array of alert messages for deletinf alerts, one per 
+                             # segment for $ftr_idx that is completely deleted. This is rare and *not identifying*
+                             # these is github issue 21
     for($sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++) { 
       my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
       my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
@@ -3546,7 +3551,32 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       $start_uapos = ($sgm_strand eq "+") ? $min_uapos_after_A[$sgm_start_rfpos] : $max_uapos_before_A[$sgm_start_rfpos];
       $stop_uapos  = ($sgm_strand eq "+") ? $max_uapos_before_A[$sgm_stop_rfpos] : $min_uapos_after_A[$sgm_stop_rfpos];
 
-      if(($start_rfpos != -1) && ($stop_rfpos != -1)) { 
+      # determine if we have a valid annotation for this segment
+      my $is_valid = 1; # assume we do, and check for 3 cases in which we don't below
+      if(($start_rfpos == -1) || ($stop_rfpos == -1)) { 
+        # alignment doesn't span segment RF positions
+        $is_valid = 0; 
+      }
+      elsif((($sgm_strand eq "+") && ($start_rfpos > $stop_rfpos)) || # complete segment deleted on + strand
+            (($sgm_strand eq "-") && ($start_rfpos < $stop_rfpos))) { # complete segment deleted on - strand
+        $is_valid = 0; 
+        # keep track that this segment is completely deleted, by constructing its 
+        # alert message for a possible deletinf alert. However we can't report it yet
+        # because if all segments for this feature are deleted we will report a 
+        # deletins (per-sequence) alert instead. So we just store the possible
+        # deletinf alert here in %ftr_alt_msg_HA and then deal with it after
+        # the 'for($sgm_idx=0..$nsgm-1)' block below
+        my $ftr_nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
+        my $alt_msg = ($ftr_nsgm > 1) ? 
+            sprintf("segment %d of %d deleted", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $ftr_nsgm) : 
+            "complete single segment feature deleted";
+        if(! defined $ftr_alt_msg_HA{$ftr_idx}) { 
+          @{$ftr_alt_msg_HA{$ftr_idx}} = (); 
+        }
+        push(@{$ftr_alt_msg_HA{$ftr_idx}}, $alt_msg);
+      }  
+
+      if($is_valid) { 
         if($sgm_strand eq "+") { 
           $p_5seqflush = ($start_uapos == 1)        ? 1 : 0;
           $p_3seqflush = ($stop_uapos  == $seq_len) ? 1 : 0;
@@ -3605,6 +3635,34 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
+    # report any deletinf/deletins alerts
+    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(defined $ftr_alt_msg_HA{$ftr_idx}) { 
+        my $nsgm_alt = scalar(@{$ftr_alt_msg_HA{$ftr_idx}});
+        my $nsgm_tot = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+        if($nsgm_alt == $nsgm_tot) { 
+          # all segments are deleted, report deletins (per-sequence) alert, 
+          # we do NOT report any deletinf alerts, one reason is there is no 
+          # feature annotation for $ftr_idx in this case
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
+                                      sprintf("%s feature number %s: %s",
+                                              $ftr_info_AHR->[$ftr_idx]{"type"}, 
+                                              vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx), 
+                                              $ftr_info_AHR->[$ftr_idx]{"outname"}), 
+                                      $FH_HR);
+        }
+        else { 
+          # at least one but not all segments are deleted, report 1 or more deletinf (per-feature)
+          # alerts, we do NOT report a deletins alert because this feature is 
+          # annotated, just not all segments are.
+          # NOTE: this won't happen if a segment is not annotated because it is truncated
+          # away due to a sequence terminus (i.e. should exist before/after start/end of sequence)
+          foreach my $alt_msg (@{$ftr_alt_msg_HA{$ftr_idx}}) { 
+            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+          }
+        }
+      }
+    }
     # detect and report any frameshifts for this sequence
     add_frameshift_alerts_for_one_sequence($msa, $seq_name, $i, \@rf2a_A, \@rfpos_pp_A, \@rf2ilen_A, 
                                            \@max_uapos_before_A, \@{$sgm_info_HAH{$mdl_name}},
@@ -3721,130 +3779,136 @@ sub add_frameshift_alerts_for_one_sequence {
       my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       if($first_sgm_idx != -1) { 
         for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
-          push(@sgm_idx_A, $sgm_idx); # store this segment index
-          my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
-          my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
-          my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
-          my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
-          my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
-          my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
-          if(! defined $ftr_start_rfpos) { $ftr_start_rfpos = $sgm_start_rfpos; }
-          $ftr_stop_rfpos  = $sgm_stop_rfpos;
-          my $sgm_strand   = $sgm_info_AHR->[$sgm_idx]{"strand"};
-          my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
-          my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
-          my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
-          my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
-          my $strand = $sgm_results_HR->{"strand"};
-          my $cur_delete_len = 0; # current length of deletion
-          if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
-          if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
-          $ftr_sstop = $sstop;
-          $ftr_mstop = $mstop;
-          if(! defined $F_0) { 
-            $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
-            # $F_0 is frame of initial nongap RF position for this CDS 
-          } 
+          #check if sgm is valid, it's possible this segment was completely deleted and thus has no results
+          # *even if other segments in this feature* do have results (this is related to the github issue #21 bug)
+          if((defined $sgm_results_HAHR->{$seq_name}) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
+             (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
+            push(@sgm_idx_A, $sgm_idx); # store this segment index
+            my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
+            my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
+            my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
+            my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
+            my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
+            my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
+            if(! defined $ftr_start_rfpos) { $ftr_start_rfpos = $sgm_start_rfpos; }
+            $ftr_stop_rfpos  = $sgm_stop_rfpos;
+            my $sgm_strand   = $sgm_info_AHR->[$sgm_idx]{"strand"};
+            my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
+            my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
+            my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
+            my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
+            my $strand = $sgm_results_HR->{"strand"};
+            my $cur_delete_len = 0; # current length of deletion
+            if(! defined $ftr_sstart) { $ftr_sstart = $sstart; }
+            if(! defined $ftr_mstart) { $ftr_mstart = $mstart; }
+            $ftr_sstop = $sstop;
+            $ftr_mstop = $mstop;
+            if(! defined $F_0) { 
+              $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
+              # $F_0 is frame of initial nongap RF position for this CDS 
+            } 
 
-          # sanity checks about strand
-          if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
-            ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
-          }
-          $ftr_strand = $strand;
-          if($strand ne $sgm_strand) { 
-            ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
-          }
-          my $F_prv = undef;     # frame of previous RF position 
-          my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
-          my $rfpos_prv = undef; # previous RF position
-          if(($strand ne "+") && ($strand ne "-")) { 
-            ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
-          }
-          # for each RF position covered by the predicted segment
-          # we want to deal with both + and - strands with same code block, 
-          # so can't use a simple for loop 
-          my $rfpos = $mstart;
-          my $uapos = undef;
-          while(($strand eq "+" && $rfpos <= $mstop) || 
-                ($strand eq "-" && $rfpos >= $mstop)) { 
-            $rf_diff++; # number of RF positions seen since first nt in this CDS
-            if($rfpos_pp_AR->[$rfpos] ne ".") { 
-              # this rfpos is not aligned to a gap in the sequence
-              # determine uapos, the unaligned sequence position that aligns to RF pos $rfpos
-              # $max_uapos_before_AR->[$rfpos] actually gives you the maximum unaligned seq position that 
-              # aligns at or inserts before $rfpos, but we know it aligns at $rfpos because we just 
-              # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
-              $uapos = $max_uapos_before_AR->[$rfpos]; 
-              $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
-              my $F_cur = vdr_FrameAdjust($F_0, ($ua_diff - $rf_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
-              if($strand eq "+") { $gr_frame_str .= $F_cur; }
-              else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
-              $frame_ct_A[$F_cur]++;
-              if((! defined $F_prv) || ($F_cur != $F_prv)) { 
-                # frame changed, 
-                # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
-                if(defined $F_prv) { 
-                  $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
-                  # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
-                } 
-                # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                $frame_tok_str .= $F_cur . ":" . $uapos . "-";
-              }
-              $uapos_prv = $uapos;
-              $rfpos_prv = $rfpos;
-              $F_prv     = $F_cur;
-              if($cur_delete_len > $nmaxdel) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                           sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
-                                                   $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
-              }
-              $cur_delete_len = 0;
+            # sanity checks about strand
+            if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
+              ofile_FAIL("ERROR, in $sub_name, different segments of same CDS feature have different strands ... can't deal", 1, $FH_HR);
             }
-            else { # rf position is a gap, add 'd' GR frame annotation
-              if($strand eq "+") { $gr_frame_str .= "d"; }
-              else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
-              $cur_delete_len++;
+            $ftr_strand = $strand;
+            if($strand ne $sgm_strand) { 
+              ofile_FAIL("ERROR, in $sub_name, predicted strand for segment inconsistent with strand from segment info", 1, $FH_HR);
             }
-            # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
-            if($strand eq "+") { 
-              if(($rfpos < $mstop) && ($rf2ilen_AR->[$rfpos] > 0)) { 
-                for(my $ipos = 0; $ipos < $rf2ilen_AR->[$rfpos]; $ipos++) { 
-                  $gr_frame_str .= "i"; 
-                  $ua_diff++; # increment number of seq positions seen
+            my $F_prv = undef;     # frame of previous RF position 
+            my $uapos_prv = undef; # unaligned sequence position that aligns to previous RF position
+            my $rfpos_prv = undef; # previous RF position
+            if(($strand ne "+") && ($strand ne "-")) { 
+              ofile_FAIL("ERROR, in $sub_name, strand is neither + or -", 1, $FH_HR);
+            }
+            # for each RF position covered by the predicted segment
+            # we want to deal with both + and - strands with same code block, 
+            # so can't use a simple for loop 
+            my $rfpos = $mstart;
+            my $uapos = undef;
+            while(($strand eq "+" && $rfpos <= $mstop) || 
+                  ($strand eq "-" && $rfpos >= $mstop)) { 
+              $rf_diff++; # number of RF positions seen since first nt in this CDS
+              if($rfpos_pp_AR->[$rfpos] ne ".") { 
+                # this rfpos is not aligned to a gap in the sequence
+                # determine uapos, the unaligned sequence position that aligns to RF pos $rfpos
+                # $max_uapos_before_AR->[$rfpos] actually gives you the maximum unaligned seq position that 
+                # aligns at or inserts before $rfpos, but we know it aligns at $rfpos because we just 
+                # checked that it's not a gap (rfpos_pp_A[$rfpos] is not a gap)
+                $uapos = $max_uapos_before_AR->[$rfpos]; 
+                $ua_diff++; # increment number of nucleotides seen since first nt in this CDS
+                my $F_cur = vdr_FrameAdjust($F_0, ($rf_diff - $ua_diff), $FH_HR); # frame implied by current nt aligned to current rfpos
+                if($strand eq "+") { $gr_frame_str .= $F_cur; }
+                else               { $gr_frame_str  = $F_cur . $gr_frame_str; } # prepend for negative string
+                $frame_ct_A[$F_cur]++;
+                if((! defined $F_prv) || ($F_cur != $F_prv)) { 
+                  # frame changed, 
+                  # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
+                  if(defined $F_prv) { 
+                    $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
+                    # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
+                  } 
+                  # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
+                  $frame_tok_str .= $F_cur . ":" . $uapos . "-";
+                }
+                $uapos_prv = $uapos;
+                $rfpos_prv = $rfpos;
+                $F_prv     = $F_cur;
+                if($cur_delete_len > $nmaxdel) { 
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                             sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
+                                                     $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+                }
+                $cur_delete_len = 0;
+              }
+              else { # rf position is a gap, add 'd' GR frame annotation
+                if($strand eq "+") { $gr_frame_str .= "d"; }
+                else               { $gr_frame_str =  "d" . $gr_frame_str; } # prepend for negative strand
+                $cur_delete_len++;
+              }
+              # add 'i' GR frame annotation for inserts that occur after (or before if neg strand) this rfpos, if any
+              if($strand eq "+") { 
+                if(($rfpos < $mstop) && ($rf2ilen_AR->[$rfpos] > 0)) { 
+                  for(my $ipos = 0; $ipos < $rf2ilen_AR->[$rfpos]; $ipos++) { 
+                    $gr_frame_str .= "i"; 
+                    $ua_diff++; # increment number of seq positions seen
+                  }
                 }
               }
-            }
-            else { # negative strand, look for inserts that occur before this position
-              if(($rfpos > $mstop) && ($rf2ilen_AR->[($rfpos-1)] > 0)) { 
-                for(my $ipos = 0; $ipos < $rf2ilen_AR->[($rfpos-1)]; $ipos++) { 
-                  $gr_frame_str =  "i" . $gr_frame_str; # prepend for negative strand
-                  $ua_diff++; # increment number of seq positions seen
+              else { # negative strand, look for inserts that occur before this position
+                if(($rfpos > $mstop) && ($rf2ilen_AR->[($rfpos-1)] > 0)) { 
+                  for(my $ipos = 0; $ipos < $rf2ilen_AR->[($rfpos-1)]; $ipos++) { 
+                    $gr_frame_str =  "i" . $gr_frame_str; # prepend for negative strand
+                    $ua_diff++; # increment number of seq positions seen
+                  }
                 }
               }
-            }
-            # add insertnn alert, if nec
-            my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
-            if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
-              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
-            }
+              # add insertnn alert, if nec
+              my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
+              if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
+              }
 
-            # increment or decrement rfpos
-            if($strand eq "+") { $rfpos++; } 
-            else               { $rfpos--; }
-          }
-          # complete final frame token
-          $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-          $nsgm++;
-          push(@gr_frame_str_A, $gr_frame_str);
-          # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
-          # print("$gr_frame_str\n");
-          if($cur_delete_len > $nmaxdel) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                       sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
-                                               $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
-          }
-        } # end of 'if' entered if segment has a sstart
-      } # end of for loop over segments
+              # increment or decrement rfpos
+              if($strand eq "+") { $rfpos++; } 
+              else               { $rfpos--; }
+            }
+            # complete final frame token
+            $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            $nsgm++;
+            push(@gr_frame_str_A, $gr_frame_str);
+            # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+            # print("$gr_frame_str\n");
+            if($cur_delete_len > $nmaxdel) { 
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
+                                         sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
+                                                 $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+            }
+          } # end of 'if' entered if segment has valid results 
+        } # end of 'for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) {' 
+      } # end of 'if($first_sgm_idx != -1)'
 
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
@@ -4195,10 +4259,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
       my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
       # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
-      my $ftr_5nlen   = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
-      my $ftr_3nlen   = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
-      my $ftr_start_non_n = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
-      my $ftr_stop_non_n  = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
+      my $ftr_5nlen    = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
+      my $ftr_3nlen    = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
+      my $ftr_5nlen_pv = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
+      my $ftr_3nlen_pv = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
+      my $ftr_start_non_n    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
+      my $ftr_stop_non_n     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
+      my $ftr_start_non_n_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is Ns
+      my $ftr_stop_non_n_pv  = undef; # sequence position of first non-N on 3' end in protein validation sqstring, commonly $ftr_stop, -1 if complete feature is Ns
       my $ftr_coords = undef; # coords string with sequence coordinates of all segments of the feature
 
       my %alt_str_H = (); # added to as we find alerts below
@@ -4311,7 +4379,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
       if($ftr_len > 0) { 
         # we had a prediction for at least one of the segments for this feature
 
-        # determine the position of the first and final N or n
+        # determine the position of the first and final N or n in ftr_sqstring_alt and ftr_sqstring_pv
+        # we use ftr_sqstring_alt values for alerts
+        # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
         my $pos_retval = undef;
         $ftr_sqstring_alt =~ m/[^Nn]/g; 
         $pos_retval = pos($ftr_sqstring_alt); # returns position of first non-N/n
@@ -4326,6 +4396,13 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                                            ("first non-N is position $ftr_start_non_n")));
         }
 
+        # same drill for ftr_sqstring_pv
+        $ftr_sqstring_pv =~ m/[^Nn]/g; 
+        $pos_retval = pos($ftr_sqstring_pv); # returns position of first non-N/n
+        # if $pos_retval is undef entire sqstring is N or n
+        $ftr_5nlen_pv       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_start_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
+
         my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
         $rev_ftr_sqstring_alt =~ m/[^Nn]/g; 
         $pos_retval = pos($rev_ftr_sqstring_alt); # returns position of first non-N/n in reversed string
@@ -4339,6 +4416,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                                            (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
                                            ("final non-N is position $ftr_stop_non_n")));
         }
+
+        # same drill for ftr_sqstring_pv
+        my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
+        $rev_ftr_sqstring_pv =~ m/[^Nn]/g; 
+        $pos_retval = pos($rev_ftr_sqstring_pv); # returns position of first non-N/n in reversed string
+        # if $pos_retval is undef entire sqstring is N or n
+        $ftr_3nlen_pv      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
+        $ftr_stop_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -4521,17 +4606,21 @@ sub fetch_features_and_add_cds_and_mp_alerts {
         } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
 
         # update %ftr_results_HR
-        $ftr_results_HR->{"n_strand"}      = $ftr_strand;
-        $ftr_results_HR->{"n_start"}       = $ftr_start;
-        $ftr_results_HR->{"n_stop"}        = $ftr_stop;
-        $ftr_results_HR->{"n_stop_c"}      = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
-        $ftr_results_HR->{"n_5trunc"}      = $ftr_is_5trunc;
-        $ftr_results_HR->{"n_3trunc"}      = $ftr_is_3trunc;
-        $ftr_results_HR->{"n_5nlen"}       = $ftr_5nlen;
-        $ftr_results_HR->{"n_3nlen"}       = $ftr_3nlen;
-        $ftr_results_HR->{"n_start_non_n"} = $ftr_start_non_n;
-        $ftr_results_HR->{"n_stop_non_n"}  = $ftr_stop_non_n;
-        $ftr_results_HR->{"n_len"}         = $ftr_len;
+        $ftr_results_HR->{"n_strand"}         = $ftr_strand;
+        $ftr_results_HR->{"n_start"}          = $ftr_start;
+        $ftr_results_HR->{"n_stop"}           = $ftr_stop;
+        $ftr_results_HR->{"n_stop_c"}         = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+        $ftr_results_HR->{"n_5trunc"}         = $ftr_is_5trunc;
+        $ftr_results_HR->{"n_3trunc"}         = $ftr_is_3trunc;
+        $ftr_results_HR->{"n_5nlen"}          = $ftr_5nlen;
+        $ftr_results_HR->{"n_3nlen"}          = $ftr_3nlen;
+        $ftr_results_HR->{"n_5nlen_pv"}       = $ftr_5nlen_pv;
+        $ftr_results_HR->{"n_3nlen_pv"}       = $ftr_3nlen_pv;
+        $ftr_results_HR->{"n_start_non_n"}    = $ftr_start_non_n;
+        $ftr_results_HR->{"n_stop_non_n"}     = $ftr_stop_non_n;
+        $ftr_results_HR->{"n_start_non_n_pv"} = $ftr_start_non_n_pv;
+        $ftr_results_HR->{"n_stop_non_n_pv"}  = $ftr_stop_non_n_pv;
+        $ftr_results_HR->{"n_len"}            = $ftr_len;
       } # end of 'if($ftr_len > 0)'
     } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   } # end of 'for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) {'
@@ -4986,6 +5075,17 @@ sub add_protein_validation_alerts {
   my $xmaxins  = opt_Get("--xmaxins",   $opt_HHR); # maximum allowed insertion length in blastx output
   my $xmaxdel  = opt_Get("--xmaxdel",   $opt_HHR); # maximum allowed deletion length in blastx output
   my $minpvlen = opt_Get("--minpvlen", $opt_HHR);
+
+  # determine if we are trimming CDS eventually in the ftr table output, if
+  # so we'll change the tolerance on endpoints between nucleotide and protein
+  # if the CDS has Ns at beginning/end
+  my $do_notrim   = opt_Get("--notrim",   $opt_HHR); # 1 to never trim any features
+  my %noftrtrim_H = (); # key is feature type read from --noftrtrim <s> option, value is 1 to not trim start/end due to Ns
+  if(opt_IsUsed("--noftrtrim", $opt_HHR)) { 
+    my @noftrtrim_A  = split(",", opt_Get("--noftrtrim", $opt_HHR));
+    foreach my $ftr_type (@noftrtrim_A) { $noftrtrim_H{$ftr_type} = 1; }
+  }
+  my $do_cds_trim = (($do_notrim) || (defined $noftrtrim_H{"CDS"})) ? 0 : 1; 
   
   # get info on position-specific insert and delete maximum exceptions if there are any
   # skip this if we are using hmmer instead of blastx b/c we don't check for inserts/deletes
@@ -5018,6 +5118,8 @@ sub add_protein_validation_alerts {
           my $n_stop         = undef; # predicted stop   from CM 
           my $n_strand       = undef; # predicted strand from CM 
           my $n_len          = undef; # predicted length from CM (summed over all segments)
+          my $n_5nlen_pv     = undef; # number of Ns at 5' end of CDS
+          my $n_3nlen_pv     = undef; # number of Ns at 3' end of CDS
           my $p_start        = undef; # predicted start  from blastx
           my $p_stop         = undef; # predicted stop   from blastx
           my $p_start2print  = undef; # predicted start  from blastx, to output
@@ -5038,10 +5140,12 @@ sub add_protein_validation_alerts {
           my $stop_diff  = undef; # difference in start values between CM and blastx
           
           if(defined $ftr_results_HR->{"n_start"}) { 
-            $n_start       = $ftr_results_HR->{"n_start"};
-            $n_stop        = $ftr_results_HR->{"n_stop"};
-            $n_strand      = $ftr_results_HR->{"n_strand"};
-            $n_len         = $ftr_results_HR->{"n_len"};
+            $n_start    = $ftr_results_HR->{"n_start"};
+            $n_stop     = $ftr_results_HR->{"n_stop"};
+            $n_strand   = $ftr_results_HR->{"n_strand"};
+            $n_len      = $ftr_results_HR->{"n_len"};
+            $n_5nlen_pv = $ftr_results_HR->{"n_5nlen_pv"};
+            $n_3nlen_pv = $ftr_results_HR->{"n_3nlen_pv"};
           }
 
           # only proceed if we have a nucleotide prediction >= min length OR
@@ -5078,6 +5182,22 @@ sub add_protein_validation_alerts {
               }
             }
             if(defined $n_start) { 
+              my $cur_5aln_tol = $aln_tol;
+              my $cur_3aln_tol = $aln_tol;
+
+              if($do_cds_trim) { 
+                # adjust the tolerance to allow the Ns at the ends to be missed by the protein validation step
+                $cur_5aln_tol += $n_5nlen_pv;
+                $cur_3aln_tol += $n_3nlen_pv;
+                # if the tolerance is within 3 of the full length, reset it to the default
+                if($cur_5aln_tol >= ($n_len - 3)) { 
+                  $cur_5aln_tol = $aln_tol;
+                }
+                if($cur_3aln_tol >= ($n_len - 3)) { 
+                  $cur_3aln_tol = $aln_tol;
+                }
+              }
+
               # check for indfantn
               if(! defined $p_start) { 
                 $alt_str_H{"indfantn"} = "VADRNULL";
@@ -5114,10 +5234,10 @@ sub add_protein_validation_alerts {
                       (($n_strand eq "-") && ($p_start > $n_start)))) { 
                     $alt_str_H{"indf5plg"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
                   }
-                  # check for 'indf5pst': blastx 5' end too short, not within $aln_tol nucleotides
+                  # check for 'indf5pst': blastx 5' end too short, not within $cur_5aln_tol nucleotides
                   if(! exists $alt_str_H{"indf5plg"}) { # only add indf5pst if indf5plg does not exist
-                    if($start_diff > $aln_tol) { 
-                      $alt_str_H{"indf5pst"} = "$start_diff > $aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
+                    if($start_diff > $cur_5aln_tol) { 
+                      $alt_str_H{"indf5pst"} = "$start_diff > $cur_5aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
                     }                
                   }
                   # check for 'indf3plg': blastx alignment extends outside of nucleotide/CM alignment on 3' end
@@ -5126,7 +5246,7 @@ sub add_protein_validation_alerts {
                       (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
                     $alt_str_H{"indf3plg"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
                   }
-                  # check for 'indf3pst': blastx 3' end too short, not within $aln_tol nucleotides
+                  # check for 'indf3pst': blastx 3' end too short, not within $cur_3aln_tol nucleotides
                   # for the stop coordinates, we do this differently if the nucleotide prediction 
                   # includes the stop codon or not, if it does, we allow 3 more positions different
                   my $cur_aln_tol = undef;
@@ -5138,11 +5258,11 @@ sub add_protein_validation_alerts {
                     $n_has_stop_codon = 0; 
                   }                    
                   if($n_has_stop_codon) { 
-                    $cur_aln_tol  = $aln_tol + 3;
+                    $cur_aln_tol  = $cur_3aln_tol + 3;
                     $cur_stop_str = "valid stop codon";
                   }
                   else { 
-                    $cur_aln_tol  = $aln_tol;
+                    $cur_aln_tol  = $cur_3aln_tol;
                     $cur_stop_str = "no valid stop codon";
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
@@ -7222,7 +7342,7 @@ sub output_tabular {
                                 $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
             $ftr_nprinted++;
-            
+
             # print per-feature alerts, if any
             $alt_nseqftr = 0;
             if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
@@ -7258,6 +7378,7 @@ sub output_tabular {
         }
       }
     }
+
     my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 1, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
     if($seq_alt_str ne "") { 
       $seq_nseq_alt = 1;
@@ -7268,7 +7389,7 @@ sub output_tabular {
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
 
     push(@data_ant_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
-                            $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
+                        $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
     
     push(@data_cls_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
                             helper_tabular_replace_spaces($seq_grp1), 
@@ -7332,7 +7453,9 @@ sub output_tabular {
   }
 
   # add data to the model table
-  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} } keys (%{$mdl_cls_ct_HR}));
+  my @mdl_tbl_order_A = (sort { $mdl_cls_ct_HR->{$b} <=> $mdl_cls_ct_HR->{$a} or 
+                                    $a cmp $b 
+                         } keys (%{$mdl_cls_ct_HR}));
   my $mdl_tbl_idx = 0;
   my $sum_mdl_cls_ct     = 0;
   my $sum_mdl_pass_ct    = 0;
@@ -7662,7 +7785,7 @@ sub output_feature_table {
 
     # first check for per-sequence alerts
     my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
-    helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
+    my $prevents_annot_flag = helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
 
     $mdl_name = helper_ftable_class_model_for_sequence($stg_results_HHHR, $seq_name);
     if(defined $mdl_name) { 
@@ -7979,10 +8102,14 @@ sub output_feature_table {
     # possibly add noftrann or noftranc alerts
     if($seq_ntabftr == 0) { 
       # no features annotated, even in eventual .ftr tabular file
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
-      # set @seq_alert_A to this lone alert
-      @seq_alert_A = ();
-      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
+      # first check to see if any per-sequence alerts that prevent annotation have already been reported,
+      # if so, we don't report noftrann because there is no annotation at all for this sequence
+      if(! $prevents_annot_flag) { 
+        alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
+        # set @seq_alert_A to this lone alert
+        @seq_alert_A = ();
+        push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
+      }
     }
     elsif($cur_noutftr == 0) { 
       # >= 1 features annotated in eventual .ftr tbl file, but zero in this .tbl file because 
@@ -8502,7 +8629,7 @@ sub helper_ftable_class_model_for_sequence {
 #             process that string to determine what (if any) 
 #             alerts should be added to the feature table
 #             for this sequence. Note that we do not add any 'notes'
-#             as we possibly could in processFeatureAlertsForFTable() 
+#             as we possibly could in helper_ftable_process_feature_alerts()
 #             because we are dealing with the full sequence and not
 #             a feature for a sequence.
 #
@@ -8514,7 +8641,9 @@ sub helper_ftable_class_model_for_sequence {
 #   $ret_alert_AR:           REF to array of alerts, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns: number of alerts added to $ret_alert_AR
+# Returns: '1' if any alert added to $ret_alert_AR has the 'prevents_annot'
+#          flag as '1', else '0'. Returns '0' if no alerts are added to 
+#          $ret_alert_AR.
 #
 # Dies: Never
 #################################################################
@@ -8529,7 +8658,7 @@ sub helper_ftable_process_sequence_alerts {
     return 0; 
   }
 
-  my $ret_nadded = 0;
+  my $ret_prevents_annot_flag = 0;
 
   # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
   my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
@@ -8555,6 +8684,10 @@ sub helper_ftable_process_sequence_alerts {
       }
     }
     if($do_report) { 
+      # determine if prevents_annot flag is '1'
+      if($alt_info_HHR->{$alt_code}{"prevents_annot"}) { 
+        $ret_prevents_annot_flag = 1;
+      }
       # we could have more than one instance of this sequence/alert pair
       my @instance_str_A = split(":VADRSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
       foreach my $instance_str (@instance_str_A) { 
@@ -8566,13 +8699,12 @@ sub helper_ftable_process_sequence_alerts {
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
           push(@{$ret_alert_AR}, $alert_str); 
-          $ret_nadded++;
         }
       }
     }
   }
 
-  return $ret_nadded;
+  return $ret_prevents_annot_flag;
 }
 
 #################################################################

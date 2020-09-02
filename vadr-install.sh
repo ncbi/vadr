@@ -21,7 +21,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.1"
+VERSION="1.1.1"
 # bio-easel
 BEVERSION="Bio-Easel-0.12"
 # blast+

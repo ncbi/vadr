@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.1 [May 2020]
+# version: 1.1.1 [July 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -1221,16 +1221,17 @@ sub vdr_FeatureParentIndex {
 # Subroutine: vdr_FeatureSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
-# Purpose:    Return a string indicating what model this is
-#             for features that are covered by multiple model spans.
+# Purpose:    Return a string indicating what segment this is
+#             for features with multiple segments and return 
+#             the empty string for features with 1 segment.
 #
 # Arguments: 
 #  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
 #  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
 #  $sgm_idx:      model index
 #
-# Returns:    "" if this is the only model for this feature
-#             string like ", model 1 of 2", if not
+# Returns:    "" if this is the only segment for this feature
+#             string like ", segment 1 of 2", if not
 # 
 # Dies:       never; does not validate anything.
 #
@@ -1243,12 +1244,12 @@ sub vdr_FeatureSummarizeSegment {
   my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx) = @_;
 
   my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
-  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
-  if($nmdl > 1) { 
-    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nmdl);
+  my $nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
+  if($nsgm > 1) { 
+    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nsgm);
   }
 
-  return ""; # return "" if $nmdl == 1;
+  return ""; # return "" if $nsgm == 1;
 }
 
 
@@ -1575,6 +1576,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "deletins", "sequence",
+                   "DELETION_OF_FEATURE", # short description
+                   "internal deletion of a complete feature", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
@@ -1731,6 +1738,12 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
+                   "DELETION_OF_FEATURE_SECTION", # short description
+                   "internal deletion of complete section in multi-section feature with other section(s) annotated", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
                    "LOW_FEATURE_SIMILARITY_START", # short description
                    "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
@@ -1764,13 +1777,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
                    "N_AT_CDS_START", # short description
                    "first nucleotide of CDS is an N", # long  description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
                    "N_AT_CDS_END", # short description
                    "final nucleotide of CDS is an N", # long  description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
@@ -1782,9 +1795,6 @@ sub vdr_AlertInfoInitialize {
 
   # mutendcd is invalidated by cdsstopn, mutendex, mutendns
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "cdsstopn,mutendex,mutendns", $FH_HR); 
-
-  # unexdivg is preferred to noftrann
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);
 
   return;
 }

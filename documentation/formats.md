@@ -357,7 +357,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
 
-`.ftr` data lines have 23 fields, the names of which appear in the first two
+`.ftr` data lines have 25 fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each
 **feature** that is annotated for each input sequence file that
 `v-annotate.pl` processed. The set of possible features for each
@@ -477,7 +477,7 @@ sequence.
 |  11 | `nf5`                 | number of annotated features that are 5' truncated |
 |  12 | `nf3`                 | number of annotated features that are 3' truncated |
 |  13 | `nfalt`               | number of per-feature alerts reported for this sequence (does not count per-sequence alerts) |
-|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+|  14 | `seq alerts`          | per-sequence alerts that pertain to this sequence, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one distinct alert, and only listed once per alert type (even if multiple instances of same alert type), `-` if none |
 
 ---
 ### Explanation of `.sqc`-suffixed output files<a name="sqc"></a>
