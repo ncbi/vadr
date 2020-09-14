@@ -1,0 +1,25 @@
+>Feature NC_001959.2/6900-6979-bad-start
+<1	51	gene
+			gene	ORF2
+<1	51	CDS
+			product	VP1
+			codon_start	1
+			protein_id	NC_001959.2/6900-6979-bad-start_1
+51	>80	gene
+			gene	ORF3
+51	>80	CDS
+			product	VP2
+			protein_id	NC_001959.2/6900-6979-bad-start_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_START: (VP2) expected start codon could not be identified [AAG starting at position 51 on + strand is not a valid start]
+>Feature NC_001959.2/6900-6978-bad-start
+<1	51	gene
+			gene	ORF2
+<1	51	CDS
+			product	VP1
+			codon_start	1
+			protein_id	NC_001959.2/6900-6978-bad-start_1
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]

@@ -6,11 +6,11 @@
 
 #=GS ENTOY100A-2-fs3 DE multi-segment, segment 3, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS69+1)
 
-#=GS ENTOY100A-2-fs3 FS.1 nucleotide alignment of positions 67..70 (4 nt, avgpp: 0.913) on + strand are inconsistent with dominant frame (+3); inserts:70; deletes:none;
+#=GS ENTOY100A-2-fs3 FS.1 nucleotide alignment of positions 67..70 (4 nt, avgpp: 0.913) on + strand are inconsistent with dominant frame (+2); inserts:70; deletes:none;
 
 ENTOY100A-2-fs3         CACGTACGTAG
 #=GR ENTOY100A-2-fs3 PP ***********
-#=GR ENTOY100A-2-fs3 CS 33333333333
+#=GR ENTOY100A-2-fs3 CS 22222222222
 #=GC SS_cons            :::::::::::
 #=GC RF                 CACGTACGTAG
 //
@@ -22,11 +22,11 @@ ENTOY100A-2-fs3         CACGTACGTAG
 
 #=GS ENTOY100A-2-fs6 DE multi-segment, segment 3, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS69-)
 
-#=GS ENTOY100A-2-fs6 FS.1 nucleotide alignment of positions 67..68 (2 nt, avgpp: 0.938) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:68(1);
+#=GS ENTOY100A-2-fs6 FS.1 nucleotide alignment of positions 67..68 (2 nt, avgpp: 0.938) on + strand are inconsistent with dominant frame (+3); inserts:none; deletes:68(1);
 
 ENTOY100A-2-fs6         CACGTACGTAG
 #=GR ENTOY100A-2-fs6 PP ***********
-#=GR ENTOY100A-2-fs6 CS 22222222222
+#=GR ENTOY100A-2-fs6 CS 33333333333
 #=GC SS_cons            :::::::::::
 #=GC RF                 CACGTACGTAG
 //
@@ -38,11 +38,11 @@ ENTOY100A-2-fs6         CACGTACGTAG
 
 #=GS ENTOY100A-2-fs12 DE multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion different segment (CDS2, RFPOS52+1,70+2)
 
-#=GS ENTOY100A-2-fs12 FS.1 nucleotide alignment of positions 68..73 (6 nt, avgpp: 0.871) on + strand are inconsistent with dominant frame (+2); inserts:72-73; deletes:none;
+#=GS ENTOY100A-2-fs12 FS.1 nucleotide alignment of positions 68..73 (6 nt, avgpp: 0.871) on + strand are inconsistent with dominant frame (+3); inserts:72-73; deletes:none;
 
 ENTOY100A-2-fs12         CACGTACGTAG
 #=GR ENTOY100A-2-fs12 PP ***********
-#=GR ENTOY100A-2-fs12 CS 22222222222
+#=GR ENTOY100A-2-fs12 CS 33333333333
 #=GC SS_cons             :::::::::::
 #=GC RF                  CACGTACGTAG
 //
@@ -58,7 +58,7 @@ ENTOY100A-2-fs12         CACGTACGTAG
 
 ENTOY100A-2-fs17         C-CGTACGTAG
 #=GR ENTOY100A-2-fs17 PP 7.9********
-#=GR ENTOY100A-2-fs17 CS 3d111111111
+#=GR ENTOY100A-2-fs17 CS 2d111111111
 #=GC SS_cons             :::::::::::
 #=GC RF                  CACGTACGTAG
 //
@@ -74,7 +74,7 @@ ENTOY100A-2-fs17         C-CGTACGTAG
 
 ENTOY100A-2-fs18         CATTTTTCGTACGTAG
 #=GR ENTOY100A-2-fs18 PP 985555579*******
-#=GR ENTOY100A-2-fs18 CS 33iiiii111111111
+#=GR ENTOY100A-2-fs18 CS 22iiiii111111111
 #=GC SS_cons             ::::::::::::::::
 #=GC RF                  CA.....CGTACGTAG
 //
@@ -90,7 +90,7 @@ ENTOY100A-2-fs18         CATTTTTCGTACGTAG
 
 ENTOY100A-2-fs19         CACGTACGTAG
 #=GR ENTOY100A-2-fs19 PP ***********
-#=GR ENTOY100A-2-fs19 CS 33333333333
+#=GR ENTOY100A-2-fs19 CS 22222222222
 #=GC SS_cons             :::::::::::
 #=GC RF                  CACGTACGTAG
 //
@@ -106,7 +106,7 @@ ENTOY100A-2-fs19         CACGTACGTAG
 
 ENTOY100A-2-fs21         CA--TACGTAG
 #=GR ENTOY100A-2-fs21 PP 87..8******
-#=GR ENTOY100A-2-fs21 CS 22dd1111111
+#=GR ENTOY100A-2-fs21 CS 33dd1111111
 #=GC SS_cons             :::::::::::
 #=GC RF                  CACGTACGTAG
 //
@@ -122,7 +122,7 @@ ENTOY100A-2-fs21         CA--TACGTAG
 
 ENTOY100A-2-fs22         CATCGTACGTAG
 #=GR ENTOY100A-2-fs22 PP 9868********
-#=GR ENTOY100A-2-fs22 CS 11i333333333
+#=GR ENTOY100A-2-fs22 CS 11i222222222
 #=GC SS_cons             ::::::::::::
 #=GC RF                  CA.CGTACGTAG
 //
@@ -138,7 +138,7 @@ ENTOY100A-2-fs22         CATCGTACGTAG
 
 ENTOY100A-2-fs23         CATCGTACGTAG
 #=GR ENTOY100A-2-fs23 PP *868********
-#=GR ENTOY100A-2-fs23 CS 11i333333333
+#=GR ENTOY100A-2-fs23 CS 11i222222222
 #=GC SS_cons             ::::::::::::
 #=GC RF                  CA.CGTACGTAG
 //

@@ -1,0 +1,19 @@
+>Feature NC_001959.2/6900-6979
+<1	51	gene
+			gene	ORF2
+<1	51	CDS
+			product	VP1
+			codon_start	1
+			protein_id	NC_001959.2/6900-6979_1
+51	>80	gene
+			gene	ORF3
+51	>80	CDS
+			product	VP2
+			protein_id	NC_001959.2/6900-6979_2
+>Feature NC_001959.2/6900-6978
+<1	51	gene
+			gene	ORF2
+<1	51	CDS
+			product	VP1
+			codon_start	1
+			protein_id	NC_001959.2/6900-6978_1

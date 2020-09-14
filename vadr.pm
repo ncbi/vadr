@@ -1,6 +1,6 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # 
-# version: 1.0.6 [April 2020]
+# version: 1.1.1 [July 2020]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -42,6 +42,10 @@ use strict;
 use warnings;
 use Cwd;
 use LWP::Simple; 
+# use LWP::Protocol::https; 
+# above line is purposefully commented out, b/c LWP::Protocol::https is only
+# needed for v-build.pl, and many users only use v-annotate.pl only, which can run without it
+# when a better solution for checking for modules during installation is found, uncomment it
 
 require "sqp_opts.pm";
 require "sqp_ofile.pm";
@@ -114,6 +118,7 @@ require "sqp_utils.pm";
 # vdr_CoordsSegmentOverlap()
 # vdr_CoordsRelativeToAbsolute()
 # vdr_CoordsRelativeSegmentToAbsolute()
+# vdr_CoordsRelativeSingleCoordToAbsolute()
 # vdr_CoordsProteinRelativeToAbsolute()
 # vdr_CoordsProteinToNucleotide()
 # vdr_CoordsMergeAllAdjacentSegments()
@@ -140,6 +145,8 @@ require "sqp_utils.pm";
 # vdr_SplitFastaFile()
 # vdr_SplitNumSeqFiles()
 # vdr_CdsFetchStockholmToFasta()
+# vdr_ParseSeqFileToSeqHash()
+# vdr_FrameAdjust()
 #
 #################################################################
 # Subroutine: vdr_FeatureInfoImputeCoords
@@ -1214,16 +1221,17 @@ sub vdr_FeatureParentIndex {
 # Subroutine: vdr_FeatureSummarizeSegment()
 # Incept:      EPN, Fri Mar  1 12:36:36 2019
 #
-# Purpose:    Return a string indicating what model this is
-#             for features that are covered by multiple model spans.
+# Purpose:    Return a string indicating what segment this is
+#             for features with multiple segments and return 
+#             the empty string for features with 1 segment.
 #
 # Arguments: 
 #  $ftr_info_AHR: ref to feature info array of hashes, PRE-FILLED
 #  $sgm_info_AHR: ref to segment info array of hashes, PRE-FILLED
 #  $sgm_idx:      model index
 #
-# Returns:    "" if this is the only model for this feature
-#             string like ", model 1 of 2", if not
+# Returns:    "" if this is the only segment for this feature
+#             string like ", segment 1 of 2", if not
 # 
 # Dies:       never; does not validate anything.
 #
@@ -1236,12 +1244,12 @@ sub vdr_FeatureSummarizeSegment {
   my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx) = @_;
 
   my $ftr_idx = $sgm_info_AHR->[$sgm_idx]{"map_ftr"};
-  my $nmdl = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
-  if($nmdl > 1) { 
-    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nmdl);
+  my $nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
+  if($nsgm > 1) { 
+    return sprintf(", segment %d of %d", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $nsgm);
   }
 
-  return ""; # return "" if $nmdl == 1;
+  return ""; # return "" if $nsgm == 1;
 }
 
 
@@ -1466,15 +1474,15 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  vdr_AlertInfoAdd($alt_info_HHR, "ambignt5", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
                    "N_AT_START", # short description
-                   "first nucleotide is an N", # long  description
+                   "first nucleotide of the sequence is an N", # long  description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
-  vdr_AlertInfoAdd($alt_info_HHR, "ambignt3", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
                    "N_AT_END", # short description
-                   "final nucleotide is an N", # long  description
+                   "final nucleotide of the sequence is an N", # long  description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
@@ -1556,6 +1564,24 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "noftrant", "sequence",
+                   "NO_FEATURES_ANNOTATED", # short description
+                   "all annotated features are too short to output to feature table", # long description
+                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
+                   "UNREPORTED_FEATURE_PROBLEM", # short description
+                   "only fatal alerts are for feature(s) not output to feature table", # long description
+                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletins", "sequence",
+                   "DELETION_OF_FEATURE", # short description
+                   "internal deletion of a complete feature", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
@@ -1592,22 +1618,22 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
+                   "CDS_HAS_STOP_CODON", # short description
+                   "stop codon in protein-based alignment", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
                    "high confidence potential frameshift in CDS", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
                    "low confidence potential frameshift in CDS", # long description
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
-                   "CDS_HAS_STOP_CODON", # short description
-                   "stop codon in protein-based alignment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",
@@ -1712,6 +1738,12 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
+                   "DELETION_OF_FEATURE_SECTION", # short description
+                   "internal deletion of complete section in multi-section feature with other section(s) annotated", # long description
+                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
                    "LOW_FEATURE_SIMILARITY_START", # short description
                    "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
@@ -1730,17 +1762,39 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
-  # define the ftbl_invalid_by values, these are one-sided, any error code listed in the 
-  # 3rd argument invalidates the 2nd argument error code, but not vice versa
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
+                   "N_AT_FEATURE_START", # short description
+                   "first nucleotide of non-CDS feature is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
 
-  # cdsstopn, mutendex, mutendns are preferred to mutendcd
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3f", "feature",
+                   "N_AT_FEATURE_END", # short description
+                   "final nucleotide of non-CDS feature is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
+                   "N_AT_CDS_START", # short description
+                   "first nucleotide of CDS is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
+                   "N_AT_CDS_END", # short description
+                   "final nucleotide of CDS is an N", # long  description
+                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   $FH_HR); 
+
+  # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
+  # 3rd argument invalidates the 2nd argument alert code, but not vice versa
+  # 
+  # Note: only fatal alerts can be invalidated, and only then by other fatal alerts.
+  # This is because alert-invalidation is only relevant to the feature table and the 
+  # feature table only outputs fatal alerts. See v-annotate.pl:helper_ftable_process_sequence_alerts().
+
+  # mutendcd is invalidated by cdsstopn, mutendex, mutendns
   vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "mutendcd", "cdsstopn,mutendex,mutendns", $FH_HR); 
-
-  # unexdivg is preferred to noftrann
-  vdr_AlertInfoSetFTableInvalidatedBy($alt_info_HHR, "noftrann", "unexdivg", $FH_HR);
-
-  # validate the alert info hash
-  #vdr_AlertInfoValidate($alt_info_HHR, undef, $FH_HR); 
 
   return;
 }
@@ -1844,8 +1898,9 @@ sub vdr_AlertInfoAdd {
 # 
 # Returns: void
 #
-# Dies:    if one of the error codes in $code1 or $code2str do not
-#          exist in %{$alt_info_HHR}.
+# Dies:    - if one of the error codes in $code1 or $code2str do not
+#            exist in %{$alt_info_HHR}
+#          - if $alt_info_HHR->{$code1}{"ftbl_invalid_by"} is already set
 #
 #################################################################
 sub vdr_AlertInfoSetFTableInvalidatedBy {
@@ -1854,6 +1909,11 @@ sub vdr_AlertInfoSetFTableInvalidatedBy {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
   my ($alt_info_HHR, $code1, $code2str, $FH_HR) = (@_);
+
+  if((defined $alt_info_HHR->{$code1}{"ftbl_invalid_by"}) && 
+     ($alt_info_HHR->{$code1}{"ftbl_invalid_by"} ne "")) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add invalidated by relationship for code $code1, but it is already set", 1, $FH_HR);
+  }
 
   # verify the codes in $code2str
   my @code2_A = split(',', $code2str);
@@ -2956,7 +3016,7 @@ sub vdr_CoordsRelativeToAbsolute {
 #
 # Synopsis: Return absolute nucleotide coordinates that correspond to
 #           the relative nucleotide coordinates segment in <$rel_coords_tok>.
-#           with nucleotide sequence with absolute coords <$abs_coords>.
+#           within nucleotide sequence with absolute coords <$abs_coords>.
 #
 #           Examples:
 # 
@@ -3055,6 +3115,51 @@ sub vdr_CoordsRelativeSegmentToAbsolute {
 
   # printf("in $sub_name, returning $ret_coords\n");
   return $ret_coords;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsRelativeSingleCoordToAbsolute()
+#
+# Incept:     EPN, Wed Apr 29 06:27:45 2020
+#
+# Synopsis: Return absolute nucleotide coordinate that corresponds to
+#           a single relative nucleotide coordinate <$rel_coord>.
+#           within nucleotide sequence with absolute coords <$abs_coords>.
+#           Single relative coordinate $rel_coord strand is irrelevant
+#           because it is a single position.
+#
+#           Examples:
+# 
+#           abs_coords     rel_coord   returns
+#           "11..100:+"    "6"         "16"
+#           "11..100:+"    "38"        "48"     
+#
+# Arguments:
+#  $abs_coords:     nucleotide coordinates in full sequence [1..seqlen]
+#  $rel_coord:      relative nucleotide coordinate
+#  $FH_HR:          REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:   Absolute coordinate corresponding to $rel_coord.
+#
+# Dies: if $rel_coord is longer than total length of absolute coords
+#
+#################################################################
+sub vdr_CoordsRelativeSingleCoordToAbsolute { 
+  my $sub_name = "vdr_CoordsRelativeSingleCoordToAbsolute";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($abs_coords, $rel_coord, $FH_HR) = @_;
+
+  my $ret_coords = vdr_CoordsRelativeSegmentToAbsolute($abs_coords, vdr_CoordsSegmentCreate($rel_coord, $rel_coord, "+", $FH_HR), $FH_HR);
+  if($ret_coords =~ /^(\d+)\.\.\d+/) { 
+    return $1;
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, problem converting relative coordinate $rel_coord to absolute coords (abs_coords: $abs_coords)", 1, $FH_HR);
+  }
+
+  return; # NEVER REACHED
 }
 
 #################################################################
@@ -4137,6 +4242,70 @@ sub vdr_ParseSeqFileToSeqHash {
   }
   
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FrameAdjust
+# Incept:     EPN, Fri May  1 17:46:54 2020
+# Purpose:    Return the frame (1, 2, or 3) implied by a difference 
+#             of <nt_diff> nt relative to <orig_frame>. I find this 
+#             calculation unnervingly difficult to wrap my head around
+#             for some reason.
+#
+# Arguments:
+#  $orig_frame: 1, 2, or 3, you can also think of this as a codon_start
+#               value:
+#               '1': first position of sequence is first position to translate
+#                  (first position of first codon)
+#               '2': second position of sequence is first position to translate
+#                  (first position of first codon, this implies that first 
+#                  position of sequence is in frame *3* (third position of 
+#                  'previous' codon)
+#               '3': third position of sequence is first position to translate
+#                  (first position of first codon, this implies that first 
+#                  position of sequence is in frame *2* (second position of 
+#                  'previous' codon)
+#  $nt_diff:    number of nucleotides to adjust by; if positive, adjusting 
+#               'forwards' (downstream, 3' direction); if negative, adjusting 
+#               'backwards' (upstream, 5' direction)
+#  $FH_HR:      ref to hash of file handles, including "cmd"
+#
+# Returns:  <ret_frame>: $orig_frame adjusted by $nt_diff nt.
+#
+#           <orig_frame> <nt_diff>  <ret_frame>
+#           1           -2          3
+#           1           -1          2
+#           1            0          1
+#           1            1          3
+#           1            2          2
+#
+#           2           -2          1
+#           2           -1          3
+#           2            0          2
+#           2            1          1
+#           2            2          3
+#
+#           3           -1          1
+#           3           -2          2
+#           3            0          3
+#           3            1          2
+#           3            2          1
+#
+# Dies:     if $orig_frame is not 1, 2, or 3
+#
+#################################################################
+sub vdr_FrameAdjust { 
+  my $sub_name = "frame_adjust";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($orig_frame, $nt_diff, $FH_HR) = (@_);
+
+  if(($orig_frame ne "1") && ($orig_frame ne "2") && ($orig_frame ne "3")) { 
+      ofile_FAIL("ERROR in $sub_name, orig_frame must be 1, 2, or 3, got $orig_frame", 1, $FH_HR);
+  }
+
+  return (($orig_frame - $nt_diff - 1) % 3) + 1;
 }
 
 ###########################################################################

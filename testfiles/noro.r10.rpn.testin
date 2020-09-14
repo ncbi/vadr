@@ -12,7 +12,9 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn.r10 > va-noro-rpn.r10.out
+#
+# -r only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn.r10 > va-noro-rpn.r10.out
 desc: annotate-noro-10-rpn
 out: va-noro-rpn.r10/va-noro-rpn.r10.vadr.pass.tbl 
 out: va-noro-rpn.r10/va-noro-rpn.r10.vadr.fail.tbl
@@ -35,8 +37,34 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.v
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.rpn
 rmdir: va-noro-rpn.r10
-# --r_prof
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r --r_prof $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-prof.r10 > va-noro-rpn-prof.r10.out
+#
+# -r --notrim 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --notrim --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-notrim.r10 > va-noro-rpn-notrim.r10.out
+desc: annotate-noro-10-rpn-notrim
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.pass.tbl 
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.fail.tbl
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.sqa
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.sqc
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.ftr
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.sgm
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.mdl
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.alt
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.alc
+out: va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-notrim.r10/va-noro-rpn-notrim.r10.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.sqc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r10/va-noro-rpn.r10.vadr.rpn
+rmdir: va-noro-rpn-notrim.r10
+#
+# -r --r_prof
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r --r_prof $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-prof.r10 > va-noro-rpn-prof.r10.out
 desc: annotate-noro-10-rpn-prof
 out: va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.pass.tbl 
 out: va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.fail.tbl

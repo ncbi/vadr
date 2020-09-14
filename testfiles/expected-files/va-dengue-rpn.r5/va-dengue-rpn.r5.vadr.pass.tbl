@@ -60,23 +60,3 @@
 841	2325	mat_peptide
 			product	envelope protein E
 			protein_id	1044891200_1
->Feature gi|1447973732|gb|MH680297.1|
-<1	>1485	gene
-			gene	POLY
-<1	>1485	CDS
-			product	polyprotein
-			codon_start	1
-			protein_id	1447973732_1
-1	1485	mat_peptide
-			product	envelope protein E
-			protein_id	1447973732_1
->Feature gi|281314094|gb|GU211727.1|
-<1	>87	gene
-			gene	POLY
-<1	>87	CDS
-			product	polyprotein
-			codon_start	1
-			protein_id	281314094_1
-<1	>87	mat_peptide
-			product	RNA-dependent RNA polymerase NS5
-			protein_id	281314094_1

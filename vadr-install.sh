@@ -21,7 +21,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.0.6"
+VERSION="1.1.1"
 # bio-easel
 BEVERSION="Bio-Easel-0.12"
 # blast+
@@ -174,8 +174,8 @@ mv ncbi-blast-$BVERSION+ ncbi-blast
 echo "------------------------------------------------"
 
 # download vadr-models 
-echo "Downloading latest VADR models ... "
-curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/CURRENT/vadr-models-$MVERSION.tar.gz
+echo "Downloading VADR models ... "
+curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$MVERSION/vadr-models-$MVERSION.tar.gz
 # for a test build of a release, or of the develop branch, you may want different models,
 # such as those in the develop/ dir, in that case comment out above curl and uncomment
 # and possibly modify the one below

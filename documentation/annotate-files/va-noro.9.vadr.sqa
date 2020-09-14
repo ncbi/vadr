@@ -1,0 +1,12 @@
+#seq  seq          seq             best                  sub                              seq   
+#idx  name         len  p/f   ant  model      grp        grp   nfa  nfn  nf5  nf3  nfalt  alerts
+#---  ----------  ----  ----  ---  ---------  ---------  ----  ---  ---  ---  ---  -----  ------
+1     KY887602.1  7547  PASS  yes  NC_039477  Norovirus  GII    12    0    3    0      0  -     
+2     KT818729.1   243  PASS  yes  NC_044854  Norovirus  GI      3    9    3    3      0  -     
+3     EU437710.1   291  PASS  yes  NC_001959  Norovirus  GI      5    7    5    2      0  -     
+4     DQ288307.1  1094  PASS  yes  NC_029645  Norovirus  GIII    5    7    3    2      0  -     
+5     AY237464.1   255  PASS  yes  NC_039477  Norovirus  GII     2   10    2    2      0  -     
+6     KF475958.1   275  PASS  yes  NC_044854  Norovirus  GI      2   10    2    2      0  -     
+7     AB713840.1   347  PASS  yes  NC_008311  Norovirus  GV      7    7    3    4      0  -     
+8     JN585032.1   286  PASS  yes  NC_029645  Norovirus  GIII    3    9    3    3      0  -     
+9     JN975492.1  7286  FAIL  yes  NC_008311  Norovirus  GV     14    0    3    0      5  -     

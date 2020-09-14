@@ -96,6 +96,7 @@
 			gene	one
 <89	70	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A-REV-3-fs2_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -133,6 +134,7 @@
 			gene	one
 <88	70	CDS
 			product	protein one
+			codon_start	2
 			protein_id	ENTOY100A-REV-3-fs3_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -170,6 +172,7 @@
 			gene	one
 <89	70	CDS
 			product	protein one
+			codon_start	3
 			protein_id	ENTOY100A-REV-3-fs6_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -207,6 +210,7 @@
 			gene	one
 <84	70	CDS
 			product	protein one
+			codon_start	1
 			protein_id	ENTOY100A-REV-3-fs9_1
 78	73	mat_peptide
 			product	protein one mp2
@@ -259,6 +263,7 @@
 54	37
 35	28
 			product	protein two
+			codon_start	3
 			protein_id	ENTOY100A-REV-3-fs11_1
 >Feature ENTOY100A-REV-3-fs12
 3	17	CDS
@@ -279,6 +284,7 @@
 54	37
 35	28
 			product	protein two
+			codon_start	2
 			protein_id	ENTOY100A-REV-3-fs12_1
 >Feature ENTOY100A-REV-3-fs19
 39	24	CDS
@@ -378,6 +384,7 @@
 23	6
 4	>1
 			product	protein two
+			codon_start	3
 			protein_id	ENTOY100A-REV-3-fs23_1
 3	>1	CDS
 			product	protein three
@@ -390,4 +397,5 @@
 22	5
 3	>1
 			product	protein two
+			codon_start	2
 			protein_id	ENTOY100A-REV-3-fs24_1

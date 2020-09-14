@@ -6,11 +6,11 @@
 
 #=GS ENTOY100A-REV-fs1 DE single segment 1nt insertion that breaks frame, not fixed (CDS1, RFPOS87+1)
 
-#=GS ENTOY100A-REV-fs1 FS.1 nucleotide alignment of positions 91..88 (4 nt, avgpp: 0.863) on - strand are inconsistent with dominant frame (-3); inserts:88; deletes:none;
+#=GS ENTOY100A-REV-fs1 FS.1 nucleotide alignment of positions 91..88 (4 nt, avgpp: 0.863) on - strand are inconsistent with dominant frame (-2); inserts:88; deletes:none;
 
 ENTOY100A-REV-fs1         TTATGGTAAAGCGATCACGCAT
 #=GR ENTOY100A-REV-fs1 PP *****************978**
-#=GR ENTOY100A-REV-fs1 CS 333333333333333333i111
+#=GR ENTOY100A-REV-fs1 CS 222222222222222222i111
 #=GC SS_cons              :::::::::::::<<_____>>
 #=GC RF                   TTATGGTAAAGCGatCAC.Cat
 //
@@ -22,11 +22,11 @@ ENTOY100A-REV-fs1         TTATGGTAAAGCGATCACGCAT
 
 #=GS ENTOY100A-REV-fs2 DE single segment 5nt insertion that breaks frame, not fixed (CDS1, RFPOS87+5)
 
-#=GS ENTOY100A-REV-fs2 FS.1 nucleotide alignment of positions 95..88 (8 nt, avgpp: 0.781) on - strand are inconsistent with dominant frame (-2); inserts:92-88; deletes:none;
+#=GS ENTOY100A-REV-fs2 FS.1 nucleotide alignment of positions 95..88 (8 nt, avgpp: 0.781) on - strand are inconsistent with dominant frame (-3); inserts:92-88; deletes:none;
 
 ENTOY100A-REV-fs2         TTATGGTAAAGCGATCACGGGGGCAT
 #=GR ENTOY100A-REV-fs2 PP *****************9777778**
-#=GR ENTOY100A-REV-fs2 CS 222222222222222222iiiii111
+#=GR ENTOY100A-REV-fs2 CS 333333333333333333iiiii111
 #=GC SS_cons              :::::::::::::<<_________>>
 #=GC RF                   TTATGGTAAAGCGatCAC.....Cat
 //
@@ -42,7 +42,7 @@ ENTOY100A-REV-fs2         TTATGGTAAAGCGATCACGGGGGCAT
 
 ENTOY100A-REV-fs3         TTATGGTAAACCGCGATCACGCAT
 #=GR ENTOY100A-REV-fs3 PP *********97789*****978**
-#=GR ENTOY100A-REV-fs3 CS 1111111111ii33333333i111
+#=GR ENTOY100A-REV-fs3 CS 1111111111ii22222222i111
 #=GC SS_cons              :::::::::::::::<<_____>>
 #=GC RF                   TTATGGTAAA..GCGatCAC.Cat
 //
@@ -58,7 +58,7 @@ ENTOY100A-REV-fs3         TTATGGTAAACCGCGATCACGCAT
 
 ENTOY100A-REV-fs4         TTATGGTAAACGCGATCACGGGGGCAT
 #=GR ENTOY100A-REV-fs4 PP *******98779******9777778**
-#=GR ENTOY100A-REV-fs4 CS 1111111111i22222222iiiii111
+#=GR ENTOY100A-REV-fs4 CS 1111111111i33333333iiiii111
 #=GC SS_cons              ::::::::::::::<<_________>>
 #=GC RF                   TTATGGTAAA.GCGatCAC.....Cat
 //
@@ -74,7 +74,7 @@ ENTOY100A-REV-fs4         TTATGGTAAACGCGATCACGGGGGCAT
 
 ENTOY100A-REV-fs5         TTATGGTAAA-CGATCACGCAT
 #=GR ENTOY100A-REV-fs5 PP *******986.9*****978**
-#=GR ENTOY100A-REV-fs5 CS 1111111111d3333333i111
+#=GR ENTOY100A-REV-fs5 CS 1111111111d2222222i111
 #=GC SS_cons              :::::::::::::<<_____>>
 #=GC RF                   TTATGGTAAAGCGatCAC.Cat
 //
@@ -90,7 +90,7 @@ ENTOY100A-REV-fs5         TTATGGTAAA-CGATCACGCAT
 
 ENTOY100A-REV-fs6         TTATGGTAA--CGATCACGGGGGCAT
 #=GR ENTOY100A-REV-fs6 PP *******87..8*****9777778**
-#=GR ENTOY100A-REV-fs6 CS 111111111dd2222222iiiii111
+#=GR ENTOY100A-REV-fs6 CS 111111111dd3333333iiiii111
 #=GC SS_cons              :::::::::::::<<_________>>
 #=GC RF                   TTATGGTAAAGCGatCAC.....Cat
 //
@@ -102,11 +102,11 @@ ENTOY100A-REV-fs6         TTATGGTAA--CGATCACGGGGGCAT
 
 #=GS ENTOY100A-REV-fs7 DE single segment 1nt deletion that breaks frame, not fixed (CDS1, RFPOS88-)
 
-#=GS ENTOY100A-REV-fs7 FS.1 nucleotide alignment of positions 89..88 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:88(1);
+#=GS ENTOY100A-REV-fs7 FS.1 nucleotide alignment of positions 89..88 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:88(1);
 
 ENTOY100A-REV-fs7         TTATGGTAAAGCGATCAC-AT
 #=GR ENTOY100A-REV-fs7 PP ****************97.**
-#=GR ENTOY100A-REV-fs7 CS 222222222222222222d11
+#=GR ENTOY100A-REV-fs7 CS 333333333333333333d11
 #=GC SS_cons              :::::::::::::<<____>>
 #=GC RF                   TTATGGTAAAGCGatCACCat
 //
@@ -118,11 +118,11 @@ ENTOY100A-REV-fs7         TTATGGTAAAGCGATCAC-AT
 
 #=GS ENTOY100A-REV-fs8 DE single segment 2nt deletion that breaks frame, not fixed (CDS1, RFPOS88-,87-)
 
-#=GS ENTOY100A-REV-fs8 FS.1 nucleotide alignment of positions 88..87 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-3); inserts:none; deletes:87(2);
+#=GS ENTOY100A-REV-fs8 FS.1 nucleotide alignment of positions 88..87 (2 nt, avgpp: 0.975) on - strand are inconsistent with dominant frame (-2); inserts:none; deletes:87(2);
 
 ENTOY100A-REV-fs8         TTATGGTAAAGCGATCA--AT
 #=GR ENTOY100A-REV-fs8 PP ***************98..**
-#=GR ENTOY100A-REV-fs8 CS 33333333333333333dd11
+#=GR ENTOY100A-REV-fs8 CS 22222222222222222dd11
 #=GC SS_cons              :::::::::::::<<____>>
 #=GC RF                   TTATGGTAAAGCGatCACCat
 //
@@ -138,7 +138,7 @@ ENTOY100A-REV-fs8         TTATGGTAAAGCGATCA--AT
 
 ENTOY100A-REV-fs9         TTATGGTAA--CGATCAC-AT
 #=GR ENTOY100A-REV-fs9 PP *******87..8****97.**
-#=GR ENTOY100A-REV-fs9 CS 111111111dd2222222d11
+#=GR ENTOY100A-REV-fs9 CS 111111111dd3333333d11
 #=GC SS_cons              :::::::::::::<<____>>
 #=GC RF                   TTATGGTAAAGCGatCACCat
 //
@@ -154,7 +154,7 @@ ENTOY100A-REV-fs9         TTATGGTAA--CGATCAC-AT
 
 ENTOY100A-REV-fs10         TTATGGTAAA-CGATCA--AT
 #=GR ENTOY100A-REV-fs10 PP *******986.9***98..**
-#=GR ENTOY100A-REV-fs10 CS 1111111111d333333dd11
+#=GR ENTOY100A-REV-fs10 CS 1111111111d222222dd11
 #=GC SS_cons               :::::::::::::<<____>>
 #=GC RF                    TTATGGTAAAGCGatCACCat
 //
@@ -170,7 +170,7 @@ ENTOY100A-REV-fs10         TTATGGTAAA-CGATCA--AT
 
 ENTOY100A-REV-fs11         TTATGGTAAACGCGATCAC-AT
 #=GR ENTOY100A-REV-fs11 PP *******98779*****97.**
-#=GR ENTOY100A-REV-fs11 CS 1111111111i22222222d11
+#=GR ENTOY100A-REV-fs11 CS 1111111111i33333333d11
 #=GC SS_cons               ::::::::::::::<<____>>
 #=GC RF                    TTATGGTAAA.GCGatCACCat
 //
@@ -186,7 +186,7 @@ ENTOY100A-REV-fs11         TTATGGTAAACGCGATCAC-AT
 
 ENTOY100A-REV-fs12         TTATGGTAAACCGCGATCA--AT
 #=GR ENTOY100A-REV-fs12 PP *********9778999988..**
-#=GR ENTOY100A-REV-fs12 CS 1111111111ii3333333dd11
+#=GR ENTOY100A-REV-fs12 CS 1111111111ii2222222dd11
 #=GC SS_cons               :::::::::::::::<<____>>
 #=GC RF                    TTATGGTAAA..GCGatCACCat
 //

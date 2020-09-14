@@ -1,0 +1,44 @@
+>Feature JN975492.1
+<1	5044	gene
+			gene	ORF1
+<1	5044	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+			protein_id	JN975492.1_1
+<1	1000	mat_peptide
+			product	p48
+			protein_id	JN975492.1_1
+1001	2092	mat_peptide
+			product	NTPase
+			protein_id	JN975492.1_1
+2093	2590	mat_peptide
+			product	p22
+			protein_id	JN975492.1_1
+2591	2965	mat_peptide
+			product	VPg
+			protein_id	JN975492.1_1
+2966	3514	mat_peptide
+			product	Pro
+			protein_id	JN975492.1_1
+3515	5041	mat_peptide
+			product	RdRp
+			protein_id	JN975492.1_1
+5031	6656	gene
+			gene	ORF2
+5031	6656	CDS
+			product	VP1
+			protein_id	JN975492.1_2
+5044	5685	gene
+			gene	ORF4
+5044	5685	misc_feature
+			note	similar to VF1
+6656	7282	gene
+			gene	ORF3
+6656	7282	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
+ERROR: CDS_HAS_STOP_CODON: (VF1) stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
+ERROR: INDEFINITE_ANNOTATION_END: (VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]

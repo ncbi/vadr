@@ -1,0 +1,23 @@
+#      seq                                                       ftr   ftr   ftr  alert           alert                        alert 
+#idx   name                                           model      type  name  idx  code      fail  desc                         detail
+#----  ---------------------------------------------  ---------  ----  ----  ---  --------  ----  ---------------------------  ------
+2.1.1  NC_001959/6890-7500-cds-first-18-Ns            NC_001959  gene  ORF2    3  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 1 positions are Ns, final non-N is position 60]
+2.2.1  NC_001959/6890-7500-cds-first-18-Ns            NC_001959  CDS   VP1     4  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
+2.3.1  NC_001959/6890-7500-cds-first-18-Ns            NC_001959  gene  ORF3    5  ambgnt5f  no    N_AT_FEATURE_START           first nucleotide of non-CDS feature is an N [first 18 positions are Ns, first non-N is position 79]
+2.4.1  NC_001959/6890-7500-cds-first-18-Ns            NC_001959  CDS   VP2     6  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18 > 5 (strand:+ CM:61 blastx:79)]
+2.4.2  NC_001959/6890-7500-cds-first-18-Ns            NC_001959  CDS   VP2     6  ambgnt5c  yes   N_AT_CDS_START               first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]
+#
+3.1.1  NC_001959/6890-7500-cds-final-18-Ns            NC_001959  -     -       -  ambgnt3s  no    N_AT_END                     final nucleotide of the sequence is an N [final 19 positions are Ns, final non-N is position 592]
+3.2.1  NC_001959/6890-7500-cds-final-18-Ns            NC_001959  gene  ORF3    5  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 18 positions are Ns, final non-N is position 593]
+3.3.1  NC_001959/6890-7500-cds-final-18-Ns            NC_001959  CDS   VP2     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17 > 5 (strand:+ CM:611 blastx:594, no valid stop codon in CM prediction)]
+3.3.2  NC_001959/6890-7500-cds-final-18-Ns            NC_001959  CDS   VP2     6  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
+#
+4.1.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  -     -       -  ambgnt3s  no    N_AT_END                     final nucleotide of the sequence is an N [final 19 positions are Ns, final non-N is position 592]
+4.2.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  gene  ORF2    3  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 1 positions are Ns, final non-N is position 60]
+4.3.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  CDS   VP1     4  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
+4.4.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  gene  ORF3    5  ambgnt5f  no    N_AT_FEATURE_START           first nucleotide of non-CDS feature is an N [first 18 positions are Ns, first non-N is position 79]
+4.4.2  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  gene  ORF3    5  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 18 positions are Ns, final non-N is position 593]
+4.5.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  CDS   VP2     6  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18 > 5 (strand:+ CM:61 blastx:79)]
+4.5.2  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  CDS   VP2     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17 > 5 (strand:+ CM:611 blastx:594, no valid stop codon in CM prediction)]
+4.5.3  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  CDS   VP2     6  ambgnt5c  yes   N_AT_CDS_START               first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]
+4.5.4  NC_001959/6890-7500-cds-first-and-final-18-Ns  NC_001959  CDS   VP2     6  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]

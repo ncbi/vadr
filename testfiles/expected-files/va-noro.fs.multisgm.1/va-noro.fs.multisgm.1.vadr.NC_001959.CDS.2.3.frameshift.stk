@@ -34,7 +34,7 @@ NC_001959.2-manually-added-frameshifts-1         AGGCTGCCCTGCTCCACTATGTTGACCCTGA
 
 NC_001959.2-manually-added-frameshifts-1         GCAAGAGGTAGGCTTGGTCTGCGCCCCGATAA
 #=GR NC_001959.2-manually-added-frameshifts-1 PP ********************99863379****
-#=GR NC_001959.2-manually-added-frameshifts-1 CS 111111111111111111111111ii222222
+#=GR NC_001959.2-manually-added-frameshifts-1 CS 111111111111111111111111ii333333
 #=GC SS_cons                                     ::::::::::::::::::::::::::::::::
 #=GC RF                                          GCAAGAGGTAGGCTTGGTCTGCGC..CGATAA
 //
@@ -70,13 +70,13 @@ NC_001959.2-manually-added-frameshifts-2         CCTTTGGAAGATCCCCAATTATGGGTCAAGT
 
 NC_001959.2-manually-added-frameshifts-2         AGGCTGCCCTGCTCCACTATGTTGACCCTGATACCGGTCGGAATCTTGGGGAATTCAAAGCATACCCTGATGGTTTCCTCACTTGTGTCCCCAATGGGGCTAGCTCGGGTCCACAACAGCTGCCGATCAATGGGGTCTTTGTCTTTGTTTCATGGG----CAGATTTTATCAATTTTTTTAAAGCCTGTGGGAACTGCCA
 #=GR NC_001959.2-manually-added-frameshifts-2 PP *********************************************************************************************************************************************************998....79**********963333369*******************
-#=GR NC_001959.2-manually-added-frameshifts-2 CS 111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111dddd22222222222222iiiii333333333333333333333
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111dddd33333333333333iiiii222222222222222222222
 #=GC SS_cons                                     ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF                                          AGGCTGCCCTGCTCCACTATGTTGACCCTGATACCGGTCGGAATCTTGGGGAATTCAAAGCATACCCTGATGGTTTCCTCACTTGTGTCCCCAATGGGGCTAGCTCGGGTCCACAACAGCTGCCGATCAATGGGGTCTTTGTCTTTGTTTCATGGGTGTCCAGATTTTATCAAT.....TAAAGCCTGTGGGAACTGCCA
 
 NC_001959.2-manually-added-frameshifts-2         GCTCGGCAAGAGGTAGGCTTGGTCTGCGCCGATAA
 #=GR NC_001959.2-manually-added-frameshifts-2 PP ***********************************
-#=GR NC_001959.2-manually-added-frameshifts-2 CS 33333333333333333333333333333333333
+#=GR NC_001959.2-manually-added-frameshifts-2 CS 22222222222222222222222222222222222
 #=GC SS_cons                                     :::::::::::::::::::::::::::::::::::
 #=GC RF                                          GCTCGGCAAGAGGTAGGCTTGGTCTGCGCCGATAA
 //

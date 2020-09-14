@@ -1,0 +1,426 @@
+>Feature ENTOY100A-stop-mut-at-30-len100
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len100_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len100_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len100_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A-stop-mut-at-30-len100_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A-stop-mut-at-30-len100_3
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len99
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len99_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len99_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len99_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A-stop-mut-at-30-len99_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A-stop-mut-at-30-len99_3
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len98
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len98_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len98_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len98_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A-stop-mut-at-30-len98_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A-stop-mut-at-30-len98_3
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len97
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len97_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len97_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len97_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A-stop-mut-at-30-len97_2
+<97	84	CDS
+			product	protein four
+			codon_start	3
+			protein_id	ENTOY100A-stop-mut-at-30-len97_3
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len75
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len75_1
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len75_2
+67	>75	CDS
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len75_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len74
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len74_1
+67	>74	CDS
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len74_2
+67	>74	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len74_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len73
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len73_1
+67	>73	CDS
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len73_2
+67	>73	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len73_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len72
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	>72
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len72_1
+67	>72	CDS
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len72_2
+67	>72	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len72_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len71
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	>71
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len71_1
+67	>71	CDS
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len71_2
+67	>71	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len71_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len70
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	47	CDS
+47	64
+66	>70
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len70_1
+67	>70	CDS
+			product	protein three
+			protein_id	ENTOY100A-stop-mut-at-30-len70_2
+67	>70	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A-stop-mut-at-30-len70_2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len34
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+32	>34	CDS
+			product	protein two
+			protein_id	ENTOY100A-stop-mut-at-30-len34_1
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len33
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	33	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len32
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	>32	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+>Feature ENTOY100A-stop-mut-at-30-len31
+5	22	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+8	>31	gene
+			gene	one
+10	19	stem_loop
+			note	stem-loop 1
+11	31	misc_feature
+			note	similar to protein one
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	misc_feature
+			note	similar to protein one mp2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem

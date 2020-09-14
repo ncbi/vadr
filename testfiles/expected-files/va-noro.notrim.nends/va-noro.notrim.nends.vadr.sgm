@@ -1,0 +1,22 @@
+#      seq                                            seq                   ftr   ftr   ftr  num  sgm   seq  seq   mdl   mdl  sgm               5'     3'  5'   3' 
+#idx   name                                           len  p/f   model      type  name  idx  sgm  idx  from   to  from    to  len  str  trc     pp     pp  gap  gap
+#----  ---------------------------------------------  ---  ----  ---------  ----  ----  ---  ---  ---  ----  ---  ----  ----  ---  ---  ---  -----  -----  ---  ---
+1.1.1  NC_001959/6890-7500-pass                       611  PASS  NC_001959  gene  ORF2    3    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+1.2.1  NC_001959/6890-7500-pass                       611  PASS  NC_001959  CDS   VP1     4    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+1.3.1  NC_001959/6890-7500-pass                       611  PASS  NC_001959  gene  ORF3    5    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+1.4.1  NC_001959/6890-7500-pass                       611  PASS  NC_001959  CDS   VP2     6    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+#
+2.1.1  NC_001959/6890-7500-cds-first-18-Ns            611  FAIL  NC_001959  gene  ORF2    3    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+2.2.1  NC_001959/6890-7500-cds-first-18-Ns            611  FAIL  NC_001959  CDS   VP1     4    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+2.3.1  NC_001959/6890-7500-cds-first-18-Ns            611  FAIL  NC_001959  gene  ORF3    5    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+2.4.1  NC_001959/6890-7500-cds-first-18-Ns            611  FAIL  NC_001959  CDS   VP2     6    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+#
+3.1.1  NC_001959/6890-7500-cds-final-18-Ns            611  FAIL  NC_001959  gene  ORF2    3    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+3.2.1  NC_001959/6890-7500-cds-final-18-Ns            611  FAIL  NC_001959  CDS   VP1     4    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+3.3.1  NC_001959/6890-7500-cds-final-18-Ns            611  FAIL  NC_001959  gene  ORF3    5    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+3.4.1  NC_001959/6890-7500-cds-final-18-Ns            611  FAIL  NC_001959  CDS   VP2     6    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+#
+4.1.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  611  FAIL  NC_001959  gene  ORF2    3    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+4.2.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  611  FAIL  NC_001959  CDS   VP1     4    1    1     1   61  6890  6950   61    +  5'       -  0.975  yes  no 
+4.3.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  611  FAIL  NC_001959  gene  ORF3    5    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes
+4.4.1  NC_001959/6890-7500-cds-first-and-final-18-Ns  611  FAIL  NC_001959  CDS   VP2     6    1    1    61  611  6950  7500  551    +  3'   0.975      -  no   yes

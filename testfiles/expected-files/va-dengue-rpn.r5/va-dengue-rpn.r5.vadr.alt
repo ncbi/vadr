@@ -1,6 +1,14 @@
-#      seq                                      ftr   ftr   ftr  alert           alert       alert 
-#idx   name                          model      type  name  idx  code      fail  desc        detail
-#----  ----------------------------  ---------  ----  ----  ---  --------  ----  ----------  ------
-4.1.1  gi|1447973732|gb|MH680297.1|  NC_001477  -     -       -  ambignt5  no    N_AT_START  first nucleotide is an N
+#      seq                                      ftr          ftr                               ftr  alert           alert                        alert 
+#idx   name                          model      type         name                              idx  code      fail  desc                         detail
+#----  ----------------------------  ---------  -----------  --------------------------------  ---  --------  ----  ---------------------------  ------
+4.1.1  gi|1447973732|gb|MH680297.1|  NC_001477  -            -                                   -  ambgnt5s  no    N_AT_START                   first nucleotide of the sequence is an N [first 35 positions are Ns, first non-N is position 36]
+4.2.1  gi|1447973732|gb|MH680297.1|  NC_001477  gene         POLY                                3  ambgnt5f  no    N_AT_FEATURE_START           first nucleotide of non-CDS feature is an N [first 35 positions are Ns, first non-N is position 36]
+4.3.1  gi|1447973732|gb|MH680297.1|  NC_001477  CDS          polyprotein                         4  ambgnt5c  yes   N_AT_CDS_START               first nucleotide of CDS is an N [first 35 positions are Ns, first non-N is position 36]
+4.4.1  gi|1447973732|gb|MH680297.1|  NC_001477  mat_peptide  envelope_protein_E                 18  ambgnt5f  no    N_AT_FEATURE_START           first nucleotide of non-CDS feature is an N [first 35 positions are Ns, first non-N is position 36]
+4.4.2  gi|1447973732|gb|MH680297.1|  NC_001477  mat_peptide  envelope_protein_E                 18  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
-5.1.1  gi|281314094|gb|GU211727.1|   NC_001474  -     -       -  ambignt3  no    N_AT_END    final nucleotide is an N
+5.1.1  gi|281314094|gb|GU211727.1|   NC_001474  -            -                                   -  ambgnt3s  no    N_AT_END                     final nucleotide of the sequence is an N [final 2 positions are Ns, final non-N is position 85]
+5.2.1  gi|281314094|gb|GU211727.1|   NC_001474  gene         POLY                                3  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 1 positions are Ns, final non-N is position 86]
+5.3.1  gi|281314094|gb|GU211727.1|   NC_001474  CDS          polyprotein                         4  ambgnt3c  yes   N_AT_CDS_END                 final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 86]
+5.4.1  gi|281314094|gb|GU211727.1|   NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5   26  ambgnt3f  no    N_AT_FEATURE_END             final nucleotide of non-CDS feature is an N [final 1 positions are Ns, final non-N is position 86]
+5.4.2  gi|281314094|gb|GU211727.1|   NC_001474  mat_peptide  RNA-dependent_RNA_polymerase_NS5   26  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem

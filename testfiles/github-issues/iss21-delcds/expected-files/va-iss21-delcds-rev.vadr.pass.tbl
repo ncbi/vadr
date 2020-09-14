@@ -1,0 +1,12 @@
+>Feature entoy.delcds/123-1
+51	46	CDS
+44	42
+39	31
+			product	protein three
+			protein_id	entoy.delcds/123-1_3
+82	62	CDS
+			product	protein two
+			protein_id	entoy.delcds/123-1_2
+113	93	CDS
+			product	protein one
+			protein_id	entoy.delcds/123-1_1
