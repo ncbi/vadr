@@ -34,14 +34,14 @@ for test in \
     04-ifile.t \
     05-annot-mdlopts.t \
 ; do
-    if [ $do_teamcity == 1 ]; then
+    if [ $do_teamcity = 1 ]; then
         echo "##teamcity[testStarted name=\"$test\" captureStandardOutput='true']"
     fi
 
     prove -v $VADRSCRIPTSDIR/t/$test;
     ret_val=$?
 
-    if [ $do_teamcity == 1 ]; then 
+    if [ $do_teamcity = 1 ]; then 
         if [ $ret_val != 0 ]; then
             echo "##teamcity[testFailed name=\"$test\" message=\"v-test.pl failure\"]"
         fi
