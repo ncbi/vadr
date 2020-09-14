@@ -57,7 +57,7 @@ for test in \
     fi
 done
 
-if [ $RETVAL == 0 ]; then
+if [ $RETVAL = 0 ]; then
    echo "Success: all tests passed"
    exit 0
 else 

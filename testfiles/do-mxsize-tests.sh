@@ -7,7 +7,7 @@ if [ $? != 0 ]; then
    RETVAL=1;
 fi   
 
-if [ $RETVAL == 0 ]; then
+if [ $RETVAL = 0 ]; then
    echo "Success: all tests passed"
    exit 0
 else 
