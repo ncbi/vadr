@@ -48,13 +48,13 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # make sure 1st argument is either "linux" or "macosx"
-if [ $1 = "linux" ]; then
+if [ "$1" = "linux" ]; then
     INPUTSYSTEM="linux";
 fi
-if [ $1 = "macosx" ]; then
+if [ "$1" = "macosx" ]; then
     INPUTSYSTEM="macosx";
 fi
-if [ $INPUTSYSTEM = "?" ]; then 
+if [ "$INPUTSYSTEM" = "?" ]; then 
    echo "Usage: $0 <\"linux\" or \"macosx\">"
    exit 1
 fi
@@ -105,7 +105,7 @@ echo "------------------------------------------------"
 #   'infernal block 2' below.
 
 # ----- infernal block 1 start  -----
-if [ $INPUTSYSTEM = "linux" ]; then
+if [ "$INPUTSYSTEM" = "linux" ]; then
     echo "Downloading Infernal version $IVERSION for Linux"
     curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION-linux-intel-gcc.tar.gz
 else
@@ -114,7 +114,7 @@ else
 fi
 tar xfz infernal.tar.gz
 rm infernal.tar.gz
-if [ $INPUTSYSTEM = "linux" ]; then
+if [ "$INPUTSYSTEM" = "linux" ]; then
     mv infernal-$IVERSION-linux-intel-gcc infernal
 else
     mv infernal-$IVERSION-macosx-intel infernal
@@ -161,7 +161,7 @@ echo "Finished building HMMER "
 echo "------------------------------------------------"
 
 # download blast binaries
-if [ $INPUTSYSTEM = "linux" ]; then
+if [ "$INPUTSYSTEM" = "linux" ]; then
 echo "Downloading BLAST version $BVERSION for Linux"
 curl -k -L -o blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-linux.tar.gz
 else 

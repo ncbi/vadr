@@ -3,7 +3,7 @@
 RETVAL=0;
 
 $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/noro.ftskipfl.testin vt-noro.ftskipfl
-if [ $? = 0 ]; then
+if [ "$?" -eq 0 ]; then
    echo "Success: all tests passed"
    exit 0
 else 

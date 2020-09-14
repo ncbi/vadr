@@ -7,7 +7,7 @@ for t in \
     do-prove-all-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/t/$t teamcity
-    if [ $? != 0 ]; then
+    if [ "$?" -ne 0 ]; then
         RETVAL=1;
     fi   
 done
@@ -17,7 +17,7 @@ for t in \
     do-prove-all-tests-from-vadr.sh \
     ; do
     sh $VADRSEQUIPDIR/t/$t teamcity
-    if [ $? != 0 ]; then
+    if [ "$?" -ne 0 ]; then
         RETVAL=1;
     fi   
 done
@@ -43,12 +43,12 @@ for t in \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
-    if [ $? != 0 ]; then
+    if [ "$?" -ne 0 ]; then
         RETVAL=1;
     fi   
 done
 
-if [ $RETVAL = 0 ]; then
+if [ "$RETVAL" -eq 0 ]; then
    echo "Success: all tests passed"
    exit 0
 else 
