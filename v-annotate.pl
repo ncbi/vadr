@@ -330,6 +330,7 @@ opt_Add("--alicheck",     "boolean", 0,             $g,    undef,   undef,    "f
 opt_Add("--noseqnamemax", "boolean", 0,             $g,    undef,   undef,    "do not enforce a maximum length of 50 for sequence names (GenBank max)", "do not enforce a maximum length of 50 for sequence names (GenBank max)", \%opt_HH, \@opt_order_A);
 opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch/cmscan bit score threshold to <x>",                 "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
+opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -438,7 +439,8 @@ my $options_okay =
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'noseqnamemax'  => \$GetOptions_H{"--noseqnamemax"},
                 'minbit'        => \$GetOptions_H{"--minbit"},
-                'origfa'        => \$GetOptions_H{"--origfa"});
+                'origfa'        => \$GetOptions_H{"--origfa"},
+                'msub=s'        => \$GetOptions_H{"--msub"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -540,7 +542,7 @@ my $do_blastn_cdt = opt_Get("-s", \%opt_HH) ? 1 : 0;
 my $do_blastn_ali = opt_Get("-s", \%opt_HH) ? 1 : 0;
 my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_blastn_ali) ? 1 : 0;
 # we have separate flags for each blastn stage even though
-# they are all turned on/off with -a in case future changes
+# they are all turned on/off with -s in case future changes
 # only need some but not all
 
 #############################
@@ -658,6 +660,7 @@ my $opt_i_used     = opt_IsUsed("-i", \%opt_HH);
 my $opt_n_used     = opt_IsUsed("-n", \%opt_HH);
 my $opt_x_used     = opt_IsUsed("-x", \%opt_HH);
 my $opt_q_used     = opt_IsUsed("-q", \%opt_HH);
+my $opt_msub_used  = opt_IsUsed("--msub", \%opt_HH);
 
 my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",  \%opt_HH) : $env_vadr_model_dir;
 my $model_key      = ($opt_mkey_used)  ? opt_Get("--mkey",  \%opt_HH) : "vadr";
@@ -668,6 +671,7 @@ my $minfo_file     = ($opt_i_used)     ? opt_Get("-i",      \%opt_HH) : $model_d
 my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",      \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
 my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",      \%opt_HH) : $model_dir;
 my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",      \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $msub_file      = ($opt_msub_used)  ? opt_Get("--msub",  \%opt_HH) : undef;
 my $cm_extra_string       = "";
 my $hmm_extra_string      = "";
 my $minfo_extra_string    = "";
@@ -726,6 +730,11 @@ if(opt_IsUsed("-p", \%opt_HH)) {
 # only check for model list file if --mlist used
 if(defined $model_list) { 
   utl_FileValidateExistsAndNonEmpty($model_list, "model list file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+
+# only check for model substitution file if --msub used
+if(defined $msub_file) { 
+  utl_FileValidateExistsAndNonEmpty($msub_file, "model substitution file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 ###########################
@@ -802,7 +811,38 @@ if(defined $model_list) {
     ofile_FAIL("ERROR, the following models listed in $model_list do not exist in model info file $minfo_file:\n$err_msg\n", 1, $FH_HR);
   }
 }
-    
+
+# if --msub used ($msub_file) validate all models listed 
+# in $msub_file are in model info file
+my %mdl_sub_H = ();
+if(defined $msub_file) { 
+  my $err_msg = "";
+  my %mdl_name_H = (); # key is a model name, value is 1
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name_H{$mdl_info_AH[$mdl_idx]{"name"}} = 1;
+  }
+  my @msub_line_A = (); # all lines read from $msub_file
+  utl_FileLinesToArray($msub_file, 1, \@msub_line_A, $FH_HR);
+  foreach my $line (@msub_line_A) { 
+    if($line =~ /^(\S+)\s+(\S+)$/) { 
+      my ($mdl1, $mdl2) = ($1, $2);
+      if(! defined $mdl_name_H{$mdl1}) { 
+        $err_msg .= "unexpected model name: $mdl1\n";
+      }
+      if(! defined $mdl_name_H{$mdl2}) { 
+        $err_msg .= "unexpected model name: $mdl2\n";
+      }
+      $mdl_sub_H{$mdl1} = $mdl2;
+    }
+    else { 
+      $err_msg .= "unable to parse line: $line\n";
+    }
+  }
+  if($err_msg ne "") { 
+    ofile_FAIL("ERROR, problem parsing file $msub_file (--msub):\n$err_msg\n", 1, $FH_HR);
+  }
+}
+
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -930,6 +970,7 @@ if($do_replace_ns) {
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
   coverage_determination_stage(\%execs_H, "rpn.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
                                $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_seq_name_HA, undef, \%stg_results_HHH, 
+                               ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
   my $start_secs = ofile_OutputProgressPrior(sprintf("Replacing Ns based on results of %s-based pre-processing", "blastn"), $progress_w, $FH_HR->{"log"}, *STDOUT);
@@ -1042,6 +1083,7 @@ classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file_f
 my %mdl_cls_ct_H = ();  # key is model name $mdl_name, value is number of sequences classified to this model
 coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, $sqfile_for_analysis_R, \@seq_name_A, \%seq_len_H,
                              $qsub_prefix, $qsub_suffix, \@mdl_info_AH, undef, \%mdl_cls_ct_H, \%stg_results_HHH, 
+                             ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                              $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
 
@@ -1067,7 +1109,9 @@ my %mdl_ant_ct_H = ();  # key is model name, value is number of sequences annota
 
 populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%seq_len_H, "std.aln", \%stg_results_HHH, 
                                                                 \%cls_output_HH, \%alt_info_HH, \%alt_seq_instances_HH,
-                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, \%seq2mdl_H, $FH_HR);
+                                                                ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
+                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, 
+                                                                \%seq2mdl_H, $FH_HR);
 
 # file names and data structures necessary for the alignment stage
 my %stk_file_HA       = ();     # hash of arrays of all stk output files created in cmalignOrNhmmscanWrapper()
@@ -1408,7 +1452,9 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . 
 $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
                                  \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                 \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                 \%alt_ftr_instances_HHH, 
+                                 ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
+                                 \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ########################
@@ -1436,6 +1482,7 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
                                            ($do_replace_ns) ? \%rpn_output_HH : undef,
+                                           ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1763,6 +1810,7 @@ sub classification_stage {
 #  $mdl_seq_name_HAR:  REF to hash of arrays of sequences per model, can be undef if stage_key is "std.cdt"
 #  $mdl_cls_ct_HR:     REF to hash of counts of seqs assigned to each model, can be undef if stage_key is "rpn.cdt"
 #  $stg_results_HHHR:  REF to 3D hash of classification results, PRE-FILLED
+#  $mdl_sub_HR:        REF to hash with model substitution info, should be undef unless --msub used
 #  $out_root:          root name for output file names
 #  $progress_w:        width for outputProgressPrior output
 #  $to_remove_AR:      REF to array of files to remove before exiting (unless --keep)
@@ -1776,12 +1824,12 @@ sub classification_stage {
 ################################################################# 
 sub coverage_determination_stage { 
   my $sub_name = "coverage_determination_stage";
-  my $nargs_exp = 17;
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($execs_HR, $stg_key, $cm_file, $sqfile_R, $seq_name_AR, $seq_len_HR, 
       $qsub_prefix, $qsub_suffix, $mdl_info_AHR, $mdl_seq_name_HAR, $mdl_cls_ct_HR, $stg_results_HHHR, 
-      $out_root, $progress_w, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
+      $mdl_sub_HR, $out_root, $progress_w, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
@@ -1815,7 +1863,7 @@ sub coverage_determination_stage {
   my %seq2mdl_H        = ();  # key is sequence name $seq_name, value is $mdl_name of model this sequence is classified to
   my $local_mdl_seq_name_HAR = (defined $mdl_seq_name_HAR) ? $mdl_seq_name_HAR : \%mdl_seq_name_HA;  # to deal with fact that mdl_seq_name_HAR may be undef
   populate_per_model_data_structures_given_classification_results($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, undef, undef, undef, 
-                                                                  $local_mdl_seq_name_HAR, \%mdl_seq_len_H, $mdl_cls_ct_HR, \%seq2mdl_H, $FH_HR);
+                                                                  $mdl_sub_HR, $local_mdl_seq_name_HAR, \%mdl_seq_len_H, $mdl_cls_ct_HR, \%seq2mdl_H, $FH_HR);
   
   # for each model, fetch the sequences classified to it 
   my $nmdl_cdt = 0; # number of models coverage determination stage is called for
@@ -2771,6 +2819,7 @@ sub add_classification_alerts {
 #                          can be undef if $alt_seq_instances_HHR is undef
 #  $alt_seq_instances_HHR: ref to hash of per-seq alert instances, PRE-FILLED
 #                          undef to use stg_results_HHHR->{}{"cls.1"} # round 1 search
+#  $mdl_sub_HR:            ref to hash of of model substitutions, PRE-FILLED, should be undef unless --msub used
 #  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
 #  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
 #  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE, can be undef if $stg_key eq "rpn.cdt"
@@ -2783,11 +2832,11 @@ sub add_classification_alerts {
 ################################################################# 
 sub populate_per_model_data_structures_given_classification_results {
   my $sub_name = "populate_per_model_data_structures_given_classification_results";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, $cls_output_HHR, 
-      $alt_info_HHR, $alt_seq_instances_HHR, 
+  my ($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, 
+      $cls_output_HHR, $alt_info_HHR, $alt_seq_instances_HHR, $mdl_sub_HR, 
       $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $seq2mdl_HR, $FH_HR) = @_;
 
   # determine what stage results we are using and check that combo of 
@@ -2820,6 +2869,10 @@ sub populate_per_model_data_structures_given_classification_results {
                     (defined $stg_results_HHHR->{$seq_name}{$cls_2d_key}{"model"})) ? 
                     $stg_results_HHHR->{$seq_name}{$cls_2d_key}{"model"} : undef;
     if(defined $mdl_name) { 
+      # check if we need to substitute another model for this one (--msub option)
+      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$mdl_name})) { 
+        $mdl_name = $mdl_sub_HR->{$mdl_name};
+      }
       # determine if we are going to add this sequence to our per-model hashes, depending on what round
       my $add_seq = 0;
       if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "rpn.cdt.1")) { 
@@ -7080,6 +7133,7 @@ sub alert_instances_check_prevents_annot {
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $sda_output_HHR:          REF to 2D hash of -s related results to output, PRE-FILLED, undef unless -s
 #  $rpn_output_HHR:          REF to 2D hash of -r related results to output, PRE-FILLED, undef unless -r
+#  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, undef unless --msub used
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7092,14 +7146,15 @@ sub alert_instances_check_prevents_annot {
 #################################################################
 sub output_tabular { 
   my $sub_name = "output_tabular";
-  my $nargs_exp = 17;
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $mdl_sub_HR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -7250,10 +7305,14 @@ sub output_tabular {
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
     if($seq_mdl1 ne "-") { 
-      if(! defined $mdl_pass_ct_H{$seq_mdl1}) { $mdl_pass_ct_H{$seq_mdl1} = 0; }
-      if(! defined $mdl_fail_ct_H{$seq_mdl1}) { $mdl_fail_ct_H{$seq_mdl1} = 0; }
-      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$seq_mdl1}++; }
-      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$seq_mdl1}++; }
+      my $tmp_mdl = $seq_mdl1;
+      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
+        $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
+      }
+      if(! defined $mdl_pass_ct_H{$tmp_mdl}) { $mdl_pass_ct_H{$tmp_mdl} = 0; }
+      if(! defined $mdl_fail_ct_H{$tmp_mdl}) { $mdl_fail_ct_H{$tmp_mdl} = 0; }
+      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$tmp_mdl}++; }
+      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$tmp_mdl}++; }
       $zero_classifications = 0;
     }
 
@@ -7749,6 +7808,7 @@ sub helper_tabular_replace_spaces {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, should be undef unless --msub used
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7759,12 +7819,12 @@ sub helper_tabular_replace_spaces {
 #################################################################
 sub output_feature_table { 
   my $sub_name = "output_feature_table";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $mdl_sub_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_blastx = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--hmmer", $opt_HHR)) ? 0 : 1;
 
@@ -7844,6 +7904,9 @@ sub output_feature_table {
 
     $mdl_name = helper_ftable_class_model_for_sequence($stg_results_HHHR, $seq_name);
     if(defined $mdl_name) { 
+      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$mdl_name})) { 
+        $mdl_name = $mdl_sub_HR->{$mdl_name};
+      }
       my $ftr_info_AHR     = \@{$ftr_info_HAHR->{$mdl_name}};     # for convenience
       my $ftr_results_HAHR = \%{$ftr_results_HHAHR->{$mdl_name}}; # for convenience
       my $sgm_results_HAHR = \%{$sgm_results_HHAHR->{$mdl_name}}; # for convenience
