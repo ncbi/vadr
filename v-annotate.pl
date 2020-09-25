@@ -226,6 +226,7 @@ opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use b
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string",  undef,      $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
+opt_Add("--mlist",      "string",  undef,      $g,    undef, undef,       "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                               help-output    
@@ -356,6 +357,7 @@ my $options_okay =
                 'x=s'           => \$GetOptions_H{"-x"}, 
                 'mkey=s'        => \$GetOptions_H{"--mkey"}, 
                 'mdir=s'        => \$GetOptions_H{"--mdir"}, 
+                'mlist=s'       => \$GetOptions_H{"--mlist"}, 
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
                 "notrim"        => \$GetOptions_H{"--notrim"},
@@ -647,23 +649,25 @@ my @to_remove_A   = (); # list of files to remove at end of subroutine, if --kee
 # fasta file
 utl_FileValidateExistsAndNonEmpty($orig_in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $opt_mdir_used = opt_IsUsed("--mdir", \%opt_HH);
-my $opt_mkey_used = opt_IsUsed("--mkey", \%opt_HH);
-my $opt_m_used    = opt_IsUsed("-m", \%opt_HH);
-my $opt_a_used    = opt_IsUsed("-a", \%opt_HH);
-my $opt_i_used    = opt_IsUsed("-i", \%opt_HH);
-my $opt_n_used    = opt_IsUsed("-n", \%opt_HH);
-my $opt_x_used    = opt_IsUsed("-x", \%opt_HH);
-my $opt_q_used    = opt_IsUsed("-q", \%opt_HH);
+my $opt_mdir_used  = opt_IsUsed("--mdir", \%opt_HH);
+my $opt_mkey_used  = opt_IsUsed("--mkey", \%opt_HH);
+my $opt_mlist_used = opt_IsUsed("--mlist", \%opt_HH);
+my $opt_m_used     = opt_IsUsed("-m", \%opt_HH);
+my $opt_a_used     = opt_IsUsed("-a", \%opt_HH);
+my $opt_i_used     = opt_IsUsed("-i", \%opt_HH);
+my $opt_n_used     = opt_IsUsed("-n", \%opt_HH);
+my $opt_x_used     = opt_IsUsed("-x", \%opt_HH);
+my $opt_q_used     = opt_IsUsed("-q", \%opt_HH);
 
-my $model_dir      = ($opt_mdir_used) ? opt_Get("--mdir", \%opt_HH) : $env_vadr_model_dir;
-my $model_key      = ($opt_mkey_used) ? opt_Get("--mkey", \%opt_HH) : "vadr";
-my $cm_file        = ($opt_m_used)    ? opt_Get("-m",     \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
-my $hmm_file       = ($opt_a_used)    ? opt_Get("-a",     \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
-my $minfo_file     = ($opt_i_used)    ? opt_Get("-i",     \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
-my $blastn_db_file = ($opt_n_used)    ? opt_Get("-n",     \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
-my $blastx_db_dir  = ($opt_x_used)    ? opt_Get("-x",     \%opt_HH) : $model_dir;
-my $qsubinfo_file  = ($opt_q_used)    ? opt_Get("-q",     \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",  \%opt_HH) : $env_vadr_model_dir;
+my $model_key      = ($opt_mkey_used)  ? opt_Get("--mkey",  \%opt_HH) : "vadr";
+my $model_list     = ($opt_mlist_used) ? opt_Get("--mlist", \%opt_HH) : undef;
+my $cm_file        = ($opt_m_used)     ? opt_Get("-m",      \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
+my $hmm_file       = ($opt_a_used)     ? opt_Get("-a",      \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
+my $minfo_file     = ($opt_i_used)     ? opt_Get("-i",      \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
+my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",      \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
+my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",      \%opt_HH) : $model_dir;
+my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",      \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
 my $cm_extra_string       = "";
 my $hmm_extra_string      = "";
 my $minfo_extra_string    = "";
@@ -717,6 +721,11 @@ if(opt_IsUsed("-p", \%opt_HH)) {
   utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   # parse the qsubinfo file
   ($qsub_prefix, $qsub_suffix) = vdr_ParseQsubFile($qsubinfo_file, $ofile_info_HH{"FH"});
+}
+
+# only check for model list file if --mlist used
+if(defined $model_list) { 
+  utl_FileValidateExistsAndNonEmpty($model_list, "model list file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 ###########################
@@ -773,6 +782,26 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 push(@to_remove_A, $cm_name_file);
+
+# if --mlist used ($model_list will be defined) validate all models listed 
+# in $model_list are in model info file
+if(defined $model_list) { 
+  my $err_msg = "";
+  my %mdl_name_H      = (); # key is a model name, value is 1
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name_H{$mdl_info_AH[$mdl_idx]{"name"}} = 1;
+  }
+  my @mdl_name_list_A = (); # all models read from $model_list file
+  utl_FileLinesToArray($model_list, 1, \@mdl_name_list_A, $FH_HR);
+  foreach my $mdl (@mdl_name_list_A) { 
+    if(! defined $mdl_name_H{$mdl}) { 
+      $err_msg .= "$mdl\n";
+    }
+  }
+  if($err_msg ne "") { 
+    ofile_FAIL("ERROR, the following models listed in $model_list do not exist in model info file $minfo_file:\n$err_msg\n", 1, $FH_HR);
+  }
+}
     
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -1691,7 +1720,13 @@ sub classification_stage {
   my $sort_tblout_key  = $tblout_key  . ".sort";
   utl_FileValidateExistsAndNonEmpty($tblout_file, "$stg_key stage tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-  my $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $sort_tblout_file"; 
+  my $sort_cmd = undef;
+  if(opt_IsUsed("--mlist", $opt_HHR)) { # need to sort the results differently because cmsearch was used not cmscan
+    $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 1,1 -k 3,3rn > $sort_tblout_file"; 
+  }
+  else { 
+    $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $sort_tblout_file"; 
+  }
   # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
   utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
@@ -2072,7 +2107,14 @@ sub cmsearch_or_cmscan_run {
     $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
   }
   else { 
-    $cmd = $execs_HR->{"cmscan"} . " $opt_str $mdl_file $seq_file > $stdout_file";
+    if(opt_IsUsed("--mlist", $opt_HHR)) { 
+      # opt_Get("--mlist", $opt_HHR) includes the subset of models we want to use
+      # we can't use cmscan because that can't take models from stdin as input
+      $cmd = $execs_HR->{"cmfetch"} . " -f $mdl_file " . opt_Get("--mlist", $opt_HHR) . " | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
+    }
+    else { 
+      $cmd = $execs_HR->{"cmscan"} . " $opt_str $mdl_file $seq_file > $stdout_file";
+    }
   }
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
@@ -2115,6 +2157,8 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($tblout_file, $stg_key, $mdl_info_AHR, $results_HHHR, $opt_HHR, $FH_HR) = @_;
+
+  my $opt_mlist_used = opt_IsUsed("--mlist", $opt_HHR);
 
   if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
@@ -2172,13 +2216,24 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
       $strand = undef;
       my @el_A = split(/\s+/, $line);
       if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
+        # if --mlist not used (cmscan)
         #modelname sequence                      score  start    end strand bounds ovp      seqlen
         ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
         #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
+        # if --mlist used (cmsearch)
+        #sequence                      modelname  score  start    end strand bounds ovp      seqlen
+        ##---------------------------  ---------  ----------------- ------ ------ ------ ------ ------ --- -----------
+        #gi|1215708385|gb|KY594653.1|   NC_039477 275.8      1    301      +     []  *          301
+
         if(scalar(@el_A) != 9) { 
           ofile_FAIL("ERROR parsing $tblout_file for stage $stg_key, unexpected number of space-delimited tokens on line $line", 1, $FH_HR); 
         }
-        ($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        if($opt_mlist_used) { 
+          ($seq, $model, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        }
+        else { 
+          ($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        }
         if(! defined $results_HHHR->{$seq}) { 
           %{$results_HHHR->{$seq}} = ();
         }
