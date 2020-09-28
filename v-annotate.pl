@@ -331,6 +331,7 @@ opt_Add("--noseqnamemax", "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch/cmscan bit score threshold to <x>",                 "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -440,7 +441,8 @@ my $options_okay =
                 'noseqnamemax'  => \$GetOptions_H{"--noseqnamemax"},
                 'minbit'        => \$GetOptions_H{"--minbit"},
                 'origfa'        => \$GetOptions_H{"--origfa"},
-                'msub=s'        => \$GetOptions_H{"--msub"});
+                'msub=s'        => \$GetOptions_H{"--msub"},
+                'xsub=s'        => \$GetOptions_H{"--xsub"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -661,6 +663,7 @@ my $opt_n_used     = opt_IsUsed("-n", \%opt_HH);
 my $opt_x_used     = opt_IsUsed("-x", \%opt_HH);
 my $opt_q_used     = opt_IsUsed("-q", \%opt_HH);
 my $opt_msub_used  = opt_IsUsed("--msub", \%opt_HH);
+my $opt_xsub_used  = opt_IsUsed("--xsub", \%opt_HH);
 
 my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",  \%opt_HH) : $env_vadr_model_dir;
 my $model_key      = ($opt_mkey_used)  ? opt_Get("--mkey",  \%opt_HH) : "vadr";
@@ -672,6 +675,7 @@ my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",      \%opt_HH) : $model_d
 my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",      \%opt_HH) : $model_dir;
 my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",      \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
 my $msub_file      = ($opt_msub_used)  ? opt_Get("--msub",  \%opt_HH) : undef;
+my $xsub_file      = ($opt_xsub_used)  ? opt_Get("--xsub",  \%opt_HH) : undef;
 my $cm_extra_string       = "";
 my $hmm_extra_string      = "";
 my $minfo_extra_string    = "";
@@ -735,6 +739,11 @@ if(defined $model_list) {
 # only check for model substitution file if --msub used
 if(defined $msub_file) { 
   utl_FileValidateExistsAndNonEmpty($msub_file, "model substitution file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+
+# only check for blastx db substitution file if --xsub used
+if(defined $xsub_file) { 
+  utl_FileValidateExistsAndNonEmpty($xsub_file, "blastx db substitution file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 ###########################
@@ -816,30 +825,19 @@ if(defined $model_list) {
 # in $msub_file are in model info file
 my %mdl_sub_H = ();
 if(defined $msub_file) { 
-  my $err_msg = "";
-  my %mdl_name_H = (); # key is a model name, value is 1
-  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-    $mdl_name_H{$mdl_info_AH[$mdl_idx]{"name"}} = 1;
-  }
-  my @msub_line_A = (); # all lines read from $msub_file
-  utl_FileLinesToArray($msub_file, 1, \@msub_line_A, $FH_HR);
-  foreach my $line (@msub_line_A) { 
-    if($line =~ /^(\S+)\s+(\S+)$/) { 
-      my ($mdl1, $mdl2) = ($1, $2);
-      if(! defined $mdl_name_H{$mdl1}) { 
-        $err_msg .= "unexpected model name: $mdl1\n";
-      }
-      if(! defined $mdl_name_H{$mdl2}) { 
-        $err_msg .= "unexpected model name: $mdl2\n";
-      }
-      $mdl_sub_H{$mdl1} = $mdl2;
-    }
-    else { 
-      $err_msg .= "unable to parse line: $line\n";
-    }
-  }
+  my $err_msg = validate_and_parse_sub_file($msub_file, \@mdl_info_AH, \%mdl_sub_H, $FH_HR);
   if($err_msg ne "") { 
     ofile_FAIL("ERROR, problem parsing file $msub_file (--msub):\n$err_msg\n", 1, $FH_HR);
+  }
+}
+
+# if --xsub used ($xsub_file) validate all models listed 
+# in $xsub_file are in model info file
+my %blastx_sub_H = ();
+if(defined $xsub_file) { 
+  my $err_msg = validate_and_parse_sub_file($xsub_file, \@mdl_info_AH, \%blastx_sub_H, $FH_HR);
+  if($err_msg ne "") { 
+    ofile_FAIL("ERROR, problem parsing file $xsub_file (--xsub):\n$err_msg\n", 1, $FH_HR);
   }
 }
 
@@ -1360,9 +1358,28 @@ if($do_blastx) {
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+        # determine blastx db file to use
+        # by default this will be the blastx db for current model but if --xsub is used
+        # we may substitute another blastx db for this model
+        my $blastx_db_mdl_idx = $mdl_idx;
+        if((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) { 
+          # now find the index of $blastx_db_mdl_name in @mdl_info_AH
+          $blastx_db_mdl_idx = 0; 
+          while(($blastx_db_mdl_idx < $nmdl) && ($mdl_info_AH[$blastx_db_mdl_idx]{"name"} ne $blastx_sub_H{$mdl_name})) { 
+            $blastx_db_mdl_idx++;
+          }
+          if($blastx_db_mdl_idx > $nmdl) { 
+            ofile_FAIL("ERROR unable to find blastx model subsitution for $mdl_name (was looking for $blastx_sub_H{$mdl_name} in model info on second pass", 1, $FH_HR);
+          }
+        }
+        my $blastx_db_file = $mdl_info_AH[$blastx_db_mdl_idx]{"blastdbpath"};
+        if(! defined $blastx_db_file) { 
+          ofile_FAIL("ERROR, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
+        }
+
         $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with blastx ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-        run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                        $do_separate_cds_fa_files_for_protein_validation,
+        run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, $blastx_db_file, 
+                                        $do_separate_cds_fa_files_for_protein_validation, 
                                         \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, 
              ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-blastx-fasta"},
@@ -5446,8 +5463,9 @@ sub add_protein_validation_alerts {
 #  $execs_HR:                  REF to a hash with "blastx" and "parse_blastx.pl""
 #                              executable paths
 #  $out_root:                  output root for the file names
-#  $mdl_info_HR:               REF to hash of model info
+#  $mdl_info_HR:               REF to hash of arrays of model info
 #  $ftr_info_AHR:              REF to hash of arrays with information on the features, PRE-FILLED
+#  $blastx_db_file             blastx DB file to use (usually $mdl_info_HR->{"blastdbpath"}, but can be diff if --xsub used)
 #  $do_separate_cds_fa_files:  '1' if we output a separate file for the protein validation stage
 #  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:            REF to 2D hash of output file information, ADDED TO HERE
@@ -5459,18 +5477,14 @@ sub add_protein_validation_alerts {
 ################################################################# 
 sub run_blastx_and_summarize_output {
   my $sub_name = "run_blastx_and_summarize_output";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $do_separate_cds_fa_files, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $blastx_db_file,$do_separate_cds_fa_files, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
   my $mdl_name = $mdl_info_HR->{"name"};
-  my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
-  if(! defined $blastx_db_file) { 
-    ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
-  }
 
   # make a query fasta file for blastx, consisting of full length
   # sequences (with sequence descriptions removed because they can
@@ -10090,6 +10104,61 @@ sub get_accession_from_ncbi_seq_name {
   $seq_name =~ s/\|/\_/g;
 
   return $seq_name;
+}
+
+#################################################################
+# Subroutine: validate_and_parse_sub_file
+# Incept:     EPN, Fri Sep 25 15:06:04 2020
+# Purpose:    Validate a file passed with option --msub or --xsub.
+#             Each line should have 2 white-space separated tokens.
+#             Both tokens are model names. Token 2 models will substitute
+#             for token 1 models.
+#
+# Arguments:
+#  $sub_file:     name of file (we already checked that it exists)
+#  $mdl_info_AHR: REF to model info array of hashes, possibly added to here 
+#  $sub_HR:       REF to hash of model substitutions, filled here
+#  $FH_HR:        REF to hash of file handles, including "cmd"
+#             
+# Returns:  $err_msg, "" if no errors, if ne "", caller should exit in error
+#
+# Dies:     if $sub_file does not exist or is empty
+#
+#################################################################
+sub validate_and_parse_sub_file { 
+  my $sub_name = "validate_and_parse_sub_file";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sub_file, $mdl_info_AHR, $sub_HR, $FH_HR) = (@_);
+
+  my $err_msg = "";
+  my %mdl_name_H = (); # key is a model name, value is 1
+  my $nmdl = scalar(@{$mdl_info_AHR});
+
+  # create a hash of all model names, to make it easy to look them up
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name_H{$mdl_info_AH[$mdl_idx]{"name"}} = 1;
+  }
+  my @sub_line_A = (); # all lines read from $sub_file
+  utl_FileLinesToArray($sub_file, 1, \@sub_line_A, $FH_HR);
+  foreach my $line (@sub_line_A) { 
+    if($line =~ /^(\S+)\s+(\S+)$/) { 
+      my ($mdl1, $mdl2) = ($1, $2);
+      if(! defined $mdl_name_H{$mdl1}) { 
+        $err_msg .= "unexpected model name: $mdl1\n";
+      }
+      if(! defined $mdl_name_H{$mdl2}) { 
+        $err_msg .= "unexpected model name: $mdl2\n";
+      }
+      $sub_HR->{$mdl1} = $mdl2;
+    }
+    else { 
+      $err_msg .= "unable to parse line: $line\n";
+    }
+  }
+
+  return $err_msg;
 }
 
 
