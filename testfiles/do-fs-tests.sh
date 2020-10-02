@@ -26,7 +26,7 @@ if [ "$?" -ne 0 ]; then
    RETVAL=1;
 fi   
 
-if [ "$RETVAL" -ne 0 ]; then
+if [ "$RETVAL" -eq 0 ]; then
    echo "Success: all tests passed"
    exit 0
 else 
