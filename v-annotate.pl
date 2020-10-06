@@ -63,7 +63,7 @@ require "sqp_utils.pm";
 # SARS-CoV-2 sequences), enabled with the -s option:
 #
 # Stage 1 and 2 are performed by a single blastn search instead of
-# cmscan followed by cmsearch. The maximum lengthed ungapped region
+# two rounds of cmsearch. The maximum lengthed ungapped region
 # from the top blast hit per sequence is identified and used to 'seed'
 # the alignment of that sequence by cmalign. The ungapped alignment of
 # this seed blastn region is considered fixed and only the sequence
@@ -85,11 +85,11 @@ require "sqp_utils.pm";
 # replaced. 
 #
 # By default, stages 1 and 2 are performed with blastn which in
-# anecdotal (but not systematic) testing seems less likely then cmscan
+# anecdotal (but not systematic) testing seems less likely then cmsearch
 # to extend alignments through stretches of Ns (although this is
 # probably controllable to an extent with command line options).
 # However, with --r_prof, preprocessing stages 1 and 2 are performed
-# with cmscan and cmsearch
+# with cmsearch.
 #
 #######################################################################################
 #
@@ -151,7 +151,6 @@ my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
-$execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}      = $env_vadr_infernal_dir . "/cmsearch";
 $execs_H{"hmmfetch"}      = $env_vadr_hmmer_dir    . "/hmmfetch";
 $execs_H{"hmmscan"}       = $env_vadr_hmmer_dir    . "/hmmscan";
@@ -301,7 +300,7 @@ opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slowe
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
-opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--nkb",        "integer", 10,         $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
@@ -328,7 +327,7 @@ $opt_group_desc_H{++$g} = "other expert options";
 opt_Add("--execname",     "string",  undef,         $g,    undef,   undef,    "define executable name of this script as <s>",                           "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--alicheck",     "boolean", 0,             $g,    undef,   undef,    "for debugging, check aligned sequence vs input sequence for identity",   "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
 opt_Add("--noseqnamemax", "boolean", 0,             $g,    undef,   undef,    "do not enforce a maximum length of 50 for sequence names (GenBank max)", "do not enforce a maximum length of 50 for sequence names (GenBank max)", \%opt_HH, \@opt_order_A);
-opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch/cmscan bit score threshold to <x>",                 "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch bit score threshold to <x>",                        "set minimum cmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
@@ -1069,7 +1068,7 @@ my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr"
 my $do_separate_cds_fa_files_for_protein_validation = (($do_replace_ns) && (defined $rpn_sqfile)) ? 1 : 0; 
     
 ####################################
-# Classification: cmscan round 1
+# Classification: cmsearch round 1
 ####################################
 classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file_for_analysis, \%seq_len_H,
                      $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
@@ -1607,10 +1606,10 @@ exit 0;
 # Subroutines related to classification and coverage determination:
 # classification_stage()
 # coverage_determination_stage()
-# cmsearch_or_cmscan_wrapper
-# cmsearch_or_cmscan_run
-# cmsearch_or_cmscan_parse_sorted_tblout
-# cmsearch_or_cmscan_store_hit
+# cmsearch_wrapper
+# cmsearch_run
+# cmsearch_parse_sorted_tblout
+# cmsearch_store_hit
 # add_classification_errors
 # populate_per_model_data_structures_given_classification_results
 #
@@ -1698,10 +1697,10 @@ exit 0;
 # Subroutines related to classification and coverage determination:
 # classification_stage()
 # coverage_determination_stage()
-# cmsearch_or_cmscan_wrapper
-# cmsearch_or_cmscan_run
-# cmsearch_or_cmscan_parse_sorted_tblout
-# cmsearch_or_cmscan_store_hit
+# cmsearch_wrapper
+# cmsearch_run
+# cmsearch_parse_sorted_tblout
+# cmsearch_store_hit
 # add_classification_errors
 # populate_per_model_data_structures_given_classification_results
 #
@@ -1750,7 +1749,7 @@ sub classification_stage {
   }
 
   my $nseq = scalar(keys %{$seq_len_HR});
-  # will we use blastn or cmscan?
+  # will we use blastn or cmsearch?
   my $do_blastn  = 0; 
   # default is to use blastn in rpn.cls, but don't if --r_prof used
   if((! opt_Get("--r_prof", $opt_HHR)) && ($stg_key eq "rpn.cls")) { $do_blastn = 1; }
@@ -1767,30 +1766,24 @@ sub classification_stage {
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"},
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"});
   }
-  else { # default: use cmscan for classification
-    my $cmscan_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
+  else { # default: use cmsearch for classification
+    my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
     my $tot_len_nt  = utl_HSumValues($seq_len_HR);
-    cmsearch_or_cmscan_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
-                               $cm_file, undef, $fa_file, $cmscan_opts, 
+    cmsearch_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
+                               $cm_file, undef, $fa_file, $cmsearch_opts, 
                                $out_root, $stg_key, $nseq, $tot_len_nt, 
                                $progress_w, $opt_HHR, $ofile_info_HHR);
   } 
   # sort into a new file by score
-  my $tblout_key  = $stg_key . ".tblout"; # set in cmsearch_or_cmscan_wrapper() or above if $do_blastn_cls
-  my $stdout_key  = $stg_key . ".stdout"; # set in cmsearch_or_cmscan_wrapper()
-  my $err_key     = $stg_key . ".err"; # set in cmsearch_or_cmscan_wrapper()
+  my $tblout_key  = $stg_key . ".tblout"; # set in cmsearch_wrapper() or above if $do_blastn_cls
+  my $stdout_key  = $stg_key . ".stdout"; # set in cmsearch_wrapper()
+  my $err_key     = $stg_key . ".err"; # set in cmsearch_wrapper()
   my $tblout_file = $ofile_info_HH{"fullpath"}{$tblout_key};
   my $sort_tblout_file = $tblout_file . ".sort";
   my $sort_tblout_key  = $tblout_key  . ".sort";
   utl_FileValidateExistsAndNonEmpty($tblout_file, "$stg_key stage tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-  my $sort_cmd = undef;
-  if(opt_IsUsed("--mlist", $opt_HHR)) { # need to sort the results differently because cmsearch was used not cmscan
-    $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 1,1 -k 3,3rn > $sort_tblout_file"; 
-  }
-  else { 
-    $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $sort_tblout_file"; 
-  }
+  my $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 1,1 -k 3,3rn > $sort_tblout_file"; 
   # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
   utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
@@ -1801,7 +1794,7 @@ sub classification_stage {
         $sort_tblout_file));
   
   # parse the sorted tblout file
-  cmsearch_or_cmscan_parse_sorted_tblout($sort_tblout_file, $stg_key,
+  cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
                                          $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
 
   return;
@@ -1930,13 +1923,13 @@ sub coverage_determination_stage {
     if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
     foreach $mdl_name (@cls_mdl_name_A) { 
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
-      cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+      cmsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
                                  $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
                                  $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
                                  $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
-      my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
-      my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_or_cmscan_wrapper()
-      my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_or_cmscan_wrapper()
+      my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_wrapper()
+      my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_wrapper()
+      my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_wrapper()
       push(@tblout_key_A,  $tblout_key);
       push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
       push(@to_remove_A, 
@@ -1957,14 +1950,14 @@ sub coverage_determination_stage {
     push(@{$to_remove_AR}, $sort_tblout_file);
 
     # parse cmsearch round 2 tblout data
-    cmsearch_or_cmscan_parse_sorted_tblout($sort_tblout_file, $stg_key,
+    cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
                                            $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
   }
   return;
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_wrapper()
+# Subroutine:  cmsearch_wrapper()
 # Incept:      EPN, Mon Mar 18 14:44:46 2019
 #
 # Purpose:     Run one or more cmsearch jobs on the farm
@@ -1982,7 +1975,7 @@ sub coverage_determination_stage {
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $opt_str:         option string for cmsearch run
 #  $out_root:        string for naming output files
-#  $stg_key:         stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#  $stg_key:         stage key, "rpn.cls" or "std.cls" for classification (cmsearch),
 #                    or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $nseq:            number of sequences in $seq_file
 #  $tot_len_nt:      total length of all nucleotides in $seq_file
@@ -1995,8 +1988,8 @@ sub coverage_determination_stage {
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
 ################################################################# 
-sub cmsearch_or_cmscan_wrapper { 
-  my $sub_name = "cmsearch_or_cmscan_wrapper";
+sub cmsearch_wrapper { 
+  my $sub_name = "cmsearch_wrapper";
   my $nargs_expected = 14;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2046,12 +2039,12 @@ sub cmsearch_or_cmscan_wrapper {
   my $stg_desc = "";
   if($stg_key eq "rpn.cls") { 
     $stg_desc = ($do_parallel) ? 
-        sprintf("Preprocessing for N replacement: cmscan classification job farm submission ($nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
-        sprintf("Preprocessing for N replacement: cmscan classification ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+        sprintf("Preprocessing for N replacement: cmsearch classification job farm submission ($nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
+        sprintf("Preprocessing for N replacement: cmsearch classification ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   elsif($stg_key eq "std.cls") { 
     $stg_desc = ($do_parallel) ? 
-        "Submitting $nseq_files cmscan classification job(s) to the farm" : 
+        "Submitting $nseq_files cmsearch classification job(s) to the farm" : 
         sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   elsif($stg_key eq "rpn.cdt") {
@@ -2065,7 +2058,7 @@ sub cmsearch_or_cmscan_wrapper {
         sprintf("Determining sequence coverage ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
-  # run cmsearch or cmscan
+  # run cmsearch
   my $out_key;
   my @out_keys_A = ("stdout", "err", "tblout");
   for(my $s = 0; $s < $nseq_files; $s++) { 
@@ -2073,7 +2066,7 @@ sub cmsearch_or_cmscan_wrapper {
     foreach my $out_key (@out_keys_A) { 
       $out_file_AH[$s]{$out_key} = $out_root . "." . $stg_key . ".s" . $s . "." . $out_key;
     }
-    cmsearch_or_cmscan_run($execs_HR, $qsub_prefix, $qsub_suffix, $mdl_file, $mdl_name, 
+    cmsearch_run($execs_HR, $qsub_prefix, $qsub_suffix, $mdl_file, $mdl_name, 
                            $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
   }
 
@@ -2116,21 +2109,21 @@ sub cmsearch_or_cmscan_wrapper {
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_run()
+# Subroutine:  cmsearch_run()
 # Incept:      EPN, Wed Feb  6 12:38:11 2019
 #
-# Purpose:     Run Infernal's cmsearch or cmscan executable using $mdl_file
+# Purpose:     Run Infernal's cmsearch executable using $mdl_file
 #              as the model file on sequence file $seq_file, either
 #              locally or on the farm.
 #
 # Arguments: 
-#  $execs_HR:         hash with paths to cmsearch, cmscan and cmfetch
+#  $execs_HR:         hash with paths to cmsearch and cmfetch
 #  $qsub_prefix:      qsub command prefix to use when submitting to farm, undef if running locally
 #  $qsub_suffix:      qsub command suffix to use when submitting to farm, undef if running locally
 #  $mdl_file:         path to the CM file
-#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch and run cmscan instead of cmsearch)
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
-#  $opt_str:          option string for cmsearch or cmscan run
+#  $opt_str:          option string for cmsearch runs
 #  $out_file_HR:      ref to hash of output files to create
 #                     required keys: "stdout", "tblout", "err"
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -2139,8 +2132,8 @@ sub cmsearch_or_cmscan_wrapper {
 # Returns:     void
 # 
 ################################################################# 
-sub cmsearch_or_cmscan_run {
-  my $sub_name = "cmsearch_or_cmscan_run()";
+sub cmsearch_run {
+  my $sub_name = "cmsearch_run()";
   my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -2174,11 +2167,10 @@ sub cmsearch_or_cmscan_run {
   else { 
     if(opt_IsUsed("--mlist", $opt_HHR)) { 
       # opt_Get("--mlist", $opt_HHR) includes the subset of models we want to use
-      # we can't use cmscan because that can't take models from stdin as input
       $cmd = $execs_HR->{"cmfetch"} . " -f $mdl_file " . opt_Get("--mlist", $opt_HHR) . " | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
     }
     else { 
-      $cmd = $execs_HR->{"cmscan"} . " $opt_str $mdl_file $seq_file > $stdout_file";
+      $cmd = $execs_HR->{"cmsearch"} . " $opt_str $mdl_file $seq_file > $stdout_file";
     }
   }
   if($do_parallel) { 
@@ -2195,7 +2187,7 @@ sub cmsearch_or_cmscan_run {
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_parse_sorted_tblout()
+# Subroutine:  cmsearch_parse_sorted_tblout()
 # Incept:      EPN, Wed Mar 20 13:30:16 2019
 #
 # Purpose:     Parse a sorted cmsearch tblout output file and 
@@ -2204,7 +2196,7 @@ sub cmsearch_or_cmscan_run {
 #
 # Arguments: 
 #  $tblout_file:   name of sorted tblout file to parse
-#  $stg_key:       stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#  $stg_key:       stage key, "rpn.cls" or "std.cls" for classification (cmsearch),
 #                  or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $mdl_info_AHR:  ref to model info array of hashes
 #  $results_HHHR:  ref to results 3D hash
@@ -2216,8 +2208,8 @@ sub cmsearch_or_cmscan_run {
 # Dies: if there's a problem parsing the tblout file
 #      
 ################################################################# 
-sub cmsearch_or_cmscan_parse_sorted_tblout {
-  my $sub_name = "cmsearch_or_cmscan_parse_sorted_tblout()";
+sub cmsearch_parse_sorted_tblout {
+  my $sub_name = "cmsearch_parse_sorted_tblout()";
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -2280,25 +2272,21 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
       $s_to   = undef;
       $strand = undef;
       my @el_A = split(/\s+/, $line);
-      if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
-        # if --mlist not used (cmscan)
-        #modelname sequence                      score  start    end strand bounds ovp      seqlen
-        ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
-        #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
-        # if --mlist used (cmsearch)
+      if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { # cmsearch --trmF3 tblout 
+        # cmsearch output
         #sequence                      modelname  score  start    end strand bounds ovp      seqlen
         ##---------------------------  ---------  ----------------- ------ ------ ------ ------ ------ --- -----------
         #gi|1215708385|gb|KY594653.1|   NC_039477 275.8      1    301      +     []  *          301
-
         if(scalar(@el_A) != 9) { 
           ofile_FAIL("ERROR parsing $tblout_file for stage $stg_key, unexpected number of space-delimited tokens on line $line", 1, $FH_HR); 
         }
-        if($opt_mlist_used) { 
-          ($seq, $model, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
-        }
-        else { 
-          ($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
-        }
+        ($seq, $model, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        # if we were parsing cmscan --trmF3 it would look like this:
+        #modelname sequence                      score  start    end strand bounds ovp      seqlen
+        ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
+        #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
+        # and we would parse like this:
+        #($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
         if(! defined $results_HHHR->{$seq}) { 
           %{$results_HHHR->{$seq}} = ();
         }
@@ -2350,10 +2338,10 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
             }
           }
         }
-        if($is_1)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_2)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_eg)  { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_esg) { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_1)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_2)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_eg)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_esg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
       }
       else { # $stg_key eq "rpn.cdt" or "std.cdt": coverage determination, cmsearch --tblout output
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
@@ -2367,12 +2355,12 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
         if((! defined $results_HHHR->{$seq}{"$stg_key.bs"}) || # first (top) hit for this sequence, 
            (($results_HHHR->{$seq}{"$stg_key.bs"}{"model"}   eq $model) && 
             ($results_HHHR->{$seq}{"$stg_key.bs"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
-          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
         }
         elsif((! defined $results_HHHR->{$seq}{"$stg_key.os"}) || # first (top) hit on OTHER strand for this sequence, 
               (($results_HHHR->{$seq}{"$stg_key.os"}{"model"}   eq $model) && 
                ($results_HHHR->{$seq}{"$stg_key.os"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
-          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
         }
       }
     }
@@ -2382,7 +2370,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_store_hit()
+# Subroutine:  cmsearch_store_hit()
 # Incept:      EPN, Thu Mar 21 14:55:25 2019
 #
 # Purpose:     Store information on a hit in %{$HR}. 
@@ -2407,8 +2395,8 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
 # Dies: if not the first hit, but $HR->{"model"} ne $model
 #      
 ################################################################# 
-sub cmsearch_or_cmscan_store_hit { 
-  my $sub_name = "cmsearch_or_cmscan_store_hit()";
+sub cmsearch_store_hit { 
+  my $sub_name = "cmsearch_store_hit()";
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -9356,13 +9344,13 @@ sub parse_cdt_tblout_file_and_replace_ns {
   while(my $line = <IN>) { 
     if($line !~ m/^#/) { 
       chomp $line; 
-      # example from cmscan tblout
+      # example from cmsearch tblout
       #target name  accession query name   accession mdl     mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
       #------------ --------- ------------ --------- ---     -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
       #MT281530.1   -         NC_045512            - hmm         8276   27807      8232    27769      +     -    6 0.37 583.9 20047.7         0 !   -
       #
       # example from blastn-based tblout (converted) 
-      #MT281530.1  -          NC_045512           -  blastn      8277   27806      8233    27768      +     -    -    -   0.0 36027.0       0.0 ?   -
+      #MT281530.1   -         NC_045512            -  blastn      8277   27806      8233    27768      +     -    -    -   0.0 36027.0       0.0 ?   -
       chomp $line;
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) < 18) {
