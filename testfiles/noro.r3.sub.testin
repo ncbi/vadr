@@ -37,3 +37,15 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-mlist.r3/va-noro-mlist.r3.vadr.mdl
 rmdir: va-noro-mlist.r3
+# --xsub only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --xsub $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.xsub -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-xsub.r3 > va-noro-xsub.r3.out
+desc: sub-xsub-noro-3-2
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.pass.tbl
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.fail.tbl
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.alt.list
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.mdl
+rmdir: va-noro-df.r3
