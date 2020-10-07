@@ -1384,9 +1384,12 @@ if($do_blastx) {
              ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-blastx-fasta"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
-        
+
+        # if --xsub used and we have a substitute db for blastx, use that
+        my $ftr_info_blastx_HR = ((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) ? 
+            \@{$ftr_info_HAH{$blastx_sub_H{$mdl_name}}} : \@{$ftr_info_HAH{$mdl_name}};
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                             \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+                             $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
@@ -6346,6 +6349,7 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   my $ret_ftr_idx = undef;
+
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
     # find it in @{$ftr_info_AHR->{"coords"}}
