@@ -1,0 +1,87 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+#
+# default
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-df.r3 > va-noro-df.r3.out
+desc: sub-df-noro-3-2
+out: va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+out: va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+out: va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+out: va-noro-df.r3/va-noro-df.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.mdl
+rmdir: va-noro-df.r3
+# --mlist only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --mlist $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.mlist -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-mlist.r3 > va-noro-mlist.r3.out
+desc: sub-mlist-noro-3-2
+out: va-noro-mlist.r3/va-noro-mlist.r3.vadr.pass.tbl
+out: va-noro-mlist.r3/va-noro-mlist.r3.vadr.fail.tbl
+out: va-noro-mlist.r3/va-noro-mlist.r3.vadr.alt.list
+out: va-noro-mlist.r3/va-noro-mlist.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-mlist.r3/va-noro-mlist.r3.vadr.mdl
+rmdir: va-noro-mlist.r3
+# --msub only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --msub $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.msub -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-msub.r3 > va-noro-msub.r3.out
+desc: sub-msub-noro-3-2
+out: va-noro-msub.r3/va-noro-msub.r3.vadr.pass.tbl
+out: va-noro-msub.r3/va-noro-msub.r3.vadr.fail.tbl
+out: va-noro-msub.r3/va-noro-msub.r3.vadr.alt.list
+out: va-noro-msub.r3/va-noro-msub.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-msub.r3/va-noro-msub.r3.vadr.mdl
+rmdir: va-noro-msub.r3
+# --xsub only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --xsub $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.xsub -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-xsub.r3 > va-noro-xsub.r3.out
+desc: sub-xsub-noro-3-2
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.pass.tbl
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.fail.tbl
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.alt.list
+out: va-noro-xsub.r3/va-noro-xsub.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.mdl
+rmdir: va-noro-xsub.r3
+# --mlist and --msub
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --mlist $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.mlist --msub $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.msub -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-mlist-msub.r3 > va-noro-mlist-msub.r3.out
+desc: sub-mlist-msub-noro-3-2
+out: va-noro-mlist-msub.r3/va-noro-mlist-msub.r3.vadr.pass.tbl
+out: va-noro-mlist-msub.r3/va-noro-mlist-msub.r3.vadr.fail.tbl
+out: va-noro-mlist-msub.r3/va-noro-mlist-msub.r3.vadr.alt.list
+out: va-noro-mlist-msub.r3/va-noro-mlist-msub.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-mlist-msub.r3/va-noro-mlist-msub.r3.vadr.mdl
+rmdir: va-noro-mlist-msub.r3
+# --mlist and --xsub
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --mlist $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.mlist --xsub $VADRSCRIPTSDIR/testfiles/noro.3.2.sub.xsub -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r3.fa va-noro-mlist-xsub.r3 > va-noro-mlist-xsub.r3.out
+desc: sub-mlist-xsub-noro-3-2
+out: va-noro-mlist-xsub.r3/va-noro-mlist-xsub.r3.vadr.pass.tbl
+out: va-noro-mlist-xsub.r3/va-noro-mlist-xsub.r3.vadr.fail.tbl
+out: va-noro-mlist-xsub.r3/va-noro-mlist-xsub.r3.vadr.alt.list
+out: va-noro-mlist-xsub.r3/va-noro-mlist-xsub.r3.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df.r3/va-noro-df.r3.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-mlist-xsub.r3/va-noro-mlist-xsub.r3.vadr.mdl
+rmdir: va-noro-mlist-xsub.r3

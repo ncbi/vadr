@@ -1,0 +1,37 @@
+>Feature gi|307574518|dbj|AB525810.1|
+<1	76	gene
+			gene	ORF1
+<1	76	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+			protein_id	307574518_1
+<1	73	mat_peptide
+			product	RdRp
+			protein_id	307574518_1
+57	>338	gene
+			gene	ORF2
+57	>338	CDS
+			product	VP1
+			protein_id	307574518_2
+>Feature gi|1215708385|gb|KY594653.1|
+<1	>301	gene
+			gene	ORF2
+<1	>301	CDS
+			product	VP1
+			codon_start	3
+			protein_id	1215708385_1
+>Feature gi|507309522|gb|JX439803.1|
+<1	810	gene
+			gene	ORF1
+<1	810	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+			protein_id	507309522_1
+<1	807	mat_peptide
+			product	RdRp
+			protein_id	507309522_1
+791	>1336	gene
+			gene	ORF2
+791	>1336	CDS
+			product	VP1
+			protein_id	507309522_2
