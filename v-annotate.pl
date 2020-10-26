@@ -402,7 +402,7 @@ my $options_okay =
 # options for using hmmer instead of blastx for protein validation
                 'hmmer'         => \$GetOptions_H{"--hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
-o                'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
+                'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
