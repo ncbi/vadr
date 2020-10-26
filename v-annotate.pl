@@ -1,4 +1,4 @@
-,#!/usr/bin/env perl
+#!/usr/bin/env perl
 # EPN, Wed May  1 10:18:55 2019 [renamed to v-annotate.pl]
 # EPN, Thu Feb 18 12:48:16 2016 [dnaorg_annotate.pl split off from dnaorg_annotate_genomes.pl]
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
@@ -402,7 +402,7 @@ my $options_okay =
 # options for using hmmer instead of blastx for protein validation
                 'hmmer'         => \$GetOptions_H{"--hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
-                'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
+o                'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
