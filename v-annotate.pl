@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+,#!/usr/bin/env perl
 # EPN, Wed May  1 10:18:55 2019 [renamed to v-annotate.pl]
 # EPN, Thu Feb 18 12:48:16 2016 [dnaorg_annotate.pl split off from dnaorg_annotate_genomes.pl]
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
@@ -402,7 +402,7 @@ my $options_okay =
 # options for using hmmer instead of blastx for protein validation
                 'hmmer'         => \$GetOptions_H{"--hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
-                'h_minbit'      => \$GetOptions_H{"--h_minbit"},
+                'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
@@ -438,7 +438,7 @@ my $options_okay =
                 'execname=s'    => \$GetOptions_H{"--execname"},
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'noseqnamemax'  => \$GetOptions_H{"--noseqnamemax"},
-                'minbit'        => \$GetOptions_H{"--minbit"},
+                'minbit=s'      => \$GetOptions_H{"--minbit"},
                 'origfa'        => \$GetOptions_H{"--origfa"},
                 'msub=s'        => \$GetOptions_H{"--msub"},
                 'xsub=s'        => \$GetOptions_H{"--xsub"});
@@ -449,7 +449,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1.1-dev1";
+my $version       = "1.1.1-dev2";
 my $releasedate   = "July 2020";
 my $pkgname       = "VADR";
 
