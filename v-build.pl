@@ -92,6 +92,7 @@ my $g = 0; # option group
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default  group   requires incompat     preamble-output                                                help-output    
 opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "display this help",                                   \%opt_HH, \@opt_order_A);
+opt_Add("-h",           "boolean", 0,           0,    undef, undef,       undef,                                                         "print the version and exit",                          \%opt_HH, \@opt_order_A);
 opt_Add("-f",           "boolean", 0,          $g,    undef, undef,       "forcing directory overwrite",                                 "force; if dir <output directory> exists, overwrite it", \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,          $g,    undef, undef,       "be verbose",                                                  "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--stk",        "string",  undef,      $g,    undef, undef,       "read single sequence stockholm 'alignment' from <s>",         "read single sequence stockholm 'alignment' from <s>", \%opt_HH, \@opt_order_A);
@@ -156,6 +157,7 @@ my %GetOptions_H = ();
 my $options_okay = 
     &GetOptions('h'            => \$GetOptions_H{"-h"}, 
 # basic options
+                'version'      => \$GetOptions_H{"--version"},
                 'f'            => \$GetOptions_H{"-f"},
                 'v'            => \$GetOptions_H{"-v"},
                 'stk=s'        => \$GetOptions_H{"--stk"},
@@ -215,6 +217,12 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
+}
+
+# Version information
+if($GetOptions_H{"--version"}){
+  print "VADR $version\n";
+  exit 0;
 }
 
 # check that number of command line args is correct
