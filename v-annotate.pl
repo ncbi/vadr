@@ -196,6 +196,7 @@ my $g = 0; # option group
 # This section needs to be kept in sync (manually) with the &GetOptions call below
 #     option            type       default group   requires incompat    preamble-output                                   help-output    
 opt_Add("-h",           "boolean", 0,          0,    undef, undef,      undef,                                            "display this help",                                  \%opt_HH, \@opt_order_A);
+opt_Add("--version",    "boolean", 0,          0,    undef, undef,      undef,                                            "print the version and exit",                         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                   help-output    
@@ -336,6 +337,7 @@ my $options_okay =
     &GetOptions('h'             => \$GetOptions_H{"-h"}, 
 # basic options
                 'f'             => \$GetOptions_H{"-f"},
+                'version'       => \$GetOptions_H{"--version"},
                 'v'             => \$GetOptions_H{"-v"},
 #                'n=s'           => \$GetOptions_H{"-n"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
@@ -459,6 +461,12 @@ if((! $options_okay) || ($GetOptions_H{"-h"})) {
   opt_OutputHelp(*STDOUT, $usage, \%opt_HH, \@opt_order_A, \%opt_group_desc_H);
   if(! $options_okay) { die "ERROR, unrecognized option;"; }
   else                { exit 0; } # -h, exit with 0 status
+}
+
+# print the version and exit
+if($GetOptions_H{"--version"}) { 
+  print "$executable $version\n";
+  exit 0;
 }
 
 # set options in opt_HH
