@@ -1,0 +1,16 @@
+#      seq                        ftr   ftr   ftr  alert           alert                  alert 
+#idx   name            model      type  name  idx  code      fail  desc                   detail
+#----  --------------  ---------  ----  ----  ---  --------  ----  ---------------------  ------
+1.1.1  ENTOY100A       ENTOY100A  -     -       -  noftrann  yes   NO_FEATURES_ANNOTATED  sequence similarity to homology model does not overlap with any features
+#
+2.1.1  ENTOY100A-Ns    ENTOY100A  -     -       -  ambgnt5s  no    N_AT_START             first nucleotide of the sequence is an N [first 7 positions are Ns, first non-N is position 8]
+2.1.2  ENTOY100A-Ns    ENTOY100A  -     -       -  ambgnt3s  no    N_AT_END               final nucleotide of the sequence is an N [final 11 positions are Ns, final non-N is position 99]
+2.1.3  ENTOY100A-Ns    ENTOY100A  -     -       -  lowcovrg  yes   LOW_COVERAGE           low sequence fraction with significant similarity to homology model [0.855<0.900]
+2.1.4  ENTOY100A-Ns    ENTOY100A  -     -       -  lowsim5s  yes   LOW_SIMILARITY_START   significant similarity not detected at 5' end of the sequence [low similarity region of length 6 (1..6)]
+2.1.5  ENTOY100A-Ns    ENTOY100A  -     -       -  noftrann  yes   NO_FEATURES_ANNOTATED  sequence similarity to homology model does not overlap with any features
+#
+3.1.1  ENTOY100A-Ns-2  ENTOY100A  -     -       -  ambgnt5s  no    N_AT_START             first nucleotide of the sequence is an N [first 7 positions are Ns, first non-N is position 8]
+3.1.2  ENTOY100A-Ns-2  ENTOY100A  -     -       -  ambgnt3s  no    N_AT_END               final nucleotide of the sequence is an N [final 21 positions are Ns, final non-N is position 89]
+3.1.3  ENTOY100A-Ns-2  ENTOY100A  -     -       -  lowcovrg  yes   LOW_COVERAGE           low sequence fraction with significant similarity to homology model [0.773<0.900]
+3.1.4  ENTOY100A-Ns-2  ENTOY100A  -     -       -  lowsim5s  yes   LOW_SIMILARITY_START   significant similarity not detected at 5' end of the sequence [low similarity region of length 6 (1..6)]
+3.1.5  ENTOY100A-Ns-2  ENTOY100A  -     -       -  noftrann  yes   NO_FEATURES_ANNOTATED  sequence similarity to homology model does not overlap with any features
