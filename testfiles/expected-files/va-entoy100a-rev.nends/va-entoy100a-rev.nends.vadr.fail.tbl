@@ -652,6 +652,7 @@ ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 posi
 ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 20 positions are Ns, first non-N is position 9]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 8 positions are Ns, final non-N is position 9]
+ERROR: LOW_FEATURE_SIMILARITY_START: (protein four) region within annotated feature at 5' end of sequence lacks significant similarity [15 nt overlap b/t low similarity region of length 30 (1..30) and annotated feature (3..17), strand: +]
 >Feature ENTOY100A/three-cds-only-stop-len3-93-95-rev
 3	>8	CDS
 			product	protein four
@@ -684,3 +685,4 @@ ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similar
 ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 35]
 ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 21 positions are Ns, first non-N is position 8]
 ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 9 positions are Ns, final non-N is position 8]
+ERROR: LOW_FEATURE_SIMILARITY_START: (protein four) region within annotated feature at 5' end of sequence lacks significant similarity [15 nt overlap b/t low similarity region of length 31 (1..31) and annotated feature (3..17), strand: +]
