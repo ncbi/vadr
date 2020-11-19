@@ -3696,6 +3696,9 @@ sub vdr_ModelInfoFileParse {
       my $is_model_line = 0; # set to 1 if line we are parsing is a MODEL line, else it's a FEATURE line
       if($line =~ /^MODEL\s+(\S+)\s*/) { 
         $mdl_name = $1;
+        if($mdl_name =~ /[\)\(]/) { 
+          ofile_FAIL("ERROR in $sub_name, model info file has model named $mdl_name which contains '(' and/or ')', which are not allowed in model names", 1, $FH_HR);
+        }
         if(exists $mdl_read_H{$mdl_name}) { 
           ofile_FAIL("ERROR in $sub_name, problem parsing $in_file: read multiple MODEL lines for $mdl_name, should only be 1; line:\n$orig_line\n", 1, $FH_HR);
         }
