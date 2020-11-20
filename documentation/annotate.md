@@ -858,7 +858,7 @@ The following options are related to parallel mode.
 
 ### Other `v-annotate.pl` expert options<a name="options-expert"></a>
 
-| .......option....... | explanation | 
+| .........option......... | explanation | 
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
 | `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
