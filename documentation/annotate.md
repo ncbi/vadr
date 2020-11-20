@@ -677,6 +677,7 @@ integer.
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
 | `--mkey <s>` | specify that .cm, .minfo, and blastn .fa files in $VADRMODELDIR start with key `<s>`, not 'vadr' |
 | `--mdir <s>` | specify that all model files to use are in the directory `<s>`, not in $VADRMODELDIR |
+| `--mlist <s>` | specify that only the subset of models listed in the file `<s>` be used |
 
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
@@ -864,6 +865,8 @@ The following options are related to parallel mode.
 | `--noseqnamemax` | do not enforce the GenBank maximum length of 50 characters for sequence names |
 | `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
+| `--msub <s>`     | specify that file `<s>` lists models to substitute, each line should contain two space-delimited tokens, model listed in token 2 will substitute as best-matching model for all sequences classified as the model listed in token 1 |
+| `--xsub <s>`     | specify that file `<s>` lists blastx dbs to substitute, each line should contain two space-delimited tokens, blastx db for model listed in token 2 will substitute as blastx db for all sequences classified as the model listed in token 1 |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
