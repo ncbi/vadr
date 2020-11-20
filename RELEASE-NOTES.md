@@ -83,5 +83,5 @@
 ---
 
 For more information, see the [git log for the develop
-branch](https://github.com/nawrockie/vadr/commits/develop).
+branch](https://github.com/ncbi/vadr/commits/develop).
 

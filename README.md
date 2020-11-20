@@ -1,6 +1,6 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.1.1; July 2020
-#### https://github.com/nawrockie/vadr.git
+#### Version 1.1.2; Nov 2020
+#### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
 homologous to a set of reference models of viral genomes or gene
@@ -25,7 +25,7 @@ genomes, created with a process similar to the one described
 `v-annotate.pl` with viruses other than the default set of 205, see
 ['Available VADR models'](#models). For instructions on using VADR for
 SARS-CoV-2 annotation see [this
-page](https://github.com/nawrockie/vadr/wiki/Coronavirus-annotation).
+page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation).
 
 `v-annotate.pl` identifies unexpected or divergent attributes of the
 sequences it annotates (e.g. invalid or early stop codons in CDS
@@ -49,7 +49,7 @@ The `v-annotate.pl` script in VADR v1.1x has some enhancements
 specifically designed for SARs-CoV-2 annotation that increase speed
 (`-s` option) and provide better annotation for sequences with
 stretches of Ns (`-r` option). See [this
-page](https://github.com/nawrockie/vadr/wiki/Coronavirus-annotation)
+page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
 for more information on using VADR to annotate SARS-CoV-2 sequences.
 
 ---
@@ -71,7 +71,7 @@ Pre-built models are available for:
     set of models that is installed with VADR**)
   * metazoan Cytochrome c oxidase I (COX1)
 
-See [this page](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files) for more information
+See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) for more information
 
 ---
 ## VADR documentation <a name="documentation"></a>
@@ -97,9 +97,9 @@ See [this page](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-file
   * [`v-annotate.pl` output files](documentation/formats.md#annotate)
   * [VADR `coords` coordinate string format](documentation/formats.md#coords)
   * [VADR sequence naming conventions](documentation/formats.md#seqnames)
-* [Available VADR model files (github wiki)](https://github.com/nawrockie/vadr/wiki/Available-VADR-model-files)
-* [SARS-CoV-2 annotation (github wiki)](https://github.com/nawrockie/vadr/wiki/Coronavirus-annotation)
-* [Development notes and instructions (github wiki)](https://github.com/nawrockie/vadr/wiki/Development-notes-and-instructions)
+* [Available VADR model files (github wiki)](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files)
+* [SARS-CoV-2 annotation (github wiki)](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
+* [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
 ## Reference <a name="reference"></a>

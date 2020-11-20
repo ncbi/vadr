@@ -13,14 +13,14 @@ The file `vadr-install.sh` is an executable file for installing VADR
 and its dependencies. That file is located online at github.
 To install the latest version of VADR download this file:
 
-https://raw.githubusercontent.com/nawrockie/vadr/master/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
 
 To download any specific release/version, for example version 1.0 download
 the corresponding `vadr-install.sh` file for that release/version
 (prior to version 1.0, the name of the installation script was
 `install.sh`, not `vadr-install.sh`):
 
-https://raw.githubusercontent.com/nawrockie/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
 
 Copy the `vadr-install.sh` file into the directory in which you want
 to install VADR. A good name for that directory is
@@ -107,7 +107,7 @@ vadr-install.sh>`)
 ```
 ********************************************************
 The final step is to update your environment variables.
-(See https://github.com/nawrockie/vadr/blob/1.1/documentation/install.md for more information.)
+(See https://github.com/ncbi/vadr/blob/1.1/documentation/install.md for more information.)
 
 If you are using the bash or zsh shell (zsh is default in MacOS/X as
 of v10.15 (Catalina)), add the following lines to the end of your
