@@ -226,7 +226,7 @@ if(scalar(@ARGV) != 2) {
 }
 my ($mdl_name, $dir) = (@ARGV);
 
-if($mdl_name =~ [\(\)]/) { 
+if($mdl_name =~ /[\(\)]/) { 
   die "ERROR, accession cannot contain '(' or ')'";
 }
 
