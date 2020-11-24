@@ -431,7 +431,7 @@ used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1101
 If you want to reproduce it exactly, you'll want to install
 version 1.0. The install script for v1.0 is here:
 
-https://raw.githubusercontent.com/nawrockie/vadr/1.0/vadr-install.sh
+https://raw.githubusercontent.com/ncbi/vadr/1.0/vadr-install.sh
 
 Additionally, if the RefSeq annotation for any of these 197 VADR
 models has changed since October 2019, then it may not be able to
