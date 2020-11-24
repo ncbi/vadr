@@ -37,15 +37,16 @@ for test in \
     04-ifile.t \
     05-annot-mdlopts.t \
     06-iss12-longseqnames.t \
+    07-iss22-modelname-parantheses.t \
 ; do
-    if [ $do_teamcity == 1 ]; then
+    if [ $do_teamcity = 1 ]; then
         echo "##teamcity[testStarted name=\"$test\" captureStandardOutput='true']"
     fi
 
     prove -v $VADRSCRIPTSDIR/t/$test;
     CURRETVAL=$?
 
-    if [ $do_teamcity == 1 ]; then 
+    if [ $do_teamcity = 1 ]; then 
         if [ $CURRETVAL != 0 ]; then
             echo "##teamcity[testFailed name=\"$test\" message=\"v-test.pl failure\"]"
         fi
@@ -57,7 +58,7 @@ for test in \
     fi
 done
 
-if [ $RETVAL == 0 ]; then
+if [ $RETVAL = 0 ]; then
    echo "Success: all tests passed"
    exit 0
 else 

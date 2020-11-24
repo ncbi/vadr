@@ -677,6 +677,7 @@ integer.
 | `-x <s>` | specify that the blastx database files to use for protein validation are in dir `<s>`, instead of the default directory ($VADRMODELDIR) |
 | `--mkey <s>` | specify that .cm, .minfo, and blastn .fa files in $VADRMODELDIR start with key `<s>`, not 'vadr' |
 | `--mdir <s>` | specify that all model files to use are in the directory `<s>`, not in $VADRMODELDIR |
+| `--mlist <s>` | specify that only the subset of models listed in the file `<s>` be used |
 
 ### `v-annotate.pl` options for controlling output feature table <a name="options-featuretable"></a>
 | .......option....... | explanation | 
@@ -701,7 +702,8 @@ In the table below, `<n>` represents a positive interger argument and
 | `--dupregolp <n>`   | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 20  | <a name="options-alerts-dupreg"></a>set min number of model position overlap for alert to  `<n>` positions | 
 | `--dupregsc <x>`    | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 10.0| <a name="options-alerts-dupreg"></a> set min bit score of weaker overlapping hit to  `<x>` bits | 
 | `--indefstr <x>`    | [*indfstrn*](#indfstrn1)                             | INDEFINITE_STRAND                      | >= 25.0| <a name="options-alerts-indefstr"></a> set bit score of weaker strand hit for alert to `<x>` |
-| `--lowsimterm <n>`  | [*lowsim5s*](#lowsim5s1), [*lowsim3s*](#lowsim3s1), [*lowsim5f*](#lowsim5f1), [*lowsim3f*](#lowsim3f1) | LOW_SIMILARITY_START, LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_START, LOW_FEATURE_SIMILARITY_END | >= 15   | <a name="options-alerts-lowsimterm"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim5term <n>` | [*lowsim5s*](#lowsim5s1), [*lowsim5f*](#lowsim5f1)   | LOW_SIMILARITY_START, LOW_FEATURE_SIMILARITY_START | >= 15  | <a name="options-alerts-lowsim5term"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim3term <n>` | [*lowsim3s*](#lowsim3s1), [*lowsim3f*](#lowsim3f1)   | LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_END     | >= 15  | <a name="options-alerts-lowsim3term"></a> set length (nt) threshold for alert to `<n>` |
 | `--lowsimint <n>`   | [*lowsimis*](#lowsimis1), [*lowsimif*](#lowsimif1)   | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1   | <a name="options-alerts-lowsimint"></a> set length (nt) threshold for alert to `<n>` |
 | `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
 | `--indefann <x>`    | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
@@ -856,13 +858,15 @@ The following options are related to parallel mode.
 
 ### Other `v-annotate.pl` expert options<a name="options-expert"></a>
 
-| .......option....... | explanation | 
+| .........option......... | explanation | 
 |--------|-------------| 
 | `--execname <s>` | in banner and usage output, replace `v-annotate.pl` with `<s>` |
 | `--alicheck`     | for debugging purposes, check aligned sequence versus input sequence for identity |
 | `--noseqnamemax` | do not enforce the GenBank maximum length of 50 characters for sequence names |
 | `--minbit <x>`   | set minimum cmsearch/cmscan bit score threshold to `<x>`, the default value for `<x>` is `-10` |
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
+| `--msub <s>`     | specify that file `<s>` lists models to substitute, each line should contain two space-delimited tokens, model listed in token 2 will substitute as best-matching model for all sequences classified as the model listed in token 1 |
+| `--xsub <s>`     | specify that file `<s>` lists blastx dbs to substitute, each line should contain two space-delimited tokens, blastx db for model listed in token 2 will substitute as blastx db for all sequences classified as the model listed in token 1 |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -985,8 +989,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*dupregin*](#dupregin1)  | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts-dupreg) | - | - <a name="dupregin2"></a> | 
 | [*discontn*](#discontn1)  | DISCONTINUOUS_SIMILARITY        | none | - | - <a name="discontn2"></a> | 
 | [*indfstrn*](#indfstrn1)  | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts-indefstr) | - | - <a name="indfstrn2"></a> | 
-| [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim5s2"></a> | 
-| [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsimterm`](#options-alerts-lowsimterm) | - | - <a name="lowsim3s2"></a> | 
+| [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5term`](#options-alerts-lowsim5term) | - | - <a name="lowsim5s2"></a> | 
+| [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3term`](#options-alerts-lowsim3term) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
 | [*deletinf*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
@@ -1015,9 +1019,9 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*deletinp*](#deletinp1)  | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts-xmaxdel) | CDS | - <a name="deletinp2"></a> | 
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> | 
 | [*deletinf*](#deletinf1)  | DELETION_OF_FEATURE_SECTION     | none | all | - <a name="deletinf2"></a> | 
-| [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
-| [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
-| [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
+| [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5term`](#options-alerts-lowsim5term) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
+| [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3term`](#options-alerts-lowsim3term) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
+| [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm)   | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
 
 #### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 

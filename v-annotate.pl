@@ -63,7 +63,7 @@ require "sqp_utils.pm";
 # SARS-CoV-2 sequences), enabled with the -s option:
 #
 # Stage 1 and 2 are performed by a single blastn search instead of
-# cmscan followed by cmsearch. The maximum lengthed ungapped region
+# two rounds of cmsearch. The maximum lengthed ungapped region
 # from the top blast hit per sequence is identified and used to 'seed'
 # the alignment of that sequence by cmalign. The ungapped alignment of
 # this seed blastn region is considered fixed and only the sequence
@@ -85,11 +85,11 @@ require "sqp_utils.pm";
 # replaced. 
 #
 # By default, stages 1 and 2 are performed with blastn which in
-# anecdotal (but not systematic) testing seems less likely then cmscan
+# anecdotal (but not systematic) testing seems less likely then cmsearch
 # to extend alignments through stretches of Ns (although this is
 # probably controllable to an extent with command line options).
 # However, with --r_prof, preprocessing stages 1 and 2 are performed
-# with cmscan and cmsearch
+# with cmsearch.
 #
 #######################################################################################
 #
@@ -151,7 +151,6 @@ my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
-$execs_H{"cmscan"}        = $env_vadr_infernal_dir . "/cmscan";
 $execs_H{"cmsearch"}      = $env_vadr_infernal_dir . "/cmsearch";
 $execs_H{"hmmfetch"}      = $env_vadr_hmmer_dir    . "/hmmfetch";
 $execs_H{"hmmscan"}       = $env_vadr_hmmer_dir    . "/hmmscan";
@@ -226,6 +225,7 @@ opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use b
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string",  undef,      $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
+opt_Add("--mlist",      "string",  undef,      $g,    undef, undef,       "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                               help-output    
@@ -244,8 +244,9 @@ opt_Add("--lowcov",     "real",      0.9,       $g,   undef,   undef,           
 opt_Add("--dupregolp",  "integer",   20,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--dupregsc",   "real",      10,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum bit score is <x>",                             "dupregin/DUPLICATE_REGIONS minimum bit score is <x>",                             \%opt_HH, \@opt_order_A);
 opt_Add("--indefstr",   "real",      25,        $g,   undef,   undef,            "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimterm", "integer",   15,        $g,   undef,   undef,            "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",  "lowsim{5s,5f,3s,3f}/LOW_{FEATURE}_SIMILARITY_{START,END} minimum length is <n>",  \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimint",  "integer",   1,         $g,   undef,   undef,            "lowsimi{s,f}/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",          "lowsim{i,f}s/LOW_{FEATURE}_SIMILARITY (internal) minimum length is <n>",          \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5term", "integer",  15,        $g,   undef,   undef,            "lowsim5{s,f}/LOW_{FEATURE_}SIMILARITY_START minimum length is <n>",               "lowsim5{s,f}/LOW_{FEATURE_}SIMILARITY_START minimum length is <n>",               \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3term", "integer",  15,        $g,   undef,   undef,            "lowsim3{s,f}/LOW_{FEATURE_}SIMILARITY_END minimum length is <n>",                 "lowsim3{s,f}/LOW_{FEATURE_}SIMILARITY_END minimum length is <n>",                 \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimint",  "integer",   1,         $g,   undef,   undef,            "lowsimi{s,f}/LOW_{FEATURE_}SIMILARITY (internal) minimum length is <n>",          "lowsimi{s,f}/LOW_{FEATURE_}SIMILARITY (internal) minimum length is <n>",          \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -300,7 +301,7 @@ opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slowe
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
-opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmscan/cmsearch/cmalign on a compute farm",       "parallelize cmscan/cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
+opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--nkb",        "integer", 10,         $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
@@ -327,8 +328,10 @@ $opt_group_desc_H{++$g} = "other expert options";
 opt_Add("--execname",     "string",  undef,         $g,    undef,   undef,    "define executable name of this script as <s>",                           "define executable name of this script as <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--alicheck",     "boolean", 0,             $g,    undef,   undef,    "for debugging, check aligned sequence vs input sequence for identity",   "for debugging, check aligned sequence vs input sequence for identity", \%opt_HH, \@opt_order_A);
 opt_Add("--noseqnamemax", "boolean", 0,             $g,    undef,   undef,    "do not enforce a maximum length of 50 for sequence names (GenBank max)", "do not enforce a maximum length of 50 for sequence names (GenBank max)", \%opt_HH, \@opt_order_A);
-opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch/cmscan bit score threshold to <x>",                 "set minimum cmsearch/cmscan bit score threshold to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "set minimum cmsearch bit score threshold to <x>",                        "set minimum cmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
+opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
+opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -356,6 +359,7 @@ my $options_okay =
                 'x=s'           => \$GetOptions_H{"-x"}, 
                 'mkey=s'        => \$GetOptions_H{"--mkey"}, 
                 'mdir=s'        => \$GetOptions_H{"--mdir"}, 
+                'mlist=s'       => \$GetOptions_H{"--mlist"}, 
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
                 "notrim"        => \$GetOptions_H{"--notrim"},
@@ -370,7 +374,8 @@ my $options_okay =
                 'dupregolp=s'   => \$GetOptions_H{"--dupregolp"},  
                 'dupregsc=s'    => \$GetOptions_H{"--dupregsc"},  
                 'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
-                'lowsimterm=s'  => \$GetOptions_H{"--lowsimterm"},
+                'lowsim5term=s' => \$GetOptions_H{"--lowsim5term"},
+                'lowsim3term=s' => \$GetOptions_H{"--lowsim3term"},
                 'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
@@ -399,7 +404,7 @@ my $options_okay =
 # options for using hmmer instead of blastx for protein validation
                 'hmmer'         => \$GetOptions_H{"--hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
-                'h_minbit'      => \$GetOptions_H{"--h_minbit"},
+                'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
@@ -435,8 +440,10 @@ my $options_okay =
                 'execname=s'    => \$GetOptions_H{"--execname"},
                 'alicheck'      => \$GetOptions_H{"--alicheck"},
                 'noseqnamemax'  => \$GetOptions_H{"--noseqnamemax"},
-                'minbit'        => \$GetOptions_H{"--minbit"},
-                'origfa'        => \$GetOptions_H{"--origfa"});
+                'minbit=s'      => \$GetOptions_H{"--minbit"},
+                'origfa'        => \$GetOptions_H{"--origfa"},
+                'msub=s'        => \$GetOptions_H{"--msub"},
+                'xsub=s'        => \$GetOptions_H{"--xsub"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -444,8 +451,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1.1";
-my $releasedate   = "July 2020";
+my $version       = "1.1.2";
+my $releasedate   = "Nov 2020";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -538,7 +545,7 @@ my $do_blastn_cdt = opt_Get("-s", \%opt_HH) ? 1 : 0;
 my $do_blastn_ali = opt_Get("-s", \%opt_HH) ? 1 : 0;
 my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_blastn_ali) ? 1 : 0;
 # we have separate flags for each blastn stage even though
-# they are all turned on/off with -a in case future changes
+# they are all turned on/off with -s in case future changes
 # only need some but not all
 
 #############################
@@ -647,23 +654,29 @@ my @to_remove_A   = (); # list of files to remove at end of subroutine, if --kee
 # fasta file
 utl_FileValidateExistsAndNonEmpty($orig_in_fa_file, "input fasta sequence file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-my $opt_mdir_used = opt_IsUsed("--mdir", \%opt_HH);
-my $opt_mkey_used = opt_IsUsed("--mkey", \%opt_HH);
-my $opt_m_used    = opt_IsUsed("-m", \%opt_HH);
-my $opt_a_used    = opt_IsUsed("-a", \%opt_HH);
-my $opt_i_used    = opt_IsUsed("-i", \%opt_HH);
-my $opt_n_used    = opt_IsUsed("-n", \%opt_HH);
-my $opt_x_used    = opt_IsUsed("-x", \%opt_HH);
-my $opt_q_used    = opt_IsUsed("-q", \%opt_HH);
+my $opt_mdir_used  = opt_IsUsed("--mdir", \%opt_HH);
+my $opt_mkey_used  = opt_IsUsed("--mkey", \%opt_HH);
+my $opt_mlist_used = opt_IsUsed("--mlist", \%opt_HH);
+my $opt_m_used     = opt_IsUsed("-m", \%opt_HH);
+my $opt_a_used     = opt_IsUsed("-a", \%opt_HH);
+my $opt_i_used     = opt_IsUsed("-i", \%opt_HH);
+my $opt_n_used     = opt_IsUsed("-n", \%opt_HH);
+my $opt_x_used     = opt_IsUsed("-x", \%opt_HH);
+my $opt_q_used     = opt_IsUsed("-q", \%opt_HH);
+my $opt_msub_used  = opt_IsUsed("--msub", \%opt_HH);
+my $opt_xsub_used  = opt_IsUsed("--xsub", \%opt_HH);
 
-my $model_dir      = ($opt_mdir_used) ? opt_Get("--mdir", \%opt_HH) : $env_vadr_model_dir;
-my $model_key      = ($opt_mkey_used) ? opt_Get("--mkey", \%opt_HH) : "vadr";
-my $cm_file        = ($opt_m_used)    ? opt_Get("-m",     \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
-my $hmm_file       = ($opt_a_used)    ? opt_Get("-a",     \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
-my $minfo_file     = ($opt_i_used)    ? opt_Get("-i",     \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
-my $blastn_db_file = ($opt_n_used)    ? opt_Get("-n",     \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
-my $blastx_db_dir  = ($opt_x_used)    ? opt_Get("-x",     \%opt_HH) : $model_dir;
-my $qsubinfo_file  = ($opt_q_used)    ? opt_Get("-q",     \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",  \%opt_HH) : $env_vadr_model_dir;
+my $model_key      = ($opt_mkey_used)  ? opt_Get("--mkey",  \%opt_HH) : "vadr";
+my $model_list     = ($opt_mlist_used) ? opt_Get("--mlist", \%opt_HH) : undef;
+my $cm_file        = ($opt_m_used)     ? opt_Get("-m",      \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
+my $hmm_file       = ($opt_a_used)     ? opt_Get("-a",      \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
+my $minfo_file     = ($opt_i_used)     ? opt_Get("-i",      \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
+my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",      \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
+my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",      \%opt_HH) : $model_dir;
+my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",      \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $msub_file      = ($opt_msub_used)  ? opt_Get("--msub",  \%opt_HH) : undef;
+my $xsub_file      = ($opt_xsub_used)  ? opt_Get("--xsub",  \%opt_HH) : undef;
 my $cm_extra_string       = "";
 my $hmm_extra_string      = "";
 my $minfo_extra_string    = "";
@@ -717,6 +730,21 @@ if(opt_IsUsed("-p", \%opt_HH)) {
   utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   # parse the qsubinfo file
   ($qsub_prefix, $qsub_suffix) = vdr_ParseQsubFile($qsubinfo_file, $ofile_info_HH{"FH"});
+}
+
+# only check for model list file if --mlist used
+if(defined $model_list) { 
+  utl_FileValidateExistsAndNonEmpty($model_list, "model list file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+
+# only check for model substitution file if --msub used
+if(defined $msub_file) { 
+  utl_FileValidateExistsAndNonEmpty($msub_file, "model substitution file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+}
+
+# only check for blastx db substitution file if --xsub used
+if(defined $xsub_file) { 
+  utl_FileValidateExistsAndNonEmpty($xsub_file, "blastx db substitution file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
 
 ###########################
@@ -773,7 +801,47 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 push(@to_remove_A, $cm_name_file);
-    
+
+# if --mlist used ($model_list will be defined) validate all models listed 
+# in $model_list are in model info file
+if(defined $model_list) { 
+  my $err_msg = "";
+  my %mdl_name_H      = (); # key is a model name, value is 1
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name_H{$mdl_info_AH[$mdl_idx]{"name"}} = 1;
+  }
+  my @mdl_name_list_A = (); # all models read from $model_list file
+  utl_FileLinesToArray($model_list, 1, \@mdl_name_list_A, $FH_HR);
+  foreach my $mdl (@mdl_name_list_A) { 
+    if(! defined $mdl_name_H{$mdl}) { 
+      $err_msg .= "$mdl\n";
+    }
+  }
+  if($err_msg ne "") { 
+    ofile_FAIL("ERROR, the following models listed in $model_list do not exist in model info file $minfo_file:\n$err_msg\n", 1, $FH_HR);
+  }
+}
+
+# if --msub used ($msub_file) validate all models listed 
+# in $msub_file are in model info file
+my %mdl_sub_H = ();
+if(defined $msub_file) { 
+  my $err_msg = validate_and_parse_sub_file($msub_file, \@mdl_info_AH, \%mdl_sub_H, $FH_HR);
+  if($err_msg ne "") { 
+    ofile_FAIL("ERROR, problem parsing file $msub_file (--msub):\n$err_msg\n", 1, $FH_HR);
+  }
+}
+
+# if --xsub used ($xsub_file) validate all models listed 
+# in $xsub_file are in model info file
+my %blastx_sub_H = ();
+if(defined $xsub_file) { 
+  my $err_msg = validate_and_parse_sub_file($xsub_file, \@mdl_info_AH, \%blastx_sub_H, $FH_HR);
+  if($err_msg ne "") { 
+    ofile_FAIL("ERROR, problem parsing file $xsub_file (--xsub):\n$err_msg\n", 1, $FH_HR);
+  }
+}
+
 my @ftr_reqd_keys_A = ("type", "coords");
 for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -901,6 +969,7 @@ if($do_replace_ns) {
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
   coverage_determination_stage(\%execs_H, "rpn.cdt", $cm_file, \$in_sqfile, \@seq_name_A, \%seq_len_H,
                                $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%mdl_seq_name_HA, undef, \%stg_results_HHH, 
+                               ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
   my $start_secs = ofile_OutputProgressPrior(sprintf("Replacing Ns based on results of %s-based pre-processing", "blastn"), $progress_w, $FH_HR->{"log"}, *STDOUT);
@@ -1001,7 +1070,7 @@ my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr"
 my $do_separate_cds_fa_files_for_protein_validation = (($do_replace_ns) && (defined $rpn_sqfile)) ? 1 : 0; 
     
 ####################################
-# Classification: cmscan round 1
+# Classification: cmsearch round 1
 ####################################
 classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file_for_analysis, \%seq_len_H,
                      $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
@@ -1013,6 +1082,7 @@ classification_stage(\%execs_H, "std.cls", $cm_file, $blastn_db_file, $fa_file_f
 my %mdl_cls_ct_H = ();  # key is model name $mdl_name, value is number of sequences classified to this model
 coverage_determination_stage(\%execs_H, "std.cdt", $cm_file, $sqfile_for_analysis_R, \@seq_name_A, \%seq_len_H,
                              $qsub_prefix, $qsub_suffix, \@mdl_info_AH, undef, \%mdl_cls_ct_H, \%stg_results_HHH, 
+                             ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                              $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
 
@@ -1038,7 +1108,9 @@ my %mdl_ant_ct_H = ();  # key is model name, value is number of sequences annota
 
 populate_per_model_data_structures_given_classification_results(\@seq_name_A, \%seq_len_H, "std.aln", \%stg_results_HHH, 
                                                                 \%cls_output_HH, \%alt_info_HH, \%alt_seq_instances_HH,
-                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, \%seq2mdl_H, $FH_HR);
+                                                                ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
+                                                                \%mdl_seq_name_HA, \%mdl_seq_len_H, \%mdl_ant_ct_H, 
+                                                                \%seq2mdl_H, $FH_HR);
 
 # file names and data structures necessary for the alignment stage
 my %stk_file_HA       = ();     # hash of arrays of all stk output files created in cmalignOrNhmmscanWrapper()
@@ -1287,17 +1359,39 @@ if($do_blastx) {
       my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
       if($ncds > 0) { # only run blast for models with >= 1 CDS
         my $nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+        # determine blastx db file to use
+        # by default this will be the blastx db for current model but if --xsub is used
+        # we may substitute another blastx db for this model
+        my $blastx_db_mdl_idx = $mdl_idx;
+        if((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) { 
+          # now find the index of $blastx_db_mdl_name in @mdl_info_AH
+          $blastx_db_mdl_idx = 0; 
+          while(($blastx_db_mdl_idx < $nmdl) && ($mdl_info_AH[$blastx_db_mdl_idx]{"name"} ne $blastx_sub_H{$mdl_name})) { 
+            $blastx_db_mdl_idx++;
+          }
+          if($blastx_db_mdl_idx > $nmdl) { 
+            ofile_FAIL("ERROR unable to find blastx model subsitution for $mdl_name (was looking for $blastx_sub_H{$mdl_name} in model info on second pass", 1, $FH_HR);
+          }
+        }
+        my $blastx_db_file = $mdl_info_AH[$blastx_db_mdl_idx]{"blastdbpath"};
+        if(! defined $blastx_db_file) { 
+          ofile_FAIL("ERROR, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
+        }
+
         $start_secs = ofile_OutputProgressPrior(sprintf("Validating proteins with blastx ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : ""), $progress_w, $log_FH, *STDOUT);
-        run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, 
-                                        $do_separate_cds_fa_files_for_protein_validation,
+        run_blastx_and_summarize_output(\%execs_H, $out_root, \%{$mdl_info_AH[$mdl_idx]}, \@{$ftr_info_HAH{$mdl_name}}, $blastx_db_file, 
+                                        $do_separate_cds_fa_files_for_protein_validation, 
                                         \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, 
              ($ofile_info_HH{"fullpath"}{$mdl_name . ".pv-blastx-fasta"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-out"},
               $ofile_info_HH{"fullpath"}{$mdl_name . ".blastx-summary"}));
-        
+
+        # if --xsub used and we have a substitute db for blastx, use that
+        my $ftr_info_blastx_HR = ((opt_IsUsed("--xsub", \%opt_HH)) && (defined $blastx_sub_H{$mdl_name})) ? 
+            \@{$ftr_info_HAH{$blastx_sub_H{$mdl_name}}} : \@{$ftr_info_HAH{$mdl_name}};
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                             \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
+                             $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
@@ -1379,7 +1473,9 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alerts_list",    $out_root . 
 $start_secs = ofile_OutputProgressPrior("Generating feature table output", $progress_w, $log_FH, *STDOUT);
 my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, 
                                  \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
-                                 \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+                                 \%alt_ftr_instances_HHH, 
+                                 ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
+                                 \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ########################
@@ -1407,6 +1503,7 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
                                            ($do_replace_ns) ? \%rpn_output_HH : undef,
+                                           ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
@@ -1514,10 +1611,10 @@ exit 0;
 # Subroutines related to classification and coverage determination:
 # classification_stage()
 # coverage_determination_stage()
-# cmsearch_or_cmscan_wrapper
-# cmsearch_or_cmscan_run
-# cmsearch_or_cmscan_parse_sorted_tblout
-# cmsearch_or_cmscan_store_hit
+# cmsearch_wrapper
+# cmsearch_run
+# cmsearch_parse_sorted_tblout
+# cmsearch_store_hit
 # add_classification_errors
 # populate_per_model_data_structures_given_classification_results
 #
@@ -1605,10 +1702,10 @@ exit 0;
 # Subroutines related to classification and coverage determination:
 # classification_stage()
 # coverage_determination_stage()
-# cmsearch_or_cmscan_wrapper
-# cmsearch_or_cmscan_run
-# cmsearch_or_cmscan_parse_sorted_tblout
-# cmsearch_or_cmscan_store_hit
+# cmsearch_wrapper
+# cmsearch_run
+# cmsearch_parse_sorted_tblout
+# cmsearch_store_hit
 # add_classification_errors
 # populate_per_model_data_structures_given_classification_results
 #
@@ -1657,7 +1754,7 @@ sub classification_stage {
   }
 
   my $nseq = scalar(keys %{$seq_len_HR});
-  # will we use blastn or cmscan?
+  # will we use blastn or cmsearch?
   my $do_blastn  = 0; 
   # default is to use blastn in rpn.cls, but don't if --r_prof used
   if((! opt_Get("--r_prof", $opt_HHR)) && ($stg_key eq "rpn.cls")) { $do_blastn = 1; }
@@ -1674,24 +1771,24 @@ sub classification_stage {
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"},
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.pretblout"});
   }
-  else { # default: use cmscan for classification
-    my $cmscan_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
+  else { # default: use cmsearch for classification
+    my $cmsearch_opts = " -T " . opt_Get("--minbit", $opt_HHR) . " --cpu 0 --trmF3 --noali --hmmonly"; 
     my $tot_len_nt  = utl_HSumValues($seq_len_HR);
-    cmsearch_or_cmscan_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
-                               $cm_file, undef, $fa_file, $cmscan_opts, 
+    cmsearch_wrapper($execs_HR, $qsub_prefix, $qsub_suffix,
+                               $cm_file, undef, $fa_file, $cmsearch_opts, 
                                $out_root, $stg_key, $nseq, $tot_len_nt, 
                                $progress_w, $opt_HHR, $ofile_info_HHR);
   } 
   # sort into a new file by score
-  my $tblout_key  = $stg_key . ".tblout"; # set in cmsearch_or_cmscan_wrapper() or above if $do_blastn_cls
-  my $stdout_key  = $stg_key . ".stdout"; # set in cmsearch_or_cmscan_wrapper()
-  my $err_key     = $stg_key . ".err"; # set in cmsearch_or_cmscan_wrapper()
+  my $tblout_key  = $stg_key . ".tblout"; # set in cmsearch_wrapper() or above if $do_blastn_cls
+  my $stdout_key  = $stg_key . ".stdout"; # set in cmsearch_wrapper()
+  my $err_key     = $stg_key . ".err"; # set in cmsearch_wrapper()
   my $tblout_file = $ofile_info_HH{"fullpath"}{$tblout_key};
   my $sort_tblout_file = $tblout_file . ".sort";
   my $sort_tblout_key  = $tblout_key  . ".sort";
   utl_FileValidateExistsAndNonEmpty($tblout_file, "$stg_key stage tblout output", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
-  my $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 2,2 -k 3,3rn > $sort_tblout_file"; 
+  my $sort_cmd = "grep -v ^\# $tblout_file | sed 's/  */ /g' | sort -k 1,1 -k 3,3rn > $sort_tblout_file"; 
   # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
   utl_RunCommand($sort_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $sort_tblout_key, $sort_tblout_file, 0, $do_keep, "stage $stg_key sorted tblout file");
@@ -1702,7 +1799,7 @@ sub classification_stage {
         $sort_tblout_file));
   
   # parse the sorted tblout file
-  cmsearch_or_cmscan_parse_sorted_tblout($sort_tblout_file, $stg_key,
+  cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
                                          $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
 
   return;
@@ -1728,6 +1825,7 @@ sub classification_stage {
 #  $mdl_seq_name_HAR:  REF to hash of arrays of sequences per model, can be undef if stage_key is "std.cdt"
 #  $mdl_cls_ct_HR:     REF to hash of counts of seqs assigned to each model, can be undef if stage_key is "rpn.cdt"
 #  $stg_results_HHHR:  REF to 3D hash of classification results, PRE-FILLED
+#  $mdl_sub_HR:        REF to hash with model substitution info, should be undef unless --msub used
 #  $out_root:          root name for output file names
 #  $progress_w:        width for outputProgressPrior output
 #  $to_remove_AR:      REF to array of files to remove before exiting (unless --keep)
@@ -1741,12 +1839,12 @@ sub classification_stage {
 ################################################################# 
 sub coverage_determination_stage { 
   my $sub_name = "coverage_determination_stage";
-  my $nargs_exp = 17;
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($execs_HR, $stg_key, $cm_file, $sqfile_R, $seq_name_AR, $seq_len_HR, 
       $qsub_prefix, $qsub_suffix, $mdl_info_AHR, $mdl_seq_name_HAR, $mdl_cls_ct_HR, $stg_results_HHHR, 
-      $out_root, $progress_w, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
+      $mdl_sub_HR, $out_root, $progress_w, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
@@ -1780,7 +1878,7 @@ sub coverage_determination_stage {
   my %seq2mdl_H        = ();  # key is sequence name $seq_name, value is $mdl_name of model this sequence is classified to
   my $local_mdl_seq_name_HAR = (defined $mdl_seq_name_HAR) ? $mdl_seq_name_HAR : \%mdl_seq_name_HA;  # to deal with fact that mdl_seq_name_HAR may be undef
   populate_per_model_data_structures_given_classification_results($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, undef, undef, undef, 
-                                                                  $local_mdl_seq_name_HAR, \%mdl_seq_len_H, $mdl_cls_ct_HR, \%seq2mdl_H, $FH_HR);
+                                                                  $mdl_sub_HR, $local_mdl_seq_name_HAR, \%mdl_seq_len_H, $mdl_cls_ct_HR, \%seq2mdl_H, $FH_HR);
   
   # for each model, fetch the sequences classified to it 
   my $nmdl_cdt = 0; # number of models coverage determination stage is called for
@@ -1830,13 +1928,13 @@ sub coverage_determination_stage {
     if(! opt_Get("-v", \%opt_HH)) { $cmsearch_opts .= " --noali "; }
     foreach $mdl_name (@cls_mdl_name_A) { 
       my $mdl_fa_file = $out_root . "." . $mdl_name . ".fa";
-      cmsearch_or_cmscan_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
+      cmsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix,
                                  $cm_file, $mdl_name, $mdl_fa_file, $cmsearch_opts, 
                                  $out_root, $stg_key, scalar(@{$local_mdl_seq_name_HAR->{$mdl_name}}), 
                                  $mdl_seq_len_H{$mdl_name}, $progress_w, \%opt_HH, \%ofile_info_HH);
-      my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_or_cmscan_wrapper()
-      my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_or_cmscan_wrapper()
-      my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_or_cmscan_wrapper()
+      my $tblout_key = "$stg_key.$mdl_name.tblout"; # set in cmsearch_wrapper()
+      my $stdout_key = "$stg_key.$mdl_name.stdout"; # set in cmsearch_wrapper()
+      my $err_key    = "$stg_key.$mdl_name.err";    # set in cmsearch_wrapper()
       push(@tblout_key_A,  $tblout_key);
       push(@tblout_file_A, $ofile_info_HH{"fullpath"}{$tblout_key});
       push(@to_remove_A, 
@@ -1857,14 +1955,14 @@ sub coverage_determination_stage {
     push(@{$to_remove_AR}, $sort_tblout_file);
 
     # parse cmsearch round 2 tblout data
-    cmsearch_or_cmscan_parse_sorted_tblout($sort_tblout_file, $stg_key,
+    cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
                                            $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
   }
   return;
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_wrapper()
+# Subroutine:  cmsearch_wrapper()
 # Incept:      EPN, Mon Mar 18 14:44:46 2019
 #
 # Purpose:     Run one or more cmsearch jobs on the farm
@@ -1882,7 +1980,7 @@ sub coverage_determination_stage {
 #  $seq_file:        name of sequence file with all sequences to run against
 #  $opt_str:         option string for cmsearch run
 #  $out_root:        string for naming output files
-#  $stg_key:         stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#  $stg_key:         stage key, "rpn.cls" or "std.cls" for classification (cmsearch),
 #                    or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $nseq:            number of sequences in $seq_file
 #  $tot_len_nt:      total length of all nucleotides in $seq_file
@@ -1895,8 +1993,8 @@ sub coverage_determination_stage {
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
 ################################################################# 
-sub cmsearch_or_cmscan_wrapper { 
-  my $sub_name = "cmsearch_or_cmscan_wrapper";
+sub cmsearch_wrapper { 
+  my $sub_name = "cmsearch_wrapper";
   my $nargs_expected = 14;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -1946,12 +2044,12 @@ sub cmsearch_or_cmscan_wrapper {
   my $stg_desc = "";
   if($stg_key eq "rpn.cls") { 
     $stg_desc = ($do_parallel) ? 
-        sprintf("Preprocessing for N replacement: cmscan classification job farm submission ($nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
-        sprintf("Preprocessing for N replacement: cmscan classification ($nseq seq%s)", ($nseq > 1) ? "s" : "");
+        sprintf("Preprocessing for N replacement: cmsearch classification job farm submission ($nseq seq%s, $nseq_files job%s)", (($nseq > 1) ? "s" : ""), (($nseq_files > 1) ? "s" : "")) :
+        sprintf("Preprocessing for N replacement: cmsearch classification ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   elsif($stg_key eq "std.cls") { 
     $stg_desc = ($do_parallel) ? 
-        "Submitting $nseq_files cmscan classification job(s) to the farm" : 
+        "Submitting $nseq_files cmsearch classification job(s) to the farm" : 
         sprintf("Classifying sequences ($nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   elsif($stg_key eq "rpn.cdt") {
@@ -1965,7 +2063,7 @@ sub cmsearch_or_cmscan_wrapper {
         sprintf("Determining sequence coverage ($mdl_name: $nseq seq%s)", ($nseq > 1) ? "s" : "");
   }
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
-  # run cmsearch or cmscan
+  # run cmsearch
   my $out_key;
   my @out_keys_A = ("stdout", "err", "tblout");
   for(my $s = 0; $s < $nseq_files; $s++) { 
@@ -1973,7 +2071,7 @@ sub cmsearch_or_cmscan_wrapper {
     foreach my $out_key (@out_keys_A) { 
       $out_file_AH[$s]{$out_key} = $out_root . "." . $stg_key . ".s" . $s . "." . $out_key;
     }
-    cmsearch_or_cmscan_run($execs_HR, $qsub_prefix, $qsub_suffix, $mdl_file, $mdl_name, 
+    cmsearch_run($execs_HR, $qsub_prefix, $qsub_suffix, $mdl_file, $mdl_name, 
                            $seq_file_A[$s], $opt_str, \%{$out_file_AH[$s]}, $opt_HHR, $ofile_info_HHR);   
   }
 
@@ -2016,21 +2114,21 @@ sub cmsearch_or_cmscan_wrapper {
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_run()
+# Subroutine:  cmsearch_run()
 # Incept:      EPN, Wed Feb  6 12:38:11 2019
 #
-# Purpose:     Run Infernal's cmsearch or cmscan executable using $mdl_file
+# Purpose:     Run Infernal's cmsearch executable using $mdl_file
 #              as the model file on sequence file $seq_file, either
 #              locally or on the farm.
 #
 # Arguments: 
-#  $execs_HR:         hash with paths to cmsearch, cmscan and cmfetch
+#  $execs_HR:         hash with paths to cmsearch and cmfetch
 #  $qsub_prefix:      qsub command prefix to use when submitting to farm, undef if running locally
 #  $qsub_suffix:      qsub command suffix to use when submitting to farm, undef if running locally
 #  $mdl_file:         path to the CM file
-#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch and run cmscan instead of cmsearch)
+#  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
-#  $opt_str:          option string for cmsearch or cmscan run
+#  $opt_str:          option string for cmsearch runs
 #  $out_file_HR:      ref to hash of output files to create
 #                     required keys: "stdout", "tblout", "err"
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -2039,8 +2137,8 @@ sub cmsearch_or_cmscan_wrapper {
 # Returns:     void
 # 
 ################################################################# 
-sub cmsearch_or_cmscan_run {
-  my $sub_name = "cmsearch_or_cmscan_run()";
+sub cmsearch_run {
+  my $sub_name = "cmsearch_run()";
   my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -2072,7 +2170,13 @@ sub cmsearch_or_cmscan_run {
     $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
   }
   else { 
-    $cmd = $execs_HR->{"cmscan"} . " $opt_str $mdl_file $seq_file > $stdout_file";
+    if(opt_IsUsed("--mlist", $opt_HHR)) { 
+      # opt_Get("--mlist", $opt_HHR) includes the subset of models we want to use
+      $cmd = $execs_HR->{"cmfetch"} . " -f $mdl_file " . opt_Get("--mlist", $opt_HHR) . " | " . $execs_HR->{"cmsearch"} . " $opt_str - $seq_file > $stdout_file";
+    }
+    else { 
+      $cmd = $execs_HR->{"cmsearch"} . " $opt_str $mdl_file $seq_file > $stdout_file";
+    }
   }
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
@@ -2088,7 +2192,7 @@ sub cmsearch_or_cmscan_run {
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_parse_sorted_tblout()
+# Subroutine:  cmsearch_parse_sorted_tblout()
 # Incept:      EPN, Wed Mar 20 13:30:16 2019
 #
 # Purpose:     Parse a sorted cmsearch tblout output file and 
@@ -2097,7 +2201,7 @@ sub cmsearch_or_cmscan_run {
 #
 # Arguments: 
 #  $tblout_file:   name of sorted tblout file to parse
-#  $stg_key:       stage key, "rpn.cls" or "std.cls" for classification (cmscan) ,
+#  $stg_key:       stage key, "rpn.cls" or "std.cls" for classification (cmsearch),
 #                  or "rpn.cdt" or "std.cdt" for coverage determination (cmsearch)
 #  $mdl_info_AHR:  ref to model info array of hashes
 #  $results_HHHR:  ref to results 3D hash
@@ -2109,12 +2213,14 @@ sub cmsearch_or_cmscan_run {
 # Dies: if there's a problem parsing the tblout file
 #      
 ################################################################# 
-sub cmsearch_or_cmscan_parse_sorted_tblout {
-  my $sub_name = "cmsearch_or_cmscan_parse_sorted_tblout()";
+sub cmsearch_parse_sorted_tblout {
+  my $sub_name = "cmsearch_parse_sorted_tblout()";
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
   my ($tblout_file, $stg_key, $mdl_info_AHR, $results_HHHR, $opt_HHR, $FH_HR) = @_;
+
+  my $opt_mlist_used = opt_IsUsed("--mlist", $opt_HHR);
 
   if(($stg_key ne "rpn.cls") && ($stg_key ne "rpn.cdt") && 
      ($stg_key ne "std.cls") && ($stg_key ne "std.cdt")) { 
@@ -2171,14 +2277,21 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
       $s_to   = undef;
       $strand = undef;
       my @el_A = split(/\s+/, $line);
-      if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { # cmscan --trmF3 tblout 
-        #modelname sequence                      score  start    end strand bounds ovp      seqlen
-        ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
-        #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
+      if(($stg_key eq "rpn.cls") || ($stg_key eq "std.cls")) { # cmsearch --trmF3 tblout 
+        # cmsearch output
+        #sequence                      modelname  score  start    end strand bounds ovp      seqlen
+        ##---------------------------  ---------  ----------------- ------ ------ ------ ------ ------ --- -----------
+        #gi|1215708385|gb|KY594653.1|   NC_039477 275.8      1    301      +     []  *          301
         if(scalar(@el_A) != 9) { 
           ofile_FAIL("ERROR parsing $tblout_file for stage $stg_key, unexpected number of space-delimited tokens on line $line", 1, $FH_HR); 
         }
-        ($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        ($seq, $model, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
+        # if we were parsing cmscan --trmF3 it would look like this:
+        #modelname sequence                      score  start    end strand bounds ovp      seqlen
+        ##--------- ---------------------------- ------ ------ ------ ------ ------ --- -----------
+        #NC_039477  gi|1215708385|gb|KY594653.1|  275.8      1    301      +     []  *          301
+        # and we would parse like this:
+        #($model, $seq, $score, $s_from, $s_to, $strand) = ($el_A[0], $el_A[1], $el_A[2], $el_A[3], $el_A[4], $el_A[5]);
         if(! defined $results_HHHR->{$seq}) { 
           %{$results_HHHR->{$seq}} = ();
         }
@@ -2230,10 +2343,10 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
             }
           }
         }
-        if($is_1)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_2)   { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_eg)  { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
-        if($is_esg) { cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_1)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.1"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_2)   { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.2"}},   $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_eg)  { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.eg"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
+        if($is_esg) { cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.esg"}}, $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, $group, $subgroup, $FH_HR); }
       }
       else { # $stg_key eq "rpn.cdt" or "std.cdt": coverage determination, cmsearch --tblout output
         ##target name                 accession query name           accession mdl mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
@@ -2247,12 +2360,12 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
         if((! defined $results_HHHR->{$seq}{"$stg_key.bs"}) || # first (top) hit for this sequence, 
            (($results_HHHR->{$seq}{"$stg_key.bs"}{"model"}   eq $model) && 
             ($results_HHHR->{$seq}{"$stg_key.bs"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
-          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.bs"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
         }
         elsif((! defined $results_HHHR->{$seq}{"$stg_key.os"}) || # first (top) hit on OTHER strand for this sequence, 
               (($results_HHHR->{$seq}{"$stg_key.os"}{"model"}   eq $model) && 
                ($results_HHHR->{$seq}{"$stg_key.os"}{"bstrand"} eq $strand))) { # additional hit for this sequence/model/strand trio
-          cmsearch_or_cmscan_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
+          cmsearch_store_hit(\%{$results_HHHR->{$seq}{"$stg_key.os"}},  $model, $score, $strand, $bias, $s_from, $s_to, $m_from, $m_to, undef, undef, $FH_HR); # undefs are for group and subgroup which are irrelevant in coverage determination stage
         }
       }
     }
@@ -2262,7 +2375,7 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
 }
 
 #################################################################
-# Subroutine:  cmsearch_or_cmscan_store_hit()
+# Subroutine:  cmsearch_store_hit()
 # Incept:      EPN, Thu Mar 21 14:55:25 2019
 #
 # Purpose:     Store information on a hit in %{$HR}. 
@@ -2287,8 +2400,8 @@ sub cmsearch_or_cmscan_parse_sorted_tblout {
 # Dies: if not the first hit, but $HR->{"model"} ne $model
 #      
 ################################################################# 
-sub cmsearch_or_cmscan_store_hit { 
-  my $sub_name = "cmsearch_or_cmscan_store_hit()";
+sub cmsearch_store_hit { 
+  my $sub_name = "cmsearch_store_hit()";
   my $nargs_expected = 12;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
@@ -2716,6 +2829,7 @@ sub add_classification_alerts {
 #                          can be undef if $alt_seq_instances_HHR is undef
 #  $alt_seq_instances_HHR: ref to hash of per-seq alert instances, PRE-FILLED
 #                          undef to use stg_results_HHHR->{}{"cls.1"} # round 1 search
+#  $mdl_sub_HR:            ref to hash of of model substitutions, PRE-FILLED, should be undef unless --msub used
 #  $mdl_seq_name_HAR:      ref to hash of arrays of sequences per model, FILLED HERE
 #  $mdl_seq_len_HR:        ref to hash of summed sequence length per model, FILLED HERE
 #  $mdl_ct_HR:             ref to hash of number of sequences per model, FILLED HERE, can be undef if $stg_key eq "rpn.cdt"
@@ -2728,11 +2842,11 @@ sub add_classification_alerts {
 ################################################################# 
 sub populate_per_model_data_structures_given_classification_results {
   my $sub_name = "populate_per_model_data_structures_given_classification_results";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, $cls_output_HHR, 
-      $alt_info_HHR, $alt_seq_instances_HHR, 
+  my ($seq_name_AR, $seq_len_HR, $stg_key, $stg_results_HHHR, 
+      $cls_output_HHR, $alt_info_HHR, $alt_seq_instances_HHR, $mdl_sub_HR, 
       $mdl_seq_name_HAR, $mdl_seq_len_HR, $mdl_ct_HR, $seq2mdl_HR, $FH_HR) = @_;
 
   # determine what stage results we are using and check that combo of 
@@ -2765,6 +2879,10 @@ sub populate_per_model_data_structures_given_classification_results {
                     (defined $stg_results_HHHR->{$seq_name}{$cls_2d_key}{"model"})) ? 
                     $stg_results_HHHR->{$seq_name}{$cls_2d_key}{"model"} : undef;
     if(defined $mdl_name) { 
+      # check if we need to substitute another model for this one (--msub option)
+      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$mdl_name})) { 
+        $mdl_name = $mdl_sub_HR->{$mdl_name};
+      }
       # determine if we are going to add this sequence to our per-model hashes, depending on what round
       my $add_seq = 0;
       if(($cls_2d_key eq "std.cdt.1") || ($cls_2d_key eq "rpn.cdt.1")) { 
@@ -4820,8 +4938,15 @@ sub add_low_similarity_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $terminal_min_length = opt_Get("--lowsimterm",  $opt_HHR); # minimum length of terminal missing region that triggers an alert
-  my $internal_min_length = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
+  my $terminal_5_min_length = opt_Get("--lowsim5term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
+  my $terminal_3_min_length = opt_Get("--lowsim3term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
+  my $internal_min_length   = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
+  my $do_skip_pv            = opt_Get("--skip_pv",     $opt_HHR) ? 1 : 0;
+
+  # set $min_length as minimum of the 5 length thresholds
+  my $min_length = $terminal_5_min_length;
+  if($min_length > $terminal_3_min_length) { $min_length = $terminal_3_min_length; }
+  if($min_length > $internal_min_length)   { $min_length = $internal_min_length; }
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
@@ -4858,11 +4983,11 @@ sub add_low_similarity_alerts {
         foreach my $missing_coords_tok (@missing_coords_A) { 
           my ($start, $stop, undef) = vdr_CoordsSegmentParse($missing_coords_tok, $FH_HR);
           my $length = abs($start - $stop) + 1;
-          if($bstrand eq "+") { 
-            my $is_start   = ($start == 1)        ? 1 : 0;
-            my $is_end     = ($stop  == $seq_len) ? 1 : 0;
-            my $min_length = ($is_start || $is_end) ? $terminal_min_length : $internal_min_length;
-            if($length >= $min_length) { 
+          if($length >= $min_length) { 
+            # length is greater than the minimum of all alert length reporting thresholds
+            if($bstrand eq "+") { 
+              my $is_start   = ($start == 1)        ? 1 : 0;
+              my $is_end     = ($stop  == $seq_len) ? 1 : 0;
               # does this overlap with a feature? 
               my $nftr_overlap = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
@@ -4894,38 +5019,39 @@ sub add_low_similarity_alerts {
                     if($noverlap > 0) { 
                       $nftr_overlap++;
                       # only actually report an alert for non-CDS and non-MP features
-                      # because CDS and MP are independently validated by blastx
-                      if(! $ftr_is_or_is_identical_to_cds_or_mp) { 
-                        my $alt_msg = "$noverlap nt overlap b/t low similarity region ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
-                        if($is_start) { 
+                      # because CDS and MP are independently validated by blastx (unless --skip_pv)
+                      if((! $ftr_is_or_is_identical_to_cds_or_mp) || ($do_skip_pv)) { 
+                        printf("is_start: $is_start, is_end: $is_end, length: $length\n");
+                        my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                        if(($is_start) && ($length >= $terminal_5_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
-                        if($is_end) { 
+                        if(($is_end) && ($length >= $terminal_3_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
-                        if((! $is_start) && (! $is_end)) { 
+                        if((! $is_start) && (! $is_end) && ($length >= $internal_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimif", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                       }
                     }
                   }
                 }
-              }
+              } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
               if($nftr_overlap == 0) { # no features overlapped, throw lowsim5s, lowsim3s, or lowsimis
                 my $alt_str = "low similarity region of length $length ($start..$stop)";
-                if($is_start) { 
+                if(($is_start) && ($length >= $terminal_5_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
                 }
-                if($is_end) { 
+                if(($is_end) && ($length >= $terminal_3_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_str, $FH_HR);
                 }
-                if((! $is_start) && (! $is_end)) { 
+                if((! $is_start) && (! $is_end) && ($length >= $internal_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_str, $FH_HR);
                 }
               }
             }
-          }
-        }
+          } # end of 'if($length >= $min_length)'
+        } # end of 'foreach my $missing_coords_tok (@missing_coords_A)'
       }
     }
   }  
@@ -5338,8 +5464,9 @@ sub add_protein_validation_alerts {
 #  $execs_HR:                  REF to a hash with "blastx" and "parse_blastx.pl""
 #                              executable paths
 #  $out_root:                  output root for the file names
-#  $mdl_info_HR:               REF to hash of model info
+#  $mdl_info_HR:               REF to hash of arrays of model info
 #  $ftr_info_AHR:              REF to hash of arrays with information on the features, PRE-FILLED
+#  $blastx_db_file             blastx DB file to use (usually $mdl_info_HR->{"blastdbpath"}, but can be diff if --xsub used)
 #  $do_separate_cds_fa_files:  '1' if we output a separate file for the protein validation stage
 #  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:            REF to 2D hash of output file information, ADDED TO HERE
@@ -5351,18 +5478,14 @@ sub add_protein_validation_alerts {
 ################################################################# 
 sub run_blastx_and_summarize_output {
   my $sub_name = "run_blastx_and_summarize_output";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $do_separate_cds_fa_files, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($execs_HR, $out_root, $mdl_info_HR, $ftr_info_AHR, $blastx_db_file,$do_separate_cds_fa_files, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $nftr = scalar(@{$ftr_info_AHR});
   my $mdl_name = $mdl_info_HR->{"name"};
-  my $blastx_db_file = $mdl_info_HR->{"blastdbpath"};
-  if(! defined $blastx_db_file) { 
-    ofile_FAIL("ERROR, in $sub_name, path to BLAST DB is unknown for model $mdl_name", 1, $FH_HR);
-  }
 
   # make a query fasta file for blastx, consisting of full length
   # sequences (with sequence descriptions removed because they can
@@ -6236,6 +6359,7 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   my $ret_ftr_idx = undef;
+
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
     # find it in @{$ftr_info_AHR->{"coords"}}
@@ -7025,6 +7149,7 @@ sub alert_instances_check_prevents_annot {
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $sda_output_HHR:          REF to 2D hash of -s related results to output, PRE-FILLED, undef unless -s
 #  $rpn_output_HHR:          REF to 2D hash of -r related results to output, PRE-FILLED, undef unless -r
+#  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, undef unless --msub used
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7037,14 +7162,15 @@ sub alert_instances_check_prevents_annot {
 #################################################################
 sub output_tabular { 
   my $sub_name = "output_tabular";
-  my $nargs_exp = 17;
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $mdl_sub_HR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
@@ -7195,10 +7321,14 @@ sub output_tabular {
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
     if($seq_mdl1 ne "-") { 
-      if(! defined $mdl_pass_ct_H{$seq_mdl1}) { $mdl_pass_ct_H{$seq_mdl1} = 0; }
-      if(! defined $mdl_fail_ct_H{$seq_mdl1}) { $mdl_fail_ct_H{$seq_mdl1} = 0; }
-      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$seq_mdl1}++; }
-      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$seq_mdl1}++; }
+      my $tmp_mdl = $seq_mdl1;
+      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
+        $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
+      }
+      if(! defined $mdl_pass_ct_H{$tmp_mdl}) { $mdl_pass_ct_H{$tmp_mdl} = 0; }
+      if(! defined $mdl_fail_ct_H{$tmp_mdl}) { $mdl_fail_ct_H{$tmp_mdl} = 0; }
+      if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$tmp_mdl}++; }
+      if($seq_pass_fail eq "FAIL") { $mdl_fail_ct_H{$tmp_mdl}++; }
       $zero_classifications = 0;
     }
 
@@ -7694,6 +7824,7 @@ sub helper_tabular_replace_spaces {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, should be undef unless --msub used
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -7704,12 +7835,12 @@ sub helper_tabular_replace_spaces {
 #################################################################
 sub output_feature_table { 
   my $sub_name = "output_feature_table";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $mdl_sub_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $do_blastx = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--hmmer", $opt_HHR)) ? 0 : 1;
 
@@ -7789,6 +7920,9 @@ sub output_feature_table {
 
     $mdl_name = helper_ftable_class_model_for_sequence($stg_results_HHHR, $seq_name);
     if(defined $mdl_name) { 
+      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$mdl_name})) { 
+        $mdl_name = $mdl_sub_HR->{$mdl_name};
+      }
       my $ftr_info_AHR     = \@{$ftr_info_HAHR->{$mdl_name}};     # for convenience
       my $ftr_results_HAHR = \%{$ftr_results_HHAHR->{$mdl_name}}; # for convenience
       my $sgm_results_HAHR = \%{$sgm_results_HHAHR->{$mdl_name}}; # for convenience
@@ -9224,13 +9358,13 @@ sub parse_cdt_tblout_file_and_replace_ns {
   while(my $line = <IN>) { 
     if($line !~ m/^#/) { 
       chomp $line; 
-      # example from cmscan tblout
+      # example from cmsearch tblout
       #target name  accession query name   accession mdl     mdl from   mdl to seq from   seq to strand trunc pass   gc  bias  score   E-value inc description of target
       #------------ --------- ------------ --------- ---     -------- -------- -------- -------- ------ ----- ---- ---- ----- ------ --------- --- ---------------------
       #MT281530.1   -         NC_045512            - hmm         8276   27807      8232    27769      +     -    6 0.37 583.9 20047.7         0 !   -
       #
       # example from blastn-based tblout (converted) 
-      #MT281530.1  -          NC_045512           -  blastn      8277   27806      8233    27768      +     -    -    -   0.0 36027.0       0.0 ?   -
+      #MT281530.1   -         NC_045512            -  blastn      8277   27806      8233    27768      +     -    -    -   0.0 36027.0       0.0 ?   -
       chomp $line;
       my @el_A = split(/\s+/, $line);
       if(scalar(@el_A) < 18) {
@@ -9972,6 +10106,61 @@ sub get_accession_from_ncbi_seq_name {
   $seq_name =~ s/\|/\_/g;
 
   return $seq_name;
+}
+
+#################################################################
+# Subroutine: validate_and_parse_sub_file
+# Incept:     EPN, Fri Sep 25 15:06:04 2020
+# Purpose:    Validate a file passed with option --msub or --xsub.
+#             Each line should have 2 white-space separated tokens.
+#             Both tokens are model names. Token 2 models will substitute
+#             for token 1 models.
+#
+# Arguments:
+#  $sub_file:     name of file (we already checked that it exists)
+#  $mdl_info_AHR: REF to model info array of hashes, possibly added to here 
+#  $sub_HR:       REF to hash of model substitutions, filled here
+#  $FH_HR:        REF to hash of file handles, including "cmd"
+#             
+# Returns:  $err_msg, "" if no errors, if ne "", caller should exit in error
+#
+# Dies:     if $sub_file does not exist or is empty
+#
+#################################################################
+sub validate_and_parse_sub_file { 
+  my $sub_name = "validate_and_parse_sub_file";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sub_file, $mdl_info_AHR, $sub_HR, $FH_HR) = (@_);
+
+  my $err_msg = "";
+  my %mdl_name_H = (); # key is a model name, value is 1
+  my $nmdl = scalar(@{$mdl_info_AHR});
+
+  # create a hash of all model names, to make it easy to look them up
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name_H{$mdl_info_AH[$mdl_idx]{"name"}} = 1;
+  }
+  my @sub_line_A = (); # all lines read from $sub_file
+  utl_FileLinesToArray($sub_file, 1, \@sub_line_A, $FH_HR);
+  foreach my $line (@sub_line_A) { 
+    if($line =~ /^(\S+)\s+(\S+)$/) { 
+      my ($mdl1, $mdl2) = ($1, $2);
+      if(! defined $mdl_name_H{$mdl1}) { 
+        $err_msg .= "unexpected model name: $mdl1\n";
+      }
+      if(! defined $mdl_name_H{$mdl2}) { 
+        $err_msg .= "unexpected model name: $mdl2\n";
+      }
+      $sub_HR->{$mdl1} = $mdl2;
+    }
+    else { 
+      $err_msg .= "unable to parse line: $line\n";
+    }
+  }
+
+  return $err_msg;
 }
 
 

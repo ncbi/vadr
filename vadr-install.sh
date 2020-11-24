@@ -21,7 +21,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.1.1"
+VERSION="1.1.2"
 # bio-easel
 BEVERSION="Bio-Easel-0.12"
 # blast+
@@ -48,13 +48,13 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # make sure 1st argument is either "linux" or "macosx"
-if [ $1 == "linux" ]; then
+if [ "$1" = "linux" ]; then
     INPUTSYSTEM="linux";
 fi
-if [ $1 == "macosx" ]; then
+if [ "$1" = "macosx" ]; then
     INPUTSYSTEM="macosx";
 fi
-if [ $INPUTSYSTEM == "?" ]; then 
+if [ "$INPUTSYSTEM" = "?" ]; then 
    echo "Usage: $0 <\"linux\" or \"macosx\">"
    exit 1
 fi
@@ -79,10 +79,10 @@ echo "Set VADRINSTALLDIR as current directory ($VADRINSTALLDIR)."
 echo "------------------------------------------------"
 # vadr
 echo "Downloading vadr ... "
-curl -k -L -o $VVERSION.zip https://github.com/nawrockie/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
+curl -k -L -o $VVERSION.zip https://github.com/ncbi/vadr/archive/$VVERSION.zip; unzip $VVERSION.zip; mv vadr-$VVERSION vadr; rm $VVERSION.zip
 # for a test build of a release, comment out above curl and uncomment block below
 # ----------------------------------------------------------------------------
-#git clone https://github.com/nawrockie/vadr.git vadr
+#git clone https://github.com/ncbi/vadr.git vadr
 #cd vadr
 #git checkout release-$VERSION
 #rm -rf .git
@@ -105,7 +105,7 @@ echo "------------------------------------------------"
 #   'infernal block 2' below.
 
 # ----- infernal block 1 start  -----
-if [ $INPUTSYSTEM == "linux" ]; then
+if [ "$INPUTSYSTEM" = "linux" ]; then
     echo "Downloading Infernal version $IVERSION for Linux"
     curl -k -L -o infernal.tar.gz http://eddylab.org/infernal/infernal-$IVERSION-linux-intel-gcc.tar.gz
 else
@@ -114,7 +114,7 @@ else
 fi
 tar xfz infernal.tar.gz
 rm infernal.tar.gz
-if [ $INPUTSYSTEM == "linux" ]; then
+if [ "$INPUTSYSTEM" = "linux" ]; then
     mv infernal-$IVERSION-linux-intel-gcc infernal
 else
     mv infernal-$IVERSION-macosx-intel infernal
@@ -161,7 +161,7 @@ echo "Finished building HMMER "
 echo "------------------------------------------------"
 
 # download blast binaries
-if [ $INPUTSYSTEM == "linux" ]; then
+if [ "$INPUTSYSTEM" = "linux" ]; then
 echo "Downloading BLAST version $BVERSION for Linux"
 curl -k -L -o blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/$BVERSION/ncbi-blast-$BVERSION+-x64-linux.tar.gz
 else 
@@ -211,7 +211,7 @@ echo ""
 echo ""
 echo "********************************************************"
 echo "The final step is to update your environment variables."
-echo "(See https://github.com/nawrockie/vadr/blob/$VERSION/documentation/install.md for more information.)"
+echo "(See https://github.com/ncbi/vadr/blob/$VERSION/documentation/install.md for more information.)"
 echo ""
 echo "If you are using the bash or zsh shell (zsh is default in MacOS/X as"
 echo "of v10.15 (Catalina)), add the following lines to the end of your"

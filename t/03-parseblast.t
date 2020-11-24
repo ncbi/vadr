@@ -86,7 +86,6 @@ foreach my $reqd_file (@reqd_file_A) {
 }
 
 # run parse_blastn.pl
-@to_remove_A = ();
 my $tmp_blastn_out = "blastn1.tmp";
 push(@to_remove_A, $tmp_blastn_out);
 $cmd = "perl $parse_blast_path --input $blastn_in_path --program n --splus > $tmp_blastn_out";
