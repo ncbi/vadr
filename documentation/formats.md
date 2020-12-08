@@ -508,7 +508,7 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 |  13 | `bias`                | summed bit score due to biased composition (deviation from expected nucleotide frequencies) of all hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
 |  14 | `num hits`            | number of hits on strand `str` to model `model1` for this sequence in the coverage determination stage |
 |  15 | `str`                 | strand with the top-scoring hit to `model1` for this sequence in the classification stage |
-|  16 | `model2`              | name of the second best-matching model for this sequence, this is the model with the top-scoring hit for this sequence across all hits that are not to `model1` in the classification stage |
+|  16 | `model2`              | name of the second best-matching model for this sequence, this is the model with the top-scoring hit for this sequence across all hits that are not to `model1` *and* not in the same subgroup as `model1` in the classification stage (if `model1` does not have a subgroup, all other models are considered not in its subgroup) |
 |  17 | `grp2`                | group of model `model2`, defined in model info file, or `-` if none |
 |  18 | `subgrp2`             | subgroup of model `model2`, defined in model info file, or `-`' if none | 
 |  19 | `score diff`          | bit score difference between summed bit score for all hits to `model1` on strand `str` and summed bit score for all hits to `model2` on strand with top-scoring hit to `model2` in the classification stage |
