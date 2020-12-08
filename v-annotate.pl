@@ -5710,14 +5710,19 @@ sub parse_blastx_results {
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
             
             # should we store this query/target/hit trio?
-            # we do if A, B, and C are all TRUE and one or both of D or E is TRUE
+            # we do if A, B, and C are all TRUE and at least one of D or E or F is TRUE
             #  A. this query/target pair is compatible (query is full sequence or correct CDS feature) 
             #  B. if --xlongest not used: this is the highest scoring hit for this feature for this sequence (query/target pair)? 
             #     if --xlongest is  used: this is the longest hit (query coords) for this feature for this sequence (query/target pair)? 
             #  C. query length (full length seq or predicted CDS) is at least <x> nt from --minpvlen
             # 
-            #  D. hit score is above minimum (--xlonescore)
-            #  E. hit overlaps by at least 1 nt with a nucleotide prediction
+            #  D. query is a single CDS feature (not the full sequence), in this case checking for overlap
+            #     won't work because blast coords are relative to CDS not full sequence, and we already know it
+            #     must overlap because query/target are compatible and query is not full seq (A)
+            #  E. hit score is above minimum (--xlonescore)
+            #  F. query is the full sequence ($q_ftr_idx == -1) and blast hit overlaps by at least 1 nt 
+            #     with a nucleotide prediction for a CDS
+
             my $blast_hit_qlen = abs($blast_start - $blast_stop) + 1;
             my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
             my $b_true = undef;
@@ -5732,17 +5737,18 @@ sub parse_blastx_results {
 
             my $c_true = ($q_len >= $minpvlen) ? 1 : 0; # length >= --minpvlen
             if($a_true && $b_true && $c_true) { 
-              my $d_true = ($cur_H{"RAWSCORE"} >= $xlonescore) ? 1 : 0;
-              my $e_true = 0; 
-              # only bother determining $e_true if $d_true is 0
-              if(! $d_true) { 
+              my $d_true = ($q_ftr_idx != -1) ? 1 : 0; # D is true if query is a single CDS as opposed to full sequence
+              my $e_true = ($cur_H{"RAWSCORE"} >= $xlonescore) ? 1 : 0; # E is true if raw score exceeds --xlonescore
+              my $f_true = 0; 
+              # only bother determining $f_true if $d_true and $e_true are both false (0)
+              if((! $d_true) && (! $e_true)) { 
                 if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
                    ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
                   my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx], $blast_start, $blast_stop, $blast_strand, $FH_HR);
-                  if($noverlap > 0) { $e_true = 1; }
+                  if($noverlap > 0) { $f_true = 1; }
                 }
               }
-              if($d_true || $e_true) { 
+              if($d_true || $e_true || $f_true) { 
                 # store the hit
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
