@@ -1956,7 +1956,7 @@ sub coverage_determination_stage {
 
     # parse cmsearch round 2 tblout data
     cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
-                                           $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
+                                 $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
   }
   return;
 }
