@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.1.1 [June 2020]
+# version: 1.1.2 [Nov 2020]
 #
 # vadr_seed.pm
 # Eric Nawrocki
@@ -123,7 +123,7 @@ sub run_blastn_and_summarize_output {
   # such alignments (it was written for blastx originally for which subject is
   # always +) but that's okay because those hits are to negative strand of
   # the sequence (actually negative strand of the subject/model but blastn revcomps
-  # the subject instead of the query like cmscan would do), and we don't care
+  # the subject instead of the query like cmsearch/cmscan would do), and we don't care
   # about negative strand hit indel info.
   my $blastn_summary_file = $out_root . ".$stg_key.blastn.summary.txt";
   my $parse_cmd = $execs_HR->{"parse_blast"} . " --program n --input $blastn_out_file --splus > $blastn_summary_file";
@@ -147,13 +147,13 @@ sub run_blastn_and_summarize_output {
 #
 #             Output mode 1: 1 file, produced if $seq2mdl_HR is undef
 #
-#             "blastn.{rpn.cls,std.cls}.pretblout" file: cmscan --trmF3 output
+#             "blastn.{rpn.cls,std.cls}.pretblout" file: cmsearch --trmF3 output
 #             format file with each hit on a separate line and
 #             individual hit scores reported for each hit. This is
 #             later processed by blastn_pretblout_to_tblout() to sum
 #             bit scores for all hits with the same model/seq/strand
 #             so we can classify sequences the same way we do in
-#             default mode (cmscan based classification).
+#             default mode (cmsearch based classification).
 #
 #             Output mode 2: 2 files produced per model with >= 1 matching
 #             sequence, produced if $seq2mdl_HR is defined.
@@ -221,9 +221,9 @@ sub parse_blastn_results {
     # have to post-process it in blastn_pretblout_to_tblout so that the
     # top hit per model/sequence/strand trio includes the *summed* score
     # for that model/strand/strand instead of just the hit score. This
-    # way we will match the cmscan --trmF3 output downstream steps
+    # way we will match the cmsearch --trmF3 output downstream steps
     # expect.
-    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "$stg_key.blastn.pretblout", $out_root . ".$stg_key.blastn.pretblout",  0, $do_keep, "blastn output converted to cmscan --trmF3 tblout format (hit scores)");
+    ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "$stg_key.blastn.pretblout", $out_root . ".$stg_key.blastn.pretblout",  0, $do_keep, "blastn output converted to cmsearch --trmF3 tblout format (hit scores)");
     $pretblout_FH = $ofile_info_HHR->{"FH"}{"$stg_key.blastn.pretblout"}; 
     printf $pretblout_FH ("%-30s  %-30s  %8s  %9s  %9s  %6s  %6s  %3s  %11s\n", 
                           "#modelname/subject", "sequence/query", "bitscore", "start", "end", "strand", "bounds", "ovp", "seqlen");
@@ -606,7 +606,7 @@ sub blastn_pretblout_to_tblout {
         ofile_FAIL("ERROR in $sub_name, read model/seq/strand trio not in input scsum hash: model:$model, seq:$seq, strand:$strand on line:\n$line\n", 1, $FH_HR);
       }
       printf $tblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
-                         $model, $seq, $scsum_HHHR->{$model}{$seq}{$strand}, 
+                         $seq, $model, $scsum_HHHR->{$model}{$seq}{$strand}, 
                          $start, $end, $strand, $bounds, $ovp, $seqlen);
       # set scsum to zero for all subsequent hits to this trio      
       $scsum_HHHR->{$model}{$seq}{$strand} = 0.; 

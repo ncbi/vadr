@@ -40,6 +40,8 @@ for t in \
     do-noftr-tests.sh \
     do-nends-tests.sh \
     do-ftskipfl-tests.sh \
+    do-sub-tests.sh \
+    do-lowsim-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t

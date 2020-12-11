@@ -1,5 +1,22 @@
 # VADR 1.x release notes 
 
+### VADR 1.1.2 release (Nov 2020): Minor update
+
+  * adds v-annotate.pl option --mlist to specify only a subset of
+    models in the model info file be used
+  * adds v-annotate.pl option --msub to substitute models after the
+    classification stage
+  * adds v-annotate.pl option --xsub to substitute blast dbs for the
+    blastx protein validation stage
+  * adds v-annotate.pl options to separately modify minimum length for
+    lowsim5s/lowsim5f and lowsim3s/lowsim3f alerts 
+  * adds 'benchmark mode' for v-test.pl with -m that produces output
+    detailing differences between expected and observed output files
+  * enforces that model names not include '(' or ')' (github issue
+    #22)
+  * fixes bug in install script that prevented building on some Ubuntu
+    OS versions (github issue #24)
+
 ### VADR 1.1.1 release (July 2020): Minor update
 
   * in feature table output (only) features that start and/or end with
@@ -83,5 +100,5 @@
 ---
 
 For more information, see the [git log for the develop
-branch](https://github.com/nawrockie/vadr/commits/develop).
+branch](https://github.com/ncbi/vadr/commits/develop).
 

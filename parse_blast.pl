@@ -10,12 +10,12 @@
 # VecScreen_plus_taxonomy package
 #
 # Modifications in vadr package by Eric Nawrocki
-# https://github.com/nawrockie/vadr
+# https://github.com/ncbi/vadr
 # 
 # Usage: parse_blast.pl --program x --input <blastx output file>
 # OR     parse_blast.pl --program n --input <blastn output file>
 #        
-# vadr 1.1.1 June 2020
+# vadr 1.1.2 Nov 2020
 
 use strict;
 use warnings;

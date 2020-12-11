@@ -32,7 +32,7 @@ rmdir: va-noro.ftskipfl
 # 
 # same as above but with --minpvlen 3 so short feature is output to feature table and ftskipfl alert goes away
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --fstlowthr 0.8 --fsthighthr 0.9 --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 $VADRSCRIPTSDIR/testfiles/noro.ftskipfl.1.fa va-noro.ftskipfl.min3 > va-noro.ftskipfl.min3.out
-desc: annotate-ftskipfl
+desc: annotate-ftskipfl2
 out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.pass.tbl
 out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.fail.tbl
 out: va-noro.ftskipfl.min3/va-noro.ftskipfl.min3.vadr.alt.list

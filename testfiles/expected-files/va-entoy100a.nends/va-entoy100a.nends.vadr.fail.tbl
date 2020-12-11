@@ -618,6 +618,8 @@ Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.740<0.900]
 ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
 ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 19 positions are Ns, first non-N is position 91]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein three) region within annotated feature at 3' end of sequence lacks significant similarity [21 nt overlap b/t low similarity region of length 26 (75..100) and annotated feature (67..95), strand: +]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein three mp2) region within annotated feature at 3' end of sequence lacks significant similarity [17 nt overlap b/t low similarity region of length 26 (75..100) and annotated feature (76..92), strand: +]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 91]
 >Feature ENTOY100A/three-cds-only-stop-len4-92-95
@@ -650,7 +652,10 @@ ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 7 pos
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.690<0.900]
 ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein two) region within annotated feature at 3' end of sequence lacks significant similarity [4 nt overlap b/t low similarity region of length 31 (70..100) and annotated feature (32..73), strand: +]
 ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 20 positions are Ns, first non-N is position 92]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein three) region within annotated feature at 3' end of sequence lacks significant similarity [26 nt overlap b/t low similarity region of length 31 (70..100) and annotated feature (67..95), strand: +]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein three mp2) region within annotated feature at 3' end of sequence lacks significant similarity [17 nt overlap b/t low similarity region of length 31 (70..100) and annotated feature (76..92), strand: +]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 8 positions are Ns, final non-N is position 92]
 >Feature ENTOY100A/three-cds-only-stop-len3-93-95
@@ -683,5 +688,7 @@ ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 8 pos
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.680<0.900]
 ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein two) region within annotated feature at 3' end of sequence lacks significant similarity [5 nt overlap b/t low similarity region of length 32 (69..100) and annotated feature (32..73), strand: +]
 ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 21 positions are Ns, first non-N is position 93]
+ERROR: LOW_FEATURE_SIMILARITY_END: (protein three) region within annotated feature at 3' end of sequence lacks significant similarity [27 nt overlap b/t low similarity region of length 32 (69..100) and annotated feature (67..95), strand: +]
 ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 9 positions are Ns, final non-N is position 93]
