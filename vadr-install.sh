@@ -5,12 +5,7 @@
 # A shell script for downloading and installing VADR and its dependencies.
 # 
 # usage: 
-#
-# To download and install:
 # vadr-install.sh <"linux" or "macosx">
-#
-# To only download: 
-# vadr-install.sh <"linux" or "macosx"> download
 #
 # for example:
 # vadr-install.sh linux
