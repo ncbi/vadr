@@ -48,7 +48,7 @@ opt_Add("-s",           "boolean", 0,                        1,    undef, "--rmo
 opt_Add("-m",           "boolean", 0,                        1,"--noteamcity", undef, "benchmark mode: compare certain fields, do not diff", "benchmark mode: compare certain fields, do not diff files",   \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"2"} = "options for defining variables in testing files";
 #       option       type        default                group  requires incompat          preamble-output                                              help-output    
-opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef,       "build directory, replaces !dirbuild! in test file with <s>", "build directory, replaces !dirbuild! in test file with <s>", \%opt_HH, \@opt_order_A);
+#opt_Add("--dirbuild",   "string",  undef,                    2,   undef, undef,       "build directory, replaces !dirbuild! in test file with <s>", "build directory, replaces !dirbuild! in test file with <s>", \%opt_HH, \@opt_order_A);
 $opt_group_desc_H{"3"} = "other options";
 opt_Add("--rmout",      "boolean", 0,                        3,    undef, "-s",       "if output files listed in testin file already exist, remove them", "if output files listed in testin file already exist, remove them", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,                        3,    undef, undef,      "leaving intermediate files on disk", "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -66,7 +66,7 @@ my $options_okay =
                 'f'            => \$GetOptions_H{"-f"},
                 's'            => \$GetOptions_H{"-s"},
                 'm'            => \$GetOptions_H{"-m"},
-                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
+#                'dirbuild=s'   => \$GetOptions_H{"--dirbuild"},
                 'rmout'        => \$GetOptions_H{"--rmout"},
                 'keep'         => \$GetOptions_H{"--keep"},
                 'noteamcity'   => \$GetOptions_H{"--noteamcity"},
@@ -441,7 +441,7 @@ sub parse_test_or_mark_file {
         }
         elsif((opt_IsUsed("--rmout", $opt_HHR)) && (opt_Get("--rmout", $opt_HHR))) { 
           # --rmout used, remove any file that already exists
-          if(-e $outfile) { utl_FileRemoveUsingSystemRm($outfile, "v-test.pl", \%opt_HH, $FH_HR); }
+          if(-e $outfile) { utl_FileRemoveUsingSystemRm($outfile, "v-test.pl", $opt_HHR, $FH_HR); }
         }
         else { # -s not used, --rmout not used
           if(-e $outfile) { ofile_FAIL("ERROR, output file $outfile already exists (and -s/--rmout not used)", 1, $FH_HR); }
