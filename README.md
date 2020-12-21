@@ -104,7 +104,7 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 ---
 ## Reference <a name="reference"></a>
 * The recommended citation for using VADR is:
-  Alejandro A Sch\"{a}ffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
+  Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
   J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
   validation and annotation of virus sequence submissions to
   GenBank. BMC Bioinformatics 21, 211
