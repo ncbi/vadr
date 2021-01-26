@@ -4615,14 +4615,22 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                   if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) ||
                      (($ftr_strand eq "-") && ($ftr_stop > 1))) { 
                     # we have some sequence left 3' of ftr_stop
+                    # *careful* we don't always want to fetch starting at next nt after predicted 
+                    # stop, because we have to make sure 1st position of $ext_sqstring is frame 1
+                    # because sqstring_find_stops() expects this.
                     my $ext_sqstring = undef;
+                    my $ext_sqstring_start = undef;
                     if($ftr_strand eq "+") { 
-                      # fetch to the end of the sequence and check for first in-frame stop
-                      # assuming that next nucleotide is frame 1 (first position of a codon)
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
+                      if   (($ftr_len % 3) == 0) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at next posn
+                      elsif(($ftr_len % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
+                      elsif(($ftr_len % 3) == 2) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at prev posn
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, $seq_len, 0); 
                     }
                     else { # negative strand
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, 1, 1);
+                      if   (($ftr_len % 3) == 0) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at next posn
+                      elsif(($ftr_len % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
+                      elsif(($ftr_len % 3) == 2) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at prev posn
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, 1, 1);
                     }
                     my @ext_nxt_stp_A = ();
                     sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
