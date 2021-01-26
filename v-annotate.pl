@@ -4617,28 +4617,12 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                     # we have some sequence left 3' of ftr_stop
                     my $ext_sqstring = undef;
                     if($ftr_strand eq "+") { 
-                      # *careful* we don't really want to fetch to the end of the sequence, we want
-                      # to fetch the largest remaining subseq with length that is a multiple of 3
-                      # modulo 3, that's because of how sqstring_find_stops() works - it starts 
-                      # looking for in-frame stops starting at the end of the sequence and assumes 
-                      # final position of the subsequence its examining is frame 3
-                      my $cur_seq_end = $seq_len;
-                      my $cur_seq_len = abs($cur_seq_end - ($ftr_stop+1)) + 1;
-                      while(($cur_seq_len >= 3) && (($cur_seq_len % 3) != 0)) { 
-                        $cur_seq_end--;
-                        $cur_seq_len = abs($cur_seq_end - ($ftr_stop+1)) + 1;
-                      }
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $cur_seq_end, 0); 
+                      # fetch to the end of the sequence and check for first in-frame stop
+                      # assuming that next nucleotide is frame 1 (first position of a codon)
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop+1, $seq_len, 0); 
                     }
                     else { # negative strand
-                      # see *careful* note above in + strand block for explanation of this code:
-                      my $cur_seq_end = 1;
-                      my $cur_seq_len = abs(($ftr_stop-1) - $cur_seq_end) + 1;
-                      while(($cur_seq_len >= 3) && (($cur_seq_len % 3) != 0)) { 
-                        $cur_seq_end++;
-                        $cur_seq_len = abs(($ftr_stop-1) - $cur_seq_end) + 1;
-                      }
-                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, $cur_seq_end, 1);
+                      $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ftr_stop-1, $seq_len, 1);
                     }
                     my @ext_nxt_stp_A = ();
                     sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
@@ -4824,6 +4808,86 @@ sub sqstring_check_stop {
 #            but currently it is only concerned with 
 #            frame 1.           
 #
+#            We determine what frame each position is by asserting
+#            that the first position is frame 1 (the frame for the
+#            first position of a start codon). Previously, up until
+#            version 1.1.3 we assumed the final position was frame 
+#            3 but this led to uninformative error messages related to 
+#            stop codons.
+#
+# Arguments:
+#  $sqstring:       the sequence string
+#  $tt:             the translation table ('1' for standard)
+#  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
+#                   $i in frame 1 on positive strand *ends* at position $x; 
+#                   '0' if there are none.
+#                   special values: 
+#                   $nxt_stp_AR->[0] = -1
+#  $FH_HR:          REF to hash of file handles
+#             
+# Returns:  void, updates arrays that are not undef
+# 
+# Dies:     never
+#
+#################################################################
+sub sqstring_find_stops { 
+  my $sub_name = "sqstring_find_stops";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring, $tt, $nxt_stp_AR, $FH_HR) = @_;
+  
+  @{$nxt_stp_AR} = ();
+  $nxt_stp_AR->[0] = -1;
+
+  # create the @sqstring_A we'll use to find the stops
+  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
+  $sqstring =~ tr/U/T/;     # convert to DNA
+  my $sqlen = length($sqstring);
+  # add a " " as first character of $sqstart so we get nts in elements 1..$sqlen 
+  my @sqstring_A = split("", " " . $sqstring);
+
+  my $i       = undef; # [1..$i..$sqlen]: sequence position
+  my $frame   = undef; # 1, 2, or 3
+  my $cstart  = undef; # [1..$sqlen] start position of current codon
+  my $codon   = undef; # the codon
+  my $cur_stp = 0;     # closest stop codon at or 3' of current position
+                       # in frame 1 *ends* at position $cur_stp;
+
+  # pass over sequence from right to left, filling @{$nxt_stp_AR}
+  $cur_stp = 0;
+  for($i = ($sqlen-2); $i >= 1; $i--) { 
+    if(($i % 3) == 1) { # starting position of a codon, frame == 1
+      $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
+      if(seq_CodonValidateStopCapDna($codon, $tt)) { 
+        $cur_stp = $i+2;
+      }
+    }
+    $nxt_stp_AR->[$i] = $cur_stp;
+  }
+  $nxt_stp_AR->[($sqlen-1)] = 0;
+  $nxt_stp_AR->[$sqlen]     = 0;
+
+#  for($i = 1; $i <= $sqlen; $i++) { 
+#    printf("position %5d: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
+#  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: OLD_sqstring_find_stops()
+# Incept:     EPN, Fri Feb 22 14:52:53 2019
+#
+# Purpose:   Find all occurences of stop codons in an 
+#            input sqstring (on the positive strand only),
+#            and update the input array.
+#           
+#            This subroutine could be easily modified to 
+#            find the nearest stop codon in each frame, 
+#            but currently it is only concerned with 
+#            frame 1.           
+#
 #            We determine what frame each position is
 #            by asserting that the final position is
 #            frame 3 (the frame for the final position 
@@ -4849,8 +4913,8 @@ sub sqstring_check_stop {
 # Dies:     never
 #
 #################################################################
-sub sqstring_find_stops { 
-  my $sub_name = "sqstring_find_stops";
+sub OLD_sqstring_find_stops { 
+  my $sub_name = "OLD_sqstring_find_stops";
   my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
