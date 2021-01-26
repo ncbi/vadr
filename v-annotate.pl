@@ -4637,7 +4637,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                     if($ext_nxt_stp_A[1] != 0) { 
                       # there is an in-frame stop codon, mutendex alert
                       # determine what position it is
-                      $ftr_stop_c = ($ftr_strand eq "+") ? ($ftr_stop + $ext_nxt_stp_A[1]) : ($ftr_stop - $ext_nxt_stp_A[1]);
+                      $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
                       if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
                         $alt_str_H{"mutendex"} = $ftr_stop_c;
                       }
