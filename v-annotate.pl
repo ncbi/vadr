@@ -4597,7 +4597,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
               my @ftr_nxt_stp_A = ();
               sqstring_find_stops($ftr_sqstring_alt, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
               # check that final add codon is a valid stop, and add 'mutendcd' alert if not (and ambgnt3c not already reported)
-              if(($ftr_len >= 3) && ($ftr_nxt_stp_A[($ftr_len-2)] != $ftr_len) && (! defined $alt_str_H{"ambgnt3c"})) { 
+              if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
                 $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
                                                  substr($ftr_sqstring_alt, -3, 3),
                                                  $ftr2org_pos_A[$ftr_len], $ftr_strand);
