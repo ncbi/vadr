@@ -504,7 +504,7 @@ if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH)))
 }
 
 # if -p: make sure directory length is no more than 30 characters, otherwise qsub commands can get too long
-if((opt_Get("-p", \%opt_HH)) && (length($dir) > 30) && (! opt_IsUsed("--longdir"))) { 
+if((opt_Get("-p", \%opt_HH)) && (length($dir) > 30) && (! opt_IsUsed("--longdir", \%opt_HH))) { 
   die "ERROR, with -p, output directory name should be 30 characters or less to avoid very long qsub commands (use --longdir to override)";
 }
 
