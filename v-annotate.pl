@@ -451,8 +451,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1.2";
-my $releasedate   = "Nov 2020";
+my $version       = "1.1.2dev1";
+my $releasedate   = "Jan 2021";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -2065,7 +2065,7 @@ sub cmsearch_wrapper {
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   # run cmsearch
   my $out_key;
-  my @out_keys_A = ("stdout", "err", "tblout");
+  my @out_keys_A = ("stdout", "err", "tblout", "sh");
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AH[$s]} = (); 
     foreach my $out_key (@out_keys_A) { 
@@ -2090,7 +2090,7 @@ sub cmsearch_wrapper {
 
   # concatenate files into one
   foreach $out_key (@out_keys_A) { 
-    if(($do_parallel) || ($out_key ne "err")) { # .err files don't exist if (! $do_parallel)
+    if(($do_parallel) || ($out_key ne "err") || ($out_key ne "sh")) { # .err and .sh files don't exist if (! $do_parallel)
       my $concat_key  = sprintf("%s.%s%s", $stg_key, (defined $mdl_name) ? $mdl_name . "." : "", $out_key);                                
       my $concat_file = $out_root . "." . $concat_key;
       my @concat_A = ();
@@ -2130,7 +2130,7 @@ sub cmsearch_wrapper {
 #  $seq_file:         path to the sequence file
 #  $opt_str:          option string for cmsearch runs
 #  $out_file_HR:      ref to hash of output files to create
-#                     required keys: "stdout", "tblout", "err"
+#                     required keys: "stdout", "tblout", "err", "sh"
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information
 # 
@@ -2152,6 +2152,7 @@ sub cmsearch_run {
   my $stdout_file = $out_file_HR->{"stdout"};
   my $tblout_file = $out_file_HR->{"tblout"};
   my $err_file    = $out_file_HR->{"err"};
+  my $sh_file     = $out_file_HR->{"sh"};
   if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
   if(! defined $tblout_file) { ofile_FAIL("ERROR in $sub_name, tblout output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
@@ -2183,7 +2184,8 @@ sub cmsearch_run {
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = (opt_Get("--mxsize", $opt_HHR) / 1000.); # use --mxsize * 1000 (8 Gb by default)
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
-    vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+    #vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+    vdr_SubmitJobAsScript($cmd, $qsub_prefix, $qsub_suffix, $job_name, $sh_file, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
   }
   else { 
     utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -2992,9 +2994,12 @@ sub cmalign_wrapper {
   # set up output file names
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
-  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err"
+  my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
   @concat_keys_A = ("stdout", "ifile"); 
-  if($do_parallel) { push(@concat_keys_A, "err");   }
+  if($do_parallel) { 
+    push(@concat_keys_A, "err"); 
+    push(@concat_keys_A, "sh"); 
+  }
   #if($do_keep)     { push(@concat_keys_A, "tfile"); }
   foreach $out_key (@concat_keys_A) { 
     @{$concat_HA{$out_key}} = ();
@@ -3179,7 +3184,7 @@ sub cmalign_wrapper_helper {
   my $key; # a file key
   my $s;   # counter over sequence files
   #my @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
-  my @out_keys_A = ("stdout", "err", "ifile", "stk");
+  my @out_keys_A = ("stdout", "err", "ifile", "stk", "sh");
   @{$out_file_AHR} = ();
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AHR->[$s]} = (); 
@@ -3250,7 +3255,7 @@ sub cmalign_wrapper_helper {
 #  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
 #  $out_file_HR:      ref to hash of output files to create
-#                     required keys: "stdout", "ifile", "stk", "err"
+#                     required keys: "stdout", "ifile", "stk", "err", "sh"
 #  $ret_mxsize_R:     REF to required matrix size, only filled if return value is '0'
 #  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:   REF to 2D hash of output file information
@@ -3287,17 +3292,20 @@ sub cmalign_run {
   #my $tfile_file  = $out_file_HR->{"tfile"};
   my $stk_file    = $out_file_HR->{"stk"};
   my $err_file    = $out_file_HR->{"err"};
+  my $sh_file     = $out_file_HR->{"sh"};
   if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
   if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
   #if(! defined $tfile_file)  { ofile_FAIL("ERROR in $sub_name, tfile  output file name is undefined", 1, $FH_HR); }
   if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
+  if(! defined $sh_file)     { ofile_FAIL("ERROR in $sub_name, sh     output file name is undefined", 1, $FH_HR); }
   if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
     if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $ifile_file)  { unlink $ifile_file; }
     #if(-e $tfile_file)  { unlink $tfile_file; }
     if(-e $stk_file)    { unlink $stk_file; }
     if(-e $err_file)    { unlink $err_file; }
+    if(-e $sh_file)     { unlink $sh_file; }
   }
   utl_FileValidateExistsAndNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
@@ -3336,7 +3344,7 @@ sub cmalign_run {
     my $mem_gb = opt_Get("--mxsize", $opt_HHR) / 1000.;
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
     if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
-      vdr_SubmitJob($cmd, $qsub_prefix, $qsub_suffix, $job_name, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
+      vdr_SubmitJobAsScript($cmd, $qsub_prefix, $qsub_suffix, $job_name, $sh_file, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
   }
   else { 

@@ -2137,6 +2137,56 @@ sub vdr_SubmitJob {
 }
 
 #################################################################
+# Subroutine: vdr_SubmitJobAsScript()
+# Incept:      EPN, Thu Jan 28 17:19:51 2021
+#
+# Purpose:     Creates a script that will execute a job and sumits a job to sge that will 
+#              execute that script.
+#
+# Arguments:
+#   $cmd:            command to run
+#   $qsub_prefix:    qsub command prefix to use when submitting to farm, undef if running locally
+#   $qsub_suffix:    qsub command suffix to use when submitting to farm, undef if running locally
+#   $job_name:       name for job
+#   $sh_file:        name of shell script file to create with command to run
+#   $err_file:       name of err file to create, can be "/dev/null"
+#   $mem_gb:         number of Gb of memory required
+#   $nsecs:          maximum number of seconds to allow jobs to take
+#   $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
+#   $ofile_info_HHR: REF to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:    amount of time the command took, in seconds
+#
+# Dies:       if qsub vdr_$cmd fails
+#################################################################
+sub vdr_SubmitJobAsScript {
+  my $sub_name = "vdr_SubmitJobAsScript()";
+  my $nargs_expected = 10;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($cmd, $qsub_prefix, $qsub_suffix, $job_name, $sh_file, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR) = @_;
+  
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  if(($err_file ne "/dev/null") && (-e $err_file)) { 
+    utl_FileRemoveUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
+  }
+
+  my $submit_cmd = $qsub_prefix . "sh $sh_file" . $qsub_suffix;
+  # replace changeable parts of qsub suffix and prefix
+  $submit_cmd =~ s/\!\[jobname\]\!/$job_name/g;
+  $submit_cmd =~ s/\!\[errfile\]\!/$err_file/g;
+  $submit_cmd =~ s/\!\[memgb\]\!/$mem_gb/g;
+  $submit_cmd =~ s/\!\[nsecs\]\!/$nsecs/g;
+
+  # create the shell script file with the cmsearch/cmalign/rRNA_sensor command $cmd
+  vdr_WriteCommandScript($sh_file, $cmd, $FH_HR);
+  utl_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  return;
+}
+
+#################################################################
 # Subroutine:  vdr_WaitForFarmJobsToFinish()
 # Incept:      EPN, Mon Feb 29 16:20:54 2016
 #
@@ -4309,6 +4359,41 @@ sub vdr_FrameAdjust {
   }
 
   return (($orig_frame - $nt_diff - 1) % 3) + 1;
+}
+
+#################################################################
+# Subroutine : vdr_WriteCommandScript()
+# Incept:      EPN, Fri Nov  9 14:26:07 2018 (ribo_WriteCommandScript)
+#
+# Purpose  : Create a new file to be executed as a job created by 
+#            a qsub call.
+# 
+# Arguments: 
+#   $file:  name of the file to create
+#   $cmd:   the command to put in the file
+#   $FH_HR: ref to hash of file handles, including "cmd"
+#
+# Returns:     void
+# 
+# Dies:        Never
+#
+################################################################# 
+sub vdr_WriteCommandScript {
+  my $nargs_exp = 3;
+  my $sub_name = "vdr_WriteCommandScript";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($file, $cmd, $FH_HR) = @_;
+
+  open(OUT, ">", $file) || ofile_FileOpenFailure($file, $sub_name, $!, "writing", $FH_HR);
+
+  print OUT ("#!/bin/bash\n");
+  print OUT ("#filename: $file\n");
+  print OUT $cmd . "\n";
+
+  close(OUT);
+
+  return;
 }
 
 ###########################################################################
