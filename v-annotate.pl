@@ -307,7 +307,6 @@ opt_Add("--nkb",        "integer", 10,         $g,    undef,  undef,      "numbe
 opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--longdir",    "boolean", 0,          $g,     "-p",  undef,      "w/-p allow long output directory names",                      "w/-p allow long output directory names", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
@@ -425,7 +424,6 @@ my $options_okay =
                 'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
-                'longdir'       => \$GetOptions_H{"--longdir"},
 # options for skipping stages
                 'skip_align'    => \$GetOptions_H{"--skip_align"},
                 'skip_pv'       => \$GetOptions_H{"--skip_pv"},
@@ -501,11 +499,6 @@ my ($orig_in_fa_file, $dir) = (@ARGV);
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
-}
-
-# if -p: make sure directory length is no more than 30 characters, otherwise qsub commands can get too long
-if((opt_Get("-p", \%opt_HH)) && (length($dir) > 30) && (! opt_IsUsed("--longdir", \%opt_HH))) { 
-  die "ERROR, with -p, output directory name should be 30 characters or less to avoid very long qsub commands (use --longdir to override)";
 }
 
 # enforce that --fsthighthr and --fstlowthr values make sense
