@@ -2083,7 +2083,7 @@ sub cmsearch_wrapper {
 
   # concatenate files into one
   foreach $out_key (@out_keys_A) { 
-    if(($do_parallel) || ($out_key ne "err") || ($out_key ne "sh")) { # .err and .sh files don't exist if (! $do_parallel)
+    if(($do_parallel) || (($out_key ne "err") && ($out_key ne "sh"))) { # .err and .sh files don't exist if (! $do_parallel)
       my $concat_key  = sprintf("%s.%s%s", $stg_key, (defined $mdl_name) ? $mdl_name . "." : "", $out_key);                                
       my $concat_file = $out_root . "." . $concat_key;
       my @concat_A = ();
