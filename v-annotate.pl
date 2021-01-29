@@ -307,6 +307,7 @@ opt_Add("--nkb",        "integer", 10,         $g,    undef,  undef,      "numbe
 opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
 opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--longdir",    "boolean", 0,          $g,     "-p",  undef,      "w/-p allow long output directory names",                      "w/-p allow long output directory names", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
@@ -424,6 +425,7 @@ my $options_okay =
                 'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
+                'longdir'       => \$GetOptions_H{"--longdir"},
 # options for skipping stages
                 'skip_align'    => \$GetOptions_H{"--skip_align"},
                 'skip_pv'       => \$GetOptions_H{"--skip_pv"},
