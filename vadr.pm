@@ -90,7 +90,10 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
-# 
+#
+# vdr_SegmentStartIdenticalToCds()
+# vdr_SegmentStopIdenticalToCds()
+#
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()
 # vdr_AlertInfoAdd()
@@ -1405,6 +1408,100 @@ sub vdr_FeaturePositionSpecificValueBreakdown {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_SegmentStartIdenticalToCds()
+# Incept:     EPN, Mon Feb  1 15:58:25 2021
+#
+# Purpose:    Determine if the start of a segment is identical
+#             to the start position of any CDS feature. Return '1'
+#             if yes, '0' if no.
+# 
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $sgm_info_AHR:   ref to the segment info array of hashes 
+#  $sgm_idx:        segment index
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    1 or 0 (see 'Purpose')
+#
+# Dies:       If $sgm_info_AHR->[$sgm_idx] does not exist
+#
+################################################################# 
+sub vdr_SegmentStartIdenticalToCds { 
+  my $sub_name = "vdr_SegmentStartIdenticalToCds";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$ftr_info_AHR});
+
+  if(($sgm_idx < 0) || ($sgm_idx >= $nsgm)) { 
+    ofile_FAIL("ERROR, in $sub_name, invalid sgm idx: $sgm_idx", 1, $FH_HR);
+  }
+     
+  my $sgm_start = $sgm_info_AHR->[$sgm_idx]{"start"};
+  
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $sgm_5p_idx = $ftr_info_AHR->[$ftr_id]{"5p_sgm_idx"};
+      my $ftr_start = $sgm_info_AHR->[$sgm_5p_idx]{"start"};
+      if($ftr_start == $sgm_start) { return 1; }
+    }
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_SegmentStopIdenticalToCds()
+# Incept:     EPN, Mon Feb  1 15:58:25 2021
+#
+# Purpose:    Determine if the stop of a segment is identical
+#             to the stop position of any CDS feature. Return '1'
+#             if yes, '0' if no.
+# 
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $sgm_info_AHR:   ref to the segment info array of hashes 
+#  $sgm_idx:        segment index
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    1 or 0 (see 'Purpose')
+#
+# Dies:       If $sgm_info_AHR->[$sgm_idx] does not exist
+#
+################################################################# 
+sub vdr_SegmentStopIdenticalToCds { 
+  my $sub_name = "vdr_SegmentStopIdenticalToCds";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$ftr_info_AHR});
+
+  if(($sgm_idx < 0) || ($sgm_idx >= $nsgm)) { 
+    ofile_FAIL("ERROR, in $sub_name, invalid sgm idx: $sgm_idx", 1, $FH_HR);
+  }
+     
+  my $sgm_stop = $sgm_info_AHR->[$sgm_idx]{"stop"};
+  
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $sgm_3p_idx = $ftr_info_AHR->[$ftr_id]{"3p_sgm_idx"};
+      my $ftr_stop = $sgm_info_AHR->[$sgm_3p_idx]{"stop"};
+      if($ftr_stop == $sgm_stop) { return 1; }
+    }
+  }
+
+  return 0;
 }
 
 #################################################################
