@@ -1006,11 +1006,11 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
 | [*indfantn*](#indfantn1)  | INDEFINITE_ANNOTATION           | none | CDS | - <a name="indfantn2"></a> | 
 | [*indf5gap*](#indf5gap1)  | INDEFINITE_ANNOTATION_START     | none | all | - <a name="indf5gap2"></a> | 
-| [*indf5loc*](#indf5loc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all | - <a name="indf5loc2"></a> | 
+| [*indf5loc*](#indf5loc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5loc2"></a> | 
 | [*indf5plg*](#indf5plg1)  | INDEFINITE_ANNOTATION_START     | none | CDS | - <a name="indf5plg2"></a> | 
 | [*indf5pst*](#indf5pst1)  | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf5pst2"></a> | 
 | [*indf3gap*](#indf3gap1)  | INDEFINITE_ANNOTATION_END       | none | all | - <a name="indf3gap2"></a> |  
-| [*indf3loc*](#indf3loc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all | - <a name="indf3loc2"></a> | 
+| [*indf3loc*](#indf3loc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene with identical stop coordinate to CDS | - <a name="indf3loc2"></a> | 
 | [*indf3plg*](#indf3plg1)  | INDEFINITE_ANNOTATION_END       | none | CDS | - <a name="indf3plg2"></a> | 
 | [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf3pst2"></a> | 
 | [*indfstrp*](#indfstrp1)  | INDEFINITE_STRAND               | none | CDS | - <a name="indfstrp2"></a> | 
