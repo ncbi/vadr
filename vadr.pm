@@ -1438,7 +1438,7 @@ sub vdr_SegmentStartIdenticalToCds {
   my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR) = @_;
   
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $nsgm = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
 
   if(($sgm_idx < 0) || ($sgm_idx >= $nsgm)) { 
     ofile_FAIL("ERROR, in $sub_name, invalid sgm idx: $sgm_idx", 1, $FH_HR);
@@ -1448,7 +1448,7 @@ sub vdr_SegmentStartIdenticalToCds {
   
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      my $sgm_5p_idx = $ftr_info_AHR->[$ftr_id]{"5p_sgm_idx"};
+      my $sgm_5p_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"};
       my $ftr_start = $sgm_info_AHR->[$sgm_5p_idx]{"start"};
       if($ftr_start == $sgm_start) { return 1; }
     }
@@ -1485,7 +1485,7 @@ sub vdr_SegmentStopIdenticalToCds {
   my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR) = @_;
   
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $nsgm = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
 
   if(($sgm_idx < 0) || ($sgm_idx >= $nsgm)) { 
     ofile_FAIL("ERROR, in $sub_name, invalid sgm idx: $sgm_idx", 1, $FH_HR);
@@ -1495,7 +1495,7 @@ sub vdr_SegmentStopIdenticalToCds {
   
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      my $sgm_3p_idx = $ftr_info_AHR->[$ftr_id]{"3p_sgm_idx"};
+      my $sgm_3p_idx = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};
       my $ftr_stop = $sgm_info_AHR->[$sgm_3p_idx]{"stop"};
       if($ftr_stop == $sgm_stop) { return 1; }
     }
