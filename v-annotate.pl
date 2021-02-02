@@ -3726,19 +3726,14 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           } 
-          # report indf5loc, but first check if the start of this segment is identical to 
-          # the stop of a CDS or mat_peptide or gene feature
-          # if so we don't report indf5loc because there's other (better) checks of the start codon position
-          # (e.g. that it is a valid start codon)
-          # start of CDS or any MatPeptide or Gene feature with identical start coords to a CDS can't get indf5loc
-          # because there's other (better) checks of the start codon position (e.g. that it is a valid start)
-          if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx))                || # feature is NOT CDS or mat_peptide or gene (so we can always report indf5loc)
-             (! $sgm_info_AHR->[$sgm_idx]{"is_5p"})                                             || # segment is NOT first segment in feature (so we can always report indf5loc)
-             (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # start does not match a CDS start (so we can always report indf5loc)
-
-              elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) || # feature is CDS, mat_peptide or Gene
-               (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { 
+          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+            # report indf5loc, but first check if the start of this segment is identical to 
+            # the stop of a CDS or mat_peptide or gene feature
+            # if so we don't report indf5loc because there's other (better) checks of the start codon position
+            # (e.g. that it is a valid start codon)
+            if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx))                || # feature is NOT CDS or mat_peptide or gene (so we can always report indf5loc)
+               (! $sgm_info_AHR->[$sgm_idx]{"is_5p"})                                             || # segment is NOT first segment in feature (so we can always report indf5loc)
+               (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # start does not match a CDS start (so we can always report indf5loc)
               alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5loc", $seq_name, $ftr_idx,
                                          sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
                                        $FH_HR);
@@ -3752,7 +3747,6 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        $FH_HR);
           }
           elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-
             # report indf3loc, but first check if the stop of this segment is identical to 
             # the stop of a CDS or gene feature (mat_peptide excluded because it won't include stop codon)
             # if so we don't report indf3loc because there's other (better) checks of the stop codon position
