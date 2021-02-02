@@ -17,9 +17,9 @@ for i in \
 done
 
 if [ $RETVAL = 0 ]; then
-   echo "Success: all tests passed"
+   echo "Success: all tests passed [do-issue-tests.sh]"
    exit 0
 else 
-   echo "FAIL: at least one test failed"
+   echo "FAIL: at least one test failed [do-issue-tests.sh]"
    exit 1
 fi

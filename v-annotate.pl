@@ -51,9 +51,9 @@ require "sqp_utils.pm";
 #     model (supplied via the modelinfo file). 
 #   
 # (4) protein validation: CDS features are then validated via
-#    blastx or hmmer by comparing predicted feature spans from (3) to
-#    pre-computed BLAST or HMMER databases for the model. Alerts can
-#    be reported based on the blast/hmmer results. 
+#     blastx or hmmer by comparing predicted feature spans from (3) to
+#     pre-computed BLAST or HMMER databases for the model. Alerts can
+#     be reported based on the blast/hmmer results. 
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Important options that change this behavior:
@@ -449,8 +449,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1.2dev2";
-my $releasedate   = "Jan 2021";
+my $version       = "1.1.3dev3";
+my $releasedate   = "Feb 2021";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -1940,6 +1940,8 @@ sub coverage_determination_stage {
   my $sort_tblout_key  = "$stg_key.tblout.sort";
   my $sort_tblout_file = $out_root . "." . $sort_tblout_key;
   if($nmdl_cdt > 0) { # only sort output if we ran coverage determination stage for at least one model
+    # HERE HERE HERE: looks like this is sorting by score first, then e-value? If we have a score tie, we want to 
+    # sort by model index, so I can modify the tblout file by adding model index and sort on that?
     my $sort_cmd = "cat " . join(" ", @tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $sort_tblout_file"; 
     # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
     utl_RunCommand($sort_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
