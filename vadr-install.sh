@@ -141,7 +141,7 @@ echo "------------------------------------------------"
 # download hmmer source distribution
 # (precompiled binaries are no longer provided as of v3.3)
 echo "Downloading HMMER version $HVERSION src distribution"
-curl -k -L -o hmmer.tar.gz http://eddylab.org/software/hmmer/hmmer-3.3.tar.gz
+curl -k -L -o hmmer.tar.gz http://eddylab.org/software/hmmer/hmmer-$HVERSION.tar.gz
 tar xfz hmmer.tar.gz
 rm hmmer.tar.gz
 echo "Building HMMER ... "
