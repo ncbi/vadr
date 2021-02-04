@@ -20,11 +20,11 @@ VERSION="1.1.2"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.13"
 # blast+
-BVERSION="2.10.0"
+BVERSION="2.11.0"
 # infernal
-IVERSION="1.1.3"
+IVERSION="1.1.4"
 # hmmer
-HVERSION="3.3"
+HVERSION="3.3.2"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
