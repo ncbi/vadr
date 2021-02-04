@@ -1596,7 +1596,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendns", "feature",  
                    "MUTATION_AT_END", # short description
-                   "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon", # long description
+                   "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon", # long description
                    0, 1, 0, # always_fails, causes_failure, prevents_annot
                    $FH_HR);
 
