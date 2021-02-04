@@ -37,36 +37,36 @@
 8.3.1   ENTOY100A-REV-stop-mut-at-71-len73   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 9.1.1   ENTOY100A-REV-stop-mut-at-71-len72   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 42 on - strand is not a valid stop]
-9.1.2   ENTOY100A-REV-stop-mut-at-71-len72   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+9.1.2   ENTOY100A-REV-stop-mut-at-71-len72   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 9.2.1   ENTOY100A-REV-stop-mut-at-71-len72   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 9.3.1   ENTOY100A-REV-stop-mut-at-71-len72   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 10.1.1  ENTOY100A-REV-stop-mut-at-71-len71   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 41 on - strand is not a valid stop]
-10.1.2  ENTOY100A-REV-stop-mut-at-71-len71   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+10.1.2  ENTOY100A-REV-stop-mut-at-71-len71   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 10.2.1  ENTOY100A-REV-stop-mut-at-71-len71   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 10.3.1  ENTOY100A-REV-stop-mut-at-71-len71   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 11.1.1  ENTOY100A-REV-stop-mut-at-71-len70   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 40 on - strand is not a valid stop]
-11.1.2  ENTOY100A-REV-stop-mut-at-71-len70   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+11.1.2  ENTOY100A-REV-stop-mut-at-71-len70   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 11.2.1  ENTOY100A-REV-stop-mut-at-71-len70   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 11.3.1  ENTOY100A-REV-stop-mut-at-71-len70   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 12.1.1  ENTOY100A-REV-stop-mut-at-71-len34   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 4 on - strand is not a valid stop]
-12.1.2  ENTOY100A-REV-stop-mut-at-71-len34   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+12.1.2  ENTOY100A-REV-stop-mut-at-71-len34   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 12.2.1  ENTOY100A-REV-stop-mut-at-71-len34   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 12.3.1  ENTOY100A-REV-stop-mut-at-71-len34   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 13.1.1  ENTOY100A-REV-stop-mut-at-71-len33   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 3 on - strand is not a valid stop]
-13.1.2  ENTOY100A-REV-stop-mut-at-71-len33   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+13.1.2  ENTOY100A-REV-stop-mut-at-71-len33   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 13.2.1  ENTOY100A-REV-stop-mut-at-71-len33   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 13.3.1  ENTOY100A-REV-stop-mut-at-71-len33   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 14.1.1  ENTOY100A-REV-stop-mut-at-71-len32   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 2 on - strand is not a valid stop]
-14.1.2  ENTOY100A-REV-stop-mut-at-71-len32   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+14.1.2  ENTOY100A-REV-stop-mut-at-71-len32   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 14.2.1  ENTOY100A-REV-stop-mut-at-71-len32   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 14.3.1  ENTOY100A-REV-stop-mut-at-71-len32   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 15.1.1  ENTOY100A-REV-stop-mut-at-71-len31   ENTOY100A-REV  CDS          protein_one        2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TTA ending at position 1 on - strand is not a valid stop]
-15.1.2  ENTOY100A-REV-stop-mut-at-71-len31   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+15.1.2  ENTOY100A-REV-stop-mut-at-71-len31   ENTOY100A-REV  CDS          protein_one        2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 15.2.1  ENTOY100A-REV-stop-mut-at-71-len31   ENTOY100A-REV  mat_peptide  protein_one_mp1    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 15.3.1  ENTOY100A-REV-stop-mut-at-71-len31   ENTOY100A-REV  mat_peptide  protein_one_mp2    4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
