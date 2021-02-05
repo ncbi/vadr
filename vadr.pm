@@ -92,7 +92,6 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
-# vdr_FeatureIsExpendable()
 # 
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()

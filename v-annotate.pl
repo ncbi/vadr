@@ -6990,8 +6990,6 @@ sub alert_add_parent_based {
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  # printf("in $sub_name\n");
-
   # get children info for all features, we'll use this in the loop below
   my @children_AA = ();
   vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, $child_type, \@children_AA, $FH_HR);
@@ -7018,8 +7016,7 @@ sub alert_add_parent_based {
   # we need 2 dimensions because with "expendable_cds" we can have some alerts which
   # are fatal for some features but not others
   my @fatal_alt_codes_AA = (); # [0..$ftr_idx..$nftr-1][0..$n] per-feature array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1 (and are not expendable_cds for $ftr_idx
-  #1p1p3 here would have to make this a AA per feature index also 
-  for($ftr_idx = 0; $ftr_idx < $nftr++; $ftr_idx++) { 
+  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     @{$fatal_alt_codes_AA[$ftr_idx]} = ();
     foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
       if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
@@ -8995,15 +8992,15 @@ sub helper_ftable_process_feature_alerts {
     $input_alt_code_H{$alt_code} = 1; 
   }
 
-  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
   my $is_fatal  = 0; # '1' if this alert is fatal
   my $is_expcds = 0; # '1' if this feature/alert has 'expendable_cds' attribute
+  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not, we don't report all fatal alerts, some we skip to avoid duplicates
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $is_fatal  = $alt_info_HHR->{$alt_code}{"causes_failure"} ? 1 : 0;
+    $is_fatal  = vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
     $is_expcds = vdr_FeatureAlertIsExpendableCds($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
     if($is_fatal)  { $ret_fatal_flag  = 1; }
     if($is_expcds) { $ret_expcds_flag = 1; }
-    my $do_report = ($is_fatal && (! $is_expcds)) ? 1 : 0;
+    my $do_report = $is_fatal; 
     # check if this alert is invalidated by another we will also report
     if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
       my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
