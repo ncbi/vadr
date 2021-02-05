@@ -8088,12 +8088,15 @@ sub output_feature_table {
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
             if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
-              # hard-coded list of feature types that do NOT become misc_features even if they have fatal alerts
-              if(($feature_type ne "gene") && 
-                 ($feature_type ne "5'UTR") && 
-                 ($feature_type ne "3'UTR") && 
-                 ($feature_type ne "operon")) { 
-                if(! $do_nomisc) { # --nomisc not enabled
+              # should we make this a misc_feature?
+              # yes if (--nomisc not enabled OR $ftr_idx is expendable (from .minfo file)
+              # and it is not one of our hard-code list of feature types
+              if((! $do_nomisc) || (vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) { 
+                # hard-coded list of feature types that do NOT become misc_features even if they have fatal alerts
+                if(($feature_type ne "gene") && 
+                   ($feature_type ne "5'UTR") && 
+                   ($feature_type ne "3'UTR") && 
+                   ($feature_type ne "operon")) { 
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
                 }
