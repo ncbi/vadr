@@ -90,6 +90,7 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
+# vdr_FeatureIsExpendable()
 # 
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()
@@ -1405,6 +1406,33 @@ sub vdr_FeaturePositionSpecificValueBreakdown {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureIsExpendable()
+# Incept:     EPN, Fri Feb  5 07:26:10 2021
+#
+# Purpose:    Is feature $ftr_idx expendable?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureIsExpendable {
+  my $sub_name = "vdr_FeatureIsExpendable";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return((defined $ftr_info_AHR->[$ftr_idx]{"expendable"}) && # feature $ftr_idx has key 'expendable' from .minfo
+         ($ftr_info_AHR->[$ftr_idx]->{"expendable"} ne "0"))  # ftr_idx has 'expendable:0' from minfo
+      ? 1 : 0;
 }
 
 #################################################################

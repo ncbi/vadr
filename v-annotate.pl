@@ -7030,8 +7030,7 @@ sub alert_add_parent_based {
       # at least one child of type $child_type:
       foreach my $parent_ftr_idx (@parent_ftr_idx_A) { 
         if((defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) && 
-           ((! defined $ftr_info_AHR->[$parent_ftr_idx]{"expendable"}) || # parent_ftr_idx does not have key 'expendable' from .minfo
-            ($ftr_info_AHR->[$parent_ftr_idx]{"expendable"} == 0))) {     # parent_ftr_idx has 'expendable:0' from minfo
+           (! vdr_FeatureIsExpendable($ftr_info_AHR, $parent_ftr_idx))) { # parent_ftr_idx does not have 'expendable:1' from minfo
           # at least one feature alert exists for this parent feature in this sequence
           # check if any of the alerts for this parent feature are fatal
           my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@fatal_alt_codes_A, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
@@ -7579,9 +7578,8 @@ sub output_tabular {
                     $alt_ct_H{$alt_code}++;
                     my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
                     my $alt_causes_failure = (($alt_info_HHR->{$alt_code}{"causes_failure"}) &&
-                                              ((! defined $ftr_info_AHR->[$ftr_idx]{"expendable"}) || # ftr_idx does not have key 'expendable' from .minfo
-                                               ($ftr_info_AHR->[$ftr_idx]->{"expendable"} == 0)))     # ftr_idx has 'expendable:0' from minfo
-                        ? 1 : 0;
+                                              (! vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) # $ftr_idx does not have 'expendable:1' from minfo
+                      ? 1 : 0;
                                           
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
                                         $alt_causes_failure ? "yes" : "no", 
@@ -9006,8 +9004,7 @@ sub helper_ftable_process_feature_alerts {
         # and if this ftr_idx is not expendable from .minfo file
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if(($idx == -1) && 
-           ((! defined $ftr_info_AHR->[$ftr_idx]{"expendable"}) || # ftr_idx does not have key 'expendable' from .minfo
-            ($ftr_info_AHR->[$ftr_idx]{"expendable"} == 0))) {     # ftr_idx has 'expendable:0' from minfo
+           (! vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) { # $ftr_idx does not have 'expendable:1' from minfo
           push(@{$ret_alert_AR}, $alert_str); 
         }
       }
@@ -9948,8 +9945,7 @@ sub check_if_sequence_passes {
           ofile_FAIL("ERROR in $sub_name, trying to check feature alert but ftr_info_AHR is undefined", 1, $FH_HR); 
         }
         if(($alt_info_HHR->{$alt_code}{"causes_failure"}) && 
-           ((! defined $ftr_info_AHR->[$ftr_idx]{"expendable"}) || # ftr_idx does not have key 'expendable' from .minfo
-            ($ftr_info_AHR->[$ftr_idx]{"expendable"} == 0))) {     # ftr_idx has 'expendable:0' from minfo
+           (! vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) { # $ftr_idx does not have 'expendable:1' from minfo
           return 0;  # a feature alert that causes failure
         }
       }
