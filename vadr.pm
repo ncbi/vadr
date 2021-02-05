@@ -576,7 +576,7 @@ sub vdr_FeatureInfoValidateCoords {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my @start_A  = (); # array of starts, one per segment
     my @stop_A   = (); # array of stops, one per segment
-    # this sub vdr_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
+    # this sub vdr_FeatureStartStopStrandArrays will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
     vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
     foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
     foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
