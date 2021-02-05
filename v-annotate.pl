@@ -5065,18 +5065,14 @@ sub add_low_similarity_alerts {
               # does this overlap with a feature? 
               my $nftr_overlap = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                my $ftr_is_or_is_identical_to_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-                if(! $ftr_is_or_is_identical_to_cds_or_mp) { 
-                  # check if a CDS or mp exists that has same coords as this feature
-                  # e.g. if feature is a gene and there is an identical CDS, we rely on blastx to validate
-                  # CDS, so we should trust it to validate this gene as well
-                  for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-                    if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
-                       ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
-                      $ftr_is_or_is_identical_to_cds_or_mp = 1;
-                    }
-                  }
-                }
+                # determine if we should even report lowsim{5,3,i}f alerts for this feature
+                # we will UNLESS:
+                # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
+                #   and feature does not have a 'expendable_cds' attribute
+                # If feature has an 'expendable_cds' attribute then we report these anyway because they can be 
+                # more extreme than the 'expendable_cds' alerts
+                my $report_lowsim_alerts_for_this_feature = ((vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx)) && 
+                                                             (! $ftr_info_AHR->[$ftr_idx]{"expendable_cds"})) ? 0 : 1;
                 my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
                 if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
                   my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
@@ -5094,8 +5090,8 @@ sub add_low_similarity_alerts {
                       $nftr_overlap++;
                       # only actually report an alert for non-CDS and non-MP features
                       # because CDS and MP are independently validated by blastx (unless --skip_pv)
-                      if((! $ftr_is_or_is_identical_to_cds_or_mp) || ($do_skip_pv)) { 
-                        printf("is_start: $is_start, is_end: $is_end, length: $length\n");
+                      if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
+                        #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
                         my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
                         if(($is_start) && ($length >= $terminal_5_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
