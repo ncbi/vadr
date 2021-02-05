@@ -3860,8 +3860,6 @@ sub add_frameshift_alerts_for_one_sequence {
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
   my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
-  my $fsthicnf_is_fatal = $alt_info_HHR->{"fsthicnf"}{"causes_failure"} ? 1 : 0;
-  my $fstlocnf_is_fatal = $alt_info_HHR->{"fstlocnf"}{"causes_failure"} ? 1 : 0;
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $ftr_idx;
@@ -7031,7 +7029,9 @@ sub alert_add_parent_based {
       # for each feature that is a parent of type $parent_type with
       # at least one child of type $child_type:
       foreach my $parent_ftr_idx (@parent_ftr_idx_A) { 
-        if(defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) { 
+        if((defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) && 
+           ((! defined $ftr_info_AHR->[$parent_ftr_idx]{"survivable"}) || # parent_ftr_idx does not have key 'survivable' from .minfo
+            ($ftr_info_AHR->[$parent_ftr_idx]{"survivable"} == 0))) {     # parent_ftr_idx has 'survivable:0' from minfo
           # at least one feature alert exists for this parent feature in this sequence
           # check if any of the alerts for this parent feature are fatal
           my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@fatal_alt_codes_A, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
@@ -7397,15 +7397,17 @@ sub output_tabular {
     my $rpn_nnt_rp_full    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))    ? $rpn_output_HR->{"nnt_rp_full"}    : "-";
     my $rpn_nnt_rp_part    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))    ? $rpn_output_HR->{"nnt_rp_part"}    : "-";
     my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
-    
-    my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
+
+    # deal with --msub and model subs, we need this ONLY for mdl_{pass,fail}_ct_H and for ftr_info_HAHR in check_if_sequence_passes
+    my $tmp_mdl = $seq_mdl1;
+    if(($seq_mdl1 ne "-") && (defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
+      $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
+    }
+
+    my $seq_pass_fail = (check_if_sequence_passes($seq_name, (($tmp_mdl ne "-") ? \@{$ftr_info_HAHR->{$tmp_mdl}} : undef), $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
     if($seq_mdl1 ne "-") { 
-      my $tmp_mdl = $seq_mdl1;
-      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
-        $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
-      }
       if(! defined $mdl_pass_ct_H{$tmp_mdl}) { $mdl_pass_ct_H{$tmp_mdl} = 0; }
       if(! defined $mdl_fail_ct_H{$tmp_mdl}) { $mdl_fail_ct_H{$tmp_mdl} = 0; }
       if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$tmp_mdl}++; }
@@ -7576,8 +7578,13 @@ sub output_tabular {
                     $alt_nseqftr++;
                     $alt_ct_H{$alt_code}++;
                     my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                    my $alt_causes_failure = (($alt_info_HHR->{$alt_code}{"causes_failure"}) &&
+                                              ((! defined $ftr_info_AHR->[$ftr_idx]{"survivable"}) || # ftr_idx does not have key 'survivable' from .minfo
+                                               ($ftr_info_AHR->[$ftr_idx]->{"survivable"} == 0)))     # ftr_idx has 'survivable:0' from minfo
+                        ? 1 : 0;
+                                          
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
-                                        $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                        $alt_causes_failure ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                         $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
                     $alt_nprinted++;
@@ -8014,7 +8021,7 @@ sub output_feature_table {
 
       # fill @{$ftr_min_len_HA{$mdl_name}} for this model, if it's not already filled
       if(! defined $ftr_min_len_HA{$mdl_name}) { 
-        @{$ftr_min_len_HA{$mdl_name}}   = ();
+        @{$ftr_min_len_HA{$mdl_name}} = ();
         for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
           my $parent_ftr_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx);
           $ftr_min_len_HA{$mdl_name}[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) ?
@@ -8345,7 +8352,7 @@ sub output_feature_table {
     my $do_pass = (($cur_noutftr > 0) && ((scalar(@seq_alert_A)) == 0)) ? 1 : 0; # checks only that criteria 1 and 2 are met
 
     # next line checks for criteria 3 (only if first 2 criteria have been met)
-    if($do_pass && (! check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR))) { 
+    if($do_pass && (! check_if_sequence_passes($seq_name, ((defined $mdl_name) ? \@{$ftr_info_HAHR->{$mdl_name}} : undef), $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR))) { 
       # sequence has zero fatal sequence alerts *and* zero fatal feature alerts for all features output to feature table
       # BUT at least one fatal alert for a feature NOT output to feature table (e.g. a feature that is too short to meet
       # minimum length requirements for the feature table). We throw a special alert here (ftskipfl) for this
@@ -8942,7 +8949,7 @@ sub helper_ftable_process_sequence_alerts {
 #   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns: number of alerts added to $ret_alert_AR
+# Returns: '1' if any of the alerts are in $alt_code_str are fatal
 #
 # Dies: Never
 #################################################################
@@ -8962,6 +8969,7 @@ sub helper_ftable_process_feature_alerts {
   # create a hash of all alerts in the input $alt_str
   my %input_alt_code_H = (); # $input_slt_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
+  
   foreach $alt_code (split(",", $alt_code_str)) { 
     if(! defined $alt_info_HHR->{$alt_code}) { 
       ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", 1, $FH_HR);
@@ -8970,9 +8978,10 @@ sub helper_ftable_process_feature_alerts {
   }
 
   my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
-  my $ret_nadded = 0;
+  my $ret_val   = 0; # '1' if any of the alerts are fatal
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
     $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
+    if($do_report) { $ret_val = 1; }
     # check if this alert is invalidated by another we will also report
     if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
       my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
@@ -8994,16 +9003,18 @@ sub helper_ftable_process_feature_alerts {
                              $alt_info_HHR->{$alt_code}{"ldesc"}, 
                              ($instance_str ne "VADRNULL") ? " [" . $instance_str . "]" : "");
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
+        # and if this ftr_idx is not survivable from .minfo file
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
-        if($idx == -1) { 
+        if(($idx == -1) && 
+           ((! defined $ftr_info_AHR->[$ftr_idx]{"survivable"}) || # ftr_idx does not have key 'survivable' from .minfo
+            ($ftr_info_AHR->[$ftr_idx]{"survivable"} == 0))) {     # ftr_idx has 'survivable:0' from minfo
           push(@{$ret_alert_AR}, $alert_str); 
-          $ret_nadded++;
         }
       }
     }
   }
 
-  return $ret_nadded;
+  return $ret_val;
 }
 
 #################################################################
@@ -9893,21 +9904,25 @@ sub check_for_valid_ftbl_feature_prediction {
 #
 # Arguments:
 #  $seq_name:               sequence name
+#  $ftr_info_AHR:           ref to array of hashes with information on the features, 
+#                           can be undef if no model assigned to this seq
 #  $alt_info_HHR:           ref to 2D hash of alert info
 #  $alt_seq_instances_HHR:  ref to 2D hash of sequence alert instances
 #  $alt_ftr_instances_HHHR: ref to 3D hash of feature alert instances
+#  $FH_HR:                  ref to hash of file handles, including 'log'
 #             
 # Returns:  '1' if the sequence should pass, else '0'
 #
-# Dies:     never
+# Dies:     If alt_ftr_instances_HHHR->{$seq_name} has alerts but 
+#           ftr_info_AHR is undefined
 #
 #################################################################
 sub check_if_sequence_passes { 
   my $sub_name = "check_if_sequence_passes";
-  my $nargs_exp = 4;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR) = (@_);
+  my ($seq_name, $ftr_info_AHR, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR) = (@_);
 
   if((! defined $alt_seq_instances_HHR->{$seq_name}) && 
      (! defined $alt_ftr_instances_HHHR->{$seq_name})) { 
@@ -9927,7 +9942,14 @@ sub check_if_sequence_passes {
   if(defined $alt_ftr_instances_HHHR->{$seq_name}) { 
     foreach $ftr_idx (keys (%{$alt_ftr_instances_HHHR->{$seq_name}})) { 
       foreach $alt_code (keys (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}})) { 
-        if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+        if(! defined $ftr_info_AHR) { 
+          # shouldn't happen caller should pass valid $ftr_info_AHR if any feature alerts exist          
+          # because that means >=1 feature was annotated so a model should have been selected
+          ofile_FAIL("ERROR in $sub_name, trying to check feature alert but ftr_info_AHR is undefined", 1, $FH_HR); 
+        }
+        if(($alt_info_HHR->{$alt_code}{"causes_failure"}) && 
+           ((! defined $ftr_info_AHR->[$ftr_idx]{"survivable"}) || # ftr_idx does not have key 'survivable' from .minfo
+            ($ftr_info_AHR->[$ftr_idx]{"survivable"} == 0))) {     # ftr_idx has 'survivable:0' from minfo
           return 0;  # a feature alert that causes failure
         }
       }
