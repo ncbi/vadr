@@ -82,6 +82,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
+# vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureNumSegments()
 # vdr_FeatureRelativeSegmentIndex()
@@ -92,7 +93,7 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
-# 
+#
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()
 # vdr_AlertInfoAdd()
@@ -1119,6 +1120,45 @@ sub vdr_FeatureTypeIsCdsOrMatPeptide {
 
   return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
+# Incept:     EPN, Fri Feb  5 14:23:53 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or mature peptide
+#             or does it have equivalent coords to another feature
+#             that is a CDS or mature peptide?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
+         ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
+        return 1; 
+      }
+    }
+  }
+  return 0;
 }
 
 #################################################################
