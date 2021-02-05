@@ -760,7 +760,6 @@ my $mdl_idx;
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
-  vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
 }
 
 # if --group or --subgroup used, make sure at least one model has that group/subgroup
@@ -844,6 +843,8 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+  vdr_FeatureInfoInitializeExpendableCds(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateExpendableCds(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -7012,12 +7013,19 @@ sub alert_add_parent_based {
     return;
   }
 
-  # get array of all fatal feature alert types 
-  my @fatal_alt_codes_A = (); # array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1
-  foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
-    if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
-       ($alt_info_HHR->{$alt_code}{"causes_failure"} == 1)) { 
-      push(@fatal_alt_codes_A, $alt_code);
+  # get a 2D array of all fatal feature alert types, first dimension
+  # over feature indices, second dimension list of fatal alert codes for that feature
+  # we need 2 dimensions because with "expendable_cds" we can have some alerts which
+  # are fatal for some features but not others
+  my @fatal_alt_codes_AA = (); # [0..$ftr_idx..$nftr-1][0..$n] per-feature array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1 (and are not expendable_cds for $ftr_idx
+  #1p1p3 here would have to make this a AA per feature index also 
+  for($ftr_idx = 0; $ftr_idx < $nftr++; $ftr_idx++) { 
+    @{$fatal_alt_codes_AA[$ftr_idx]} = ();
+    foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+      if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
+         (vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code))) { 
+        push(@{$fatal_alt_codes_AA[$ftr_idx]}, $alt_code);
+      }
     }
   }
 
@@ -7029,11 +7037,10 @@ sub alert_add_parent_based {
       # for each feature that is a parent of type $parent_type with
       # at least one child of type $child_type:
       foreach my $parent_ftr_idx (@parent_ftr_idx_A) { 
-        if((defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) && 
-           (! vdr_FeatureIsExpendable($ftr_info_AHR, $parent_ftr_idx))) { # parent_ftr_idx does not have 'expendable:1' from minfo
+        if(defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) {
           # at least one feature alert exists for this parent feature in this sequence
           # check if any of the alerts for this parent feature are fatal
-          my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@fatal_alt_codes_A, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
+          my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@{$fatal_alt_codes_AA[$parent_ftr_idx]}, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
           if($have_fatal) { 
             # at least one fatal alert for this parent feature, add child alert if it doesn't already exist
             my $nchildren = scalar(@{$children_AA[$parent_ftr_idx]});
@@ -7577,12 +7584,8 @@ sub output_tabular {
                     $alt_nseqftr++;
                     $alt_ct_H{$alt_code}++;
                     my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
-                    my $alt_causes_failure = (($alt_info_HHR->{$alt_code}{"causes_failure"}) &&
-                                              (! vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) # $ftr_idx does not have 'expendable:1' from minfo
-                      ? 1 : 0;
-                                          
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
-                                        $alt_causes_failure ? "yes" : "no", 
+                                        vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                         $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
                     $alt_nprinted++;
@@ -8087,12 +8090,13 @@ sub output_feature_table {
           if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely Ns
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
-            if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
-              # should we make this a misc_feature?
-              # yes if (--nomisc not enabled OR $ftr_idx is expendable (from .minfo file)
-              # and it is not one of our hard-code list of feature types
-              if((! $do_nomisc) || (vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) { 
-                # hard-coded list of feature types that do NOT become misc_features even if they have fatal alerts
+            my ($have_fatal_alt, $have_expcds_alt) = helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR);
+            # should we make this a misc_feature?
+            # yes if:
+            # - --nomisc not enabled OR we have >=1 'expendable_cds' feature/alert but zero fatal alerts
+            # - feature type is not one of our hard-coded list of feature types
+            if($have_fatal_alt || $have_expcds_alt) { 
+              if((! $do_nomisc) || ((! $have_fatal_alt) && ($have_expcds_alt))) { 
                 if(($feature_type ne "gene") && 
                    ($feature_type ne "5'UTR") && 
                    ($feature_type ne "3'UTR") && 
@@ -8936,9 +8940,17 @@ sub helper_ftable_process_sequence_alerts {
 #
 # Purpose:    Given a string of alerts that correspond to a specific
 #             sequence and feature, use the %{$alt_info_HHR} and
-#             process that string to determine what (if any) notes,
-#             and alerts should be added to the feature table
-#             for this seq/feature pair.
+#             process that string to determine what (if any) 
+#             alert/error messages should be added to the feature table
+#             for this seq/feature pair by adding a string to 
+#             @{$ret_alert_AR}. 
+# 
+#             As of v1.1.3 this subroutine also takes into account
+#             if a feature/alert combination is has the 'expendable_cds'
+#             attribute. If so, we do not add it to the @{$ret_alert_AR}
+#             array, but the $ret_expcds_flag (second return value)
+#             will be 1. See 'Returns' for details.
+#
 #
 # Arguments:
 #   $alt_code_str:           string of errors, comma separated, can be ""
@@ -8950,7 +8962,9 @@ sub helper_ftable_process_sequence_alerts {
 #   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns: '1' if any of the alerts are in $alt_code_str are fatal
+# Returns: Two values:
+#   $ret_fatal_flag:  '1' if any of the alerts in $alt_code_str are fatal (and do not have 'expendable_cds' attribute)
+#   $ret_expcds_flag: '1' if any of the alerts in $alt_code_str have 'expendable_cds' attribute
 #
 # Dies: Never
 #################################################################
@@ -8961,8 +8975,11 @@ sub helper_ftable_process_feature_alerts {
  
   my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, $ret_alert_AR, $FH_HR) = (@_);
 
+  my $ret_fatal_flag  = 0; # will be '1' if any of the alerts in $alt_code_str are fatal and don't have 'expendable_cds' attribute
+  my $ret_expcds_flag = 0; # will be '1' if any of the alerts in $alt_code_str have 'expendable_cds' attribute
+
   if($alt_code_str eq "") { 
-    return 0; 
+    return ($ret_fatal_flag, $ret_expcds_flag); 
   }
 
   # printf("in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
@@ -8979,10 +8996,14 @@ sub helper_ftable_process_feature_alerts {
   }
 
   my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
-  my $ret_val   = 0; # '1' if any of the alerts are fatal
+  my $is_fatal  = 0; # '1' if this alert is fatal
+  my $is_expcds = 0; # '1' if this feature/alert has 'expendable_cds' attribute
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
-    if($do_report) { $ret_val = 1; }
+    $is_fatal  = $alt_info_HHR->{$alt_code}{"causes_failure"} ? 1 : 0;
+    $is_expcds = vdr_FeatureAlertIsExpendableCds($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
+    if($is_fatal)  { $ret_fatal_flag  = 1; }
+    if($is_expcds) { $ret_expcds_flag = 1; }
+    my $do_report = ($is_fatal && (! $is_expcds)) ? 1 : 0;
     # check if this alert is invalidated by another we will also report
     if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
       my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
@@ -9004,17 +9025,15 @@ sub helper_ftable_process_feature_alerts {
                              $alt_info_HHR->{$alt_code}{"ldesc"}, 
                              ($instance_str ne "VADRNULL") ? " [" . $instance_str . "]" : "");
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
-        # and if this ftr_idx is not expendable from .minfo file
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
-        if(($idx == -1) && 
-           (! vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) { # $ftr_idx does not have 'expendable:1' from minfo
+        if($idx == -1) { 
           push(@{$ret_alert_AR}, $alert_str); 
         }
       }
     }
   }
 
-  return $ret_val;
+  return ($ret_fatal_flag, $ret_expcds_flag);
 }
 
 #################################################################
@@ -9947,8 +9966,7 @@ sub check_if_sequence_passes {
           # because that means >=1 feature was annotated so a model should have been selected
           ofile_FAIL("ERROR in $sub_name, trying to check feature alert but ftr_info_AHR is undefined", 1, $FH_HR); 
         }
-        if(($alt_info_HHR->{$alt_code}{"causes_failure"}) && 
-           (! vdr_FeatureIsExpendable($ftr_info_AHR, $ftr_idx))) { # $ftr_idx does not have 'expendable:1' from minfo
+        if(vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code)) { 
           return 0;  # a feature alert that causes failure
         }
       }
