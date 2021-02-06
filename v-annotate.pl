@@ -9532,16 +9532,22 @@ sub parse_cdt_tblout_file_and_replace_ns {
     my @missing_mdl_stop_A  = ();
     # check for missing sequence before first aligned region, infer first model position
     if($seq_start_A[0] != 1) { 
-      # printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
+      printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
       push(@missing_seq_start_A, 1);
       push(@missing_seq_stop_A,  $seq_start_A[0]-1);
       my $missing_seq_len = ($seq_start_A[0]-1) - 1 + 1;
-      push(@missing_mdl_start_A, (($mdl_start_A[0]-1) - $missing_seq_len) + 1);
-      push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
+      my $missing_mdl_start = (($mdl_start_A[0]-1) - $missing_seq_len) + 1;
+      my $missing_mdl_stop  = $mdl_start_A[0]-1;
+      if($missing_mdl_start < 1)        { $missing_mdl_start = 1; }
+      if($missing_mdl_start > $mdl_len) { $missing_mdl_start = $mdl_len; }
+      if($missing_mdl_stop < 1)         { $missing_mdl_stop = 1; }
+      if($missing_mdl_stop > $mdl_len)  { $missing_mdl_stop = $mdl_len; }
+      push(@missing_mdl_start_A, $missing_mdl_start);
+      push(@missing_mdl_stop_A,  $missing_mdl_stop);
     }
     # check for missing sequence in between each aligned region
     for($i = 0; $i < ($ncoords-1); $i++) { 
-      #printf("$seq_name %10d..%10d is not covered (mdl: %10d..%10d)\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1, $mdl_stop_A[$i]+1, $mdl_start_A[($i+1)]-1);
+      printf("$seq_name %10d..%10d is not covered (mdl: %10d..%10d)\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1, $mdl_stop_A[$i]+1, $mdl_start_A[($i+1)]-1);
       push(@missing_seq_start_A, $seq_stop_A[$i]+1);
       push(@missing_seq_stop_A,  $seq_start_A[($i+1)]-1);
       push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
@@ -9553,6 +9559,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
     # the region is not the correct length so we don't attemp to 
     # replace this region. An alternative would be to replace to 
     # the end of the model, but I think that's too aggressive.
+    printf("HEYA: ncoords: $ncoords\n");
+    printf("HEYA: seq_stop_A[($ncoords-1)]: " . $seq_stop_A[($ncoords-1)] . "\n");
+    printf("HEYA: seq_len: $seq_len\n");
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
@@ -9594,6 +9603,11 @@ sub parse_cdt_tblout_file_and_replace_ns {
         ofile_FAIL("ERROR in $sub_name, unable to parse fetched sequence fasta:\n$fasta_seq\n", 1, $FH_HR);
       }
       for($i = 0; $i < $nmissing; $i++) {
+        printf("HEYA i: $i in i<nmissing loop\n");
+        printf("HEYA missing_seq_start_A[$i]: " . $missing_seq_start_A[$i] . "\n");
+        printf("HEYA missing_seq_stop_A[$i]:  " . $missing_seq_stop_A[$i] . "\n");
+        printf("HEYA missing_mdl_start_A[$i]: " . $missing_mdl_start_A[$i] . "\n");
+        printf("HEYA missing_mdl_stop_A[$i]:  " . $missing_mdl_stop_A[$i] . "\n");
         my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
         my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
         if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $r_minlen_opt)) { 
@@ -9620,6 +9634,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
             #  in this case $original_seq_start will be its initialized value of 1)
             if($missing_seq_start_A[$i] != 1) { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
               $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
+              printf("HEYA 0 replaced_sqstring len: %d\n", length($replaced_sqstring));
             }
             if($count_n eq $missing_seq_len) { 
               # region to replace is entirely Ns, easy case
@@ -9639,7 +9654,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
               my @missing_sqstring_A = split("", $missing_sqstring);
               for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
                 if($missing_sqstring_A[$spos] eq "N") { 
-                  # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
+                  printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
                   $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
                   $nreplaced_nts++;
                   $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
