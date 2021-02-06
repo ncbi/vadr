@@ -1,0 +1,5 @@
+#sequence	error	feature	error-description
+NC_001959-10extraNs-at-start	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.818<0.900]
+NC_001959-10extraNs-at-start	INDEFINITE_ANNOTATION_START	ORF1	alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
+NC_001959-10extraNs-at-start	INDEFINITE_ANNOTATION_START	nonstructural polyprotein	alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
+NC_001959-10extraNs-at-start	PEPTIDE_TRANSLATION_PROBLEM	p48	mat_peptide may not be translated because its parent CDS has a problem

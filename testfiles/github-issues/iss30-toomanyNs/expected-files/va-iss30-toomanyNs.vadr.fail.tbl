@@ -1,0 +1,13 @@
+>Feature NC_001959-10extraNs-at-start
+<221	>1200	gene
+			gene	ORF1
+<221	>1200	misc_feature
+			note	similar to nonstructural polyprotein
+<221	>1200	misc_feature
+			note	similar to p48
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.818<0.900]
+ERROR: INDEFINITE_ANNOTATION_START: (ORF1) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
+ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
