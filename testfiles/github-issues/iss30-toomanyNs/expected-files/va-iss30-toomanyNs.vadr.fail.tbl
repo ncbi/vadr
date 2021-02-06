@@ -11,3 +11,20 @@ ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similar
 ERROR: INDEFINITE_ANNOTATION_START: (ORF1) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
 ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+>Feature NC_001959-10extraNs-at-end
+<1	510	gene
+			gene	ORF2
+<1	510	CDS
+			product	VP1
+			codon_start	1
+			protein_id	NC_001959-10extraNs-at-end_1
+510	>1050	gene
+			gene	ORF3
+510	>1050	misc_feature
+			note	similar to VP2
+
+Additional note(s) to submitter:
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.813<0.900]
+ERROR: INDEFINITE_ANNOTATION_END: (ORF3) alignment to homology model has low confidence at 3' boundary [0.05 < 0.80, RF position 7588]
+ERROR: INDEFINITE_ANNOTATION_END: (VP2) alignment to homology model has low confidence at 3' boundary [0.05 < 0.80, RF position 7588]
+ERROR: UNEXPECTED_LENGTH: (VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [688]
