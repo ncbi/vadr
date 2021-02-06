@@ -9415,9 +9415,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
   my $r_minlen_opt   = opt_Get("--r_minlen", $opt_HHR);
-  my $small_value   = 0.00000001;
+  my $small_value    = 0.00000001;
   my $r_minfract_opt = opt_Get("--r_minfract", $opt_HHR) - $small_value;
-  my $do_keep       = opt_Get("--keep", $opt_HHR);
+  my $do_keep        = opt_Get("--keep", $opt_HHR);
   my %tblout_coords_HAH = (); # hash of arrays of hashes 
                               # key is seq name
                               # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
@@ -9530,14 +9530,24 @@ sub parse_cdt_tblout_file_and_replace_ns {
     my @missing_seq_stop_A  = ();
     my @missing_mdl_start_A = ();
     my @missing_mdl_stop_A  = ();
+    # flags used only to making sure $rpn_output_HHR->{$seq_name}{ngaps_tot} is accurate
+    my $too_many_nt_5p_flag = 0; # set to '1' if missing region on 5' end extends past end of model (too many nts on 5' end)
+    my $too_many_nt_3p_flag = 0; # set to '1' if missing region on 3' end extends past end of model (too many nts on 5' end)
     # check for missing sequence before first aligned region, infer first model position
     if($seq_start_A[0] != 1) { 
       # printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
-      push(@missing_seq_start_A, 1);
-      push(@missing_seq_stop_A,  $seq_start_A[0]-1);
       my $missing_seq_len = ($seq_start_A[0]-1) - 1 + 1;
-      push(@missing_mdl_start_A, (($mdl_start_A[0]-1) - $missing_seq_len) + 1);
-      push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
+      my $cur_missing_mdl_start = (($mdl_start_A[0]-1) - $missing_seq_len) + 1;
+      # only add this missing region if it doesn't extend past end of model
+      if($cur_missing_mdl_start >= 1) { 
+        push(@missing_seq_start_A, 1);
+        push(@missing_seq_stop_A,  $seq_start_A[0]-1);
+        push(@missing_mdl_start_A, $cur_missing_mdl_start);
+        push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
+      }
+      else {
+        $too_many_nt_5p_flag = 1;
+      }
     }
     # check for missing sequence in between each aligned region
     for($i = 0; $i < ($ncoords-1); $i++) { 
@@ -9563,10 +9573,15 @@ sub parse_cdt_tblout_file_and_replace_ns {
         push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
         push(@missing_mdl_stop_A,  $cur_missing_mdl_stop);
       }
+      else {
+        $too_many_nt_3p_flag = 1;
+      }
     }
     my $nmissing = scalar(@missing_seq_start_A);
     $rpn_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
-
+    if($too_many_nt_5p_flag) { $rpn_output_HHR->{$seq_name}{"ngaps_tot"}++; }
+    if($too_many_nt_3p_flag) { $rpn_output_HHR->{$seq_name}{"ngaps_tot"}++; }
+    
     # first pass through all missing regions to determine if any should be replaced
     # because they meet minimum replacement thresholds:
     # - length of sequence region and model region must be identical
@@ -9639,7 +9654,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
               my @missing_sqstring_A = split("", $missing_sqstring);
               for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
                 if($missing_sqstring_A[$spos] eq "N") { 
-                  # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
+                  #printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
                   $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
                   $nreplaced_nts++;
                   $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;

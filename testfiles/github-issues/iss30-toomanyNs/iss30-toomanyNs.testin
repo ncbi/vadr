@@ -19,6 +19,8 @@ command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep --alicheck -f --mdir $VADRSCR
 desc: iss30-toomanyNs
 out: va-iss30-toomanyNs/va-iss30-toomanyNs.vadr.pass.tbl
 out: va-iss30-toomanyNs/va-iss30-toomanyNs.vadr.fail.tbl
+out: va-iss30-toomanyNs/va-iss30-toomanyNs.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss30-toomanyNs/expected-files/va-iss30-toomanyNs.vadr.pass.tbl
-exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss30-toomanyNs/expected-files/va-iss30-toomanyNs.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss30-toomanyNs/expected-files/va-iss30-toomanyNs.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss30-toomanyNs/expected-files/va-iss30-toomanyNs.vadr.alt.list
 rmdir: va-iss30-toomanyNs
