@@ -1,0 +1,4 @@
+#seq  seq                    seq             best                      sub                             seq   
+#idx  name                   len  p/f   ant  model                grp  grp  nfa  nfn  nf5  nf3  nfalt  alerts
+#---  --------------------  ----  ----  ---  -------------------  ---  ---  ---  ---  ---  ---  -----  ------
+1     KY674921.1/2474-3974  1501  FAIL  yes  NC_006577.2500-4000  -    -      1    0    0    0      1  UNJOINABLE_SUBSEQ_ALIGNMENTS(unjoinbl),DUPLICATE_REGIONS(dupregin),DISCONTINUOUS_SIMILARITY(discontn)

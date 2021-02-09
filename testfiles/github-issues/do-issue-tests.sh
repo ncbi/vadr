@@ -9,6 +9,7 @@ for i in \
     iss6 \
     iss13 \
     iss21-delcds \
+    iss30-toomanyNs \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then

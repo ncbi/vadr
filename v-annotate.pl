@@ -753,8 +753,7 @@ utl_FileValidateExistsAndNonEmpty($minfo_file, "model info file", undef, 1, $FH_
 vdr_ModelInfoFileParse($minfo_file, \@reqd_mdl_keys_A, \@reqd_ftr_keys_A, \@mdl_info_AH, \%ftr_info_HAH, $FH_HR);
 
 # validate %mdl_info_AH
-my @mdl_reqd_keys_A = ("name", "length");
-my $nmdl = utl_AHValidate(\@mdl_info_AH, \@mdl_reqd_keys_A, "ERROR reading model info from $minfo_file", $FH_HR);
+my $nmdl = utl_AHValidate(\@mdl_info_AH, \@reqd_mdl_keys_A, "ERROR reading model info from $minfo_file", $FH_HR);
 my $mdl_idx;
 # verify feature coords make sense and parent_idx_str is valid
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -3731,9 +3730,17 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        $FH_HR);
           } 
           elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5loc", $seq_name, $ftr_idx,
-                                       sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
+            # report indf5loc, but first check if the start of this segment is identical to 
+            # the stop of a CDS or mat_peptide or gene feature
+            # if so we don't report indf5loc because there's other (better) checks of the start codon position
+            # (e.g. that it is a valid start codon)
+            if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx))                || # feature is NOT CDS or mat_peptide or gene (so we can always report indf5loc)
+               (! $sgm_info_AHR->[$sgm_idx]{"is_5p"})                                             || # segment is NOT first segment in feature (so we can always report indf5loc)
+               (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # start does not match a CDS start (so we can always report indf5loc)
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5loc", $seq_name, $ftr_idx,
+                                         sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
                                        $FH_HR);
+            }
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
@@ -3743,9 +3750,17 @@ sub cmalign_parse_stk_and_add_alignment_alerts {
                                        $FH_HR);
           }
           elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3loc", $seq_name, $ftr_idx,
-                                       sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
-                                       $FH_HR);
+            # report indf3loc, but first check if the stop of this segment is identical to 
+            # the stop of a CDS or gene feature (mat_peptide excluded because it won't include stop codon)
+            # if so we don't report indf3loc because there's other (better) checks of the stop codon position
+            # (e.g. that it is a valid in-frame stop)
+            if((! vdr_FeatureTypeIsCdsOrGene($ftr_info_AHR, $ftr_idx))                           || # feature is NOT CDS or gene (so we can always report indf3loc)
+               (! $sgm_info_AHR->[$sgm_idx]{"is_3p"})                                            || # segment is NOT final segment in feature (so we can always report indf3loc)
+               (! vdr_SegmentStopIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # stop does not match a CDS stop (so we can always report indf3loc)
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3loc", $seq_name, $ftr_idx,
+                                         sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
+                                         $FH_HR);
+            }
           }
         }
 
@@ -9438,9 +9453,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
   my $r_minlen_opt   = opt_Get("--r_minlen", $opt_HHR);
-  my $small_value   = 0.00000001;
+  my $small_value    = 0.00000001;
   my $r_minfract_opt = opt_Get("--r_minfract", $opt_HHR) - $small_value;
-  my $do_keep       = opt_Get("--keep", $opt_HHR);
+  my $do_keep        = opt_Get("--keep", $opt_HHR);
   my %tblout_coords_HAH = (); # hash of arrays of hashes 
                               # key is seq name
                               # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
@@ -9553,14 +9568,24 @@ sub parse_cdt_tblout_file_and_replace_ns {
     my @missing_seq_stop_A  = ();
     my @missing_mdl_start_A = ();
     my @missing_mdl_stop_A  = ();
+    # flags used only to making sure $rpn_output_HHR->{$seq_name}{ngaps_tot} is accurate
+    my $too_many_nt_5p_flag = 0; # set to '1' if missing region on 5' end extends past end of model (too many nts on 5' end)
+    my $too_many_nt_3p_flag = 0; # set to '1' if missing region on 3' end extends past end of model (too many nts on 5' end)
     # check for missing sequence before first aligned region, infer first model position
     if($seq_start_A[0] != 1) { 
       # printf("$seq_name %10d..%10d is not covered\n", 1, $seq_start_A[0]-1);
-      push(@missing_seq_start_A, 1);
-      push(@missing_seq_stop_A,  $seq_start_A[0]-1);
       my $missing_seq_len = ($seq_start_A[0]-1) - 1 + 1;
-      push(@missing_mdl_start_A, (($mdl_start_A[0]-1) - $missing_seq_len) + 1);
-      push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
+      my $cur_missing_mdl_start = (($mdl_start_A[0]-1) - $missing_seq_len) + 1;
+      # only add this missing region if it doesn't extend past end of model
+      if($cur_missing_mdl_start >= 1) { 
+        push(@missing_seq_start_A, 1);
+        push(@missing_seq_stop_A,  $seq_start_A[0]-1);
+        push(@missing_mdl_start_A, $cur_missing_mdl_start);
+        push(@missing_mdl_stop_A, $mdl_start_A[0]-1);
+      }
+      else {
+        $too_many_nt_5p_flag = 1;
+      }
     }
     # check for missing sequence in between each aligned region
     for($i = 0; $i < ($ncoords-1); $i++) { 
@@ -9586,10 +9611,15 @@ sub parse_cdt_tblout_file_and_replace_ns {
         push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
         push(@missing_mdl_stop_A,  $cur_missing_mdl_stop);
       }
+      else {
+        $too_many_nt_3p_flag = 1;
+      }
     }
     my $nmissing = scalar(@missing_seq_start_A);
     $rpn_output_HHR->{$seq_name}{"ngaps_tot"} = $nmissing;
-
+    if($too_many_nt_5p_flag) { $rpn_output_HHR->{$seq_name}{"ngaps_tot"}++; }
+    if($too_many_nt_3p_flag) { $rpn_output_HHR->{$seq_name}{"ngaps_tot"}++; }
+    
     # first pass through all missing regions to determine if any should be replaced
     # because they meet minimum replacement thresholds:
     # - length of sequence region and model region must be identical
@@ -9662,7 +9692,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
               my @missing_sqstring_A = split("", $missing_sqstring);
               for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
                 if($missing_sqstring_A[$spos] eq "N") { 
-                  # printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
+                  #printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
                   $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
                   $nreplaced_nts++;
                   $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
