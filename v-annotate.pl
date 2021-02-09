@@ -781,17 +781,27 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
   }
 }
 
-# make sure $cm_file includes CMs for all models we just read in $minfo_file
+# make sure $cm_file includes CMs for all models we just read in $minfo_file in same order 
+# (this is only important for score tie-breaking, github issue #26)
 my $cm_name_file = $out_root . ".cm.namelist";
 my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
 utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-my %cm_name_H = ();
-utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
+my @cm_name_double_A = (); # because infernal CMs have CMs and HMMs in them, each name will exist twice in a row
+utl_FileLinesToArray($cm_name_file, 1, \@cm_name_double_A, $FH_HR);
+my $cm_name_idx = 0;
+my $ncm_name = scalar(@cm_name_double_A);
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(! exists $cm_name_H{$mdl_name}) { 
-    ofile_FAIL("ERROR, read model named $mdl_name in model info file ($minfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
+  if(($cm_name_idx+1) >= $ncm_name) { 
+    ofile_FAIL("ERROR, ran out of CM names when validating CM file and model info file $minfo_file, no CMs for model $mdl_name", 1, $FH_HR);
   }
+  if($cm_name_double_A[$cm_name_idx] ne $cm_name_double_A[($cm_name_idx+1)]) { 
+    ofile_FAIL(sprintf("ERROR, problem validating CM names in CM file, %s and %s should be identical but they are not", $cm_name_double_A[$cm_name_idx], $cm_name_double_A[($cm_name_idx+1)]), 1, $FH_HR);
+  }
+  if($cm_name_double_A[$cm_name_idx] ne $mdl_name) { 
+    ofile_FAIL(sprintf("ERROR, problem validating CM names in CM file, expected %s but read %s, are models ordered identically in the CM file and the modelinfo file? It is required that they are", $cm_name_double_A[$cm_name_idx], $mdl_name), 1, $FH_HR);
+  }
+  $cm_name_idx += 2;
 }
 push(@to_remove_A, $cm_name_file);
 
@@ -1757,7 +1767,7 @@ sub classification_stage {
   if($do_blastn) { # -s: use blastn for classification
     run_blastn_and_summarize_output($execs_HR, $blastn_db_file, $fa_file, $out_root, $stg_key,
                                     $nseq, $progress_w, $opt_HHR, $ofile_info_HHR);
-    parse_blastn_results($ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"}, $seq_len_HR, 
+    parse_blastn_results($ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.summary"}, $mdl_info_AHR, $seq_len_HR, 
                          undef, undef, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     push(@{$to_remove_AR}, 
          $ofile_info_HHR->{"fullpath"}{"$stg_key.blastn.out"},
@@ -1902,7 +1912,7 @@ sub coverage_determination_stage {
     }
     $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
     my $blastn_summary_key = ($stg_key eq "rpn.cdt") ? "rpn.cls.blastn.summary" : "std.cls.blastn.summary";
-    parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $seq_len_HR, 
+    parse_blastn_results($ofile_info_HHR->{"fullpath"}{$blastn_summary_key}, $mdl_info_AHR, $seq_len_HR, 
                          \%seq2mdl_H, \@cls_mdl_name_A, $out_root, $stg_key, $opt_HHR, $ofile_info_HHR);
     # keep track of the tblout output files:
     foreach $mdl_name (@cls_mdl_name_A) { 

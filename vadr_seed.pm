@@ -170,6 +170,7 @@ sub run_blastn_and_summarize_output {
 #
 # Arguments: 
 #  $blastn_summary_file: path to blastn summary file to parse
+#  $mdl_info_AHR:        REF to model info array of hashes, possibly added to here 
 #  $seq_len_HR:          REF to hash of sequence lengths
 #  $seq2mdl_HR:          REF to hash mapping each sequence to the model
 #                        it is classified to, if undef serves as flag
@@ -189,10 +190,10 @@ sub run_blastn_and_summarize_output {
 ################################################################# 
 sub parse_blastn_results { 
   my $sub_name = "parse_blastn_results";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($blastn_summary_file, $seq_len_HR, $seq2mdl_HR, $mdl_name_AR, 
+  my ($blastn_summary_file, $mdl_info_AHR, $seq_len_HR, $seq2mdl_HR, $mdl_name_AR, 
       $out_root, $stg_key, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
@@ -206,6 +207,13 @@ sub parse_blastn_results {
     ofile_FAIL("ERROR in $sub_name, stage key is $stg_key but seq2mdl_HR is undef", 1, $FH_HR);
   }
 
+  # create the hash we'll use to map model names to model indices
+  my %mdl_name2idx_H = (); # key: model name, value: index in $mdl_name_AR
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    $mdl_name2idx_H{$mdl_info_AHR->[$mdl_idx]{"name"}} = $mdl_idx;
+  }
+
   my $pretblout_FH = undef; # defined if output mode 1 (if ! defined $seq2mdl_HR)
   my %tblout_FH_H  = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
   my %indel_FH_H   = ();    # defined if output mode 2 (if   defined $seq2mdl_HR)
@@ -213,7 +221,7 @@ sub parse_blastn_results {
   my $small_value  = 0.000001;
   my $min_bitsc    = opt_Get("--s_blastnsc", $opt_HHR) - $small_value;
   my $do_keep      = opt_Get("--keep", $opt_HHR) ? 1 : 0;
-  my $mdl_name = undef;
+  my $mdl_name     = undef;
   if(! defined $seq2mdl_HR) { 
     # output mode 1, open the pretblout output file 
     # 
@@ -439,7 +447,10 @@ sub parse_blastn_results {
             $cur_mdl_stop   = $cur_H{"SRANGESTART"};
           }
           if(defined $pretblout_FH) { 
-            printf $pretblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %3s  %11s\n", 
+            if(! defined $mdl_name2idx_H{$cur_mdl_name}) { 
+              ofile_FAIL("ERROR in $sub_name, do not have model index info for model name $cur_mdl_name\n", 1, $FH_HR);
+            }
+            printf $pretblout_FH ("%-30s  %-30s  %8.1f  %9d  %9d  %6s  %6s  %5d  %11s\n", 
                                   $cur_mdl_name, 
                                   $cur_seq_name,
                                   $cur_bit_score,
@@ -449,7 +460,7 @@ sub parse_blastn_results {
                                   sprintf("    %s%s", 
                                           ($cur_seq_start == 1)            ? "[" : ".",
                                           ($cur_seq_stop  == $cur_seq_len) ? "]" : "."),
-                                  "?",
+                                  $mdl_name2idx_H{$cur_mdl_name},
                                   $cur_seq_len);
             
             # update summed score in %scsum_HHH for this model/seq/strand trio
