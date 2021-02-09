@@ -231,11 +231,11 @@ opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only 
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                               help-output    
-opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",            \%opt_HH, \@opt_order_A);
-opt_Add("--notrim",       "boolean",  0,        $g,    undef,   undef,      "in feature table, don't trim coords due to Ns (for any feature types)",   "in feature table, don't trim coords due to Ns (for any feature types)",   \%opt_HH, \@opt_order_A);
+opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table for failed seqs, never change feature type to misc_feature",             "in feature table for failed seqs, never change feature type to misc_feature", \%opt_HH, \@opt_order_A);
+opt_Add("--notrim",       "boolean",  0,        $g,    undef,   undef,      "in feature table, don't trim coords due to Ns (for any feature types)",                   "in feature table, don't trim coords due to Ns (for any feature types)",   \%opt_HH, \@opt_order_A);
 opt_Add("--noftrtrim",    "string",   undef,    $g,    undef,"--notrim",    "in feature table, don't trim coords due to Ns for feature types in comma-delimited <s>",  "in feature table, don't trim coords due to Ns for feature types in comma-delmited <s>",  \%opt_HH, \@opt_order_A);
-opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides",         \%opt_HH, \@opt_order_A);
-opt_Add("--forceprotid",  "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx",  \%opt_HH, \@opt_order_A);
+opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",                         "in feature table, don't add protein_id for CDS and mat_peptides",         \%opt_HH, \@opt_order_A);
+opt_Add("--forceprotid",  "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",                  "in feature table, force protein_id value to be sequence name, then idx",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
@@ -7766,8 +7766,27 @@ sub output_tabular {
         $alc_sep_flag = 0; 
       }
       $alt_idx++;
+      # determine if this alert has "misc_not_failure" for at least 1 feature in 1 model,
+      # if so, we'll add a '*' 
+      my $misc_not_failure_flag = 0;
+      my $cur_nmdl = scalar(@{$mdl_info_AHR});
+      for(my $cur_mdl_idx = 0; $cur_mdl_idx < $cur_nmdl; $cur_mdl_idx++) { 
+        my $cur_mdl_name = $mdl_info_AHR->[$cur_mdl_idx]{"name"};
+        my $cur_nftr = scalar(@{$ftr_info_HAHR->{$cur_mdl_name}});
+        for(my $cur_ftr_idx = 0; $cur_ftr_idx < $cur_nftr; $cur_ftr_idx++) { 
+          if(vdr_FeatureAlertIsMiscNotFailure($ftr_info_HAHR->{$cur_mdl_name}, $alt_info_HHR, $cur_ftr_idx, $alt_code)) { 
+            $misc_not_failure_flag = 1;
+            $cur_ftr_idx = $cur_nftr; # breaks ftr loop
+            $cur_mdl_idx = $cur_nmdl; # breaks mdl loop
+          }
+        }
+      }
+      my $causes_failure_str = $alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no";
+      if(($causes_failure_str eq "yes") && ($misc_not_failure_flag)) { 
+        $causes_failure_str .= "*";
+      }
       push(@data_alc_AA, [$alt_idx, $alt_code, 
-                          ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
+                          $causes_failure_str,
                           helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
                           $alt_info_HH{$alt_code}{"pertype"}, 
                           $alt_ct_H{$alt_code}, $alt_seq_ct_H{$alt_code},
