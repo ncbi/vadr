@@ -509,10 +509,16 @@ sub vdr_FeatureInfoInitializeMiscNotFailure {
 # Subroutine: vdr_FeatureInfoValidateMiscNotFailure
 # Incept:     EPN, Fri Feb  5 11:45:29 2021
 # 
-# Purpose:    Validate "misc_not_failure" values are either 0 or 1
-#             and are only 1 for feature types that can become misc_features.
+# Purpose:    Validate "misc_not_failure" values are either 0 or 1.
 #             Should probably be called after vdr_FeatureInfoInitializeMiscNotFailure()
 # 
+#             I considered enforcing that "misc_not_failure" could only exist
+#             for feature types that can become misc_features but decided 
+#             against it so that 'gene' features can have alerts that would
+#             be fatal except that a misc_not_failure=1 value causes them not
+#             to be fatal. These won't be turned into misc_features because
+#             output_feature_table() won't let them be, but that's ok.
+#
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
@@ -538,9 +544,10 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
     elsif(($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} != 1) && ($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} != 0)) { 
       $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} . " != 0 and != 1\n"; 
     }
-    elsif(($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} == 1) && (! vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx))) { 
-      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} . " is 1 but type is " . $ftr_info_AHR->[$ftr_idx]{"type"} . " and that type cannot become a misc_feature (hard-coded)\n";
-    }
+# decided against this enforcement (see Purpose):
+#    elsif(($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} == 1) && (! vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx))) { 
+#      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} . " is 1 but type is " . $ftr_info_AHR->[$ftr_idx]{"type"} . " and that type cannot become a misc_feature (hard-coded)\n";
+#    }
   }
   
   if($fail_str ne "") { 
@@ -1921,13 +1928,13 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",
                    "PEPTIDE_TRANSLATION_PROBLEM", # short description
                    "mat_peptide may not be translated because its parent CDS has a problem", # long description
-                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "pepadjcy", "feature",
                    "PEPTIDE_ADJACENCY_PROBLEM", # short description
                    "predictions of two mat_peptides expected to be adjacent are not adjacent", # long description
-                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfantp", "feature",
