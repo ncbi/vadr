@@ -7124,18 +7124,17 @@ sub alert_add_parent_based {
     return;
   }
 
-  # get a 2D array of all fatal feature alert types, first dimension
-  # over feature indices, second dimension list of fatal alert codes for that feature
-  # we need 2 dimensions because with "misc_not_failure" we can have some alerts which
-  # are fatal for some features but not others
-  my @fatal_alt_codes_AA = (); # [0..$ftr_idx..$nftr-1][0..$n] per-feature array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1 (and are not misc_not_failure for $ftr_idx
-  for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    @{$fatal_alt_codes_AA[$ftr_idx]} = ();
-    foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
-      if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
-         (vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code))) { 
-        push(@{$fatal_alt_codes_AA[$ftr_idx]}, $alt_code);
-      }
+  # get array of all fatal feature alert types 
+  # note: we don't care about which feature/alert pairs have "misc_not_failure" here,
+  # because if a parent becomes a misc_feature (instead of failing) we still want
+  # children to get the corresponding alerts (e.g. peptrans)
+  # they may (or may not) escape failure themselves if they have "misc_not_failure"
+  # but we want the alerts reported regardless
+  my @fatal_alt_codes_A = (); # array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1
+  foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
+    if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
+       ($alt_info_HHR->{$alt_code}{"causes_failure"} == 1)) { 
+      push(@fatal_alt_codes_A, $alt_code);
     }
   }
 
@@ -7150,7 +7149,7 @@ sub alert_add_parent_based {
         if(defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) {
           # at least one feature alert exists for this parent feature in this sequence
           # check if any of the alerts for this parent feature are fatal
-          my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@{$fatal_alt_codes_AA[$parent_ftr_idx]}, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
+          my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@fatal_alt_codes_A, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
           if($have_fatal) { 
             # at least one fatal alert for this parent feature, add child alert if it doesn't already exist
             my $nchildren = scalar(@{$children_AA[$parent_ftr_idx]});
