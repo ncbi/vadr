@@ -211,10 +211,12 @@ opt_Add("--group",         "string",  undef,     $g,     undef, undef,     "set 
 opt_Add("--subgroup",      "string",  undef,     $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
-#        option               type   default  group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--alt_list",     "boolean",  0,         $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
-opt_Add("--alt_pass",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
-opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
+#        option               type   default  group  requires incompat    preamble-output                                                                             help-output    
+opt_Add("--alt_list",     "boolean",  0,         $g,     undef, undef,     "output summary of all alerts and exit",                                                   "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",                                    "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                                           "specify that alert codes in comma-separated <s> do cause FAILure",     \%opt_HH, \@opt_order_A);
+opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef, undef,     "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef, undef,     "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -347,11 +349,11 @@ my $options_okay =
                 'group=s'       => \$GetOptions_H{"--group"},
                 'subgroup=s'    => \$GetOptions_H{"--subgroup"},
 # options for controlling which alerts cause failure
-                "alt_list"          => \$GetOptions_H{"--alt_list"},
-                "alt_pass=s"        => \$GetOptions_H{"--alt_pass"},
-                "alt_fail=s"        => \$GetOptions_H{"--alt_fail"},
-                "alt_expcds_pass=s" => \$GetOptions_H{"--alt_expcds_pass"},
-                "alt_expcds_fail=s" => \$GetOptions_H{"--alt_expcds_fail"},
+                "alt_list"      => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
+                "alt_mnf_yes=s" => \$GetOptions_H{"--alt_mnf_yes"},
+                "alt_mnf_no=s"  => \$GetOptions_H{"--alt_mnf_no"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -498,12 +500,12 @@ if(scalar(@ARGV) != 2) {
 
 my ($orig_in_fa_file, $dir) = (@ARGV);
 
-# enforce that --alt_expcds_pass and --alt_expcds_fail options are valid
-if((opt_IsUsed("--alt_expcds_pass", \%opt_HH)) || (opt_IsUsed("--alt_expcds_fail", \%opt_HH))) { 
+# enforce that --alt_pass and --alt_fail options are valid
+if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
 }
 
-# enforce that --alt_pass and --alt_fail options are valid
+# enforce that --alt_mnf_yes and --alt_mnf_no options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
 }
@@ -849,8 +851,8 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
-  vdr_FeatureInfoInitializeExpendableCds(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoValidateExpendableCds(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -5090,11 +5092,11 @@ sub add_low_similarity_alerts {
                 # determine if we should even report lowsim{5,3,i}f alerts for this feature
                 # we will UNLESS:
                 # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
-                #   and feature does not have a 'expendable_cds' attribute
-                # If feature has an 'expendable_cds' attribute then we report these anyway because they can be 
-                # more extreme than the 'expendable_cds' alerts
+                #   and feature does not have a 'misc_not_failure' attribute
+                # If feature has an 'misc_not_failure' attribute then we report these anyway because they can be 
+                # more extreme than the 'misc_not_failure' alerts
                 my $report_lowsim_alerts_for_this_feature = ((vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx)) && 
-                                                             (! $ftr_info_AHR->[$ftr_idx]{"expendable_cds"})) ? 0 : 1;
+                                                             (! $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"})) ? 0 : 1;
                 my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
                 if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
                   my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
@@ -6575,21 +6577,25 @@ sub alert_list_option {
   my @head_AA  = ();
   my @bcom_A   = ();
 
-  @{$head_AA[0]} = ("",    "alert",  "",    "short",       "long");
-  @{$head_AA[1]} = ("idx", "code",   "S/F", "description", "description");
+  @{$head_AA[0]} = ("",    "",       "",    "misc, not",      "",            "");
+  @{$head_AA[1]} = ("",    "alert",  "",    "failure",        "short",       "long");
+  @{$head_AA[2]} = ("idx", "code",   "S/F", "(if in .minfo)", "description", "description");
+
 
   push(@bcom_A, $div_line);
   push(@bcom_A, "#\n");
   push(@bcom_A, "# $pkgname $version ($releasedate)\n");
   push(@bcom_A, "#\n");
   push(@bcom_A, "# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
-  push(@bcom_A, "# listed in --alt_pass or --alt_fail option strings:\n#\n");
+  push(@bcom_A, "# listed in --alt_pass, --alt_fail, --alt_mnf_yes, or --alt_mnf_no\n");
+  push(@bcom_A, "# option strings:\n#\n");
   $idx = 0;
   foreach $code (@code_A) { 
     if($alt_info_HHR->{$code}{"always_fails"}) { 
       $idx++;
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      "never",
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
@@ -6609,8 +6615,13 @@ sub alert_list_option {
     if(($alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
+      my $misc_not_fail_str = "never";
+      if($alt_info_HHR->{$code}{"pertype"} eq "feature") { 
+        $misc_not_fail_str = $alt_info_HHR->{$code}{"misc_not_failure"} ? "yes" : "no";
+      }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      $misc_not_fail_str,
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
@@ -6630,8 +6641,13 @@ sub alert_list_option {
     if((! $alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
+      my $misc_not_fail_str = "never";
+      if($alt_info_HHR->{$code}{"pertype"} eq "feature") { 
+        $misc_not_fail_str = $alt_info_HHR->{$code}{"misc_not_failure"} ? "yes" : "no";
+      }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      $misc_not_fail_str,
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
@@ -6704,6 +6720,85 @@ sub alert_pass_fail_options {
   if($die_str ne "") { 
     $die_str .= "Use the --alt_list to see a list possible alert codes\nto use with --alt_pass and --alt_fail.\n";
     ofile_FAIL("ERROR processing --alt_fail and/or --alt_pass options:\n$die_str", 1, undef);
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_misc_not_failure_options()
+# Incept:      EPN, Tue Feb  9 13:43:36 2021
+#
+# Purpose:    Handle the --alt_mnf_yes and --alt_mnf_no options by 
+#             parsing their strings, determining if they are valid
+#             and updating the "misc_not_fail" values in 
+#             %{$alt_info_HHR}. Also make sure they make sense with
+#             the "causes_failure" values in %{$alt_info_HHR}: 
+#             "misc_not_failure" can only be '1' for an alert code 
+#             if "cause_failure" is '1'.
+#
+#             This subroutine should be called *after* 
+#             alert_pass_fail_options().
+#
+# Arguments: 
+#  $alt_info_HHR:   REF to the alert info hash of arrays, PRE-FILLED
+#  $opt_HHR:        REF to 2D hash of option values
+#
+# Returns:    void
+#
+# Dies:       if --alt_mnf_yes or --alt_mnf_no option strings are invalid
+#             if trying to set alert "misc_not_failure" value conflicts
+#             with "causes_failure" value as described in "Purpose".
+#
+#################################################################
+sub alert_misc_not_failure_options { 
+  my $sub_name = "alert_misc_not_failure_options()"; 
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($alt_info_HHR, $opt_HHR) = @_;
+  
+  my @yes_A = ();
+  my @no_A  = ();
+  if(opt_IsUsed("--alt_mnf_yes", $opt_HHR)) { 
+    @yes_A = split(",", opt_Get("--alt_pass", $opt_HHR));
+  }
+  if(opt_IsUsed("--alt_mnf_no", $opt_HHR)) { 
+    @no_A = split(",", opt_Get("--alt_fail", $opt_HHR));
+  }
+
+  my $die_str = "";
+  my $alt_code = undef;
+
+  # --alt_mnf_yes codes
+  foreach my $alt_code (@yes_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    elsif($alt_info_HHR->{$alt_code}{"always_fails"}) { 
+      $die_str .= "alert code $alt_code always causes failure, it cannot be listed in --alt_mnf_yes string\n";
+    }
+    elsif(! $alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+      $die_str .= "alert code $alt_code does *not* cause failure (either by default or due to --alt_fail option), it cannot be listed in --alt_mnf_yes string\n";
+    }
+    else { 
+      vdr_AlertInfoSetMiscNotFailure($alt_info_HHR, $alt_code, 1, undef);
+    }
+  }
+
+  # --alt_mnf_no codes
+  foreach my $alt_code (@yes_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    else { 
+      vdr_AlertInfoSetMiscNotFailure($alt_info_HHR, $alt_code, 0, undef);
+    }
+  }
+
+  if($die_str ne "") { 
+    $die_str .= "Use the --alt_list to see a list possible alert codes\nto use with --alt_pass and --alt_fail.\n";
+    ofile_FAIL("ERROR processing --alt_mnf_yes and/or --alt_mnf_no options:\n$die_str", 1, undef);
   }
   
   return;
@@ -7031,9 +7126,9 @@ sub alert_add_parent_based {
 
   # get a 2D array of all fatal feature alert types, first dimension
   # over feature indices, second dimension list of fatal alert codes for that feature
-  # we need 2 dimensions because with "expendable_cds" we can have some alerts which
+  # we need 2 dimensions because with "misc_not_failure" we can have some alerts which
   # are fatal for some features but not others
-  my @fatal_alt_codes_AA = (); # [0..$ftr_idx..$nftr-1][0..$n] per-feature array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1 (and are not expendable_cds for $ftr_idx
+  my @fatal_alt_codes_AA = (); # [0..$ftr_idx..$nftr-1][0..$n] per-feature array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1 (and are not misc_not_failure for $ftr_idx
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     @{$fatal_alt_codes_AA[$ftr_idx]} = ();
     foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
@@ -8105,14 +8200,15 @@ sub output_feature_table {
           if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely Ns
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
-            my ($have_fatal_alt, $have_expcds_alt) = helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR);
+            my ($have_fatal_alt, $have_misc_alt) = helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR);
             # should we make this a misc_feature?
             # yes if:
-            # - --nomisc not enabled OR we have >=1 'expendable_cds' feature/alert but zero fatal alerts
+            # - --nomisc not enabled OR we have >=1 'misc_not_failure' feature/alert but zero fatal alerts
+            # AND 
             # - feature type is not one of our hard-coded list of feature types that never get misc_feature-ized
-            if($have_fatal_alt || $have_expcds_alt) { 
-              if((! $do_nomisc) || ((! $have_fatal_alt) && ($have_expcds_alt))) { 
-                if($vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 
+            if($have_fatal_alt || $have_misc_alt) { 
+              if((! $do_nomisc) || ((! $have_fatal_alt) && ($have_misc_alt))) { 
+                if(vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
                 }
@@ -8958,9 +9054,9 @@ sub helper_ftable_process_sequence_alerts {
 #             @{$ret_alert_AR}. 
 # 
 #             As of v1.1.3 this subroutine also takes into account
-#             if a feature/alert combination is has the 'expendable_cds'
+#             if a feature/alert combination is has the 'misc_not_failure'
 #             attribute. If so, we do not add it to the @{$ret_alert_AR}
-#             array, but the $ret_expcds_flag (second return value)
+#             array, but the $ret_misc_flag (second return value)
 #             will be 1. See 'Returns' for details.
 #
 #
@@ -8975,8 +9071,8 @@ sub helper_ftable_process_sequence_alerts {
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: Two values:
-#   $ret_fatal_flag:  '1' if any of the alerts in $alt_code_str are fatal (and do not have 'expendable_cds' attribute)
-#   $ret_expcds_flag: '1' if any of the alerts in $alt_code_str have 'expendable_cds' attribute
+#   $ret_fatal_flag: '1' if any of the alerts in $alt_code_str are fatal (and do not have 'misc_not_failure' attribute)
+#   $ret_misc_flag:  '1' if any of the alerts in $alt_code_str have 'misc_not_failure' attribute
 #
 # Dies: Never
 #################################################################
@@ -8987,11 +9083,11 @@ sub helper_ftable_process_feature_alerts {
  
   my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, $ret_alert_AR, $FH_HR) = (@_);
 
-  my $ret_fatal_flag  = 0; # will be '1' if any of the alerts in $alt_code_str are fatal and don't have 'expendable_cds' attribute
-  my $ret_expcds_flag = 0; # will be '1' if any of the alerts in $alt_code_str have 'expendable_cds' attribute
+  my $ret_fatal_flag = 0; # will be '1' if any of the alerts in $alt_code_str are fatal and don't have 'misc_not_failure' attribute
+  my $ret_misc_flag  = 0; # will be '1' if any of the alerts in $alt_code_str have 'misc_not_failure' attribute
 
   if($alt_code_str eq "") { 
-    return ($ret_fatal_flag, $ret_expcds_flag); 
+    return ($ret_fatal_flag, $ret_misc_flag); 
   }
 
   # printf("in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
@@ -9008,13 +9104,13 @@ sub helper_ftable_process_feature_alerts {
   }
 
   my $is_fatal  = 0; # '1' if this alert is fatal
-  my $is_expcds = 0; # '1' if this feature/alert has 'expendable_cds' attribute
+  my $is_misc   = 0; # '1' if this feature/alert has 'misc_not_failure' attribute
   my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not, we don't report all fatal alerts, some we skip to avoid duplicates
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $is_fatal  = vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
-    $is_expcds = vdr_FeatureAlertIsExpendableCds($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
-    if($is_fatal)  { $ret_fatal_flag  = 1; }
-    if($is_expcds) { $ret_expcds_flag = 1; }
+    $is_fatal = vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
+    $is_misc  = vdr_FeatureAlertIsMiscNotFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
+    if($is_fatal) { $ret_fatal_flag = 1; }
+    if($is_misc)  { $ret_misc_flag  = 1; }
     my $do_report = $is_fatal; 
     # check if this alert is invalidated by another we will also report
     if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
@@ -9045,7 +9141,7 @@ sub helper_ftable_process_feature_alerts {
     }
   }
 
-  return ($ret_fatal_flag, $ret_expcds_flag);
+  return ($ret_fatal_flag, $ret_misc_flag);
 }
 
 #################################################################
