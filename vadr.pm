@@ -84,6 +84,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
+# vdr_FeatureTypeCanBecomeMiscFeature()
 # vdr_FeatureNumSegments()
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
@@ -1189,6 +1190,32 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene {
   return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ||
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene")) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeCanBecomeMiscFeature()
+# Incept:     EPN, Mon Feb 25 14:30:34 2019
+#
+# Purpose:    Is feature $ftr_idx a CDS or mature peptide?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrMatPeptide { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptide";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
 }
 
 #################################################################

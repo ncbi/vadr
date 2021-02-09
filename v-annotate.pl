@@ -347,9 +347,11 @@ my $options_okay =
                 'group=s'       => \$GetOptions_H{"--group"},
                 'subgroup=s'    => \$GetOptions_H{"--subgroup"},
 # options for controlling which alerts cause failure
-                "alt_list"      => \$GetOptions_H{"--alt_list"},
-                "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
-                "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
+                "alt_list"          => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"        => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"        => \$GetOptions_H{"--alt_fail"},
+                "alt_expcds_pass=s" => \$GetOptions_H{"--alt_expcds_pass"},
+                "alt_expcds_fail=s" => \$GetOptions_H{"--alt_expcds_fail"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -495,6 +497,11 @@ if(scalar(@ARGV) != 2) {
 }
 
 my ($orig_in_fa_file, $dir) = (@ARGV);
+
+# enforce that --alt_expcds_pass and --alt_expcds_fail options are valid
+if((opt_IsUsed("--alt_expcds_pass", \%opt_HH)) || (opt_IsUsed("--alt_expcds_fail", \%opt_HH))) { 
+  alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
+}
 
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
@@ -8102,13 +8109,10 @@ sub output_feature_table {
             # should we make this a misc_feature?
             # yes if:
             # - --nomisc not enabled OR we have >=1 'expendable_cds' feature/alert but zero fatal alerts
-            # - feature type is not one of our hard-coded list of feature types
+            # - feature type is not one of our hard-coded list of feature types that never get misc_feature-ized
             if($have_fatal_alt || $have_expcds_alt) { 
               if((! $do_nomisc) || ((! $have_fatal_alt) && ($have_expcds_alt))) { 
-                if(($feature_type ne "gene") && 
-                   ($feature_type ne "5'UTR") && 
-                   ($feature_type ne "3'UTR") && 
-                   ($feature_type ne "operon")) { 
+                if($vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
                 }
