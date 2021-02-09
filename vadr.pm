@@ -79,6 +79,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCds()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
+# vdr_FeatureTypeIsCdsOrGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureNumSegments()
@@ -1011,6 +1012,32 @@ sub vdr_FeatureTypeIsGene {
   my ($ftr_info_AHR, $ftr_idx) = @_;
 
   return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene") ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrGene()
+# Incept:     EPN, Tue Feb  9 15:16:21 2021
+#
+# Purpose:    Is feature $ftr_idx a CDS or gene?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrGene { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrGene";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene")) ? 1 : 0;
 }
 
 #################################################################
