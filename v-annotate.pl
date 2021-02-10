@@ -6787,7 +6787,7 @@ sub alert_misc_not_failure_options {
   }
 
   # --alt_mnf_no codes
-  foreach my $alt_code (@yes_A) { 
+  foreach my $alt_code (@no_A) { 
     if(! defined $alt_info_HHR->{$alt_code}) { 
       $die_str .= "alert code $alt_code is invalid (does not exist)\n";
     }
