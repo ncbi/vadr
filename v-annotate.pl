@@ -211,10 +211,12 @@ opt_Add("--group",         "string",  undef,     $g,     undef, undef,     "set 
 opt_Add("--subgroup",      "string",  undef,     $g, "--group", undef,     "set expected classification of all seqs to subgroup <s>",          "set expected classification of all seqs to subgroup <s>",         \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling which alerts cause a sequence to FAIL";
-#        option               type   default  group  requires incompat    preamble-output                                                     help-output    
-opt_Add("--alt_list",     "boolean",  0,         $g,     undef, undef,     "output summary of all alerts and exit",                            "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
-opt_Add("--alt_pass",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",             "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
-opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                    "specify that alert codes in comma-separated <s> do cause FAILure", \%opt_HH, \@opt_order_A);
+#        option               type   default  group  requires incompat    preamble-output                                                                             help-output    
+opt_Add("--alt_list",     "boolean",  0,         $g,     undef, undef,     "output summary of all alerts and exit",                                                   "output summary of all alerts and exit",                                \%opt_HH, \@opt_order_A);
+opt_Add("--alt_pass",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> do not cause FAILure",                                    "specify that alert codes in comma-separated <s> do not cause FAILure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,     "specify that alert codes in <s> cause FAILure",                                           "specify that alert codes in comma-separated <s> do cause FAILure",     \%opt_HH, \@opt_order_A);
+opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef, undef,     "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
+opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef, undef,     "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -229,11 +231,11 @@ opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only 
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
 #        option               type   default group  requires incompat    preamble-output                                                               help-output    
-opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table, never change feature type to misc_feature",             "in feature table, never change feature type to misc_feature",            \%opt_HH, \@opt_order_A);
-opt_Add("--notrim",       "boolean",  0,        $g,    undef,   undef,      "in feature table, don't trim coords due to Ns (for any feature types)",   "in feature table, don't trim coords due to Ns (for any feature types)",   \%opt_HH, \@opt_order_A);
+opt_Add("--nomisc",       "boolean",  0,        $g,    undef,   undef,      "in feature table for failed seqs, never change feature type to misc_feature",             "in feature table for failed seqs, never change feature type to misc_feature", \%opt_HH, \@opt_order_A);
+opt_Add("--notrim",       "boolean",  0,        $g,    undef,   undef,      "in feature table, don't trim coords due to Ns (for any feature types)",                   "in feature table, don't trim coords due to Ns (for any feature types)",   \%opt_HH, \@opt_order_A);
 opt_Add("--noftrtrim",    "string",   undef,    $g,    undef,"--notrim",    "in feature table, don't trim coords due to Ns for feature types in comma-delimited <s>",  "in feature table, don't trim coords due to Ns for feature types in comma-delmited <s>",  \%opt_HH, \@opt_order_A);
-opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",         "in feature table, don't add protein_id for CDS and mat_peptides",         \%opt_HH, \@opt_order_A);
-opt_Add("--forceprotid",  "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",  "in feature table, force protein_id value to be sequence name, then idx",  \%opt_HH, \@opt_order_A);
+opt_Add("--noprotid",     "boolean",  0,        $g,    undef,   undef,      "in feature table, don't add protein_id for CDS and mat_peptides",                         "in feature table, don't add protein_id for CDS and mat_peptides",         \%opt_HH, \@opt_order_A);
+opt_Add("--forceprotid",  "boolean",  0,        $g,    undef,"--noprotid",  "in feature table, force protein_id value to be sequence name, then idx",                  "in feature table, force protein_id value to be sequence name, then idx",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling thresholds related to alerts";
 #       option          type         default  group   requires incompat           preamble-output                                                                    help-output    
@@ -350,6 +352,8 @@ my $options_okay =
                 "alt_list"      => \$GetOptions_H{"--alt_list"},
                 "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
                 "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
+                "alt_mnf_yes=s" => \$GetOptions_H{"--alt_mnf_yes"},
+                "alt_mnf_no=s"  => \$GetOptions_H{"--alt_mnf_no"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -499,6 +503,11 @@ my ($orig_in_fa_file, $dir) = (@ARGV);
 # enforce that --alt_pass and --alt_fail options are valid
 if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
   alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
+}
+
+# enforce that --alt_mnf_yes and --alt_mnf_no options are valid
+if((opt_IsUsed("--alt_mnf_yes", \%opt_HH)) || (opt_IsUsed("--alt_mnf_no", \%opt_HH))) { 
+  alert_misc_not_failure_options(\%alt_info_HH, \%opt_HH);
 }
 
 # enforce that --fsthighthr and --fstlowthr values make sense
@@ -759,7 +768,6 @@ my $mdl_idx;
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
   vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
-  vdr_FeatureInfoValidateCoords(\@{$ftr_info_HAH{$mdl_name}}, $mdl_info_AH[$mdl_idx]{"length"}, $FH_HR); 
 }
 
 # if --group or --subgroup used, make sure at least one model has that group/subgroup
@@ -843,6 +851,8 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoValidateParentIndexStrings(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
+  vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -3875,8 +3885,6 @@ sub add_frameshift_alerts_for_one_sequence {
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
   my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
-  my $fsthicnf_is_fatal = $alt_info_HHR->{"fsthicnf"}{"causes_failure"} ? 1 : 0;
-  my $fstlocnf_is_fatal = $alt_info_HHR->{"fstlocnf"}{"causes_failure"} ? 1 : 0;
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $ftr_idx;
@@ -5081,18 +5089,14 @@ sub add_low_similarity_alerts {
               # does this overlap with a feature? 
               my $nftr_overlap = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                my $ftr_is_or_is_identical_to_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
-                if(! $ftr_is_or_is_identical_to_cds_or_mp) { 
-                  # check if a CDS or mp exists that has same coords as this feature
-                  # e.g. if feature is a gene and there is an identical CDS, we rely on blastx to validate
-                  # CDS, so we should trust it to validate this gene as well
-                  for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
-                    if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
-                       ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
-                      $ftr_is_or_is_identical_to_cds_or_mp = 1;
-                    }
-                  }
-                }
+                # determine if we should even report lowsim{5,3,i}f alerts for this feature
+                # we will UNLESS:
+                # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
+                #   and feature does not have a 'misc_not_failure' attribute
+                # If feature has an 'misc_not_failure' attribute then we report these anyway because they can be 
+                # more extreme than the 'misc_not_failure' alerts
+                my $report_lowsim_alerts_for_this_feature = ((vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx)) && 
+                                                             (! $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"})) ? 0 : 1;
                 my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
                 if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
                   my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
@@ -5110,8 +5114,8 @@ sub add_low_similarity_alerts {
                       $nftr_overlap++;
                       # only actually report an alert for non-CDS and non-MP features
                       # because CDS and MP are independently validated by blastx (unless --skip_pv)
-                      if((! $ftr_is_or_is_identical_to_cds_or_mp) || ($do_skip_pv)) { 
-                        printf("is_start: $is_start, is_end: $is_end, length: $length\n");
+                      if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
+                        #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
                         my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
                         if(($is_start) && ($length >= $terminal_5_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
@@ -6573,21 +6577,25 @@ sub alert_list_option {
   my @head_AA  = ();
   my @bcom_A   = ();
 
-  @{$head_AA[0]} = ("",    "alert",  "",    "short",       "long");
-  @{$head_AA[1]} = ("idx", "code",   "S/F", "description", "description");
+  @{$head_AA[0]} = ("",    "",       "",    "misc, not",      "",            "");
+  @{$head_AA[1]} = ("",    "alert",  "",    "failure",        "short",       "long");
+  @{$head_AA[2]} = ("idx", "code",   "S/F", "(if in .minfo)", "description", "description");
+
 
   push(@bcom_A, $div_line);
   push(@bcom_A, "#\n");
   push(@bcom_A, "# $pkgname $version ($releasedate)\n");
   push(@bcom_A, "#\n");
   push(@bcom_A, "# Alert codes that ALWAYS cause a sequence to FAIL, and cannot be\n");
-  push(@bcom_A, "# listed in --alt_pass or --alt_fail option strings:\n#\n");
+  push(@bcom_A, "# listed in --alt_pass, --alt_fail, --alt_mnf_yes, or --alt_mnf_no\n");
+  push(@bcom_A, "# option strings:\n#\n");
   $idx = 0;
   foreach $code (@code_A) { 
     if($alt_info_HHR->{$code}{"always_fails"}) { 
       $idx++;
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      "never",
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
@@ -6607,8 +6615,13 @@ sub alert_list_option {
     if(($alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
+      my $misc_not_fail_str = "never";
+      if($alt_info_HHR->{$code}{"pertype"} eq "feature") { 
+        $misc_not_fail_str = $alt_info_HHR->{$code}{"misc_not_failure"} ? "yes" : "no";
+      }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      $misc_not_fail_str,
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
@@ -6628,8 +6641,13 @@ sub alert_list_option {
     if((! $alt_info_HHR->{$code}{"causes_failure"}) && 
        (! $alt_info_HHR->{$code}{"always_fails"})) { 
       $idx++;
+      my $misc_not_fail_str = "never";
+      if($alt_info_HHR->{$code}{"pertype"} eq "feature") { 
+        $misc_not_fail_str = $alt_info_HHR->{$code}{"misc_not_failure"} ? "yes" : "no";
+      }
       push(@data_AA, [$idx, $code, 
                       ($alt_info_HHR->{$code}{"pertype"} eq "sequence" ? "S" : "F"), 
+                      $misc_not_fail_str,
                       helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                       $alt_info_HHR->{$code}{"ldesc"}]);
     }
@@ -6702,6 +6720,85 @@ sub alert_pass_fail_options {
   if($die_str ne "") { 
     $die_str .= "Use the --alt_list to see a list possible alert codes\nto use with --alt_pass and --alt_fail.\n";
     ofile_FAIL("ERROR processing --alt_fail and/or --alt_pass options:\n$die_str", 1, undef);
+  }
+  
+  return;
+}
+
+#################################################################
+# Subroutine:  alert_misc_not_failure_options()
+# Incept:      EPN, Tue Feb  9 13:43:36 2021
+#
+# Purpose:    Handle the --alt_mnf_yes and --alt_mnf_no options by 
+#             parsing their strings, determining if they are valid
+#             and updating the "misc_not_fail" values in 
+#             %{$alt_info_HHR}. Also make sure they make sense with
+#             the "causes_failure" values in %{$alt_info_HHR}: 
+#             "misc_not_failure" can only be '1' for an alert code 
+#             if "cause_failure" is '1'.
+#
+#             This subroutine should be called *after* 
+#             alert_pass_fail_options().
+#
+# Arguments: 
+#  $alt_info_HHR:   REF to the alert info hash of arrays, PRE-FILLED
+#  $opt_HHR:        REF to 2D hash of option values
+#
+# Returns:    void
+#
+# Dies:       if --alt_mnf_yes or --alt_mnf_no option strings are invalid
+#             if trying to set alert "misc_not_failure" value conflicts
+#             with "causes_failure" value as described in "Purpose".
+#
+#################################################################
+sub alert_misc_not_failure_options { 
+  my $sub_name = "alert_misc_not_failure_options()"; 
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($alt_info_HHR, $opt_HHR) = @_;
+  
+  my @yes_A = ();
+  my @no_A  = ();
+  if(opt_IsUsed("--alt_mnf_yes", $opt_HHR)) { 
+    @yes_A = split(",", opt_Get("--alt_mnf_yes", $opt_HHR));
+  }
+  if(opt_IsUsed("--alt_mnf_no", $opt_HHR)) { 
+    @no_A = split(",", opt_Get("--alt_mnf_no", $opt_HHR));
+  }
+
+  my $die_str = "";
+  my $alt_code = undef;
+
+  # --alt_mnf_yes codes
+  foreach my $alt_code (@yes_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    elsif($alt_info_HHR->{$alt_code}{"always_fails"}) { 
+      $die_str .= "alert code $alt_code always causes failure, it cannot be listed in --alt_mnf_yes string\n";
+    }
+    elsif(! $alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+      $die_str .= "alert code $alt_code does *not* cause failure (either by default or due to --alt_fail option), it cannot be listed in --alt_mnf_yes string\n";
+    }
+    else { 
+      vdr_AlertInfoSetMiscNotFailure($alt_info_HHR, $alt_code, 1, undef);
+    }
+  }
+
+  # --alt_mnf_no codes
+  foreach my $alt_code (@no_A) { 
+    if(! defined $alt_info_HHR->{$alt_code}) { 
+      $die_str .= "alert code $alt_code is invalid (does not exist)\n";
+    }
+    else { 
+      vdr_AlertInfoSetMiscNotFailure($alt_info_HHR, $alt_code, 0, undef);
+    }
+  }
+
+  if($die_str ne "") { 
+    $die_str .= "Use the --alt_list to see a list possible alert codes\nto use with --alt_pass and --alt_fail.\n";
+    ofile_FAIL("ERROR processing --alt_mnf_yes and/or --alt_mnf_no options:\n$die_str", 1, undef);
   }
   
   return;
@@ -7006,8 +7103,6 @@ sub alert_add_parent_based {
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  # printf("in $sub_name\n");
-
   # get children info for all features, we'll use this in the loop below
   my @children_AA = ();
   vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, $child_type, \@children_AA, $FH_HR);
@@ -7030,6 +7125,11 @@ sub alert_add_parent_based {
   }
 
   # get array of all fatal feature alert types 
+  # note: we don't care about which feature/alert pairs have "misc_not_failure" here,
+  # because if a parent becomes a misc_feature (instead of failing) we still want
+  # children to get the corresponding alerts (e.g. peptrans)
+  # they may (or may not) escape failure themselves if they have "misc_not_failure"
+  # but we want the alerts reported regardless
   my @fatal_alt_codes_A = (); # array of all alert codes with "pertype" eq "feature" and "causes_failure" == 1
   foreach my $alt_code (sort keys (%{$alt_info_HHR})) { 
     if(($alt_info_HHR->{$alt_code}{"pertype"} eq "feature") && 
@@ -7046,7 +7146,7 @@ sub alert_add_parent_based {
       # for each feature that is a parent of type $parent_type with
       # at least one child of type $child_type:
       foreach my $parent_ftr_idx (@parent_ftr_idx_A) { 
-        if(defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) { 
+        if(defined $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx}) {
           # at least one feature alert exists for this parent feature in this sequence
           # check if any of the alerts for this parent feature are fatal
           my $have_fatal = check_for_feature_alert_codes($alt_info_HHR, \@fatal_alt_codes_A, $alt_ftr_instances_HHHR->{$seq_name}{$parent_ftr_idx});
@@ -7412,15 +7512,17 @@ sub output_tabular {
     my $rpn_nnt_rp_full    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_full"}))    ? $rpn_output_HR->{"nnt_rp_full"}    : "-";
     my $rpn_nnt_rp_part    = (($do_rpn) && (defined $rpn_output_HR->{"nnt_rp_part"}))    ? $rpn_output_HR->{"nnt_rp_part"}    : "-";
     my $rpn_coords         = (($do_rpn) && (defined $rpn_output_HR->{"coords"}) && ($rpn_output_HR->{"coords"} ne "")) ? $rpn_output_HR->{"coords"} : "-";
-    
-    my $seq_pass_fail = (check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR)) ? "PASS" : "FAIL";
+
+    # deal with --msub and model subs, we need this ONLY for mdl_{pass,fail}_ct_H and for ftr_info_HAHR in check_if_sequence_passes
+    my $tmp_mdl = $seq_mdl1;
+    if(($seq_mdl1 ne "-") && (defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
+      $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
+    }
+
+    my $seq_pass_fail = (check_if_sequence_passes($seq_name, (($tmp_mdl ne "-") ? \@{$ftr_info_HAHR->{$tmp_mdl}} : undef), $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR)) ? "PASS" : "FAIL";
     my $seq_annot     = (check_if_sequence_was_annotated($seq_name, $cls_output_HHR)) ? "yes" : "no";
 
     if($seq_mdl1 ne "-") { 
-      my $tmp_mdl = $seq_mdl1;
-      if((defined $mdl_sub_HR) && (defined $mdl_sub_HR->{$seq_mdl1})) { 
-        $tmp_mdl = $mdl_sub_HR->{$seq_mdl1};
-      }
       if(! defined $mdl_pass_ct_H{$tmp_mdl}) { $mdl_pass_ct_H{$tmp_mdl} = 0; }
       if(! defined $mdl_fail_ct_H{$tmp_mdl}) { $mdl_fail_ct_H{$tmp_mdl} = 0; }
       if($seq_pass_fail eq "PASS") { $mdl_pass_ct_H{$tmp_mdl}++; }
@@ -7592,7 +7694,7 @@ sub output_tabular {
                     $alt_ct_H{$alt_code}++;
                     my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
-                                        $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
+                                        vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                         $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
                     $alt_nprinted++;
@@ -7663,8 +7765,27 @@ sub output_tabular {
         $alc_sep_flag = 0; 
       }
       $alt_idx++;
+      # determine if this alert has "misc_not_failure" for at least 1 feature in 1 model,
+      # if so, we'll add a '*' 
+      my $misc_not_failure_flag = 0;
+      my $cur_nmdl = scalar(@{$mdl_info_AHR});
+      for(my $cur_mdl_idx = 0; $cur_mdl_idx < $cur_nmdl; $cur_mdl_idx++) { 
+        my $cur_mdl_name = $mdl_info_AHR->[$cur_mdl_idx]{"name"};
+        my $cur_nftr = scalar(@{$ftr_info_HAHR->{$cur_mdl_name}});
+        for(my $cur_ftr_idx = 0; $cur_ftr_idx < $cur_nftr; $cur_ftr_idx++) { 
+          if(vdr_FeatureAlertIsMiscNotFailure($ftr_info_HAHR->{$cur_mdl_name}, $alt_info_HHR, $cur_ftr_idx, $alt_code)) { 
+            $misc_not_failure_flag = 1;
+            $cur_ftr_idx = $cur_nftr; # breaks ftr loop
+            $cur_mdl_idx = $cur_nmdl; # breaks mdl loop
+          }
+        }
+      }
+      my $causes_failure_str = $alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no";
+      if(($causes_failure_str eq "yes") && ($misc_not_failure_flag)) { 
+        $causes_failure_str .= "*";
+      }
       push(@data_alc_AA, [$alt_idx, $alt_code, 
-                          ($alt_info_HH{$alt_code}{"causes_failure"} ? "yes" : "no"), 
+                          $causes_failure_str,
                           helper_tabular_replace_spaces($alt_info_HH{$alt_code}{"sdesc"}), 
                           $alt_info_HH{$alt_code}{"pertype"}, 
                           $alt_ct_H{$alt_code}, $alt_seq_ct_H{$alt_code},
@@ -8029,7 +8150,7 @@ sub output_feature_table {
 
       # fill @{$ftr_min_len_HA{$mdl_name}} for this model, if it's not already filled
       if(! defined $ftr_min_len_HA{$mdl_name}) { 
-        @{$ftr_min_len_HA{$mdl_name}}   = ();
+        @{$ftr_min_len_HA{$mdl_name}} = ();
         for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
           my $parent_ftr_idx = vdr_FeatureParentIndex($ftr_info_AHR, $ftr_idx);
           $ftr_min_len_HA{$mdl_name}[$ftr_idx] = (vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx)) ?
@@ -8097,13 +8218,15 @@ sub output_feature_table {
           if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely Ns
             # fill an array and strings with all alerts for this sequence/feature combo
             my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
-            if(helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR)) { 
-              # hard-coded list of feature types that do NOT become misc_features even if they have fatal alerts
-              if(($feature_type ne "gene") && 
-                 ($feature_type ne "5'UTR") && 
-                 ($feature_type ne "3'UTR") && 
-                 ($feature_type ne "operon")) { 
-                if(! $do_nomisc) { # --nomisc not enabled
+            my ($have_fatal_alt, $have_misc_alt) = helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR);
+            # should we make this a misc_feature?
+            # yes if:
+            # - --nomisc not enabled OR we have >=1 'misc_not_failure' feature/alert but zero fatal alerts
+            # AND 
+            # - feature type is not one of our hard-coded list of feature types that never get misc_feature-ized
+            if($have_fatal_alt || $have_misc_alt) { 
+              if((! $do_nomisc) || ((! $have_fatal_alt) && ($have_misc_alt))) { 
+                if(vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
                 }
@@ -8360,7 +8483,7 @@ sub output_feature_table {
     my $do_pass = (($cur_noutftr > 0) && ((scalar(@seq_alert_A)) == 0)) ? 1 : 0; # checks only that criteria 1 and 2 are met
 
     # next line checks for criteria 3 (only if first 2 criteria have been met)
-    if($do_pass && (! check_if_sequence_passes($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR))) { 
+    if($do_pass && (! check_if_sequence_passes($seq_name, ((defined $mdl_name) ? \@{$ftr_info_HAHR->{$mdl_name}} : undef), $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR))) { 
       # sequence has zero fatal sequence alerts *and* zero fatal feature alerts for all features output to feature table
       # BUT at least one fatal alert for a feature NOT output to feature table (e.g. a feature that is too short to meet
       # minimum length requirements for the feature table). We throw a special alert here (ftskipfl) for this
@@ -8943,9 +9066,17 @@ sub helper_ftable_process_sequence_alerts {
 #
 # Purpose:    Given a string of alerts that correspond to a specific
 #             sequence and feature, use the %{$alt_info_HHR} and
-#             process that string to determine what (if any) notes,
-#             and alerts should be added to the feature table
-#             for this seq/feature pair.
+#             process that string to determine what (if any) 
+#             alert/error messages should be added to the feature table
+#             for this seq/feature pair by adding a string to 
+#             @{$ret_alert_AR}. 
+# 
+#             As of v1.1.3 this subroutine also takes into account
+#             if a feature/alert combination is has the 'misc_not_failure'
+#             attribute. If so, we do not add it to the @{$ret_alert_AR}
+#             array, but the $ret_misc_flag (second return value)
+#             will be 1. See 'Returns' for details.
+#
 #
 # Arguments:
 #   $alt_code_str:           string of errors, comma separated, can be ""
@@ -8957,7 +9088,9 @@ sub helper_ftable_process_sequence_alerts {
 #   $ret_alert_AR:           REF to array of errors, possibly added to here (not created)
 #   $FH_HR:                  REF to hash of file handles, including "log" and "cmd"
 # 
-# Returns: number of alerts added to $ret_alert_AR
+# Returns: Two values:
+#   $ret_fatal_flag: '1' if any of the alerts in $alt_code_str are fatal (and do not have 'misc_not_failure' attribute)
+#   $ret_misc_flag:  '1' if any of the alerts in $alt_code_str have 'misc_not_failure' attribute
 #
 # Dies: Never
 #################################################################
@@ -8968,8 +9101,11 @@ sub helper_ftable_process_feature_alerts {
  
   my ($alt_code_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, $ret_alert_AR, $FH_HR) = (@_);
 
+  my $ret_fatal_flag = 0; # will be '1' if any of the alerts in $alt_code_str are fatal and don't have 'misc_not_failure' attribute
+  my $ret_misc_flag  = 0; # will be '1' if any of the alerts in $alt_code_str have 'misc_not_failure' attribute
+
   if($alt_code_str eq "") { 
-    return 0; 
+    return ($ret_fatal_flag, $ret_misc_flag); 
   }
 
   # printf("in $sub_name $seq_name $ftr_idx, $alt_code_str\n");
@@ -8977,6 +9113,7 @@ sub helper_ftable_process_feature_alerts {
   # create a hash of all alerts in the input $alt_str
   my %input_alt_code_H = (); # $input_slt_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
+  
   foreach $alt_code (split(",", $alt_code_str)) { 
     if(! defined $alt_info_HHR->{$alt_code}) { 
       ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", 1, $FH_HR);
@@ -8984,10 +9121,15 @@ sub helper_ftable_process_feature_alerts {
     $input_alt_code_H{$alt_code} = 1; 
   }
 
-  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not
-  my $ret_nadded = 0;
+  my $is_fatal  = 0; # '1' if this alert is fatal
+  my $is_misc   = 0; # '1' if this feature/alert has 'misc_not_failure' attribute
+  my $do_report = 0; # '1' if we should report this alert in the feature table, '0' if not, we don't report all fatal alerts, some we skip to avoid duplicates
   foreach $alt_code (sort keys (%input_alt_code_H)) { 
-    $do_report = $alt_info_HHR->{$alt_code}{"causes_failure"}; # only report alerts that cause failure in the feature table
+    $is_fatal = vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
+    $is_misc  = vdr_FeatureAlertIsMiscNotFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? 1 : 0;
+    if($is_fatal) { $ret_fatal_flag = 1; }
+    if($is_misc)  { $ret_misc_flag  = 1; }
+    my $do_report = $is_fatal; 
     # check if this alert is invalidated by another we will also report
     if(($do_report) && ($alt_info_HHR->{$alt_code}{"ftbl_invalid_by"} ne "")) { 
       my @invalid_by_alt_code_A = split(",", $alt_info_HHR->{$alt_code}{"ftbl_invalid_by"});
@@ -9012,13 +9154,12 @@ sub helper_ftable_process_feature_alerts {
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
           push(@{$ret_alert_AR}, $alert_str); 
-          $ret_nadded++;
         }
       }
     }
   }
 
-  return $ret_nadded;
+  return ($ret_fatal_flag, $ret_misc_flag);
 }
 
 #################################################################
@@ -9923,21 +10064,25 @@ sub check_for_valid_ftbl_feature_prediction {
 #
 # Arguments:
 #  $seq_name:               sequence name
+#  $ftr_info_AHR:           ref to array of hashes with information on the features, 
+#                           can be undef if no model assigned to this seq
 #  $alt_info_HHR:           ref to 2D hash of alert info
 #  $alt_seq_instances_HHR:  ref to 2D hash of sequence alert instances
 #  $alt_ftr_instances_HHHR: ref to 3D hash of feature alert instances
+#  $FH_HR:                  ref to hash of file handles, including 'log'
 #             
 # Returns:  '1' if the sequence should pass, else '0'
 #
-# Dies:     never
+# Dies:     If alt_ftr_instances_HHHR->{$seq_name} has alerts but 
+#           ftr_info_AHR is undefined
 #
 #################################################################
 sub check_if_sequence_passes { 
   my $sub_name = "check_if_sequence_passes";
-  my $nargs_exp = 4;
+  my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR) = (@_);
+  my ($seq_name, $ftr_info_AHR, $alt_info_HHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $FH_HR) = (@_);
 
   if((! defined $alt_seq_instances_HHR->{$seq_name}) && 
      (! defined $alt_ftr_instances_HHHR->{$seq_name})) { 
@@ -9957,7 +10102,12 @@ sub check_if_sequence_passes {
   if(defined $alt_ftr_instances_HHHR->{$seq_name}) { 
     foreach $ftr_idx (keys (%{$alt_ftr_instances_HHHR->{$seq_name}})) { 
       foreach $alt_code (keys (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}})) { 
-        if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+        if(! defined $ftr_info_AHR) { 
+          # shouldn't happen caller should pass valid $ftr_info_AHR if any feature alerts exist          
+          # because that means >=1 feature was annotated so a model should have been selected
+          ofile_FAIL("ERROR in $sub_name, trying to check feature alert but ftr_info_AHR is undefined", 1, $FH_HR); 
+        }
+        if(vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code)) { 
           return 0;  # a feature alert that causes failure
         }
       }

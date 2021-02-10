@@ -42,6 +42,7 @@ for t in \
     do-ftskipfl-tests.sh \
     do-sub-tests.sh \
     do-lowsim-tests.sh \
+    do-mnf-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
