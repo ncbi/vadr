@@ -506,8 +506,8 @@ if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH)))
 }
 
 # enforce that --alt_mnf_yes and --alt_mnf_no options are valid
-if((opt_IsUsed("--alt_pass", \%opt_HH)) || (opt_IsUsed("--alt_fail", \%opt_HH))) { 
-  alert_pass_fail_options(\%alt_info_HH, \%opt_HH);
+if((opt_IsUsed("--alt_mnf_yes", \%opt_HH)) || (opt_IsUsed("--alt_mnf_no", \%opt_HH))) { 
+  alert_misc_not_failure_options(\%alt_info_HH, \%opt_HH);
 }
 
 # enforce that --fsthighthr and --fstlowthr values make sense
@@ -6761,10 +6761,10 @@ sub alert_misc_not_failure_options {
   my @yes_A = ();
   my @no_A  = ();
   if(opt_IsUsed("--alt_mnf_yes", $opt_HHR)) { 
-    @yes_A = split(",", opt_Get("--alt_pass", $opt_HHR));
+    @yes_A = split(",", opt_Get("--alt_mnf_yes", $opt_HHR));
   }
   if(opt_IsUsed("--alt_mnf_no", $opt_HHR)) { 
-    @no_A = split(",", opt_Get("--alt_fail", $opt_HHR));
+    @no_A = split(",", opt_Get("--alt_mnf_no", $opt_HHR));
   }
 
   my $die_str = "";
