@@ -13,9 +13,9 @@ if [ "$?" -ne 0 ]; then
 fi   
 
 if [ "$RETVAL" -eq 0 ]; then
-   echo "Success: all tests passed [$0]"
+   echo "Success: all tests passed [do-mnf-tests.sh]"
    exit 0
 else 
-   echo "FAIL: at least one test failed [$0]"
+   echo "FAIL: at least one test failed [do-mnf-tests.sh]"
    exit 1
 fi

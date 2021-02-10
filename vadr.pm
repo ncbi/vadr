@@ -477,10 +477,13 @@ sub vdr_FeatureInfoImputeByOverlap {
 # Incept:     EPN, Fri Feb  5 11:44:11 2021
 # 
 # Purpose:    Set "misc_not_failure" value to 0 for any feature 
-#             in which it is not already defined in @{$ftr_info_AHR}
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_zero, set all values to 0 even if they are
+#             already defined.
 # 
 # Arguments:
 #   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_zero:    '1' to set values to '0' for all features, even if already defined
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
@@ -490,14 +493,14 @@ sub vdr_FeatureInfoImputeByOverlap {
 #################################################################
 sub vdr_FeatureInfoInitializeMiscNotFailure {
   my $sub_name = "vdr_FeatureInfoInitializeMiscNotFailure";
-  my $nargs_expected = 2;
+  my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
-  my ($ftr_info_AHR, $FH_HR) = @_;
+  my ($ftr_info_AHR, $force_zero, $FH_HR) = @_;
 
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(! defined $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"}) { 
+    if(($force_zero) || (! defined $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"})) { 
       $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} = 0;
     }
   }
