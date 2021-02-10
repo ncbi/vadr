@@ -2346,12 +2346,12 @@ sub vdr_AlertInfoDump {
     $code_A[($alt_info_HHR->{$code}{"order"})] = $code;
   }
 
-  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %*s  %-*s\n", 
+  printf $FH ("%-4s  %8s  %-*s  %*s  %*s  %*s  %*s  %-*s  %-*s\n", 
               "#", "", $w_sdesc, "short", $w_afails, "fails", $w_fails, "", $w_annot, "prevents", $w_misc, "misc not", $w_invalid, "invalidated", $w_ldesc, "long");
-  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
+  printf $FH ("%-4s  %8s  %-*s  %*s  %*s  %*s  %*s  %-*s  %-*s\n", 
               "#idx", "code", $w_sdesc, "desc", $w_afails, "always", $w_fails, "fails", $w_annot, "annot", $w_misc, "failure", $w_invalid, "by", $w_ldesc, "desc");
-  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
-              "#---", "-----", 
+  printf $FH ("%-4s  %8s  %-*s  %*s  %*s  %*s  %*s  %-*s  %-*s\n", 
+              "#---", "--------", 
               $w_sdesc,   utl_StringMonoChar($w_sdesc,   "-", undef), 
               $w_afails,  utl_StringMonoChar($w_afails,  "-", undef), 
               $w_fails,   utl_StringMonoChar($w_fails,   "-", undef), 
@@ -2363,7 +2363,7 @@ sub vdr_AlertInfoDump {
   my $idx = 0;
   foreach my $code (@code_A) { 
     $idx++;
-    printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s, %*s  %-*s\n", 
+    printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %*s  %-*s\n", 
                 $idx, $code, 
                 $w_sdesc,   helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
                 $w_afails,  $alt_info_HHR->{$code}{"always_fails"}     ? "yes" : "no",
