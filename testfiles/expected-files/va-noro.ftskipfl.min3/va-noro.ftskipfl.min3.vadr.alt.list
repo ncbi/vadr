@@ -1,6 +1,4 @@
 #sequence	error	feature	error-description
-LC312762.1	INDEFINITE_ANNOTATION_END	ORF1	alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 5374]
-LC312762.1	INDEFINITE_ANNOTATION_END	nonstructural polyprotein	alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 5374]
 LC312762.1	INDEFINITE_ANNOTATION	nonstructural polyprotein	nucleotide-based search identifies CDS not identified in protein-based search
 LC312762.1	MUTATION_AT_END	nonstructural polyprotein	expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAA ending at position 15 on + strand is not a valid stop]
 LC312762.1	PEPTIDE_TRANSLATION_PROBLEM	RdRp	mat_peptide may not be translated because its parent CDS has a problem

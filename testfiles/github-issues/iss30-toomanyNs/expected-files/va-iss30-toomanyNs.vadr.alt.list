@@ -1,9 +1,4 @@
 #sequence	error	feature	error-description
 NC_001959-10extraNs-at-start	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.818<0.900]
-NC_001959-10extraNs-at-start	INDEFINITE_ANNOTATION_START	ORF1	alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
-NC_001959-10extraNs-at-start	INDEFINITE_ANNOTATION_START	nonstructural polyprotein	alignment to homology model has low confidence at 5' boundary [0.70 < 0.80, RF position 5]
-NC_001959-10extraNs-at-start	PEPTIDE_TRANSLATION_PROBLEM	p48	mat_peptide may not be translated because its parent CDS has a problem
 NC_001959-10extraNs-at-end	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.813<0.900]
-NC_001959-10extraNs-at-end	INDEFINITE_ANNOTATION_END	ORF3	alignment to homology model has low confidence at 3' boundary [0.05 < 0.80, RF position 7588]
-NC_001959-10extraNs-at-end	INDEFINITE_ANNOTATION_END	VP2	alignment to homology model has low confidence at 3' boundary [0.05 < 0.80, RF position 7588]
 NC_001959-10extraNs-at-end	UNEXPECTED_LENGTH	VP2	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [688]

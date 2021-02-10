@@ -5,7 +5,7 @@
 2     ENTOY100A-REV-3-fs1    90  PASS  yes  ENTOY100A-REV  toy  A     11    0    3    0      0  -     
 3     ENTOY100A-REV-3-fs2    89  PASS  yes  ENTOY100A-REV  toy  A     11    0    5    0      0  -     
 4     ENTOY100A-REV-3-fs3    88  PASS  yes  ENTOY100A-REV  toy  A     11    0    5    0      0  -     
-5     ENTOY100A-REV-3-fs4    91  FAIL  yes  ENTOY100A-REV  toy  A     11    0    3    0      8  -     
+5     ENTOY100A-REV-3-fs4    91  FAIL  yes  ENTOY100A-REV  toy  A     11    0    3    0      6  -     
 6     ENTOY100A-REV-3-fs5    90  FAIL  yes  ENTOY100A-REV  toy  A     11    0    3    0      3  -     
 7     ENTOY100A-REV-3-fs6    89  PASS  yes  ENTOY100A-REV  toy  A     11    0    5    0      0  -     
 8     ENTOY100A-REV-3-fs7    86  FAIL  yes  ENTOY100A-REV  toy  A     11    0    5    0      4  -     
