@@ -19,6 +19,8 @@ command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fst
 desc: annotate-entoy100a-fs1
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.tbl 
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.tbl
+out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.fa
+out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.fa
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.sqa
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.sqc
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.ftr
@@ -29,6 +31,8 @@ out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.alc
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.ENTOY100A.CDS.1.1.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.fa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.fa
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.sqa
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.sqc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.ftr

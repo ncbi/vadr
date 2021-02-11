@@ -323,7 +323,8 @@ opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-
 opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced",     "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
 opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",         "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
 opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",                "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
-opt_Add("--out_debug",      "boolean", 0,    $g,    undef, undef,   "dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",        \%opt_HH, \@opt_order_A);
+opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep", "do not output fasta files of features, or passing/failing seqs",    "do not output fasta files of features, or passing/failing seqs",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_debug",      "boolean", 0,    $g,    undef, undef,   "dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option            type          default     group  requires incompat  preamble-output                                                          help-output    
@@ -439,6 +440,7 @@ my $options_okay =
                 'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
                 'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
                 'out_nofs'      => \$GetOptions_H{"--out_nofs"}, 
+                'out_nofasta'   => \$GetOptions_H{"--out_nofasta"}, 
                 'out_debug'     => \$GetOptions_H{"--out_debug"},
 # other expert options
                 'execname=s'    => \$GetOptions_H{"--execname"},
@@ -455,7 +457,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1.3dev3";
+my $version       = "1.1.3dev4";
 my $releasedate   = "Feb 2021";
 my $pkgname       = "VADR";
 
@@ -1249,6 +1251,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                                 \@unjoinbl_seq_name_A, $out_root, \%opt_HH, \%ofile_info_HH);
       }
       push(@to_remove_A, (@{$stk_file_HA{$mdl_name}}));
+      if(defined $ofile_info_HH{"fullpath"}{($mdl_name . ".cseq.fa")}) { push(@to_remove_A, $ofile_info_HH{"fullpath"}{($mdl_name . ".cseq.fa")}); }
       ofile_OutputProgressComplete($start_secs, undef, $FH_HR->{"log"}, *STDOUT);
       @{$stk_file_HA{$mdl_name}} = @joined_stk_file_A;
 
@@ -1479,7 +1482,7 @@ my $npass = output_feature_table(\%mdl_cls_ct_H, \@seq_name_A, \%ftr_info_HAH, \
                                  \%stg_results_HHH, \%ftr_results_HHAH, \%sgm_results_HHAH, \%alt_seq_instances_HH,
                                  \%alt_ftr_instances_HHH, 
                                  ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
-                                 \%opt_HH, \%ofile_info_HH);
+                                 \$in_sqfile, $out_root, \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 ########################
@@ -4366,8 +4369,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $atg_only = opt_Get("--atgonly", $opt_HHR);
-  my $do_keep  = opt_Get("--keep", $opt_HHR);
+  my $atg_only   = opt_Get("--atgonly", $opt_HHR);
+  my $do_keep    = opt_Get("--keep", $opt_HHR);
+  my $do_nofasta = opt_Get("--out_nofasta", $opt_HHR);
 
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
@@ -4573,7 +4577,10 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", 1, 1, "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", ($do_nofasta ? 0 : 1), ($do_nofasta ? 0 : 1), "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
+          if($do_nofasta) { 
+            push(@{$to_remove_AR}, $ofile_info_HHR->{"fullpath"}{$ftr_ofile_key});
+          }
         }
         print { $ofile_info_HHR->{"FH"}{$ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
                                                            seq_SqstringAddNewlines($ftr_sqstring_out, 60)); 
@@ -8044,6 +8051,8 @@ sub helper_tabular_replace_spaces {
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, should be undef unless --msub used
+#  $in_sqfile_R:             REF to Bio::Easel::SqFile object of input fasta, to create .pass.fa and .fail.fa files with
+#  $out_root:                output root for the output fasta file names
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
 #             
@@ -8054,14 +8063,15 @@ sub helper_tabular_replace_spaces {
 #################################################################
 sub output_feature_table { 
   my $sub_name = "output_feature_table";
-  my $nargs_exp = 13;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_cls_ct_HR, $seq_name_AR, $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $mdl_sub_HR, $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $mdl_sub_HR, $in_sqfile_R, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $do_blastx = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--hmmer", $opt_HHR)) ? 0 : 1;
+  my $do_blastx  = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--hmmer", $opt_HHR)) ? 0 : 1;
+  my $do_nofasta = opt_Get("--out_nofasta", $opt_HHR) ? 1 : 0;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
@@ -8119,6 +8129,9 @@ sub output_feature_table {
   # we only fill these for each model as we need it, so as not 
   # to wastefully fill these for models for which no seqs have been assigned
   my %ftr_min_len_HA     = (); # hash of arrays with minimum valid length per model/feature, 1D keys are model names, 2D elements are feature indices
+
+  my @pass_fa_A = (); # array of seq names for pass fasta file
+  my @fail_fa_A = (); # array of seq names for fail fasta file
 
   # main loop: for each sequence
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
@@ -8509,6 +8522,7 @@ sub output_feature_table {
       # print to the passing feature table file
       $ret_npass++;
       print $pass_list_FH $seq_name . "\n";
+      push(@pass_fa_A, $seq_name);
       print $pass_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
         # print 
@@ -8517,6 +8531,7 @@ sub output_feature_table {
     }
     else { # $do_pass == 0
       print $fail_list_FH $seq_name . "\n";
+      push(@fail_fa_A, $seq_name);
       print $fail_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
         # print 
@@ -8537,6 +8552,15 @@ sub output_feature_table {
       } # end of 'if($cur_nalert > 0)'
     }
   } # end of loop over sequences
+
+  if(! $do_nofasta) { 
+    my $pass_fa_file = $out_root . ".pass.fa";
+    my $fail_fa_file = $out_root . ".fail.fa";
+    $$in_sqfile_R->fetch_seqs_given_names(\@pass_fa_A, 60, $pass_fa_file);
+    $$in_sqfile_R->fetch_seqs_given_names(\@fail_fa_A, 60, $fail_fa_file);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "pass_fa", $pass_fa_file, 1, 1, "fasta file with passing sequences");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "fail_fa", $fail_fa_file, 1, 1, "fasta file with failing sequences");
+  }
 
   return $ret_npass;
 }
