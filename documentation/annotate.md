@@ -902,12 +902,12 @@ An example is included [below](#alerttoggle).
 
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
-`causes `misc_feature`, not failure (if `misc_not_failure:"1"` in
-modelinfo file` shows which alerts are not fatal for expendable
+**causes `misc_feature`, not failure (if in
+modelinfo file** shows which alerts are not fatal for expendable
 features as described more [below](#mnf).
 
 #### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if `misc_not_failure:"1"` in modelinfo file) |short description/error name | long description |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
 |------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
 | [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  |
 | [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
@@ -1061,18 +1061,18 @@ user, this is "-" for alerts that are never omitted from those files.
 
 ---
 
-####<a name="mnf"></a>`misc_feature`-ization: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>`misc_feature`-ization: allowing sequences to pass despite fatal alerts for specific features
 
 It is possible to specify that certain features are *expendable* and so
 have relaxed requirements. Some alerts that are normally fatal are not
 fatal for expendable features. If any such alerts are reported for an
 expendable feature that feature will be turned into a `misc_feature`
 in the output feature table `.pass.tbl` file, but the sequence will
-still pass, as long as has zero fatal alerts for all non-expendable
+still pass, as long as it has zero fatal alerts for all non-expendable
 features and zero fatal sequence alerts.
 
-The default set of specific alerts that an expendable feature can have and not cause
-its sequence to fail are listed with 'yes' in the 'causes
+The default set of specific alerts that an expendable feature can have
+without failing its sequence are listed with 'yes' in the 'causes
 `misc_feature`, not failure (if in modelinfo file)' column in the
 [tables describing alerts above](#alerts) as well as in the
 `--alt_list` output. This set can be changed using the `--alt_mnf_yes
@@ -1086,13 +1086,13 @@ key/value pair string: `misc_not_feature:"1"` in the `FEATURE` line
 for the corresponding feature.
 
 For example, the sequence `JN975492.1` is the one sequence in the 
-[example above(#examplebasic)] that fails. It matches best to the 
+[example above](#examplebasic) that fails. It matches best to the 
 `NC_008311` model. It fails due to the fatal alerts `mutendcd`,
 `cdsstopn`, `cdsstopp`, and `indf3pst` for the `VF1` CDS feature, and
 `indf5pst` fatal alert for the `VP2` CDS as shown
-[above](#altexample). If the `VF` and `VP2` features were defined
+[above](#altexample). If the `VF1` and `VP2` features were defined
 as expendable using the `misc_not_failure:"1"` key/value pair in the
-`.minfo` file as they are in the `vadr.mnf-example.minfo` file, then
+`.minfo` file as they are in the included example file `vadr.mnf-example.minfo`, then
 the sequence would have passed. 
 
 The relevant excerpt from the
@@ -1106,12 +1106,14 @@ FEATURE NC_008311 type:"gene" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene
 FEATURE NC_008311 type:"CDS" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:"ORF3" product:"VP2" misc_not_failure:"1"
 ```
 
-Note that the two `gene` features that correspond to the CDS also have
+Note that in addition to the two CDS features, the two gene features that correspond them also have
 `misc_not_failure:"1"` key/value pairs. When a CDS is made expendable,
-it often makes sense to make any corresponding `gene` features
-expendable too. However `gene` features are an exception 
+it often makes sense to make any corresponding gene features
+expendable too. However, gene features are an exception 
 in that they do not get turned into a `misc_feature` if they have
-alerts that are normally fatal, as per GenBank convention.
+alerts that are normally fatal, as per GenBank convention, but 
+it is still relevant to mark them as expendable because some alerts 
+in them will not cause the sequence to fail.
 
 To rerun the example using this new `.minfo` file, execute:
 
@@ -1167,7 +1169,7 @@ misc_feature-ization:
    `operon` are never converted to `misc_feature` values as per
    GenBank convention.
 
-2. `misc_feature`-ization occurs in `.pass.tbl` output files as
+2. `misc_feature`-ization occurs in `.pass.tbl` output files
    for expendable features as explained above even when the
    option `--nomisc` is used. (The `--nomisc` option causes
    `misc_feature`s not to be reported in `.fail.tbl` files.)
