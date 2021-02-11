@@ -276,7 +276,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-stop-mut-at-30-len72_2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-stop-mut-at-30-len71
@@ -307,7 +307,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-stop-mut-at-30-len71_2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-stop-mut-at-30-len70
@@ -338,7 +338,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-stop-mut-at-30-len70_2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-stop-mut-at-30-len34
@@ -361,7 +361,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-stop-mut-at-30-len34_1
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-stop-mut-at-30-len33
@@ -381,7 +381,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			note	similar to protein one mp2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-stop-mut-at-30-len32
@@ -401,7 +401,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			note	similar to protein one mp2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
 >Feature ENTOY100A-stop-mut-at-30-len31
@@ -421,6 +421,6 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			note	similar to protein one mp2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon
+ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem

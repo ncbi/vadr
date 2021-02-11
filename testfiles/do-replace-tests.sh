@@ -21,9 +21,9 @@ if [ "$?" -ne 0 ]; then
 fi   
 
 if [ "$RETVAL" -eq 0 ]; then
-   echo "Success: all tests passed"
+   echo "Success: all tests passed [do-replace-tests.sh]"
    exit 0
 else 
-   echo "FAIL: at least one test failed"
+   echo "FAIL: at least one test failed do-replace-tests.sh]"
    exit 1
 fi
