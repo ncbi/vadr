@@ -1061,7 +1061,7 @@ user, this is "-" for alerts that are never omitted from those files.
 
 ---
 
-## <a name="mnf"></a>`Expendable features: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>Expendable features: allowing sequences to pass despite fatal alerts for specific features
 
 It is possible to specify that certain features are *expendable* and so
 have relaxed requirements. Some alerts that are normally fatal are not
