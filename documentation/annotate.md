@@ -22,7 +22,7 @@
   * [additional expert options](#options-expert)
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
-* [`misc_feature`-ization: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 
 ---
 
@@ -1061,7 +1061,7 @@ user, this is "-" for alerts that are never omitted from those files.
 
 ---
 
-## <a name="mnf"></a>`misc_feature`-ization: allowing sequences to pass despite fatal alerts for specific features
+## <a name="mnf"></a>`Expendable features: allowing sequences to pass despite fatal alerts for specific features
 
 It is possible to specify that certain features are *expendable* and so
 have relaxed requirements. Some alerts that are normally fatal are not
