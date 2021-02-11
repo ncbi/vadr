@@ -902,10 +902,12 @@ An example is included [below](#alerttoggle).
 
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
-**relevant feature types** column
+`causes `misc_feature`, not failure (if `misc_not_failure:"1"` in
+modelinfo file` shows which alerts are not fatal for expendable
+features as described more [below](#mnf).
 
 #### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
+| alert code | type  | causes `misc_feature`, not failure (if `misc_not_failure:"1"` in modelinfo file) |short description/error name | long description |
 |------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
 | [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  |
 | [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
