@@ -1675,6 +1675,7 @@ sub join_alignments_helper {
     # we did not align the 5' end with cmalign, add all gap 5' chunk
     # of seq and model up to the start of ungapped blast alignment
     if($ugp_mdl_start != 1) {
+      # seed-with-gaps need this to know about gaps in HSP - reparse blastn indel string?
       $joined_seq .= utl_StringMonoChar(($ugp_mdl_start - 1), "-", $FH_HR);
       #$joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
       $joined_mdl .= substr($mdl_consensus_sqstring, 0, ($ugp_mdl_start - 1));
