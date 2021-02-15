@@ -147,7 +147,7 @@ require "sqp_utils.pm";
 # vdr_ModelInfoFileParse()
 #
 # Subroutines related to cmalign output:
-# vdr_CmalignCheckStdOutput()
+# vdr_CmalignOrHmmalignStdOutput()
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
 # 
@@ -2617,6 +2617,7 @@ sub vdr_SubmitJobAsScript {
 # Arguments: 
 #  $do_cmalign:      '1' if we're running cmalign, which requires special care because we
 #                    handle two cases: finish successfully or die with a specific error
+#  $outkey:          key in second dimension of out_file_AHR we'll check to see if job is finished
 #  $out_file_AHR:    ref to array of hashes of output files that will be created by jobs we are waiting for
 #  $success_AR:      ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
 #                    these will always all be '1' unless $do_cmalign
@@ -2636,10 +2637,10 @@ sub vdr_SubmitJobAsScript {
 ################################################################# 
 sub vdr_WaitForFarmJobsToFinish { 
   my $sub_name = "vdr_WaitForFarmJobsToFinish()";
-  my $nargs_expected = 7;
+  my $nargs_expected = 8;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($do_cmalign, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
+  my ($do_cmalign, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
 
   my $log_FH = $FH_HR->{"log"};
   my $nmin = opt_Get("--wait", $opt_HHR);
@@ -2700,9 +2701,9 @@ sub vdr_WaitForFarmJobsToFinish {
       if(! $is_finished_A[$i]) { 
         if(-s $outfile_A[$i]) { 
           if($do_cmalign) { 
-            my $success = vdr_CmalignCheckStdOutput($outfile_A[$i], 
-                                                    (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
-                                                    $FH_HR);
+            my $success = vdr_CmalignStdOutput($outfile_A[$i], 
+                                               (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
+                                               $FH_HR);
             if($success == 0 || $success == 1) { 
               if(defined $success_AR) { $success_AR->[$i] = $success; }
               $is_finished_A[$i] = 1;
@@ -4225,8 +4226,8 @@ sub vdr_ModelInfoFileParse {
 # Incept:      EPN, Wed Feb  6 14:18:59 2019
 #
 # Purpose:     Check cmalign output to see if it indicates that 
-#              a cmalign run finished successfully, in error, or 
-#              has not yet finished.
+#              a cmalign run finished successfully,
+#              in error, or has not yet finished.
 #              
 # Arguments: 
 #  $stdout_file:      path to the stdout file we will check
@@ -4242,8 +4243,8 @@ sub vdr_ModelInfoFileParse {
 # Dies: If $stdout_file does not exist or is empty
 # 
 ################################################################# 
-sub vdr_CmalignCheckStdOutput { 
-  my $sub_name = "vdr_CmalignCheckStdOutput";
+sub vdr_CmalignStdOutput { 
+  my $sub_name = "vdr_CmalignStdOutput";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -4253,16 +4254,17 @@ sub vdr_CmalignCheckStdOutput {
   }
 
   if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign or hmmalign stdout file $stdout_file does not exist", 1, $FH_HR);
   }
   if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign or hmmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
   }
 
   # if we get here, the file exists and is non-empty
   my $final_line = `tail -n 1 $stdout_file`;
   chomp $final_line;
   if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+
   if($final_line =~ m/\Q# CPU time/) { 
     return 1; 
   }

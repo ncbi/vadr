@@ -113,7 +113,7 @@ require "sqp_utils.pm";
 #  3. alert_add_unexdivg()
 #     unexdivg (1)
 #
-#  4. cmalign_parse_stk_and_add_alignment_alerts()
+#  4. parse_stk_and_add_alignment_alerts()
 #     indf5gap, indf5loc, indf3gap, indf3loc, deletinf, deletins (6)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
@@ -152,6 +152,7 @@ $execs_H{"cmalign"}       = $env_vadr_infernal_dir . "/cmalign";
 $execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmsearch"}      = $env_vadr_infernal_dir . "/cmsearch";
+$execs_H{"hmmalign"}      = $env_vadr_hmmer_dir    . "/hmmalign";
 $execs_H{"hmmfetch"}      = $env_vadr_hmmer_dir    . "/hmmfetch";
 $execs_H{"hmmscan"}       = $env_vadr_hmmer_dir    . "/hmmscan";
 $execs_H{"hmmsearch"}     = $env_vadr_hmmer_dir    . "/hmmsearch";
@@ -222,12 +223,13 @@ opt_Add("--ignore_mnf",   "boolean",  0,         $g,     undef, undef,         "
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
 opt_Add("-m",           "string",  undef,      $g,    undef, undef,       "use CM file <s> instead of default",                                             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-a",           "string",  undef,      $g, "--hmmer",undef,       "use HMM file <s> instead of default",                                            "use HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-a",           "string",  undef,      $g, "--hmmer",undef,       "use protein HMM file <s> instead of default",                                    "use protein HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string",  undef,      $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
+opt_Add("--nthmm",      "string",  undef,      $g,    undef, undef,       "use nucleotide HMM file <s> instead of default",                                 "use nucleotide HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling output feature table";
@@ -271,6 +273,7 @@ opt_Add("--tau",        "real",    1E-3,      $g,    undef, undef,      "set the
 opt_Add("--nofixedtau", "boolean", 0,         $g,    undef, undef,      "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,         $g,    undef, undef,      "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub", undef,      "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--aln_hmm",    "boolean", 0,         $g,    undef, undef,      "align to profile hmm with hmmalign, not to a cm with cmalign",                 "align to profile hmm with hmmalign, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
 #        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
@@ -313,7 +316,7 @@ opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maxim
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
-opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the cmalign step, use existing results",             "skip the cmalign step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--skip_pv",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
@@ -402,13 +405,14 @@ my $options_okay =
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
+                'aln_hmm'       => \$GetOptions_H{"--aln_hmm"},
 # options for controlling protein blastx protein validation stage
                 'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
                 'xnumali=s'     => \$GetOptions_H{"--xnumali"},
                 'xlongest'      => \$GetOptions_H{"--xlongest"},
 # options for using hmmer instead of blastx for protein validation
-                'hmmer'         => \$GetOptions_H{"--hmmer"},
+                'pv_hmmer'      => \$GetOptions_H{"--pv_hmmer"},
                 'h_max'         => \$GetOptions_H{"--h_max"},
                 'h_minbit=s'    => \$GetOptions_H{"--h_minbit"},
 # options related to blastn-based acceleration
@@ -534,15 +538,15 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 # determine if we are running blastx, hmmer, and blastn
 #######################################################
 # set defaults, and change if nec
-my $do_blastx = 1; 
-my $do_hmmer  = 0;
+my $do_pv_blastx = 1; 
+my $do_pv_hmmer  = 0;
 if(opt_Get("--skip_pv", \%opt_HH)) { 
-  $do_blastx = 0;
-  $do_hmmer  = 0;
+  $do_pv_blastx = 0;
+  $do_pv_hmmer  = 0;
 }
-elsif(opt_Get("--hmmer", \%opt_HH)) { 
-  $do_blastx = 0;
-  $do_hmmer  = 1;
+elsif(opt_Get("--pv_hmmer", \%opt_HH)) { 
+  $do_pv_blastx = 0;
+  $do_pv_hmmer  = 1;
 }
 
 my $do_blastn_rpn = (opt_Get("-r", \%opt_HH) && (! opt_Get("--r_prof", \%opt_HH))) ? 1 : 0;
@@ -593,7 +597,7 @@ $extra_H{"\$VADRMODELDIR"}    = $env_vadr_model_dir;
 $extra_H{"\$VADRINFERNALDIR"} = $env_vadr_infernal_dir;
 $extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
 $extra_H{"\$VADRBIOEASELDIR"} = $env_vadr_bioeasel_dir;
-if($do_blastx || $do_blastn_any) { 
+if($do_pv_blastx || $do_blastn_any) { 
   $extra_H{"\$VADRBLASTDIR"} = $env_vadr_blast_dir;
 }
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
@@ -671,39 +675,49 @@ my $opt_x_used     = opt_IsUsed("-x", \%opt_HH);
 my $opt_q_used     = opt_IsUsed("-q", \%opt_HH);
 my $opt_msub_used  = opt_IsUsed("--msub", \%opt_HH);
 my $opt_xsub_used  = opt_IsUsed("--xsub", \%opt_HH);
+my $opt_nthmm_used = opt_IsUsed("--nthmm", \%opt_HH);
 
-my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",  \%opt_HH) : $env_vadr_model_dir;
-my $model_key      = ($opt_mkey_used)  ? opt_Get("--mkey",  \%opt_HH) : "vadr";
-my $model_list     = ($opt_mlist_used) ? opt_Get("--mlist", \%opt_HH) : undef;
-my $cm_file        = ($opt_m_used)     ? opt_Get("-m",      \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
-my $hmm_file       = ($opt_a_used)     ? opt_Get("-a",      \%opt_HH) : $model_dir . "/" . $model_key . ".hmm";
-my $minfo_file     = ($opt_i_used)     ? opt_Get("-i",      \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
-my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",      \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
-my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",      \%opt_HH) : $model_dir;
-my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",      \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
-my $msub_file      = ($opt_msub_used)  ? opt_Get("--msub",  \%opt_HH) : undef;
-my $xsub_file      = ($opt_xsub_used)  ? opt_Get("--xsub",  \%opt_HH) : undef;
+my $model_dir      = ($opt_mdir_used)  ? opt_Get("--mdir",     \%opt_HH) : $env_vadr_model_dir;
+my $model_key      = ($opt_mkey_used)  ? opt_Get("--mkey",     \%opt_HH) : "vadr";
+my $model_list     = ($opt_mlist_used) ? opt_Get("--mlist",    \%opt_HH) : undef;
+my $cm_file        = ($opt_m_used)     ? opt_Get("-m",         \%opt_HH) : $model_dir . "/" . $model_key . ".cm";
+my $hmm_pt_file    = ($opt_a_used)     ? opt_Get("-a",         \%opt_HH) : $model_dir . "/" . $model_key . ".pt.hmm";
+my $minfo_file     = ($opt_i_used)     ? opt_Get("-i",         \%opt_HH) : $model_dir . "/" . $model_key . ".minfo";
+my $blastn_db_file = ($opt_n_used)     ? opt_Get("-n",         \%opt_HH) : $model_dir . "/" . $model_key . ".fa";
+my $blastx_db_dir  = ($opt_x_used)     ? opt_Get("-x",         \%opt_HH) : $model_dir;
+my $hmm_nt_file    = ($opt_nthmm_used) ? opt_Get("--nthmm",    \%opt_HH) : $model_dir . "/" . $model_key . ".nt.hmm";
+my $qsubinfo_file  = ($opt_q_used)     ? opt_Get("-q",         \%opt_HH) : $env_vadr_scripts_dir . "/vadr.qsubinfo";
+my $msub_file      = ($opt_msub_used)  ? opt_Get("--msub",     \%opt_HH) : undef;
+my $xsub_file      = ($opt_xsub_used)  ? opt_Get("--xsub",     \%opt_HH) : undef;
 my $cm_extra_string       = "";
-my $hmm_extra_string      = "";
+my $pthmm_extra_string    = "";
 my $minfo_extra_string    = "";
 my $blastn_extra_string   = "";
 my $blastx_extra_string   = "";
+my $nthmm_extra_string    = "";
 my $qsubinfo_extra_string = "";
 
-if($opt_mdir_used) { $cm_extra_string       .= " --mdir"; $hmm_extra_string .= " --mdir"; $minfo_extra_string .= " --mdir"; $blastn_extra_string .= " --mdir"; }
-if($opt_mkey_used) { $cm_extra_string       .= " --mkey"; $hmm_extra_string .= " --mkey"; $minfo_extra_string .= " --mkey"; $blastn_extra_string .= " --mkey"; }
-if($opt_m_used)    { $cm_extra_string       .= " -m"; }
-if($opt_a_used)    { $hmm_extra_string      .= " -a"; }
-if($opt_i_used)    { $minfo_extra_string    .= " -i"; }
-if($opt_n_used)    { $blastn_extra_string   .= " -n"; }
-if($opt_x_used)    { $blastx_extra_string   .= " -x"; }
-if($opt_q_used)    { $qsubinfo_extra_string .= " -q"; }
+if($opt_mdir_used)  { $cm_extra_string       .= " --mdir"; $pthmm_extra_string .= " --mdir"; $minfo_extra_string .= " --mdir"; $blastn_extra_string .= " --mdir"; $nthmm_extra_string .= " --mdir"; }
+if($opt_mkey_used)  { $cm_extra_string       .= " --mkey"; $pthmm_extra_string .= " --mkey"; $minfo_extra_string .= " --mkey"; $blastn_extra_string .= " --mkey"; $nthmm_extra_string .= " --mkey"; }
+if($opt_m_used)     { $cm_extra_string       .= " -m"; }
+if($opt_a_used)     { $pthmm_extra_string    .= " -a"; }
+if($opt_i_used)     { $minfo_extra_string    .= " -i"; }
+if($opt_n_used)     { $blastn_extra_string   .= " -n"; }
+if($opt_x_used)     { $blastx_extra_string   .= " -x"; }
+if($opt_q_used)     { $qsubinfo_extra_string .= " -q"; }
+if($opt_nthmm_used) { $nthmm_extra .= " -q"; }
 
 # check for files we always need, cm file and minfo file
 utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
   utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 }
+# cm file must end in .cm, it's how cmalign_or_hmmalign*() subroutines
+# determine if they should run cmalign or hmmalign.
+if($cm_file !~ m/\.cm$/) { 
+  ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
+}
+
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for blastn db file if we need it
@@ -715,18 +729,31 @@ if(($do_blastn_any) || ($do_replace_ns)) { # we always need this file if $do_rep
 }
 
 # only check for blastx db if we need it
-if($do_blastx) { 
+if($do_pv_blastx) { 
   $blastx_db_dir =~ s/\/$//; # remove trailing '/'
   if(! -d $blastx_db_dir) { 
     ofile_FAIL(sprintf("ERROR, blast db directory $blastx_db_dir%s does not exist", $blastx_extra_string), 1, $FH_HR);
   }
 }
 
-# only check for hmm file if we need it
-if($do_hmmer) { 
-  utl_FileValidateExistsAndNonEmpty($hmm_file, sprintf("HMM file%s", ($hmm_extra_string eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+# only check for protein hmm file if we need it
+if($do_pv_hmmer) { 
+  utl_FileValidateExistsAndNonEmpty($hmm_pt_file, sprintf("HMM file%s", ($pthmm_extra_string eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
-    utl_FileValidateExistsAndNonEmpty($hmm_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+    utl_FileValidateExistsAndNonEmpty($hmm_pt_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
+}
+
+# only check for nucleotide hmm file if we need it
+if(opt_is_Used("--aln_hmm", \%opt_HH)) { 
+  utl_FileValidateExistsAndNonEmpty($hmm_nt_file, sprintf("HMM file%s", ($pthmm_extra_string eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
+    utl_FileValidateExistsAndNonEmpty($hmm_pt_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
+  # cm file must end in .cm, it's how cmalign_or_hmmalign*() subroutines
+  # determine if they should run cmalign or hmmalign.
+  if($hmm_file !~ m/\.hmm$/) { 
+    ofile_FAIL("ERROR, nucleotide HMM file name must end in '.hmm', but $hmm_nt_file does not", $hmm_nt_file, 1, $FH_HR);
   }
 }
 
@@ -861,7 +888,7 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 }
 
 # if there are any CDS features, validate that the BLAST db files we need exist, if nec
-if($do_blastx) { 
+if($do_pv_blastx) { 
   for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     my $ncds = vdr_FeatureInfoCountType(\@{$ftr_info_HAH{$mdl_name}}, "CDS"); 
@@ -984,7 +1011,7 @@ if($do_replace_ns) {
   push(@to_remove_A, $rpn_subset_fa_file);
   push(@to_remove_A, $rpn_subset_fa_file.".ssi");
   
-  # for each model with seqs to align to, create the sequence file and run cmalign
+  # for each model with seqs to align to, create the sequence file and run cmalign/hmmalign
   my $mdl_name;
   my $nseq_replaced = 0;
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -1138,7 +1165,7 @@ my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
 my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
 
 my $cur_mdl_fa_file;         # fasta file with sequences to align to current model
-my $cur_mdl_cmalign_fa_file; # fasta file with sequences to align to current model
+my $cur_mdl_align_fa_file;   # fasta file with sequences to align to current model
 my $cur_mdl_nseq;            # number of sequences assigned to model
 my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless -s
 my $cur_mdl_tot_seq_len;     # sum of total number of nucleotides we are aligning
@@ -1153,7 +1180,7 @@ my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list o
 my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it derives from
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
 
-# for each model with seqs to align to, create the sequence file and run cmalign
+# for each model with seqs to align to, create the sequence file and run cmalign/hmmalign
 my $mdl_name;
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -1168,14 +1195,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $cur_mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
 
-    # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign (e.g if $do_blastn_ali))
+    # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/hmmalign (e.g if $do_blastn_ali))
     $$sqfile_for_analysis_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
     ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".a.fa", $cur_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name", ($do_replace_ns) ? "replaced " : ""));
     push(@to_remove_A, $cur_mdl_fa_file); 
 
     # set info on seqs we will align, we do this different if $do_blastn_ali or not
     if(! $do_blastn_ali) { 
-      $cur_mdl_cmalign_fa_file = $cur_mdl_fa_file;
+      $cur_mdl_align_fa_file = $cur_mdl_fa_file;
       $cur_mdl_nalign = $cur_mdl_nseq;
       $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@{$mdl_seq_name_HA{$mdl_name}});
     }
@@ -1184,28 +1211,29 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       # create the fasta file with sets of subsequences that omit well-defined regions from blastn alignment
       my $indel_file = $ofile_info_HH{"fullpath"}{"std.cdt.$mdl_name.indel"};
       my @subseq_AA = ();
-      $cur_mdl_cmalign_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
+      $cur_mdl_align_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
       parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                                  $mdl_name, \@subseq_AA, \%ugp_mdl_H, \%ugp_seq_H, 
                                                  \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
                                                  \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
       if($cur_mdl_nalign > 0) { 
-        $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_cmalign_fa_file);
+        $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_align_fa_file);
         my $subseq_key = $mdl_name . ".a.subseq.fa";
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_cmalign_fa_file, 0, $do_keep, "subsequences to align with cmalign for model $mdl_name (created due to -s)");
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_align_fa_file, 0, $do_keep, sprintf("subsequences to align with %s for model $mdl_name (created due to -s)", ($do_hmmalign) ? "hmmalign" : "cmalign"));
         push(@to_remove_A, $ofile_info_HH{"fullpath"}{$subseq_key});
         $cur_mdl_tot_seq_len = utl_HSumValues(\%subseq_len_H);
       }
     }
 
-    # run cmalign
+    # run cmalign/hmmalign
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
-      cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                      $cm_file, $mdl_name, $cur_mdl_cmalign_fa_file, $out_root, "", $cur_mdl_nalign,
-                      $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
-                      \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+      cmalign_or_hmmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
+                                  ($do_hmmalign ? $hmm_file : $cm_file), 
+                                  $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
+                                  $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                                  \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
     }
 
     if($do_blastn_ali) {
@@ -1264,10 +1292,11 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
-        cmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                        $cm_file, $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
-                        $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
-                        \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+        cmalign_or_hmmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
+                                    ($do_hmmalign ? $hmm_file : $cm_file), 
+                                    $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
+                                    $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
+                                    \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
         # append insert file we just made to larger join insert file (if we created it (we may not have if all seqs had overflow error))
         my $cur_ifile = sprintf("%s.%s.uj.align.ifile", $out_root, $mdl_name);
         if(-s $cur_ifile) { 
@@ -1314,12 +1343,12 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # parse the cmalign alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-        cmalign_parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
-                                                   \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
-                                                   \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                                   \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                                   \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, $mdl_name, $out_root, 
-                                                   \%opt_HH, \%ofile_info_HH);
+        parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
+                                           \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
+                                           \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                           \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, $mdl_name, $out_root, 
+                                           \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
     }
@@ -1359,7 +1388,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
 #########################################################################################
-if($do_blastx) { 
+if($do_pv_blastx) { 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
@@ -1406,8 +1435,8 @@ if($do_blastx) {
       }
     }
   }
-} # end of 'if($do_blastx)'
-elsif(! $do_hmmer) { 
+} # end of 'if($do_pv_blastx)'
+elsif(! $do_pv_hmmer) { 
   $start_secs = ofile_OutputProgressPrior("Skipping protein validation step (--skip_pv)", $progress_w, $log_FH, *STDOUT);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
@@ -1415,7 +1444,7 @@ elsif(! $do_hmmer) {
 ############################################################################################################
 # Run hmmsearch: all full length sequences and all fetched CDS features versus best-matching protein profile
 ############################################################################################################
-if($do_hmmer) { 
+if($do_pv_hmmer) { 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
@@ -1439,7 +1468,7 @@ if($do_hmmer) {
       }                
     }
   }
-} # end of 'if($do_hmmer)'
+} # end of 'if($do_pv_hmmer)'
 
 ##############################################################
 # Add alerts to children features that have parents with 
@@ -1626,10 +1655,10 @@ exit 0;
 # populate_per_model_data_structures_given_classification_results
 #
 # Subroutines related to cmalign and alignment:
-# cmalign_wrapper
-# cmalign_wrapper_helper
-# cmalign_run
-# cmalign_parse_stk_and_add_alignment_alerts 
+# cmalign_or_hmmalign_wrapper
+# cmalign_or_hmmalign_wrapper_helper
+# cmalign_or_hmmalign_run
+# parse_stk_and_add_alignment_alerts 
 # cmalign_store_overflow
 # fetch_features_and_add_cds_and_mp_alerts 
 # sqstring_check_start
@@ -2925,24 +2954,26 @@ sub populate_per_model_data_structures_given_classification_results {
 #################################################################
 #
 # Subroutines related to cmalign and alignment:
-# cmalign_wrapper
-# cmalign_wrapper_helper
-# cmalign_run
-# cmalign_parse_stk_and_add_alignment_alerts 
+# cmalign_or_hmmalign_wrapper
+# cmalign_or_hmmalign_wrapper_helper
+# cmalign_or_hmmalign_run
+# parse_stk_and_add_alignment_alerts 
 # cmalign_store_overflow
 # fetch_features_and_add_cds_and_mp_alerts 
 # sqstring_check_start
 # sqstring_find_stops 
 #
 #################################################################
-# Subroutine:  cmalign_wrapper()
+# Subroutine:  cmalign_or_hmmalign_wrapper()
 # Incept:      EPN, Mon Mar 18 14:20:56 2019
 #
-# Purpose:     Run one or more cmalign jobs on the farm
+# Purpose:     Run one or more cmalign or hmmalign jobs on the farm
 #              or locally, after possibly splitting up the input
 #              sequence file with vdr_SplitFastaFile and 
 #              then calling vdr_CmalignOrCmsearchWrapperHelper(). 
-#
+#              We run hmmalign if $mdl_file ends in '.hmm' else we run
+#              cmalign.
+# 
 #              We may have to do two rounds of sequence file splitting
 #              and job running/submission because there is an error
 #              case in cmalign that we want to be able to detect. That
@@ -2952,7 +2983,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #              our strategy for cmalign is:
 #
 #              Split full fasta file up using default method and run
-#              >= 1 cmalign jobs. If any of those runs R fail, then 
+#              >= 1 cmalign jobs. If any of those R runs fail, then 
 #              split up run R's sequence file into >= 1 files with
 #              exactly 1 sequence in them. One or more of those should
 #              fail and that reveals which specific sequences are
@@ -2963,7 +2994,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #                          defined as keys
 #  $qsub_prefix:           qsub command prefix to use when submitting to farm, undef if running locally
 #  $qsub_suffix:           qsub command suffix to use when submitting to farm, undef if running locally
-#  $mdl_file:              name of model file to use
+#  $mdl_file:              name of model file to use (if ends with .hmm, run hmmalign, else run cmalign)
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:              name of sequence file with all sequences to run against
 #  $out_root:              string for naming output files
@@ -2982,8 +3013,8 @@ sub populate_per_model_data_structures_given_classification_results {
 # Dies: If an executable doesn't exist, or cmalign or nhmmscan or esl-ssplit
 #       command fails if we're running locally
 ################################################################# 
-sub cmalign_wrapper { 
-  my $sub_name = "cmalign_wrapper";
+sub cmalign_or_hmmalign_wrapper { 
+  my $sub_name = "cmalign_or_hmmalign_wrapper";
   my $nargs_expected = 16;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -2992,6 +3023,7 @@ sub cmalign_wrapper {
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
+  my $do_hmmalign = ($mdl_file =~ m/\.hmm$/) ? 1 : 0;
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $start_secs; # timing start
@@ -3039,9 +3071,9 @@ sub cmalign_wrapper {
     $r1_seq_file_A[0] = $seq_file;
   }
   
-  cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $extra_key, $nseq, $progress_w, 
-                         \@r1_seq_file_A, \@r1_out_file_AH, \@r1_success_A, \@r1_mxsize_A, 
-                         $opt_HHR, $ofile_info_HHR);
+  cmalign_or_hmmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 1, $extra_key, $nseq, $progress_w, 
+                                     \@r1_seq_file_A, \@r1_out_file_AH, \@r1_success_A, \@r1_mxsize_A, 
+                                     $opt_HHR, $ofile_info_HHR);
 
   my $nr2            = 0;  # number of round 2 runs (sequence files)
   my @r2_out_file_AH = (); # array of hashes ([0..$nr2-1]) of output files for cmalign round 2 runs
@@ -3084,7 +3116,10 @@ sub cmalign_wrapper {
 
   # do all round 2 runs
   if($nr2 > 0) { 
-    cmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $extra_key, $nr2, $progress_w, 
+    if($do_hmmalign) { # shouldn't happen if $do_hmmalign
+      ofile_FAIL("ERROR in $sub_name, running hmmalign but trying to run stage 2 for at least 1 seq which should only happen if running cmalign", 1, $FH_HR); 
+    }
+    cmalign_or_hmmalign_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $extra_key, $nr2, $progress_w, 
                            \@r2_seq_file_A, \@r2_out_file_AH, \@r2_success_A, \@r2_mxsize_A, 
                            $opt_HHR, $ofile_info_HHR);
     # go through all round 2 runs: 
@@ -3128,17 +3163,19 @@ sub cmalign_wrapper {
 }
 
 #################################################################
-# Subroutine:  cmalign_wrapper_helper()
+# Subroutine:  cmalign_or_hmmalign_wrapper_helper()
 # Incept:      EPN, Wed Mar 20 06:20:51 2019
 #
-# Purpose:     Run one or more cmalign on the farm or locally.
+# Purpose:     Run one or more cmalign or hmmalign jobs on the farm 
+#              or locally. We run hmmalign if $mdl_file ends in '.hmm' 
+#              else we run cmalign.
 #
-#              Helper subroutine for cmalign_wrapper()
+#              Helper subroutine for cmalign_or_hmmalign_wrapper()
 #              see that sub's "Purpose" for more details.
 #
 # Arguments: 
 #  $execs_HR:              ref to hash with paths to cmalign, cmsearch and cmfetch
-#  $mdl_file:              name of model file to use
+#  $mdl_file:              name of model file to use (if ends with .hmm use hmmalign else run cmalign)
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $out_root:              string for naming output files
 #  $round:                 round we are on, "1" or "2"
@@ -3161,23 +3198,25 @@ sub cmalign_wrapper {
 # Dies: If an executable doesn't exist, or command fails (and its not a cmalign allowed failure)
 #
 ################################################################# 
-sub cmalign_wrapper_helper { 
-  my $sub_name = "cmalign_wrapper_helper";
+sub cmalign_or_hmmalign_wrapper_helper { 
+  my $sub_name = "cmalign_or_hmmalign_wrapper_helper";
   my $nargs_expected = 14;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
   my ($execs_HR, $mdl_file, $mdl_name, $out_root, $round, $extra_key, $nseq, $progress_w, 
       $seq_file_AR, $out_file_AHR, $success_AR, $mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $log_FH         = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
-  my $do_parallel    = opt_Get("-p", $opt_HHR) ? 1 : 0;
-  my $nseq_files     = scalar(@{$seq_file_AR});
+  my $log_FH      = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
+  my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
+  my $do_hmmalign = ($mdl_file =~ m/\.hmm$/) ? 1 : 0;
+  my $nseq_files  = scalar(@{$seq_file_AR});
 
   # determine description of the runs we are about to do, 
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $stg_desc = "";
   if($do_parallel) { 
-    $stg_desc = sprintf("Submitting $nseq_files cmalign job(s) ($mdl_name: $nseq %sseq%s) to the farm%s", 
+    $stg_desc = sprintf("Submitting $nseq_files %s job(s) ($mdl_name: $nseq %sseq%s) to the farm%s", 
+                        ($do_hmmalign) ? "hmmalign" : "cmalign", 
                         ($extra_key eq "uj.") ? "unjoinbl " : "", 
                         ($nseq > 1) ? "s" : "",
                         ($round == 1) ? "" : " to find seqs too divergent to annotate");
@@ -3193,17 +3232,23 @@ sub cmalign_wrapper_helper {
   my $key; # a file key
   my $s;   # counter over sequence files
   #my @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
-  my @out_keys_A = ("stdout", "err", "ifile", "stk", "sh");
+  my @out_keys_A = ();
+  if($do_hmmalign) { 
+    @out_keys_A = ("err", "stk", "sh");
+  }
+  else { 
+    @out_keys_A = ("stdout", "err", "ifile", "stk", "sh");
+  }
   @{$out_file_AHR} = ();
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AHR->[$s]} = (); 
     foreach $key (@out_keys_A) { 
       $out_file_AHR->[$s]{$key} = $out_root . "." . $mdl_name . "." . $extra_key . "align.r" . $round . ".s" . $s . "." . $key;
     }
-    $success_AR->[$s] = cmalign_run($execs_HR, $qsub_prefix, $qsub_suffix, 
-                                    $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
-                                    (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
-                                    $opt_HHR, $ofile_info_HHR);   
+    $success_AR->[$s] = cmalign_or_hmmalign_run($execs_HR, $qsub_prefix, $qsub_suffix, 
+                                                $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
+                                                (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
+                                                $opt_HHR, $ofile_info_HHR);   
     # if we are running parallel, ignore the return values from the run{Cmalign,Cmsearch} subroutines
     # vdr_WaitForFarmJobsToFinish() will fill these later
     if($do_parallel) { $success_AR->[$s] = 0; }
@@ -3221,11 +3266,12 @@ sub cmalign_wrapper_helper {
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
-      my $njobs_finished = vdr_WaitForFarmJobsToFinish(1, # we are doing cmalign
+      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_hmmalign ? 0 : 1), # are we are doing cmalign
+                                                       "stdout",
                                                        $out_file_AHR,
                                                        $success_AR, 
                                                        $mxsize_AR,  
-                                                       "", # value is irrelevant for cmalign
+                                                       ($do_hmmalign ? "//", ""), # value is irrelevant for cmalign
                                                        $opt_HHR, $ofile_info_HHR->{"FH"});
       if($njobs_finished != $nseq_files) { 
         ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
@@ -3240,12 +3286,14 @@ sub cmalign_wrapper_helper {
 }
 
 #################################################################
-# Subroutine:  cmalign_run()
+# Subroutine:  cmalign_or_hmmalign_run()
 # Incept:      EPN, Wed Feb  6 12:30:08 2019
 #
-# Purpose:     Run Infernal's cmalign executable using $mdl_file
-#              as the model file on sequence file $seq_file, either
-#              locally or on the farm.
+# Purpose:     Run Infernal's cmalign or HMMER's hmmalign executable 
+#              using $mdl_file as the model file on sequence file 
+#              $seq_file, either locally or on the farm. We run
+#              hmmalign if $mdl_file ends in '.hmm' else we run
+#              cmalign.
 #              
 #              If job does not finish successfully, we need to 
 #              parse the stderr output (which we redirect to stdout)
@@ -3257,10 +3305,10 @@ sub cmalign_wrapper_helper {
 #              Use --mxsize, --maxtau or --tau.
 #              
 # Arguments: 
-#  $execs_HR:         ref to hash with paths to cmalign and cmfetch
+#  $execs_HR:         ref to hash with paths to cmalign, cmfetch, hmmalign and hmmfetch
 #  $qsub_prefix:      qsub command prefix to use when submitting to farm, undef if running locally
 #  $qsub_suffix:      qsub command suffix to use when submitting to farm, undef if running locally
-#  $mdl_file:         path to the CM file
+#  $mdl_file:         path to the CM or HMM file
 #  $mdl_name:         name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:         path to the sequence file
 #  $out_file_HR:      ref to hash of output files to create
@@ -3280,8 +3328,8 @@ sub cmalign_wrapper_helper {
 #                  job run locally and finished with unallowed failure
 # 
 ################################################################# 
-sub cmalign_run { 
-  my $sub_name = "cmalign_run()";
+sub cmalign_or_hmmalign_run { 
+  my $sub_name = "cmalign_or_hmmalign_run()";
   my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
@@ -3295,6 +3343,7 @@ sub cmalign_run {
 
   my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
+  my $do_hmmalign = ($mdl_file =~ m/\.hmm$/) ? 1 : 0;
 
   my $stdout_file = $out_file_HR->{"stdout"};
   my $ifile_file  = $out_file_HR->{"ifile"};
@@ -3302,49 +3351,58 @@ sub cmalign_run {
   my $stk_file    = $out_file_HR->{"stk"};
   my $err_file    = $out_file_HR->{"err"};
   my $sh_file     = $out_file_HR->{"sh"};
-  if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
-  if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
-  #if(! defined $tfile_file)  { ofile_FAIL("ERROR in $sub_name, tfile  output file name is undefined", 1, $FH_HR); }
   if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
   if(! defined $sh_file)     { ofile_FAIL("ERROR in $sub_name, sh     output file name is undefined", 1, $FH_HR); }
+  if(! $do_hmmalign) { # only need stdout file and ifile file if running hmmalign
+    if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
+    if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
+  }
   if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
-    if(-e $stdout_file) { unlink $stdout_file; }
-    if(-e $ifile_file)  { unlink $ifile_file; }
-    #if(-e $tfile_file)  { unlink $tfile_file; }
     if(-e $stk_file)    { unlink $stk_file; }
     if(-e $err_file)    { unlink $err_file; }
     if(-e $sh_file)     { unlink $sh_file; }
+    if(! $do_hmmalign) { 
+      if(-e $stdout_file) { unlink $stdout_file; }
+      if(-e $ifile_file)  { unlink $ifile_file; }
+    }
   }
-  utl_FileValidateExistsAndNonEmpty($mdl_file, "CM file", $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($mdl_file, sprintf("%s file", $do_hmmalign ? "HMM" : "CM"), $sub_name, 1, $FH_HR); 
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
-  # determine cmalign options based on command line options
-  my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
-  my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize $cmalign_mxsize", opt_Get("--tau", $opt_HHR));
-  # add --tfile $tfile_file, only if --keep 
-  #if(opt_Get("--keep", $opt_HHR)) { 
-  #$opts .= " --tfile $tfile_file"; 
-  #}
-  # add --sub and --notrunc unless --nosub used
-  if(! opt_Get("--nosub", $opt_HHR)) { 
-    $opts .= " --sub --notrunc"; 
-  }
-  # add -g unless --noglocal used
-  if(! opt_Get("--noglocal", $opt_HHR)) { 
-    $opts .= " -g"; 
-  }
-  if(! opt_Get("--nofixedtau", $opt_HHR)) { 
-    $opts .= " --fixedtau"; 
-  }
- 
   my $cmd = undef;
-  if(defined $mdl_name) { 
-    $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
+
+  # determine cmalign options based on command line options
+  if($do_hmmalign) { 
+    if(defined $mdl_name) { 
+      $cmd = $execs_HR->{"hmmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"hmmalign"} . " $opts - $seq_file > $stk_file 2>&1";
+    }
+    else { 
+      $cmd = $execs_HR->{"hmmalign"} . " $mdl_file $seq_file > $stk_file 2>&1";
+    }
   }
-  else { 
-    $cmd = $execs_HR->{"cmalign"} . " $opts $mdl_file $seq_file > $stdout_file 2>&1";
+  else { # running cmalign
+    my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
+    my $opts = sprintf(" --dnaout --verbose --cpu 0 --ifile $ifile_file -o $stk_file --tau %s --mxsize $cmalign_mxsize", opt_Get("--tau", $opt_HHR));
+    # add --sub and --notrunc unless --nosub used
+    if(! opt_Get("--nosub", $opt_HHR)) { 
+      $opts .= " --sub --notrunc"; 
+    }
+    # add -g unless --noglocal used
+    if(! opt_Get("--noglocal", $opt_HHR)) { 
+      $opts .= " -g"; 
+    }
+    if(! opt_Get("--nofixedtau", $opt_HHR)) { 
+      $opts .= " --fixedtau"; 
+    }
+    if(defined $mdl_name) { 
+      $cmd = $execs_HR->{"cmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"cmalign"} . " $opts - $seq_file > $stdout_file 2>&1";
+    }
+    else { 
+      $cmd = $execs_HR->{"cmalign"} . " $opts $mdl_file $seq_file > $stdout_file 2>&1";
+    }
   }
+
 
   my $success = 1;
   if($do_parallel) { 
@@ -3361,7 +3419,9 @@ sub cmalign_run {
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
-    $success = vdr_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+    if($do_hmmalign) { 
+      $success = vdr_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+    }
     if($success == -1) { # indicates job did not finish properly, this shouldn't happen because utl_RunCommand() didn't die
       ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
     }
@@ -3371,7 +3431,7 @@ sub cmalign_run {
 }
 
 #################################################################
-# Subroutine : cmalign_parse_stk_and_add_alignment_alerts()
+# Subroutine : parse_stk_and_add_alignment_alerts()
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
 #
 # Purpose:    Parse Infernal 1.1 cmalign stockholm alignment file
@@ -3406,8 +3466,8 @@ sub cmalign_run {
 # Dies:
 #
 ################################################################# 
-sub cmalign_parse_stk_and_add_alignment_alerts { 
-  my $sub_name = "cmalign_parse_stk_and_add_alignment_alerts()";
+sub parse_stk_and_add_alignment_alerts { 
+  my $sub_name = "parse_stk_and_add_alignment_alerts()";
   my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
@@ -5185,14 +5245,14 @@ sub add_low_similarity_alerts {
 #             and the predicted CDS sequences for each sequence
 #             in $mdl_fa_file.
 #      
-#             If $do_blastx is '1' We remove the descriptions from the
+#             If $do_pv_blastx is '1' We remove the descriptions from the
 #             sequences in $mdl_fa_file because blastx parsing is more
 #             difficult if descriptions are included.
 #
 # Arguments: 
 #  $out_fa_file:              name of output fasta file to create
 #  $mdl_name:                 name of model
-#  $do_blastx:                '1' if we are going to run blastx, else '0'
+#  $do_pv_blastx:             '1' if we are going to run blastx, else '0'
 #  $do_separate_cds_fa_files: '1' if we output a separate file for the protein validation stage
 #  $ftr_info_AHR:             REF to array of hashes with feature info 
 #  $opt_HHR:                  REF to 2D hash of option values, see top of sqp_opts.pm for description
@@ -5208,14 +5268,14 @@ sub make_protein_validation_fasta_file {
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($out_fa_file, $mdl_name, $do_blastx, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($out_fa_file, $mdl_name, $do_pv_blastx, $do_separate_cds_fa_files, $ftr_info_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $ofile_info_key = $mdl_name . ".a.fa";
   my $mdl_fa_file = $ofile_info_HH{"fullpath"}{$ofile_info_key};
   # printf("in $sub_name, ofile_info_key: $ofile_info_key, mdl_fa_file: $mdl_fa_file\n");
   my $nftr = scalar(@{$ftr_info_AHR});
 
-  if($do_blastx) { 
+  if($do_pv_blastx) { 
     sqf_FastaFileRemoveDescriptions($mdl_fa_file, $out_fa_file, $ofile_info_HHR);
   }
   else { 
@@ -5292,7 +5352,7 @@ sub add_protein_validation_alerts {
   
   my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
   
-  my $do_hmmer = opt_Get("--hmmer", $opt_HHR) ? 1 : 0;
+  my $do_pv_hmmer = opt_Get("--pv_hmmer", $opt_HHR) ? 1 : 0;
 
   my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -5321,7 +5381,7 @@ sub add_protein_validation_alerts {
   # with hmmer
   my @xmaxins_exc_AH = ();
   my @xmaxdel_exc_AH = ();
-  if(! $do_hmmer) { 
+  if(! $do_pv_hmmer) { 
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       %{$xmaxins_exc_AH[$ftr_idx]} = ();
       %{$xmaxdel_exc_AH[$ftr_idx]} = ();
@@ -5363,7 +5423,7 @@ sub add_protein_validation_alerts {
           my $p_hlen         = undef; # length of blastx hit
           my $p_qseq_name    = undef; # query seq name parsed out of blast query $p_query
           my $p_qftr_idx     = undef; # feature idx a blast query pertains to, parsed out of blast query $p_query
-          my $p_blastx_feature_flag = 0; # set to '1' if $do_hmmer is 0 and $p_query is a fetched feature sequence, not a full length input sequence
+          my $p_blastx_feature_flag = 0; # set to '1' if $do_pv_hmmer is 0 and $p_query is a fetched feature sequence, not a full length input sequence
           
           my $start_diff = undef; # difference in start values between CM and blastx
           my $stop_diff  = undef; # difference in start values between CM and blastx
@@ -5397,7 +5457,7 @@ sub add_protein_validation_alerts {
               if($p_qseq_name ne $seq_name) { 
                 ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", 1, $FH_HR);
               }
-              $p_blastx_feature_flag = ((! $do_hmmer) && ($p_qftr_idx ne "")) ? 1 : 0;
+              $p_blastx_feature_flag = ((! $do_pv_hmmer) && ($p_qftr_idx ne "")) ? 1 : 0;
               # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_blastx_feature_flag: $p_blastx_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
             }
 
@@ -5972,7 +6032,7 @@ sub run_esl_translate_and_hmmsearch {
   #my $hmmsearch_stk_file       = $out_root . "." . $mdl_name . ".hmmsearch.stk";
   #$hmmsearch_opts .= " -A $hmmsearch_stk_file";
   if(opt_Get("--h_max", $opt_HHR)) { $hmmsearch_opts .= " --max"; }
-  my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " -f $hmm_file $hmm_list_file | ";
+  my $hmmfetch_cmd  = $execs_HR->{"hmmfetch"}  . " -f $hmm_pt_file $hmm_list_file | ";
   my $hmmsearch_minbit = opt_Get("--h_minbit", $opt_HHR);
   my $hmmsearch_cmd = $hmmfetch_cmd . " " . $execs_HR->{"hmmsearch"} . " --domT $hmmsearch_minbit -T $hmmsearch_minbit --domtblout $hmmsearch_domtblout_file $hmmsearch_opts - $esl_translate_prot_fa_file > $hmmsearch_out_file";
   utl_RunCommand($hmmsearch_cmd, opt_Get("-v", $opt_HHR), 0, $ofile_info_HHR->{"FH"});
@@ -8070,8 +8130,8 @@ sub output_feature_table {
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $mdl_sub_HR, $in_sqfile_R, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $do_blastx  = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--hmmer", $opt_HHR)) ? 0 : 1;
-  my $do_nofasta = opt_Get("--out_nofasta", $opt_HHR) ? 1 : 0;
+  my $do_pv_blastx  = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--pv_hmmer", $opt_HHR)) ? 0 : 1;
+  my $do_nofasta    = opt_Get("--out_nofasta", $opt_HHR) ? 1 : 0;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
