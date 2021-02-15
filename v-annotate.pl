@@ -223,7 +223,7 @@ opt_Add("--ignore_mnf",   "boolean",  0,         $g,     undef, undef,         "
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
 opt_Add("-m",           "string",  undef,      $g,    undef, undef,       "use CM file <s> instead of default",                                             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-a",           "string",  undef,      $g, "--hmmer",undef,       "use protein HMM file <s> instead of default",                                    "use protein HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("-a",           "string",  undef,      $g, "--pv_hmmer",undef,    "use protein HMM file <s> instead of default",                                    "use protein HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
@@ -259,12 +259,12 @@ opt_Add("--fstminnt",   "integer",    6,        $g,   undef,   undef,           
 opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,   undef,            "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",              "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstlowthr",  "real",      0.3,       $g,   undef,   undef,            "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",               "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--xalntol",    "integer",   5,         $g,   undef,   undef,            "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",   "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--skip_pv,--hmmer", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",     "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
-opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--skip_pv,--hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",     "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
+opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
 opt_Add("--nmaxins",    "integer",   27,        $g,   undef,   undef,            "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>", "insertnn/INSERTION_OF_NT max allowed nucleotide (nt) insertion length in CDS nt alignment is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--nmaxdel",    "integer",   27,        $g,   undef,   undef,            "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",   "deletinn/DELETION_OF_NT max allowed nucleotide (nt) deletion length in CDS nt alignment is <n>",     \%opt_HH, \@opt_order_A);
-opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--skip_pv,--hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--hlonescore",  "integer",  10,        $g,"--hmmer","--skip_pv",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlonescore",  "integer",  80,        $g,   undef,"--pv_skip,--pv_hmmer", "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>",    "indfantp/INDEFINITE_ANNOTATION min score for a blastx hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--hlonescore",  "integer",  10,        $g,"--pv_hmmer","--pv_skip",        "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>",     "indfantp/INDEFINITE_ANNOTATION min score for a hmmer hit not supported by CM analysis is <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
@@ -277,16 +277,16 @@ opt_Add("--aln_hmm",    "boolean", 0,         $g,    undef, undef,      "align t
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
 #        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
-opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--skip_pv,--hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
-opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--skip_pv,--hmmer", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--skip_pv,--hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--skip_pv,--hmmer", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
+opt_Add("--xmatrix",     "string",   undef,      $g,     undef,"--pv_skip,--pv_hmmer", "use the matrix <s> with blastx (e.g. BLOSUM45)",                                                "use the matrix <s> with blastx (e.g. BLOSUM45)", \%opt_HH, \@opt_order_A);
+opt_Add("--xdrop",       "integer",  25,         $g,     undef,"--pv_skip,--pv_hmmer", "set the xdrop value for blastx to <n>",                                                         "set the xdrop value for blastx to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xnumali",     "integer",  20,         $g,     undef,"--pv_skip,--pv_hmmer", "number of alignments to keep in blastx output and consider if --xlongest is <n>",               "number of alignments to keep in blastx output and consider if --xlongest is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--xlongest",    "boolean",  0,          $g,     undef,"--pv_skip,--pv_hmmer", "keep the longest blastx hit, not the highest scoring one",                                      "keep the longest blastx hit, not the highest scoring one", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for using hmmer instead of blastx for protein validation";
 #     option          type       default group   requires    incompat   preamble-output                                     help-output    
-opt_Add("--hmmer",    "boolean", 0,        $g,     undef,  "--skip_pv", "use hmmer for protein validation, not blastx",     "use hmmer for protein validation, not blastx", \%opt_HH, \@opt_order_A);
-opt_Add("--h_max",    "boolean", 0,        $g, "--hmmer",  "--skip_pv", "use --max option with hmmsearch",                  "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
-opt_Add("--h_minbit", "real",    -10,      $g, "--hmmer",  "--skip_pv", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--pv_hmmer",    "boolean", 0,        $g,     undef,  "--pv_skip", "use hmmer for protein validation, not blastx",     "use hmmer for protein validation, not blastx", \%opt_HH, \@opt_order_A);
+opt_Add("--h_max",    "boolean", 0,        $g, "--pv_hmmer",  "--pv_skip", "use --max option with hmmsearch",                  "use --max option with hmmsearch", \%opt_HH, \@opt_order_A);
+opt_Add("--h_minbit", "real",    -10,      $g, "--pv_hmmer",  "--pv_skip", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration";
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
@@ -317,7 +317,7 @@ opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maxim
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
 opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
-opt_Add("--skip_pv",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
+opt_Add("--pv_skip",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                      help-output    
@@ -368,6 +368,7 @@ my $options_okay =
                 'x=s'           => \$GetOptions_H{"-x"}, 
                 'mkey=s'        => \$GetOptions_H{"--mkey"}, 
                 'mdir=s'        => \$GetOptions_H{"--mdir"}, 
+                'nthmm=s'       => \$GetOptions_H{"--nthmm"}, 
                 'mlist=s'       => \$GetOptions_H{"--mlist"}, 
 # options for controlling output feature tables
                 "nomisc"        => \$GetOptions_H{"--nomisc"},
@@ -437,7 +438,7 @@ my $options_okay =
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
                 'skip_align'    => \$GetOptions_H{"--skip_align"},
-                'skip_pv'       => \$GetOptions_H{"--skip_pv"},
+                'skip_pv'       => \$GetOptions_H{"--pv_skip"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
@@ -461,7 +462,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.1.3";
+my $version       = "1.2dev0";
 my $releasedate   = "Feb 2021";
 my $pkgname       = "VADR";
 
@@ -540,7 +541,7 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
 # set defaults, and change if nec
 my $do_pv_blastx = 1; 
 my $do_pv_hmmer  = 0;
-if(opt_Get("--skip_pv", \%opt_HH)) { 
+if(opt_Get("--pv_skip", \%opt_HH)) { 
   $do_pv_blastx = 0;
   $do_pv_hmmer  = 0;
 }
@@ -705,7 +706,7 @@ if($opt_i_used)     { $minfo_extra_string    .= " -i"; }
 if($opt_n_used)     { $blastn_extra_string   .= " -n"; }
 if($opt_x_used)     { $blastx_extra_string   .= " -x"; }
 if($opt_q_used)     { $qsubinfo_extra_string .= " -q"; }
-if($opt_nthmm_used) { $nthmm_extra .= " -q"; }
+if($opt_nthmm_used) { $nthmm_extra_string    .= " --nthmm"; }
 
 # check for files we always need, cm file and minfo file
 utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
@@ -745,14 +746,14 @@ if($do_pv_hmmer) {
 }
 
 # only check for nucleotide hmm file if we need it
-if(opt_is_Used("--aln_hmm", \%opt_HH)) { 
+if(opt_IsUsed("--aln_hmm", \%opt_HH)) { 
   utl_FileValidateExistsAndNonEmpty($hmm_nt_file, sprintf("HMM file%s", ($pthmm_extra_string eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   for my $sfx (".h3f", ".h3i", ".h3m", ".h3p") { 
     utl_FileValidateExistsAndNonEmpty($hmm_pt_file . $sfx, "hmmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
   # cm file must end in .cm, it's how cmalign_or_hmmalign*() subroutines
   # determine if they should run cmalign or hmmalign.
-  if($hmm_file !~ m/\.hmm$/) { 
+  if($hmm_nt_file !~ m/\.hmm$/) { 
     ofile_FAIL("ERROR, nucleotide HMM file name must end in '.hmm', but $hmm_nt_file does not", $hmm_nt_file, 1, $FH_HR);
   }
 }
@@ -1181,6 +1182,7 @@ my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it der
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
 
 # for each model with seqs to align to, create the sequence file and run cmalign/hmmalign
+my $do_hmmalign = opt_Get("--aln_hmm", \%opt_HH) ? 1 : 0;
 my $mdl_name;
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -1230,7 +1232,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
       cmalign_or_hmmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                                  ($do_hmmalign ? $hmm_file : $cm_file), 
+                                  ($do_hmmalign ? $hmm_nt_file : $cm_file), 
                                   $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
@@ -1293,7 +1295,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
         cmalign_or_hmmalign_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                                    ($do_hmmalign ? $hmm_file : $cm_file), 
+                                    ($do_hmmalign ? $hmm_nt_file : $cm_file), 
                                     $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                                     $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
@@ -1437,7 +1439,7 @@ if($do_pv_blastx) {
   }
 } # end of 'if($do_pv_blastx)'
 elsif(! $do_pv_hmmer) { 
-  $start_secs = ofile_OutputProgressPrior("Skipping protein validation step (--skip_pv)", $progress_w, $log_FH, *STDOUT);
+  $start_secs = ofile_OutputProgressPrior("Skipping protein validation step (--pv_skip)", $progress_w, $log_FH, *STDOUT);
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
@@ -3271,7 +3273,7 @@ sub cmalign_or_hmmalign_wrapper_helper {
                                                        $out_file_AHR,
                                                        $success_AR, 
                                                        $mxsize_AR,  
-                                                       ($do_hmmalign ? "//", ""), # value is irrelevant for cmalign
+                                                       ($do_hmmalign ? "//" : ""), # value is irrelevant for cmalign
                                                        $opt_HHR, $ofile_info_HHR->{"FH"});
       if($njobs_finished != $nseq_files) { 
         ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
@@ -3375,7 +3377,7 @@ sub cmalign_or_hmmalign_run {
   # determine cmalign options based on command line options
   if($do_hmmalign) { 
     if(defined $mdl_name) { 
-      $cmd = $execs_HR->{"hmmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"hmmalign"} . " $opts - $seq_file > $stk_file 2>&1";
+      $cmd = $execs_HR->{"hmmfetch"} . " $mdl_file $mdl_name | " . $execs_HR->{"hmmalign"} . " - $seq_file > $stk_file 2>&1";
     }
     else { 
       $cmd = $execs_HR->{"hmmalign"} . " $mdl_file $seq_file > $stk_file 2>&1";
@@ -3418,12 +3420,18 @@ sub cmalign_or_hmmalign_run {
     if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
-    # command has completed, check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
-    if($do_hmmalign) { 
-      $success = vdr_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+    # command has completed
+    if($do_hmmalign) { # hmmalign: final line of stk file should be '//'
+      my $final_line = `tail -n 1 $stk_file`;
+      chomp $final_line;
+      if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
+      $success = ($final_line =~ m/\Q\/\/E/) ? 1 : 0;
     }
-    if($success == -1) { # indicates job did not finish properly, this shouldn't happen because utl_RunCommand() didn't die
-      ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
+    else { # cmalign: check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
+      $success = vdr_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);
+      if($success == -1) { # indicates job did not finish properly, this shouldn't happen because utl_RunCommand() didn't die
+        ofile_FAIL("ERROR in $sub_name, cmalign failed in a bad way, see $stdout_file for error output", 1, $ofile_info_HHR->{"FH"});
+      }
     }
   }
   
@@ -5108,7 +5116,7 @@ sub add_low_similarity_alerts {
   my $terminal_5_min_length = opt_Get("--lowsim5term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
   my $terminal_3_min_length = opt_Get("--lowsim3term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
   my $internal_min_length   = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
-  my $do_skip_pv            = opt_Get("--skip_pv",     $opt_HHR) ? 1 : 0;
+  my $do_skip_pv            = opt_Get("--pv_skip",     $opt_HHR) ? 1 : 0;
 
   # set $min_length as minimum of the 5 length thresholds
   my $min_length = $terminal_5_min_length;
@@ -5182,7 +5190,7 @@ sub add_low_similarity_alerts {
                     if($noverlap > 0) { 
                       $nftr_overlap++;
                       # only actually report an alert for non-CDS and non-MP features
-                      # because CDS and MP are independently validated by blastx (unless --skip_pv)
+                      # because CDS and MP are independently validated by blastx (unless --pv_skip)
                       if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
                         #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
                         my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
@@ -8130,7 +8138,7 @@ sub output_feature_table {
       $stg_results_HHHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
       $alt_ftr_instances_HHHR, $mdl_sub_HR, $in_sqfile_R, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $do_pv_blastx  = (opt_Get("--skip_pv", $opt_HHR) || opt_Get("--pv_hmmer", $opt_HHR)) ? 0 : 1;
+  my $do_pv_blastx  = (opt_Get("--pv_skip", $opt_HHR) || opt_Get("--pv_hmmer", $opt_HHR)) ? 0 : 1;
   my $do_nofasta    = opt_Get("--out_nofasta", $opt_HHR) ? 1 : 0;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience

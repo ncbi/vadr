@@ -2657,7 +2657,6 @@ sub vdr_WaitForFarmJobsToFinish {
     ofile_FAIL("ERROR in $sub_name, no err files in out_file_AHR", 1, $FH_HR);
   }
 
-  my $outkey = ($do_cmalign) ? "stdout" : "tblout";
   my @outfile_A = ();
   my @errfile_A = ();
   utl_ArrayOfHashesToArray($out_file_AHR, \@outfile_A, $outkey);
@@ -2701,7 +2700,7 @@ sub vdr_WaitForFarmJobsToFinish {
       if(! $is_finished_A[$i]) { 
         if(-s $outfile_A[$i]) { 
           if($do_cmalign) { 
-            my $success = vdr_CmalignStdOutput($outfile_A[$i], 
+            my $success = vdr_CmalignCheckStdOutput($outfile_A[$i], 
                                                (defined $mxsize_AR) ? \$mxsize_AR->[$i] : undef,
                                                $FH_HR);
             if($success == 0 || $success == 1) { 
@@ -4243,8 +4242,8 @@ sub vdr_ModelInfoFileParse {
 # Dies: If $stdout_file does not exist or is empty
 # 
 ################################################################# 
-sub vdr_CmalignStdOutput { 
-  my $sub_name = "vdr_CmalignStdOutput";
+sub vdr_CmalignCheckStdOutput { 
+  my $sub_name = "vdr_CmalignCheckStdOutput";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
