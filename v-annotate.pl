@@ -1326,6 +1326,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+    printf("HEYA mdl_nseq: $mdl_nseq\n");
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
     my %seq_inserts_HH = ();
@@ -3405,7 +3406,6 @@ sub cmalign_or_hmmalign_run {
     }
   }
 
-
   my $success = 1;
   if($do_parallel) { 
     my $job_name = "J" . utl_RemoveDirPath($seq_file);
@@ -3425,7 +3425,7 @@ sub cmalign_or_hmmalign_run {
       my $final_line = `tail -n 1 $stk_file`;
       chomp $final_line;
       if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-      $success = ($final_line =~ m/\Q\/\/E/) ? 1 : 0;
+      $success = ($final_line =~ m/\/\//) ? 1 : 0;
     }
     else { # cmalign: check for the error in the stdout, or a final line of 'CPU' indicating that it worked.
       $success = vdr_CmalignCheckStdOutput($stdout_file, $ret_mxsize_R, $FH_HR);

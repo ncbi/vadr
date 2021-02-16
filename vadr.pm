@@ -2713,7 +2713,9 @@ sub vdr_WaitForFarmJobsToFinish {
             my $final_line = `tail -n 1 $outfile_A[$i]`;
             chomp $final_line;
             if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-            if($final_line =~ m/\Q$finished_str\E/) { 
+            printf("HEYA final_line: $final_line\n");
+            if($final_line eq $finished_str) { 
+              printf("success!\n");
               if(defined $success_AR) { $success_AR->[$i] = 1; } # if we're not running cmalign, if we see $finished_str, job was successful
               $is_finished_A[$i] = 1;
               $nfinished++;
