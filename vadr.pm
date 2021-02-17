@@ -147,7 +147,7 @@ require "sqp_utils.pm";
 # vdr_ModelInfoFileParse()
 #
 # Subroutines related to cmalign output:
-# vdr_CmalignOrHmmalignStdOutput()
+# vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
 # 
@@ -2710,7 +2710,7 @@ sub vdr_WaitForFarmJobsToFinish {
             my $final_line = `tail -n 1 $outfile_A[$i]`;
             chomp $final_line;
             if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-            if($final_line eq $finished_str) { 
+            if($final_line =~ m/\Q$finished_str\E/) { 
               if(defined $success_AR) { $success_AR->[$i] = 1; } # if we're not running cmalign, if we see $finished_str, job was successful
               $is_finished_A[$i] = 1;
               $nfinished++;
@@ -4250,10 +4250,10 @@ sub vdr_CmalignCheckStdOutput {
   }
 
   if(! -e $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign or hmmalign stdout file $stdout_file does not exist", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
   }
   if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign or hmmalign stdout file $stdout_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign $stdout_file exists but is empty", 1, $FH_HR);
   }
 
   # if we get here, the file exists and is non-empty
