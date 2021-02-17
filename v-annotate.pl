@@ -1236,6 +1236,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                   $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
+      printf("back from cmalign_or_hmmalign_wrapper\n");
     }
 
     if($do_blastn_ali) {
@@ -1272,7 +1273,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
       my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
       if(scalar(@join_seq_name_A > 0)) { 
-        join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, $cm_file, 
+        join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, 
+                                                $do_hmmalign, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
                                                 \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
                                                 \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
@@ -2122,7 +2124,7 @@ sub cmsearch_wrapper {
     $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                             $progress_w, $log_FH, *STDOUT);
     my $njobs_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
-                                                     \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
+                                                     "tblout", \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
     if($njobs_finished != $nseq_files) { 
       ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
     }
@@ -3035,16 +3037,19 @@ sub cmalign_or_hmmalign_wrapper {
   @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
                             # the matrix required to align them is too big
 
-  # set up output file names
+  # set up output file names for concatenation
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
-  @concat_keys_A = ("stdout", "ifile"); 
+  
+  if(! $do_hmmalign) { 
+    push(@concat_keys_A, "stdout"); 
+    push(@concat_keys_A, "ifile"); 
+  }
   if($do_parallel) { 
     push(@concat_keys_A, "err"); 
     push(@concat_keys_A, "sh"); 
   }
-  #if($do_keep)     { push(@concat_keys_A, "tfile"); }
   foreach $out_key (@concat_keys_A) { 
     @{$concat_HA{$out_key}} = ();
   }    
@@ -3269,8 +3274,8 @@ sub cmalign_or_hmmalign_wrapper_helper {
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
-      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_hmmalign ? 0 : 1), # are we are doing cmalign
-                                                       "stdout",
+      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_hmmalign ? 0 : 1), # are we are doing cmalign?
+                                                       ($do_hmmalign ? "stk" : "stdout"),
                                                        $out_file_AHR,
                                                        $success_AR, 
                                                        $mxsize_AR,  

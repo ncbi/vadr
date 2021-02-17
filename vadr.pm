@@ -2647,11 +2647,8 @@ sub vdr_WaitForFarmJobsToFinish {
   my $do_errcheck = opt_Get("--errcheck", $opt_HHR);
 
   # contract check
-  if(($do_cmalign) && (! exists $out_file_AHR->[0]{"stdout"})) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign mode, no stdout files in out_file_AHR", 1, $FH_HR);
-  }
-  if((! $do_cmalign) && (! exists $out_file_AHR->[0]{"tblout"})) { 
-    ofile_FAIL("ERROR in $sub_name, cmsearch mode, no stdout files in out_file_AHR", 1, $FH_HR);
+  if(! exists $out_file_AHR->[0]{$outkey}) { 
+    ofile_FAIL("ERROR in $sub_name, no $outkey files in out_file_AHR", 1, $FH_HR);
   }
   if(! exists $out_file_AHR->[0]{"err"}) { 
     ofile_FAIL("ERROR in $sub_name, no err files in out_file_AHR", 1, $FH_HR);
@@ -2713,9 +2710,7 @@ sub vdr_WaitForFarmJobsToFinish {
             my $final_line = `tail -n 1 $outfile_A[$i]`;
             chomp $final_line;
             if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
-            printf("HEYA final_line: $final_line\n");
             if($final_line eq $finished_str) { 
-              printf("success!\n");
               if(defined $success_AR) { $success_AR->[$i] = 1; } # if we're not running cmalign, if we see $finished_str, job was successful
               $is_finished_A[$i] = 1;
               $nfinished++;
