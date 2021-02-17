@@ -2442,7 +2442,7 @@ sub vdr_FeatureAlertIsMiscNotFailure {
 }
 
 #################################################################
-# Subroutine : vdr_ParseQsubFile()
+# Subroutine:  vdr_ParseQsubFile()
 # Incept:      EPN, Mon Jul  9 10:30:41 2018 [ribovore:ribo.pm]
 #
 # Purpose:     Parse a file that specifies the qsub command to use
@@ -4283,7 +4283,7 @@ sub vdr_CmalignCheckStdOutput {
 }
 
 #################################################################
-# Subroutine : vdr_CmalignParseInsertFile()
+# Subroutine:  vdr_CmalignParseInsertFile()
 # Incept:      EPN, Thu Jan 31 13:06:54 2019
 #
 # Purpose:    Parse Infernal 1.1 cmalign --ifile output and store
@@ -4387,7 +4387,7 @@ sub vdr_CmalignParseInsertFile {
 }
 
 #################################################################
-# Subroutine : vdr_CmalignWriteInsertFile()
+# Subroutine:  vdr_CmalignWriteInsertFile()
 # Incept:      EPN, Fri Apr  3 11:17:49 2020
 #
 # Purpose:    Write an Infernal 1.1 cmalign --ifile given
@@ -4759,14 +4759,14 @@ sub vdr_FrameAdjust {
   my ($orig_frame, $nt_diff, $FH_HR) = (@_);
 
   if(($orig_frame ne "1") && ($orig_frame ne "2") && ($orig_frame ne "3")) { 
-      ofile_FAIL("ERROR in $sub_name, orig_frame must be 1, 2, or 3, got $orig_frame", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, orig_frame must be 1, 2, or 3, got $orig_frame", 1, $FH_HR);
   }
 
   return (($orig_frame - $nt_diff - 1) % 3) + 1;
 }
 
 #################################################################
-# Subroutine : vdr_WriteCommandScript()
+# Subroutine:  vdr_WriteCommandScript()
 # Incept:      EPN, Fri Nov  9 14:26:07 2018 (ribo_WriteCommandScript)
 #
 # Purpose  : Create a new file to be executed as a job created by 
@@ -4796,6 +4796,258 @@ sub vdr_WriteCommandScript {
   print OUT $cmd . "\n";
 
   close(OUT);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_GlsearchFormat3And9CToStockholm()
+# Incept:      EPN, Wed Feb 17 09:21:08 2021
+#
+# Purpose  : Convert a FASTA package glsearch output file with 
+#            format 3 (fasta) and 9C ("-m 3,9C") to Stockholm
+#            and create an insert file while we're at it.
+# 
+# Arguments: 
+#   $gls_file:          name of output file from glsearch
+#   $stk_file:          name of stockholm file of all seqs to write
+#   $insert_file:       name of insert file for all seqs to write
+#   $glsearch_sqfile_R: ref to open Bio:Easel:SqFile with model/target sequence
+#   $exp_mdl_name:      expected single target sequence name
+#   $FH_HR:             ref to hash of file handles, including "cmd"
+#
+# Returns:     void
+# 
+# Dies:        If there's a problem parsing the glsearch output.
+#
+################################################################# 
+sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_WriteCommandScript";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($gls_file, $stk_file, $insert_file, $glsearch_sqfile_R, $exp_mdl_name, $FH_HR) = @_;
+
+  printf("in $sub_name\n\tgls_file: $gls_file\n\tstk_file: $stk_file\n\tinsert_file: $insert_file\nexp_mdl_name: $exp_mdl_name\n\n");
+  open(IN, $gls_file)    || ofile_FileOpenFailure($gls_file, $sub_name, $!, "reading", $FH_HR);
+
+  my $q_name;         # name of query sequence
+  my $t_name;         # name of target sequence
+  my $length_w_paran; # length string with parantheses
+  my ($an0, $ax0);    # start/stop position of alignment in query
+  my ($an1, $ax1);    # start/stop position of alignment in library (target)
+  my ($pn0, $px0);    # start/stop position of displayed query
+  my ($pn1, $px1);    # start/stop position of displayed library (target)
+
+  # First 4 lines should look like this:
+  ## /panfs/pan1/infernal/notebook/21_0213_vadr_hmmalign/fasta-experimenting-20210216/fasta-36.3.8h/bin/glsearch36 -z -1 -T 1 -3 -m 9C,3 -d 1 va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.glsearch.fa
+  #GLSEARCH performs a global-query/local-library search
+  # version 36.3.8h May, 2020
+  #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
+
+  # validate line 1
+  ## /panfs/pan1/infernal/notebook/21_0213_vadr_hmmalign/fasta-experimenting-20210216/fasta-36.3.8h/bin/glsearch36 -z -1 -T 1 -3 -m 9C,3 -d 1 va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.glsearch.fa
+  my $line_ctr = 0;
+  my $line = undef;
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line =~ m/^\#(.+)$/) { 
+    my $first_line = $1;
+    if(($first_line !~ m/\-m 3,9C/) && ($first_line !~ m/\-m 9C,3/)) { 
+      ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, did not find \"-m 3,9C\" or \"-m 9C,3\" in first line:\n$line\n", 1, $FH_HR);
+    }
+  }
+  else { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, first line is in unexpected format\n$line\n", 1, $FH_HR);
+  }
+
+  # validate line 2
+  #GLSEARCH performs a global-query/local-library search
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line !~ m/^GLSEARCH/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, second line does not start with \"GLSEARCH\":\n$line\n", 1, $FH_HR);
+  }
+
+  # validate line 3
+  # version 36.3.8h May, 2020
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line !~ m/version/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, third line did not include \"version\"\n", 1, $FH_HR);
+  }
+
+  # validate line 4
+  #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
+  $line = <IN>; $line_ctr++;
+  chomp $line;
+  if($line !~ m/^Query/) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, fourth line did not start with \"Query\"\n", 1, $FH_HR);
+  }
+
+  my $mdl_name;    # name of single target seq
+  my $mdl_len;     # length of single target seq
+  my $cur_mdl_len; # length of single target seq
+  my $nseq;        # number of target seqs, should only be 1
+  my $keep_going = 1;
+  while((defined ($line = <IN>)) && ($keep_going)) { 
+    $line_ctr++;
+    chomp $line;
+    print("line: $line\n");
+    if($line =~ /^\>\>\>\/\/\/$/) { 
+      # end of all alignments
+      $keep_going = 0;
+    }
+    elsif($line =~ /^\s*\d+\>\>\>(\S+)/) { 
+      # 1>>>lcl|SARS-CoV-2/human/USA/IN-CDC-LC00002770/2021/17579-27826 - 10248 nt (forward-only)
+      #start of new query
+      $q_name = $1;
+      # parse next two lines
+      $line = <IN>; $line_ctr++;
+      if($line !~ m/^Library/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, first line after >>> line (line $line_ctr) does not start with Library\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++;
+      if($line =~ /^\s*(\d+)\s+residues\s+in\s*(\d+)\s+sequences/) { 
+        ($cur_mdl_len, $nseq) = ($1, $2);
+        if(! defined $mdl_len) { 
+          $mdl_len = $cur_mdl_len; 
+        }
+        elsif($cur_mdl_len != $mdl_len) { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, single target seq length $cur_mdl_len differs from previously read length $mdl_len", 1, $FH_HR);
+        }
+        if($nseq ne "1") { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, not exactly 1 sequence in target on line: $line_ctr\n$line\n", 1, $FH_HR);
+        }
+      }
+      # validate next 5 lines:
+      # <blank line>
+      #Algorithm: Global/Local affine Needleman-Wunsch (SSE2, Michael Farrar 2010) (6.0 April 2007)
+      #Parameters: +5/-4 matrix (5:-4), open/ext: -12/-4
+      # <blank line>
+      #The best scores are:                                                n-w	%_id  %_sim  gnw  alen  an0  ax0  pn0  px0  an1  ax1 pn1 px1 gapq gapl  fs  aln_code
+      #NC_045512                                                (29903) [f] 21396	0.516 0.516 21396 10248    1 10248    1 10248 17633 27872    1 29903 4952   8   0	2949M1D5129M7D2162M
+      $line = <IN>; $line_ctr++; # blank line
+      $line = <IN>; $line_ctr++;
+      if($line !~ /^Algorithm/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, does not begin with Algorithm", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++;
+      if($line !~ /^Parameters/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, does not begin with Parameters", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++; # blank line
+      $line = <IN>; $line_ctr++;
+      if($line !~ /^The best scores/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, does not begin with The best scores", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++;
+      # line with the info on the alignment we need to parse
+      my @el_A = split(/\s+/, $line);
+      ($mdl_name, $length_w_paran, $an0, $ax0, $pn0, $px0, $an1, $ax1, $pn1, $px1) = 
+          ($el_A[0], $el_A[1], $el_A[8], $el_A[9], $el_A[10], $el_A[11], $el_A[12], $el_A[13], $el_A[14], $el_A[15]);
+      printf("mdl_name: $mdl_name\n");
+      printf("length:   $length_w_paran\n");
+      printf("an0:   $an0\n");
+      printf("ax0:   $ax0\n");
+      printf("an1:   $an1\n");
+      printf("ax1:   $ax1\n");
+      printf("pn0:   $pn0\n");
+      printf("px0:   $px0\n");
+      printf("pn1:   $pn1\n");
+      printf("px1:   $px1\n");
+      $line = <IN>; $line_ctr++; # blank line
+      $line = <IN>; $line_ctr++;
+      if($line =~ /^\>\>\>(\S+)\,\s*/) { 
+        if($1 ne $q_name) { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected >>>$q_name line preceding alignment but got:\n$line\n", 1, $FH_HR);
+        }
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected >>>$q_name line preceding alignment but got:\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++; # blank line
+      $line = <IN>; $line_ctr++;
+      if($line !~ /^global\/local score/) {   
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected line beginning with \"global/local\", but got:\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++;
+      my $q_afa = "";
+      my $nspace_5p = 0;
+      my $nspace_3p = 0;
+      if($line !~ /^\>/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected line beginning with \">\" indicating beginning of q seq, but got:\n$line\n", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++;
+      while($line !~ m/^\>/) { 
+        if(! defined $line) { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, ran out of lines before target aligned seq", 1, $FH_HR);
+        }
+        chomp $line; 
+        # do not remove leading/trailing whitespace, we deal with this after
+        # we've read the full seq
+        $q_afa .= $line;
+        
+        $line = <IN>; $line_ctr++;
+      }
+      # currently line is ">" indicating start of target alignment
+      printf("HEYA done with q\n");
+      if($line =~ /^\>\>\>\<\<\</) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, read end of alignment before aligned target\n", 1, $FH_HR);
+      }
+      $line = <IN>; $line_ctr++;
+      my $t_afa = "";
+      while($line !~ /^\>\>\>\<\<\</) { 
+        if(! defined $line) { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, ran out of lines before end of target aligned seq", 1, $FH_HR);
+        }
+        chomp $line; 
+        $t_afa .= $line;
+        $line = <IN>; $line_ctr++;
+      }
+      # currently line is ">>><<<" indicating end of alignment for this query seq and target seq
+      # make sure only spaces are at beginning and end of query seq,
+      # count how many, and remove them and corresponding number of nt
+      # from beginning/end of target seq too.
+      if($q_afa =~ m/^(\s*)\S+(\s*)$/) { 
+        $nspace_5p = length($1);
+        $nspace_3p = length($2);
+        printf("nspace_5p: $nspace_5p\n");
+        printf("nspace_3p: $nspace_3p\n");
+        $q_afa =~ s/^\s+//; # remove leading  whitespace
+        $q_afa =~ s/\s+$//; # remove trailing whitespace
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read query aligned sequence correctly:\n$q_afa\n", 1, $FH_HR);
+      }
+      if($t_afa !~ m/^\S+$/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read target aligned sequence correctly:\n$q_afa\n", 1, $FH_HR);
+      }
+      if($nspace_5p > 0) { 
+        $t_afa = substr($t_afa, $nspace_5p);
+      }
+      if($nspace_3p > 0) { 
+        $t_afa = substr($t_afa, 0, -1 * $nspace_3p);
+      }
+      my $q_len = length($q_afa);
+      my $t_len = length($t_afa);
+      
+      if($q_len != $t_len) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr; aligned query length $q_len differs from aligned target length $t_len", 1, $FH_HR);
+      }
+      #printf("querylen:   " . length($q_afa)  . "\n");
+      #printf("targetlen: "  . length($t_afa) . "\n");
+      my $q_name_len = length($q_name);
+      #printf OUT ("# STOCKHOLM 1.0\n\n");
+      #printf OUT ("%-*s  %s\n", $q_name_len, $q_name, $q_afa);
+      #printf OUT ("%-*s  %s\n", $q_name_len, "#=GC RF",   $t_afa);
+      #print  OUT ("//\n");
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
+    }
+  }
+  exit 0;
 
   return;
 }

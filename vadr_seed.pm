@@ -1041,7 +1041,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 # Arguments: 
 #  $sqfile:                REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
 #  $execs_HR:              REF to hash with paths to executables (for cmemit)
-#  $do_glsearch:           '1' if we're running glsearch not cmalign
+#  $do_gls_aln:            '1' if we're running glsearch not cmalign
 #  $cm_file:               name of CM file
 #  $seq_name_AR:           REF to array of original (non subseq) sequence names
 #  $seq_len_HR:            REF to hash of sequence lengths
@@ -1075,7 +1075,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my $nargs_exp = 21;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($sqfile, $execs_HR, $do_glsearch, $cm_file, 
+  my ($sqfile, $execs_HR, $do_gls_aln, $cm_file, 
       $seq_name_AR, $seq_len_HR, 
       $mdl_info_AHR, $mdl_idx, $ugp_mdl_HR, $ugp_seq_HR, 
       $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
@@ -1108,7 +1108,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq
   my %ali_subpp_H  = ();     # key is subseq name, value is aligned PP sqstring for that subseq
   my @rf_subseq_A  = ();     # array: value $i is RF line from stockholm alignment $in_stk_file_AR->[$i]
-  # insert 2D hash, filled from parsing stk file if $do_glsearch, or lower from parsing ifile if (! $do_glsearch)
+  # insert 2D hash, filled from parsing stk file if $do_gls_aln, or lower from parsing ifile if (! $do_gls_aln)
   my %subseq_inserts_HH = (); # key 1: sequence name
                               # key 2: one of 'spos', 'epos', 'ins'
                               # $seq_inserts_HHR->{}{"spos"} is starting model position of alignment
@@ -1137,18 +1137,18 @@ sub join_alignments_and_add_unjoinbl_alerts {
       $subseq2stk_idx_H{$subseq_name} = $stk_idx;
       $ali_subseq_H{$subseq_name} = $msa->get_sqstring_aligned($i);
       $ali_subpp_H{$subseq_name}  = $msa->get_ppstring_aligned($i);
-      if($do_glsearch) { 
+      if($do_gls_aln) { 
         inserts_from_sqstring_and_rf_array(\%{$subseq_inserts_HH{$subseq_name}}, \@is_rf_A, $ali_subseq_H{$subseq_name}, $FH_HR);
       }
     }
     $msa = undef;
   }
 
-  # if (! $do_glsearch): 
+  # if (! $do_gls_aln): 
   # parse the ifile for this model, we may not have one if $ninstk is 0,
   # this will happen if and only if all seqs for this model had ungapped
   # blastn hits that spanned the full sequence
-  if(! $do_glsearch) { 
+  if(! $do_gls_aln) { 
     my $in_ifile = $out_root . "." . $mdl_name . ".align.ifile";
     if($ninstk > 0) { 
       vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);

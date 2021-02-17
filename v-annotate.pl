@@ -164,7 +164,7 @@ $execs_H{"esl-ssplit"}    = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}        = $env_vadr_blast_dir    . "/blastx";
 $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
 $execs_H{"parse_blast"}   = $env_vadr_scripts_dir  . "/parse_blast.pl";
-$execs_H{"glsearch"}      = $env_vadr_fasta_dir    . "/glsearch";
+$execs_H{"glsearch"}      = $env_vadr_fasta_dir    . "/glsearch36";
 utl_ExecHValidate(\%execs_H, undef);
 
 #########################################################
@@ -558,6 +558,8 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # they are all turned on/off with -s in case future changes
 # only need some but not all
 
+my $do_gls_aln = opt_Get("--aln_gls", \%opt_HH) ? 1 : 0;
+
 #############################
 # create the output directory
 #############################
@@ -719,8 +721,13 @@ utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($
 # only check for blastn db file if we need it
 if(($do_blastn_any) || ($do_replace_ns) || ($do_gls_aln)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-  foreach my $sfx (".nhr", ".nin", ".nsq") { 
+  foreach my $sfx (".nhr", ".nin", ".nsq", ".ndb", ".not", ".nto", ".ntf") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
+  if($do_gls_aln) { 
+    foreach my $sfx (".ssi") { # for fetching seqs from
+      utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "easel $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+    }
   }
 }
 
@@ -880,7 +887,7 @@ if($do_pv_blastx) {
         ofile_FAIL("ERROR, model $mdl_name has $ncds CDS features, but \"blastdb\" is not defined in model info file:\n$minfo_file\n", 1, $FH_HR);
       }
       my $blastx_db = $blastx_db_dir . "/" . $mdl_info_AH[$mdl_idx]{"blastdb"};
-      foreach my $sfx ("", ".phr", ".pin", ".psq") { 
+      foreach my $sfx ("", ".phr", ".pin", ".psq", ".pto", ".ptf", ".pot", ".pdb") { 
         if(! -s ($blastx_db . $sfx)) { 
           ofile_FAIL("ERROR, required blastx_db file $blastx_db" . $sfx . " for model $mdl_name does not exist in directory $blastx_db_dir.\nUse -x to specify a different directory.\n", 1, $FH_HR);
         }
@@ -1164,8 +1171,12 @@ my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it der
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
 
 # for each model with seqs to align to, create the sequence file and run cmalign/glsearch
-my $do_gls_aln = opt_Get("--aln_gls", \%opt_HH) ? 1 : 0;
 my $mdl_name;
+my $glsearch_sqfile = undef;
+if($do_gls_aln) { 
+  $glsearch_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
+}
+
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
 
@@ -1178,6 +1189,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     
     $cur_mdl_fa_file = $out_root . "." . $mdl_name . ".a.fa";
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
+
+    my $glsearch_db_file = undef;
+    if($do_gls_aln) { # create the glsearch db file
+      $glsearch_db_file = $out_root . "." . $mdl_name . ".glsearch.fa";
+      my @glsearch_seqname_A = ($mdl_name);
+      $glsearch_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
+    }
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/glsearch (e.g if $do_blastn_ali))
     $$sqfile_for_analysis_R->fetch_seqs_given_names(\@{$mdl_seq_name_HA{$mdl_name}}, 60, $cur_mdl_fa_file);
@@ -1213,12 +1231,13 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # run cmalign/glsearch
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
-      cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                                  ($do_glsearch ? $blastn_db_file : $cm_file), 
+      cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$glsearch_sqfile,
+                                  ($do_gls_aln ? $glsearch_db_file : $cm_file), 
                                   $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
       printf("back from cmalign_or_glsearch_wrapper\n");
+      exit 0;
     }
 
     if($do_blastn_ali) {
@@ -1256,7 +1275,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
       if(scalar(@join_seq_name_A > 0)) { 
         join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, 
-                                                $do_glsearch, $cm_file,
+                                                $do_gls_aln, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
                                                 \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
                                                 \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
@@ -1278,8 +1297,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
-        cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, 
-                                    ($do_glsearch ? $blastn_db_file : $cm_file), 
+        cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$glsearch_sqfile,
+                                    ($do_gls_aln ? $glsearch_db_file : $cm_file), 
                                     $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                                     $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
@@ -2981,6 +3000,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #                          defined as keys
 #  $qsub_prefix:           qsub command prefix to use when submitting to farm, undef if running locally
 #  $qsub_suffix:           qsub command suffix to use when submitting to farm, undef if running locally
+#  $glsearch_sqfile_R:     ref to Bio::Easel::SqFile object with glsearch target seqs (model seqs)
 #  $mdl_file:              name of model file to use (if ends with .fa, run glsearch, else run cmalign)
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:              name of sequence file with all sequences to run against
@@ -3002,15 +3022,16 @@ sub populate_per_model_data_structures_given_classification_results {
 ################################################################# 
 sub cmalign_or_glsearch_wrapper { 
   my $sub_name = "cmalign_or_glsearch_wrapper";
-  my $nargs_expected = 16;
+  my $nargs_expected = 17;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $qsub_prefix, $qsub_suffix, 
+  my ($execs_HR, $qsub_prefix, $qsub_suffix, $glsearch_sqfile_R,
       $mdl_file, $mdl_name, $seq_file, $out_root, $extra_key, 
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
+  printf("HEYA in $sub_name\n");
+  my $do_gls_aln = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
   my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $start_secs; # timing start
@@ -3025,9 +3046,7 @@ sub cmalign_or_glsearch_wrapper {
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
   
   push(@concat_keys_A, "stdout"); 
-  if(! $do_glsearch) { 
-    push(@concat_keys_A, "ifile"); 
-  }
+  push(@concat_keys_A, "ifile"); 
   if($do_parallel) { 
     push(@concat_keys_A, "err"); 
     push(@concat_keys_A, "sh"); 
@@ -3078,6 +3097,14 @@ sub cmalign_or_glsearch_wrapper {
   for($r1_i = 0; $r1_i < $nr1; $r1_i++) { 
     if($r1_success_A[$r1_i]) { 
       # run finished successfully
+      # if $do_gls_aln, create the stockholm output file and insert file
+      if($do_gls_aln) { 
+        vdr_GlsearchFormat3And9CToStockholmAndInsertFile($r1_out_file_AH[$r1_i]{"stdout"}, 
+                                                         $r1_out_file_AH[$r1_i]{"stk"},
+                                                         $r1_out_file_AH[$r1_i]{"ifile"},
+                                                         $glsearch_sqfile_R, 
+                                                         $mdl_name, $FH_HR);
+      }
       foreach $out_key (@concat_keys_A) { 
         push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
       }
@@ -3106,12 +3133,12 @@ sub cmalign_or_glsearch_wrapper {
 
   # do all round 2 runs
   if($nr2 > 0) { 
-    if($do_glsearch) { # shouldn't happen if $do_glsearch
+    if($do_gls_aln) { # shouldn't happen if $do_gls_aln
       ofile_FAIL("ERROR in $sub_name, running glsearch but trying to run stage 2 for at least 1 seq which should only happen if running cmalign", 1, $FH_HR); 
     }
     cmalign_or_glsearch_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $extra_key, $nr2, $progress_w, 
-                           \@r2_seq_file_A, \@r2_out_file_AH, \@r2_success_A, \@r2_mxsize_A, 
-                           $opt_HHR, $ofile_info_HHR);
+                                       \@r2_seq_file_A, \@r2_out_file_AH, \@r2_success_A, \@r2_mxsize_A, 
+                                       $opt_HHR, $ofile_info_HHR);
     # go through all round 2 runs: 
     # if it finished successfully record its output files to concatenate later
     # if it did not finish successfully, record the name of the sequence and mxsize required
@@ -3198,15 +3225,17 @@ sub cmalign_or_glsearch_wrapper_helper {
 
   my $log_FH      = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
-  my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
+  my $do_gls_aln  = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $nseq_files  = scalar(@{$seq_file_AR});
+
+  printf("HEYA in $sub_name\n");
 
   # determine description of the runs we are about to do, 
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $stg_desc = "";
   if($do_parallel) { 
     $stg_desc = sprintf("Submitting $nseq_files %s job(s) ($mdl_name: $nseq %sseq%s) to the farm%s", 
-                        ($do_glsearch) ? "glsearch" : "cmalign", 
+                        ($do_gls_aln) ? "glsearch" : "cmalign", 
                         ($extra_key eq "uj.") ? "unjoinbl " : "", 
                         ($nseq > 1) ? "s" : "",
                         ($round == 1) ? "" : " to find seqs too divergent to annotate");
@@ -3221,14 +3250,7 @@ sub cmalign_or_glsearch_wrapper_helper {
 
   my $key; # a file key
   my $s;   # counter over sequence files
-  #my @out_keys_A = ("stdout", "err", "ifile", "tfile", "stk");
-  my @out_keys_A = ();
-  if($do_glsearch) { 
-    @out_keys_A = ("err", "stk", "sh");
-  }
-  else { 
-    @out_keys_A = ("stdout", "err", "ifile", "stk", "sh");
-  }
+  my @out_keys_A = ("stdout", "err", "ifile", "stk", "sh");
   @{$out_file_AHR} = ();
   for(my $s = 0; $s < $nseq_files; $s++) { 
     %{$out_file_AHR->[$s]} = (); 
@@ -3239,7 +3261,7 @@ sub cmalign_or_glsearch_wrapper_helper {
                                                 $mdl_file, $mdl_name, $seq_file_AR->[$s], \%{$out_file_AHR->[$s]},
                                                 (defined $mxsize_AR) ? \$mxsize_AR->[$s] : undef, 
                                                 $opt_HHR, $ofile_info_HHR);   
-    # if we are running parallel, ignore the return values from the run{Cmalign,Cmsearch} subroutines
+    # if we are running parallel, ignore the success return values from the cmalign_or_glsearch_run subroutine
     # vdr_WaitForFarmJobsToFinish() will fill these later
     if($do_parallel) { $success_AR->[$s] = 0; }
   }
@@ -3256,12 +3278,12 @@ sub cmalign_or_glsearch_wrapper_helper {
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
-      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_glsearch ? 0 : 1), # are we are doing cmalign?
+      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_gls_aln ? 0 : 1), # are we are doing cmalign?
                                                        "stdout",
                                                        $out_file_AHR,
                                                        $success_AR, 
                                                        $mxsize_AR,  
-                                                       ($do_glsearch ? "GLSEARCH" : ""), # value is irrelevant for cmalign
+                                                       ($do_gls_aln ? "GLSEARCH" : ""), # value is irrelevant for cmalign
                                                        $opt_HHR, $ofile_info_HHR->{"FH"});
       if($njobs_finished != $nseq_files) { 
         ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
@@ -3331,9 +3353,11 @@ sub cmalign_or_glsearch_run {
     $$ret_mxsize_R = 0; # overwritten below if nec
   }
 
+  printf("HEYA in $sub_name\n");
+
   my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
-  my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
+  my $do_gls_aln  = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
 
   my $stdout_file = $out_file_HR->{"stdout"};
   my $ifile_file  = $out_file_HR->{"ifile"};
@@ -3341,30 +3365,31 @@ sub cmalign_or_glsearch_run {
   my $stk_file    = $out_file_HR->{"stk"};
   my $err_file    = $out_file_HR->{"err"};
   my $sh_file     = $out_file_HR->{"sh"};
-  if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
+  if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
   if(! defined $sh_file)     { ofile_FAIL("ERROR in $sub_name, sh     output file name is undefined", 1, $FH_HR); }
-  if(! $do_glsearch) { # only need stdout file and ifile file if running glsearch
-    if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
+  if(! $do_gls_aln) { # only need stdout file and ifile file if running glsearch
+    if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
     if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
   }
   if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
-    if(-e $stk_file)    { unlink $stk_file; }
+    if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $err_file)    { unlink $err_file; }
     if(-e $sh_file)     { unlink $sh_file; }
-    if(! $do_glsearch) { 
-      if(-e $stdout_file) { unlink $stdout_file; }
+    if(! $do_gls_aln) { 
+      if(-e $stk_file)    { unlink $stk_file; }
       if(-e $ifile_file)  { unlink $ifile_file; }
     }
   }
-  utl_FileValidateExistsAndNonEmpty($mdl_file, sprintf("%s file", $do_glsearch ? "nucleotide model fasta" : "CM"), $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($mdl_file, sprintf("%s file", $do_gls_aln ? "nucleotide model fasta" : "CM"), $sub_name, 1, $FH_HR); 
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   my $cmd = undef;
 
   # determine cmalign options based on command line options
-  if($do_glsearch) { 
+  if($do_gls_aln) { 
     $cmd = $execs_HR->{"glsearch"} . " -z -1 -T 1 -3 -m 9C,3 -d 1 $seq_file $mdl_file > $stdout_file 2>&1";
+    printf("HEYA glsearch cmd: $cmd\n");
   }
   else { # running cmalign
     my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
@@ -3403,7 +3428,7 @@ sub cmalign_or_glsearch_run {
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed
-    if($do_glsearch) { # glsearch: final line of stdout file should have 'GLSEARCH' in it
+    if($do_gls_aln) { # glsearch: final line of stdout file should have 'GLSEARCH' in it
       my $final_line = `tail -n 1 $stdout_file`;
       chomp $final_line;
       if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
