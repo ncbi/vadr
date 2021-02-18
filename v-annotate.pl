@@ -3821,6 +3821,28 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}   = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? 1  : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR));
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
+
+        # Check for special case to *overrided alignment info* and change start_uapos/stop_uapos start/stop codon of CDS 
+        #
+        # We decrement $start_uapos by 1 for start codon if:
+        # - this is first segment of a CDS
+        # - we are not 5' truncated ($start_uapos != 1)
+        # - first RF position of segment aligns to a gap
+        #
+        # We increment $stop_uapos by 1 for stop codon if:
+        # - this is first segment of a CDS
+        # - we are not 5' truncated ($start_uapos != 1)
+        # - first RF position of segment aligns to a gap
+        # 
+        # This corrects situations like this:
+        # 
+        # NOTE: there are some situations involving multiple gaps where this will likely
+        # not fix the problem and you'll still get an error when a valid start/stop exists,
+        # possibly with non-standard translation tables.
+        #HERE HERE HERE 
+        #    if() $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}--;
+        #    if() $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}++;
+        
         
         # add alerts, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
