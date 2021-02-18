@@ -3098,11 +3098,12 @@ sub cmalign_or_glsearch_wrapper {
       # run finished successfully
       # if $do_gls_aln, create the stockholm output file and insert file
       if($do_gls_aln) { 
-        vdr_GlsearchFormat3And9CToStockholmAndInsertFile($r1_out_file_AH[$r1_i]{"stdout"}, 
+        vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
+                                                         $r1_out_file_AH[$r1_i]{"stdout"}, 
                                                          $r1_out_file_AH[$r1_i]{"stk"},
                                                          $r1_out_file_AH[$r1_i]{"ifile"},
                                                          $glsearch_sqfile_R, 
-                                                         $mdl_name, $FH_HR);
+                                                         $mdl_name, $opt_HHR, $ofile_info_HHR);
       }
       foreach $out_key (@concat_keys_A) { 
         push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
@@ -3387,7 +3388,7 @@ sub cmalign_or_glsearch_run {
 
   # determine cmalign options based on command line options
   if($do_gls_aln) { 
-    $cmd = $execs_HR->{"glsearch"} . " -n -z -1 -T 1 -3 -m 9C,3 -d 1 $seq_file $mdl_file > $stdout_file 2>&1";
+    $cmd = $execs_HR->{"glsearch"} . " -T 1 -m 3,9C -z -1 -n -3 -d 1 $seq_file $mdl_file > $stdout_file 2>&1";
     printf("HEYA glsearch cmd: $cmd\n");
   }
   else { # running cmalign
