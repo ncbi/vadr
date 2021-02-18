@@ -3496,6 +3496,7 @@ sub parse_stk_and_add_alignment_alerts {
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $do_alicheck      = opt_Get("--alicheck",    $opt_HHR); # check aligned sequences are identical to those fetched from $sqfile (except maybe Ns if -r) 
   my $do_replace_ns    = opt_Get("-r",            $opt_HHR); # only relevant if $do_alicheck
+  my $do_gls_aln       = opt_Get("--aln_gls",     $opt_HHR); # we won't have PP values if this is 1
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -3591,9 +3592,10 @@ sub parse_stk_and_add_alignment_alerts {
                                  #                       -1 if $max_rfpos_before_A[$rfpos] == -1
 
     my @rfpos_pp_A = ();         # [0..$rfpos..rflen+1]: posterior probability character for current sequence at RF position $rfpos
-                                 #                       '.' if sequence is a gap at that RF position $rfpos
+                                 #                       or '?' if $do_gls_aln (--aln_gls)
+                                 #                       '.' if sequence is a gap at that RF position $rfpos (even if $do_gls_aln)
                                  #                       special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
-
+                                 # 
 
     $rfpos = 0;    # model positions (nongap RF position)
     my $uapos = 0; # unaligned sequence position (position in actual sequence)
@@ -3607,11 +3609,11 @@ sub parse_stk_and_add_alignment_alerts {
     }
     # get aligned sequence, length will be alen
     my $sqstring_aligned = $msa->get_sqstring_aligned($i);
-    my $ppstring_aligned = $msa->get_ppstring_aligned($i);
+    my $ppstring_aligned = ($do_gls_aln) ? undef : $msa->get_ppstring_aligned($i);
     if(length($sqstring_aligned) != $alen) { 
       ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), 1, $FH_HR);
     }
-    if(length($ppstring_aligned) != $alen) { 
+    if((! $do_gls_aln) && (length($ppstring_aligned) != $alen)) { 
       ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), 1, $FH_HR);
     }
 
@@ -3639,7 +3641,10 @@ sub parse_stk_and_add_alignment_alerts {
     }
 
     my @sq_A = split("", $sqstring_aligned);
-    my @pp_A = split("", $ppstring_aligned);
+    my @pp_A = ();
+    if(! $do_gls_aln) { 
+      @pp_A = split("", $ppstring_aligned);
+    }
     # printf("sq_A size: %d\n", scalar(@sq_A));
     # printf("seq_len: $seq_len\n");
 
@@ -3658,7 +3663,7 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($nongap_rf) { 
         $min_uapos--;
-        $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
+        $rfpos_pp_A[$rfpos] = ($do_gls_aln) ? "?" : $pp_A[($apos-1)];
       }
       $min_rfpos_after_A[$rfpos] = $min_rfpos;
       $min_uapos_after_A[$rfpos] = $min_uapos;
@@ -3683,7 +3688,7 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($nongap_rf) { 
         $max_uapos++;
-        $rfpos_pp_A[$rfpos] = $pp_A[($apos-1)];
+        $rfpos_pp_A[$rfpos] = ($do_gls_aln) ? "?" : $pp_A[($apos-1)];
       }
       $max_rfpos_before_A[$rfpos] = $max_rfpos;
       $max_uapos_before_A[$rfpos] = $max_uapos;
@@ -3808,8 +3813,10 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $sgm_stop_rfpos))  ? 1 : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}  = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? 1  : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}   = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? 1  : 0;
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR);
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR);
+        if(! $do_gls_aln) { 
+          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR);
+          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR);
+        }
         
         # add alerts, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
@@ -3818,7 +3825,7 @@ sub parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           } 
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+          elsif((! $do_gls_aln) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf5loc, but first check if the start of this segment is identical to 
             # the stop of a CDS or mat_peptide or gene feature
             # if so we don't report indf5loc because there's other (better) checks of the start codon position
@@ -3838,7 +3845,7 @@ sub parse_stk_and_add_alignment_alerts {
                                        "RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
                                        $FH_HR);
           }
-          elsif(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value)) { # only check PP if it's not a gap
+          elsif((! $do_gls_aln) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf3loc, but first check if the stop of this segment is identical to 
             # the stop of a CDS or gene feature (mat_peptide excluded because it won't include stop codon)
             # if so we don't report indf3loc because there's other (better) checks of the stop codon position
@@ -3928,9 +3935,10 @@ sub parse_stk_and_add_alignment_alerts {
 #                           character for current sequence at RF position $rfpos
 #                           '.' if sequence is a gap at that RF position $rfpos
 #                           special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
+#                           undef if --aln_gls used ($do_gls_aln == 1 in caller)
 #  $rf2ilen_AR:             REF to array: [1..$rfpos..$rflen] = $apos; rf position $rfpos maps to 
 #                           alignment position $apos [1..$alen]  ($rf2a_A[0] = -1 (dummy value))
-#  $max_uapos_before_AR     REF to array; [0..$rfpos..rflen+1]: maximum unaligned position for 
+#  $max_uapos_before_AR:    REF to array; [0..$rfpos..rflen+1]: maximum unaligned position for 
 #                           current sequence that aligns at or inserts *before* 
 #                           $max_rfpos_before_A[$rfpos], -1 if $max_rfpos_before_A[$rfpos] == -1
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
@@ -3959,12 +3967,14 @@ sub add_frameshift_alerts_for_one_sequence {
       $alt_ftr_instances_HHHR, $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
+
   my $do_output_frameshift_stk = opt_Get("--out_nofs", $opt_HHR) ? 0 : 1;
   my $fst_min_nt     = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
   my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
   my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
+  my $do_gls_aln     = opt_Get("--aln_gls",     $opt_HHR); # we won't have PP values if this is 1
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $ftr_idx;
@@ -4224,29 +4234,44 @@ sub add_frameshift_alerts_for_one_sequence {
               }
               $span_len = abs($span_stop - $span_start) + 1;
               if($span_len >= $fst_min_nt) { 
-                # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
-                # determine average posterior probability of non-dominant frame subseq
-                if(! defined $full_ppstr) { 
-                  $full_ppstr = $msa->get_ppstring_aligned($seq_idx); 
-                  $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
-                }
-                my $span_ppstr = ($ftr_strand eq "+") ? 
-                    substr($full_ppstr, $span_start - 1, ($span_len)) : 
-                    substr($full_ppstr, $span_stop  - 1, ($span_len));
-                my $span_avgpp;
-                ($span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($span_ppstr);
-                if($span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
-                  my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, $span_avgpp);
+                # above our length threshold, if $do_gls_aln, we always report this, if not it depends on the avg PP value
+                if($do_gls_aln) { # we don't have PP values, so all frameshifts are treated equally
+                  my $span_str = sprintf("%d..%d (%d nt)", $span_start, $span_stop, $span_len);
                   my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
-                  my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
-                                             ($is_hicnf) ? "fsthicnf" : "fstlocnf", 
+                                             "fstukcnf",
                                              $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
                   push(@cds_alt_str_A, $alt_str);
+                }
+                else { # $do_gls_aln is 0 so we have PP values and we examine them to determine type of frameshift
+                  # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
+                  # determine average posterior probability of non-dominant frame subseq
+                  if(! defined $full_ppstr) { 
+                    $full_ppstr = $msa->get_ppstring_aligned($seq_idx); 
+                    $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
+                  }
+                  my $span_ppstr = ($ftr_strand eq "+") ? 
+                      substr($full_ppstr, $span_start - 1, ($span_len)) : 
+                      substr($full_ppstr, $span_stop  - 1, ($span_len));
+                  my $span_avgpp;
+                  ($span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($span_ppstr);
+                  if($span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
+                    my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, $span_avgpp);
+                    my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                    $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
+                    $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
+                    my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
+                    alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
+                                               ($is_hicnf) ? "fsthicnf" : "fstlocnf", 
+                                               $seq_name, $ftr_idx, $alt_str, $FH_HR);
+                    $insert_str = "";
+                    $delete_str = "";
+                    push(@cds_alt_str_A, $alt_str);
+                  }
                 }
               }
             } # end of 2 case if entered if we have a frameshift alert

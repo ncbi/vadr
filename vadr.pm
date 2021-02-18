@@ -1928,6 +1928,12 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcnf", "feature",
+                   "POSSIBLE_FRAMESHIFT", # short description
+                   "potential frameshift in CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",
                    "PEPTIDE_TRANSLATION_PROBLEM", # short description
                    "mat_peptide may not be translated because its parent CDS has a problem", # long description
@@ -4801,7 +4807,7 @@ sub vdr_WriteCommandScript {
 }
 
 #################################################################
-# Subroutine:  vdr_GlsearchFormat3And9CToStockholm()
+# Subroutine:  vdr_GlsearchFormat3And9CToStockholmAndInsertFile()
 # Incept:      EPN, Wed Feb 17 09:21:08 2021
 #
 # Purpose  : Convert a FASTA package glsearch output file with 

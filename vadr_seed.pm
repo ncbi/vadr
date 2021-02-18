@@ -1106,7 +1106,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq
-  my %ali_subpp_H  = ();     # key is subseq name, value is aligned PP sqstring for that subseq
+  my %ali_subpp_H  = ();     # key is subseq name, value is aligned PP sqstring for that subseq, undef if $do_gls_aln
   my @rf_subseq_A  = ();     # array: value $i is RF line from stockholm alignment $in_stk_file_AR->[$i]
   # insert 2D hash, filled from parsing stk file if $do_gls_aln, or lower from parsing ifile if (! $do_gls_aln)
   my %subseq_inserts_HH = (); # key 1: sequence name
@@ -1136,7 +1136,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
       my $subseq_name = $msa->get_sqname($i);
       $subseq2stk_idx_H{$subseq_name} = $stk_idx;
       $ali_subseq_H{$subseq_name} = $msa->get_sqstring_aligned($i);
-      $ali_subpp_H{$subseq_name}  = $msa->get_ppstring_aligned($i);
+      $ali_subpp_H{$subseq_name}  = ($do_gls_aln) ? undef : $msa->get_ppstring_aligned($i);
       if($do_gls_aln) { 
         inserts_from_sqstring_and_rf_array(\%{$subseq_inserts_HH{$subseq_name}}, \@is_rf_A, $ali_subseq_H{$subseq_name}, $FH_HR);
       }
@@ -1276,7 +1276,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
         $stk_idx = $subseq2stk_idx_H{$subseq_name};
         $ali_seq_line = $ali_subseq_H{$subseq_name};
         $ali_mdl_line = $rf_subseq_A[$stk_idx];
-        $ali_pp_line  = $ali_subpp_H{$subseq_name};
+        $ali_pp_line  = ($do_gls_aln) ? undef : $ali_subpp_H{$subseq_name};
         $seq_inserts_HH{$seq_name}{"spos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
         $seq_inserts_HH{$seq_name}{"epos"} = $subseq_inserts_HH{$subseq_name}{"epos"};
         $seq_inserts_HH{$seq_name}{"ins"}  = $subseq_inserts_HH{$subseq_name}{"ins"};
@@ -1303,7 +1303,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
           $ali_5p_seq =~ s/[.\-\~]*$//; # remove trailing gaps leftover
           # now we know length of 5' segment and we can use it with substr for mdl and pp
           my $ali_5p_seq_len = length($ali_5p_seq);
-          $ali_5p_pp   = substr($ali_subpp_H{$subseq_name},  0, $ali_5p_seq_len);
+          $ali_5p_pp   = ($do_gls_aln) ? undef : substr($ali_subpp_H{$subseq_name},  0, $ali_5p_seq_len);
           $ali_5p_mdl  = substr($rf_subseq_A[$stk_idx],      0, $ali_5p_seq_len);
           # set insert info
           $seq_inserts_HH{$seq_name}{"spos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
@@ -1327,10 +1327,10 @@ sub join_alignments_and_add_unjoinbl_alerts {
           $ali_3p_seq  = substr($ali_subseq_H{$subseq_name}, $min_len_to_remove_at_5p_end);
           $ali_3p_seq =~ s/^[.\-\~]*//; # remove leading gaps leftover
           my $len_to_remove_at_5p_end = length($ali_subseq_H{$subseq_name}) - length($ali_3p_seq);
-          $ali_3p_pp   = substr($ali_subpp_H{$subseq_name},  $len_to_remove_at_5p_end);
+          $ali_3p_pp   = ($do_gls_aln) ? undef : substr($ali_subpp_H{$subseq_name},  $len_to_remove_at_5p_end);
           $ali_3p_mdl  = substr($rf_subseq_A[$stk_idx],      $len_to_remove_at_5p_end);
           # set insert info
-          $seq_inserts_HH{$seq_name}{"epos"} = $subseq_inserts_HH{$subseq_name}{"spos"};
+          $seq_inserts_HH{$seq_name}{"epos"} = $subseq_inserts_HH{$subseq_name}{"epos"};
           if(defined $subseq_inserts_HH{$subseq_name}{"ins"}) { 
             my $ualen_to_add = $ali_3p_seq_start -1;
             my @subseq_ins_tok_A = split(";", $subseq_inserts_HH{$subseq_name}{"ins"});
@@ -1382,7 +1382,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
         ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
       }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
-          join_alignments_helper($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
+          join_alignments_helper($do_gls_aln,
+                                 $ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
                                  $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp,
                                  $ugp_seq_HR->{$seq_name}, $ugp_mdl_HR->{$seq_name}, $ugp_seq, $mdl_consensus_sqstring, 
                                  $seq_len, $mdl_len, $ofile_info_HHR);
@@ -1409,7 +1410,13 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # printf("Writing $out_stk_file: $seq_name, ali length %d %d\n", length($ali_seq_line), length($ali_mdl_line));
       push(@{$out_stk_file_AR}, $out_stk_file);
       open(OUT, ">", $out_stk_file) || ofile_FileOpenFailure($out_stk_file, $sub_name, $!, "writing", $FH_HR);
-      print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
+      if($do_gls_aln) { # do not include PPs
+        print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GC RF $ali_mdl_line\n//\n");
+      }
+      else { # include PPs
+        print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
+      }
+      #print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
       close(OUT);
       $out_stk_idx++;
     }      
@@ -1452,6 +1459,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #              input and returns the joined strings.
 #
 # Arguments: 
+#  $do_gls_aln:             '1' if we used glsearch to create alignment in this
+#                           case we do not have PP info
 #  $ali_5p_seq_coords:      aligned 5' region sequence coords string
 #                           undef if none, ugp_seq_start must be 1 in this case 
 #  $ali_5p_mdl_coords:      aligned 5' region model coords string
@@ -1461,13 +1470,13 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #  $ali_5p_mdl:             aligned 5' end of model (RF) from cmalign, 
 #                           undef if none, ugp_seq_start must be 1 in this case 
 #  $ali_5p_pp:              aligned 5' end of posterior probability annotation from cmalign, 
-#                           undef if none, ugp_seq_start must be 1 in this case 
+#                           undef if none, ugp_seq_start must be 1 or $do_gls_aln must be 1, in this case
 #  $ali_3p_seq_coords:      aligned 3' region sequence coords string
 #                           undef if none, ugp_seq_stop must be $seq_len in this case 
 #  $ali_3p_mdl_coords:      aligned 3' region model coords string
 #                           undef if none, ugp_seq_stop must be $seq_len in this case 
 #  $ali_3p_pp:              aligned 3' end of posterior probability annotation from cmalign, 
-#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#                           undef if none, ugp_seq_stop must be $seq_len or $do_gls_aln must be 1, in this case
 #  $ali_3p_seq:             aligned 3' end of sequence from cmalign, 
 #                           undef if none, ugp_seq_stop must be $seq_len in this case 
 #  $ali_3p_mdl:             aligned 3' end of model (RF) from cmalign, 
@@ -1483,32 +1492,32 @@ sub join_alignments_and_add_unjoinbl_alerts {
 # Returns:    3 values:
 #             $joined_seq: joined sequence as a string
 #             $joined_mdl: joined RF as a string
-#             $joined_pp:  joined PP as a string
+#             $joined_pp:  joined PP as a string, undef if $do_gls_aln
 #
 #             If we can't join the sequence because 3' endpoint of the 5' cmalign alignment
 #             of the 5' endpoint of the cmalign alignment are inconsistent with the ungapped
 #             seed region, then caller will add a unjoinbl alert, return:
 #             undef,
 #             undef,
-#             $alerg_msg: string describing the unjoinbl alert with coordinates
+#             $alert_msg: string describing the unjoinbl alert with coordinates
 #    
 # Dies:       if $ali_{5p,3p}_{coords,seq,mdl,pp} is undef but $ugp_seq_coords indicates it should be defined
 #
 ################################################################# 
 sub join_alignments_helper { 
   my $sub_name = "join_alignments_helper";
-  my $nargs_exp = 17;
+  my $nargs_exp = 18;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
+  my ($do_gls_aln, $ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
       $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp, 
       $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq, $mdl_consensus_sqstring, 
       $seq_len, $mdl_len, $ofile_info_HHR) = @_;
 
   my $FH_HR  = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef;
 
-  my ($have_5p)  = ((defined $ali_5p_seq_coords) && (defined $ali_5p_mdl_coords) && (defined $ali_5p_seq) && (defined $ali_5p_mdl) && (defined $ali_5p_pp)) ? 1 : 0;
-  my ($have_3p)  = ((defined $ali_3p_seq_coords) && (defined $ali_3p_mdl_coords) && (defined $ali_3p_seq) && (defined $ali_3p_mdl) && (defined $ali_3p_pp)) ? 1 : 0;
+  my ($have_5p)  = ((defined $ali_5p_seq_coords) && (defined $ali_5p_mdl_coords) && (defined $ali_5p_seq) && (defined $ali_5p_mdl) && ((defined $ali_5p_pp) || $do_gls_aln)) ? 1 : 0;
+  my ($have_3p)  = ((defined $ali_3p_seq_coords) && (defined $ali_3p_mdl_coords) && (defined $ali_3p_seq) && (defined $ali_3p_mdl) && ((defined $ali_3p_pp) || $do_gls_aln)) ? 1 : 0;
   my ($have_ugp) = ((defined $ugp_seq_coords) && (defined $ugp_seq)) ? 1 : 0;
 
   # parse coords
@@ -1676,13 +1685,15 @@ sub join_alignments_helper {
   my $apos;
   my $joined_seq = "";
   my $joined_mdl = "";
-  my $joined_pp  = "";
+  my $joined_pp  = ($do_gls_aln ? undef : "");
   if($have_5p) {
     # $fetch_ali_5p_seq_start == 1, but included below for consistency with 3p calls
     # printf("fetching 5p %d to %d from %s\n", $fetch_ali_5p_seq_start, $fetch_ali_5p_seq_stop, $ali_5p_seq_coords);
     $joined_seq .= substr($ali_5p_seq, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
     $joined_mdl .= substr($ali_5p_mdl, $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
-    $joined_pp  .= substr($ali_5p_pp,  $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
+    if(! $do_gls_aln) { 
+      $joined_pp  .= substr($ali_5p_pp,  $fetch_ali_5p_seq_start - 1, ($fetch_ali_5p_seq_stop - $fetch_ali_5p_seq_start + 1));
+    }
   }
   else {
     # we did not align the 5' end with cmalign, add all gap 5' chunk
@@ -1691,7 +1702,9 @@ sub join_alignments_helper {
       $joined_seq .= utl_StringMonoChar(($ugp_mdl_start - 1), "-", $FH_HR);
       #$joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
       $joined_mdl .= substr($mdl_consensus_sqstring, 0, ($ugp_mdl_start - 1));
-      $joined_pp  .= utl_StringMonoChar(($ugp_mdl_start - 1), ".", $FH_HR);
+      if(! $do_gls_aln) { 
+        $joined_pp  .= utl_StringMonoChar(($ugp_mdl_start - 1), ".", $FH_HR);
+      }
     }
   }
   
@@ -1702,13 +1715,17 @@ sub join_alignments_helper {
   $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
   #$joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
   $joined_mdl .= substr($mdl_consensus_sqstring, $fetch_ugp_mdl_start - 1, $fetch_ugp_mdl_len);
-  $joined_pp  .= utl_StringMonoChar($fetch_ugp_seq_len, "*", $FH_HR);
+  if(! $do_gls_aln) { 
+    $joined_pp  .= utl_StringMonoChar($fetch_ugp_seq_len, "*", $FH_HR);
+  }
 
   if($have_3p) {
     # printf("fetching 3p %d to %d from %s\n", $fetch_ali_3p_seq_start, $fetch_ali_3p_seq_stop, $ali_3p_seq_coords);
     $joined_seq .= substr($ali_3p_seq, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
     $joined_mdl .= substr($ali_3p_mdl, $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
-    $joined_pp  .= substr($ali_3p_pp,  $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
+    if(! $do_gls_aln) { 
+      $joined_pp  .= substr($ali_3p_pp,  $fetch_ali_3p_seq_start - 1, ($fetch_ali_3p_seq_stop - $fetch_ali_3p_seq_start + 1));
+    }
   }
   else { 
     # we did not align the 3' end with cmalign, add all gap 3' chunk
@@ -1717,7 +1734,9 @@ sub join_alignments_helper {
       $joined_seq .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "-", $FH_HR);
       #$joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
       $joined_mdl .= substr($mdl_consensus_sqstring, $ugp_mdl_stop);
-      $joined_pp  .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), ".", $FH_HR);
+      if(! $do_gls_aln) { 
+        $joined_pp  .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), ".", $FH_HR);
+      }
     }
   }
   
