@@ -1039,7 +1039,8 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #              if overhang (--s_overhang) is long enough (>50-100nt))
 #
 # Arguments: 
-#  $sqfile:                REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $sqfile_R:              REF to Bio::Easel::SqFile object, open sequence file containing the full input seqs
+#  $blastn_db_sqfile_R:    REF to Bio::Easel::SqFile object, open blastn db file containing the full model seqs
 #  $execs_HR:              REF to hash with paths to executables (for cmemit)
 #  $do_gls_aln:            '1' if we're running glsearch not cmalign
 #  $cm_file:               name of CM file
@@ -1072,10 +1073,10 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 ################################################################# 
 sub join_alignments_and_add_unjoinbl_alerts { 
   my $sub_name = "join_alignments_and_add_unjoinbl_alerts";
-  my $nargs_exp = 21;
+  my $nargs_exp = 22;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($sqfile, $execs_HR, $do_gls_aln, $cm_file, 
+  my ($sqfile_R, $blastn_db_sqfile_R, $execs_HR, $do_gls_aln, $cm_file, 
       $seq_name_AR, $seq_len_HR, 
       $mdl_info_AHR, $mdl_idx, $ugp_mdl_HR, $ugp_seq_HR, 
       $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
@@ -1207,7 +1208,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
     if(defined $ugp_seq_HR->{$seq_name}) {
       ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_HR->{$seq_name}, $FH_HR);
       ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = vdr_CoordsSegmentParse($ugp_mdl_HR->{$seq_name}, $FH_HR);
-      $ugp_seq = $sqfile->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
+      $ugp_seq = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
     }
     
     my $full_seq_idx = undef; # set to subseq idx if we have a alignment of the full sequence (case 1)
@@ -1376,10 +1377,15 @@ sub join_alignments_and_add_unjoinbl_alerts {
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
       if(! defined $mdl_consensus_sqstring) { 
-        my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-        $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
-        $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
+        if(! $do_gls_aln) { 
+          my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
+          $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
+          $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
+        }
+        else { 
+          $mdl_consensus_sqstring = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($mdl_name);
+        }
       }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
           join_alignments_helper($do_gls_aln,

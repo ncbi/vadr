@@ -957,6 +957,11 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
 my $rpn_sqfile = undef;
+# open the blastn_db sequence file too, if we need it
+my $blastn_db_sqfile = undef;
+if(($do_blastn_any) || ($do_replace_ns) || ($do_gls_aln)) { 
+  $blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
+}
 
 # Initialize the classification results
 my %alt_seq_instances_HH = (); # 2D key with info on all instances of per-sequence alerts 
@@ -979,12 +984,6 @@ my %rpn_output_HH = (); # 2D key with info to output related to the  option
                         # key1: sequence name, key2 various stats (see output_tabular())
 my $rpn_fa_file = undef;
 if($do_replace_ns) { 
-  # we need to copy the blastn fasta db file, so that we can create a .ssi file to fetch from it
-  my $local_blastn_db_file = $out_root . ".cp." . utl_RemoveDirPath($blastn_db_file);
-  utl_RunCommand("cp $blastn_db_file $local_blastn_db_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  push(@to_remove_A, $local_blastn_db_file);
-  push(@to_remove_A, $local_blastn_db_file . ".ssi");
-
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
   classification_stage(\%execs_H, "rpn.cls", $cm_file, $blastn_db_file, $blastn_in_fa_file, \%seq_len_H,
@@ -1008,7 +1007,7 @@ if($do_replace_ns) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, $local_blastn_db_file, \$in_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                              \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
@@ -1172,10 +1171,6 @@ my %subseq_len_H  = ();  # key is name of subsequence, value is length of that s
 
 # for each model with seqs to align to, create the sequence file and run cmalign/glsearch
 my $mdl_name;
-my $glsearch_sqfile = undef;
-if($do_gls_aln) { 
-  $glsearch_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
-}
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
@@ -1191,10 +1186,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
 
     my $glsearch_db_file = undef;
-    if($do_gls_aln) { # create the glsearch db file
+    if($do_gls_aln) { # create the glsearch db file with a single sequence
       $glsearch_db_file = $out_root . "." . $mdl_name . ".glsearch.fa";
       my @glsearch_seqname_A = ($mdl_name);
-      $glsearch_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
+      $blastn_db_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
     }
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/glsearch (e.g if $do_blastn_ali))
@@ -1231,7 +1226,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # run cmalign/glsearch
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
-      cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$glsearch_sqfile,
+      cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$blastn_db_sqfile,
                                   ($do_gls_aln ? $glsearch_db_file : $cm_file), 
                                   $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
@@ -1273,7 +1268,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @joined_stk_file_A = ();   # array of joined stk files created by join_alignments_and_add_unjoinbl_alerts()
       my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
       if(scalar(@join_seq_name_A > 0)) { 
-        join_alignments_and_add_unjoinbl_alerts($$sqfile_for_analysis_R, \%execs_H, 
+        join_alignments_and_add_unjoinbl_alerts($sqfile_for_analysis_R, \$blastn_db_sqfile, \%execs_H, 
                                                 $do_gls_aln, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
                                                 \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
@@ -1296,7 +1291,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         $$sqfile_for_analysis_R->fetch_seqs_given_names(\@unjoinbl_seq_name_A, 60, $unjoinbl_mdl_fa_file);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
-        cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$glsearch_sqfile,
+        cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$blastn_db_sqfile,
                                     ($do_gls_aln ? $glsearch_db_file : $cm_file), 
                                     $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                                     $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
@@ -2999,7 +2994,7 @@ sub populate_per_model_data_structures_given_classification_results {
 #                          defined as keys
 #  $qsub_prefix:           qsub command prefix to use when submitting to farm, undef if running locally
 #  $qsub_suffix:           qsub command suffix to use when submitting to farm, undef if running locally
-#  $glsearch_sqfile_R:     ref to Bio::Easel::SqFile object with glsearch target seqs (model seqs)
+#  $blastn_db_sqfile_R:    ref to Bio::Easel::SqFile object with glsearch target seqs (model seqs)
 #  $mdl_file:              name of model file to use (if ends with .fa, run glsearch, else run cmalign)
 #  $mdl_name:              name of model to fetch from $mdl_file (undef to not fetch)
 #  $seq_file:              name of sequence file with all sequences to run against
@@ -3024,7 +3019,7 @@ sub cmalign_or_glsearch_wrapper {
   my $nargs_expected = 17;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($execs_HR, $qsub_prefix, $qsub_suffix, $glsearch_sqfile_R,
+  my ($execs_HR, $qsub_prefix, $qsub_suffix, $blastn_db_sqfile_R,
       $mdl_file, $mdl_name, $seq_file, $out_root, $extra_key, 
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
@@ -3102,7 +3097,7 @@ sub cmalign_or_glsearch_wrapper {
                                                          $r1_out_file_AH[$r1_i]{"stdout"}, 
                                                          $r1_out_file_AH[$r1_i]{"stk"},
                                                          $r1_out_file_AH[$r1_i]{"ifile"},
-                                                         $glsearch_sqfile_R, 
+                                                         $blastn_db_sqfile_R, 
                                                          $mdl_name, $opt_HHR, $ofile_info_HHR);
       }
       foreach $out_key (@concat_keys_A) { 
@@ -3651,6 +3646,8 @@ sub parse_stk_and_add_alignment_alerts {
     # first pass, from right to left to fill $min_**pos_after arrays, and rf
     my $min_rfpos = -1;
     my $min_uapos = $seq_len+1;
+    printf("min_uapos: $min_uapos\n");
+    printf("rflen: $rflen\n");
     for($rfpos = $rflen; $rfpos >= 0; $rfpos--) { 
       $apos = $rf2a_A[$rfpos];
       my $nongap_rf    = (($rfpos > 0) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) ? 1 : 0;
@@ -3660,6 +3657,7 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($insert_after) { 
         $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts between $rfpos and ($rfpos+1)
+        printf("insert after $rfpos subtracting $rf2ilen_A[$rfpos]\n");
       }
       if($nongap_rf) { 
         $min_uapos--;
@@ -3667,7 +3665,7 @@ sub parse_stk_and_add_alignment_alerts {
       }
       $min_rfpos_after_A[$rfpos] = $min_rfpos;
       $min_uapos_after_A[$rfpos] = $min_uapos;
-      # printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
+      #printf("rfpos: %5d  apos: %5d  min_rfpos: %5d  min_uapos: %5d\n", $rfpos, $apos, $min_rfpos, $min_uapos);
     }
     if($min_uapos != 1) { 
       ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 1 (min_uapos should be 1 but it is $min_uapos)", 1, $FH_HR);
@@ -3813,10 +3811,8 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $sgm_stop_rfpos))  ? 1 : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}  = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? 1  : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}   = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? 1  : 0;
-        if(! $do_gls_aln) { 
-          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR);
-          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR);
-        }
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR));
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
         
         # add alerts, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
@@ -7479,6 +7475,9 @@ sub output_tabular {
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
+  # if --aln_gls we won't have PP values
+  my $do_gls_aln = opt_Get("--aln_gls", $opt_HHR) ? 1 : 0;
+
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
   my $nalt = scalar(keys %{$alt_info_HHR});
@@ -7744,8 +7743,15 @@ sub output_tabular {
                 my $sgm_mlen   = abs($sgm_mstart - $sgm_mstop) + 1;
                 my $sgm_strand = $sgm_results_HR->{"strand"};
                 my $sgm_trunc  = helper_tabular_sgm_results_trunc_string($sgm_results_HR);
-                my $sgm_pp5    = ($sgm_results_HR->{"startpp"} == -1) ? "-" : $sgm_results_HR->{"startpp"};
-                my $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  == -1) ? "-" : $sgm_results_HR->{"stoppp"};
+                my ($sgm_pp5, $sgm_pp3);
+                if($do_gls_aln) { 
+                  $sgm_pp5    = ($sgm_results_HR->{"startpp"} ne "?") ? "-" : "?";
+                  $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  ne "?") ? "-" : "?";
+                }
+                else { 
+                  $sgm_pp5    = ($sgm_results_HR->{"startpp"} == -1) ? "-" : $sgm_results_HR->{"startpp"};
+                  $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  == -1) ? "-" : $sgm_results_HR->{"stoppp"};
+                }
                 my $sgm_gap5   = ($sgm_results_HR->{"startgap"}) ? "yes" : "no";
                 my $sgm_gap3   = ($sgm_results_HR->{"stopgap"})  ? "yes" : "no";
                 
@@ -9668,8 +9674,8 @@ sub msa_replace_sequences {
 # Arguments: 
 #  $tblout_file:           tblout file from a 'cvd' stage for a single model
 #  $cm_file:               path to main cm file
-#  $local_blastn_db_file:  path to blastn db file with consensus sequence for each model
 #  $sqfile_R:              REF to Bio::Easel::SqFile object from main fasta file
+#  $blastn_db_sqfile_R:    REF to Bio::Easel::SqFile object for blastn db 
 #  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
 #  $exp_mdl_name:          name of model we expect on all lines of $indel_file
 #  $mdl_idx:               index of $exp_mdl_name in $mdl_info_AHR
@@ -9691,7 +9697,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
   my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $cm_file, $local_blastn_db_file, $sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
+  my ($tblout_file, $cm_file, $sqfile_R, $blastn_db_sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
       $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
@@ -9907,10 +9913,8 @@ sub parse_cdt_tblout_file_and_replace_ns {
             $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
             $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
             if(! defined $mdl_consensus_sqstring) { 
-              my $blastn_sqfile = Bio::Easel::SqFile->new({ fileLocation => $local_blastn_db_file }); 
-              $mdl_info_AHR->[$mdl_idx]{"cseq"} = $blastn_sqfile->fetch_seq_to_sqstring($exp_mdl_name);
+              $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
               $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-              $blastn_sqfile = undef;
             }
             # fill in non-replaced region since previous replacement 
             # (or 5' chunk up to replacement start if this is the first replacement, 

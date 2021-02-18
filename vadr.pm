@@ -4822,14 +4822,14 @@ sub vdr_WriteCommandScript {
 #            "-d 1":    to specify max number of alignments displayed is 1
 # 
 # Arguments: 
-#   $alimerge:          path to esl-alimerge executable
-#   $gls_file:          name of output file from glsearch
-#   $stk_file:          name of stockholm file of all seqs to write
-#   $insert_file:       name of insert file for all seqs to write
-#   $glsearch_sqfile_R: ref to open Bio:Easel:SqFile with model/target sequence
-#   $exp_mdl_name:      expected single target sequence name
-#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
-#   $ofile_info_HHR:    ref to 2D hash of output file information
+#   $alimerge:           path to esl-alimerge executable
+#   $gls_file:           name of output file from glsearch
+#   $stk_file:           name of stockholm file of all seqs to write
+#   $insert_file:        name of insert file for all seqs to write
+#   $blastn_db_sqfile_R: ref to open Bio:Easel:SqFile with model/target sequence
+#   $exp_mdl_name:       expected single target sequence name
+#   $opt_HHR:            ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:     ref to 2D hash of output file information
 #
 # Returns:     void
 # 
@@ -4841,7 +4841,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   my $sub_name = "vdr_GlsearchFormat3And9CToStockholmAndInsertFile";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
-  my ($alimerge, $gls_file, $stk_file, $insert_file, $glsearch_sqfile_R, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($alimerge, $gls_file, $stk_file, $insert_file, $blastn_db_sqfile_R, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
@@ -4852,7 +4852,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
 
   # fetch the model sequence, so we can use it to add to RF in alignments
 
-  my $t_uaseq = $$glsearch_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
+  my $t_uaseq = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
 
   my $q_name;         # name of query sequence
   my $q_len;          # length of query sequence
@@ -5087,6 +5087,9 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       }
       printf("0 querylen:   " . length($q_afa)  . "\n");
       printf("0 targetlen: "  . length($t_afa) . "\n");
+
+      # in target, which will become RF, replace - characters with '.' following hmmer/infernal convention
+      $t_afa =~ s/\-/\./g; 
 
       # add 5' and 3' ends of target, if nec
       my $t_5p = "";
