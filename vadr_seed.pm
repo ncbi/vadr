@@ -100,6 +100,8 @@ sub run_blastn_and_summarize_output {
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $log_FH = $FH_HR->{"log"}; # for convenience
+  my $ncpu = opt_Get("--cpu", $opt_HHR);
+  if($ncpu == 0) { $ncpu = 1; }
 
   if(($stg_key ne "rpn.cls") && ($stg_key ne "std.cls")) { 
     ofile_FAIL("ERROR in $sub_name, unrecognized stage key: $stg_key, should be rpn.cls or std.cls", 1, $FH_HR);
@@ -111,7 +113,7 @@ sub run_blastn_and_summarize_output {
       sprintf("Classifying sequences with blastn ($nseq seq%s)", (($nseq > 1) ? "s" : ""));
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
-  my $opt_str = "-num_threads 1 -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
+  my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
