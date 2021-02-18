@@ -22,6 +22,7 @@
   * [additional expert options](#options-expert)
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
+* [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
 
 ---
 
@@ -46,9 +47,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 1.1 (May 2020)
+# VADR 1.1.3 (Feb 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed May  6 07:30:55 2020
+# date:    Thu Feb 11 14:00:15 2021
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -81,7 +82,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Wed May  6 07:31:23 2020
+# date:              Thu Feb 11 14:02:55 2021
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -282,6 +283,13 @@ printed, along with elapsed time:
 # model NC_044854 feature mat_peptide#6 predicted seqs saved in:   va-noro.9.vadr.NC_044854.mat_peptide.6.fa
 # model NC_044854 feature gene#2 predicted seqs saved in:          va-noro.9.vadr.NC_044854.gene.2.fa
 # model NC_044854 feature CDS#2 predicted seqs saved in:           va-noro.9.vadr.NC_044854.CDS.2.fa
+# 5 column feature table output for passing sequences saved in:    va-noro.9.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:    va-noro.9.vadr.fail.tbl
+# list of passing sequences saved in:                              va-noro.9.vadr.pass.list
+# list of failing sequences saved in:                              va-noro.9.vadr.fail.list
+# list of alerts in the feature tables saved in:                   va-noro.9.vadr.alt.list
+# fasta file with passing sequences saved in:                      va-noro.9.vadr.pass.fa
+# fasta file with failing sequences saved in:                      va-noro.9.vadr.fail.fa
 # per-sequence tabular annotation summary file saved in:           va-noro.9.vadr.sqa
 # per-sequence tabular classification summary file saved in:       va-noro.9.vadr.sqc
 # per-feature tabular summary file saved in:                       va-noro.9.vadr.ftr
@@ -289,11 +297,6 @@ printed, along with elapsed time:
 # per-model tabular summary file saved in:                         va-noro.9.vadr.mdl
 # per-alert tabular summary file saved in:                         va-noro.9.vadr.alt
 # alert count tabular summary file saved in:                       va-noro.9.vadr.alc
-# 5 column feature table output for passing sequences saved in:    va-noro.9.vadr.pass.tbl
-# 5 column feature table output for failing sequences saved in:    va-noro.9.vadr.fail.tbl
-# list of passing sequences saved in:                              va-noro.9.vadr.pass.list
-# list of failing sequences saved in:                              va-noro.9.vadr.fail.list
-# list of alerts in the feature tables saved in:                   va-noro.9.vadr.alt.list
 #
 # All output files created in directory ./va-noro.9/
 #
@@ -327,8 +330,108 @@ which the best matching model was `NC_039477`. The convention used for
 naming the sequences in these files is explained
 [here](formats#seqnames).
 
-After the FASTA files are seven tabular summary files that end with
-three letter suffixes:
+In addition to the tabular output files, `v-annotate.pl` also creates 
+5-column tab-delimited feature table files that end with the suffix
+`.tbl`. There is a separate file for passing
+(`va-noro9.vadr.pass.tbl`) and failing (`va-noro9.vadr.fail.tbl`)
+sequences. 
+The format of the `.tbl` files is described here:
+https://www.ncbi.nlm.nih.gov/Sequin/table.html.
+These files contain some of the same information as the `.ftr` files
+discussed above, with some additional information on *qualifiers* for
+features read from the [model info file](formats.md#minfo). 
+From the `va-noro9.vadr.pass.tbl` file, the feature table for
+`KY887602` is: 
+
+```
+>Feature KY887602.1
+<1	5083	gene
+			gene	ORF1
+<1	5083	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+			protein_id	KY887602.1_1
+<1	979	mat_peptide
+			product	p48
+			protein_id	KY887602.1_1
+980	2077	mat_peptide
+			product	NTPase
+			protein_id	KY887602.1_1
+2078	2608	mat_peptide
+			product	p22
+			protein_id	KY887602.1_1
+2609	3007	mat_peptide
+			product	VPg
+			protein_id	KY887602.1_1
+3008	3550	mat_peptide
+			product	Pro
+			protein_id	KY887602.1_1
+3551	5080	mat_peptide
+			product	RdRp
+			protein_id	KY887602.1_1
+5064	6686	gene
+			gene	ORF2
+5064	6686	CDS
+			product	VP1
+			protein_id	KY887602.1_2
+6686	7492	gene
+			gene	ORF3
+6686	7492	CDS
+			product	VP2
+			protein_id	KY887602.1_3
+```
+
+In the `.fail.tbl` file, each sequence's feature table contains a
+special section at the end of the table that lists errors
+due to reported fatal alerts. For example, at the end of
+`va-noro9.vadr.fail.tbl`:
+
+```
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
+ERROR: CDS_HAS_STOP_CODON: (VF1) stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
+ERROR: INDEFINITE_ANNOTATION_END: (VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
+ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+```
+
+Note that this file lists only four ERRORs while the `.alt` output
+file above listed five alerts. **Not all** fatal alerts will be
+printed to this `.fail.tbl` file, because when specific pairs of
+alerts occur, only one is output to reduce the number of overlapping
+or redundant problems reported to the submitter/user. In this case the
+`mutendcd` (`MUTATION_AT_END`) alert is omitted in the `.fail.tbl`
+file because it occurs in combination with a `cdsstopn`
+(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only one alert
+(`mutendcd`) can possibly be omitted. See the
+far right column of the [this table](#alerts2) for which alerts,
+when present in combination with `mutendcd` causes it
+to be omitted. Only alerts output to the `.fail.tbl`
+table are output to the `.alt.list` file. 
+
+The next three output files all end in `.list`. The `.pass.list` and
+`.fail.list` files are simply lists of all passing and failing
+sequences, respectively, with each sequence listed on a separate
+line. The `.alt.list` file lists all alerts that cause errors in the
+`.fail.tbl` file in a four field  tab-delimited format described
+[here](formats.md#altlist). The `va-noro9.vadr.alt.list` file lists
+the four alerts/errors in the `.fail.tbl` file shown above:
+
+```
+#sequence	error	feature	error-description
+JN975492.1	CDS_HAS_STOP_CODON	VF1	in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
+JN975492.1	CDS_HAS_STOP_CODON	VF1	stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
+JN975492.1	INDEFINITE_ANNOTATION_END	VF1	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
+JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+```
+
+After that are two more FASTA-formatted sequence files, these two
+include the full input sequences instead of per-feature
+subsequences. One of these files includes all
+passing sequences (`va-noro.9.vadr.pass.fa`) and the other includes all
+failing sequences (`va-noro.9.vadr.fail.fa`).
+
+After these two FASTA files are seven tabular summary files that end
+with three letter suffixes:
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
@@ -409,7 +512,7 @@ are no alerts, but for the final sequence, some alerts are listed for the
 second CDS. An explanation of all fields in the `.ftr`
 file type is [here](formats.md#ftr).
 
-Another important file is the `.alt` output file (`va-noro9.vadr.alt`)
+<a name="altexample"></a>Another important file is the `.alt` output file (`va-noro9.vadr.alt`)
 which includes one line per alert reported:
 
 ```
@@ -429,100 +532,6 @@ column, along with a brief description in the eight column followed by
 a more detailed description, sometimes with positional information, at
 the end of the line. All possible alerts are listed in the [alert
 table](#alerttable).
-
-In addition to the tabular output files, `v-annotate.pl` also creates 
-5-column tab-delimited feature table files that end with the suffix
-`.tbl`. There is a separate file for passing
-(`va-noro9.vadr.pass.tbl`) and failing (`va-noro9.vadr.fail.tbl`)
-sequences. 
-The format of the `.tbl` files is described here:
-https://www.ncbi.nlm.nih.gov/Sequin/table.html.
-These files contain some of the same information as the `.ftr` files
-discussed above, with some additional information on *qualifiers* for
-features read from the [model info file](formats.md#minfo). 
-From the `va-noro9.vadr.pass.tbl` file, the feature table for
-`KY887602` is: 
-
-```
->Feature KY887602.1
-<1	5083	gene
-			gene	ORF1
-<1	5083	CDS
-			product	nonstructural polyprotein
-			codon_start	2
-			protein_id	KY887602.1_1
-<1	979	mat_peptide
-			product	p48
-			protein_id	KY887602.1_1
-980	2077	mat_peptide
-			product	NTPase
-			protein_id	KY887602.1_1
-2078	2608	mat_peptide
-			product	p22
-			protein_id	KY887602.1_1
-2609	3007	mat_peptide
-			product	VPg
-			protein_id	KY887602.1_1
-3008	3550	mat_peptide
-			product	Pro
-			protein_id	KY887602.1_1
-3551	5080	mat_peptide
-			product	RdRp
-			protein_id	KY887602.1_1
-5064	6686	gene
-			gene	ORF2
-5064	6686	CDS
-			product	VP1
-			protein_id	KY887602.1_2
-6686	7492	gene
-			gene	ORF3
-6686	7492	CDS
-			product	VP2
-			protein_id	KY887602.1_3
-```
-
-In the `.fail.tbl` file, each sequence's feature table contains a
-special section at the end of the table that lists errors
-due to reported fatal alerts. For example, at the end of
-`va-noro9.vadr.fail.tbl`:
-
-```
-Additional note(s) to submitter:
-ERROR: CDS_HAS_STOP_CODON: (VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-ERROR: CDS_HAS_STOP_CODON: (VF1) stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-ERROR: INDEFINITE_ANNOTATION_END: (VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
-```
-
-Note that this file lists only four ERRORs while the `.alt` output
-file above listed five alerts. **Not all** fatal alerts will be
-printed to this `.fail.tbl` file, because when specific pairs of
-alerts occur, only one is output to reduce the number of overlapping
-or redundant problems reported to the submitter/user. In this case the
-`mutendcd` (`MUTATION_AT_END`) alert is omitted in the `.fail.tbl`
-file because it occurs in combination with a `cdsstopn`
-(`CDS_HAS_STOP_CODON`) alert. But this is rare, as only one alert
-(`mutendcd`) can possibly be omitted. See the
-far right column of the [this table](#alerts2) for which alerts,
-when present in combination with `mutendcd` causes it
-to be omitted. Only alerts output to the `.fail.tbl`
-table are output to the `.alt.list` file. 
-
-The final three output files all end in `.list`. The `.pass.list` and
-`.fail.list` files are simply lists of all passing and failing
-sequences, respectively, with each sequence listed on a separate
-line. The `.alt.list` file lists all alerts that cause errors in the
-`.fail.tbl` file in a four field  tab-delimited format described
-[here](formats.md#altlist). The `va-noro9.vadr.alt.list` file lists
-the four alerts/errors in the `.fail.tbl` file shown above:
-
-```
-#sequence	error	feature	error-description
-JN975492.1	CDS_HAS_STOP_CODON	VF1	in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-JN975492.1	CDS_HAS_STOP_CODON	VF1	stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-JN975492.1	INDEFINITE_ANNOTATION_END	VF1	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
-```
 
 ##  <a name="examplealtpass"></a>Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
 
@@ -577,6 +586,10 @@ time, despite the same alerts being reported.
 
 The `--alt_fail <s>` option works the same way as `alt_pass <s>` but alert codes
 in `<s>` should be [non-fatal by default](#nonfatal1).
+
+Alternatively, if you want to relax the stringency of alerts *only for
+specific features* you can do that by modifying the `modelinfo` input
+file as explained [below](#mnf).
 
 ---
 ## <a name="exampleparallel"></a>Example of using the `-p` option to parallelize `v-annotate.pl`
@@ -660,11 +673,14 @@ integer.
 
 ### `v-annotate.pl` options for controlling which alerts are *fatal* and cause a sequence to FAIL <a name="options-fatal"></a>
 
-| ..........option.......... | explanation | 
-|--------|-------------| 
-| `--alt_list`     | output [summary of all alerts](#alerts) and then exit | 
-| `--alt_pass <s>` | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
-| `--alt_fail <s>` | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
+| ............option............ | explanation | 
+|----------------------------|-------------| 
+| `--alt_list`         | output [summary of all alerts](#alerts) and then exit | 
+| `--alt_pass <s>`     | specify that alert codes in comma-separated string `<s>` are non-fatal (do not cause a sequence to fail), all alert codes listed must be fatal by default |
+| `--alt_fail <s>`     | specify that alert codes in comma-separated string `<s>` are fatal (cause a sequence to fail), all alert codes listed must be non-fatal by default |
+| `--alt_mnf_yes <s>`  | specify that alert codes in comma-separated string `<s>` for 'misc_not_failure' features cause misc_feature-ization, not failure as explained more [here](#mnf) |
+| `--alt_mnf_no <s>`   | specify that alert codes in comma-separated string `<s>` for 'misc_not_failure' features cause failure, not misc-feature-ization as explained more [here](#mnf) |
+| `--ignore_mnf`       | ignore non-zero 'misc_not_feature' values even if they do exist in the `modelinfo` file, set 'misc_not_feature' value to `0` for all features for all models  |
 
 ### `v-annotate.pl` options related to model files<a name="options-modelfiles"></a>
 
@@ -852,6 +868,7 @@ The following options are related to parallel mode.
 | `--out_rpstk`   | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
 | `--out_rpafa`   | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
 | `--out_nofs`    | do not output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
+| `--out_nofasta` | minimize total size of output; do not output fasta files of predicted features, or of all passing and all failing sequences |
 | `--out_ftrinfo` | create additional output file with `.ftrinfo` suffix with per-model feature information, mainly useful for debugging |
 | `--out_sgminfo` | create additional output file with `.sgminfo` suffix with per-model segment information, mainly useful for debugging |
 | `--out_altinfo` | create additional output file with `.altinfo` suffix with alert information, mainly useful for debugging |
@@ -885,78 +902,78 @@ An example is included [below](#alerttoggle).
 
 In the table below, the **type** column reports if each alert pertains to an entire
 `sequence` or a specific annotated `feature` within a sequence. The
-**relevant feature types** column
+**causes `misc_feature`, not failure (if in
+modelinfo file** shows which alerts are not fatal for expendable
+features as described more [below](#mnf).
 
 #### Description of *always fatal* alert codes <a name="always1"></a>
-| alert code | type | short description/error name | long description |
-|------------|-------|------------------------------|------------------|
-| [*noannotn*](#noannotn2)  | sequence | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  |
-| [*revcompl*](#revcompl2)  | sequence | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
-| [*unexdivg*](#unexdivg2)  | sequence | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
-| [*noftrann*](#noftrann2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
-| [*noftrant*](#noftrant2)  | sequence | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
+|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
+| [*noannotn*](#noannotn2)  | sequence | never | NO_ANNOTATION                   | <a name="noannotn1"></a> no significant similarity detected  |
+| [*revcompl*](#revcompl2)  | sequence | never | REVCOMPLEM                      | <a name="revcompl1"></a> sequence appears to be reverse complemented  |
+| [*unexdivg*](#unexdivg2)  | sequence | never | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
+| [*noftrann*](#noftrann2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
+| [*noftrant*](#noftrant2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
-| alert code | type | short description/error name | long description |
-|------------|-------|------------------------------|------------------|
-| [*incsbgrp*](#incsbgrp2)  | sequence | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |
-| [*incgroup*](#incgroup2)  | sequence | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model |
-| [*lowcovrg*](#lowcovrg2)  | sequence | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model |
-| [*dupregin*](#dupregin2)  | sequence | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once |
-| [*discontn*](#discontn2)  | sequence | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model |
-| [*indfstrn*](#indfstrn2)  | sequence | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands |
-| [*lowsim5s*](#lowsim5s2)  | sequence | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
-| [*lowsim3s*](#lowsim3s2)  | sequence | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
-| [*lowsimis*](#lowsimis2)  | sequence | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
-| [*deletins*](#deletins2)  | sequence | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature |
-| [*mutstart*](#mutstart2)  | feature  | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
-| [*mutendcd*](#mutendcd2)  | feature  | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid | 
-| [*mutendns*](#mutendns2)  | feature  | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | 
-| [*mutendex*](#mutendex2)  | feature  | MUTATION_AT_END                 | <a name="mutendex1"></a> expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | <a name="mutendex1"></a> |
-| [*unexleng*](#unexleng2)  | feature  | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
-| [*cdsstopn*](#cdsstopn2)  | feature  | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
-| [*cdsstopp*](#cdsstopp2)  | feature  | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
-| [*fsthicnf*](#fsthicnf2)  | feature  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
-| [*peptrans*](#peptrans2)  | feature  | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
-| [*pepadjcy*](#pepadjcy2)  | feature  | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
-| [*indfantp*](#indfantp2)  | feature  | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
-| [*indfantn*](#indfantn2)  | feature  | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search | 
-| [*indf5gap*](#indf5gap2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary |
-| [*indf5loc*](#indf5loc2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5loc1"></a> alignment to homology model has low confidence at 5' boundary |
-| [*indf5plg*](#indf5plg2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end | 
-| [*indf5pst*](#indf5pst2)  | feature  | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint | 
-| [*indf3gap*](#indf3gap2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary | 
-| [*indf3loc*](#indf3loc2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3loc1"></a> alignment to homology model has low confidence at 3' boundary | 
-| [*indf3plg*](#indf3plg2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end | 
-| [*indf3pst*](#indf3pst2)  | feature  | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
-| [*indfstrp*](#indfstrp2)  | feature  | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
-| [*insertnp*](#insertnp2)  | feature  | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
-| [*insertnp*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature |
-| [*deletinp*](#deletinp2)  | feature  | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
-| [*insertnp*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="insertnn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature |
-| [*deletinf*](#deletinf2)  | feature  | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated |
-| [*lowsim5f*](#lowsim5f2)  | feature  | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
-| [*lowsim3f*](#lowsim3f2)  | feature  | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
-| [*lowsimif*](#lowsimif2)  | feature  | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
+|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
+| [*incsbgrp*](#incsbgrp2)  | sequence | never | INCORRECT_SPECIFIED_SUBGROUP    | <a name="incsbgrp1"></a> score difference too large between best overall model and best specified subgroup model |
+| [*incgroup*](#incgroup2)  | sequence | never | INCORRECT_SPECIFIED_GROUP       | <a name="incgroup1"></a> score difference too large between best overall model and best specified group model |
+| [*lowcovrg*](#lowcovrg2)  | sequence | never | LOW_COVERAGE                    | <a name="lowcovrg1"></a> low sequence fraction with significant similarity to homology model |
+| [*dupregin*](#dupregin2)  | sequence | never | DUPLICATE_REGIONS               | <a name="dupregin1"></a> similarity to a model region occurs more than once |
+| [*discontn*](#discontn2)  | sequence | never | DISCONTINUOUS_SIMILARITY        | <a name="discontn1"></a> not all hits are in the same order in the sequence and the homology model |
+| [*indfstrn*](#indfstrn2)  | sequence | never | INDEFINITE_STRAND               | <a name="indfstrn1"></a> significant similarity detected on both strands |
+| [*lowsim5s*](#lowsim5s2)  | sequence | never | LOW_SIMILARITY_START            | <a name="lowsim5s1"></a> significant similarity not detected at 5' end of the sequence | 
+| [*lowsim3s*](#lowsim3s2)  | sequence | never | LOW_SIMILARITY_END              | <a name="lowsim3s1"></a> significant similarity not detected at 3' end of the sequence | 
+| [*lowsimis*](#lowsimis2)  | sequence | never | LOW_SIMILARITY                  | <a name="lowsimis1"></a> internal region without significant similarity | 
+| [*deletins*](#deletins2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletins1"></a> internal deletion of a complete feature |
+| [*mutstart*](#mutstart2)  | feature  | yes   | MUTATION_AT_START               | <a name="mutstart1"></a> expected start codon could not be identified | 
+| [*mutendcd*](#mutendcd2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendcd1"></a> expected stop codon could not be identified, predicted CDS stop by homology is invalid | 
+| [*mutendns*](#mutendns2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendns1"></a> expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon | 
+| [*mutendex*](#mutendex2)  | feature  | yes   | MUTATION_AT_END                 | <a name="mutendex1"></a> expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position | <a name="mutendex1"></a> |
+| [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
+| [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
+| [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
+| [*fsthicnf*](#fsthicnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
+| [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
+| [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
+| [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
+| [*indfantn*](#indfantn2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search | 
+| [*indf5gap*](#indf5gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary |
+| [*indf5loc*](#indf5loc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5loc1"></a> alignment to homology model has low confidence at 5' boundary |
+| [*indf5plg*](#indf5plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end | 
+| [*indf5pst*](#indf5pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint | 
+| [*indf3gap*](#indf3gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary | 
+| [*indf3loc*](#indf3loc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3loc1"></a> alignment to homology model has low confidence at 3' boundary | 
+| [*indf3plg*](#indf3plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end | 
+| [*indf3pst*](#indf3pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
+| [*indfstrp*](#indfstrp2)  | feature  | no    | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
+| [*insertnp*](#insertnp2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
+| [*deletinp*](#deletinp2)  | feature  | no    | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
+| [*deletinf*](#deletinf2)  | feature  | no    | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated |
+| [*lowsim5f*](#lowsim5f2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
+| [*lowsim3f*](#lowsim3f2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
+| [*lowsimif*](#lowsimif2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
-| alert code | type | short description/error name | long description |
-|------------|-------|------------------------------|------------------|
-| [*qstsbgrp*](#qstsbgrp2)  | sequence | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  |
-| [*qstgroup*](#qstgroup2)  | sequence | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  |
-| [*ambgnt5s*](#ambgnt5s2)  | sequence | N_AT_START                      | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an N |
-| [*ambgnt3s*](#ambgnt3s2)  | sequence | N_AT_END                        | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an N |
-| [*indfclas*](#indfclas2)  | sequence | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
-| [*lowscore*](#lowscore2)  | sequence | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
-| [*biasdseq*](#biasdseq2)  | sequence | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
-| [*unjoinbl*](#unjoinbl2)  | sequence | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
-| [*fstlocnf*](#fstlocnf2)  | feature  | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
-| [*insertnn*](#insertnn2)  | feature  | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
-| [*deletinn*](#deletinn2)  | feature  | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
-| [*ambgnt5f*](#ambgnt5f2)  | feature  | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
-| [*ambgnt3f*](#ambgnt3f2)  | feature  | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
-| [*ambgnt5c*](#ambgnt5c2)  | feature  | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
-| [*ambgnt3c*](#ambgnt3c2)  | feature  | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
+| alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
+|------------|-------|-----------------------------------------------------------|-----------------------------|------------------|
+| [*qstsbgrp*](#qstsbgrp2)  | sequence | never | QUESTIONABLE_SPECIFIED_SUBGROUP | <a name="qstsbgrp1"></a> best overall model is not from specified subgroup  |
+| [*qstgroup*](#qstgroup2)  | sequence | never | QUESTIONABLE_SPECIFIED_GROUP    | <a name="qstgroup1"></a> best overall model is not from specified group  |
+| [*ambgnt5s*](#ambgnt5s2)  | sequence | never | N_AT_START                      | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an N |
+| [*ambgnt3s*](#ambgnt3s2)  | sequence | never | N_AT_END                        | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an N |
+| [*indfclas*](#indfclas2)  | sequence | never | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
+| [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
+| [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
+| [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
+| [*fstlocnf*](#fstlocnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
+| [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
+| [*deletinn*](#deletinn2)  | feature  | no    | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
+| [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
+| [*ambgnt3f*](#ambgnt3f2)  | feature  | no    | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
+| [*ambgnt5c*](#ambgnt5c2)  | feature  | no    | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
+| [*ambgnt3c*](#ambgnt3c2)  | feature  | no    | N_AT_CDS_END                    | <a name="ambgnt3c1"></a> final nucleotide of CDS is an N | 
 
 ### Additional information on `v-annotate.pl` alerts <a name="alerts2"></a> 
 
@@ -1043,6 +1060,122 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*ambgnt3c*](#ambgnt3c1)  | N_AT_CDS_END                    | none | CDS | - <a name="ambgnt3c2"></a> | 
 
 ---
+
+## <a name="mnf"></a>Expendable features: allowing sequences to pass despite fatal alerts for specific features
+
+It is possible to specify that certain features are *expendable* and so
+have relaxed requirements. Some alerts that are normally fatal are not
+fatal for expendable features. If any such alerts are reported for an
+expendable feature that feature will be turned into a `misc_feature`
+in the output feature table `.pass.tbl` file, but the sequence will
+still pass, as long as it has zero fatal alerts for all non-expendable
+features and zero fatal sequence alerts.
+
+The default set of specific alerts that an expendable feature can have
+without failing its sequence are listed with 'yes' in the 'causes
+`misc_feature`, not failure (if in modelinfo file)' column in the
+[tables describing alerts above](#alerts) as well as in the
+`--alt_list` output. This set can be changed using the `--alt_mnf_yes
+<s1>` option to specify that alert codes in the comma-separated string
+`<s1>` be added to the set, and the `--alt_mnf_no <s2>` option to
+specify that alert codes in the comma-separated string `<s2>` be
+removed from the set.
+
+Expendable features are specified in the `.modelinfo` file, with a
+key/value pair string: `misc_not_feature:"1"` in the `FEATURE` line
+for the corresponding feature.
+
+For example, the sequence `JN975492.1` is the one sequence in the 
+[example above](#examplebasic) that fails. It matches best to the 
+`NC_008311` model. It fails due to the fatal alerts `mutendcd`,
+`cdsstopn`, `cdsstopp`, and `indf3pst` for the `VF1` CDS feature, and
+`indf5pst` fatal alert for the `VP2` CDS as shown
+[above](#altexample). If the `VF1` and `VP2` features were defined
+as expendable using the `misc_not_failure:"1"` key/value pair in the
+`.minfo` file as they are in the included example file `vadr.mnf-example.minfo`, then
+the sequence would have passed. 
+
+The relevant excerpt from the
+`$VADRSCRIPTSDIR/documentation/annotate-files/vadr.mnf-example.minfo`
+file:
+
+```
+FEATURE NC_008311 type:"gene" coords:"5069..5710:+" parent_idx_str:"GBNULL" gene:"ORF4" misc_not_failure:"1"
+FEATURE NC_008311 type:"CDS" coords:"5069..5710:+" parent_idx_str:"GBNULL" gene:"ORF4" product:"VF1" misc_not_failure:"1"
+FEATURE NC_008311 type:"gene" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:"ORF3" misc_not_failure:"1"
+FEATURE NC_008311 type:"CDS" coords:"6681..7307:+" parent_idx_str:"GBNULL" gene:"ORF3" product:"VP2" misc_not_failure:"1"
+```
+
+Note that in addition to the two CDS features, the two gene features that correspond them also have
+`misc_not_failure:"1"` key/value pairs. When a CDS is made expendable,
+it often makes sense to make any corresponding gene features
+expendable too. However, gene features are an exception 
+in that they do not get turned into a `misc_feature` if they have
+alerts that are normally fatal, as per GenBank convention, but 
+it is still relevant to mark them as expendable because some alerts 
+in them will not cause the sequence to fail.
+
+To rerun the example using this new `.minfo` file, execute:
+
+```
+v-annotate.pl -i $VADRSCRIPTSDIR/documentation/annotate-files/vadr.mnf-example.minfo $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-mnf-noro.9
+```
+
+The output will indicate that all sequences now pass:
+```
+# Summary of classified sequences:
+#
+#                                      num   num   num
+#idx  model      group      subgroup  seqs  pass  fail
+#---  ---------  ---------  --------  ----  ----  ----
+1     NC_008311  Norovirus  GV           2     2     0
+2     NC_029645  Norovirus  GIII         2     2     0
+3     NC_039477  Norovirus  GII          2     2     0
+4     NC_044854  Norovirus  GI           2     2     0
+5     NC_001959  Norovirus  GI           1     1     0
+#---  ---------  ---------  --------  ----  ----  ----
+-     *all*      -          -            9     9     0
+-     *none*     -          -            0     0     0
+#---  ---------  ---------  --------  ----  ----  ----
+```
+
+But the output `.pass.tbl` will not include the `VF1` and `VP2` 
+CDS features for `JN975492.1`, instead it will include `misc_feature`
+features with `note` qualifiers that indicate the regions are 
+`similar to` their respective CDS:
+
+
+Relevant excerpt from `va-mnf-noro.9.vadr.pass.tbl`:
+```
+5044	5685	gene
+			gene	ORF4
+5044	5685	misc_feature
+			note	similar to VF1
+6656	7282	gene
+			gene	ORF3
+6656	7282	misc_feature
+			note	similar to VP2
+
+```
+
+Note that if only the `VF1` CDS or `VP2` CDS feature lines included
+the `misc_not_failure:"1"` key/value pairs in the modelinfo file, 
+the sequence would have failed.
+
+Two important caveats above expendable features and
+misc_feature-ization:
+
+1. As mentioned above, features with type `gene`, `5'UTR`, `3'UTR` or
+   `operon` are never converted to `misc_feature` values as per
+   GenBank convention.
+
+2. `misc_feature`-ization occurs in `.pass.tbl` output files
+   for expendable features as explained above even when the
+   option `--nomisc` is used. (The `--nomisc` option causes
+   `misc_feature`s not to be reported in `.fail.tbl` files.)
+
+---
+
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
 
