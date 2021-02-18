@@ -1237,7 +1237,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
       printf("back from cmalign_or_glsearch_wrapper\n");
-      exit 0;
     }
 
     if($do_blastn_ali) {
@@ -3388,7 +3387,7 @@ sub cmalign_or_glsearch_run {
 
   # determine cmalign options based on command line options
   if($do_gls_aln) { 
-    $cmd = $execs_HR->{"glsearch"} . " -z -1 -T 1 -3 -m 9C,3 -d 1 $seq_file $mdl_file > $stdout_file 2>&1";
+    $cmd = $execs_HR->{"glsearch"} . " -n -z -1 -T 1 -3 -m 9C,3 -d 1 $seq_file $mdl_file > $stdout_file 2>&1";
     printf("HEYA glsearch cmd: $cmd\n");
   }
   else { # running cmalign

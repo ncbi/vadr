@@ -4831,13 +4831,33 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   printf("in $sub_name\n\tgls_file: $gls_file\n\tstk_file: $stk_file\n\tinsert_file: $insert_file\nexp_mdl_name: $exp_mdl_name\n\n");
   open(IN, $gls_file)    || ofile_FileOpenFailure($gls_file, $sub_name, $!, "reading", $FH_HR);
 
+  # fetch the model sequence, so we can use it to add to RF in alignments
+
+  my $t_uaseq = $$glsearch_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
+
+
   my $q_name;         # name of query sequence
+  my $q_len;          # length of query sequence
   my $t_name;         # name of target sequence
   my $length_w_paran; # length string with parantheses
   my ($an0, $ax0);    # start/stop position of alignment in query
   my ($an1, $ax1);    # start/stop position of alignment in library (target)
   my ($pn0, $px0);    # start/stop position of displayed query
   my ($pn1, $px1);    # start/stop position of displayed library (target)
+  my $cigar;          # CIGAR string 
+  my %q_len_H = ();   # key is query/sequence name, value is length
+  my @q_name_A = ();  # array of query names
+  # hash for storing insert info we will write to insert_file
+  my %q_inserts_HH = (); # key 1: sequence name
+                         # key 2: one of 'spos', 'epos', 'ins'
+                         # $q_inserts_HHR->{}{"spos"} is starting model position of alignment
+                         # $q_inserts_HHR->{}{"epos"} is ending model position of alignment
+                         # $q_inserts_HHR->{}{"ins"} is the insert string in the format:
+                         # <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+                         # for n inserts, where insert x is defined by:
+                         # <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+                         # <uapos_x> is unaligned sequence position of the first aligned nt
+                         # <inslen_x> is length of the insert
 
   # First 4 lines should look like this:
   ## /panfs/pan1/infernal/notebook/21_0213_vadr_hmmalign/fasta-experimenting-20210216/fasta-36.3.8h/bin/glsearch36 -z -1 -T 1 -3 -m 9C,3 -d 1 va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.glsearch.fa
@@ -4898,10 +4918,12 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       # end of all alignments
       $keep_going = 0;
     }
-    elsif($line =~ /^\s*\d+\>\>\>(\S+)/) { 
+    elsif($line =~ /^\s*\d+\>\>\>(\S+)\s+\S+\s+(\d+)\s+nt/) { 
       # 1>>>lcl|SARS-CoV-2/human/USA/IN-CDC-LC00002770/2021/17579-27826 - 10248 nt (forward-only)
       #start of new query
-      $q_name = $1;
+      ($q_name, $q_len) = ($1, $2);
+      push(@q_name_A, $q_name);
+      $q_len_H{$q_name} = $q_len;
       # parse next two lines
       $line = <IN>; $line_ctr++;
       if($line !~ m/^Library/) { 
@@ -4944,8 +4966,12 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       $line = <IN>; $line_ctr++;
       # line with the info on the alignment we need to parse
       my @el_A = split(/\s+/, $line);
-      ($mdl_name, $length_w_paran, $an0, $ax0, $pn0, $px0, $an1, $ax1, $pn1, $px1) = 
-          ($el_A[0], $el_A[1], $el_A[8], $el_A[9], $el_A[10], $el_A[11], $el_A[12], $el_A[13], $el_A[14], $el_A[15]);
+      ($mdl_name, $length_w_paran, $an0, $ax0, $pn0, $px0, $an1, $ax1, $pn1, $px1, $cigar) = 
+          ($el_A[0], $el_A[1], $el_A[8], $el_A[9], $el_A[10], $el_A[11], $el_A[12], $el_A[13], $el_A[14], $el_A[15], $el_A[19]);
+
+      if($mdl_name ne $exp_mdl_name) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, line $line_ctr, expected single target sequence name $mdl_name but read $mdl_name", 1, $FH_HR);
+      }
       printf("mdl_name: $mdl_name\n");
       printf("length:   $length_w_paran\n");
       printf("an0:   $an0\n");
@@ -4956,6 +4982,10 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       printf("px0:   $px0\n");
       printf("pn1:   $pn1\n");
       printf("px1:   $px1\n");
+      printf("cigar:   $cigar\n");
+      # parse cigar to get inserts in query to later write to insert_file
+      vdr_CigarToInsertsHash(\%{$q_inserts_HH{$q_name}}, $cigar, $an0, $an1, $FH_HR);
+
       $line = <IN>; $line_ctr++; # blank line
       $line = <IN>; $line_ctr++;
       if($line =~ /^\>\>\>(\S+)\,\s*/) { 
@@ -5035,8 +5065,27 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       if($q_len != $t_len) { 
         ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr; aligned query length $q_len differs from aligned target length $t_len", 1, $FH_HR);
       }
-      #printf("querylen:   " . length($q_afa)  . "\n");
-      #printf("targetlen: "  . length($t_afa) . "\n");
+      printf("0 querylen:   " . length($q_afa)  . "\n");
+      printf("0 targetlen: "  . length($t_afa) . "\n");
+
+      # add 5' and 3' ends of target, if nec
+      my $t_5p = "";
+      my $q_5p = "";
+      if($an1 > 1) { 
+        $t_5p = substr($t_uaseq, 0, ($an1-1));
+        $q_5p = utl_StringMonoChar(($an1-1), "-", undef); 
+      }
+      my $t_3p = "";
+      my $q_3p = "";
+      if($ax1 < $mdl_len) { 
+        $t_3p = substr($t_uaseq, ($ax1 - $mdl_len));
+        $q_3p = utl_StringMonoChar(($mdl_len - $ax1), "-", undef); 
+      }
+      $q_afa = $q_5p . $q_afa . $q_3p;
+      $t_afa = $t_5p . $t_afa . $t_3p;
+
+      printf("1 querylen:   " . length($q_afa)  . "\n");
+      printf("1 targetlen: "  . length($t_afa) . "\n");
       my $q_name_len = length($q_name);
       #printf OUT ("# STOCKHOLM 1.0\n\n");
       #printf OUT ("%-*s  %s\n", $q_name_len, $q_name, $q_afa);
@@ -5047,7 +5096,102 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
     }
   }
+  if(scalar(@q_name_A) == 0) { 
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, did not read any alignments\n", 1, $FH_HR);
+  }
+
+  # write insert file
+  vdr_CmalignWriteInsertFile($insert_file, 0, $exp_mdl_name, $mdl_len, \@q_name_A, \%q_len_H, \%q_inserts_HH, $FH_HR);
+  printf("output $insert_file\n");
+
   exit 0;
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_CigarToInsertString()
+# Incept:      EPN, Wed Feb 17 18:50:56 2021
+#
+# Purpose:    Given a CIGAR string where one sequence in the alignment
+#             is a model sequence, determine insert information and
+#             add it to %{$inserts_HR}, where keys are:
+#               "spos" is starting model position of aligned sequence
+#               "epos" is ending model position of aligned sequence
+#               "ins"  is the insert string in the format:
+#                      <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#                      for n inserts, where insert x is defined by:
+#                      <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#                      <uapos_x> is unaligned sequence position of the first aligned nt
+#                      <inslen_x> is length of the insert
+#             CIGAR is in formation (\d+[MID])+
+#             where \d+ indicates length
+#             M indicates matches (no inserts or deletes)
+#             I indicates insertion in target/model, so deletion  in query
+#             D indicates deletion  in target/model, so insertion in query (and so stored in %{$inserts_HR}{"ins"})
+#
+# Reference:  https://en.wikipedia.org/wiki/Sequence_alignment#Representations
+#             https://jef.works/blog/2017/03/28/CIGAR-strings-for-dummies/
+# 
+# Arguments: 
+#   $inserts_HR:  ref to hash to fill, see 'Purpose' for keys
+#   $cigar:       CIGAR string
+#   $seqstart:    first sequence position of alignment (typically 1)
+#   $mdlstart:    first model RF position of alignment (varies)
+#   $FH_HR:       ref to hash of file handles, including "cmd"
+#
+# Returns:     void
+# 
+# Dies:        If unable to parse $cigar string
+#
+################################################################# 
+sub vdr_CigarToInsertsHash { 
+  my $nargs_exp = 5;
+  my $sub_name = "vdr_CigarToInsertHash";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($inserts_HR, $cigar, $seqstart, $mdlstart, $FH_HR) = @_;
+
+  my $seqpos = $seqstart;
+  my $mdlpos = $mdlstart;
+  my $orig_cigar = $cigar;
+  my $spos = undef;
+  my $epos = undef;
+  my $ins_str = "";
+  while($cigar ne "") { 
+    if($cigar =~ /^(\d+)([MID])/) {
+      my ($len, $type) = ($1, $2);
+      if($type eq "M") { 
+        $seqpos += $len;
+        if(! defined $spos) { $spos = $mdlpos; }
+        $mdlpos += $len;
+        $epos = $mdlpos - 1;
+      }
+      if($type eq "I") { 
+        $mdlpos += $len;
+      }
+      if($type eq "D") { 
+        $ins_str .= $mdlpos . ":" . ($seqpos + 1) . ":" . $len . ";";
+        $seqpos += $len;
+      }
+      $cigar =~ s/^\d+[MID]//;
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse cigar string $orig_cigar", 1, $FH_HR);
+    }
+  }
+  if(! defined $spos) { 
+    ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
+  }
+  if(! defined $epos) { 
+    ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
+  }
+  printf("inserts_HH setting spos: $spos, epos: $epos, ins_str: $ins_str\n");
+  $inserts_HR->{"spos"} = $spos; 
+  $inserts_HR->{"epos"} = $epos; 
+  $inserts_HR->{"ins"} = $ins_str;
+
+  close(OUT);
 
   return;
 }
