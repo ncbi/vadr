@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.1.2; Nov 2020
+#### Version 1.1.3; Feb 2021
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -104,12 +104,11 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 ---
 ## Reference <a name="reference"></a>
 * The recommended citation for using VADR is:
-  Alejandro A Schaffer, Eneida L Hatcher, Linda Yankie, Lara
-  Shonkwiler, J Rodney Brister, Ilene Karsch-Mizrachi, Eric P
-  Nawrocki; *VADR: validation and annotation of virus sequence
-  submissions to GenBank*;
-  bioRxiv 852657; doi: https://doi.org/10.1101/852657.
-  (This paper is currently in press at *BMC Bioinformatics*.)
+  Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
+  J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
+  validation and annotation of virus sequence submissions to
+  GenBank. BMC Bioinformatics 21, 211
+  (2020). https://doi.org/10.1186/s12859-020-3537-3
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

@@ -1,0 +1,5 @@
+#sequence	error	feature	error-description
+ENTOY100A-fs4	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]
+ENTOY100A-fs5	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
+ENTOY100A-fs10	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
+ENTOY100A-fs11	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]

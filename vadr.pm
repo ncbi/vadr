@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.1.2 [Nov 2020]
+# version: 1.1.3 [Feb 2021]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -64,6 +64,8 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoImputeOutname()
 # vdr_FeatureInfoImpute3paFtrIdx()
 # vdr_FeatureInfoImputeByOverlap()
+# vdr_FeatureInfoInitializeMiscNotFailure()
+# vdr_FeatureInfoValidateMiscNotFailure()
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
@@ -79,8 +81,11 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCds()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
+# vdr_FeatureTypeIsCdsOrGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
+# vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
+# vdr_FeatureTypeCanBecomeMiscFeature()
 # vdr_FeatureNumSegments()
 # vdr_FeatureRelativeSegmentIndex()
 # vdr_Feature5pMostPosition()
@@ -90,13 +95,21 @@ require "sqp_utils.pm";
 # vdr_FeatureStartStopStrandArrays()
 # vdr_FeatureSummaryStrand()
 # vdr_FeaturePositionSpecificValueBreakdown()
-# 
+#
+# vdr_SegmentStartIdenticalToCds()
+# vdr_SegmentStopIdenticalToCds()
+#
 # Subroutines related to alerts:
 # vdr_AlertInfoInitialize()
 # vdr_AlertInfoAdd()
 # vdr_AlertInfoSetFTableInvalidatedBy()
 # vdr_AlertInfoSetCausesFailure()
+# vdr_AlertInfoSetMiscNotFailure()
 # vdr_AlertInfoDump()
+# 
+# Subroutines related to feature-specific alerts (misc_not_failure support):
+# vdr_FeatureAlertCausesFailure()
+# vdr_FeatureAlertIsMiscNotFailure()
 # 
 # Subroutines related to parallelization on the compute farm:
 # vdr_ParseQsubFile()
@@ -460,6 +473,95 @@ sub vdr_FeatureInfoImputeByOverlap {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoInitializeMiscNotFailure
+# Incept:     EPN, Fri Feb  5 11:44:11 2021
+# 
+# Purpose:    Set "misc_not_failure" value to 0 for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_zero, set all values to 0 even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_zero:    '1' to set values to '0' for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeMiscNotFailure {
+  my $sub_name = "vdr_FeatureInfoInitializeMiscNotFailure";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_zero, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_zero) || (! defined $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} = 0;
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateMiscNotFailure
+# Incept:     EPN, Fri Feb  5 11:45:29 2021
+# 
+# Purpose:    Validate "misc_not_failure" values are either 0 or 1.
+#             Should probably be called after vdr_FeatureInfoInitializeMiscNotFailure()
+# 
+#             I considered enforcing that "misc_not_failure" could only exist
+#             for feature types that can become misc_features but decided 
+#             against it so that 'gene' features can have alerts that would
+#             be fatal except that a misc_not_failure=1 value causes them not
+#             to be fatal. These won't be turned into misc_features because
+#             output_feature_table() won't let them be, but that's ok.
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoValidateMiscNotFailure {
+  my $sub_name = "vdr_FeatureInfoValidateMiscNotFailure";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif(($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} != 1) && ($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} != 0)) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} . " != 0 and != 1\n"; 
+    }
+# decided against this enforcement (see Purpose):
+#    elsif(($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} == 1) && (! vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx))) { 
+#      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"} . " is 1 but type is " . $ftr_info_AHR->[$ftr_idx]{"type"} . " and that type cannot become a misc_feature (hard-coded)\n";
+#    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some misc_not_failure values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+  
+}
+
+#################################################################
 # Subroutine: vdr_FeatureInfoStartStopStrandArrays()
 # Incept:     EPN, Fri Mar 15 15:39:35 2019
 #
@@ -575,7 +677,7 @@ sub vdr_FeatureInfoValidateCoords {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my @start_A  = (); # array of starts, one per segment
     my @stop_A   = (); # array of stops, one per segment
-    # this sub vdr_Will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
+    # this sub vdr_FeatureStartStopStrandArrays will die if $ftr_info_AHR->[$ftr_idx]{"coords"} is in incorrect format
     vdr_FeatureStartStopStrandArrays($ftr_info_AHR->[$ftr_idx]{"coords"}, \@start_A, \@stop_A, undef, $FH_HR); 
     foreach my $start (@start_A) { if($start > $length) { $fail_str .= "ftr_idx: $ftr_idx, start position $start > $length\n"; } }
     foreach my $stop  (@stop_A)  { if($stop  > $length) { $fail_str .= "ftr_idx: $ftr_idx, stop  position $stop  > $length\n"; } }
@@ -1011,6 +1113,32 @@ sub vdr_FeatureTypeIsGene {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrGene()
+# Incept:     EPN, Tue Feb  9 15:16:21 2021
+#
+# Purpose:    Is feature $ftr_idx a CDS or gene?
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrGene { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrGene";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene")) ? 1 : 0;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureTypeIsCdsOrMatPeptide()
 # Incept:     EPN, Mon Feb 25 14:30:34 2019
 #
@@ -1034,6 +1162,45 @@ sub vdr_FeatureTypeIsCdsOrMatPeptide {
 
   return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide")) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
+# Incept:     EPN, Fri Feb  5 14:23:53 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or mature peptide
+#             or does it have equivalent coords to another feature
+#             that is a CDS or mature peptide?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
+         ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
+        return 1; 
+      }
+    }
+  }
+  return 0;
 }
 
 #################################################################
@@ -1061,6 +1228,37 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrGene {
   return (($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") || 
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "mat_peptide") ||
           ($ftr_info_AHR->[$ftr_idx]{"type"} eq "gene")) ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeCanBecomeMiscFeature()
+# Incept:     EPN, Tue Feb  9 13:15:31 2021
+#
+# Purpose:    Can feature $ftr_idx become a misc_feature?
+#             Currently the definition of which feature types
+#             cannot become misc_features is hard-coded in this
+#             subroutine.
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeCanBecomeMiscFeature { 
+  my $sub_name = "vdr_FeatureTypeCanBecomeMiscFeature";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"type"} ne "gene") && 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "5'UTR") && 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "3'UTR") && 
+          ($ftr_info_AHR->[$ftr_idx]{"type"} ne "operon")) ? 1 : 0;
 }
 
 #################################################################
@@ -1408,6 +1606,100 @@ sub vdr_FeaturePositionSpecificValueBreakdown {
 }
 
 #################################################################
+# Subroutine: vdr_SegmentStartIdenticalToCds()
+# Incept:     EPN, Mon Feb  1 15:58:25 2021
+#
+# Purpose:    Determine if the start of a segment is identical
+#             to the start position of any CDS feature. Return '1'
+#             if yes, '0' if no.
+# 
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $sgm_info_AHR:   ref to the segment info array of hashes 
+#  $sgm_idx:        segment index
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    1 or 0 (see 'Purpose')
+#
+# Dies:       If $sgm_info_AHR->[$sgm_idx] does not exist
+#
+################################################################# 
+sub vdr_SegmentStartIdenticalToCds { 
+  my $sub_name = "vdr_SegmentStartIdenticalToCds";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
+
+  if(($sgm_idx < 0) || ($sgm_idx >= $nsgm)) { 
+    ofile_FAIL("ERROR, in $sub_name, invalid sgm idx: $sgm_idx", 1, $FH_HR);
+  }
+     
+  my $sgm_start = $sgm_info_AHR->[$sgm_idx]{"start"};
+  
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $sgm_5p_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"};
+      my $ftr_start = $sgm_info_AHR->[$sgm_5p_idx]{"start"};
+      if($ftr_start == $sgm_start) { return 1; }
+    }
+  }
+
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_SegmentStopIdenticalToCds()
+# Incept:     EPN, Mon Feb  1 15:58:25 2021
+#
+# Purpose:    Determine if the stop of a segment is identical
+#             to the stop position of any CDS feature. Return '1'
+#             if yes, '0' if no.
+# 
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $sgm_info_AHR:   ref to the segment info array of hashes 
+#  $sgm_idx:        segment index
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    1 or 0 (see 'Purpose')
+#
+# Dies:       If $sgm_info_AHR->[$sgm_idx] does not exist
+#
+################################################################# 
+sub vdr_SegmentStopIdenticalToCds { 
+  my $sub_name = "vdr_SegmentStopIdenticalToCds";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $nsgm = scalar(@{$sgm_info_AHR});
+
+  if(($sgm_idx < 0) || ($sgm_idx >= $nsgm)) { 
+    ofile_FAIL("ERROR, in $sub_name, invalid sgm idx: $sgm_idx", 1, $FH_HR);
+  }
+     
+  my $sgm_stop = $sgm_info_AHR->[$sgm_idx]{"stop"};
+  
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) {
+    if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+      my $sgm_3p_idx = $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"};
+      my $ftr_stop = $sgm_info_AHR->[$sgm_3p_idx]{"stop"};
+      if($ftr_stop == $sgm_stop) { return 1; }
+    }
+  }
+
+  return 0;
+}
+
+#################################################################
 # Subroutine: vdr_AlertInfoInitialize()
 # Incept:     EPN, Fri Mar  4 12:56:43 2016
 #
@@ -1441,349 +1733,349 @@ sub vdr_AlertInfoInitialize {
   vdr_AlertInfoAdd($alt_info_HHR, "noannotn", "sequence",
                    "NO_ANNOTATION", # short description
                    "no significant similarity detected", # long  description
-                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   1, 1, 1, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "revcompl", "sequence",
                    "REVCOMPLEM", # short description
                    "sequence appears to be reverse complemented", # long description
-                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   1, 1, 1, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "qstsbgrp", "sequence",
                    "QUESTIONABLE_SPECIFIED_SUBGROUP", # short description
                    "best overall model is not from specified subgroup", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "qstgroup", "sequence",
                    "QUESTIONABLE_SPECIFIED_GROUP", # short description
                    "best overall model is not from specified group", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "incsbgrp", "sequence",
                    "INCORRECT_SPECIFIED_SUBGROUP", # short description
                    "score difference too large between best overall model and best specified subgroup model", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "incgroup", "sequence",
                    "INCORRECT_SPECIFIED_GROUP", # short description
                    "score difference too large between best overall model and best specified group model", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
                    "N_AT_START", # short description
                    "first nucleotide of the sequence is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
                    "N_AT_END", # short description
                    "final nucleotide of the sequence is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowcovrg", "sequence",
                    "LOW_COVERAGE", # short description, 
                    "low sequence fraction with significant similarity to homology model", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfclas", "sequence",
                    "INDEFINITE_CLASSIFICATION", # short description
                    "low score difference between best overall model and second best model (not in best model's subgroup)", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowscore", "sequence",
                    "LOW_SCORE", # short description
                    "score to homology model below low threshold", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "biasdseq", "sequence",
                    "BIASED_SEQUENCE", # short description
                    "high fraction of score attributed to biased sequence composition", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "dupregin", "sequence",
                    "DUPLICATE_REGIONS", # short description
                    "similarity to a model region occurs more than once", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "discontn", "sequence",
                    "DISCONTINUOUS_SIMILARITY", # short description
                    "not all hits are in the same order in the sequence and the homology model", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfstrn", "sequence",
                    "INDEFINITE_STRAND", # short description
                    "significant similarity detected on both strands", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5s", "sequence",
                    "LOW_SIMILARITY_START", # short description
                    "significant similarity not detected at 5' end of the sequence", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3s", "sequence",
                    "LOW_SIMILARITY_END", # short description
                    "significant similarity not detected at 3' end of the sequence", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimis", "sequence",
                    "LOW_SIMILARITY", # short description
                    "internal region without significant similarity", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "unexdivg", "sequence",
                    "UNEXPECTED_DIVERGENCE", # short description
                    "sequence is too divergent to confidently assign nucleotide-based annotation", # long description
-                   1, 1, 1, # always_fails, causes_failure, prevents_annot
+                   1, 1, 1, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
                    "UNJOINABLE_SUBSEQ_ALIGNMENTS", # short description
                    "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "noftrann", "sequence",
                    "NO_FEATURES_ANNOTATED", # short description
                    "sequence similarity to homology model does not overlap with any features", # long description
-                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "noftrant", "sequence",
                    "NO_FEATURES_ANNOTATED", # short description
                    "all annotated features are too short to output to feature table", # long description
-                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
                    "UNREPORTED_FEATURE_PROBLEM", # short description
                    "only fatal alerts are for feature(s) not output to feature table", # long description
-                   1, 1, 0, # always_fails, causes_failure, prevents_annot
+                   1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletins", "sequence",
                    "DELETION_OF_FEATURE", # short description
                    "internal deletion of a complete feature", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendcd", "feature",
                    "MUTATION_AT_END", # short description
                    "expected stop codon could not be identified, predicted CDS stop by homology is invalid", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendns", "feature",  
                    "MUTATION_AT_END", # short description
-                   "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted valid start codon", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   "expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutendex", "feature",
                    "MUTATION_AT_END", # short description
                    "expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "unexleng", "feature",  
                    "UNEXPECTED_LENGTH", # short description
                    "length of complete coding (CDS or mat_peptide) feature is not a multiple of 3", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "cdsstopn", "feature",
                    "CDS_HAS_STOP_CODON", # short description
                    "in-frame stop codon exists 5' of stop position predicted by homology to reference", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "cdsstopp", "feature",
                    "CDS_HAS_STOP_CODON", # short description
                    "stop codon in protein-based alignment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
                    "high confidence potential frameshift in CDS", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
                    "low confidence potential frameshift in CDS", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "peptrans", "feature",
                    "PEPTIDE_TRANSLATION_PROBLEM", # short description
                    "mat_peptide may not be translated because its parent CDS has a problem", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "pepadjcy", "feature",
                    "PEPTIDE_ADJACENCY_PROBLEM", # short description
                    "predictions of two mat_peptides expected to be adjacent are not adjacent", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfantp", "feature",
                    "INDEFINITE_ANNOTATION", # short description
                    "protein-based search identifies CDS not identified in nucleotide-based search", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfantn", "feature",
                    "INDEFINITE_ANNOTATION", # short description
                    "nucleotide-based search identifies CDS not identified in protein-based search", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5gap", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model is a gap at 5' boundary", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5loc", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "alignment to homology model has low confidence at 5' boundary", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5plg", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "protein-based alignment extends past nucleotide-based alignment at 5' end", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf5pst", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
                    "protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3gap", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model is a gap at 3' boundary", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3loc", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "alignment to homology model has low confidence at 3' boundary", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3plg", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "protein-based alignment extends past nucleotide-based alignment at 3' end", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indf3pst", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
                    "protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "indfstrp", "feature",
                    "INDEFINITE_STRAND", # short description
                    "strand mismatch between protein-based and nucleotide-based predictions", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "insertnp", "feature",
                    "INSERTION_OF_NT", # short description
                    "too large of an insertion in protein-based alignment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "insertnn", "feature",
                    "INSERTION_OF_NT", # short description
                    "too large of an insertion in nucleotide-based alignment of CDS feature", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinp", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in protein-based alignment", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinn", "feature",
                    "DELETION_OF_NT", # short description
                    "too large of a deletion in nucleotide-based alignment of CDS feature", # long description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "deletinf", "feature",
                    "DELETION_OF_FEATURE_SECTION", # short description
                    "internal deletion of complete section in multi-section feature with other section(s) annotated", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
                    "LOW_FEATURE_SIMILARITY_START", # short description
                    "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsim3f", "feature",
                    "LOW_FEATURE_SIMILARITY_END", # short description
                    "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "lowsimif", "feature",
                    "LOW_FEATURE_SIMILARITY", # short description
                    "region within annotated feature lacks significant similarity", # long description
-                   0, 1, 0, # always_fails, causes_failure, prevents_annot
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
                    "N_AT_FEATURE_START", # short description
                    "first nucleotide of non-CDS feature is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3f", "feature",
                    "N_AT_FEATURE_END", # short description
                    "final nucleotide of non-CDS feature is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
                    "N_AT_CDS_START", # short description
                    "first nucleotide of CDS is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
                    "N_AT_CDS_END", # short description
                    "final nucleotide of CDS is an N", # long  description
-                   0, 0, 0, # always_fails, causes_failure, prevents_annot
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   # define the ftbl_invalid_by values, these are one-sided, any alert code listed in the 
@@ -1807,29 +2099,33 @@ sub vdr_AlertInfoInitialize {
 #             Die if the same error code already exists.
 #
 # Arguments:
-#   $alt_info_HHR:    REF to array of hashes of error information, FILLED HERE
-#   $code:            the code of the element we are adding
-#   $pertype:         the 'per-type' of the element we are adding, "sequence" or "feature"
-#   $sdesc:           short description of the alert we are adding
-#   $ldesc:           long  description of the alert we are adding
-#   $always_fails:    '1' if this alert *always* causes its sequence to FAIL, '0' if not
-#   $causes_failure:  '1' if this alert causes its sequence to FAIL by default, '0' if not
-#   $prevents_annot:  '1' if this alert prevents its sequence from being annotated, '0' if not
-#   $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#   $alt_info_HHR:     REF to array of hashes of error information, FILLED HERE
+#   $code:             the code of the element we are adding
+#   $pertype:          the 'per-type' of the element we are adding, "sequence" or "feature"
+#   $sdesc:            short description of the alert we are adding
+#   $ldesc:            long  description of the alert we are adding
+#   $always_fails:     '1' if this alert *always* causes its sequence to FAIL, '0' if not
+#   $causes_failure:   '1' if this alert causes its sequence to FAIL by default, '0' if not
+#   $prevents_annot:   '1' if this alert prevents its sequence from being annotated, '0' if not
+#   $misc_not_failure: '1' if this alert does not cause failure if ftr is "misc_not_failure" from .minfo file
+#   $FH_HR:            REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
 #
 # Dies:    if $alt_info_HHR->{"$code"} already exists
 #          if $type ne "feature and ne "sequence"
-#          if $type ne "sequence" and $prevents_annot == 1 (not allowed)
+#          if $type ne "sequence"  and $prevents_annot   == 1 (not allowed)
+#          if $type ne "sequence"  and $misc_not_failure == 1 (not allowed)
+#          if $always_fails == 1   and $causes_failure   != 1 (not allowed)
+#          if $always_fails == 1   and $misc_not_failure == 1 (not allowed)
 #
 ######################p###########################################
 sub vdr_AlertInfoAdd { 
   my $sub_name = "vdr_AlertInfoAdd";
-  my $nargs_expected = 9;
+  my $nargs_expected = 10;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
  
-  my ($alt_info_HHR, $code, $pertype, $sdesc, $ldesc, $always_fails, $causes_failure, $prevents_annot, $FH_HR) = (@_);
+  my ($alt_info_HHR, $code, $pertype, $sdesc, $ldesc, $always_fails, $causes_failure, $prevents_annot, $misc_not_failure, $FH_HR) = (@_);
 
   # make sure $pertype is valid
   if(($pertype ne "feature") && ($pertype ne "sequence")) { 
@@ -1837,8 +2133,8 @@ sub vdr_AlertInfoAdd {
   }
   
   # make sure $always_fails is valid
-  if((! defined $causes_failure) || (($causes_failure != 0) && ($causes_failure != 1))) { 
-    ofile_FAIL("ERROR in $sub_name, trying to add code $code but causes_failure is undefined or not 0 or 1", 1, $FH_HR);
+  if((! defined $always_fails) || (($always_fails != 0) && ($always_fails != 1))) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but always_fails is undefined or not 0 or 1", 1, $FH_HR);
   }
 
   # make sure $causes_failure is valid, and makes sense with $always_fail
@@ -1858,6 +2154,14 @@ sub vdr_AlertInfoAdd {
   if(($prevents_annot == 1) && ($pertype ne "sequence")) { 
     ofile_FAIL("ERROR in $sub_name, trying to add code $code but prevents_annot is 1 and pertype is feature", 1, $FH_HR);
   }
+
+  # make sure $misc_not_failure is valid, and makes sense with $always_fail
+  if((! defined $misc_not_failure) || (($misc_not_failure != 0) && ($misc_not_failure != 1))) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but misc_not_failure is undefined or not 0 or 1", 1, $FH_HR);
+  }
+  if($always_fails && $misc_not_failure) { 
+    ofile_FAIL("ERROR in $sub_name, trying to add code $code but always_fails is 1 and misc_not_failure is 1", 1, $FH_HR);
+  }
   
   # check if $code already exists
   if(defined $alt_info_HHR->{$code}) { 
@@ -1870,14 +2174,15 @@ sub vdr_AlertInfoAdd {
   # initialize
   %{$alt_info_HHR->{$code}} = ();
 
-  $alt_info_HHR->{$code}{"order"}           = $order; # first "order" value will be '0', second will be '1', etc.
-  $alt_info_HHR->{$code}{"pertype"}         = $pertype;
-  $alt_info_HHR->{$code}{"sdesc"}           = $sdesc;
-  $alt_info_HHR->{$code}{"ldesc"}           = $ldesc;
-  $alt_info_HHR->{$code}{"always_fails"}    = $always_fails;
-  $alt_info_HHR->{$code}{"causes_failure"}  = $causes_failure;
-  $alt_info_HHR->{$code}{"prevents_annot"}  = $prevents_annot;
-  $alt_info_HHR->{$code}{"ftbl_invalid_by"} = ""; # initialized to no invalid_by's, possibly added to later with setFTableInvalidatedByErrorInfoHash()
+  $alt_info_HHR->{$code}{"order"}            = $order; # first "order" value will be '0', second will be '1', etc.
+  $alt_info_HHR->{$code}{"pertype"}          = $pertype;
+  $alt_info_HHR->{$code}{"sdesc"}            = $sdesc;
+  $alt_info_HHR->{$code}{"ldesc"}            = $ldesc;
+  $alt_info_HHR->{$code}{"always_fails"}     = $always_fails;
+  $alt_info_HHR->{$code}{"causes_failure"}   = $causes_failure;
+  $alt_info_HHR->{$code}{"prevents_annot"}   = $prevents_annot;
+  $alt_info_HHR->{$code}{"misc_not_failure"} = $misc_not_failure;
+  $alt_info_HHR->{$code}{"ftbl_invalid_by"}  = ""; # initialized to no invalid_by's, possibly added to later with setFTableInvalidatedByErrorInfoHash()
 
   return;
 }
@@ -1940,13 +2245,13 @@ sub vdr_AlertInfoSetFTableInvalidatedBy {
 #
 # Arguments:
 #   $alt_info_HHR: REF to hash of hashes of error information, FILLED HERE
-#   $code:         the code of the element we are adding ftbl_invalid_by values for
+#   $code:         the code of the element we are setting "causes_failure" value for
 #   $value:        value we are setting $ftbl_info_HHR->{$code}{"causes_failure"} to 
 #   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
 # 
 # Returns: void
 #
-# Dies:    if $code does not exist in %{$atl_info_HHR}
+# Dies:    if $code does not exist in %{$alt_info_HHR}
 #          if $value is not '1' or '0'
 #
 #################################################################
@@ -1965,6 +2270,43 @@ sub vdr_AlertInfoSetCausesFailure {
   }
 
   $alt_info_HHR->{$code}{"causes_failure"} = $value;
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_AlertInfoSetMiscNotFailure
+# Incept:     EPN, Tue Feb  9 13:50:16 2021
+#
+# Purpose:    Set the "misc_not_failure" value for %{$ftr_info_HHR->{$code}
+#
+# Arguments:
+#   $alt_info_HHR: REF to hash of hashes of error information, FILLED HERE
+#   $code:         the code of the element we are setting "misc_not_failure" value for
+#   $value:        value we are setting $ftbl_info_HHR->{$code}{"misc_not_failure"} to 
+#   $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns: void
+#
+# Dies:    if $code does not exist in %{$alt_info_HHR}
+#          if $value is not '1' or '0'
+#
+#################################################################
+sub vdr_AlertInfoSetMiscNotFailure {
+  my $sub_name = "vdr_AlertInfoSetMiscNotFailure";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+ 
+  my ($alt_info_HHR, $code, $value, $FH_HR) = (@_);
+
+  if(! defined $alt_info_HHR->{$code}) { 
+    ofile_FAIL("ERROR in $sub_name, trying to set misc_not_failure for invalid code $code", 1, $FH_HR);
+  }
+  if(($value ne "1") && ($value ne "0")) { 
+    ofile_FAIL("ERROR in $sub_name, trying to set misc_not_failure to invalid value $value (must be 1 or 0)", 1, $FH_HR);
+  }
+
+  $alt_info_HHR->{$code}{"misc_not_failure"} = $value;
 
   return;
 }
@@ -1997,6 +2339,7 @@ sub vdr_AlertInfoDump {
   my $w_afails  = length("always");
   my $w_fails   = length("fails");
   my $w_annot   = length("prevents");
+  my $w_misc    = length("misc not");
   my $w_invalid = utl_HHMaxLengthValueGiven2DKey($alt_info_HHR, "ftbl_invalid_by");
   $w_invalid = utl_Max($w_invalid, length("invalidated"));
 
@@ -2006,33 +2349,96 @@ sub vdr_AlertInfoDump {
     $code_A[($alt_info_HHR->{$code}{"order"})] = $code;
   }
 
-  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
-              "#", "", $w_sdesc, "short", $w_afails, "fails", $w_fails, "", $w_annot, "prevents", $w_invalid, "invalidated", $w_ldesc, "long");
-  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
-              "#idx", "code", $w_sdesc, "desc", $w_afails, "always", $w_fails, "fails", $w_annot, "annot", $w_invalid, "by", $w_ldesc, "desc");
-  printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
-              "#---", "-----", 
+  printf $FH ("%-4s  %8s  %-*s  %*s  %*s  %*s  %*s  %-*s  %-*s\n", 
+              "#", "", $w_sdesc, "short", $w_afails, "fails", $w_fails, "", $w_annot, "prevents", $w_misc, "misc not", $w_invalid, "invalidated", $w_ldesc, "long");
+  printf $FH ("%-4s  %8s  %-*s  %*s  %*s  %*s  %*s  %-*s  %-*s\n", 
+              "#idx", "code", $w_sdesc, "desc", $w_afails, "always", $w_fails, "fails", $w_annot, "annot", $w_misc, "failure", $w_invalid, "by", $w_ldesc, "desc");
+  printf $FH ("%-4s  %8s  %-*s  %*s  %*s  %*s  %*s  %-*s  %-*s\n", 
+              "#---", "--------", 
               $w_sdesc,   utl_StringMonoChar($w_sdesc,   "-", undef), 
               $w_afails,  utl_StringMonoChar($w_afails,  "-", undef), 
               $w_fails,   utl_StringMonoChar($w_fails,   "-", undef), 
               $w_annot,   utl_StringMonoChar($w_annot,   "-", undef), 
+              $w_misc,    utl_StringMonoChar($w_misc,    "-", undef), 
               $w_invalid, utl_StringMonoChar($w_invalid, "-", undef), 
               $w_ldesc,   utl_StringMonoChar($w_ldesc,   "-", undef));
 
   my $idx = 0;
   foreach my $code (@code_A) { 
     $idx++;
-    printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %-*s\n", 
+    printf $FH ("%-4s  %5s  %-*s  %*s  %*s  %*s  %*s  %*s  %-*s\n", 
                 $idx, $code, 
-                $w_sdesc,  helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
-                $w_afails, $alt_info_HHR->{$code}{"always_fails"}   ? "yes" : "no",
-                $w_fails,  $alt_info_HHR->{$code}{"causes_failure"} ? "yes" : "no",
-                $w_annot,  $alt_info_HHR->{$code}{"prevents_annot"} ? "yes" : "no",
+                $w_sdesc,   helper_tabular_replace_spaces($alt_info_HHR->{$code}{"sdesc"}), 
+                $w_afails,  $alt_info_HHR->{$code}{"always_fails"}     ? "yes" : "no",
+                $w_fails,   $alt_info_HHR->{$code}{"causes_failure"}   ? "yes" : "no",
+                $w_annot,   $alt_info_HHR->{$code}{"prevents_annot"}   ? "yes" : "no",
+                $w_misc,    $alt_info_HHR->{$code}{"misc_not_failure"} ? "yes" : "no",
                 $w_invalid, $alt_info_HHR->{$code}{"ftbl_invalid_by"}, 
-                $w_ldesc, $alt_info_HHR->{$code}{"ldesc"});
+                $w_ldesc,   $alt_info_HHR->{$code}{"ldesc"});
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureAlertCausesFailure()
+# Incept:     EPN, Fri Feb  5 11:35:58 2021
+#
+# Purpose:    Does $alt_code for feature $ftr_idx cause failure?
+#             Considers both "causes_failure" and "misc_not_failure"
+#             fields.
+#
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $alt_info_HHR:  REF to the alert info hash of arrays, PRE-FILLED
+#  $ftr_idx:       feature index
+#  $alt_code:      alert code
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureAlertCausesFailure { 
+  my $sub_name = "vdr_FeatureAlertCausesFailure";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) = @_;
+
+  return (($alt_info_HHR->{$alt_code}{"causes_failure"}) && 
+          (! vdr_FeatureAlertIsMiscNotFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code))) 
+      ? 1 : 0;
+}       
+
+#################################################################
+# Subroutine: vdr_FeatureAlertIsMiscNotFailure()
+# Incept:     EPN, Fri Feb  5 11:41:11 2021
+#
+# Purpose:    Does $alt_code for feature $ftr_idx have the 
+#             "misc_not_failure" attribute?
+#
+# Arguments: 
+#  $ftr_info_AHR:  ref to the feature info array of hashes 
+#  $alt_info_HHR:  REF to the alert info hash of arrays, PRE-FILLED
+#  $ftr_idx:       feature index
+#  $alt_code:      alert code
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureAlertIsMiscNotFailure { 
+  my $sub_name = "vdr_FeatureAlertIsMiscNotFailure";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) = @_;
+
+  return (($ftr_info_AHR->[$ftr_idx]{"misc_not_failure"}) && 
+          ($alt_info_HHR->{$alt_code}{"misc_not_failure"})) 
+      ? 1 : 0; 
 }
 
 #################################################################
@@ -2131,6 +2537,56 @@ sub vdr_SubmitJob {
   $submit_cmd =~ s/\!\[memgb\]\!/$mem_gb/g;
   $submit_cmd =~ s/\!\[nsecs\]\!/$nsecs/g;
 
+  utl_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_SubmitJobAsScript()
+# Incept:      EPN, Thu Jan 28 17:19:51 2021
+#
+# Purpose:     Creates a script that will execute a job and sumits a job to sge that will 
+#              execute that script.
+#
+# Arguments:
+#   $cmd:            command to run
+#   $qsub_prefix:    qsub command prefix to use when submitting to farm, undef if running locally
+#   $qsub_suffix:    qsub command suffix to use when submitting to farm, undef if running locally
+#   $job_name:       name for job
+#   $sh_file:        name of shell script file to create with command to run
+#   $err_file:       name of err file to create, can be "/dev/null"
+#   $mem_gb:         number of Gb of memory required
+#   $nsecs:          maximum number of seconds to allow jobs to take
+#   $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description, PRE-FILLED
+#   $ofile_info_HHR: REF to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:    amount of time the command took, in seconds
+#
+# Dies:       if qsub vdr_$cmd fails
+#################################################################
+sub vdr_SubmitJobAsScript {
+  my $sub_name = "vdr_SubmitJobAsScript()";
+  my $nargs_expected = 10;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($cmd, $qsub_prefix, $qsub_suffix, $job_name, $sh_file, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR) = @_;
+  
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  if(($err_file ne "/dev/null") && (-e $err_file)) { 
+    utl_FileRemoveUsingSystemRm($err_file, $sub_name, $opt_HHR, $ofile_info_HHR); 
+  }
+
+  my $submit_cmd = $qsub_prefix . "sh $sh_file" . $qsub_suffix;
+  # replace changeable parts of qsub suffix and prefix
+  $submit_cmd =~ s/\!\[jobname\]\!/$job_name/g;
+  $submit_cmd =~ s/\!\[errfile\]\!/$err_file/g;
+  $submit_cmd =~ s/\!\[memgb\]\!/$mem_gb/g;
+  $submit_cmd =~ s/\!\[nsecs\]\!/$nsecs/g;
+
+  # create the shell script file with the cmsearch/cmalign/rRNA_sensor command $cmd
+  vdr_WriteCommandScript($sh_file, $cmd, $FH_HR);
   utl_RunCommand($submit_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
@@ -4309,6 +4765,41 @@ sub vdr_FrameAdjust {
   }
 
   return (($orig_frame - $nt_diff - 1) % 3) + 1;
+}
+
+#################################################################
+# Subroutine : vdr_WriteCommandScript()
+# Incept:      EPN, Fri Nov  9 14:26:07 2018 (ribo_WriteCommandScript)
+#
+# Purpose  : Create a new file to be executed as a job created by 
+#            a qsub call.
+# 
+# Arguments: 
+#   $file:  name of the file to create
+#   $cmd:   the command to put in the file
+#   $FH_HR: ref to hash of file handles, including "cmd"
+#
+# Returns:     void
+# 
+# Dies:        Never
+#
+################################################################# 
+sub vdr_WriteCommandScript {
+  my $nargs_exp = 3;
+  my $sub_name = "vdr_WriteCommandScript";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($file, $cmd, $FH_HR) = @_;
+
+  open(OUT, ">", $file) || ofile_FileOpenFailure($file, $sub_name, $!, "writing", $FH_HR);
+
+  print OUT ("#!/bin/bash\n");
+  print OUT ("#filename: $file\n");
+  print OUT $cmd . "\n";
+
+  close(OUT);
+
+  return;
 }
 
 ###########################################################################

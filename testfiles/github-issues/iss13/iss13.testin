@@ -14,8 +14,8 @@
 # file, etc.
 command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --keep -m $VADRSCRIPTSDIR/testfiles/github-issues/iss13/iss13.cm -i $VADRSCRIPTSDIR/testfiles/github-issues/iss13/iss13.minfo -n $VADRSCRIPTSDIR/testfiles/github-issues/iss13/iss13.blastn.fa -f $VADRSCRIPTSDIR/testfiles/github-issues/iss13/iss13.in.fa va-iss13 > va-iss13.out
 desc: iss13-discontn-s-opt-hit-sort-dup
-out: va-iss13/va-iss13.vadr.fail.tbl
-out: va-iss13/va-iss13.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss13/va-iss13.vadr.fail.tbl
-exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss13/va-iss13.vadr.alt
+out: va-iss13/va-iss13.vadr.sqa
+out: va-iss13/va-iss13.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss13/va-iss13.vadr.sqa
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss13/va-iss13.vadr.ftr
 rmdir: va-iss13

@@ -1,5 +1,38 @@
 # VADR 1.x release notes 
 
+### VADR 1.1.3 release (Feb 2021): Minor update
+
+  v-annotate.pl changes:
+  * adds support for allowing sequences to pass with some
+    feature-specific fatal alerts for features with
+    'misc_not_failure:"1"' listed in input modelinfo file.
+    Originally implemented to allow SARS-CoV-2 sequences with certain
+    ORF8 errors to still pass. More information in
+    documentation/annotate.md.
+  * indf5loc and indf3loc alerts no longer reported for CDS or
+    features with identical coordinates to a CDS (e.g. gene) because
+    these are subject to more stringent tests involving start/stop
+    codons 
+  * improved detailed error messages for CDS_HAS_STOP_CODON errors
+    when predicted CDS have lengths that are not a multiple of 3
+  * outputs separate fasta files of all passing seqs and all failing
+    seqs, can be turned off with --out_nofasta
+  * fixes bug with -r when number of leading 5' Ns exceeds expected
+    number as determined by alignment to best-matching model 
+    (github issue #30)
+  * with -p, qsub commands now execute a shell script with relevant
+    command instead of including command in qsub call, allowing
+    arbitrarily long commands and removing need for --longdir option.
+
+  Other changes:
+  * updates versions of dependencies installed with vadr to:
+    - infernal 1.1.4 (allowing v-build.pl to build large >25Kb models,
+      e.g. coronaviridae)
+    - hmmer 3.3.2
+    - ncbi-blast 2.11.0+
+    - Bio-Easel 0.13
+    - sequip 0.08
+
 ### VADR 1.1.2 release (Nov 2020): Minor update
 
   * adds v-annotate.pl option --mlist to specify only a subset of

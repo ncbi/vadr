@@ -16,5 +16,4 @@
 3.4.2  ENTOY100A-Ns-2  ENTOY100A  mat_peptide  protein_three_mp2    8  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 3.4.3  ENTOY100A-Ns-2  ENTOY100A  mat_peptide  protein_three_mp2    8  lowsim3f  yes   LOW_FEATURE_SIMILARITY_END   region within annotated feature at 3' end of sequence lacks significant similarity [1 nt overlap b/t low similarity region of length 19 (92..110) and annotated feature (76..92), strand: +]
 3.5.1  ENTOY100A-Ns-2  ENTOY100A  CDS          protein_four         9  ambgnt5c  no    N_AT_CDS_START               first nucleotide of CDS is an N [first 8 positions are Ns, first non-N is position 90]
-3.5.2  ENTOY100A-Ns-2  ENTOY100A  CDS          protein_four         9  indf5loc  yes   INDEFINITE_ANNOTATION_START  alignment to homology model has low confidence at 5' boundary [0.60 < 0.80, RF position 98]
 3.6.1  ENTOY100A-Ns-2  ENTOY100A  ncRNA        enRNA               10  ambgnt5f  no    N_AT_FEATURE_START           first nucleotide of non-CDS feature is an N [first 3 positions are Ns, first non-N is position 8]

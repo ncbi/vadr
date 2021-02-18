@@ -42,6 +42,7 @@ for t in \
     do-ftskipfl-tests.sh \
     do-sub-tests.sh \
     do-lowsim-tests.sh \
+    do-mnf-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
@@ -51,9 +52,9 @@ for t in \
 done
 
 if [ "$RETVAL" -eq 0 ]; then
-   echo "Success: all tests passed"
+   echo "Success: all tests passed [do-all-tests.sh]"
    exit 0
 else 
-   echo "FAIL: at least one test failed"
+   echo "FAIL: at least one test failed [do-all-tests.sh]"
    exit 1
 fi

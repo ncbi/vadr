@@ -427,7 +427,7 @@ directories, make sure you also move the corresponding index files
 
 The VADR 1.0 library was built with version 1.0 of VADR. It is included here as 
 an example of how to build a VADR library, but also so it can be reproduced, because it is the model library
-used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1101/852657).
+used in the [paper on VADR 1.0](../README.md#reference) (https://doi.org/10.1186/s12859-020-3537-3).
 If you want to reproduce it exactly, you'll want to install
 version 1.0. The install script for v1.0 is here:
 
