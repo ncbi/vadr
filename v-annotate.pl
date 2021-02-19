@@ -1988,8 +1988,6 @@ sub coverage_determination_stage {
   my $sort_tblout_key  = "$stg_key.tblout.sort";
   my $sort_tblout_file = $out_root . "." . $sort_tblout_key;
   if($nmdl_cdt > 0) { # only sort output if we ran coverage determination stage for at least one model
-    # HERE HERE HERE: looks like this is sorting by score first, then e-value? If we have a score tie, we want to 
-    # sort by model index, so I can modify the tblout file by adding model index and sort on that?
     my $sort_cmd = "cat " . join(" ", @tblout_file_A) . " | grep -v ^\# | sed 's/  */ /g' | sort -k 1,1 -k 15,15rn -k 16,16g > $sort_tblout_file"; 
     # the 'sed' call replaces multiple spaces with a single one, because sort is weird about multiple spaces sometimes
     utl_RunCommand($sort_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -3537,6 +3535,10 @@ sub parse_stk_and_add_alignment_alerts {
   # move through each sequence in the alignment and determine its boundaries for each model region
   my $nseq = $msa->nseq; 
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
+
+  my $doctor_flag = 0; # set to 1 if we end up doctoring the sequence because it had 
+                       # a gap in first/final position of a CDS
+  my $prv_doctor_flag = 0; # necessary to make sure we don't have to doctor the same sequence twice, if we do, there's a bug
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_len_HR->{$seq_name}) { 
@@ -3547,6 +3549,19 @@ sub parse_stk_and_add_alignment_alerts {
       ofile_FAIL("ERROR in $sub_name, do not have insert information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
     }
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
+
+    @{$sgm_results_HAHR->{$seq_name}} = ();
+    $doctor_flag = 0;
+    my @doctor_gap_posn_A = (); # array of gap positions in the alignment to doctor by swapping with nearest nt
+    my @doctor_before_A   = (); # array of '1' for 'before' or '0' for 'after' indicating which direction to 
+                                # look for nearest nt when swapping
+
+    # arrays that hold per-alert info that we defer until after the 'for(sgm_idx...' block 
+    # just in case we have to doctor the alignment and reevaluate the sequence
+    # (we don't want to have reported any alerts for a seq we are going to reevaluate after doctoring)
+    my @alt_code_A = (); # array of alert codes to add for this sequence after for(sgm... block
+    my @alt_str_A  = (); # array of alert strings to add for this sequence after for(sgm... block
+    my @alt_ftr_A  = (); # array of alert ftr_idx to add for this sequence after for(sgm... block
 
     # fill sequence-specific arrays
     # insert info from seq_info_HAR (read previously from cmalign --ifile output)
@@ -3822,34 +3837,74 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR));
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
 
-        # Check for special case to *overrided alignment info* and change start_uapos/stop_uapos start/stop codon of CDS 
+        # Check for special case where CDS starts/stops with a gap
+        # if so, we actually doctor the alignment and then 
+        # rerun the main loop over segments by setting $doctor_flag to 1
         #
-        # We decrement $start_uapos by 1 for start codon if:
+        # We will doctor the alignment by swapping the closest nucleotide
+        # to the left of the first RF position of this segment if:
+        # - first RF position of segment aligns to a gap
         # - this is first segment of a CDS
         # - we are not 5' truncated ($start_uapos != 1)
-        # - first RF position of segment aligns to a gap
-        #
-        # We increment $stop_uapos by 1 for stop codon if:
-        # - this is first segment of a CDS
-        # - we are not 5' truncated ($start_uapos != 1)
-        # - first RF position of segment aligns to a gap
+        # - there's no inserts between previous RF position
+        #   and first RF position of segment (that aligns to a gap)
         # 
-        # This corrects situations like this:
+        # We will doctor the alignment by swapping the closest nucleotide
+        # to the right of the final RF position of this segment if:
+        # - final RF position of segment aligns to a gap
+        # - this is final segment of a CDS
+        # - we are not 3' truncated ($stop_uapos != $seq_len)
+        # - there's no inserts between final RF position
+        #   of segment (that aligns to a gap) and next RF position
+        # 
+        # This corrects situations like these:
+        # 
+        # seq         ACTAAA-TGTCTGA
+        # RF          ACTAAAATGTCTGA
+        #                   ^
+        #                   start codon
+        #
+        # seq         ACTA-AGTGTCTGA
+        # RF          ACTAAAGTGTCTGA
+        #               ^
+        #               stop codon
+        #
+        # We just store the information on what positions to doctor here
+        # and do it after the 'for(sgm..' loop when all such doctorings have
+        # been collected.
         # 
         # NOTE: there are some situations involving multiple gaps where this will likely
         # not fix the problem and you'll still get an error when a valid start/stop exists,
         # possibly with non-standard translation tables.
-        #HERE HERE HERE 
-        #    if() $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}--;
-        #    if() $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}++;
-        
-        
-        # add alerts, if nec
+        #
+        # check for gap at start of start codon that we can try to fix
+        if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
+           ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
+           ($start_uapos > 1) && # we are not 5' truncated ($start_uapos != 1)
+           ($rf2ilen_A[($sgm_start_rfpos-1)] == 0)) {# there's no inserts between previous RF position and first RF position of segment
+          push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
+          push(@doctor_before_A, 1);
+          $doctor_flag = 1;
+        }
+        # check for gap at end of stop codon that we can try to fix
+        if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
+           ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
+           ($stop_uapos < $seq_len) && # we are not 3' truncated ($stop_uapos != $seq_len)
+           ($rf2ilen_A[$sgm_stop_rfpos] == 0)) {# there's no inserts between final RF position of segment and next RF position
+          push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
+          push(@doctor_before_A, 0);
+          $doctor_flag = 1;
+        }
+
+        # store info on alerts we will report later, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5gap", $seq_name, $ftr_idx,
-                                       "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
-                                       $FH_HR);
+            push(@alt_code_A, "indf5gap");
+            push(@alt_str_A, "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx));
+            push(@alt_ftr_A, $ftr_idx);
+#            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5gap", $seq_name, $ftr_idx,
+#                                       "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
+#                                       $FH_HR);
           } 
           elsif((! $do_gls_aln) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf5loc, but first check if the start of this segment is identical to 
@@ -3859,17 +3914,23 @@ sub parse_stk_and_add_alignment_alerts {
             if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx))                || # feature is NOT CDS or mat_peptide or gene (so we can always report indf5loc)
                (! $sgm_info_AHR->[$sgm_idx]{"is_5p"})                                             || # segment is NOT first segment in feature (so we can always report indf5loc)
                (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # start does not match a CDS start (so we can always report indf5loc)
-              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5loc", $seq_name, $ftr_idx,
-                                         sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
-                                       $FH_HR);
+              push(@alt_code_A, "indf5loc");
+              push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg));
+              push(@alt_ftr_A, $ftr_idx);
+              #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5loc", $seq_name, $ftr_idx,
+              #                           sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
+              #                         $FH_HR);
             }
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3gap", $seq_name, $ftr_idx,
-                                       "RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
-                                       $FH_HR);
+            push(@alt_code_A, "indf3gap");
+            push(@alt_str_A, "RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx));
+            push(@alt_ftr_A, $ftr_idx);
+            #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3gap", $seq_name, $ftr_idx,
+            #"RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
+            #$FH_HR);
           }
           elsif((! $do_gls_aln) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf3loc, but first check if the stop of this segment is identical to 
@@ -3879,9 +3940,12 @@ sub parse_stk_and_add_alignment_alerts {
             if((! vdr_FeatureTypeIsCdsOrGene($ftr_info_AHR, $ftr_idx))                           || # feature is NOT CDS or gene (so we can always report indf3loc)
                (! $sgm_info_AHR->[$sgm_idx]{"is_3p"})                                            || # segment is NOT final segment in feature (so we can always report indf3loc)
                (! vdr_SegmentStopIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # stop does not match a CDS stop (so we can always report indf3loc)
-              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3loc", $seq_name, $ftr_idx,
-                                         sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
-                                         $FH_HR);
+              push(@alt_code_A, "indf3loc");
+              push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg));
+              push(@alt_ftr_A, $ftr_idx);
+              #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3loc", $seq_name, $ftr_idx,
+              #sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
+              #$FH_HR);
             }
           }
         }
@@ -3894,41 +3958,62 @@ sub parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
-    # report any deletinf/deletins alerts
-    for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-      if(defined $ftr_alt_msg_HA{$ftr_idx}) { 
-        my $nsgm_alt = scalar(@{$ftr_alt_msg_HA{$ftr_idx}});
-        my $nsgm_tot = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
-        if($nsgm_alt == $nsgm_tot) { 
-          # all segments are deleted, report deletins (per-sequence) alert, 
-          # we do NOT report any deletinf alerts, one reason is there is no 
-          # feature annotation for $ftr_idx in this case
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
-                                      sprintf("%s feature number %s: %s",
-                                              $ftr_info_AHR->[$ftr_idx]{"type"}, 
-                                              vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx), 
-                                              $ftr_info_AHR->[$ftr_idx]{"outname"}), 
-                                      $FH_HR);
-        }
-        else { 
-          # at least one but not all segments are deleted, report 1 or more deletinf (per-feature)
-          # alerts, we do NOT report a deletins alert because this feature is 
-          # annotated, just not all segments are.
-          # NOTE: this won't happen if a segment is not annotated because it is truncated
-          # away due to a sequence terminus (i.e. should exist before/after start/end of sequence)
-          foreach my $alt_msg (@{$ftr_alt_msg_HA{$ftr_idx}}) { 
-            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+    if($doctor_flag) { 
+      # we need to doctor the alignment of this sequence and rerun the 'for(sgm' loop on this sequence
+      for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
+        printf("OH DOCTOR! $doctor_gap_posn_A[$doc_idx] $doctor_before_A[$doc_idx]\n");
+        $msa->swap_gap_and_closest_residue($i, $doctor_gap_posn_A[$doc_idx], $doctor_before_A[$doc_idx]);
+      }
+      if($prv_doctor_flag) { 
+        ofile_FAIL("ERROR in $sub_name, needed to doctor the alignment two iterations in a row", 1, $FH_HR);
+      }
+      $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
+      $prv_doctor_flag = 1; 
+    }
+    else { 
+      # usual case: we did not doctor the alignment
+      $prv_doctor_flag = 0;
+
+      # report any indf{5,3}{gap,loc} alerts for this sequence that we stored in loop above
+      for(my $alt_idx = 0; $alt_idx < scalar(@alt_code_A); $alt_idx++) { 
+        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code_A[$alt_idx], $seq_name, $alt_ftr_A[$alt_idx], $alt_str_A[$alt_idx], $FH_HR);
+      }
+      
+      # report any deletinf/deletins alerts
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if(defined $ftr_alt_msg_HA{$ftr_idx}) { 
+          my $nsgm_alt = scalar(@{$ftr_alt_msg_HA{$ftr_idx}});
+          my $nsgm_tot = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
+          if($nsgm_alt == $nsgm_tot) { 
+            # all segments are deleted, report deletins (per-sequence) alert, 
+            # we do NOT report any deletinf alerts, one reason is there is no 
+            # feature annotation for $ftr_idx in this case
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
+                                        sprintf("%s feature number %s: %s",
+                                                $ftr_info_AHR->[$ftr_idx]{"type"}, 
+                                                vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx), 
+                                                $ftr_info_AHR->[$ftr_idx]{"outname"}), 
+                                        $FH_HR);
+          }
+          else { 
+            # at least one but not all segments are deleted, report 1 or more deletinf (per-feature)
+            # alerts, we do NOT report a deletins alert because this feature is 
+            # annotated, just not all segments are.
+            # NOTE: this won't happen if a segment is not annotated because it is truncated
+            # away due to a sequence terminus (i.e. should exist before/after start/end of sequence)
+            foreach my $alt_msg (@{$ftr_alt_msg_HA{$ftr_idx}}) { 
+              alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinf", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+            }
           }
         }
       }
-    }
-    # detect and report any frameshifts for this sequence
-    add_frameshift_alerts_for_one_sequence($msa, $seq_name, $i, \@rf2a_A, \@rfpos_pp_A, \@rf2ilen_A, 
-                                           \@max_uapos_before_A, \@{$sgm_info_HAH{$mdl_name}},
-                                           \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                                           \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                           \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
-
+      # detect and report any frameshifts for this sequence
+      add_frameshift_alerts_for_one_sequence($msa, $seq_name, $i, \@rf2a_A, \@rfpos_pp_A, \@rf2ilen_A, 
+                                             \@max_uapos_before_A, \@{$sgm_info_HAH{$mdl_name}},
+                                             \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                             \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                                             \%alt_ftr_instances_HHH, $mdl_name, $out_root, \%opt_HH, \%ofile_info_HH);
+    } # end of 'else' entered if ! $doctor_flag
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
   undef $msa;
