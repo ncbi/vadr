@@ -338,6 +338,7 @@ opt_Add("--minbit",       "real",    -10,           $g,    undef,   undef,    "s
 opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "do not copy fasta file prior to analysis, use original",                 "do not copy fasta file prior to analysis, use original", \%opt_HH, \@opt_order_A);
 opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
+opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -453,7 +454,8 @@ my $options_okay =
                 'minbit=s'      => \$GetOptions_H{"--minbit"},
                 'origfa'        => \$GetOptions_H{"--origfa"},
                 'msub=s'        => \$GetOptions_H{"--msub"},
-                'xsub=s'        => \$GetOptions_H{"--xsub"});
+                'xsub=s'        => \$GetOptions_H{"--xsub"},
+                'nodcr'         => \$GetOptions_H{"--nodcr"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1158,10 +1160,10 @@ my $cur_mdl_align_fa_file;   # fasta file with sequences to align to current mod
 my $cur_mdl_nseq;            # number of sequences assigned to model
 my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless -s
 my $cur_mdl_tot_seq_len;     # sum of total number of nucleotides we are aligning
+my %dcr_output_HHA = ();     # 2D hash of arrays with info to output related to rare sequences for which the alignment was doctored
 
 # -s related output for .sda file
-my %sda_output_HH = (); # 2D key with info to output related to the  option
-                        # key1: sequence name, key2 one of: "ugp_seq", "ugp_mdl"
+my %sda_output_HH = (); # 2D key with info to output related to the -s option
 # per-model variables only used if -s used
 my %ugp_mdl_H     = ();  # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
 my %ugp_seq_H     = ();  # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
@@ -1347,7 +1349,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                            \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                            \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                            \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, $mdl_name, $out_root, 
+                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HHA,
+                                           $mdl_name, $out_root, 
                                            \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
@@ -1539,6 +1542,7 @@ my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
                                            ($do_replace_ns) ? \%rpn_output_HH : undef,
+                                           \%dcr_output_HHA,
                                            ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -3472,6 +3476,7 @@ sub cmalign_or_glsearch_run {
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
+#  $dcr_output_HHAR:        REF to 2D hash of info on doctored seqs to output, ADDED TO HERE
 #  $mdl_name:               model name this alignment pertains to
 #  $out_root:               string for naming output files
 #  $opt_HHR:                REF to 2D hash of option values
@@ -3484,13 +3489,13 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 15;
+  my $nargs_exp = 16;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
-      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $mdl_name, $out_root, 
-      $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HHAR, 
+      $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
@@ -3498,6 +3503,7 @@ sub parse_stk_and_add_alignment_alerts {
   my $do_alicheck      = opt_Get("--alicheck",    $opt_HHR); # check aligned sequences are identical to those fetched from $sqfile (except maybe Ns if -r) 
   my $do_replace_ns    = opt_Get("-r",            $opt_HHR); # only relevant if $do_alicheck
   my $do_gls_aln       = opt_Get("--aln_gls",     $opt_HHR); # we won't have PP values if this is 1
+  my $do_nodcr         = opt_Get("--nodcr",       $opt_HHR); # do not doctor alignment to correct start/stop codons
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -3887,24 +3893,26 @@ sub parse_stk_and_add_alignment_alerts {
 #        printf("\tstartgap:        %d\n", ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}));
 #        printf("\tstart_uapos:     %d\n", $start_uapos);
 #        printf("\trf2ilen(%5d): %d\n", ($sgm_start_rfpos-1), ($rf2ilen_A[($sgm_start_rfpos-1)]));
-        if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
-           ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
-           ($start_uapos > 1) && # we are not 5' truncated ($start_uapos != 1)
-           ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) {# there's no inserts between previous RF position and first RF position of segment
-          push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
-          push(@doctor_before_A, 1);
-          $seq_doctor_flag = 1;
-          $msa_doctor_flag = 1;
-        }
-        # check for gap at end of stop codon that we can try to fix
-        if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
-           ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
-           ($stop_uapos < $seq_len) && # we are not 3' truncated ($stop_uapos != $seq_len)
-           ($rf2ilen_A[$sgm_stop_rfpos] == -1)) {# there's no inserts between final RF position of segment and next RF position
-          push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
-          push(@doctor_before_A, 0);
-          $seq_doctor_flag = 1;
-          $msa_doctor_flag = 1;
+        if(! $do_nodcr) { 
+          if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
+             ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
+             ($start_uapos > 1) && # we are not 5' truncated ($start_uapos != 1)
+             ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) {# there's no inserts between previous RF position and first RF position of segment
+            push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
+            push(@doctor_before_A, 1);
+            $seq_doctor_flag = 1;
+            $msa_doctor_flag = 1;
+          }
+          # check for gap at end of stop codon that we can try to fix
+          if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
+             ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
+             ($stop_uapos < $seq_len) && # we are not 3' truncated ($stop_uapos != $seq_len)
+             ($rf2ilen_A[$sgm_stop_rfpos] == -1)) {# there's no inserts between final RF position of segment and next RF position
+            push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
+            push(@doctor_before_A, 0);
+            $seq_doctor_flag = 1;
+            $msa_doctor_flag = 1;
+          }
         }
 
         # store info on alerts we will report later, if nec
@@ -3971,6 +3979,9 @@ sub parse_stk_and_add_alignment_alerts {
 
     if($seq_doctor_flag) { 
       # we need to doctor the alignment of this sequence and rerun the 'for(sgm' loop on this sequence
+      # and we store information on the doctor'ing in %{$dcr_output_HHAR}
+      #%{$dcr_output_HHAR{$seq_name}} = ();
+      
       for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
         printf("OH DOCTOR! $doctor_gap_posn_A[$doc_idx] $doctor_before_A[$doc_idx]\n");
         $msa->swap_gap_and_closest_residue($i, $doctor_gap_posn_A[$doc_idx], $doctor_before_A[$doc_idx]);
@@ -7581,6 +7592,7 @@ sub alert_instances_check_prevents_annot {
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
 #  $sda_output_HHR:          REF to 2D hash of -s related results to output, PRE-FILLED, undef unless -s
 #  $rpn_output_HHR:          REF to 2D hash of -r related results to output, PRE-FILLED, undef unless -r
+#  $dcr_output_HHAR:         REF to 2D hash of info on doctored seqs to output, PRE-FILLED, most seqs will be undef
 #  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, undef unless --msub used
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
@@ -7594,15 +7606,15 @@ sub alert_instances_check_prevents_annot {
 #################################################################
 sub output_tabular { 
   my $sub_name = "output_tabular";
-  my $nargs_exp = 18;
+  my $nargs_exp = 19;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($mdl_info_AHR, $mdl_cls_ct_HR, $mdl_ant_ct_HR, 
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $mdl_sub_HR, 
-      $opt_HHR, $ofile_info_HHR) = @_;
+      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $dcr_output_HHAR,
+      $mdl_sub_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 

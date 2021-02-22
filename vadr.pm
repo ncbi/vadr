@@ -4858,7 +4858,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   my $q_len;          # length of query sequence
   my $nq;             # number of queries read
   my $t_name;         # name of target sequence
-  my $length_w_paran; # length string with parantheses
   my ($an0, $ax0);    # start/stop position of alignment in query
   my ($an1, $ax1);    # start/stop position of alignment in library (target)
   my ($pn0, $px0);    # start/stop position of displayed query
@@ -4937,7 +4936,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       # end of all alignments
       $keep_going = 0;
     }
-    elsif($line =~ /^\s*\d+\>\>\>(\S+)\s+\S+\s+(\d+)\s+nt/) { 
+    elsif($line =~ /^\s*\d+\>\>\>(\S+).*(\d+)\s+nt/) { 
       # 1>>>lcl|SARS-CoV-2/human/USA/IN-CDC-LC00002770/2021/17579-27826 - 10248 nt (forward-only)
       #start of new query
       ($q_name, $q_len) = ($1, $2);
@@ -4985,31 +4984,45 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       }
       $line = <IN>; $line_ctr++;
       # line with the info on the alignment we need to parse
-      my @el_A = split(/\s+/, $line);
-      ($mdl_name, $length_w_paran, $an0, $ax0, $pn0, $px0, $an1, $ax1, $pn1, $px1, $cigar) = 
-          ($el_A[0], $el_A[1], $el_A[8], $el_A[9], $el_A[10], $el_A[11], $el_A[12], $el_A[13], $el_A[14], $el_A[15], $el_A[19]);
-
-      if($mdl_name ne $exp_mdl_name) { 
-        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, line $line_ctr, expected single target sequence name $mdl_name but read $mdl_name", 1, $FH_HR);
+      # Two examples below ("The best scores" line kept only to show field names
+      # note the space in the parantheses before the model name, we have to take special care to deal with that
+      #The best scores are:                                                n-w	%_id  %_sim  gnw  alen  an0  ax0  pn0  px0  an1  ax1 pn1 px1 gapq gapl  fs  aln_code
+      #NC_045512                                                (29903) [f] 21396	0.516 0.516 21396 10248    1 10248    1 10248 17633 27872    1 29903 4952   8   0	2949M1D5129M7D2162M
+      #entoy100a-dcr                                            ( 100) [f]  500	1.000 1.000  500  100    1  100    1  100    1  100    1  100   0   0   0	100M
+      if($line =~ /^(\S+)\s*\(\s*\d+\)\s+\S+\s+/) { 
+        # matches "entoy100a-dcr                                            ( 100) [f]"
+        ($mdl_name) = $1;
+        my $subline = $line;
+        $subline =~ s/^\S+\s*\(\s*\d+\)\s+\S+\s+//;
+        my @el_A = split(/\s+/, $subline);
+        if(scalar(@el_A) != 17) { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, line $line_ctr, unable to parse best scores (1) line:\n$line\n", 1, $FH_HR);
+        }
+        ($an0, $ax0, $pn0, $px0, $an1, $ax1, $pn1, $px1, $cigar) = 
+            ($el_A[5], $el_A[6], $el_A[7], $el_A[8], $el_A[9], $el_A[10], $el_A[11], $el_A[12], $el_A[16]);
+        if($mdl_name ne $exp_mdl_name) { 
+          ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, line $line_ctr, expected single target sequence name $mdl_name but read $mdl_name", 1, $FH_HR);
+        }
+        printf("mdl_name: $mdl_name\n");
+        printf("an0:   $an0\n");
+        printf("ax0:   $ax0\n");
+        printf("an1:   $an1\n");
+        printf("ax1:   $ax1\n");
+        printf("pn0:   $pn0\n");
+        printf("px0:   $px0\n");
+        printf("pn1:   $pn1\n");
+        printf("px1:   $px1\n");
+        printf("cigar:   $cigar\n");
+        # parse cigar to get inserts in query to later write to insert_file
+        vdr_CigarToInsertsHash(\%{$q_inserts_HH{$q_name}}, $cigar, $an0, $an1, $FH_HR);
       }
-      printf("mdl_name: $mdl_name\n");
-      printf("length:   $length_w_paran\n");
-      printf("an0:   $an0\n");
-      printf("ax0:   $ax0\n");
-      printf("an1:   $an1\n");
-      printf("ax1:   $ax1\n");
-      printf("pn0:   $pn0\n");
-      printf("px0:   $px0\n");
-      printf("pn1:   $pn1\n");
-      printf("px1:   $px1\n");
-      printf("cigar:   $cigar\n");
-      # parse cigar to get inserts in query to later write to insert_file
-      vdr_CigarToInsertsHash(\%{$q_inserts_HH{$q_name}}, $cigar, $an0, $an1, $FH_HR);
-
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, unable to parse best scores (2) line:\n$line\n", 1, $FH_HR);
+      }
       $line = <IN>; $line_ctr++; # blank line
       $line = <IN>; $line_ctr++;
       if($line =~ /^\>\>\>(\S+)\,\s*/) { 
-        if($1 ne $q_name) { 
+          if($1 ne $q_name) { 
           ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected >>>$q_name line preceding alignment but got:\n$line\n", 1, $FH_HR);
         }
       }
