@@ -3532,13 +3532,17 @@ sub parse_stk_and_add_alignment_alerts {
   }
   my $rflen = $rfpos;
 
+  # 'doctor' flags, which keep track of when we need to doctor the alignment in an attempt
+  # to fix gaps in first position of CDS starts and final positions of CDS stops
+  my $seq_doctor_flag    = 0; # set to 1 if we end up doctoring the sequence because it had 
+                              # a gap in first/final position of a CDS
+  my $prvseq_doctor_flag = 0; # necessary to make sure we don't have to doctor the same sequence twice (if we do, there's a bug)
+  my $msa_doctor_flag    = 0; # set to 1 if we end up doctoring any sequence, if 1 at end
+                              # we have to rewrite the stockholm MSA file to save doctored changes
+
   # move through each sequence in the alignment and determine its boundaries for each model region
   my $nseq = $msa->nseq; 
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
-
-  my $doctor_flag = 0; # set to 1 if we end up doctoring the sequence because it had 
-                       # a gap in first/final position of a CDS
-  my $prv_doctor_flag = 0; # necessary to make sure we don't have to doctor the same sequence twice, if we do, there's a bug
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_len_HR->{$seq_name}) { 
@@ -3551,7 +3555,7 @@ sub parse_stk_and_add_alignment_alerts {
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
 
     @{$sgm_results_HAHR->{$seq_name}} = ();
-    $doctor_flag = 0;
+    $seq_doctor_flag = 0;
     my @doctor_gap_posn_A = (); # array of gap positions in the alignment to doctor by swapping with nearest nt
     my @doctor_before_A   = (); # array of '1' for 'before' or '0' for 'after' indicating which direction to 
                                 # look for nearest nt when swapping
@@ -3839,7 +3843,7 @@ sub parse_stk_and_add_alignment_alerts {
 
         # Check for special case where CDS starts/stops with a gap
         # if so, we actually doctor the alignment and then 
-        # rerun the main loop over segments by setting $doctor_flag to 1
+        # rerun the main loop over segments by setting $seq_doctor_flag to 1
         #
         # We will doctor the alignment by swapping the closest nucleotide
         # to the left of the first RF position of this segment if:
@@ -3878,22 +3882,29 @@ sub parse_stk_and_add_alignment_alerts {
         # possibly with non-standard translation tables.
         #
         # check for gap at start of start codon that we can try to fix
+#        printf("DOCTOR CHECK sgm: $sgm_idx\n");
+#        printf("\tis_cds start:   %d\n", (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})));
+#        printf("\tstartgap:        %d\n", ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}));
+#        printf("\tstart_uapos:     %d\n", $start_uapos);
+#        printf("\trf2ilen(%5d): %d\n", ($sgm_start_rfpos-1), ($rf2ilen_A[($sgm_start_rfpos-1)]));
         if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
            ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
            ($start_uapos > 1) && # we are not 5' truncated ($start_uapos != 1)
-           ($rf2ilen_A[($sgm_start_rfpos-1)] == 0)) {# there's no inserts between previous RF position and first RF position of segment
+           ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) {# there's no inserts between previous RF position and first RF position of segment
           push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
           push(@doctor_before_A, 1);
-          $doctor_flag = 1;
+          $seq_doctor_flag = 1;
+          $msa_doctor_flag = 1;
         }
         # check for gap at end of stop codon that we can try to fix
         if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
            ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
            ($stop_uapos < $seq_len) && # we are not 3' truncated ($stop_uapos != $seq_len)
-           ($rf2ilen_A[$sgm_stop_rfpos] == 0)) {# there's no inserts between final RF position of segment and next RF position
+           ($rf2ilen_A[$sgm_stop_rfpos] == -1)) {# there's no inserts between final RF position of segment and next RF position
           push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
           push(@doctor_before_A, 0);
-          $doctor_flag = 1;
+          $seq_doctor_flag = 1;
+          $msa_doctor_flag = 1;
         }
 
         # store info on alerts we will report later, if nec
@@ -3958,21 +3969,21 @@ sub parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
-    if($doctor_flag) { 
+    if($seq_doctor_flag) { 
       # we need to doctor the alignment of this sequence and rerun the 'for(sgm' loop on this sequence
       for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
         printf("OH DOCTOR! $doctor_gap_posn_A[$doc_idx] $doctor_before_A[$doc_idx]\n");
         $msa->swap_gap_and_closest_residue($i, $doctor_gap_posn_A[$doc_idx], $doctor_before_A[$doc_idx]);
       }
-      if($prv_doctor_flag) { 
+      if($prvseq_doctor_flag) { 
         ofile_FAIL("ERROR in $sub_name, needed to doctor the alignment two iterations in a row", 1, $FH_HR);
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
-      $prv_doctor_flag = 1; 
+      $prvseq_doctor_flag = 1; 
     }
     else { 
       # usual case: we did not doctor the alignment
-      $prv_doctor_flag = 0;
+      $prvseq_doctor_flag = 0;
 
       # report any indf{5,3}{gap,loc} alerts for this sequence that we stored in loop above
       for(my $alt_idx = 0; $alt_idx < scalar(@alt_code_A); $alt_idx++) { 
@@ -4016,8 +4027,11 @@ sub parse_stk_and_add_alignment_alerts {
     } # end of 'else' entered if ! $doctor_flag
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
-  undef $msa;
+  if($msa_doctor_flag) { 
+    $msa->write_msa($stk_file, "pfam", 0);
+  }
 
+  undef $msa;
   return;
 }
 
