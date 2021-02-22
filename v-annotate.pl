@@ -912,9 +912,11 @@ if(opt_Get("--origfa", \%opt_HH)) {
   if(-e $in_fa_file . ".ssi") { unlink $in_fa_file . ".ssi"}; # remove SSI file if it exists, it may be out of date
 }
 else { 
-  # default: copy original fasta file and analyze that
+  # default: copy original fasta file and analyze that, but don't just copy it, 
+  # use 'esl-reformat fasta', this was introduced to sidestep some mysterious 
+  # SSI related issues
   $in_fa_file = $out_root . ".in.fa";
-  utl_RunCommand("cp $orig_in_fa_file $in_fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  utl_RunCommand($execs_H{"esl-reformat"} . " fasta $orig_in_fa_file > $in_fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cp.in.fasta", $in_fa_file, 1, 1, "copy of input fasta file");
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
