@@ -16,7 +16,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.1.3"
+VERSION="1.2"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.13"
 # blast+
@@ -28,7 +28,7 @@ HVERSION="3.3.2"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.1-1"
+MVERSION="1.2-1"
 
 # set defaults
 INPUTSYSTEM="?"
