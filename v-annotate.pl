@@ -3540,9 +3540,12 @@ sub parse_stk_and_add_alignment_alerts {
 
   # 'doctor' flags, which keep track of when we need to doctor the alignment in an attempt
   # to fix gaps in first position of CDS starts and final positions of CDS stops
-  my $seq_doctor_flag    = 0; # set to 1 if we end up doctoring the sequence because it had 
-                              # a gap in first/final position of a CDS
-  my $prvseq_doctor_flag = 0; # necessary to make sure we don't have to doctor the same sequence twice (if we do, there's a bug)
+  # We can doctor each sequence up to twice (second doctoring will actually revert previous one)
+  # but no more, else we'll enter an infinite loop (relevant comments below include string 'infinite')
+  my $seq_doctor_ctr     = 0; # incremented when if we need to doctor the sequence because it had 
+                              # a gap in first/final position of a CDS, if this exceeds is going to 
+                              # exceed 2 we stop doctoring
+  my $seq_doctor_flag    = 0; # set to 1 if we should doctor the current sequence
   my $msa_doctor_flag    = 0; # set to 1 if we end up doctoring any sequence, if 1 at end
                               # we have to rewrite the stockholm MSA file to save doctored changes
 
@@ -3561,7 +3564,6 @@ sub parse_stk_and_add_alignment_alerts {
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
 
     @{$sgm_results_HAHR->{$seq_name}} = ();
-    $seq_doctor_flag = 0;
     my @doctor_gap_posn_A = (); # array of gap positions in the alignment to doctor by swapping with nearest nt
     my @doctor_before_A   = (); # array of '1' for 'before' or '0' for 'after' indicating which direction to 
                                 # look for nearest nt when swapping
@@ -3977,24 +3979,38 @@ sub parse_stk_and_add_alignment_alerts {
       }
     } # end of 'for(my $sgm_idx = 0; $sgm_idx < $nsgm; $sgm_idx++)'
 
-    if($seq_doctor_flag) { 
-      # we need to doctor the alignment of this sequence and rerun the 'for(sgm' loop on this sequence
+    # Check if we should doctor, we do this if:
+    # 1) we have at least one CDS start/stop that should be doctored 
+    # 2) we have either not doctored this seq yet, or only doctored it once
+    #    if we've doctored it once, this second round will revert to the original
+    #    if we kept doctoring, we'd get into an infinite loop,
+    #    this helps us in the following case:
+    #
+    #    seq GCGTAA-TG   (initial)
+    #    RF  GCGTAAATG
+    #       stop^  ^start
+    #
+    #    seq GCGTA-ATG   (after first doctoring)
+    #    RF  GCGTAAATG
+    #       stop^  ^start
+    #
+    #    seq GCGTAA-TG   (after second doctoring - which reverts it)
+    #    RF  GCGTAAATG
+    #       stop^  ^start
+    # 
+    if(($seq_doctor_flag) && ($seq_doctor_ctr <= 1)) { 
       # and we store information on the doctor'ing in %{$dcr_output_HHAR}
       #%{$dcr_output_HHAR{$seq_name}} = ();
-      
+      $seq_doctor_ctr++; 
       for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
         printf("OH DOCTOR! $doctor_gap_posn_A[$doc_idx] $doctor_before_A[$doc_idx]\n");
         $msa->swap_gap_and_closest_residue($i, $doctor_gap_posn_A[$doc_idx], $doctor_before_A[$doc_idx]);
       }
-      if($prvseq_doctor_flag) { 
-        ofile_FAIL("ERROR in $sub_name, needed to doctor the alignment two iterations in a row", 1, $FH_HR);
-      }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
-      $prvseq_doctor_flag = 1; 
     }
     else { 
-      # usual case: we did not doctor the alignment
-      $prvseq_doctor_flag = 0;
+      # usual case: we did not doctor the alignment (or we already doctored it twice)
+      $seq_doctor_ctr = 0; # reset this (we don't want to reset this in main loop above)
 
       # report any indf{5,3}{gap,loc} alerts for this sequence that we stored in loop above
       for(my $alt_idx = 0; $alt_idx < scalar(@alt_code_A); $alt_idx++) { 
