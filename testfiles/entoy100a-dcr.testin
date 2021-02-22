@@ -72,3 +72,36 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-ento
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.entoy100a-dcr.align.stk
 rmdir: va-entoy100a-dcr-glsnodcr
+# 
+##############################################3
+# Second seq file
+# 
+# yes --aln_gls, no --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --aln_gls --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-gls > va-entoy100a-dcr2-gls.out
+desc: annotate-entoy100a-dcr2-gls
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt.list
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.entoy100a-dcr.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.entoy100a-dcr.align.stk
+rmdir: va-entoy100a-dcr2-gls
+#
+# yes --aln_gls, yes --nodcr, note output files are same as without --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --aln_gls --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-glsnodcr > va-entoy100a-dcr2-glsnodcr.out
+desc: annotate-entoy100a-dcr2-glsnodcr
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.pass.list
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.fail.list
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.alt.list
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.alt
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.entoy100a-dcr.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.entoy100a-dcr.align.stk
+rmdir: va-entoy100a-dcr2-gls
