@@ -3396,7 +3396,7 @@ sub cmalign_or_glsearch_run {
 
   # determine cmalign options based on command line options
   if($do_gls_aln) { 
-    $cmd = $execs_HR->{"glsearch"} . " -T $ncpu -m 3,9C -z -1 -n -3 -d 1 $seq_file $mdl_file > $stdout_file 2>&1";
+    $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>&1";
     printf("HEYA glsearch cmd: $cmd\n");
   }
   else { # running cmalign
