@@ -3459,7 +3459,19 @@ sub cmalign_or_glsearch_run {
 #
 # Purpose:    Parse Infernal 1.1 cmalign stockholm alignment file
 #             and store results in @{$mdl_results_AAHR}. 
-#             
+# 
+#             Added post v1.1.3 with --aln_gls was added to deal with
+#             case where some SARS-CoV-2 seqs were failing due to a
+#             gap in a start codon: Potentially doctors (modifies) the
+#             stockholm alignment for each sequence if (and this
+#             should be rare) a gap exists at first position of start
+#             or final position of stop codon, but only if that
+#             doctoring will create a valid start/stop. Potentially
+#             re-doctors already doctored aligned sequence exactly
+#             once if the initial doctoring disrupted a different
+#             valid start/stop.  See comments throughout (search for
+#             'doctor').
+# 
 #             Detects and adds the following alerts to 
 #             @{$alt_ftr_instances_AAHR}:
 #             indf5gap: gap at 5' boundary of model span for a feature segment
