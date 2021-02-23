@@ -3895,8 +3895,8 @@ sub parse_stk_and_add_alignment_alerts {
              ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
              ((($sgm_strand eq "+") && ($start_uapos > 1))                       || (($sgm_strand eq "-") && ($start_uapos < $seq_len))) && # we have an nt to swap with
              ((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_start_rfpos)] == -1)))) { # we won't be swapping with an insert
-            # check if shifted start would be a valid stop codon, we only swap gap/res if this is true
-            # need to get full unaligned sqstring, expensive but should be rare
+            # only swap gap/res if it would give us a valid start codon
+            # to check we need to get full unaligned sqstring, this is expensive, but should be rare
             my $ua_sqstring = $sqstring_aligned;
             $ua_sqstring =~ s/\W//g;
             my $new_start = substr($ua_sqstring, $start_uapos-2, 3);
@@ -3918,8 +3918,8 @@ sub parse_stk_and_add_alignment_alerts {
              ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
              ((($sgm_strand eq "+") && ($stop_uapos < $seq_len))            || (($sgm_strand eq "-") && ($stop_uapos > 1))) && # we have an nt to swap with
              ((($sgm_strand eq "+") && ($rf2ilen_A[$sgm_stop_rfpos] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == -1)))) { # we won't be swapping with an insert
-            # check if shifted stop would be a valid stop codon, and only swap gap/res if so
-            # need to get full unaligned sqstring, expensive but should be rare
+            # only swap gap/res if it would give us a valid stop codon
+            # to check we need to get full unaligned sqstring, this is expensive, but should be rare
             my $ua_sqstring = $sqstring_aligned;
             $ua_sqstring =~ s/\W//g;
             my $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
@@ -4947,7 +4947,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
                       # determine what position it is
                       $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
                       if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
-                        $alt_str_H{"mutendex"} = $ftr_stop_c;
+                        $alt_str_H{"mutendex"} = sprintf("sequence positions %d to %d on %s strand", 
+                                                         (($ftr_strand eq "+") ? $ftr_stop_c - 2 : $ftr_stop_c + 2), 
+                                                         $ftr_stop_c, $ftr_strand);
                       }
                     }
                   } # end of 'if($ftr_stop < $seq_len)'
