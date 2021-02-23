@@ -276,8 +276,11 @@ opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--glsearch", "do not
 
 $opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as alternative to cmalign";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--glsearch",  "boolean", 0,         $g,    undef, undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
-#opt_Add("--gls_",    "boolean", 0,         $g,    undef, undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
+opt_Add("--glsearch",     "boolean", 0,         $g,"--glsearch", undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
+opt_Add("--gls_match",    "integer", 5,         $g,"--glsearch", undef,      "set glsearch match score to <n> > 0 with glsearch -r option",                  "set glsearch match score to <n> > 0 with glsearch -r option", \%opt_HH, \@opt_order_A);
+opt_Add("--gls_mismatch", "integer", -3,        $g,"--glsearch", undef,      "set glsearch mismatch score to <n> < 0 with glsearch -r option",               "set glsearch mismatch score to <n> < 0 with glsearch -r option", \%opt_HH, \@opt_order_A);
+opt_Add("--gls_gapopen",  "integer", -12,       $g,"--glsearch", undef,      "set glsearch gap open score to <n> < 0 with glsearch -f option",               "set glsearch gap open score to <n> < 0 with glsearch -f option", \%opt_HH, \@opt_order_A);
+opt_Add("--gls_gapextend","integer", -4,        $g,"--glsearch", undef,      "set glsearch gap extend score to <n> < 0 with glsearch -g option",             "set glsearch gap extend score to <n> < 0 with glsearch -g option", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
 #        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
@@ -410,7 +413,12 @@ my $options_okay =
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
+# options for controlling glsearch alignment stage 
                 'glsearch'       => \$GetOptions_H{"--glsearch"},
+                'gls_match=s'    => \$GetOptions_H{"--gls_match"},
+                'gls_mismatch=s' => \$GetOptions_H{"--gls_mismatch"},
+                'gls_gapopen=s'  => \$GetOptions_H{"--gls_gapopen"},
+                'gls_gapextend=s'=> \$GetOptions_H{"--gls_gapextend"},
 # options for controlling protein blastx protein validation stage
                 'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
@@ -3400,7 +3408,8 @@ sub cmalign_or_glsearch_run {
 
   # determine cmalign options based on command line options
   if($do_glsearch) { 
-    $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>&1";
+    my $gls_opts = sprintf("-r %s/%s -f %s -g %s", opt_Get("--gls_match", $opt_HHR), opt_Get("--gls_mismatch", $opt_HHR), opt_Get("--gls_gapopen", $opt_HHR), opt_Get("--gls_gapextend", $opt_HHR));
+    $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " $gls_opts -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>&1";
     printf("HEYA glsearch cmd: $cmd\n");
   }
   else { # running cmalign
