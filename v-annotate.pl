@@ -279,7 +279,7 @@ $opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as a
 opt_Add("--glsearch",     "boolean", 0,         $g,"--glsearch", undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
 opt_Add("--gls_match",    "integer", 5,         $g,"--glsearch", undef,      "set glsearch match score to <n> > 0 with glsearch -r option",                  "set glsearch match score to <n> > 0 with glsearch -r option", \%opt_HH, \@opt_order_A);
 opt_Add("--gls_mismatch", "integer", -3,        $g,"--glsearch", undef,      "set glsearch mismatch score to <n> < 0 with glsearch -r option",               "set glsearch mismatch score to <n> < 0 with glsearch -r option", \%opt_HH, \@opt_order_A);
-opt_Add("--gls_gapopen",  "integer", -12,       $g,"--glsearch", undef,      "set glsearch gap open score to <n> < 0 with glsearch -f option",               "set glsearch gap open score to <n> < 0 with glsearch -f option", \%opt_HH, \@opt_order_A);
+opt_Add("--gls_gapopen",  "integer", -17,       $g,"--glsearch", undef,      "set glsearch gap open score to <n> < 0 with glsearch -f option",               "set glsearch gap open score to <n> < 0 with glsearch -f option", \%opt_HH, \@opt_order_A);
 opt_Add("--gls_gapextend","integer", -4,        $g,"--glsearch", undef,      "set glsearch gap extend score to <n> < 0 with glsearch -g option",             "set glsearch gap extend score to <n> < 0 with glsearch -g option", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
