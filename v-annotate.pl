@@ -1347,7 +1347,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     # parse the cmalign alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
-        parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, 
+        parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, $mdl_tt,
                                            \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                            \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                            \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
@@ -3469,6 +3469,7 @@ sub cmalign_or_glsearch_run {
 # Arguments: 
 #  $stk_file:               stockholm alignment file to parse
 #  $in_sqfile_R:            REF to Bio::Easel::SqFile object from input fasta file, can be undef unless --alicheck used
+#  $mdl_tt:                 the translation table ('1' for standard)
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
 #  $seq_inserts_HHR:        REF to hash of hashes with sequence insert information, PRE-FILLED
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
@@ -3491,10 +3492,10 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_alerts()";
-  my $nargs_exp = 16;
+  my $nargs_exp = 17;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($stk_file, $in_sqfile_R, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
+  my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HHAR, 
       $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
@@ -3555,6 +3556,7 @@ sub parse_stk_and_add_alignment_alerts {
   my $nseq = $msa->nseq; 
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
+    printf("TOP OF LOOP i: $i\n");
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_len_HR->{$seq_name}) { 
       ofile_FAIL("ERROR in $sub_name, do not have length information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
@@ -3564,6 +3566,7 @@ sub parse_stk_and_add_alignment_alerts {
       ofile_FAIL("ERROR in $sub_name, do not have insert information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
     }
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
+    my $seq_doctor_flag = 0;
 
     @{$sgm_results_HAHR->{$seq_name}} = ();
     my @doctor_gap_posn_A = (); # array of gap positions in the alignment to doctor by swapping with nearest nt
@@ -3852,24 +3855,19 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
 
         # Check for special case where CDS starts/stops with a gap
-        # if so, we actually doctor the alignment and then 
+        # if so, we may actually doctor the alignment and then 
         # rerun the main loop over segments by setting $seq_doctor_flag to 1
         #
-        # We will doctor the alignment by swapping the closest nucleotide
-        # to the left of the first RF position of this segment if:
-        # - first RF position of segment aligns to a gap
-        # - this is first segment of a CDS
-        # - we are not 5' truncated ($start_uapos != 1)
-        # - there's no inserts between previous RF position
-        #   and first RF position of segment (that aligns to a gap)
-        # 
-        # We will doctor the alignment by swapping the closest nucleotide
-        # to the right of the final RF position of this segment if:
-        # - final RF position of segment aligns to a gap
-        # - this is final segment of a CDS
-        # - we are not 3' truncated ($stop_uapos != $seq_len)
-        # - there's no inserts between final RF position
-        #   of segment (that aligns to a gap) and next RF position
+        # To fix a start or stop codon that starts/ends with a gap, 
+        # we will doctor the alignment by swapping gap with closest nt
+        # in proper 5'/3' direction (depending on start/stop and strand)
+        # if: 
+        # - first/final RF position of segment aligns to a gap
+        # - this is first/final segment of a CDS
+        # - there exists another nt to swap with
+        # - the nt we will swap with is not an insert (this would invalidate insert info)
+        # - the swap will result in a valid start/stop codon, taking
+        #   strand into account
         # 
         # This corrects situations like these:
         # 
@@ -3891,31 +3889,52 @@ sub parse_stk_and_add_alignment_alerts {
         # not fix the problem and you'll still get an error when a valid start/stop exists,
         # possibly with non-standard translation tables.
         #
-        # check for gap at start of start codon that we can try to fix
-#        printf("DOCTOR CHECK sgm: $sgm_idx\n");
-#        printf("\tis_cds start:   %d\n", (vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})));
-#        printf("\tstartgap:        %d\n", ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}));
-#        printf("\tstart_uapos:     %d\n", $start_uapos);
-#        printf("\trf2ilen(%5d): %d\n", ($sgm_start_rfpos-1), ($rf2ilen_A[($sgm_start_rfpos-1)]));
         if(! $do_nodcr) { 
+          # check for gap at start of start codon that we can try to fix
           if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
              ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
-             ($start_uapos > 1) && # we are not 5' truncated ($start_uapos != 1)
-             ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) {# there's no inserts between previous RF position and first RF position of segment
-            push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
-            push(@doctor_before_A, 1);
-            $seq_doctor_flag = 1;
-            $msa_doctor_flag = 1;
+             ((($sgm_strand eq "+") && ($start_uapos > 1))                       || (($sgm_strand eq "-") && ($start_uapos < $seq_len))) && # we have an nt to swap with
+             ((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_start_rfpos)] == -1)))) { # we won't be swapping with an insert
+            # check if shifted start would be a valid stop codon, we only swap gap/res if this is true
+            # need to get full unaligned sqstring, expensive but should be rare
+            my $ua_sqstring = $sqstring_aligned;
+            $ua_sqstring =~ s/\W//g;
+            my $new_start = substr($ua_sqstring, $start_uapos-2, 3);
+            print("$seq_name new_start: $new_start ($sgm_strand)\n");
+            if($sgm_strand eq "-") { 
+              seq_SqstringReverseComplement(\$new_start);
+              print("revcomp: $new_start\n");
+            }
+            if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
+              print("valid new_start\n");
+              push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
+              push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
+              $seq_doctor_flag = 1;
+              $msa_doctor_flag = 1;
+            }
           }
           # check for gap at end of stop codon that we can try to fix
           if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
              ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
-             ($stop_uapos < $seq_len) && # we are not 3' truncated ($stop_uapos != $seq_len)
-             ($rf2ilen_A[$sgm_stop_rfpos] == -1)) {# there's no inserts between final RF position of segment and next RF position
-            push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
-            push(@doctor_before_A, 0);
-            $seq_doctor_flag = 1;
-            $msa_doctor_flag = 1;
+             ((($sgm_strand eq "+") && ($stop_uapos < $seq_len))            || (($sgm_strand eq "-") && ($stop_uapos > 1))) && # we have an nt to swap with
+             ((($sgm_strand eq "+") && ($rf2ilen_A[$sgm_stop_rfpos] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == -1)))) { # we won't be swapping with an insert
+            # check if shifted stop would be a valid stop codon, and only swap gap/res if so
+            # need to get full unaligned sqstring, expensive but should be rare
+            my $ua_sqstring = $sqstring_aligned;
+            $ua_sqstring =~ s/\W//g;
+            my $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
+            print("$seq_name new_stop: $new_stop ($sgm_strand)\n");
+            if($sgm_strand eq "-") { 
+              seq_SqstringReverseComplement(\$new_stop);
+              print("revcomp: $new_stop\n");
+            }
+            if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
+              print("valid new_stop\n");
+              push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
+              push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
+              $seq_doctor_flag = 1;
+              $msa_doctor_flag = 1;
+            }
           }
         }
 
@@ -5057,7 +5076,6 @@ sub sqstring_check_start {
   $start_codon =~ tr/U/T/;     # convert to DNA
 
   return seq_CodonValidateStartCapDna($start_codon, $tt, $atg_only);
-
 }
 
 #################################################################
