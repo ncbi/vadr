@@ -202,7 +202,7 @@ $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--cpu",        "integer", 0,         $g,"--aln_gls",undef,     "use <n> parallel CPU workers to use for multithreads (requires --aln_gls)",               "use <n> parallel CPU workers to use for multithreads (requires --aln_gls)", \%opt_HH, \@opt_order_A);
+opt_Add("--cpu",        "integer", 0,         $g,"--glsearch",undef,     "use <n> parallel CPU workers to use for multithreads (requires --glsearch)",               "use <n> parallel CPU workers to use for multithreads (requires --glsearch)", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,         $g,    undef, undef,      "only consider ATG a valid start codon",                                                   "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>",  "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -256,8 +256,8 @@ opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,           
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnt",   "integer",    6,        $g,   undef,   undef,            "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--aln_gls",         "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",              "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstlowthr",  "real",      0.3,       $g,   undef,"--aln_gls",         "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",               "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--glsearch",         "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",              "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstlowthr",  "real",      0.3,       $g,   undef,"--glsearch",         "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",               "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--xalntol",    "integer",   5,         $g,   undef,   undef,            "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",   "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",     "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
@@ -268,12 +268,16 @@ opt_Add("--hlonescore",  "integer",  10,        $g,"--pv_hmmer","--pv_skip",    
 
 $opt_group_desc_H{++$g} = "options for controlling cmalign alignment stage";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
-opt_Add("--mxsize",     "integer", 16000,     $g,    undef,"--aln_gls", "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
-opt_Add("--tau",        "real",    1E-3,      $g,    undef,"--aln_gls", "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--nofixedtau", "boolean", 0,         $g,    undef,"--aln_gls", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
-opt_Add("--nosub",      "boolean", 0,         $g,    undef,"--aln_gls", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
-opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--aln_gls", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
-opt_Add("--aln_gls",    "boolean", 0,         $g,    undef, undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
+opt_Add("--mxsize",     "integer", 16000,     $g,    undef,"--glsearch", "set max allowed memory for cmalign to <n> Mb",                                 "set max allowed memory for cmalign to <n> Mb", \%opt_HH, \@opt_order_A);
+opt_Add("--tau",        "real",    1E-3,      $g,    undef,"--glsearch", "set the initial tau value for cmalign to <x>",                                 "set the initial tau value for cmalign to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--nofixedtau", "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
+opt_Add("--nosub",      "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
+opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as alternative to cmalign";
+#        option               type default group  requires incompat   preamble-output                                                                help-output    
+opt_Add("--glsearch",  "boolean", 0,         $g,    undef, undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
+#opt_Add("--gls_",    "boolean", 0,         $g,    undef, undef,      "align with glsearch from the FASTA package, not to a cm with cmalign",         "align with glsearch from the FASTA package, not to a cm with cmalign", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling blastx protein validation stage";
 #        option               type   default  group  requires incompat            preamble-output                                                                                 help-output    
@@ -406,7 +410,7 @@ my $options_okay =
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
-                'aln_gls'       => \$GetOptions_H{"--aln_gls"},
+                'glsearch'       => \$GetOptions_H{"--glsearch"},
 # options for controlling protein blastx protein validation stage
                 'xmatrix=s'     => \$GetOptions_H{"--xmatrix"},
                 'xdrop=s'       => \$GetOptions_H{"--xdrop"},
@@ -560,7 +564,7 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # they are all turned on/off with -s in case future changes
 # only need some but not all
 
-my $do_gls_aln = opt_Get("--aln_gls", \%opt_HH) ? 1 : 0;
+my $do_glsearch = opt_Get("--glsearch", \%opt_HH) ? 1 : 0;
 
 #############################
 # create the output directory
@@ -721,12 +725,12 @@ if($cm_file !~ m/\.cm$/) {
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for blastn db file if we need it
-if(($do_blastn_any) || ($do_replace_ns) || ($do_gls_aln)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
+if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
   utl_FileValidateExistsAndNonEmpty($blastn_db_file, sprintf("blastn db file%s", ($blastn_extra_string eq "") ? "" : ", due to $blastn_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   foreach my $sfx (".nhr", ".nin", ".nsq", ".ndb", ".not", ".nto", ".ntf") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
-  if($do_gls_aln) { 
+  if($do_glsearch) { 
     foreach my $sfx (".ssi") { # for fetching seqs from
       utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "easel $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
     }
@@ -963,7 +967,7 @@ my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the
 my $rpn_sqfile = undef;
 # open the blastn_db sequence file too, if we need it
 my $blastn_db_sqfile = undef;
-if(($do_blastn_any) || ($do_replace_ns) || ($do_gls_aln)) { 
+if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { 
   $blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
 }
 
@@ -1191,7 +1195,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $cur_mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
 
     my $glsearch_db_file = undef;
-    if($do_gls_aln) { # create the glsearch db file with a single sequence
+    if($do_glsearch) { # create the glsearch db file with a single sequence
       $glsearch_db_file = $out_root . "." . $mdl_name . ".glsearch.fa";
       my @glsearch_seqname_A = ($mdl_name);
       $blastn_db_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
@@ -1222,7 +1226,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       if($cur_mdl_nalign > 0) { 
         $$sqfile_for_analysis_R->fetch_subseqs(\@subseq_AA, 60, $cur_mdl_align_fa_file);
         my $subseq_key = $mdl_name . ".a.subseq.fa";
-        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_align_fa_file, 0, $do_keep, sprintf("subsequences to align with %s for model $mdl_name (created due to -s)", ($do_gls_aln) ? "glsearch" : "cmalign"));
+        ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $subseq_key, $cur_mdl_align_fa_file, 0, $do_keep, sprintf("subsequences to align with %s for model $mdl_name (created due to -s)", ($do_glsearch) ? "glsearch" : "cmalign"));
         push(@to_remove_A, $ofile_info_HH{"fullpath"}{$subseq_key});
         $cur_mdl_tot_seq_len = utl_HSumValues(\%subseq_len_H);
       }
@@ -1232,7 +1236,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     @{$stk_file_HA{$mdl_name}} = ();
     if($cur_mdl_nalign > 0) { 
       cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$blastn_db_sqfile,
-                                  ($do_gls_aln ? $glsearch_db_file : $cm_file), 
+                                  ($do_glsearch ? $glsearch_db_file : $cm_file), 
                                   $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
@@ -1274,7 +1278,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my @unjoinbl_seq_name_A = (); # array of seqs with unjoinbl alerts
       if(scalar(@join_seq_name_A > 0)) { 
         join_alignments_and_add_unjoinbl_alerts($sqfile_for_analysis_R, \$blastn_db_sqfile, \%execs_H, 
-                                                $do_gls_aln, $cm_file,
+                                                $do_glsearch, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
                                                 \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
                                                 \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
@@ -1297,7 +1301,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".uj.a.fa", $unjoinbl_mdl_fa_file, 0, $do_keep, sprintf("%sinput seqs that match best to model $mdl_name with unjoinbl alerts", ($do_replace_ns) ? "replaced " : ""));
         $cur_mdl_tot_seq_len = utl_HSumValuesSubset(\%seq_len_H, \@unjoinbl_seq_name_A);
         cmalign_or_glsearch_wrapper(\%execs_H, $qsub_prefix, $qsub_suffix, \$blastn_db_sqfile,
-                                    ($do_gls_aln ? $glsearch_db_file : $cm_file), 
+                                    ($do_glsearch ? $glsearch_db_file : $cm_file), 
                                     $mdl_name, $unjoinbl_mdl_fa_file, $out_root, "uj.", $cur_unjoinbl_nseq,
                                     $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                     \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
@@ -3036,9 +3040,9 @@ sub cmalign_or_glsearch_wrapper {
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   printf("HEYA in $sub_name\n");
-  my $do_gls_aln = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
+  my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
-  my $log_FH = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
+  my $log_FH      = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $start_secs; # timing start
   my $do_parallel = opt_Get("-p", $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
@@ -3102,8 +3106,8 @@ sub cmalign_or_glsearch_wrapper {
   for($r1_i = 0; $r1_i < $nr1; $r1_i++) { 
     if($r1_success_A[$r1_i]) { 
       # run finished successfully
-      # if $do_gls_aln, create the stockholm output file and insert file
-      if($do_gls_aln) { 
+      # if $do_glsearch, create the stockholm output file and insert file
+      if($do_glsearch) { 
         vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
                                                          $r1_out_file_AH[$r1_i]{"stdout"}, 
                                                          $r1_out_file_AH[$r1_i]{"stk"},
@@ -3139,7 +3143,7 @@ sub cmalign_or_glsearch_wrapper {
 
   # do all round 2 runs
   if($nr2 > 0) { 
-    if($do_gls_aln) { # shouldn't happen if $do_gls_aln
+    if($do_glsearch) { # shouldn't happen if $do_glsearch
       ofile_FAIL("ERROR in $sub_name, running glsearch but trying to run stage 2 for at least 1 seq which should only happen if running cmalign", 1, $FH_HR); 
     }
     cmalign_or_glsearch_wrapper_helper($execs_HR, $mdl_file, $mdl_name, $out_root, 2, $extra_key, $nr2, $progress_w, 
@@ -3231,7 +3235,7 @@ sub cmalign_or_glsearch_wrapper_helper {
 
   my $log_FH      = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
-  my $do_gls_aln  = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
+  my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $nseq_files  = scalar(@{$seq_file_AR});
 
   printf("HEYA in $sub_name\n");
@@ -3241,7 +3245,7 @@ sub cmalign_or_glsearch_wrapper_helper {
   my $stg_desc = "";
   if($do_parallel) { 
     $stg_desc = sprintf("Submitting $nseq_files %s job(s) ($mdl_name: $nseq %sseq%s) to the farm%s", 
-                        ($do_gls_aln) ? "glsearch" : "cmalign", 
+                        ($do_glsearch) ? "glsearch" : "cmalign", 
                         ($extra_key eq "uj.") ? "unjoinbl " : "", 
                         ($nseq > 1) ? "s" : "",
                         ($round == 1) ? "" : " to find seqs too divergent to annotate");
@@ -3284,12 +3288,12 @@ sub cmalign_or_glsearch_wrapper_helper {
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
-      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_gls_aln ? 0 : 1), # are we are doing cmalign?
+      my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_glsearch ? 0 : 1), # are we are doing cmalign?
                                                        "stdout",
                                                        $out_file_AHR,
                                                        $success_AR, 
                                                        $mxsize_AR,  
-                                                       ($do_gls_aln ? "GLSEARCH" : ""), # value is irrelevant for cmalign
+                                                       ($do_glsearch ? "GLSEARCH" : ""), # value is irrelevant for cmalign
                                                        $opt_HHR, $ofile_info_HHR->{"FH"});
       if($njobs_finished != $nseq_files) { 
         ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
@@ -3363,7 +3367,7 @@ sub cmalign_or_glsearch_run {
 
   my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
-  my $do_gls_aln  = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
+  my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $ncpu = opt_Get("--cpu", $opt_HHR);
   if($ncpu == 0) { $ncpu = 1; }
 
@@ -3376,7 +3380,7 @@ sub cmalign_or_glsearch_run {
   if(! defined $stdout_file) { ofile_FAIL("ERROR in $sub_name, stdout output file name is undefined", 1, $FH_HR); }
   if(! defined $err_file)    { ofile_FAIL("ERROR in $sub_name, err    output file name is undefined", 1, $FH_HR); }
   if(! defined $sh_file)     { ofile_FAIL("ERROR in $sub_name, sh     output file name is undefined", 1, $FH_HR); }
-  if(! $do_gls_aln) { # only need stdout file and ifile file if running glsearch
+  if(! $do_glsearch) { # only need stdout file and ifile file if running glsearch
     if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
     if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
   }
@@ -3384,18 +3388,18 @@ sub cmalign_or_glsearch_run {
     if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $err_file)    { unlink $err_file; }
     if(-e $sh_file)     { unlink $sh_file; }
-    if(! $do_gls_aln) { 
+    if(! $do_glsearch) { 
       if(-e $stk_file)    { unlink $stk_file; }
       if(-e $ifile_file)  { unlink $ifile_file; }
     }
   }
-  utl_FileValidateExistsAndNonEmpty($mdl_file, sprintf("%s file", $do_gls_aln ? "nucleotide model fasta" : "CM"), $sub_name, 1, $FH_HR); 
+  utl_FileValidateExistsAndNonEmpty($mdl_file, sprintf("%s file", $do_glsearch ? "nucleotide model fasta" : "CM"), $sub_name, 1, $FH_HR); 
   utl_FileValidateExistsAndNonEmpty($seq_file, "sequence file", $sub_name, 1, $FH_HR);
 
   my $cmd = undef;
 
   # determine cmalign options based on command line options
-  if($do_gls_aln) { 
+  if($do_glsearch) { 
     $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>&1";
     printf("HEYA glsearch cmd: $cmd\n");
   }
@@ -3436,7 +3440,7 @@ sub cmalign_or_glsearch_run {
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed
-    if($do_gls_aln) { # glsearch: final line of stdout file should have 'GLSEARCH' in it
+    if($do_glsearch) { # glsearch: final line of stdout file should have 'GLSEARCH' in it
       my $final_line = `tail -n 1 $stdout_file`;
       chomp $final_line;
       if($final_line =~ m/\r$/) { chop $final_line; } # remove ^M if it exists
@@ -3460,7 +3464,7 @@ sub cmalign_or_glsearch_run {
 # Purpose:    Parse Infernal 1.1 cmalign stockholm alignment file
 #             and store results in @{$mdl_results_AAHR}. 
 # 
-#             Added post v1.1.3 with --aln_gls was added to deal with
+#             Added post v1.1.3 with --glsearch was added to deal with
 #             case where some SARS-CoV-2 seqs were failing due to a
 #             gap in a start codon: Potentially doctors (modifies) the
 #             stockholm alignment for each sequence if (and this
@@ -3518,7 +3522,7 @@ sub parse_stk_and_add_alignment_alerts {
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $do_alicheck      = opt_Get("--alicheck",    $opt_HHR); # check aligned sequences are identical to those fetched from $sqfile (except maybe Ns if -r) 
   my $do_replace_ns    = opt_Get("-r",            $opt_HHR); # only relevant if $do_alicheck
-  my $do_gls_aln       = opt_Get("--aln_gls",     $opt_HHR); # we won't have PP values if this is 1
+  my $do_glsearch      = opt_Get("--glsearch",     $opt_HHR); # we won't have PP values if this is 1
   my $do_nodcr         = opt_Get("--nodcr",       $opt_HHR); # do not doctor alignment to correct start/stop codons
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
@@ -3640,8 +3644,8 @@ sub parse_stk_and_add_alignment_alerts {
                                  #                       -1 if $max_rfpos_before_A[$rfpos] == -1
 
     my @rfpos_pp_A = ();         # [0..$rfpos..rflen+1]: posterior probability character for current sequence at RF position $rfpos
-                                 #                       or '?' if $do_gls_aln (--aln_gls)
-                                 #                       '.' if sequence is a gap at that RF position $rfpos (even if $do_gls_aln)
+                                 #                       or '?' if $do_glsearch (--glsearch)
+                                 #                       '.' if sequence is a gap at that RF position $rfpos (even if $do_glsearch)
                                  #                       special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
                                  # 
 
@@ -3657,11 +3661,11 @@ sub parse_stk_and_add_alignment_alerts {
     }
     # get aligned sequence, length will be alen
     my $sqstring_aligned = $msa->get_sqstring_aligned($i);
-    my $ppstring_aligned = ($do_gls_aln) ? undef : $msa->get_ppstring_aligned($i);
+    my $ppstring_aligned = ($do_glsearch) ? undef : $msa->get_ppstring_aligned($i);
     if(length($sqstring_aligned) != $alen) { 
       ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned seqstring of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($sqstring_aligned), $alen), 1, $FH_HR);
     }
-    if((! $do_gls_aln) && (length($ppstring_aligned) != $alen)) { 
+    if((! $do_glsearch) && (length($ppstring_aligned) != $alen)) { 
       ofile_FAIL(sprintf("ERROR in $sub_name, fetched aligned posterior probability string of unexpected length (%d, not %d)\n$sqstring_aligned\n", length($ppstring_aligned), $alen), 1, $FH_HR);
     }
 
@@ -3690,7 +3694,7 @@ sub parse_stk_and_add_alignment_alerts {
 
     my @sq_A = split("", $sqstring_aligned);
     my @pp_A = ();
-    if(! $do_gls_aln) { 
+    if(! $do_glsearch) { 
       @pp_A = split("", $ppstring_aligned);
     }
     # printf("sq_A size: %d\n", scalar(@sq_A));
@@ -3714,7 +3718,7 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($nongap_rf) { 
         $min_uapos--;
-        $rfpos_pp_A[$rfpos] = ($do_gls_aln) ? "?" : $pp_A[($apos-1)];
+        $rfpos_pp_A[$rfpos] = ($do_glsearch) ? "?" : $pp_A[($apos-1)];
       }
       $min_rfpos_after_A[$rfpos] = $min_rfpos;
       $min_uapos_after_A[$rfpos] = $min_uapos;
@@ -3739,7 +3743,7 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($nongap_rf) { 
         $max_uapos++;
-        $rfpos_pp_A[$rfpos] = ($do_gls_aln) ? "?" : $pp_A[($apos-1)];
+        $rfpos_pp_A[$rfpos] = ($do_glsearch) ? "?" : $pp_A[($apos-1)];
       }
       $max_rfpos_before_A[$rfpos] = $max_rfpos;
       $max_uapos_before_A[$rfpos] = $max_uapos;
@@ -3864,8 +3868,8 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}    = ($p_3seqflush && ($stop_rfpos  != $sgm_stop_rfpos))  ? 1 : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}  = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? 1  : 0;
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}   = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? 1  : 0;
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR));
-        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_gls_aln ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}   = ($rfpos_pp_A[$sgm_start_rfpos] eq ".") ? -1 : ($do_glsearch ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_start_rfpos], $FH_HR));
+        $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_glsearch ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
 
         # Check for special case where CDS starts/stops with a gap
         # if so, we may actually doctor the alignment and then 
@@ -4005,7 +4009,7 @@ sub parse_stk_and_add_alignment_alerts {
 #                                       "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
 #                                       $FH_HR);
           } 
-          elsif((! $do_gls_aln) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
+          elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf5loc, but first check if the start of this segment is identical to 
             # the stop of a CDS or mat_peptide or gene feature
             # if so we don't report indf5loc because there's other (better) checks of the start codon position
@@ -4031,7 +4035,7 @@ sub parse_stk_and_add_alignment_alerts {
             #"RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
             #$FH_HR);
           }
-          elsif((! $do_gls_aln) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
+          elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf3loc, but first check if the stop of this segment is identical to 
             # the stop of a CDS or gene feature (mat_peptide excluded because it won't include stop codon)
             # if so we don't report indf3loc because there's other (better) checks of the stop codon position
@@ -4163,7 +4167,7 @@ sub parse_stk_and_add_alignment_alerts {
 #                           character for current sequence at RF position $rfpos
 #                           '.' if sequence is a gap at that RF position $rfpos
 #                           special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
-#                           undef if --aln_gls used ($do_gls_aln == 1 in caller)
+#                           undef if --glsearch used ($do_glsearch == 1 in caller)
 #  $rf2ilen_AR:             REF to array: [1..$rfpos..$rflen] = $apos; rf position $rfpos maps to 
 #                           alignment position $apos [1..$alen]  ($rf2a_A[0] = -1 (dummy value))
 #  $max_uapos_before_AR:    REF to array; [0..$rfpos..rflen+1]: maximum unaligned position for 
@@ -4202,7 +4206,7 @@ sub add_frameshift_alerts_for_one_sequence {
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
   my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
-  my $do_gls_aln     = opt_Get("--aln_gls",     $opt_HHR); # we won't have PP values if this is 1
+  my $do_glsearch    = opt_Get("--glsearch",     $opt_HHR); # we won't have PP values if this is 1
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $ftr_idx;
@@ -4462,8 +4466,8 @@ sub add_frameshift_alerts_for_one_sequence {
               }
               $span_len = abs($span_stop - $span_start) + 1;
               if($span_len >= $fst_min_nt) { 
-                # above our length threshold, if $do_gls_aln, we always report this, if not it depends on the avg PP value
-                if($do_gls_aln) { # we don't have PP values, so all frameshifts are treated equally
+                # above our length threshold, if $do_glsearch, we always report this, if not it depends on the avg PP value
+                if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
                   my $span_str = sprintf("%d..%d (%d nt)", $span_start, $span_stop, $span_len);
                   my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
@@ -4475,7 +4479,7 @@ sub add_frameshift_alerts_for_one_sequence {
                   $delete_str = "";
                   push(@cds_alt_str_A, $alt_str);
                 }
-                else { # $do_gls_aln is 0 so we have PP values and we examine them to determine type of frameshift
+                else { # $do_glsearch is 0 so we have PP values and we examine them to determine type of frameshift
                   # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
                   # determine average posterior probability of non-dominant frame subseq
                   if(! defined $full_ppstr) { 
@@ -7711,8 +7715,8 @@ sub output_tabular {
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
 
-  # if --aln_gls we won't have PP values
-  my $do_gls_aln = opt_Get("--aln_gls", $opt_HHR) ? 1 : 0;
+  # if --glsearch we won't have PP values
+  my $do_glsearch = opt_Get("--glsearch", $opt_HHR) ? 1 : 0;
 
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
@@ -7986,7 +7990,7 @@ sub output_tabular {
                 my $sgm_strand = $sgm_results_HR->{"strand"};
                 my $sgm_trunc  = helper_tabular_sgm_results_trunc_string($sgm_results_HR);
                 my ($sgm_pp5, $sgm_pp3);
-                if($do_gls_aln) { 
+                if($do_glsearch) { 
                   $sgm_pp5    = ($sgm_results_HR->{"startpp"} ne "?") ? "-" : "?";
                   $sgm_pp3    = ($sgm_results_HR->{"stoppp"}  ne "?") ? "-" : "?";
                 }
