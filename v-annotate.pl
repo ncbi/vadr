@@ -1162,7 +1162,8 @@ my $cur_mdl_align_fa_file;   # fasta file with sequences to align to current mod
 my $cur_mdl_nseq;            # number of sequences assigned to model
 my $cur_mdl_nalign;          # number of sequences we are aligning for current model will be $cur_mdl_nseq unless -s
 my $cur_mdl_tot_seq_len;     # sum of total number of nucleotides we are aligning
-my %dcr_output_HHA = ();     # 2D hash of arrays with info to output related to rare sequences for which the alignment was doctored
+my %dcr_output_HAH = ();     # hash of array of hashes with info to output related to rare sequences for which the alignment was doctored
+                             # more info on this in output_tabular() comments/code
 
 # -s related output for .sda file
 my %sda_output_HH = (); # 2D key with info to output related to the -s option
@@ -1351,7 +1352,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                            \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
                                            \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                            \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HHA,
+                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
                                            $mdl_name, $out_root, 
                                            \%opt_HH, \%ofile_info_HH);
         push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
@@ -1531,6 +1532,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sgm",      $out_root . ".sgm"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "mdl",      $out_root . ".mdl", 1, 1, "per-model tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt", 1, 1, "per-alert tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
 if($do_blastn_ali) {
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-s)");
 }
@@ -1541,10 +1543,9 @@ if($do_replace_ns) {
 $start_secs = ofile_OutputProgressPrior("Generating tabular output", $progress_w, $log_FH, *STDOUT);
 my ($zero_cls, $zero_alt) = output_tabular(\@mdl_info_AH, \%mdl_cls_ct_H, \%mdl_ant_ct_H, \@seq_name_A, \%seq_len_H, 
                                            \%ftr_info_HAH, \%sgm_info_HAH, \%alt_info_HH, \%cls_output_HH, \%ftr_results_HHAH, \%sgm_results_HHAH, 
-                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH,
+                                           \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
                                            ($do_blastn_ali) ? \%sda_output_HH : undef,
                                            ($do_replace_ns) ? \%rpn_output_HH : undef,
-                                           \%dcr_output_HHA,
                                            ((opt_IsUsed("--msub", \%opt_HH)) ? \%mdl_sub_H : undef),
                                            \%opt_HH, \%ofile_info_HH);
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -3479,7 +3480,7 @@ sub cmalign_or_glsearch_run {
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_seq_instances_HHR:  REF to array of hash with per-sequence alerts, ADDED TO HERE
 #  $alt_ftr_instances_HHHR: REF to error instances HAH, ADDED TO HERE
-#  $dcr_output_HHAR:        REF to 2D hash of info on doctored seqs to output, ADDED TO HERE
+#  $dcr_output_HAHR:        REF to hash of array of hashes with info on doctored seqs to output, ADDED TO HERE
 #  $mdl_name:               model name this alignment pertains to
 #  $out_root:               string for naming output files
 #  $opt_HHR:                REF to 2D hash of option values
@@ -3497,7 +3498,7 @@ sub parse_stk_and_add_alignment_alerts {
   
   my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
       $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
-      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HHAR, 
+      $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
       $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
@@ -3905,12 +3906,34 @@ sub parse_stk_and_add_alignment_alerts {
               seq_SqstringReverseComplement(\$new_start);
               print("revcomp: $new_start\n");
             }
+            # store information on this to dcr_output for eventual output in output_tabular()
+            if(! defined $dcr_output_HAHR->{$seq_name}) { 
+              @{$dcr_output_HAHR->{$seq_name}} = ();
+            }
+            my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
+            my $dcr_gap_apos = $rf2a_A[$sgm_start_rfpos];
+            %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}  = $mdl_name;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}   = $ftr_idx;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"gap_apos"}  = $dcr_gap_apos;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"seq_uapos"} = ($sgm_strand eq "+") ? $start_uapos-1 : $start_uapos+1;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"} = "start";
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
+                vdr_CoordsSegmentCreate($start_uapos-1, $start_uapos+1, "+", $FH_HR) : 
+                vdr_CoordsSegmentCreate($start_uapos+1, $start_uapos-1, "-", $FH_HR);
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_start;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
+
             if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
               print("valid new_start\n");
-              push(@doctor_gap_posn_A, $rf2a_A[$sgm_start_rfpos]);
+              push(@doctor_gap_posn_A, $dcr_gap_apos);
               push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
               $seq_doctor_flag = 1;
               $msa_doctor_flag = 1;
+              if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
+                $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+              }
             }
           }
           # check for gap at end of stop codon that we can try to fix
@@ -3928,12 +3951,34 @@ sub parse_stk_and_add_alignment_alerts {
               seq_SqstringReverseComplement(\$new_stop);
               print("revcomp: $new_stop\n");
             }
+            # store information on this to dcr_output for eventual output in output_tabular()
+            if(! defined $dcr_output_HAHR->{$seq_name}) { 
+              @{$dcr_output_HAHR->{$seq_name}} = ();
+            }
+            my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
+            my $dcr_gap_apos = $rf2a_A[$sgm_stop_rfpos];
+            %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}  = $mdl_name;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}   = $ftr_idx;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"gap_apos"}  = $dcr_gap_apos;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"seq_uapos"} = ($sgm_strand eq "+") ? $stop_uapos+1 : $stop_uapos-1;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"} = "stop";
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
+                vdr_CoordsSegmentCreate($stop_uapos-1, $stop_uapos+1, "+", $FH_HR) : 
+                vdr_CoordsSegmentCreate($stop_uapos+1, $stop_uapos-1, "-", $FH_HR);
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_stop;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
+            $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
+
             if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
               print("valid new_stop\n");
-              push(@doctor_gap_posn_A, $rf2a_A[$sgm_stop_rfpos]);
+              push(@doctor_gap_posn_A, $dcr_gap_apos);
               push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
               $seq_doctor_flag = 1;
               $msa_doctor_flag = 1;
+              if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
+                $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+              }
             }
           }
         }
@@ -4020,8 +4065,6 @@ sub parse_stk_and_add_alignment_alerts {
     #       stop^  ^start
     # 
     if(($seq_doctor_flag) && ($seq_doctor_ctr <= 1)) { 
-      # and we store information on the doctor'ing in %{$dcr_output_HHAR}
-      #%{$dcr_output_HHAR{$seq_name}} = ();
       $seq_doctor_ctr++; 
       for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
         printf("OH DOCTOR! $doctor_gap_posn_A[$doc_idx] $doctor_before_A[$doc_idx]\n");
@@ -7628,9 +7671,9 @@ sub alert_instances_check_prevents_annot {
 #  $sgm_results_HAHR:        REF to model results AAH, PRE-FILLED
 #  $alt_seq_instances_HHR:   REF to 2D hash with per-sequence alerts, PRE-FILLED
 #  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $dcr_output_HAHR:         REF to hash of array of hashes with info on doctored seqs to output, PRE-FILLED, most seqs will be undef
 #  $sda_output_HHR:          REF to 2D hash of -s related results to output, PRE-FILLED, undef unless -s
 #  $rpn_output_HHR:          REF to 2D hash of -r related results to output, PRE-FILLED, undef unless -r
-#  $dcr_output_HHAR:         REF to 2D hash of info on doctored seqs to output, PRE-FILLED, most seqs will be undef
 #  $mdl_sub_HR:              REF to hash of of model substitutions, PRE-FILLED, undef unless --msub used
 #  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:          REF to the 2D hash of output file information
@@ -7651,7 +7694,7 @@ sub output_tabular {
       $seq_name_AR, $seq_len_HR, 
       $ftr_info_HAHR, $sgm_info_HAHR, $alt_info_HHR, 
       $cls_output_HHR, $ftr_results_HHAHR, $sgm_results_HHAHR, $alt_seq_instances_HHR, 
-      $alt_ftr_instances_HHHR, $sda_output_HHR, $rpn_output_HHR, $dcr_output_HHAR,
+      $alt_ftr_instances_HHHR, $dcr_output_HAHR, $sda_output_HHR, $rpn_output_HHR,
       $mdl_sub_HR, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
@@ -7730,6 +7773,12 @@ sub output_tabular {
   @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
   @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
   my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
+
+  my @head_dcr_AA = ();
+  my @data_dcr_AA = ();
+  @{$head_dcr_AA[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "gap",   "seq", "codon",  "codon",   "new",   "dcr",   "did");
+  @{$head_dcr_AA[1]} = ("idx", "name", "name", "type", "name",  "idx", "apos", "uapos",  "type", "coords", "codon",  "iter", "swap?");
+  my @clj_dcr_A      = (1,     1,      1,      1,      1,       0,      0,     0,       1,       0,        0,       0,        1);
 
   # optional .sda file
   my $do_sda = opt_Get("-s", $opt_HHR) ? 1 : 0;
@@ -8023,6 +8072,28 @@ sub output_tabular {
                             helper_tabular_replace_spaces($seq_subgrp2), 
                             $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
 
+    if(defined $dcr_output_HAHR->{$seq_name}) { 
+      my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
+      for(my $dcr_idx = 0; $dcr_idx < $ndcr; $dcr_idx++) { 
+        my $dcr_idx2print = sprintf("%d.%d", ($seq_idx+1), ($dcr_idx+1));
+        my $dcr_mdl_name = $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"mdl_name"};
+        my $dcr_ftr_idx  = $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"ftr_idx"};
+        my $dcr_ftr_name = $ftr_info_HAHR->{$dcr_mdl_name}[$dcr_ftr_idx]{"outname"};
+        my $dcr_ftr_name2print = helper_tabular_replace_spaces($dcr_ftr_name);
+        push(@data_dcr_AA, [($dcr_idx2print, $seq_name, $dcr_mdl_name,
+                             $ftr_info_HAHR->{$dcr_mdl_name}[$dcr_ftr_idx]{"type"}, 
+                             $dcr_ftr_name2print, $dcr_ftr_idx, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"gap_apos"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"seq_uapos"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"codon_type"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"codon_coords"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"new_codon"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"dcr_iter"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"did_swap"})]);
+      }
+      push(@data_dcr_AA, []); # empty array -> blank line
+    }
+
     if($do_sda) {
       my $sda_ugp_fract2print = ($sda_ugp_fract ne "-") ? sprintf("%.3f", $sda_ugp_fract) : "-";
       my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
@@ -8142,6 +8213,8 @@ sub output_tabular {
   ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
+  ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
+
   if($do_sda) {
     ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
   }

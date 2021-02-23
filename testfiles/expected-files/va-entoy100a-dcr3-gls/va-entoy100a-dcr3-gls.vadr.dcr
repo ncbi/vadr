@@ -1,0 +1,13 @@
+#     seq                                   mdl            ftr   ftr            ftr   gap    seq  codon     codon    new   dcr  did  
+#idx  name                                  name           type  name           idx  apos  uapos  type     coords  codon  iter  swap?
+#---  ------------------------------------  -------------  ----  -------------  ---  ----  -----  -----  --------  -----  ----  -----
+2.1   ENTOY100A-dcr-rev-Cdel-near-stop      entoy100a-dcr  CDS   protein_three    3    51     50  stop   52..50:-    TAG     1  yes  
+#---  ------------------------------------  -------------  ----  -------------  ---  ----  -----  -----  --------  -----  ----  -----
+3.1   ENTOY100A-dcr-rev-CCdel-near-stop     entoy100a-dcr  CDS   protein_three    3    51     49  stop   51..49:-    TAG     1  yes  
+#---  ------------------------------------  -------------  ----  -------------  ---  ----  -----  -----  --------  -----  ----  -----
+4.1   ENTOY100A-dcr-rev-CCCdel-near-stop    entoy100a-dcr  CDS   protein_three    3    51     48  stop   50..48:-    TAG     1  yes  
+#---  ------------------------------------  -------------  ----  -------------  ---  ----  -----  -----  --------  -----  ----  -----
+5.1   ENTOY100A-dcr-rev-CCCCdel-near-stop   entoy100a-dcr  CDS   protein_three    3    51     47  stop   49..47:-    TAT     1  no   
+#---  ------------------------------------  -------------  ----  -------------  ---  ----  -----  -----  --------  -----  ----  -----
+6.1   ENTOY100A-dcr-rev-TTTTdel-near-start  entoy100a-dcr  CDS   protein_three    3    65     65  start  65..63:-    CTG     1  no   
+#---  ------------------------------------  -------------  ----  -------------  ---  ----  -----  -----  --------  -----  ----  -----
