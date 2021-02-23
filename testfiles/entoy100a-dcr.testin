@@ -125,16 +125,16 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100
 rmdir: va-entoy100a-dcr3-gls
 #
 # yes --aln_gls, yes --nodcr, --atgonly
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --nodcr --aln_gls --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-gls > va-entoy100a-dcr3-gls.out
-desc: annotate-entoy100a-dcr3-glsnocdr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --nodcr --aln_gls --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-glsnodcr > va-entoy100a-dcr3-glsnodcr.out
+desc: annotate-entoy100a-dcr3-glsnodcr
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.pass.list
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.fail.list
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt.list
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.entoy100a-dcr.align.stk
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.pass.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.fail.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.alt.list
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.entoy100a-dcr.align.stk
-rmdir: va-entoy100a-dcr3-gls
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.entoy100a-dcr.align.stk
+rmdir: va-entoy100a-dcr3-glsnodcr
