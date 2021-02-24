@@ -645,7 +645,7 @@ $ntests = scalar(@desc_A);
 my ($cur_joined_seq, $cur_joined_mdl, $cur_joined_pp, $cur_seq_len, $cur_mdl_len, $cur_pp_len);
 for($i = 0; $i < $ntests; $i++) { 
   ($cur_joined_seq, $cur_joined_mdl, $cur_joined_pp) =
-      join_alignments_helper($ali_5p_seq_coords_A[$i],
+      join_alignments_helper(0, $ali_5p_seq_coords_A[$i],  # 0 is $do_glsearch
                              $ali_5p_mdl_coords_A[$i],                             
                              $ali_5p_seq_A[$i],
                              $ali_5p_mdl_A[$i],
