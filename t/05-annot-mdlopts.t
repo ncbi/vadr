@@ -118,7 +118,7 @@ push(@desc_A, "v-annotate.pl noro.subseq.fa -s -m -i -x bad -n");
 push(@fail_A, "1");
 
 # --pv_hmmer and valid -m -i -a: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --pv_hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/NC_001959.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --pv_hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/NC_001959.pt.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
 push(@desc_A, "v-annotate.pl noro.subseq.fa --pv_hmmer -m -i -a");
 push(@fail_A, "0");
 

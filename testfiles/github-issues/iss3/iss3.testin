@@ -14,21 +14,21 @@
 # file, etc.
 # 
 # default 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --skip_pv --minpvlen 3 -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss3/entoy100a-varnames.fa va-entoy100a-varnames-df > va-entoy100a-varnames-df.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --pv_skip --minpvlen 3 -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss3/entoy100a-varnames.fa va-entoy100a-varnames-df > va-entoy100a-varnames-df.out
 desc: annotate-entoy100a-varnames-df
 out: va-entoy100a-varnames-df/va-entoy100a-varnames-df.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss3/va-entoy100a-varnames-df.vadr.pass.tbl 
 rmdir: va-entoy100a-varnames-df
 #
 # --noprotid
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --skip_pv --noprotid --minpvlen 3 -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss3/entoy100a-varnames.fa va-entoy100a-varnames-np > va-entoy100a-varnames-np.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --pv_skip --noprotid --minpvlen 3 -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss3/entoy100a-varnames.fa va-entoy100a-varnames-np > va-entoy100a-varnames-np.out
 desc: annotate-entoy100a-varnames-noprotid
 out: va-entoy100a-varnames-np/va-entoy100a-varnames-np.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss3/va-entoy100a-varnames-np.vadr.pass.tbl 
 rmdir: va-entoy100a-varnames-np
 #
 # --forceprotid
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --skip_pv --forceprotid --minpvlen 3 -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss3/entoy100a-varnames.fa va-entoy100a-varnames-fi > va-entoy100a-varnames-fi.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --pv_skip --forceprotid --minpvlen 3 -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss3/entoy100a-varnames.fa va-entoy100a-varnames-fi > va-entoy100a-varnames-fi.out
 desc: annotate-entoy100a-varnames-forceprotid
 out: va-entoy100a-varnames-fi/va-entoy100a-varnames-fi.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss3/va-entoy100a-varnames-fi.vadr.pass.tbl 

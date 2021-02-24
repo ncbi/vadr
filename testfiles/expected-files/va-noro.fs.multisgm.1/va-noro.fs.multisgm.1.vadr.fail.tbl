@@ -31,7 +31,7 @@ Additional note(s) to submitter:
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 16..65 (50 nt, avgpp: 0.928) on + strand are inconsistent with dominant frame (+1); inserts:16-17,65; deletes:none;]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP1) high confidence potential frameshift in CDS [nucleotide alignment of positions 5380..5394 (15 nt, avgpp: 0.627) on + strand are inconsistent with dominant frame (+1); inserts:5380,5388,5394; deletes:none;]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP1) high confidence potential frameshift in CDS [nucleotide alignment of positions 6951..6958 (8 nt, avgpp: 0.762) on + strand are inconsistent with dominant frame (+1); inserts:6951-6952; deletes:none;]
-ERROR: MUTATION_AT_END: (VP1) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [7004]
+ERROR: MUTATION_AT_END: (VP1) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [sequence positions 7002 to 7004 on + strand]
 ERROR: UNEXPECTED_LENGTH: (VP1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1448]
 ERROR: CDS_HAS_STOP_CODON: (VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 6958..7491 (stop shifted 98 nt)]
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 7452..7589 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:7451(1);]
