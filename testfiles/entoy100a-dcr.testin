@@ -14,7 +14,7 @@
 # file, etc.
 # 
 # no --glsearch, no --nodcr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-df > va-entoy100a-dcr-df.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-df > va-entoy100a-dcr-df.out
 desc: annotate-entoy100a-dcr-df
 out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.pass.list
 out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.fail.list
@@ -31,7 +31,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-
 rmdir: va-entoy100a-dcr-df
 # 
 # no --glsearch, yes --nodcr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-nodcr > va-entoy100a-dcr-nodcr.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-nodcr > va-entoy100a-dcr-nodcr.out
 desc: annotate-entoy100a-dcr-nodcr
 out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.pass.list
 out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.fail.list
@@ -48,7 +48,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy10
 rmdir: va-entoy100a-dcr-nodcr
 # 
 # yes --glsearch, no --nodcr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-gls > va-entoy100a-dcr-gls.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-gls > va-entoy100a-dcr-gls.out
 desc: annotate-entoy100a-dcr-gls
 out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.pass.list
 out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.fail.list
@@ -65,7 +65,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a
 rmdir: va-entoy100a-dcr-gls
 # 
 # yes --glsearch, yes --nodcr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-glsnodcr > va-entoy100a-dcr-glsnodcr.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-glsnodcr > va-entoy100a-dcr-glsnodcr.out
 desc: annotate-entoy100a-dcr-glsnodcr
 out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.pass.list
 out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.fail.list
@@ -85,7 +85,7 @@ rmdir: va-entoy100a-dcr-glsnodcr
 # Second seq file, tests seqs with no nts on either side to swap with
 # 
 # yes --glsearch, no --nodcr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-gls > va-entoy100a-dcr2-gls.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-gls > va-entoy100a-dcr2-gls.out
 desc: annotate-entoy100a-dcr2-gls
 out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
 out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
@@ -102,7 +102,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100
 rmdir: va-entoy100a-dcr2-gls
 #
 # yes --glsearch, yes --nodcr, note output files are same as without --nodcr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-glsnodcr > va-entoy100a-dcr2-glsnodcr.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-glsnodcr > va-entoy100a-dcr2-glsnodcr.out
 desc: annotate-entoy100a-dcr2-glsnodcr
 out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.pass.list
 out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.fail.list
@@ -122,7 +122,7 @@ rmdir: va-entoy100a-dcr2-gls
 # Third seq file, tests reverse strand CDS
 # 
 # yes --glsearch, no --nodcr, --atgonly
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-gls > va-entoy100a-dcr3-gls.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-gls > va-entoy100a-dcr3-gls.out
 desc: annotate-entoy100a-dcr3-gls
 out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.pass.list
 out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.fail.list
@@ -139,7 +139,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100
 rmdir: va-entoy100a-dcr3-gls
 #
 # yes --glsearch, yes --nodcr, --atgonly
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-glsnodcr > va-entoy100a-dcr3-glsnodcr.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-glsnodcr > va-entoy100a-dcr3-glsnodcr.out
 desc: annotate-entoy100a-dcr3-glsnodcr
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.pass.list
 out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.fail.list
