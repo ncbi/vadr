@@ -450,7 +450,7 @@ my $options_okay =
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
                 'skip_align'    => \$GetOptions_H{"--skip_align"},
-                'skip_pv'       => \$GetOptions_H{"--pv_skip"},
+                'pv_skip'       => \$GetOptions_H{"--pv_skip"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
@@ -1248,7 +1248,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                   $mdl_name, $cur_mdl_align_fa_file, $out_root, "", $cur_mdl_nalign,
                                   $cur_mdl_tot_seq_len, $progress_w, \@{$stk_file_HA{$mdl_name}}, 
                                   \@overflow_seq_A, \@overflow_mxsize_A, \%opt_HH, \%ofile_info_HH);
-      printf("back from cmalign_or_glsearch_wrapper\n");
     }
 
     if($do_blastn_ali) {
@@ -1340,7 +1339,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   my $mdl_tt   = (defined $mdl_info_AH[$mdl_idx]{"transl_table"}) ? $mdl_info_AH[$mdl_idx]{"transl_table"} : 1; # default to standard genetic code
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     my $mdl_nseq = scalar(@{$mdl_seq_name_HA{$mdl_name}});
-    printf("HEYA mdl_nseq: $mdl_nseq\n");
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
     my %seq_inserts_HH = ();
@@ -3047,7 +3045,6 @@ sub cmalign_or_glsearch_wrapper {
       $nseq, $tot_len_nt, $progress_w, $stk_file_AR, $overflow_seq_AR, 
       $overflow_mxsize_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  printf("HEYA in $sub_name\n");
   my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $nfasta_created = 0; # number of fasta files created by esl-ssplit
   my $log_FH      = $ofile_info_HHR->{"FH"}{"log"}; # for convenience
@@ -3246,8 +3243,6 @@ sub cmalign_or_glsearch_wrapper_helper {
   my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
   my $nseq_files  = scalar(@{$seq_file_AR});
 
-  printf("HEYA in $sub_name\n");
-
   # determine description of the runs we are about to do, 
   # depends on $do_parallel, $round, and ($progress_w < 0), and 
   my $stg_desc = "";
@@ -3371,8 +3366,6 @@ sub cmalign_or_glsearch_run {
     $$ret_mxsize_R = 0; # overwritten below if nec
   }
 
-  printf("HEYA in $sub_name\n");
-
   my $FH_HR       = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $do_parallel = opt_Get("-p", $opt_HHR) ? 1 : 0;
   my $do_glsearch = ($mdl_file =~ m/\.fa$/) ? 1 : 0;
@@ -3410,7 +3403,6 @@ sub cmalign_or_glsearch_run {
   if($do_glsearch) { 
     my $gls_opts = sprintf("-r +%s/%s -f %s -g %s", opt_Get("--gls_match", $opt_HHR), opt_Get("--gls_mismatch", $opt_HHR), opt_Get("--gls_gapopen", $opt_HHR), opt_Get("--gls_gapextend", $opt_HHR));
     $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " $gls_opts -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>&1";
-    printf("HEYA glsearch cmd: $cmd\n");
   }
   else { # running cmalign
     my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
@@ -3582,7 +3574,6 @@ sub parse_stk_and_add_alignment_alerts {
   my $nseq = $msa->nseq; 
   # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
-    printf("TOP OF LOOP i: $i\n");
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_len_HR->{$seq_name}) { 
       ofile_FAIL("ERROR in $sub_name, do not have length information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
@@ -3712,8 +3703,6 @@ sub parse_stk_and_add_alignment_alerts {
     # first pass, from right to left to fill $min_**pos_after arrays, and rf
     my $min_rfpos = -1;
     my $min_uapos = $seq_len+1;
-    printf("min_uapos: $min_uapos\n");
-    printf("rflen: $rflen\n");
     for($rfpos = $rflen; $rfpos >= 0; $rfpos--) { 
       $apos = $rf2a_A[$rfpos];
       my $nongap_rf    = (($rfpos > 0) && ($sq_A[($apos-1)] ne ".") && ($sq_A[($apos-1)] ne "-")) ? 1 : 0;
@@ -3723,7 +3712,6 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($insert_after) { 
         $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts between $rfpos and ($rfpos+1)
-        printf("insert after $rfpos subtracting $rf2ilen_A[$rfpos]\n");
       }
       if($nongap_rf) { 
         $min_uapos--;

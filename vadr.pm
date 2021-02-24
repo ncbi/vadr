@@ -4845,7 +4845,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  printf("in $sub_name\n\tgls_file: $gls_file\n\tstk_file: $stk_file\n\tinsert_file: $insert_file\nexp_mdl_name: $exp_mdl_name\n\n");
+  #printf("in $sub_name\n\tgls_file: $gls_file\n\tstk_file: $stk_file\n\tinsert_file: $insert_file\nexp_mdl_name: $exp_mdl_name\n\n");
   open(IN,   $gls_file)  || ofile_FileOpenFailure($gls_file,  $sub_name, $!, "reading", $FH_HR);
   my $list_file = $stk_file . ".list";
   open(LIST, ">", $list_file) || ofile_FileOpenFailure($list_file, $sub_name, $!, "writing", $FH_HR);
@@ -4931,7 +4931,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   while((defined ($line = <IN>)) && ($keep_going)) { 
     $line_ctr++;
     chomp $line;
-    print("line: $line\n");
+    #print("line: $line\n");
     if($line =~ /^\>\>\>\/\/\/$/) { 
       # end of all alignments
       $keep_going = 0;
@@ -5003,16 +5003,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         if($mdl_name ne $exp_mdl_name) { 
           ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, line $line_ctr, expected single target sequence name $mdl_name but read $mdl_name", 1, $FH_HR);
         }
-        printf("mdl_name: $mdl_name\n");
-        printf("an0:   $an0\n");
-        printf("ax0:   $ax0\n");
-        printf("an1:   $an1\n");
-        printf("ax1:   $ax1\n");
-        printf("pn0:   $pn0\n");
-        printf("px0:   $px0\n");
-        printf("pn1:   $pn1\n");
-        printf("px1:   $px1\n");
-        printf("cigar:   $cigar\n");
         # parse cigar to get inserts in query to later write to insert_file
         vdr_CigarToInsertsHash(\%{$q_inserts_HH{$q_name}}, $cigar, $an0, $an1, $FH_HR);
       }
@@ -5054,7 +5044,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         $line = <IN>; $line_ctr++;
       }
       # currently line is ">" indicating start of target alignment
-      printf("HEYA done with q\n");
       if($line =~ /^\>\>\>\<\<\</) { 
         ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, read end of alignment before aligned target\n", 1, $FH_HR);
       }
@@ -5075,8 +5064,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       if($q_afa =~ m/^(\s*)\S+(\s*)$/) { 
         $nspace_5p = length($1);
         $nspace_3p = length($2);
-        printf("nspace_5p: $nspace_5p\n");
-        printf("nspace_3p: $nspace_3p\n");
         $q_afa =~ s/^\s+//; # remove leading  whitespace
         $q_afa =~ s/\s+$//; # remove trailing whitespace
       }
@@ -5098,8 +5085,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       if($q_len != $t_len) { 
         ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr; aligned query length $q_len differs from aligned target length $t_len", 1, $FH_HR);
       }
-      printf("0 querylen:   " . length($q_afa)  . "\n");
-      printf("0 targetlen: "  . length($t_afa) . "\n");
 
       # in target, which will become RF, replace - characters with '.' following hmmer/infernal convention
       $t_afa =~ s/\-/\./g; 
@@ -5120,8 +5105,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       $q_afa = $q_5p . $q_afa . $q_3p;
       $t_afa = $t_5p . $t_afa . $t_3p;
 
-      printf("1 querylen:   " . length($q_afa)  . "\n");
-      printf("1 targetlen: "  . length($t_afa) . "\n");
       my $q_name_len = length($q_name);
 
       my $cur_stk_file = $stk_file . "." . $nq;
@@ -5145,7 +5128,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
 
   # write insert file
   vdr_CmalignWriteInsertFile($insert_file, 0, $exp_mdl_name, $mdl_len, \@q_name_A, \%q_len_H, \%q_inserts_HH, $FH_HR);
-  printf("output $insert_file\n");
 
   # merge all temporary stockholm files into 1
   sqf_EslAlimergeListRun($alimerge, $list_file, "--small", $stk_file, "pfam", $opt_HHR, $FH_HR);
@@ -5230,7 +5212,6 @@ sub vdr_CigarToInsertsHash {
   if(! defined $epos) { 
     ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
   }
-  printf("inserts_HH setting spos: $spos, epos: $epos, ins_str: $ins_str\n");
   $inserts_HR->{"spos"} = $spos; 
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
