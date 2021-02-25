@@ -4231,12 +4231,12 @@ sub add_frameshift_alerts_for_one_sequence {
       my $ftr_start_rfpos = undef; # start model position of this CDS (regardless of where sequence alignment to the CDS starts)
       my $ftr_stop_rfpos  = undef; # stop  model position of this CDS (regardless of where sequence alignment to the CDS stops)
       my $nsgm = 0; # number of segments for this CDS
-      my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a cdsfshft alert occurs for this CDS
+      my @gr_frame_str_A = (); # [0..$nsgm-1] GR annotation of frame per-position per CDS segment, only relevant if a frameshift alert occurs for this CDS
       my @sgm_idx_A = (); # array of segment indices that are covered by this seq/CDS
       my $rf_diff = 0;  # number of rf positions seen since first rf position aligned to a nt for current CDS
       my $ua_diff = 0;  # number of nt seen since first nt for current CDS
       my $F_0 = undef;  # frame of initial nongap RF position for current CDS
-      my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if cdsfshft alert is reported)
+      my $full_ppstr = undef; # unaligned posterior probability string for this sequence, only defined if nec (if frameshift alert is reported)
       my @cds_alt_str_A = ();
       my $first_sgm_idx = get_5p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
@@ -4250,7 +4250,7 @@ sub add_frameshift_alerts_for_one_sequence {
             push(@sgm_idx_A, $sgm_idx); # store this segment index
             my $is_first_sgm = ($sgm_idx == $first_sgm_idx) ? 1 : 0;
             my $is_final_sgm = ($sgm_idx == $final_sgm_idx) ? 1 : 0;
-            my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a cdsfshft alert occurs for this CDS
+            my $gr_frame_str = ""; # GR annotation of frame per-position for this CDS segment, only relevant if a frameshift alert occurs for this CDS
             my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
             my $sgm_start_rfpos = $sgm_info_AHR->[$sgm_idx]{"start"};
             my $sgm_stop_rfpos  = $sgm_info_AHR->[$sgm_idx]{"stop"};
@@ -4433,7 +4433,7 @@ sub add_frameshift_alerts_for_one_sequence {
               }
             }
 
-            # Determine if we may have a frameshift alert (cdsfshft)
+            # Determine if we may have a frameshift alert (fsthicnf, fstlocnf, or fstukcnf)
             # Two possible cases:
             # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_tok ($f != 0))
             # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
@@ -4577,7 +4577,7 @@ sub add_frameshift_alerts_for_one_sequence {
             $comment .= " segment " . vdr_FeatureRelativeSegmentIndex($ftr_info_AHR, $ftr_idx, $sgm_idx);
             $comment .= " of " . vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
             $comment .= " for sequence " . $cds_sgm_msa->get_sqname(0); 
-            $comment .= " to model $mdl_name with at least one cdsfshft alert (possibly in a different segment for multi-segment CDS).";
+            $comment .= " to model $mdl_name with at least one frameshift alert (possibly in a different segment for multi-segment CDS).";
             $cds_sgm_msa->addGF("CC", $comment);
             $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
             $cds_sgm_msa->addGF("CC", $comment);
