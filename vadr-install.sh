@@ -30,7 +30,7 @@ FVERSION="36.3.8h"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.2-1"
+MVERSION="1.2-1dev0"
 
 # set defaults
 INPUTSYSTEM="?"
@@ -183,17 +183,14 @@ rm fasta.tar.gz
 mv fasta-$FVERSION fasta
 echo "------------------------------------------------"
 
-# download vadr-models 
-echo "Downloading VADR models ... "
-curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$MVERSION/vadr-models-$MVERSION.tar.gz
-# for a test build of a release, or of the develop branch, you may want different models,
-# such as those in the develop/ dir, in that case comment out above curl and uncomment
-# and possibly modify the one below
-# ----------------------------------------------------------------------------
-#curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/develop/vadr-models-$MVERSION.tar.gz
-# ----------------------------------------------------------------------------
-tar xfz vadr-models.tar.gz
-rm vadr-models.tar.gz
+# download vadr models, calici and flavi model sets only
+for v in calici flavi; do 
+    echo "Downloading VADR ${v}viridae models ($MVERSION) ... "
+    curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$MVERSION/vadr-models-$v-$MVERSION.tar.gz
+    tar xfz vadr-models-$v.tar.gz
+    mv vadr-models-$v-$MVERSION vadr-models-$v
+    rm vadr-models-$v.tar.gz
+done
 echo "------------------------------------------------"
 
 ###########################################
@@ -229,7 +226,7 @@ echo "'.bashrc' or '.zshrc' file in your home directory:"
 echo ""
 echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
 echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
-echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models\""
+echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
 echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
 echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
 echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/hmmer/binaries\""
@@ -256,7 +253,7 @@ echo "directory:"
 echo ""
 echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
 echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
-echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models\""
+echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
 echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
 echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/hmmer/binaries\""
 echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
