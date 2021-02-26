@@ -25,6 +25,8 @@ BVERSION="2.11.0"
 IVERSION="1.1.4"
 # hmmer
 HVERSION="3.3.2"
+# fasta
+FVERSION="36.3.8h"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
@@ -168,6 +170,19 @@ rm blast.tar.gz
 mv ncbi-blast-$BVERSION+ ncbi-blast
 echo "------------------------------------------------"
 
+# download fasta binaries
+if [ "$INPUTSYSTEM" = "linux" ]; then
+echo "Downloading FASTA version $FVERSION for Linux"
+curl -k -L -o fasta.tar.gz https://faculty.virginia.edu/wrpearson/fasta/executables/fasta-$FVERSION-linux64.tar.gz
+else 
+echo "Downloading FASTA version $FVERSION for Mac/OSX"
+curl -k -L -o fasta.tar.gz https://faculty.virginia.edu/wrpearson/fasta/executables/fasta-$FVERSION-macosuniv.tar.gz
+fi
+tar xfz fasta.tar.gz
+rm fasta.tar.gz
+mv fasta-$FVERSION fasta
+echo "------------------------------------------------"
+
 # download vadr-models 
 echo "Downloading VADR models ... "
 curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$MVERSION/vadr-models-$MVERSION.tar.gz
@@ -221,6 +236,7 @@ echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/hmmer/binaries\""
 echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
 echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
 echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
+echo "export VADRFASTADIR=\"\$VADRINSTALLDIR/fasta/bin\""
 echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "export PATH=\"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""
@@ -247,6 +263,7 @@ echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
 echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
 echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
 echo "setenv VADRBLASTDIR \"\$VADRINSTALLDIR/ncbi-blast/bin\""
+echo "setenv VADRFASTADIR \"\$VADRINSTALLDIR/fasta/bin\""
 echo "setenv PERL5LIB \"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "setenv PATH \"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""
