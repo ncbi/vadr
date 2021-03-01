@@ -3915,10 +3915,8 @@ sub parse_stk_and_add_alignment_alerts {
             my $ua_sqstring = $sqstring_aligned;
             $ua_sqstring =~ s/\W//g;
             my $new_start = substr($ua_sqstring, $start_uapos-2, 3);
-            print("$seq_name new_start: $new_start ($sgm_strand)\n");
             if($sgm_strand eq "-") { 
               seq_SqstringReverseComplement(\$new_start);
-              print("revcomp: $new_start\n");
             }
             # store information on this to dcr_output for eventual output in output_tabular()
             if(! defined $dcr_output_HAHR->{$seq_name}) { 
@@ -3940,7 +3938,6 @@ sub parse_stk_and_add_alignment_alerts {
             $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
 
             if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
-              print("valid new_start\n");
               push(@doctor_gap_posn_A, $dcr_gap_apos);
               push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
               $seq_doctor_flag = 1;
@@ -3960,10 +3957,8 @@ sub parse_stk_and_add_alignment_alerts {
             my $ua_sqstring = $sqstring_aligned;
             $ua_sqstring =~ s/\W//g;
             my $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
-            print("$seq_name new_stop: $new_stop ($sgm_strand)\n");
             if($sgm_strand eq "-") { 
               seq_SqstringReverseComplement(\$new_stop);
-              print("revcomp: $new_stop\n");
             }
             # store information on this to dcr_output for eventual output in output_tabular()
             if(! defined $dcr_output_HAHR->{$seq_name}) { 
@@ -3985,7 +3980,6 @@ sub parse_stk_and_add_alignment_alerts {
             $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
 
             if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
-              print("valid new_stop\n");
               push(@doctor_gap_posn_A, $dcr_gap_apos);
               push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
               $seq_doctor_flag = 1;
@@ -4081,7 +4075,6 @@ sub parse_stk_and_add_alignment_alerts {
     if(($seq_doctor_flag) && ($seq_doctor_ctr <= 1)) { 
       $seq_doctor_ctr++; 
       for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
-        printf("OH DOCTOR! $doctor_gap_posn_A[$doc_idx] $doctor_before_A[$doc_idx]\n");
         $msa->swap_gap_and_closest_residue($i, $doctor_gap_posn_A[$doc_idx], $doctor_before_A[$doc_idx]);
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
