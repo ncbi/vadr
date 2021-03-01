@@ -1,0 +1,43 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+#
+# no --glsearch, no -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue-nogls.r5 > va-dengue-nogls.r5.out
+desc: dengue-5-noglsearch
+out: va-dengue-nogls.r5/va-dengue-nogls.r5.vadr.pass.tbl 
+out: va-dengue-nogls.r5/va-dengue-nogls.r5.vadr.fail.tbl 
+out: va-dengue-nogls.r5/va-dengue-nogls.r5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alt
+rmdir: va-dengue-nogls.r5
+# yes --glsearch, no -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue-gls.r5 > va-dengue-gls.r5.out
+desc: annotate-dengue-5-glsearch
+out: va-dengue-gls.r5/va-dengue-gls.r5.vadr.pass.tbl 
+out: va-dengue-gls.r5/va-dengue-gls.r5.vadr.fail.tbl 
+out: va-dengue-gls.r5/va-dengue-gls.r5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alt
+# yes --glsearch, yes -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --glsearch --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey dengue.2 $VADRSCRIPTSDIR/testfiles/dengue.r5.fa va-dengue-gls-seed.r5 > va-dengue-gls-seed.r5.out
+desc: annotate-dengue-5-glsearch-seed
+out: va-dengue-gls-seed.r5/va-dengue-gls-seed.r5.vadr.pass.tbl 
+out: va-dengue-gls-seed.r5/va-dengue-gls-seed.r5.vadr.fail.tbl 
+out: va-dengue-gls-seed.r5/va-dengue-gls-seed.r5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-dengue.r5/va-dengue.r5.vadr.alt

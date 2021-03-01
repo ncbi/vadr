@@ -12,7 +12,7 @@ ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31-rev	PEPTIDE_TRANSLATION_PROBLEM	prot
 ENTOY100A-one-second-posn-N-12-rev	MUTATION_AT_START	protein one	expected start codon could not be identified [ANG starting at position 90 on - strand is not a valid start]
 ENTOY100A-one-second-posn-N-12-rev	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
 ENTOY100A-one-second-posn-N-12-rev	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-one-second-to-final-posn-N-30-rev	MUTATION_AT_END	protein one	expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [28]
+ENTOY100A-one-second-to-final-posn-N-30-rev	MUTATION_AT_END	protein one	expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [sequence positions 30 to 28 on - strand]
 ENTOY100A-one-second-to-final-posn-N-30-rev	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
 ENTOY100A-one-second-to-final-posn-N-30-rev	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
 ENTOY100A-one-first-position-N-11-rev	N_AT_CDS_START	protein one	first nucleotide of CDS is an N [first 1 positions are Ns, first non-N is position 89]

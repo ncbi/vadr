@@ -21,7 +21,7 @@ my @errfile_A = ();
 my @rmdir_A   = ();
 
 # default with noro.subseq.fa with short name, should pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -m \$VADRSCRIPTSDIR/testfiles/models/entoy100a-parantheses.cm -i \$VADRSCRIPTSDIR/testfiles/models/entoy100a-parantheses.minfo -f --skip_pv \$VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-parantheses > /dev/null 2> va-entoy100a-parantheses.err");
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -m \$VADRSCRIPTSDIR/testfiles/models/entoy100a-parantheses.cm -i \$VADRSCRIPTSDIR/testfiles/models/entoy100a-parantheses.minfo -f --pv_skip \$VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-parantheses > /dev/null 2> va-entoy100a-parantheses.err");
 push(@errfile_A, "va-entoy100a-parantheses.err");
 push(@desc_A, "model name with parantheses");
 push(@fail_A, "1");

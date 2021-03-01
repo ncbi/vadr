@@ -61,7 +61,7 @@ rmdir: va-noro-noftr2-notrim
 #######
 #
 # noftr, third set, ftskipfl tests
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --skip_pv --nomisc --minpvlen 30 --alicheck -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.noftr.ftskipfl.fa va-noro-noftr-ftskipfl > va-noro-noftr-ftskipfl.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --pv_skip --nomisc --minpvlen 30 --alicheck -f --mkey NC_001959 --mdir $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.noftr.ftskipfl.fa va-noro-noftr-ftskipfl > va-noro-noftr-ftskipfl.out
 desc: annotate-noro-noftr-ftskipfl
 out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.pass.tbl 
 out: va-noro-noftr-ftskipfl/va-noro-noftr-ftskipfl.vadr.fail.tbl

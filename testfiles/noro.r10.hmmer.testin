@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --hmmer --alicheck --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-hmmer.r10 > va-noro-hmmer.r10.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --pv_hmmer --alicheck --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-hmmer.r10 > va-noro-hmmer.r10.out
 desc: annotate-noro-10-hmmer
 out: va-noro-hmmer.r10/va-noro-hmmer.r10.vadr.pass.tbl 
 out: va-noro-hmmer.r10/va-noro-hmmer.r10.vadr.fail.tbl

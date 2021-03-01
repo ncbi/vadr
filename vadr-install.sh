@@ -16,19 +16,21 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.1.3"
+VERSION="1.2"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
-BEVERSION="Bio-Easel-0.13"
+BEVERSION="Bio-Easel-0.14"
 # blast+
 BVERSION="2.11.0"
 # infernal
 IVERSION="1.1.4"
 # hmmer
 HVERSION="3.3.2"
+# fasta
+FVERSION="36.3.8h"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
-MVERSION="1.1-1"
+MVERSION="1.2-1dev1"
 
 # set defaults
 INPUTSYSTEM="?"
@@ -168,17 +170,27 @@ rm blast.tar.gz
 mv ncbi-blast-$BVERSION+ ncbi-blast
 echo "------------------------------------------------"
 
-# download vadr-models 
-echo "Downloading VADR models ... "
-curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/$MVERSION/vadr-models-$MVERSION.tar.gz
-# for a test build of a release, or of the develop branch, you may want different models,
-# such as those in the develop/ dir, in that case comment out above curl and uncomment
-# and possibly modify the one below
-# ----------------------------------------------------------------------------
-#curl -k -L -o vadr-models.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/develop/vadr-models-$MVERSION.tar.gz
-# ----------------------------------------------------------------------------
-tar xfz vadr-models.tar.gz
-rm vadr-models.tar.gz
+# download fasta binaries
+if [ "$INPUTSYSTEM" = "linux" ]; then
+echo "Downloading FASTA version $FVERSION for Linux"
+curl -k -L -o fasta.tar.gz https://faculty.virginia.edu/wrpearson/fasta/executables/fasta-$FVERSION-linux64.tar.gz
+else 
+echo "Downloading FASTA version $FVERSION for Mac/OSX"
+curl -k -L -o fasta.tar.gz https://faculty.virginia.edu/wrpearson/fasta/executables/fasta-$FVERSION-macosuniv.tar.gz
+fi
+tar xfz fasta.tar.gz
+rm fasta.tar.gz
+mv fasta-$FVERSION fasta
+echo "------------------------------------------------"
+
+# download vadr models, calici and flavi model sets only
+for v in calici flavi; do 
+    echo "Downloading VADR ${v}viridae models ($MVERSION) ... "
+    curl -k -L -o vadr-models-$v.tar.gz https://ftp.ncbi.nlm.nih.gov/pub/nawrocki/vadr-models/${v}viridae/$MVERSION/vadr-models-$v-$MVERSION.tar.gz
+    tar xfz vadr-models-$v.tar.gz
+    mv vadr-models-$v-$MVERSION vadr-models-$v
+    rm vadr-models-$v.tar.gz
+done
 echo "------------------------------------------------"
 
 ###########################################
@@ -214,13 +226,14 @@ echo "'.bashrc' or '.zshrc' file in your home directory:"
 echo ""
 echo "export VADRINSTALLDIR=\"$VADRINSTALLDIR\""
 echo "export VADRSCRIPTSDIR=\"\$VADRINSTALLDIR/vadr\""
-echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models\""
+echo "export VADRMODELDIR=\"\$VADRINSTALLDIR/vadr-models-calici\""
 echo "export VADRINFERNALDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
 echo "export VADREASELDIR=\"\$VADRINSTALLDIR/infernal/binaries\""
 echo "export VADRHMMERDIR=\"\$VADRINSTALLDIR/hmmer/binaries\""
 echo "export VADRBIOEASELDIR=\"\$VADRINSTALLDIR/Bio-Easel\""
 echo "export VADRSEQUIPDIR=\"\$VADRINSTALLDIR/sequip\""
 echo "export VADRBLASTDIR=\"\$VADRINSTALLDIR/ncbi-blast/bin\""
+echo "export VADRFASTADIR=\"\$VADRINSTALLDIR/fasta/bin\""
 echo "export PERL5LIB=\"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "export PATH=\"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""
@@ -240,13 +253,14 @@ echo "directory:"
 echo ""
 echo "setenv VADRINSTALLDIR \"$VADRINSTALLDIR\""
 echo "setenv VADRSCRIPTSDIR \"\$VADRINSTALLDIR/vadr\""
-echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models\""
+echo "setenv VADRMODELDIR \"\$VADRINSTALLDIR/vadr-models-calici\""
 echo "setenv VADRINFERNALDIR \"\$VADRINSTALLDIR/infernal/binaries\""
 echo "setenv VADRHMMERDIR \"\$VADRINSTALLDIR/hmmer/binaries\""
 echo "setenv VADREASELDIR \"\$VADRINSTALLDIR/infernal/binaries\""
 echo "setenv VADRBIOEASELDIR \"\$VADRINSTALLDIR/Bio-Easel\""
 echo "setenv VADRSEQUIPDIR \"\$VADRINSTALLDIR/sequip\""
 echo "setenv VADRBLASTDIR \"\$VADRINSTALLDIR/ncbi-blast/bin\""
+echo "setenv VADRFASTADIR \"\$VADRINSTALLDIR/fasta/bin\""
 echo "setenv PERL5LIB \"\$VADRSCRIPTSDIR\":\"\$VADRSEQUIPDIR\":\"\$VADRBIOEASELDIR/blib/lib\":\"\$VADRBIOEASELDIR/blib/arch\":\"\$PERL5LIB\""
 echo "setenv PATH \"\$VADRSCRIPTSDIR\":\"\$PATH\""
 echo ""

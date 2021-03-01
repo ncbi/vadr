@@ -27,7 +27,7 @@
 5.3.1   ENTOY100A-one-second-posn-N-12               ENTOY100A  mat_peptide  protein_one_mp2      4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
 6.1.1   ENTOY100A-one-second-to-final-posn-N-30      ENTOY100A  CDS          protein_one          2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TNA ending at position 31 on + strand is not a valid stop]
-6.1.2   ENTOY100A-one-second-to-final-posn-N-30      ENTOY100A  CDS          protein_one          2  mutendex  yes   MUTATION_AT_END              expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
+6.1.2   ENTOY100A-one-second-to-final-posn-N-30      ENTOY100A  CDS          protein_one          2  mutendex  yes   MUTATION_AT_END              expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [sequence positions 71 to 73 on + strand]
 6.2.1   ENTOY100A-one-second-to-final-posn-N-30      ENTOY100A  mat_peptide  protein_one_mp1      3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 6.3.1   ENTOY100A-one-second-to-final-posn-N-30      ENTOY100A  mat_peptide  protein_one_mp2      4  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM  mat_peptide may not be translated because its parent CDS has a problem
 #
