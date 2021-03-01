@@ -18,7 +18,7 @@ VADRINSTALLDIR=$PWD
 # versions
 VERSION="1.2"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
-BEVERSION="Bio-Easel-0.13"
+BEVERSION="Bio-Easel-0.14"
 # blast+
 BVERSION="2.11.0"
 # infernal
