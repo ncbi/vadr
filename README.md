@@ -103,8 +103,8 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 
 ---
 ## Contributors <a name="contributors"></a>
-* VADR includes contributions from current and former colleagues at
-  NCBI, including:
+* VADR includes contributions and input from current and former
+  colleagues at NCBI, including:
 
   Rodney Brister
   Vince Calhoun
@@ -112,10 +112,12 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
   Eneida Hatcher
   Sophia Hu
   Ilene Karsch-Mizrachi
+  Rich McVeigh
   Susan Schafer
   Alejandro Schäffer
   Lara Shonkwiler
   Beverly Underwood
+  Yuri Wolf
   Linda Yankie
 
 ---
