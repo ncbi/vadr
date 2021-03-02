@@ -1253,7 +1253,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     if($do_blastn_ali) {
       # join alignments of subsequences and update all variables
-      my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
+      my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from %s and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
+                                                         ($do_glsearch ? "glsearch" : "cmalign"),
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
       # first, replace any overflow info we have on subseqs to be for full seqs and remove them from the list of seqs to align
