@@ -618,6 +618,9 @@ $extra_H{"\$VADRBIOEASELDIR"} = $env_vadr_bioeasel_dir;
 if($do_pv_blastx || $do_blastn_any) { 
   $extra_H{"\$VADRBLASTDIR"} = $env_vadr_blast_dir;
 }
+if($do_glsearch) { 
+  $extra_H{"\$VADRFASTADIR"} = $env_vadr_fasta_dir;
+}
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
 
