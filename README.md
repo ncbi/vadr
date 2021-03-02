@@ -102,6 +102,25 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 * [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
+## Contributors <a name="contributors"></a>
+* VADR includes contributions and input from current and former
+  colleagues at NCBI, including:
+
+  Rodney Brister
+  Vince Calhoun
+  Sergiy Gotvyanskyy
+  Eneida Hatcher
+  Sophia Hu
+  Ilene Karsch-Mizrachi
+  Rich McVeigh
+  Susan Schafer
+  Alejandro Schäffer
+  Lara Shonkwiler
+  Beverly Underwood
+  Yuri Wolf
+  Linda Yankie
+
+---
 ## Reference <a name="reference"></a>
 * The recommended citation for using VADR is:
   Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,

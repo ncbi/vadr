@@ -323,8 +323,9 @@ opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maxim
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
-opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--pv_skip",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
+opt_Add("--align_skip",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--val_only",      "boolean", 0,         $g,   undef,      undef,                         "validate CM and other input files and exit",              "validate CM and other input files and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                      help-output    
@@ -333,7 +334,8 @@ opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-
 opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced",     "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
 opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",         "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
 opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",                "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
-opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep", "do not output fasta files of features, or passing/failing seqs",    "do not output fasta files of features, or passing/failing seqs",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_allfasta",   "boolean", 0,    $g,    undef,"--keep", "additionally output fasta files of features",                       "additionally output fasta files of features",                   \%opt_HH, \@opt_order_A);
+opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep,--out_allfasta", "do not output fasta files of passing/failing seqs",  "do not output fasta files of passing/failing seqs",                  \%opt_HH, \@opt_order_A);
 opt_Add("--out_debug",      "boolean", 0,    $g,    undef, undef,   "dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
@@ -449,14 +451,16 @@ my $options_okay =
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
-                'skip_align'    => \$GetOptions_H{"--skip_align"},
                 'pv_skip'       => \$GetOptions_H{"--pv_skip"},
+                'align_skip'    => \$GetOptions_H{"--align_skip"},
+                'val_only'      => \$GetOptions_H{"--val_only"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
                 'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
                 'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
                 'out_nofs'      => \$GetOptions_H{"--out_nofs"}, 
+                'out_allfasta'  => \$GetOptions_H{"--out_allfasta"}, 
                 'out_nofasta'   => \$GetOptions_H{"--out_nofasta"}, 
                 'out_debug'     => \$GetOptions_H{"--out_debug"},
 # other expert options
@@ -475,7 +479,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.2dev1";
+my $version       = "1.2dev2";
 my $releasedate   = "March 2021";
 my $pkgname       = "VADR";
 
@@ -615,6 +619,9 @@ $extra_H{"\$VADREASELDIR"}    = $env_vadr_easel_dir;
 $extra_H{"\$VADRBIOEASELDIR"} = $env_vadr_bioeasel_dir;
 if($do_pv_blastx || $do_blastn_any) { 
   $extra_H{"\$VADRBLASTDIR"} = $env_vadr_blast_dir;
+}
+if($do_glsearch) { 
+  $extra_H{"\$VADRFASTADIR"} = $env_vadr_fasta_dir;
 }
 ofile_OutputBanner(*STDOUT, $pkgname, $version, $releasedate, $synopsis, $date, \%extra_H);
 opt_OutputPreamble(*STDOUT, \@arg_desc_A, \@arg_A, \%opt_HH, \@opt_order_A);
@@ -824,20 +831,6 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
   }
 }
 
-# make sure $cm_file includes CMs for all models we just read in $minfo_file
-my $cm_name_file = $out_root . ".cm.namelist";
-my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
-utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-my %cm_name_H = ();
-utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
-for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(! exists $cm_name_H{$mdl_name}) { 
-    ofile_FAIL("ERROR, read model named $mdl_name in model info file ($minfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
-  }
-}
-push(@to_remove_A, $cm_name_file);
-
 # if --mlist used ($model_list will be defined) validate all models listed 
 # in $model_list are in model info file
 if(defined $model_list) { 
@@ -913,6 +906,31 @@ if($do_pv_blastx) {
 }
 # for any features with if there are any CDS features, validate that the BLAST db files we need exist
 
+# if --val_only used, validate CM file has all models from $minfo_file, then exit
+# note this is the only way in which we validate the CM file
+if(opt_Get("--val_only", \%opt_HH)) { 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  my $start_secs = ofile_OutputProgressPrior("Validating CM file contains all models from model info file", $progress_w, $log_FH, *STDOUT);
+  # make sure $cm_file includes CMs for all models we just read in $minfo_file, unless --cmval_skip used
+  my $cm_name_file = $out_root . ".cm.namelist";
+  my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
+  utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  my %cm_name_H = ();
+  utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    if(! exists $cm_name_H{$mdl_name}) { 
+      ofile_FAIL("ERROR, read model named $mdl_name in model info file ($minfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
+    }
+  }
+  push(@to_remove_A, $cm_name_file);
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+  exit(0); 
+}
 
 ###########################################
 # Copy and validate the input sequence file
@@ -930,7 +948,7 @@ else {
   # SSI related issues
   $in_fa_file = $out_root . ".in.fa";
   utl_RunCommand($execs_H{"esl-reformat"} . " fasta $orig_in_fa_file > $in_fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cp.in.fasta", $in_fa_file, 1, 1, "copy of input fasta file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cp.in.fasta", $in_fa_file, $do_keep, $do_keep, "copy of input fasta file");
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
@@ -942,7 +960,8 @@ if(($do_replace_ns) || ($do_blastn_any)) {
   # make it anyway)
   $blastn_in_fa_file = $out_root . ".blastn.fa";
   sqf_FastaFileRemoveDescriptions($in_fa_file, $blastn_in_fa_file, \%ofile_info_HH);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, 1, 1, "copy of input fasta file with descriptions removed for blastn");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, $do_keep, $do_keep, "copy of input fasta file with descriptions re
+moved for blastn");
   push(@to_remove_A, $blastn_in_fa_file);
 }  
 
@@ -1038,8 +1057,8 @@ if($do_replace_ns) {
     # sequences are named identically and in the same order as in the input fasta file
     $rpn_fa_file = $out_root . ".rpn.fa";
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn.fa", $rpn_fa_file, 0, $do_keep, sprintf("fasta file with all sequences, %d with Ns replaced", $nseq_replaced));
-  push(@to_remove_A, $rpn_fa_file);
-  push(@to_remove_A, $rpn_fa_file.".ssi");
+    push(@to_remove_A, $rpn_fa_file);
+    push(@to_remove_A, $rpn_fa_file.".ssi");
     my $fa_FH = $ofile_info_HH{"FH"}{"rpn.fa"};
     foreach my $seq_name (@seq_name_A) { 
       if(defined $seq_replaced_H{$seq_name}) { 
@@ -1085,7 +1104,7 @@ else {
     # make copy with descriptions removed
     $blastn_rpn_fa_file = $out_root . ".blastn.rpn.fa";
     sqf_FastaFileRemoveDescriptions($rpn_fa_file, $blastn_rpn_fa_file, \%ofile_info_HH);
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 1, 1, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 0, $do_keep, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
     push(@to_remove_A, $blastn_rpn_fa_file);
     $fa_file_for_analysis = $blastn_rpn_fa_file;
   }
@@ -1208,6 +1227,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $glsearch_db_file = $out_root . "." . $mdl_name . ".glsearch.fa";
       my @glsearch_seqname_A = ($mdl_name);
       $blastn_db_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".glsearch.library", $glsearch_db_file, 0, $do_keep, sprintf("glsearch library file for model $mdl_name"));
+      push(@to_remove_A, $glsearch_db_file);
     }
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/glsearch (e.g if $do_blastn_ali))
@@ -1253,7 +1274,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
     if($do_blastn_ali) {
       # join alignments of subsequences and update all variables
-      my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from cmalign and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
+      my $start_secs = ofile_OutputProgressPrior(sprintf("Joining alignments from %s and blastn for model $mdl_name ($cur_mdl_nseq seq%s)",
+                                                         ($do_glsearch ? "glsearch" : "cmalign"),
                                                          ($cur_mdl_nseq > 1) ? "s" : ""), $progress_w, $FH_HR->{"log"}, *STDOUT);
       
       # first, replace any overflow info we have on subseqs to be for full seqs and remove them from the list of seqs to align
@@ -3059,6 +3081,7 @@ sub cmalign_or_glsearch_wrapper {
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
+  my @glsearch_to_remove_A = (); # list of files to remove if $do_glsearch
   
   push(@concat_keys_A, "stdout"); 
   push(@concat_keys_A, "ifile"); 
@@ -3114,12 +3137,19 @@ sub cmalign_or_glsearch_wrapper {
       # run finished successfully
       # if $do_glsearch, create the stockholm output file and insert file
       if($do_glsearch) { 
-        vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
-                                                         $r1_out_file_AH[$r1_i]{"stdout"}, 
-                                                         $r1_out_file_AH[$r1_i]{"stk"},
-                                                         $r1_out_file_AH[$r1_i]{"ifile"},
-                                                         $blastn_db_sqfile_R, 
-                                                         $mdl_name, $opt_HHR, $ofile_info_HHR);
+        my $glsearch_nstk = vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
+                                                                             $r1_out_file_AH[$r1_i]{"stdout"}, 
+                                                                             $r1_out_file_AH[$r1_i]{"stk"},
+                                                                             $r1_out_file_AH[$r1_i]{"ifile"},
+                                                                             $blastn_db_sqfile_R, 
+                                                                             $mdl_name, $opt_HHR, $ofile_info_HHR);
+        # add all files we just created to list of files to eventually remove
+        if(! $do_keep) { 
+          push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . ".list");
+          for(my $z = 1; $z <= $glsearch_nstk; $z++) { 
+            push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . "." . $z);
+          }
+        }
       }
       foreach $out_key (@concat_keys_A) { 
         push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
@@ -3190,6 +3220,10 @@ sub cmalign_or_glsearch_wrapper {
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
     utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+  }
+  # remove glsearch temp files
+  if(scalar(@glsearch_to_remove_A) > 0) { 
+    utl_FileRemoveList(\@glsearch_to_remove_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
   return;
@@ -3282,13 +3316,13 @@ sub cmalign_or_glsearch_wrapper_helper {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if($do_parallel) { 
-    if((opt_Exists("--skip_align", $opt_HHR)) && (opt_Get("--skip_align", $opt_HHR))) { 
+    if((opt_Exists("--align_skip", $opt_HHR)) && (opt_Get("--align_skip", $opt_HHR))) { 
       for($s = 0; $s < $nseq_files; $s++) { 
         $success_AR->[$s] = 1; 
       }
     }
     else { 
-      # --skip_align not enabled
+      # --align_skip not enabled
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
@@ -3386,7 +3420,7 @@ sub cmalign_or_glsearch_run {
     if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
     if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
   }
-  if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
+  if((! opt_Exists("--align_skip", $opt_HHR)) || (! opt_Get("--align_skip", $opt_HHR))) { 
     if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $err_file)    { unlink $err_file; }
     if(-e $sh_file)     { unlink $sh_file; }
@@ -3433,12 +3467,12 @@ sub cmalign_or_glsearch_run {
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = opt_Get("--mxsize", $opt_HHR) / 1000.;
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
-    if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
+    if((! opt_Exists("--align_skip", $opt_HHR)) || (! opt_Get("--align_skip", $opt_HHR))) { 
       vdr_SubmitJobAsScript($cmd, $qsub_prefix, $qsub_suffix, $job_name, $sh_file, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
   }
   else { 
-    if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
+    if((! opt_Exists("--align_skip", $opt_HHR)) || (! opt_Get("--align_skip", $opt_HHR))) { 
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed
@@ -4692,9 +4726,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $atg_only   = opt_Get("--atgonly", $opt_HHR);
-  my $do_keep    = opt_Get("--keep", $opt_HHR);
-  my $do_nofasta = opt_Get("--out_nofasta", $opt_HHR);
+  my $atg_only    = opt_Get("--atgonly", $opt_HHR);
+  my $do_keep     = opt_Get("--keep", $opt_HHR);
+  my $do_allfasta = opt_Get("--out_allfasta", $opt_HHR);
 
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
@@ -4900,8 +4934,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", ($do_nofasta ? 0 : 1), ($do_nofasta ? 0 : 1), "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
-          if($do_nofasta) { 
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", ($do_allfasta ? 1 : 0), ($do_allfasta ? 1 : 0), "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
+          if(! $do_allfasta) { 
             push(@{$to_remove_AR}, $ofile_info_HHR->{"fullpath"}{$ftr_ofile_key});
           }
         }
@@ -7753,9 +7787,9 @@ sub output_tabular {
 
   my @head_ftr_AA = ();
   my @data_ftr_AA = ();
-  @{$head_ftr_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
-  @{$head_ftr_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "str", "n_from", "n_to", "n_instp", "trc", "5'N",  "3'N",  "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
-  my @clj_ftr_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,        0,      0,         1,     0,      0,      0,        0,      0,         0,      0,     0,     0,        0,        1);
+  @{$head_ftr_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
+  @{$head_ftr_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "idx", "str", "n_from", "n_to", "n_instp", "trc", "5'N",  "3'N",  "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
+  my @clj_ftr_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,     0,        0,      0,         1,     0,      0,      0,        0,      0,         0,      0,     0,     0,        0,        1);
 
   my @head_sgm_AA = ();
   my @data_sgm_AA = ();
@@ -7925,6 +7959,7 @@ sub output_tabular {
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
             my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
+            my $ftr_parent_idx = ((defined $ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}) && ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"} ne "GBNULL")) ? ($ftr_info_AHR->[$ftr_idx]{"parent_idx_str"}+1) : -1;
             my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
             my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $ftr_idx);
             my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
@@ -8018,7 +8053,7 @@ sub output_tabular {
             if($s_coords_str eq "") { $s_coords_str = "-"; } # will happen only for protein-validation only predictions
             if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
             push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
-                                ($ftr_idx+1), $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5nlen, $ftr_3nlen, 
+                                ($ftr_idx+1), $ftr_parent_idx, $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5nlen, $ftr_3nlen, 
                                 $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
             $ftr_nprinted++;

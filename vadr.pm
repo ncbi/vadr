@@ -4831,7 +4831,8 @@ sub vdr_WriteCommandScript {
 #   $opt_HHR:            ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $ofile_info_HHR:     ref to 2D hash of output file information
 #
-# Returns:     void
+# Returns:     Number of individual sequence $stk files created,
+#              same as number of queries read.
 # 
 # Dies:        If there's a problem parsing the glsearch output.
 #
@@ -4856,7 +4857,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
 
   my $q_name;         # name of query sequence
   my $q_len;          # length of query sequence
-  my $nq;             # number of queries read
+  my $nq = 0;         # number of queries read
   my $t_name;         # name of target sequence
   my ($an0, $ax0);    # start/stop position of alignment in query
   my ($an1, $ax1);    # start/stop position of alignment in library (target)
@@ -5121,7 +5122,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
     }
   }
-  if(scalar(@q_name_A) == 0) { 
+  if($nq == 0) { 
     ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, did not read any alignments\n", 1, $FH_HR);
   }
   close(LIST);
@@ -5132,7 +5133,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   # merge all temporary stockholm files into 1
   sqf_EslAlimergeListRun($alimerge, $list_file, "--small", $stk_file, "pfam", $opt_HHR, $FH_HR);
 
-  return;
+  return $nq;
 }
 
 #################################################################
