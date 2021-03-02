@@ -334,7 +334,8 @@ opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-
 opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced",     "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
 opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",         "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
 opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",                "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
-opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep", "do not output fasta files of features, or passing/failing seqs",    "do not output fasta files of features, or passing/failing seqs",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_allfasta",   "boolean", 0,    $g,    undef,"--keep", "additionally output fasta files of features",                       "additionally output fasta files of features",                   \%opt_HH, \@opt_order_A);
+opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep,--out_allfasta", "do not output fasta files of passing/failing seqs",  "do not output fasta files of passing/failing seqs",                  \%opt_HH, \@opt_order_A);
 opt_Add("--out_debug",      "boolean", 0,    $g,    undef, undef,   "dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
@@ -459,6 +460,7 @@ my $options_okay =
                 'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
                 'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
                 'out_nofs'      => \$GetOptions_H{"--out_nofs"}, 
+                'out_allfasta'  => \$GetOptions_H{"--out_allfasta"}, 
                 'out_nofasta'   => \$GetOptions_H{"--out_nofasta"}, 
                 'out_debug'     => \$GetOptions_H{"--out_debug"},
 # other expert options
@@ -4709,9 +4711,9 @@ sub fetch_features_and_add_cds_and_mp_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $atg_only   = opt_Get("--atgonly", $opt_HHR);
-  my $do_keep    = opt_Get("--keep", $opt_HHR);
-  my $do_nofasta = opt_Get("--out_nofasta", $opt_HHR);
+  my $atg_only    = opt_Get("--atgonly", $opt_HHR);
+  my $do_keep     = opt_Get("--keep", $opt_HHR);
+  my $do_allfasta = opt_Get("--out_allfasta", $opt_HHR);
 
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
@@ -4917,8 +4919,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 
         # output the sequence
         if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
-          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", ($do_nofasta ? 0 : 1), ($do_nofasta ? 0 : 1), "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
-          if($do_nofasta) { 
+          ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, $ftr_ofile_key,  $out_root . "." . $mdl_name . "." . $ftr_fileroot_A[$ftr_idx] . ".fa", ($do_allfasta ? 1 : 0), ($do_allfasta ? 1 : 0), "model $mdl_name feature " . $ftr_outroot_A[$ftr_idx] . " predicted seqs");
+          if(! $do_allfasta) { 
             push(@{$to_remove_AR}, $ofile_info_HHR->{"fullpath"}{$ftr_ofile_key});
           }
         }
