@@ -1227,6 +1227,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       $glsearch_db_file = $out_root . "." . $mdl_name . ".glsearch.fa";
       my @glsearch_seqname_A = ($mdl_name);
       $blastn_db_sqfile->fetch_seqs_given_names(\@glsearch_seqname_A, 60, $glsearch_db_file);
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".glsearch.library", $glsearch_db_file, 0, $do_keep, sprintf("glsearch library file for model $mdl_name"));
+      push(@to_remove_A, $glsearch_db_file);
     }
 
     # fetch seqs (we need to do this even if we are not going to send the full seqs to cmalign/glsearch (e.g if $do_blastn_ali))
@@ -3079,6 +3081,7 @@ sub cmalign_or_glsearch_wrapper {
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
+  my @glsearch_to_remove_A = (); # list of files to remove if $do_glsearch
   
   push(@concat_keys_A, "stdout"); 
   push(@concat_keys_A, "ifile"); 
@@ -3134,12 +3137,19 @@ sub cmalign_or_glsearch_wrapper {
       # run finished successfully
       # if $do_glsearch, create the stockholm output file and insert file
       if($do_glsearch) { 
-        vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
-                                                         $r1_out_file_AH[$r1_i]{"stdout"}, 
-                                                         $r1_out_file_AH[$r1_i]{"stk"},
-                                                         $r1_out_file_AH[$r1_i]{"ifile"},
-                                                         $blastn_db_sqfile_R, 
-                                                         $mdl_name, $opt_HHR, $ofile_info_HHR);
+        my $glsearch_nstk = vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
+                                                                             $r1_out_file_AH[$r1_i]{"stdout"}, 
+                                                                             $r1_out_file_AH[$r1_i]{"stk"},
+                                                                             $r1_out_file_AH[$r1_i]{"ifile"},
+                                                                             $blastn_db_sqfile_R, 
+                                                                             $mdl_name, $opt_HHR, $ofile_info_HHR);
+        # add all files we just created to list of files to eventually remove
+        if(! $do_keep) { 
+          push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . ".list");
+          for(my $z = 1; $z <= $glsearch_nstk; $z++) { 
+            push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . "." . $z);
+          }
+        }
       }
       foreach $out_key (@concat_keys_A) { 
         push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
@@ -3210,6 +3220,10 @@ sub cmalign_or_glsearch_wrapper {
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
     utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
+  }
+  # remove glsearch temp files
+  if(scalar(@glsearch_to_remove_A) > 0) { 
+    utl_FileRemoveList(\@glsearch_to_remove_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
   return;
