@@ -948,7 +948,7 @@ else {
   # SSI related issues
   $in_fa_file = $out_root . ".in.fa";
   utl_RunCommand($execs_H{"esl-reformat"} . " fasta $orig_in_fa_file > $in_fa_file", opt_Get("-v", \%opt_HH), 0, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cp.in.fasta", $in_fa_file, 1, 1, "copy of input fasta file");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cp.in.fasta", $in_fa_file, $do_keep, $do_keep, "copy of input fasta file");
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
@@ -960,7 +960,8 @@ if(($do_replace_ns) || ($do_blastn_any)) {
   # make it anyway)
   $blastn_in_fa_file = $out_root . ".blastn.fa";
   sqf_FastaFileRemoveDescriptions($in_fa_file, $blastn_in_fa_file, \%ofile_info_HH);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, 1, 1, "copy of input fasta file with descriptions removed for blastn");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, $do_keep, $do_keep, "copy of input fasta file with descriptions re
+moved for blastn");
   push(@to_remove_A, $blastn_in_fa_file);
 }  
 
@@ -1056,8 +1057,8 @@ if($do_replace_ns) {
     # sequences are named identically and in the same order as in the input fasta file
     $rpn_fa_file = $out_root . ".rpn.fa";
     ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn.fa", $rpn_fa_file, 0, $do_keep, sprintf("fasta file with all sequences, %d with Ns replaced", $nseq_replaced));
-  push(@to_remove_A, $rpn_fa_file);
-  push(@to_remove_A, $rpn_fa_file.".ssi");
+    push(@to_remove_A, $rpn_fa_file);
+    push(@to_remove_A, $rpn_fa_file.".ssi");
     my $fa_FH = $ofile_info_HH{"FH"}{"rpn.fa"};
     foreach my $seq_name (@seq_name_A) { 
       if(defined $seq_replaced_H{$seq_name}) { 
@@ -1103,7 +1104,7 @@ else {
     # make copy with descriptions removed
     $blastn_rpn_fa_file = $out_root . ".blastn.rpn.fa";
     sqf_FastaFileRemoveDescriptions($rpn_fa_file, $blastn_rpn_fa_file, \%ofile_info_HH);
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 1, 1, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 0, $do_keep, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
     push(@to_remove_A, $blastn_rpn_fa_file);
     $fa_file_for_analysis = $blastn_rpn_fa_file;
   }
