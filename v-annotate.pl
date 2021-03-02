@@ -323,8 +323,9 @@ opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maxim
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
-opt_Add("--skip_align",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--pv_skip",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
+opt_Add("--align_skip",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--val_only",      "boolean", 0,         $g,   undef,      undef,                         "validate CM and other input files and exit",              "validate CM and other input files and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                      help-output    
@@ -449,8 +450,9 @@ my $options_okay =
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
-                'skip_align'    => \$GetOptions_H{"--skip_align"},
                 'pv_skip'       => \$GetOptions_H{"--pv_skip"},
+                'align_skip'    => \$GetOptions_H{"--align_skip"},
+                'val_only'      => \$GetOptions_H{"--val_only"},
 # optional output files
                 'out_stk'       => \$GetOptions_H{"--out_stk"}, 
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
@@ -824,20 +826,6 @@ if(opt_IsUsed("--subgroup", \%opt_HH)) {
   }
 }
 
-# make sure $cm_file includes CMs for all models we just read in $minfo_file
-my $cm_name_file = $out_root . ".cm.namelist";
-my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
-utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
-my %cm_name_H = ();
-utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
-for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-  my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(! exists $cm_name_H{$mdl_name}) { 
-    ofile_FAIL("ERROR, read model named $mdl_name in model info file ($minfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
-  }
-}
-push(@to_remove_A, $cm_name_file);
-
 # if --mlist used ($model_list will be defined) validate all models listed 
 # in $model_list are in model info file
 if(defined $model_list) { 
@@ -913,6 +901,31 @@ if($do_pv_blastx) {
 }
 # for any features with if there are any CDS features, validate that the BLAST db files we need exist
 
+# if --val_only used, validate CM file has all models from $minfo_file, then exit
+# note this is the only way in which we validate the CM file
+if(opt_Get("--val_only", \%opt_HH)) { 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  my $start_secs = ofile_OutputProgressPrior("Validating CM file contains all models from model info file", $progress_w, $log_FH, *STDOUT);
+  # make sure $cm_file includes CMs for all models we just read in $minfo_file, unless --cmval_skip used
+  my $cm_name_file = $out_root . ".cm.namelist";
+  my $grep_cmd = "grep ^NAME $cm_file | sed 's/^NAME *//' > $cm_name_file";
+  utl_RunCommand($grep_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+  my %cm_name_H = ();
+  utl_FileLinesToHash($cm_name_file, 1, \%cm_name_H, $FH_HR);
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+    if(! exists $cm_name_H{$mdl_name}) { 
+      ofile_FAIL("ERROR, read model named $mdl_name in model info file ($minfo_file)\nbut a model with that name does not exist in the CM file ($cm_file)", 1, $FH_HR);
+    }
+  }
+  push(@to_remove_A, $cm_name_file);
+
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+  exit(0); 
+}
 
 ###########################################
 # Copy and validate the input sequence file
@@ -3283,13 +3296,13 @@ sub cmalign_or_glsearch_wrapper_helper {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
   if($do_parallel) { 
-    if((opt_Exists("--skip_align", $opt_HHR)) && (opt_Get("--skip_align", $opt_HHR))) { 
+    if((opt_Exists("--align_skip", $opt_HHR)) && (opt_Get("--align_skip", $opt_HHR))) { 
       for($s = 0; $s < $nseq_files; $s++) { 
         $success_AR->[$s] = 1; 
       }
     }
     else { 
-      # --skip_align not enabled
+      # --align_skip not enabled
       # wait for the jobs to finish
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
@@ -3387,7 +3400,7 @@ sub cmalign_or_glsearch_run {
     if(! defined $stk_file)    { ofile_FAIL("ERROR in $sub_name, stk    output file name is undefined", 1, $FH_HR); }
     if(! defined $ifile_file)  { ofile_FAIL("ERROR in $sub_name, ifile  output file name is undefined", 1, $FH_HR); }
   }
-  if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
+  if((! opt_Exists("--align_skip", $opt_HHR)) || (! opt_Get("--align_skip", $opt_HHR))) { 
     if(-e $stdout_file) { unlink $stdout_file; }
     if(-e $err_file)    { unlink $err_file; }
     if(-e $sh_file)     { unlink $sh_file; }
@@ -3434,12 +3447,12 @@ sub cmalign_or_glsearch_run {
     my $nsecs  = opt_Get("--wait", $opt_HHR) * 60.;
     my $mem_gb = opt_Get("--mxsize", $opt_HHR) / 1000.;
     if($mem_gb < 16.) { $mem_gb = 16.; } # set minimum of 16 Gb
-    if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
+    if((! opt_Exists("--align_skip", $opt_HHR)) || (! opt_Get("--align_skip", $opt_HHR))) { 
       vdr_SubmitJobAsScript($cmd, $qsub_prefix, $qsub_suffix, $job_name, $sh_file, $err_file, $mem_gb, $nsecs, $opt_HHR, $ofile_info_HHR);
     }
   }
   else { 
-    if((! opt_Exists("--skip_align", $opt_HHR)) || (! opt_Get("--skip_align", $opt_HHR))) { 
+    if((! opt_Exists("--align_skip", $opt_HHR)) || (! opt_Get("--align_skip", $opt_HHR))) { 
       utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 1, $FH_HR); # 1 says: it's okay if job fails
     }
     # command has completed
