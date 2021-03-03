@@ -664,8 +664,7 @@ lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.
 
 When run with the `--keep` option, `v-annotate.pl` will create additional files, some of these may change based on command-line options, in particular `-s` and `-r`:
 There are additional options that begin with `--out_` which specify that a subset of these
-files be output. For example the `--out_stk` option specifies that all
-stockholm alignment files be output.
+files be output. For example the `--out_stk` option specifies that stockholm alignment files be output.
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
@@ -678,6 +677,7 @@ stockholm alignment files be output.
 | `.cdt.<model_name>.stdout` | standard output (usually from `cmsearch`) from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.a.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.<model_name>.<ftr_type>.<ftr_idx>.fa` | fasta file of predicted feature subsequences for feature type `<ftr_type>` number `<ftr_idx>` for sequences classified to `<model_name>`, for CDS, used as input to `blastx` in protein validation stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | <a name="stockholmformat"></a> https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model_name>` | description of fields at top of file, no further documentation |
 | `.<model_name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model_name>` | no further documentation |
