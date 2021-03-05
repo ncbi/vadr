@@ -228,6 +228,7 @@ opt_Add("-a",           "string",  undef,      $g, "--pv_hmmer",undef,    "use p
 opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 300,        $g,    undef,  undef,      "number of KB of sequence for each alignment job and/or chunk is <n>",            "number of KB of sequence for each alignment job and/or chunk is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string","calici",     $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
 opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
@@ -312,14 +313,19 @@ opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CD
 opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs", \%opt_HH, \@opt_order_A);
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
+#     option            type       default  group   requires incompat    preamble-output                                                help-output    
+opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",     "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
 opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 300,        $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options related to splitting input and parallelization on compute farm";
+opt_Add("--wait",       "integer", 500,        $g,    undef,  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,       $g,    undef,  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
@@ -443,12 +449,15 @@ my $options_okay =
                 'r_cdsmpr'      => \$GetOptions_H{"--r_cdsmpr"},
                 'r_pvorig'      => \$GetOptions_H{"--r_pvorig"},
                 'r_prof'        => \$GetOptions_H{"--r_prof"},
+# options related to splitting
+                'split'         => \$GetOptions_H{"--split"},
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
                 'nkb=s'         => \$GetOptions_H{"--nkb"}, 
-                'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
+# options related to -p or --split
+                'wait=s'        => \$GetOptions_H{"--wait"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
                 'pv_skip'       => \$GetOptions_H{"--pv_skip"},
@@ -552,6 +561,19 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
   }
 }
 
+# check for option requirements that sqp_opts is not sophisticated enough
+# to check for:
+if(opt_IsUsed("--wait", \%opt_HH)) {
+  if((! opt_IsUsed("-p", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
+    die "ERROR, --wait only makes sense in combination with -p or --split";
+  }
+}
+if(opt_IsUsed("--maxnjobs", \%opt_HH)) {
+  if((! opt_IsUsed("-p", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
+    die "ERROR, --maxnjobs only makes sense in combination with -p or --split";
+  }
+}
+
 #######################################################
 # determine if we are running blastx, hmmer, and blastn
 #######################################################
@@ -577,6 +599,7 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # only need some but not all
 
 my $do_glsearch = opt_Get("--glsearch", \%opt_HH) ? 1 : 0;
+
 
 #############################
 # create the output directory
@@ -989,6 +1012,19 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
     }
   }
 }
+
+# pre-processing complete
+###############################
+my $do_split = opt_Get("--split", \%opt_HH);
+if($do_split) {
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+
+  exit 0;
+}
+
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
