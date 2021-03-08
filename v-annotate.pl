@@ -202,7 +202,6 @@ $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--cpu",        "integer", 0,         $g,"--glsearch",undef,     "use <n> parallel CPU workers to use for multithreads (requires --glsearch)",               "use <n> parallel CPU workers to use for multithreads (requires --glsearch)", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,         $g,    undef, undef,      "only consider ATG a valid start codon",                                                   "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>",  "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -314,8 +313,9 @@ opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use origi
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
-#     option            type       default  group   requires incompat    preamble-output                                                help-output    
-opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",     "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
+#     option            type       default  group   requires incompat    preamble-output                                                          help-output    
+opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",              "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
+opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
@@ -571,6 +571,11 @@ if(opt_IsUsed("--wait", \%opt_HH)) {
 if(opt_IsUsed("--maxnjobs", \%opt_HH)) {
   if((! opt_IsUsed("-p", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
     die "ERROR, --maxnjobs only makes sense in combination with -p or --split";
+  }
+}
+if(opt_IsUsed("--cpu", \%opt_HH)) {
+  if((! opt_IsUsed("--glsearch", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
+    die "ERROR, --cpu only makes sense in combination with --glsearch or --split";
   }
 }
 
@@ -983,8 +988,7 @@ if(($do_replace_ns) || ($do_blastn_any)) {
   # make it anyway)
   $blastn_in_fa_file = $out_root . ".blastn.fa";
   sqf_FastaFileRemoveDescriptions($in_fa_file, $blastn_in_fa_file, \%ofile_info_HH);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, $do_keep, $do_keep, "copy of input fasta file with descriptions re
-moved for blastn");
+  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.in.fasta", $blastn_in_fa_file, $do_keep, $do_keep, "copy of input fasta file with descriptions removed for blastn");
   push(@to_remove_A, $blastn_in_fa_file);
 }  
 
@@ -1018,7 +1022,22 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
 my $do_split = opt_Get("--split", \%opt_HH);
 if($do_split) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  my $tot_len_nt  = utl_HSumValues(\%seq_len_H);
+  my $nchunk_estimate = vdr_SplitNumSeqFiles($tot_len_nt, \%opt_HH);
+  my $nchunk = 1; # rewritten if $nchunk_estimate > 1
+  my $ncpu = opt_Get("--cpu", \%opt_HH);
 
+  if($nchunk_estimate > 1) { # we are going to split up the fasta file 
+    $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \%opt_HH, \%ofile_info_HH);
+    # vdr_SplitFastaFile will return the actual number of fasta files created, 
+    # which can differ from the requested amount (which is $nchunk_estimate) that we pass in. 
+  }
+  
+  # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
+
+  # execute the $ncpu scripts
+
+  
   $total_seconds += ofile_SecondsSinceEpoch();
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 
