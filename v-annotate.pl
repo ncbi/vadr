@@ -316,6 +316,7 @@ $opt_group_desc_H{++$g} = "options related to splitting input file into chunks a
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
 opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",              "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
 opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
+opt_Add("--sidx",       "integer", 1,          $g,    undef, undef,       "index to start sequence indexing at in tabular output files",          "index to start sequence indexing at in tabular output files", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
@@ -362,7 +363,6 @@ my $options_okay =
 # basic options
                 'f'             => \$GetOptions_H{"-f"},
                 'v'             => \$GetOptions_H{"-v"},
-                'cpu=s'         => \$GetOptions_H{"--cpu"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'minpvlen=s'    => \$GetOptions_H{"--minpvlen"},
                 'keep'          => \$GetOptions_H{"--keep"},
@@ -451,6 +451,8 @@ my $options_okay =
                 'r_prof'        => \$GetOptions_H{"--r_prof"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
+                'cpu=s'         => \$GetOptions_H{"--cpu"}, 
+                'sidx=s'        => \$GetOptions_H{"--sidx"}, 
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
@@ -7804,6 +7806,9 @@ sub output_tabular {
   # if --glsearch we won't have PP values
   my $do_glsearch = opt_Get("--glsearch", $opt_HHR) ? 1 : 0;
 
+  # deal with --sidx offset
+  my $sidx_offset = opt_Get("--sidx", $opt_HHR) - 1;
+
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
   my $nalt = scalar(keys %{$alt_info_HHR});
@@ -7909,6 +7914,7 @@ sub output_tabular {
     my $seq_nftr_annot  = 0;
     my $seq_nftr_5trunc = 0;
     my $seq_nftr_3trunc = 0;
+    my $seq_idx2print   = $seq_idx + $sidx_offset + 1;
     my $nftr = 0;
  
    # get per-sequence info from %{$cls_output_HHR->{$seq_name}}
@@ -7996,7 +8002,7 @@ sub output_tabular {
           foreach my $instance_str (@instance_str_A) { 
             $alt_nseqftr++;
             $alt_ct_H{$alt_code}++;
-            my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+            my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
             push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, 
                                 $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                 helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
@@ -8015,7 +8021,7 @@ sub output_tabular {
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx])) { 
           my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
-          my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
+          my $ftr_idx2print = $seq_idx2print . "." . ($seq_nftr_annot + 1);
           if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
@@ -8066,7 +8072,7 @@ sub output_tabular {
                  (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]) && 
                  (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]{"sstart"})) { 
                 $ftr_nsgm_annot++;
-                my $sgm_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
+                my $sgm_idx2print = $seq_idx2print . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
                 my $sgm_results_HR = $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]; # for convenience
                 my $sgm_sstart = $sgm_results_HR->{"sstart"};
                 my $sgm_sstop  = $sgm_results_HR->{"sstop"};
@@ -8140,7 +8146,7 @@ sub output_tabular {
                   foreach my $instance_str (@instance_str_A) { 
                     $alt_nseqftr++;
                     $alt_ct_H{$alt_code}++;
-                    my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                    my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
                                         vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
@@ -8164,10 +8170,10 @@ sub output_tabular {
     if($seq_alt_str eq "")   { $seq_alt_str  = "-"; }
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
 
-    push(@data_ant_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
+    push(@data_ant_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
                         $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
     
-    push(@data_cls_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+    push(@data_cls_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
                             helper_tabular_replace_spaces($seq_grp1), 
                             helper_tabular_replace_spaces($seq_subgrp1), 
                             $seq_score, $seq_scpnt, $seq_scov, $seq_mcov, $seq_bias, $seq_nhits, $seq_strand, $seq_mdl2, 
@@ -8178,7 +8184,7 @@ sub output_tabular {
     if(defined $dcr_output_HAHR->{$seq_name}) { 
       my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
       for(my $dcr_idx = 0; $dcr_idx < $ndcr; $dcr_idx++) { 
-        my $dcr_idx2print = sprintf("%d.%d", ($seq_idx+1), ($dcr_idx+1));
+        my $dcr_idx2print = sprintf("%d.%d", $seq_idx2print, ($dcr_idx+1));
         my $dcr_mdl_name = $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"mdl_name"};
         my $dcr_ftr_idx  = $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"ftr_idx"};
         my $dcr_ftr_name = $ftr_info_HAHR->{$dcr_mdl_name}[$dcr_ftr_idx]{"outname"};
@@ -8201,7 +8207,7 @@ sub output_tabular {
       my $sda_ugp_fract2print = ($sda_ugp_fract ne "-") ? sprintf("%.3f", $sda_ugp_fract) : "-";
       my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
       my $sda_3p_fract2print  = ($sda_3p_fract  ne "-") ? sprintf("%.3f", $sda_3p_fract)  : "-";
-      push(@data_sda_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+      push(@data_sda_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
                           $sda_ugp_seq, $sda_ugp_mdl, $sda_ugp_fract2print, 
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
                           $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
@@ -8209,7 +8215,7 @@ sub output_tabular {
     if($do_rpn) {
       my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
           sprintf("%.3f", $rpn_nnt_n_rp_fract) : "-";
-      push(@data_rpn_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+      push(@data_rpn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
                           $rpn_nnt_n_tot, $rpn_nnt_n_rp_tot, $rpn_nnt_n_rp_fract2print,
                           $rpn_ngaps_tot, $rpn_ngaps_int, $rpn_ngaps_rp, 
                           $rpn_ngaps_rp_full, $rpn_ngaps_rp_part,
