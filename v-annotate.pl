@@ -316,7 +316,7 @@ $opt_group_desc_H{++$g} = "options related to splitting input file into chunks a
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
 opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",              "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
 opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
-opt_Add("--sidx",       "integer", 1,          $g,    undef, undef,       "index to start sequence indexing at in tabular output files",          "index to start sequence indexing at in tabular output files", \%opt_HH, \@opt_order_A);
+opt_Add("--sidx",       "integer", 1,          $g,    undef,"--split",    "start sequence indexing at <n> in tabular output files",               "start sequence indexing at <n> in tabular output files", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
@@ -1028,9 +1028,10 @@ if($do_split) {
   my $nchunk_estimate = vdr_SplitNumSeqFiles($tot_len_nt, \%opt_HH);
   my $nchunk = 1; # rewritten if $nchunk_estimate > 1
   my $ncpu = opt_Get("--cpu", \%opt_HH);
+  my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
 
   if($nchunk_estimate > 1) { # we are going to split up the fasta file 
-    $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \%opt_HH, \%ofile_info_HH);
+    $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $nchunk_estimate) that we pass in. 
   }
@@ -1038,7 +1039,7 @@ if($do_split) {
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
   my @split_outdir_A = (); # output directory names for $nchunk v-annotate.pl jobs
   my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, 
-                                                           \@split_outdir_A, \%opt_HH, \%ofile_info_HH);
+                                                           \@nseqs_per_chunk_A, \@split_outdir_A, \%opt_HH, \%ofile_info_HH);
 
   # execute the $ncpu scripts
   printf("SCRIPT CMD: $script_cmd\n");
@@ -2170,7 +2171,7 @@ sub cmsearch_wrapper {
     my $targ_nseqfiles = vdr_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
     if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
       $do_split = 1;
-      $nseq_files = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+      $nseq_files = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, undef, $opt_HHR, $ofile_info_HHR);
       # vdr_SplitFastaFile will return the actual number of fasta files created, 
       # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
       for(my $i = 0; $i < $nseq_files; $i++) { 
@@ -3169,7 +3170,7 @@ sub cmalign_or_glsearch_wrapper {
   my $targ_nseqfiles = vdr_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
   if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
     $r1_do_split = 1;
-    $nr1 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+    $nr1 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, undef, $opt_HHR, $ofile_info_HHR);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
     for($r1_i = 0; $r1_i < $nr1; $r1_i++) { # update sequence file names
@@ -3222,7 +3223,7 @@ sub cmalign_or_glsearch_wrapper {
     else { 
       # run did not finish successfully
       # split this sequence file up into multiple files with only 1 sequence each, 
-      my $cur_nr2 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, $opt_HHR, $ofile_info_HHR);
+      my $cur_nr2 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, undef, $opt_HHR, $ofile_info_HHR);
       if($cur_nr2 == 1) { 
         # special case, r1 sequence file had only 1 sequence, so we know the culprit
         # and don't need to rerun cmalign
@@ -10925,14 +10926,15 @@ sub validate_and_parse_sub_file {
 #             of the original input fasta file.
 #
 # Arguments:
-#  $nchunk:          number of fasta files we have created from original
-#  $ncpu:            number of scripts to write
-#  $in_fa_file:      main fasta file that was split up
-#  $out_root:        string for naming output files
-#  $split_outdir_AR: REF to array of output directories created by all commands in scripts
-#                    created in this subroutine.
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#  $nchunk:             number of fasta files we have created from original
+#  $ncpu:               number of scripts to write
+#  $in_fa_file:         main fasta file that was split up
+#  $out_root:           string for naming output files
+#  $nseqs_per_chunk_AR: number of sequences per chunked fasta file, PRE-FILLED
+#  $split_outdir_AR:    REF to array of output directories created by all commands in scripts
+#                       created in this subroutine, FILLED HERE
+#  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
 #             
 # Returns:  String that is a command to run all scripts created 
 #           in this subroutine.
@@ -10942,10 +10944,10 @@ sub validate_and_parse_sub_file {
 #################################################################
 sub write_v_annotate_scripts_for_split_mode { 
   my $sub_name = "write_v_annotate_scripts_for_split_mode";
-  my $nargs_exp = 7;
+  my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($nchunk, $ncpu, $in_fa_file, $out_root, $split_outdir_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($nchunk, $ncpu, $in_fa_file, $out_root, $nseqs_per_chunk_AR, $split_outdir_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
 
@@ -10963,6 +10965,7 @@ sub write_v_annotate_scripts_for_split_mode {
     $v_annotate_plus_opts =~ s/\s+\-\-cpu\s+\d+\s*/ /;
   }
   $v_annotate_plus_opts =~ s/\s+$//; # remove trailing whitespace if we created it
+
   printf("CMD:\n$v_annotate_plus_opts\n");
 
   # open all $ncpu output files at the beginning
@@ -10976,6 +10979,8 @@ sub write_v_annotate_scripts_for_split_mode {
     open($out_FH_A[$fidx], ">", $out_filename_A[$fidx]) || ofile_FileOpenFailure($out_filename_A[$fidx], $sub_name, $!, "writing", $FH_HR);
   }
 
+  my $sidx = 1;
+  my $sidx_opt = "";
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $fasta_file = $in_fa_file . "." . $i;
     my $out_dir    = $out_root . "." . $i;
@@ -10983,8 +10988,12 @@ sub write_v_annotate_scripts_for_split_mode {
     $fidx = ($i-1) % $ncpu;
     my $FH = $out_FH_A[$fidx];
     $out_ncmd_A[$fidx]++;
-    print $FH "$v_annotate_plus_opts $fasta_file $out_dir > $out_file\n";
+    # determine --sidx option (note --sidx is incompatible with --split so we can assume --sidx for 
+    # *this* execution of v-annotate.pl with --split has not used --sidx
+    $sidx_opt = "--sidx $sidx";
+    print $FH "$v_annotate_plus_opts $sidx_opt $fasta_file $out_dir > $out_file\n";
     push(@{$split_outdir_AR}, $out_dir);
+    $sidx += $nseqs_per_chunk_AR->[($i-1)]; # update number of sequences for next command
   }
 
   my $script_cmd = "";
