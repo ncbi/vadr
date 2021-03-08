@@ -1034,8 +1034,11 @@ if($do_split) {
   }
   
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
+  write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, \%opt_HH, \%ofile_info_HH);
 
   # execute the $ncpu scripts
+
+  # concatenate the output of the $ncpu scripts
 
   
   $total_seconds += ofile_SecondsSinceEpoch();
@@ -10903,6 +10906,115 @@ sub validate_and_parse_sub_file {
   }
 
   return $err_msg;
+}
+
+#################################################################
+# Subroutine: write_v_annotate_scripts_for_split_mode
+# Incept:     EPN, Mon Mar  8 06:42:56 2021
+# Purpose:    Write one or more shell scripts that when executed
+#             will run v-annotate.pl one or more times on chunks
+#             of the original input fasta file.
+#
+# Arguments:
+#  $nchunk:         number of fasta files we have created from original
+#  $ncpu:           number of scripts to write
+#  $in_fa_file:     main fasta file that was split up
+#  $out_root:       string for naming output files
+#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#             
+# Returns:  void
+#
+# Dies:     if unable to write scripts
+#
+#################################################################
+sub write_v_annotate_scripts_for_split_mode { 
+  my $sub_name = "write_v_annotate_scripts_for_split_mode";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($nchunk, $ncpu, $in_fa_file, $out_root, $opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $FH_HR = $ofile_info_HHR->{"FH"};
+
+  # determine original v-annotate.pl command and modify it as necessary for chunks
+  my $v_annotate_plus_opts = get_command_and_opts($opt_HHR, $ofile_info_HHR);
+  # remove --split option (must exist)
+  if($v_annotate_plus_opts =~ /\s+\-\-split\s*/) { 
+    $v_annotate_plus_opts =~ s/\s+\-\-split\s*/ /;
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, did not find --split in original v-annotate.pl command", 1, $FH_HR);
+  }
+  # remove --cpu option (may or may not exist)
+  if($v_annotate_plus_opts =~ /\s+\-\-cpu\s+\d+\s*/) { 
+    $v_annotate_plus_opts =~ s/\s+\-\-cpu\s+\d+\s*/ /;
+  }
+  $v_annotate_plus_opts =~ s/\s+$//; # remove trailing whitespace if we created it
+  printf("CMD:\n$v_annotate_plus_opts\n");
+
+  # open all $ncpu output files at the beginning
+  my @out_FH_A = ();
+  my @out_filename_A = ();
+  my $fidx;
+  for($fidx = 0; $fidx < $ncpu; $fidx++) { 
+    $out_filename_A[$fidx] = $out_root . ".annotate.sh";
+    open($out_FH_A[$fidx], ">", $out_filename_A[$fidx]) || ofile_FileOpenFailure($out_filename_A[$fidx], $sub_name, $!, "writing", $FH_HR);
+  }
+
+  for(my $i = 1; $i <= $nchunk; $i++) { 
+    my $fasta_file = $in_fa_file . "." . $i;
+    my $out_dir    = $out_root . "." . $i;
+    $fidx = ($i-1) % $ncpu;
+    my $FH = $out_FH_A[$fidx];
+    print $FH "$v_annotate_plus_opts $fasta_file $out_dir\n";
+  }
+
+  for($fidx = 0; $fidx < $ncpu; $fidx++) { 
+    close($out_FH_A[$fidx]);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: get_command_and_opts
+# Incept:     EPN, Mon Mar  8 07:02:31 2021
+# Purpose:    Return a string that is the command used to execute
+#             v-annotate.pl along with all command line options
+#             but not input args (fasta file and output dir).
+#
+# Arguments:
+#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#             
+# Returns:  command string
+#
+# Dies:     never
+#
+#################################################################
+sub get_command_and_opts { 
+  my $sub_name = "get_command_and_opts";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $FH_HR = $ofile_info_HHR->{"FH"};
+  
+  my $cmd = $0; 
+
+  foreach my $optname ( keys %{$opt_HHR}) { 
+    if(opt_IsUsed($optname, $opt_HHR)) { 
+      if($cmd ne "") { $cmd .= " "; }
+      $cmd .= $optname;
+      if($opt_HHR->{$optname}{"type"} ne "boolean") { 
+        $cmd .= " " . opt_Get($optname, $opt_HHR);
+      }
+    }
+  }
+
+  return $cmd;
 }
 
 
