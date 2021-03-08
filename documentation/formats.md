@@ -17,6 +17,7 @@
   * [`.sqc` files](#sqc)
   * [`.sda` files](#sda)
   * [`.rpn` files](#rpn)
+  * [`.dcr` files](#dcr)
   * [`.alt.list` files](#altlist)
   * [extra output files saved with the `--keep` option](#annotate-keep)
 * [VADR `coords` coordinate string format](#coords)
@@ -284,7 +285,7 @@ references on the file type/format.
 
 ---
 
-There are also nine types of `v-annotate.pl` tabular output files with fields separated by 
+There are also ten types of `v-annotate.pl` tabular output files with fields separated by 
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
@@ -592,6 +593,59 @@ va-noro-r.9`.
 
 ---
 
+### Explanation of `.dcr`-suffixed output files<a name="dcr"></a>
+
+`.dcr` data lines have 13 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**alignment doctoring** that was performed. An alignment doctoring
+occurs only in rare cases when the following criteria are met:
+
+1. the initial alignment returned by cmalign or glsearch includes a gap
+  at the first position of a start codon of a CDS in the reference
+  model, or at the final position of a stop codon of a CDS 
+
+2. at least one adjacent nucleotide in the input sequence exists 5' of gap
+  (start codon case) or 3' of gap (stop codon case)
+
+3. the adjacent nucleotide is aligned to a reference position (is not
+  an insertion)
+
+4. swapping the gapped position in the start/stop codon with the
+  adjacent nucleotide will result in a valid start or stop codon
+  aligned to the reference start or stop codon
+
+For every situation where criteria 1 to 3 above are met, a line of
+information will be output to the `.dcr` file. If criteria 4 is also
+met, then field 13 will be `yes`, otherwise it will be `no`.
+
+For any doctoring that causes an existing valid start or stop codon in
+a nearby CDS to become invalid (even more rare), a second doctoring
+takes place to undo the first, and an additional line for this
+undoctoring will appear in the `.dcr` file.
+
+The relevant code is in the `parse_stk_and_add_alignment_alerts`
+subroutine in `v-annotate.pl`.
+
+[Example file](../testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.dcr)
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `idx`                 | index of doctoring instance in format `<d1>.<d2>`, where `<d1>` is the index of the sequence this doctoring instance pertains to in the input sequence file, `<d2>` is the index of the doctoring instance for this sequence |
+|   2 | `seq name`            | sequence name | 
+|   3 | `mdl name`            | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage, and is the model used to align the sequence |
+|   4 | `ftr type`            | type of the feature this doctoring instance pertains to (will always be `CDS`) |
+|   5 | `ftr name`            | name of the feature this doctoring instance pertains to |
+|   6 | `ftr idx`             | index (in input model info file) this doctoring instance pertains to |
+|   7 | `gap apos`            | alignment position of gap in temporary alignment prior to doctoring either in first position of start codon (if `codon type` is `start`) or final position of stop codon (if `codon type` is `stop`) |
+|   8 | `seq uapos`           | unaligned sequence position that is eligible to be swapped with gap |
+|   9 | `codon type`          | `start` if gap is first position of a start codon, `stop` if gap is final position of a stop codon |
+|  10 | `codon coords`        | unaligned sequence coordinates of start or stop codon after potential swap, in vadr coords [format](#coords) |
+|  11 | `new codon`           | start or stop codon after potential doctoring (swap) | 
+|  12 | `dcr iter`            | doctoring iteration, `1` if first time the gap and nucleotide may be swapped, `2` if second (swapping back because first swap invalidated previously valid start/stop codon), cannot exceed `2` |
+|  13 | `did swap`            | `yes` if doctoring (swap) took place because it created a valid start or stop codon, `no` if doctoring (swap) did not occur because it would not have created a valid start or stop codon |
+
+---
+
 ### Explanation of `.alt.list`-suffixed output files<a name="altlist"></a>
 
 `.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
@@ -609,6 +663,8 @@ lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
 
 When run with the `--keep` option, `v-annotate.pl` will create additional files, some of these may change based on command-line options, in particular `-s` and `-r`:
+There are additional options that begin with `--out_` which specify that a subset of these
+files be output. For example the `--out_stk` option specifies that stockholm alignment files be output.
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
@@ -621,6 +677,7 @@ When run with the `--keep` option, `v-annotate.pl` will create additional files,
 | `.cdt.<model_name>.stdout` | standard output (usually from `cmsearch`) from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.a.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.<model_name>.<ftr_type>.<ftr_idx>.fa` | fasta file of predicted feature subsequences for feature type `<ftr_type>` number `<ftr_idx>` for sequences classified to `<model_name>`, for CDS, used as input to `blastx` in protein validation stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | <a name="stockholmformat"></a> https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model_name>` | description of fields at top of file, no further documentation |
 | `.<model_name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model_name>` | no further documentation |
