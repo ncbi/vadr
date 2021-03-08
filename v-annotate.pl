@@ -490,7 +490,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.2dev2";
+my $version       = "1.2dev3";
 my $releasedate   = "March 2021";
 my $pkgname       = "VADR";
 
@@ -982,9 +982,9 @@ else {
   push(@to_remove_A, $in_fa_file);
   push(@to_remove_A, $in_fa_file . ".ssi");
 }
-if(($do_replace_ns) || ($do_blastn_any)) { 
+if(($do_replace_ns) || ($do_blastn_any) || ($do_glsearch)) { 
   # need a copy of the input fasta file that does not have 
-  # descriptions because blast{n,x} does not output sequences 
+  # descriptions because blast{n,x} AND glsearch do not output sequences 
   # and descriptions in a parseable way (see github issue #4)
   # (actually we don't really need this if --r_prof but we 
   # make it anyway)
@@ -1142,12 +1142,12 @@ if($do_replace_ns) {
 
 # determine the fasta file we'll use for remaining analysis:
 # --
-# if(! $do_blastn_cls): 
+# if((! $do_blastn_cls) && (! $do_glsearch)): 
 #   if(defined $rpn_fa_file): use $rpn_fa_file (will only be true if $do_replace_ns AND at least one seq was replaced)
 #   else:                     use $in_fa_file
 # NOTE: even if $do_replace_ns, if no seqs were replaced then $rpn_fa_file will be undef
 # --
-# if($do_blastn_cls): 
+# if($do_blastn_cls || $do_glsearch): 
 #   if(defined $rpn_fa_file) { (will only be true if $do_replace_ns AND at least one seq was replaced)
 #       need to make copy of $rpn_fa_file of $in_fa_file
 #       with descriptions removed to avoid the issue with 
@@ -1160,7 +1160,7 @@ if($do_replace_ns) {
 # --
 my $fa_file_for_analysis = undef; 
 my $blastn_rpn_fa_file   = undef;
-if(! $do_blastn_cls) { 
+if((! $do_blastn_cls) && (! $do_glsearch)) { 
   $fa_file_for_analysis = (defined $rpn_fa_file) ? $rpn_fa_file : $in_fa_file;
 }
 else { 
@@ -1176,14 +1176,31 @@ else {
     $fa_file_for_analysis = $blastn_in_fa_file;
   }
 }  
+my $glsearch_sqfile = undef;
+if($do_glsearch) { 
+  $glsearch_sqfile = Bio::Easel::SqFile->new({ fileLocation => $fa_file_for_analysis }); # the sequence file object
+}
 
 # set up sqfile values for analysis, feature fetching and cds and mp alerts
 # this is independent of whether we are doing blastn or not because these 
 # are the seqfiles used for fetching not blastn analysis
-my $sqfile_for_analysis_R      = (defined $rpn_sqfile)  ? \$rpn_sqfile  : \$in_sqfile;  # the Bio::Easel::SqFile object for the fasta file we are analyzing
 my $sqfile_for_cds_mp_alerts_R = ((defined $rpn_sqfile) && (opt_Get("--r_cdsmpr", \%opt_HH)))   ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to analyze CDS and mature peptide features
 my $sqfile_for_pv_R            = ((defined $rpn_sqfile) && (! opt_Get("--r_pvorig", \%opt_HH))) ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from for protein validation
 my $sqfile_for_output_fastas_R = ((defined $rpn_sqfile) && (opt_Get("--r_fetchr", \%opt_HH)))   ? \$rpn_sqfile : \$in_sqfile; # sqfile we'll fetch from to make per-feature output fastas 
+
+# if --glsearch we need to do alignment with description-less sequence file (github issue #33)
+# $glsearch_sqfile will be either $blastn_rpn_fa_file or $blastn_in_fa_file (see block that
+# defined $fa_file_for_analysis above
+my $sqfile_for_analysis_R = undef;
+if(defined $glsearch_sqfile) { 
+  $sqfile_for_analysis_R = \$glsearch_sqfile;
+}
+elsif(defined $rpn_sqfile) { 
+  $sqfile_for_analysis_R = \$rpn_sqfile;
+}
+else { 
+  $sqfile_for_analysis_R = \$in_sqfile;
+}
 
 # determine if we need to create separate files with cds seqs for the protein validation stage
 # if -r and we replaced at least one sequence, we do (actually, for some combinations of 
