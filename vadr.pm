@@ -2613,11 +2613,11 @@ sub vdr_SubmitJobAsScript {
 #          If($do_cmalign) behavior changes to a more detailed check
 #          of the cmalign output file, see cmalignCheckStdOutput().
 #          
-#          When $do_errcheck is 1, this function considers any output
+#          When --errcheck is used, this function considers any output
 #          written to stderr output files in @{$errfile_AR} to mean
 #          that the corresponding job has 'failed' and should be
-#          considered to have finished. When $do_errchecks is 0
-#          we don't look at the err files.
+#          considered to have finished. When --errcheck is not used we
+#          don't look at the err files.
 # 
 #
 # Arguments: 
@@ -4554,7 +4554,7 @@ sub vdr_SplitFastaFile {
 
   my $outfile = $fasta_file . ".esl-ssplit";
   my $cmd = undef;
-  if($nfiles == -1) { # special case: put 1 file per sequence
+  if($nfiles == -1) { # special case: put 1 sequence per file
     $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
   }
   else { 
