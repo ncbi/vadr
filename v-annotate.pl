@@ -1034,9 +1034,12 @@ if($do_split) {
   }
   
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
-  write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, \%opt_HH, \%ofile_info_HH);
+  my @split_outdir_A = (); # output directory names for $nchunk v-annotate.pl jobs
+  my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, 
+                                                           \@split_outdir_A, \%opt_HH, \%ofile_info_HH);
 
   # execute the $ncpu scripts
+  printf("SCRIPT CMD: $script_cmd\n");
 
   # concatenate the output of the $ncpu scripts
 
@@ -10916,24 +10919,27 @@ sub validate_and_parse_sub_file {
 #             of the original input fasta file.
 #
 # Arguments:
-#  $nchunk:         number of fasta files we have created from original
-#  $ncpu:           number of scripts to write
-#  $in_fa_file:     main fasta file that was split up
-#  $out_root:       string for naming output files
-#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#  $nchunk:          number of fasta files we have created from original
+#  $ncpu:            number of scripts to write
+#  $in_fa_file:      main fasta file that was split up
+#  $out_root:        string for naming output files
+#  $split_outdir_AR: REF to array of output directories created by all commands in scripts
+#                    created in this subroutine.
+#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
 #             
-# Returns:  void
+# Returns:  String that is a command to run all scripts created 
+#           in this subroutine.
 #
 # Dies:     if unable to write scripts
 #
 #################################################################
 sub write_v_annotate_scripts_for_split_mode { 
   my $sub_name = "write_v_annotate_scripts_for_split_mode";
-  my $nargs_exp = 6;
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($nchunk, $ncpu, $in_fa_file, $out_root, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($nchunk, $ncpu, $in_fa_file, $out_root, $split_outdir_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
 
@@ -10954,27 +10960,46 @@ sub write_v_annotate_scripts_for_split_mode {
   printf("CMD:\n$v_annotate_plus_opts\n");
 
   # open all $ncpu output files at the beginning
-  my @out_FH_A = ();
-  my @out_filename_A = ();
+  my @out_FH_A       = (); # [0..$fidx..$ncpu-1] file handle for file $fidx
+  my @out_filename_A = (); # [0..$fidx..$ncpu-1] file name for file $fidx
+  my @out_ncmd_A     = (); # [0..$fidx..$ncpu-1] num commands output to file $fidx
   my $fidx;
   for($fidx = 0; $fidx < $ncpu; $fidx++) { 
     $out_filename_A[$fidx] = $out_root . ".annotate.sh";
+    $out_ncmd_A[$fidx] = 0;
     open($out_FH_A[$fidx], ">", $out_filename_A[$fidx]) || ofile_FileOpenFailure($out_filename_A[$fidx], $sub_name, $!, "writing", $FH_HR);
   }
 
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $fasta_file = $in_fa_file . "." . $i;
     my $out_dir    = $out_root . "." . $i;
+    my $out_file   = $out_root . "." . $i . ".out";
     $fidx = ($i-1) % $ncpu;
     my $FH = $out_FH_A[$fidx];
-    print $FH "$v_annotate_plus_opts $fasta_file $out_dir\n";
+    $out_ncmd_A[$fidx]++;
+    print $FH "$v_annotate_plus_opts $fasta_file $out_dir > $out_file\n";
+    push(@{$split_outdir_AR}, $out_dir);
   }
 
+  my $script_cmd = "";
   for($fidx = 0; $fidx < $ncpu; $fidx++) { 
+    if($out_ncmd_A[$fidx] > 0) { 
+      if($script_cmd ne "") { 
+        $script_cmd .= " &\n"; # run previous script in background
+      } 
+      $script_cmd .= "sh " . $out_filename_A[$fidx];
+    }
     close($out_FH_A[$fidx]);
   }
+  if($script_cmd eq "") { 
+    ofile_FAIL("ERROR in $sub_name, no annotate commands created", 1, $FH_HR);
+  }
 
-  return;
+  # add final new line on final command, only one that will not be run in the background
+  # note, there will only be 1 command script unless $ncpu > 1 (--cpu <n> used with <n> > 1)
+  $script_cmd .= "\n"; 
+
+  return $script_cmd;
 }
 
 #################################################################
