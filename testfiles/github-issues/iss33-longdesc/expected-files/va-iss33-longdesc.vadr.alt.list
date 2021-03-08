@@ -1,4 +1,1 @@
 #sequence	error	feature	error-description
-NC_001959-10extraNs-at-start	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.818<0.900]
-NC_001959-10extraNs-at-end	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.813<0.900]
-NC_001959-10extraNs-at-end	UNEXPECTED_LENGTH	VP2	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [688]
