@@ -22,3 +22,53 @@ exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-i
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.fail.tbl
 exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.alt.list
 rmdir: va-iss33-longdesc
+# -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --glsearch --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss33-longdesc/noro.longdesc.fa va-iss33-longdesc-s > va-iss33-longdesc-s.out
+desc: iss33-longdesc-s
+out: va-iss33-longdesc-s/va-iss33-longdesc-s.vadr.pass.tbl
+out: va-iss33-longdesc-s/va-iss33-longdesc-s.vadr.fail.tbl
+out: va-iss33-longdesc-s/va-iss33-longdesc-s.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.alt.list
+rmdir: va-iss33-longdesc-s
+# -s -r
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -r --glsearch --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss33-longdesc/noro.longdesc.fa va-iss33-longdesc-s-r > va-iss33-longdesc-s-r.out
+desc: iss33-longdesc-s-r
+out: va-iss33-longdesc-s-r/va-iss33-longdesc-s-r.vadr.pass.tbl
+out: va-iss33-longdesc-s-r/va-iss33-longdesc-s-r.vadr.fail.tbl
+out: va-iss33-longdesc-s-r/va-iss33-longdesc-s-r.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.alt.list
+rmdir: va-iss33-longdesc-s-r
+# no --glsearch
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss33-longdesc/noro.longdesc.fa va-iss33-longdesc-cm > va-iss33-longdesc-cm.out
+desc: iss33-longdesc-cm
+out: va-iss33-longdesc-cm/va-iss33-longdesc-cm.vadr.pass.tbl
+out: va-iss33-longdesc-cm/va-iss33-longdesc-cm.vadr.fail.tbl
+out: va-iss33-longdesc-cm/va-iss33-longdesc-cm.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.alt.list
+rmdir: va-iss33-longdesc
+# no --glsearch, -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss33-longdesc/noro.longdesc.fa va-iss33-longdesc-cm-s > va-iss33-longdesc-cm-s.out
+desc: iss33-longdesc-cm-s
+out: va-iss33-longdesc-cm-s/va-iss33-longdesc-cm-s.vadr.pass.tbl
+out: va-iss33-longdesc-cm-s/va-iss33-longdesc-cm-s.vadr.fail.tbl
+out: va-iss33-longdesc-cm-s/va-iss33-longdesc-cm-s.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.alt.list
+rmdir: va-iss33-longdesc-cm-s
+# no --glsearch, -s -r
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s -r --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/github-issues/iss33-longdesc/noro.longdesc.fa va-iss33-longdesc-cm-s-r > va-iss33-longdesc-cm-s-r.out
+desc: iss33-longdesc-cm-s-r
+out: va-iss33-longdesc-cm-s-r/va-iss33-longdesc-cm-s-r.vadr.pass.tbl
+out: va-iss33-longdesc-cm-s-r/va-iss33-longdesc-cm-s-r.vadr.fail.tbl
+out: va-iss33-longdesc-cm-s-r/va-iss33-longdesc-cm-s-r.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss33-longdesc/expected-files/va-iss33-longdesc.vadr.alt.list
+rmdir: va-iss33-longdesc-cm-s-r
