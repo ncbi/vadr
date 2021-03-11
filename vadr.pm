@@ -2623,6 +2623,7 @@ sub vdr_SubmitJobAsScript {
 # Arguments: 
 #  $do_cmalign:      '1' if we're running cmalign, which requires special care because we
 #                    handle two cases: finish successfully or die with a specific error
+#  $do_errcheck:     '1' if we should fail if any error file is written to
 #  $outkey:          key in second dimension of out_file_AHR we'll check to see if job is finished
 #  $out_file_AHR:    ref to array of hashes of output files that will be created by jobs we are waiting for
 #  $success_AR:      ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
@@ -2643,14 +2644,13 @@ sub vdr_SubmitJobAsScript {
 ################################################################# 
 sub vdr_WaitForFarmJobsToFinish { 
   my $sub_name = "vdr_WaitForFarmJobsToFinish()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($do_cmalign, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
+  my ($do_cmalign, $do_errcheck, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
 
   my $log_FH = $FH_HR->{"log"};
   my $nmin = opt_Get("--wait", $opt_HHR);
-  my $do_errcheck = opt_Get("--errcheck", $opt_HHR);
 
   # contract check
   if(! exists $out_file_AHR->[0]{$outkey}) { 

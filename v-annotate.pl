@@ -1030,23 +1030,42 @@ if($do_split) {
   my $ncpu = opt_Get("--cpu", \%opt_HH);
   my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
 
-  if($nchunk_estimate > 1) { # we are going to split up the fasta file 
+  if($nchunk_estimate > 1) { 
     $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $nchunk_estimate) that we pass in. 
   }
-  
+  else { 
+    # write_v_annotate_scripts_for_split_mode() knows about the expected 
+    # fasta file name in this case (there is no .1 suffix)
+    $nseqs_per_chunk_A[0] = scalar(@seq_name_A); # all seqs will be in only seq file
+  }
+
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
-  my @split_outdir_A = (); # output directory names for $nchunk v-annotate.pl jobs
-  my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, 
-                                                           \@nseqs_per_chunk_A, \@split_outdir_A, \%opt_HH, \%ofile_info_HH);
+  my @chunk_outdir_A   = (); # output directory names for $nchunk v-annotate.pl jobs
+  my @cpu_out_file_AH  = (); # holds name of output files that vdr_WaitForFarmJobsToFinish() will check
+                             # to see when all jobs are complete, will be filled in write_v_annotate_scripts_for_split_mode()
+  my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, \@nseqs_per_chunk_A, 
+                                                           \@chunk_outdir_A, \@cpu_out_file_AH, \%opt_HH, \%ofile_info_HH);
+
+  my $nscript = scalar(@cpu_out_file_AH);
 
   # execute the $ncpu scripts
-  printf("SCRIPT CMD: $script_cmd\n");
+  utl_RunCommand($script_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+  my $nscripts_finished = 1; # the final script has finished
+  if($nscript > 1) { # we may need to wait for the rest of the jobs
+    $nscripts_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
+                                                     1, # do exit if any err files are written to
+                                                     "out", \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
+                                                     $ofile_info_HH{"FH"});
+    if($nscripts_finished != $nscript) { 
+      ofile_FAIL(sprintf("ERROR only $nscripts_finished of the $nscript --split scripts are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, $ofile_info_HH{"FH"});
+    }
+    ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
+  }
 
   # concatenate the output of the $ncpu scripts
-
-  
   $total_seconds += ofile_SecondsSinceEpoch();
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 
@@ -2244,6 +2263,7 @@ sub cmsearch_wrapper {
     $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                             $progress_w, $log_FH, *STDOUT);
     my $njobs_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
+                                                     (opt_Get("--errcheck", $opt_HHR)), 
                                                      "tblout", \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
     if($njobs_finished != $nseq_files) { 
       ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
@@ -3408,6 +3428,7 @@ sub cmalign_or_glsearch_wrapper_helper {
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
       my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_glsearch ? 0 : 1), # are we are doing cmalign?
+                                                       (opt_Get("--errcheck", $opt_HHR)), 
                                                        "stdout",
                                                        $out_file_AHR,
                                                        $success_AR, 
@@ -10948,8 +10969,9 @@ sub validate_and_parse_sub_file {
 #  $in_fa_file:         main fasta file that was split up
 #  $out_root:           string for naming output files
 #  $nseqs_per_chunk_AR: number of sequences per chunked fasta file, PRE-FILLED
-#  $split_outdir_AR:    REF to array of output directories created by all commands in scripts
-#                       created in this subroutine, FILLED HERE
+#  $chunk_outdir_AR:    [0..$nchunk-1] REF to array of output directories created for
+#                       each chunk, FILLED HERE
+#  $cpu_out_file_AHR:   [0..$ncpu-1], REF to array of hashes of output files names, FILLED HERE 
 #  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
 #             
@@ -10961,10 +10983,10 @@ sub validate_and_parse_sub_file {
 #################################################################
 sub write_v_annotate_scripts_for_split_mode { 
   my $sub_name = "write_v_annotate_scripts_for_split_mode";
-  my $nargs_exp = 8;
+  my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($nchunk, $ncpu, $in_fa_file, $out_root, $nseqs_per_chunk_AR, $split_outdir_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($nchunk, $ncpu, $in_fa_file, $out_root, $nseqs_per_chunk_AR, $chunk_outdir_AR, $cpu_out_file_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
 
@@ -10977,39 +10999,50 @@ sub write_v_annotate_scripts_for_split_mode {
   else { 
     ofile_FAIL("ERROR in $sub_name, did not find --split in original v-annotate.pl command", 1, $FH_HR);
   }
-  # remove --cpu option (may or may not exist)
+  # remove --cpu and --maxnjob option (may or may not exist)
   if($v_annotate_plus_opts =~ /\s+\-\-cpu\s+\d+\s*/) { 
     $v_annotate_plus_opts =~ s/\s+\-\-cpu\s+\d+\s*/ /;
+  }
+  # remove --maxnjob option (may or may not exist)
+  if($v_annotate_plus_opts =~ /\s+\-\-maxnjobs\s+\d+\s*/) { 
+    $v_annotate_plus_opts =~ s/\s+\-\-maxnjobs\s+\d+\s*/ /;
   }
   $v_annotate_plus_opts =~ s/\s+$//; # remove trailing whitespace if we created it
 
   printf("CMD:\n$v_annotate_plus_opts\n");
 
-  # open all $ncpu output files at the beginning
-  my @out_FH_A       = (); # [0..$fidx..$ncpu-1] file handle for file $fidx
-  my @out_filename_A = (); # [0..$fidx..$ncpu-1] file name for file $fidx
-  my @out_ncmd_A     = (); # [0..$fidx..$ncpu-1] num commands output to file $fidx
+  # open all $ncpu script output files at the beginning
+  my @out_FH_A         = (); # [0..$fidx..$ncpu-1] file handle for file $fidx
+  my @out_scriptname_A = (); # [0..$fidx..$ncpu-1] file name for file $fidx
+  my @out_ncmd_A       = (); # [0..$fidx..$ncpu-1] num commands output to file $fidx
   my $fidx;
   for($fidx = 0; $fidx < $ncpu; $fidx++) { 
-    $out_filename_A[$fidx] = $out_root . ".annotate.sh";
+    $out_scriptname_A[$fidx] = $out_root . ".annotate." . ($fidx+1) . ".sh";
     $out_ncmd_A[$fidx] = 0;
-    open($out_FH_A[$fidx], ">", $out_filename_A[$fidx]) || ofile_FileOpenFailure($out_filename_A[$fidx], $sub_name, $!, "writing", $FH_HR);
+    open($out_FH_A[$fidx], ">", $out_scriptname_A[$fidx]) || ofile_FileOpenFailure($out_scriptname_A[$fidx], $sub_name, $!, "writing", $FH_HR);
   }
 
+  # go through each chunk and put it in a script, alternating between all scripts
   my $sidx = 1;
   my $sidx_opt = "";
+  @{$cpu_out_file_AHR} = (); # tricky: need to fill "out" in i loop over chunks and "err" in fidx loop over cpus
   for(my $i = 1; $i <= $nchunk; $i++) { 
-    my $fasta_file = $in_fa_file . "." . $i;
+    my $fasta_file = ($nchunk == 1) ? $in_fa_file : $in_fa_file . "." . $i;
+
     my $out_dir    = $out_root . "." . $i;
     my $out_file   = $out_root . "." . $i . ".out";
     $fidx = ($i-1) % $ncpu;
-    my $FH = $out_FH_A[$fidx];
     $out_ncmd_A[$fidx]++;
     # determine --sidx option (note --sidx is incompatible with --split so we can assume --sidx for 
-    # *this* execution of v-annotate.pl with --split has not used --sidx
+    # *this* execution of v-annotate.pl with --split has not used --sidx)
     $sidx_opt = "--sidx $sidx";
+    if(! defined $cpu_out_file_AHR->[$fidx]) { 
+      %{$cpu_out_file_AHR->[$fidx]} = ();
+    }
+    $cpu_out_file_AHR->[$fidx]{"out"} = $out_file; # may overwrite previous one
+    my $FH = $out_FH_A[$fidx];
     print $FH "$v_annotate_plus_opts $sidx_opt $fasta_file $out_dir > $out_file\n";
-    push(@{$split_outdir_AR}, $out_dir);
+    push(@{$chunk_outdir_AR}, $out_dir); # save chunk directory
     $sidx += $nseqs_per_chunk_AR->[($i-1)]; # update number of sequences for next command
   }
 
@@ -11017,9 +11050,11 @@ sub write_v_annotate_scripts_for_split_mode {
   for($fidx = 0; $fidx < $ncpu; $fidx++) { 
     if($out_ncmd_A[$fidx] > 0) { 
       if($script_cmd ne "") { 
-        $script_cmd .= " &\n"; # run previous script in background
+        $script_cmd .= " &\n"; # run previous cpu's script in background
       } 
-      $script_cmd .= "sh " . $out_filename_A[$fidx];
+      my $err_file = $out_root . ".cpu" . $fidx . ".err";
+      $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
+      $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file"; 
     }
     close($out_FH_A[$fidx]);
   }
@@ -11073,8 +11108,6 @@ sub get_command_and_opts {
 
   return $cmd;
 }
-
-
   
   
 
