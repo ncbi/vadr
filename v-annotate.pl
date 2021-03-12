@@ -4261,15 +4261,7 @@ sub parse_stk_and_add_alignment_alerts {
           if($nseq != 1) { 
             ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
           }
-          my $orig_rf = $msa->get_rf;
-          print("HEYA orig_rf: $orig_rf\n");
-          
-          if($doctor_before_A[$doc_idx]) { 
-
-            my $new_rf = substr($orig_rf, 0, ($doctor_indel_apos_A[$doc_idx]-1));
-            print("HEYA new_rf1: $new_rf\n");
-            my $
-                    
+          $msa->swap_gap_and_closest_residue_rf($i, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
         }
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
