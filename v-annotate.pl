@@ -4109,59 +4109,61 @@ sub parse_stk_and_add_alignment_alerts {
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_start;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
-            }
-            if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
-              push(@doctor_type_A, ($dcr_del == 1) ? "delete" : "insert");
-              push(@doctor_indel_apos_A, $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"});
-              push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
-              $seq_doctor_flag = 1;
-              $msa_doctor_flag = 1;
-              if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
-                $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+
+              if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
+                push(@doctor_type_A, ($dcr_del == 1) ? "delete" : "insert");
+                push(@doctor_indel_apos_A, $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"});
+                push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
+                $seq_doctor_flag = 1;
+                $msa_doctor_flag = 1;
+                if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
+                  $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+                }
               }
             }
-          }
-          # check for gap at end of stop codon that we can try to fix
-          if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
-             ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
-             ((($sgm_strand eq "+") && ($stop_uapos < $seq_len))            || (($sgm_strand eq "-") && ($stop_uapos > 1))) && # we have an nt to swap with
-             ((($sgm_strand eq "+") && ($rf2ilen_A[$sgm_stop_rfpos] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == -1)))) { # we won't be swapping with an insert
-            # only swap gap/res if it would give us a valid stop codon
-            # to check we need to get full unaligned sqstring, this is expensive, but should be rare
-            my $ua_sqstring = $sqstring_aligned;
-            $ua_sqstring =~ s/\W//g;
-            my $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
-            if($sgm_strand eq "-") { 
-              seq_SqstringReverseComplement(\$new_stop);
-            }
-            # store information on this to dcr_output for eventual output in output_tabular()
-            if(! defined $dcr_output_HAHR->{$seq_name}) { 
-              @{$dcr_output_HAHR->{$seq_name}} = ();
-            }
-            my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
-            my $dcr_indel_apos = $rf2a_A[$sgm_stop_rfpos];
-            %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}       = $mdl_name;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}        = $ftr_idx;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_type"}       = ($dcr_del == 1) ? "delete" : "insert",
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"}          = $sgm_stop_rfpos;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"}     = $dcr_indel_apos;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_seq_uapos"} = $stop_uapos;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}  = ($sgm_strand eq "+") ? $stop_uapos+1 : $stop_uapos-1;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"} = "stop";
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
-                vdr_CoordsSegmentCreate($stop_uapos-1, $stop_uapos+1, "+", $FH_HR) : 
-                vdr_CoordsSegmentCreate($stop_uapos+1, $stop_uapos-1, "-", $FH_HR);
+
+            # check for gap at end of stop codon that we can try to fix
+            if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
+               ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
+               ((($sgm_strand eq "+") && ($stop_uapos < $seq_len))            || (($sgm_strand eq "-") && ($stop_uapos > 1))) && # we have an nt to swap with
+               ((($sgm_strand eq "+") && ($rf2ilen_A[$sgm_stop_rfpos] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == -1)))) { # we won't be swapping with an insert
+              # only swap gap/res if it would give us a valid stop codon
+              # to check we need to get full unaligned sqstring, this is expensive, but should be rare
+              my $ua_sqstring = $sqstring_aligned;
+              $ua_sqstring =~ s/\W//g;
+              my $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
+              if($sgm_strand eq "-") { 
+                seq_SqstringReverseComplement(\$new_stop);
+              }
+              # store information on this to dcr_output for eventual output in output_tabular()
+              if(! defined $dcr_output_HAHR->{$seq_name}) { 
+                @{$dcr_output_HAHR->{$seq_name}} = ();
+              }
+              my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
+              my $dcr_indel_apos = $rf2a_A[$sgm_stop_rfpos];
+              %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}       = $mdl_name;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}        = $ftr_idx;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_type"}       = ($dcr_del == 1) ? "delete" : "insert",
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"}          = $sgm_stop_rfpos;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"}     = $dcr_indel_apos;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_seq_uapos"} = $stop_uapos;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}  = ($sgm_strand eq "+") ? $stop_uapos+1 : $stop_uapos-1;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"} = "stop";
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
+                  vdr_CoordsSegmentCreate($stop_uapos-1, $stop_uapos+1, "+", $FH_HR) : 
+                  vdr_CoordsSegmentCreate($stop_uapos+1, $stop_uapos-1, "-", $FH_HR);
             $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_stop;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
-            if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
-              push(@doctor_indel_apos_A, $dcr_indel_apos);
-              push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
-              $seq_doctor_flag = 1;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
+              if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
+                push(@doctor_indel_apos_A, $dcr_indel_apos);
+                push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
+                $seq_doctor_flag = 1;
               $msa_doctor_flag = 1;
-              if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
-                $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+                if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
+                  $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+                }
               }
             }
           }
@@ -4261,7 +4263,10 @@ sub parse_stk_and_add_alignment_alerts {
           if($nseq != 1) { 
             ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
           }
-          $msa->swap_gap_and_closest_residue_rf($i, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
+          my $new_rf = vadr_swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
+          $msa->set_rf($new_rf);
+          printf("exiting\n");
+          exit 0;
         }
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
@@ -11161,6 +11166,97 @@ sub get_command_and_opts {
   }
 
   return $cmd;
+}
+
+#################################################################
+# Subroutine: vadr_swap_gap_and_adjacent_nongap_in_rf
+# Incept:     EPN, Fri Mar 12 08:06:40 2021
+# Purpose:    Given an aligned msa->RF string from an MSA, swap
+#             two adjacent positions in that string and return 
+#             the new string. 
+#             
+#             Purposefully not put into Bio-Easel because manipulating
+#             RF has other consequences this subroutine doesn't
+#             deal with, and is only called when we know certain
+#             things about the alignment, such as there is only
+#             1 sequence in it, which makes manipulating the 
+#             RF less fraught.
+#
+# Arguments:
+#  $orig_rf:    original RF string
+#  $gap_apos:   position that is a gap in $orig_rf ('.' character)
+#               that we will swap with adjacent nongap
+#  $do_before:  '1' to swap with first RF position before gap
+#               '0' to swap with first RF position after gap  
+#             
+# Returns:  Two values:
+#           1. new RF string, or "" if error encountered
+#           2. Error message, or "" if no error encountered
+#              Errors occur if 
+#                - $gap_apos is not a gap in $orig_rf
+#                -    $do_before  and position before $gap_apos in $orig_rf is also a gap or doesn't exist
+#                - (! $do_before) and position after  $gap_apos in $orig_rf is also a gap or doesn't exist
+#
+# Dies: Never
+#
+#################################################################
+sub vadr_swap_gap_and_adjacent_nongap_in_rf { 
+  my $sub_name = "vadr_swap_gap_and_adjacent_nongap_in_rf";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($orig_rf, $gap_apos, $do_before) = (@_);
+  my $err_str = "";
+
+  my $rflen = length($orig_rf);
+
+  printf("in $sub_name, gap_apos: $gap_apos, do_before: $do_before, rflen: $rflen\n");
+  
+  # contract checks
+  if($gap_apos < 1) { 
+    return("", "ERROR in $sub_name, gap_apos $gap_apos is negative.\n");
+  }
+  if($gap_apos > $rflen) { 
+    return("", "ERROR in $sub_name, gap_apos $gap_apos exceeds RF length $rflen.\n");
+  }
+  if(($gap_apos == 1) && ($do_before)) { 
+    return("", "ERROR in $sub_name, gap_apos is 1 and do_before is 1, can't do swap.\n");
+  }
+  if(($gap_apos == $rflen) && (! $do_before)) { 
+    return("", "ERROR in $sub_name, gap_apos is final RF position $rflen and do_before is 0, can't do swap.\n");
+  }
+
+  my $orig_gap    = substr($orig_rf, ($gap_apos-1), 1);
+  my $orig_nongap = ($do_before) ? 
+      substr($orig_rf, ($gap_apos-2), 1) : 
+      substr($orig_rf, $gap_apos,     1);
+  if($orig_gap ne ".") { 
+    return("", "ERROR in $sub_name, original RF position $gap_apos is $orig_gap, expected a '.' (gap) character.\n");
+  }
+  if($orig_nongap !~ m/\w/) { 
+    if($do_before) { 
+      return("", "ERROR in $sub_name, original RF position before $gap_apos is $orig_nongap, expected a nongap character.\n");
+    }
+    else { 
+      return("", "ERROR in $sub_name, original RF position after $gap_apos is $orig_nongap, expected a nongap character.\n");
+    }
+  }
+
+  # if we get here we can do the swap
+  my $ret_rf = "";
+  $ret_rf .= substr($orig_rf, 0, ($gap_apos-2));
+  if($do_before) { 
+    $ret_rf .= $orig_gap . $orig_nongap;
+  }
+  else { 
+    $ret_rf .= $orig_nongap . $orig_gap;
+  }
+  $ret_rf .= substr($orig_rf, $gap_apos);
+
+  my $ret_rflen = length($ret_rf);
+  printf("do_before: $do_before, rflen: $rflen ret_rflen: $ret_rflen\n");
+
+  return ($ret_rf, "");
 }
   
   
