@@ -202,7 +202,6 @@ $opt_group_desc_H{++$g} = "basic options";
 #     option            type       default group   requires incompat    preamble-output                                                                            help-output    
 opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force directory overwrite",                                                               "force; if output dir exists, overwrite it",   \%opt_HH, \@opt_order_A);
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
-opt_Add("--cpu",        "integer", 0,         $g,"--glsearch",undef,     "use <n> parallel CPU workers to use for multithreads (requires --glsearch)",               "use <n> parallel CPU workers to use for multithreads (requires --glsearch)", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,         $g,    undef, undef,      "only consider ATG a valid start codon",                                                   "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>",  "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
@@ -228,6 +227,7 @@ opt_Add("-a",           "string",  undef,      $g, "--pv_hmmer",undef,    "use p
 opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 300,        $g,    undef,  undef,      "number of KB of sequence for each alignment job and/or chunk is <n>",            "number of KB of sequence for each alignment job and/or chunk is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string","calici",     $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
 opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
@@ -312,14 +312,21 @@ opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CD
 opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs", \%opt_HH, \@opt_order_A);
 opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
 
+$opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
+#     option            type       default  group   requires incompat    preamble-output                                                          help-output    
+opt_Add("--split",      "boolean", 0,          $g,    undef,  "-p",       "split input file into chunks, run each chunk separately",              "split input file into chunks, run each chunk separately", \%opt_HH, \@opt_order_A);
+opt_Add("--cpu",        "integer", 1,          $g,    undef, undef,       "parallelize across <n> CPU workers (requires --split or --glsearch)",  "parallelize across <n> CPU workers (requires --split or --glsearch)", \%opt_HH, \@opt_order_A);
+opt_Add("--sidx",       "integer", 1,          $g,    undef,"--split",    "start sequence indexing at <n> in tabular output files",               "start sequence indexing at <n> in tabular output files", \%opt_HH, \@opt_order_A);
+
 $opt_group_desc_H{++$g} = "options related to parallelization on compute farm";
 #     option            type       default  group   requires incompat    preamble-output                                                help-output    
 opt_Add("-p",           "boolean", 0,          $g,    undef,  undef,      "parallelize cmsearch/cmalign on a compute farm",              "parallelize cmsearch/cmalign on a compute farm", \%opt_HH, \@opt_order_A);
 opt_Add("-q",           "string",  undef,      $g,     "-p",  undef,      "use qsub info file <s> instead of default",                   "use qsub info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 300,        $g,    undef,  undef,      "number of KB of seq for each farm job is <n>",                "number of KB of sequence for each farm job is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--wait",       "integer", 500,        $g,     "-p",  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
 opt_Add("--errcheck",   "boolean", 0,          $g,     "-p",  undef,      "consider any farm stderr output as indicating a job failure", "consider any farm stderr output as indicating a job failure", \%opt_HH, \@opt_order_A);
-opt_Add("--maxnjobs",   "integer", 2500,       $g,     "-p",  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options related to splitting input and parallelization on compute farm";
+opt_Add("--wait",       "integer", 500,        $g,    undef,  undef,      "allow <n> minutes for jobs on farm",                          "allow <n> wall-clock minutes for jobs on farm to finish, including queueing time", \%opt_HH, \@opt_order_A);
+opt_Add("--maxnjobs",   "integer", 2500,       $g,    undef,  undef,      "maximum allowed number of jobs for compute farm",             "set max number of jobs to submit to compute farm to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
@@ -356,7 +363,6 @@ my $options_okay =
 # basic options
                 'f'             => \$GetOptions_H{"-f"},
                 'v'             => \$GetOptions_H{"-v"},
-                'cpu=s'         => \$GetOptions_H{"--cpu"}, 
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'minpvlen=s'    => \$GetOptions_H{"--minpvlen"},
                 'keep'          => \$GetOptions_H{"--keep"},
@@ -443,12 +449,17 @@ my $options_okay =
                 'r_cdsmpr'      => \$GetOptions_H{"--r_cdsmpr"},
                 'r_pvorig'      => \$GetOptions_H{"--r_pvorig"},
                 'r_prof'        => \$GetOptions_H{"--r_prof"},
+# options related to splitting
+                'split'         => \$GetOptions_H{"--split"},
+                'cpu=s'         => \$GetOptions_H{"--cpu"}, 
+                'sidx=s'        => \$GetOptions_H{"--sidx"}, 
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
                 'nkb=s'         => \$GetOptions_H{"--nkb"}, 
-                'wait=s'        => \$GetOptions_H{"--wait"},
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
+# options related to -p or --split
+                'wait=s'        => \$GetOptions_H{"--wait"},
                 'maxnjobs=s'    => \$GetOptions_H{"--maxnjobs"},
 # options for skipping stages
                 'pv_skip'       => \$GetOptions_H{"--pv_skip"},
@@ -552,6 +563,24 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
   }
 }
 
+# check for option requirements that sqp_opts is not sophisticated enough
+# to check for:
+if(opt_IsUsed("--wait", \%opt_HH)) {
+  if((! opt_IsUsed("-p", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
+    die "ERROR, --wait only makes sense in combination with -p or --split";
+  }
+}
+if(opt_IsUsed("--maxnjobs", \%opt_HH)) {
+  if((! opt_IsUsed("-p", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
+    die "ERROR, --maxnjobs only makes sense in combination with -p or --split";
+  }
+}
+if(opt_IsUsed("--cpu", \%opt_HH)) {
+  if((! opt_IsUsed("--glsearch", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
+    die "ERROR, --cpu only makes sense in combination with --glsearch or --split";
+  }
+}
+
 #######################################################
 # determine if we are running blastx, hmmer, and blastn
 #######################################################
@@ -577,6 +606,7 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # only need some but not all
 
 my $do_glsearch = opt_Get("--glsearch", \%opt_HH) ? 1 : 0;
+
 
 #############################
 # create the output directory
@@ -988,6 +1018,60 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
     }
   }
 }
+
+# pre-processing complete
+###############################
+my $do_split = opt_Get("--split", \%opt_HH);
+if($do_split) {
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+  my $tot_len_nt  = utl_HSumValues(\%seq_len_H);
+  my $nchunk_estimate = vdr_SplitNumSeqFiles($tot_len_nt, \%opt_HH);
+  my $nchunk = 1; # rewritten if $nchunk_estimate > 1
+  my $ncpu = opt_Get("--cpu", \%opt_HH);
+  my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
+
+  if($nchunk_estimate > 1) { 
+    $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
+    # vdr_SplitFastaFile will return the actual number of fasta files created, 
+    # which can differ from the requested amount (which is $nchunk_estimate) that we pass in. 
+  }
+  else { 
+    # write_v_annotate_scripts_for_split_mode() knows about the expected 
+    # fasta file name in this case (there is no .1 suffix)
+    $nseqs_per_chunk_A[0] = scalar(@seq_name_A); # all seqs will be in only seq file
+  }
+
+  # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
+  my @chunk_outdir_A   = (); # output directory names for $nchunk v-annotate.pl jobs
+  my @cpu_out_file_AH  = (); # holds name of output files that vdr_WaitForFarmJobsToFinish() will check
+                             # to see when all jobs are complete, will be filled in write_v_annotate_scripts_for_split_mode()
+  my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, \@nseqs_per_chunk_A, 
+                                                           \@chunk_outdir_A, \@cpu_out_file_AH, \%opt_HH, \%ofile_info_HH);
+
+  my $nscript = scalar(@cpu_out_file_AH);
+
+  # execute the $ncpu scripts
+  utl_RunCommand($script_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
+  my $nscripts_finished = 1; # the final script has finished
+  if($nscript > 1) { # we may need to wait for the rest of the jobs
+    $nscripts_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
+                                                     1, # do exit if any err files are written to
+                                                     "out", \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
+                                                     $ofile_info_HH{"FH"});
+    if($nscripts_finished != $nscript) { 
+      ofile_FAIL(sprintf("ERROR only $nscripts_finished of the $nscript --split scripts are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, $ofile_info_HH{"FH"});
+    }
+    ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
+  }
+
+  # concatenate the output of the $ncpu scripts
+  $total_seconds += ofile_SecondsSinceEpoch();
+  ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
+
+  exit 0;
+}
+
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
@@ -2123,7 +2207,7 @@ sub cmsearch_wrapper {
     my $targ_nseqfiles = vdr_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
     if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
       $do_split = 1;
-      $nseq_files = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+      $nseq_files = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, undef, $opt_HHR, $ofile_info_HHR);
       # vdr_SplitFastaFile will return the actual number of fasta files created, 
       # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
       for(my $i = 0; $i < $nseq_files; $i++) { 
@@ -2179,6 +2263,7 @@ sub cmsearch_wrapper {
     $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                             $progress_w, $log_FH, *STDOUT);
     my $njobs_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
+                                                     (opt_Get("--errcheck", $opt_HHR)), 
                                                      "tblout", \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
     if($njobs_finished != $nseq_files) { 
       ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
@@ -3122,7 +3207,7 @@ sub cmalign_or_glsearch_wrapper {
   my $targ_nseqfiles = vdr_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
   if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
     $r1_do_split = 1;
-    $nr1 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, $opt_HHR, $ofile_info_HHR);
+    $nr1 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, undef, $opt_HHR, $ofile_info_HHR);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $targ_nseqfiles) that we pass in. 
     for($r1_i = 0; $r1_i < $nr1; $r1_i++) { # update sequence file names
@@ -3175,7 +3260,7 @@ sub cmalign_or_glsearch_wrapper {
     else { 
       # run did not finish successfully
       # split this sequence file up into multiple files with only 1 sequence each, 
-      my $cur_nr2 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, $opt_HHR, $ofile_info_HHR);
+      my $cur_nr2 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $r1_seq_file_A[$r1_i], -1, undef, $opt_HHR, $ofile_info_HHR);
       if($cur_nr2 == 1) { 
         # special case, r1 sequence file had only 1 sequence, so we know the culprit
         # and don't need to rerun cmalign
@@ -3343,6 +3428,7 @@ sub cmalign_or_glsearch_wrapper_helper {
       $start_secs = ofile_OutputProgressPrior(sprintf("Waiting a maximum of %d minutes for all farm jobs to finish", opt_Get("--wait", $opt_HHR)), 
                                               $progress_w, $log_FH, *STDOUT);
       my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_glsearch ? 0 : 1), # are we are doing cmalign?
+                                                       (opt_Get("--errcheck", $opt_HHR)), 
                                                        "stdout",
                                                        $out_file_AHR,
                                                        $success_AR, 
@@ -7818,6 +7904,9 @@ sub output_tabular {
   # if --glsearch we won't have PP values
   my $do_glsearch = opt_Get("--glsearch", $opt_HHR) ? 1 : 0;
 
+  # deal with --sidx offset
+  my $sidx_offset = opt_Get("--sidx", $opt_HHR) - 1;
+
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
   my $nalt = scalar(keys %{$alt_info_HHR});
@@ -7923,6 +8012,7 @@ sub output_tabular {
     my $seq_nftr_annot  = 0;
     my $seq_nftr_5trunc = 0;
     my $seq_nftr_3trunc = 0;
+    my $seq_idx2print   = $seq_idx + $sidx_offset + 1;
     my $nftr = 0;
  
    # get per-sequence info from %{$cls_output_HHR->{$seq_name}}
@@ -8010,7 +8100,7 @@ sub output_tabular {
           foreach my $instance_str (@instance_str_A) { 
             $alt_nseqftr++;
             $alt_ct_H{$alt_code}++;
-            my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+            my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
             push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, 
                                 $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                 helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
@@ -8029,7 +8119,7 @@ sub output_tabular {
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx])) { 
           my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
-          my $ftr_idx2print = ($seq_idx + 1) . "." . ($seq_nftr_annot + 1);
+          my $ftr_idx2print = $seq_idx2print . "." . ($seq_nftr_annot + 1);
           if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
@@ -8080,7 +8170,7 @@ sub output_tabular {
                  (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]) && 
                  (defined $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]{"sstart"})) { 
                 $ftr_nsgm_annot++;
-                my $sgm_idx2print = ($seq_idx + 1) . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
+                my $sgm_idx2print = $seq_idx2print . "." . $seq_nftr_annot . "." . $ftr_nsgm_annot;
                 my $sgm_results_HR = $sgm_results_HHAHR->{$seq_mdl1}{$seq_name}[$sgm_idx]; # for convenience
                 my $sgm_sstart = $sgm_results_HR->{"sstart"};
                 my $sgm_sstop  = $sgm_results_HR->{"sstop"};
@@ -8154,7 +8244,7 @@ sub output_tabular {
                   foreach my $instance_str (@instance_str_A) { 
                     $alt_nseqftr++;
                     $alt_ct_H{$alt_code}++;
-                    my $alt_idx2print = ($seq_idx + 1) . "." . $alt_nftr . "." . $alt_nseqftr;
+                    my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
                                         vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
@@ -8178,10 +8268,10 @@ sub output_tabular {
     if($seq_alt_str eq "")   { $seq_alt_str  = "-"; }
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
 
-    push(@data_ant_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
+    push(@data_ant_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
                         $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
     
-    push(@data_cls_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
+    push(@data_cls_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
                             helper_tabular_replace_spaces($seq_grp1), 
                             helper_tabular_replace_spaces($seq_subgrp1), 
                             $seq_score, $seq_scpnt, $seq_scov, $seq_mcov, $seq_bias, $seq_nhits, $seq_strand, $seq_mdl2, 
@@ -8192,7 +8282,7 @@ sub output_tabular {
     if(defined $dcr_output_HAHR->{$seq_name}) { 
       my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
       for(my $dcr_idx = 0; $dcr_idx < $ndcr; $dcr_idx++) { 
-        my $dcr_idx2print = sprintf("%d.%d", ($seq_idx+1), ($dcr_idx+1));
+        my $dcr_idx2print = sprintf("%d.%d", $seq_idx2print, ($dcr_idx+1));
         my $dcr_mdl_name = $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"mdl_name"};
         my $dcr_ftr_idx  = $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"ftr_idx"};
         my $dcr_ftr_name = $ftr_info_HAHR->{$dcr_mdl_name}[$dcr_ftr_idx]{"outname"};
@@ -8218,7 +8308,7 @@ sub output_tabular {
       my $sda_ugp_fract2print = ($sda_ugp_fract ne "-") ? sprintf("%.3f", $sda_ugp_fract) : "-";
       my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
       my $sda_3p_fract2print  = ($sda_3p_fract  ne "-") ? sprintf("%.3f", $sda_3p_fract)  : "-";
-      push(@data_sda_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+      push(@data_sda_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
                           $sda_ugp_seq, $sda_ugp_mdl, $sda_ugp_fract2print, 
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
                           $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
@@ -8226,7 +8316,7 @@ sub output_tabular {
     if($do_rpn) {
       my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
           sprintf("%.3f", $rpn_nnt_n_rp_fract) : "-";
-      push(@data_rpn_AA, [($seq_idx+1), $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+      push(@data_rpn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
                           $rpn_nnt_n_tot, $rpn_nnt_n_rp_tot, $rpn_nnt_n_rp_fract2print,
                           $rpn_ngaps_tot, $rpn_ngaps_int, $rpn_ngaps_rp, 
                           $rpn_ngaps_rp_full, $rpn_ngaps_rp_part,
@@ -10928,7 +11018,158 @@ sub validate_and_parse_sub_file {
   return $err_msg;
 }
 
+#################################################################
+# Subroutine: write_v_annotate_scripts_for_split_mode
+# Incept:     EPN, Mon Mar  8 06:42:56 2021
+# Purpose:    Write one or more shell scripts that when executed
+#             will run v-annotate.pl one or more times on chunks
+#             of the original input fasta file.
+#
+# Arguments:
+#  $nchunk:             number of fasta files we have created from original
+#  $ncpu:               number of scripts to write
+#  $in_fa_file:         main fasta file that was split up
+#  $out_root:           string for naming output files
+#  $nseqs_per_chunk_AR: number of sequences per chunked fasta file, PRE-FILLED
+#  $chunk_outdir_AR:    [0..$nchunk-1] REF to array of output directories created for
+#                       each chunk, FILLED HERE
+#  $cpu_out_file_AHR:   [0..$ncpu-1], REF to array of hashes of output files names, FILLED HERE 
+#  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
+#             
+# Returns:  String that is a command to run all scripts created 
+#           in this subroutine.
+#
+# Dies:     if unable to write scripts
+#
+#################################################################
+sub write_v_annotate_scripts_for_split_mode { 
+  my $sub_name = "write_v_annotate_scripts_for_split_mode";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
+  my ($nchunk, $ncpu, $in_fa_file, $out_root, $nseqs_per_chunk_AR, $chunk_outdir_AR, $cpu_out_file_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $FH_HR = $ofile_info_HHR->{"FH"};
+
+  # determine original v-annotate.pl command and modify it as necessary for chunks
+  my $v_annotate_plus_opts = get_command_and_opts($opt_HHR, $ofile_info_HHR);
+  # remove --split option (must exist)
+  if($v_annotate_plus_opts =~ /\s+\-\-split\s*/) { 
+    $v_annotate_plus_opts =~ s/\s+\-\-split\s*/ /;
+  }
+  else { 
+    ofile_FAIL("ERROR in $sub_name, did not find --split in original v-annotate.pl command", 1, $FH_HR);
+  }
+  # remove --cpu and --maxnjob option (may or may not exist)
+  if($v_annotate_plus_opts =~ /\s+\-\-cpu\s+\d+\s*/) { 
+    $v_annotate_plus_opts =~ s/\s+\-\-cpu\s+\d+\s*/ /;
+  }
+  # remove --maxnjob option (may or may not exist)
+  if($v_annotate_plus_opts =~ /\s+\-\-maxnjobs\s+\d+\s*/) { 
+    $v_annotate_plus_opts =~ s/\s+\-\-maxnjobs\s+\d+\s*/ /;
+  }
+  $v_annotate_plus_opts =~ s/\s+$//; # remove trailing whitespace if we created it
+
+  printf("CMD:\n$v_annotate_plus_opts\n");
+
+  # open all $ncpu script output files at the beginning
+  my @out_FH_A         = (); # [0..$fidx..$ncpu-1] file handle for file $fidx
+  my @out_scriptname_A = (); # [0..$fidx..$ncpu-1] file name for file $fidx
+  my @out_ncmd_A       = (); # [0..$fidx..$ncpu-1] num commands output to file $fidx
+  my $fidx;
+  for($fidx = 0; $fidx < $ncpu; $fidx++) { 
+    $out_scriptname_A[$fidx] = $out_root . ".annotate." . ($fidx+1) . ".sh";
+    $out_ncmd_A[$fidx] = 0;
+    open($out_FH_A[$fidx], ">", $out_scriptname_A[$fidx]) || ofile_FileOpenFailure($out_scriptname_A[$fidx], $sub_name, $!, "writing", $FH_HR);
+  }
+
+  # go through each chunk and put it in a script, alternating between all scripts
+  my $sidx = 1;
+  my $sidx_opt = "";
+  @{$cpu_out_file_AHR} = (); # tricky: need to fill "out" in i loop over chunks and "err" in fidx loop over cpus
+  for(my $i = 1; $i <= $nchunk; $i++) { 
+    my $fasta_file = ($nchunk == 1) ? $in_fa_file : $in_fa_file . "." . $i;
+
+    my $out_dir    = $out_root . "." . $i;
+    my $out_file   = $out_root . "." . $i . ".out";
+    $fidx = ($i-1) % $ncpu;
+    $out_ncmd_A[$fidx]++;
+    # determine --sidx option (note --sidx is incompatible with --split so we can assume --sidx for 
+    # *this* execution of v-annotate.pl with --split has not used --sidx)
+    $sidx_opt = "--sidx $sidx";
+    if(! defined $cpu_out_file_AHR->[$fidx]) { 
+      %{$cpu_out_file_AHR->[$fidx]} = ();
+    }
+    $cpu_out_file_AHR->[$fidx]{"out"} = $out_file; # may overwrite previous one
+    my $FH = $out_FH_A[$fidx];
+    print $FH "$v_annotate_plus_opts $sidx_opt $fasta_file $out_dir > $out_file\n";
+    push(@{$chunk_outdir_AR}, $out_dir); # save chunk directory
+    $sidx += $nseqs_per_chunk_AR->[($i-1)]; # update number of sequences for next command
+  }
+
+  my $script_cmd = "";
+  for($fidx = 0; $fidx < $ncpu; $fidx++) { 
+    if($out_ncmd_A[$fidx] > 0) { 
+      if($script_cmd ne "") { 
+        $script_cmd .= " &\n"; # run previous cpu's script in background
+      } 
+      my $err_file = $out_root . ".cpu" . $fidx . ".err";
+      $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
+      $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file"; 
+    }
+    close($out_FH_A[$fidx]);
+  }
+  if($script_cmd eq "") { 
+    ofile_FAIL("ERROR in $sub_name, no annotate commands created", 1, $FH_HR);
+  }
+
+  # add final new line on final command, only one that will not be run in the background
+  # note, there will only be 1 command script unless $ncpu > 1 (--cpu <n> used with <n> > 1)
+  $script_cmd .= "\n"; 
+
+  return $script_cmd;
+}
+
+#################################################################
+# Subroutine: get_command_and_opts
+# Incept:     EPN, Mon Mar  8 07:02:31 2021
+# Purpose:    Return a string that is the command used to execute
+#             v-annotate.pl along with all command line options
+#             but not input args (fasta file and output dir).
+#
+# Arguments:
+#  $opt_HHR:        REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: REF to 2D hash of output file information, ADDED TO HERE
+#             
+# Returns:  command string
+#
+# Dies:     never
+#
+#################################################################
+sub get_command_and_opts { 
+  my $sub_name = "get_command_and_opts";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($opt_HHR, $ofile_info_HHR) = (@_);
+
+  my $FH_HR = $ofile_info_HHR->{"FH"};
+  
+  my $cmd = $0; 
+
+  foreach my $optname ( keys %{$opt_HHR}) { 
+    if(opt_IsUsed($optname, $opt_HHR)) { 
+      if($cmd ne "") { $cmd .= " "; }
+      $cmd .= $optname;
+      if($opt_HHR->{$optname}{"type"} ne "boolean") { 
+        $cmd .= " " . opt_Get($optname, $opt_HHR);
+      }
+    }
+  }
+
+  return $cmd;
+}
   
   
 

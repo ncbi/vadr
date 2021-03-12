@@ -2613,16 +2613,17 @@ sub vdr_SubmitJobAsScript {
 #          If($do_cmalign) behavior changes to a more detailed check
 #          of the cmalign output file, see cmalignCheckStdOutput().
 #          
-#          When $do_errcheck is 1, this function considers any output
+#          When --errcheck is used, this function considers any output
 #          written to stderr output files in @{$errfile_AR} to mean
 #          that the corresponding job has 'failed' and should be
-#          considered to have finished. When $do_errchecks is 0
-#          we don't look at the err files.
+#          considered to have finished. When --errcheck is not used we
+#          don't look at the err files.
 # 
 #
 # Arguments: 
 #  $do_cmalign:      '1' if we're running cmalign, which requires special care because we
 #                    handle two cases: finish successfully or die with a specific error
+#  $do_errcheck:     '1' if we should fail if any error file is written to
 #  $outkey:          key in second dimension of out_file_AHR we'll check to see if job is finished
 #  $out_file_AHR:    ref to array of hashes of output files that will be created by jobs we are waiting for
 #  $success_AR:      ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
@@ -2643,14 +2644,13 @@ sub vdr_SubmitJobAsScript {
 ################################################################# 
 sub vdr_WaitForFarmJobsToFinish { 
   my $sub_name = "vdr_WaitForFarmJobsToFinish()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($do_cmalign, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
+  my ($do_cmalign, $do_errcheck, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
 
   my $log_FH = $FH_HR->{"log"};
   my $nmin = opt_Get("--wait", $opt_HHR);
-  my $do_errcheck = opt_Get("--errcheck", $opt_HHR);
 
   # contract check
   if(! exists $out_file_AHR->[0]{$outkey}) { 
@@ -4530,31 +4530,32 @@ sub vdr_CmemitConsensus {
 #          the esl-ssplit perl script.
 #
 # Arguments: 
-#  $esl_ssplit:      path to the esl-ssplit.pl script to use
-#  $fasta_file:      fasta file to split up
-#  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
+#  $esl_ssplit:       path to the esl-ssplit.pl script to use
+#  $fasta_file:       fasta file to split up
+#  $nfiles:           desired number of files to split $fasta_file into, -1 for one file for each sequence
+#  $nseq_per_file_AR: [0..$nfiles-1]: number of seqs in each file, can be undef if unwanted
+#  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:   REF to 2D hash of output file information
 # 
 # Returns:    Number of files actually created (can differ from requested
 #             amount (which is $nfiles)).
 #
-# Dies:       if esl-ssplit command fails
+# Dies:       if esl-ssplit command fails, or unable to open esl-ssplit output file
 #
 ################################################################# 
 sub vdr_SplitFastaFile { 
   my $sub_name = "vdr_SplitFastaFile()";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($esl_ssplit, $fasta_file, $nfiles, $nseq_per_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to ofile_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   my $outfile = $fasta_file . ".esl-ssplit";
   my $cmd = undef;
-  if($nfiles == -1) { # special case: put 1 file per sequence
+  if($nfiles == -1) { # special case: put 1 sequence per file
     $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
   }
   else { 
@@ -4565,6 +4566,20 @@ sub vdr_SplitFastaFile {
   # parse output to determine exactly how many files were created:
   # $esl_ssplit will have output exactly 1 line per fasta file it created
   my $nfiles_created = utl_FileCountLines($outfile, $FH_HR);
+
+  if(defined $nseq_per_file_AR) { 
+    open(IN, $outfile) || ofile_FileOpenFailure($outfile, $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+      #va-r400/va-r400.vadr.in.fa.1 finished (11 seqs, 325770 residues)
+      if($line =~ /^\S+\s+finished\s+\((\d+)\s+seqs,\s+\d+\s+residues\)/) { 
+        push(@{$nseq_per_file_AR}, $1);
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, unable to parse esl-ssplit.pl output file $outfile line:\n$line\n", 1, $FH_HR);
+      }
+    }
+    close(IN);
+  }
 
   if(! opt_Get("--keep", $opt_HHR)) { 
     utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
