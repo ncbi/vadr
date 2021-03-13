@@ -1404,8 +1404,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
                                            $mdl_name, $out_root, 
                                            \%opt_HH, \%ofile_info_HH);
-        push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
+      push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
     }
 
     # Create option-defined output alignments, if any. 
@@ -3097,7 +3097,6 @@ sub cmalign_or_glsearch_wrapper {
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
-  my @glsearch_to_remove_A = (); # list of files to remove if $do_glsearch
   
   push(@concat_keys_A, "stdout"); 
   push(@concat_keys_A, "ifile"); 
@@ -3153,24 +3152,24 @@ sub cmalign_or_glsearch_wrapper {
       # run finished successfully
       # if $do_glsearch, create the stockholm output file and insert file
       if($do_glsearch) { 
-        my $glsearch_nstk = vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
-                                                                             $r1_out_file_AH[$r1_i]{"stdout"}, 
+        my $glsearch_nstk = vdr_GlsearchFormat3And9CToStockholmAndInsertFile($r1_out_file_AH[$r1_i]{"stdout"}, 
                                                                              $r1_out_file_AH[$r1_i]{"stk"},
                                                                              $r1_out_file_AH[$r1_i]{"ifile"},
                                                                              $blastn_db_sqfile_R, 
                                                                              $mdl_name, $opt_HHR, $ofile_info_HHR);
-        # add all files we just created to list of files to eventually remove
-        if(! $do_keep) { 
-          push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . ".list");
-          for(my $z = 1; $z <= $glsearch_nstk; $z++) { 
-            push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . "." . $z);
-          }
+        # add each individual sequence alignment file to our list of stk files
+        # we use one alignment file per sequence with --glsearch because only 1
+        # seq can exist in an alignment to deal with 'insert' doctor cases
+        for(my $z = 1; $z <= $glsearch_nstk; $z++) { 
+          push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"} . "." . $z);
         }
+      }
+      else { # $do_glsearch is 0, using cmalign, so we have 1 alignment file for all seqs
+        push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"});
       }
       foreach $out_key (@concat_keys_A) { 
         push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
       }
-      push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"});
     }
     else { 
       # run did not finish successfully
@@ -3236,10 +3235,6 @@ sub cmalign_or_glsearch_wrapper {
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
     utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-  }
-  # remove glsearch temp files
-  if(scalar(@glsearch_to_remove_A) > 0) { 
-    utl_FileRemoveList(\@glsearch_to_remove_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
   return;
@@ -3568,6 +3563,8 @@ sub parse_stk_and_add_alignment_alerts {
       $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
       $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+
+  printf("HEYA in $sub_name, stk_file: $stk_file\n");
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
