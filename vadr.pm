@@ -5232,6 +5232,80 @@ sub vdr_CigarToInsertsHash {
   return;
 }
 
+#################################################################
+# Subroutine:  vdr_ReplaceInsertTokenInInsertString()
+# Incept:      EPN, Mon Mar 15 12:22:21 2021
+#
+# Purpose:    Given $ins_str an 'insert string' in the format:
+#              <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#              for n inserts, where insert x is defined by:
+#              <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#              <uapos_x> is unaligned sequence position of the first aligned nt
+#              <inslen_x> is length of the insert
+#             Find the 'insert token' <mdlpos_n>:<uapos_n>:<inslen_n> equal to $orig_ins_tok 
+#             and replace it with $new_ins_tok.
+#
+# Arguments: 
+#   $ins_str       insert string
+#   $orig_ins_tok: insert token that should exist in $ins_str to replace
+#   $new_ins_tok:  insert token to replace $orig_ins_tok with
+#   $FH_HR:        ref to hash of file handles, including "cmd"
+#
+# Returns:     new insert string with $orig_ins_tok replaced with $new_ins_tok
+# 
+# Dies:        If we can't parse $ins_str
+#              If $orig_ins_tok does not exist in $ins_str
+#              If $orig_ins_tok exists more than once in $ins_str
+#
+################################################################# 
+sub vdr_ReplaceInsertTokenInInsertString { 
+  my $nargs_exp = 4;
+  my $sub_name = "vdr_ReplaceInsertTokenInInsertString";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($ins_str, $orig_ins_tok, $new_ins_tok, $FH_HR) = @_;
+
+  # contract checks
+  # $ins_str should be defined and not empty
+  if(! defined $ins_str) { ofile_FAIL("ERROR in $sub_name, insert string is undefined", 1, $FH_HR); }
+  if($ins_str eq "")     { ofile_FAIL("ERROR in $sub_name, insert string is empty", 1, $FH_HR); }
+
+  # $orig_ins_tok should defined and valid
+  if(! defined $orig_ins_tok) { ofile_FAIL("ERROR in $sub_name, orig_ins_tok string is undefined", 1, $FH_HR); }
+  if($orig_ins_tok !~ /^(\d+)\:(\d+)\:(\d+)/) { ofile_FAIL("ERROR in $sub_name, unable to parse orig_ins_tok $orig_ins_tok", 1, $FH_HR); }
+  
+  # $new_ins_tok  should defined and valid
+  if(! defined $new_ins_tok) { ofile_FAIL("ERROR in $sub_name, new_ins_tok string is undefined", 1, $FH_HR); }
+  if($new_ins_tok !~ /^(\d+)\:(\d+)\:(\d+)/) { ofile_FAIL("ERROR in $sub_name, unable to parse new_ins_tok $new_ins_tok", 1, $FH_HR); }
+  # end contract checks
+  
+  my @ins_A = split(";", $ins_str);
+  my $found_orig_ins_tok = 0;
+  my $ret_ins_str = "";
+  foreach my $ins_tok (@ins_A) {
+    if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+      if($ins_tok eq $orig_ins_tok) { 
+        if($found_orig_ins_tok) { 
+          ofile_FAIL("ERROR in $sub_name, found original token $orig_ins_tok twice in insert string $ins_str", 1, $FH_HR);
+        }
+        $ret_ins_str .= $new_ins_tok . ";";
+        $found_orig_ins_tok = 1;
+      }
+      else { 
+        $ret_ins_str .= $ins_tok . ";";
+      }
+    }
+    else {
+      ofile_FAIL("ERROR in $sub_name, unable to parse insert string $ins_str at at token $ins_tok", 1, $FH_HR);
+    }
+  }
+  if(! $found_orig_ins_tok) { 
+    ofile_FAIL("ERROR in $sub_name, unable to find orig_ins_tok $orig_ins_tok in insert string $ins_str", 1, $FH_HR);
+  }
+
+  return $ret_ins_str;
+}
+
 ###########################################################################
 # the next line is critical, a perl module must return a true value
 return 1;

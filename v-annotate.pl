@@ -3726,6 +3726,9 @@ sub parse_stk_and_add_alignment_alerts {
     my @doctor_indel_apos_A = (); # array of alignment positions in the alignment to doctor
                                   # type: "delete" this is a gap pos we swap with nearest nt
                                   # type: "insert" this is an inserted nt we doctor to make a RF pos 
+    my @doctor_rfpos_A = ();      # array of reference positions pertaining to alignment doctorings
+                                  # type: "delete", irrelevant (not used) rf position that aligns to gap in sequence
+                                  # type: "insert" rf position after which there is a single nt insertion
     my @doctor_before_A     = (); # array indicating direction to look when swapping either "insert" or "delete"
                                   # doctoring types, '1' for 'before' or '0' for 'after'; 
                                   # if "delete" we are swapping gap (delete) with nearest nongap in *sequence*
@@ -4110,6 +4113,7 @@ sub parse_stk_and_add_alignment_alerts {
               if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
                 push(@doctor_type_A, ($dcr_del == 1) ? "delete" : "insert");
                 push(@doctor_indel_apos_A, $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"});
+                push(@doctor_rfpos_A,      $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"});
                 push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
                 $seq_doctor_flag = 1;
                 $msa_doctor_flag = 1;
@@ -4150,14 +4154,15 @@ sub parse_stk_and_add_alignment_alerts {
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
                   vdr_CoordsSegmentCreate($stop_uapos-1, $stop_uapos+1, "+", $FH_HR) : 
                   vdr_CoordsSegmentCreate($stop_uapos+1, $stop_uapos-1, "-", $FH_HR);
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_stop;
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_stop;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
               if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
-                push(@doctor_indel_apos_A, $dcr_indel_apos);
+                push(@doctor_indel_apos_A, $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"});
+                push(@doctor_rfpos_A,      $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"});
                 push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
                 $seq_doctor_flag = 1;
-              $msa_doctor_flag = 1;
+                $msa_doctor_flag = 1;
                 if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
                   $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
                 }
@@ -4260,13 +4265,15 @@ sub parse_stk_and_add_alignment_alerts {
           if($nseq != 1) { 
             ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
           }
-          my ($new_rf, $rf_errmsg) = vadr_swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
+          my ($new_rf, $rf_errmsg) = swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
           if($rf_errmsg ne "") { 
             ofile_FAIL("ERROR in $sub_name, trying to rewrite RF for doctored alignment (insert type):\n$rf_errmsg\n", 1, $FH_HR);
           }
           $msa->set_rf($new_rf);
-          printf("exiting\n");
-          exit 0;
+          # update the insert information
+          my $orig_ins_tok = sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx], $doctor_indel_apos_A[$doc_idx]);
+          my $new_ins_tok  = sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_indel_apos_A[$doc_idx] - 1);
+          $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_ReplaceInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
         }
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
@@ -11169,7 +11176,7 @@ sub get_command_and_opts {
 }
 
 #################################################################
-# Subroutine: vadr_swap_gap_and_adjacent_nongap_in_rf
+# Subroutine: swap_gap_and_adjacent_nongap_in_rf
 # Incept:     EPN, Fri Mar 12 08:06:40 2021
 # Purpose:    Given an aligned msa->RF string from an MSA, swap
 #             two adjacent positions in that string and return 
@@ -11200,8 +11207,8 @@ sub get_command_and_opts {
 # Dies: Never
 #
 #################################################################
-sub vadr_swap_gap_and_adjacent_nongap_in_rf { 
-  my $sub_name = "vadr_swap_gap_and_adjacent_nongap_in_rf";
+sub swap_gap_and_adjacent_nongap_in_rf { 
+  my $sub_name = "swap_gap_and_adjacent_nongap_in_rf";
   my $nargs_exp = 3;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -11264,6 +11271,3 @@ sub vadr_swap_gap_and_adjacent_nongap_in_rf {
 
   return ($ret_rf, "");
 }
-  
-  
-
