@@ -5185,8 +5185,10 @@ sub vdr_CigarToInsertsHash {
 
   my ($inserts_HR, $cigar, $seqstart, $mdlstart, $FH_HR) = @_;
 
-  my $seqpos = $seqstart;
-  my $mdlpos = $mdlstart;
+  printf("in $sub_name, cigar: $cigar, seqstart: $seqstart mdlstart: $mdlstart\n");
+
+  my $seqpos = $seqstart-1;
+  my $mdlpos = $mdlstart-1;
   my $orig_cigar = $cigar;
   my $spos = undef;
   my $epos = undef;
@@ -5219,9 +5221,11 @@ sub vdr_CigarToInsertsHash {
   if(! defined $epos) { 
     ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
   }
+  printf("returning spos: $spos epos: $epos ins: $ins_str\n");
   $inserts_HR->{"spos"} = $spos; 
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
+
 
   close(OUT);
 

@@ -3650,8 +3650,6 @@ sub parse_stk_and_add_alignment_alerts {
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
       $mdl_name, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
-  printf("HEYA in $sub_name, stk_file: $stk_file\n");
-
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
   my $pp_thresh_non_mp = opt_Get("--indefann",    $opt_HHR); # threshold for non-mat_peptide features
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
@@ -3754,7 +3752,7 @@ sub parse_stk_and_add_alignment_alerts {
     if($seq_ins ne "") { 
       my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
       foreach my $ins_tok (@ins_A) { 
-        #printf("ins_tok: $ins_tok\n");
+        printf("ins_tok: $ins_tok\n");
         if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
           my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
           $rf2ipos_A[$i_rfpos] = $i_uapos;
@@ -4047,6 +4045,7 @@ sub parse_stk_and_add_alignment_alerts {
         # possibly with non-standard translation tables.
         #
         if(! $do_nodcr) { 
+          printf("sgm_start_rfpos: $sgm_start_rfpos, rf2ilen_A[$sgm_start_rfpos] $rf2ilen_A[$sgm_start_rfpos]\n");
           # check for gap at start of start codon that we can try to fix
           if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
              ((($sgm_strand eq "+") && ($start_uapos > 1)) || (($sgm_strand eq "-") && ($start_uapos < $seq_len)))) { # we have an nt to swap with
@@ -4064,6 +4063,7 @@ sub parse_stk_and_add_alignment_alerts {
             }
             elsif((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_start_rfpos)] == 1)) || 
                   (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_start_rfpos)] == 1))) { 
+              printf("HEYA dcr_ins set to 1\n");
               $dcr_ins = 1;
             }
             if($dcr_del || ($dcr_ins && $do_glsearch)) { 
@@ -4084,7 +4084,7 @@ sub parse_stk_and_add_alignment_alerts {
                 @{$dcr_output_HAHR->{$seq_name}} = ();
               }
               my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
-              my $dcr_indel_apos = $rf2a_A[$sgm_start_rfpos];
+              my $dcr_indel_apos = ($dcr_del) ? $rf2a_A[$sgm_start_rfpos] : $rf2a_A[$sgm_start_rfpos]+1;
               %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}       = $mdl_name;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}        = $ftr_idx;
@@ -4260,7 +4260,10 @@ sub parse_stk_and_add_alignment_alerts {
           if($nseq != 1) { 
             ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
           }
-          my $new_rf = vadr_swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
+          my ($new_rf, $rf_errmsg) = vadr_swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
+          if($rf_errmsg ne "") { 
+            ofile_FAIL("ERROR in $sub_name, trying to rewrite RF for doctored alignment (insert type):\n$rf_errmsg\n", 1, $FH_HR);
+          }
           $msa->set_rf($new_rf);
           printf("exiting\n");
           exit 0;
@@ -11242,13 +11245,19 @@ sub vadr_swap_gap_and_adjacent_nongap_in_rf {
   # if we get here we can do the swap
   my $ret_rf = "";
   $ret_rf .= substr($orig_rf, 0, ($gap_apos-2));
+  printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
+  print("ret_rf 0 $ret_rf\n");
   if($do_before) { 
     $ret_rf .= $orig_gap . $orig_nongap;
+    print("ret_rf .= $orig_gap . $orig_nongap\n");
+    print("ret_rf 1 $ret_rf\n");
   }
   else { 
     $ret_rf .= $orig_nongap . $orig_gap;
   }
   $ret_rf .= substr($orig_rf, $gap_apos);
+  print("ret_rf .= substr(orig_rf, $gap_apos)\n");
+  print("ret_rf 2 $ret_rf\n");
 
   my $ret_rflen = length($ret_rf);
   printf("do_before: $do_before, rflen: $rflen ret_rflen: $ret_rflen\n");
