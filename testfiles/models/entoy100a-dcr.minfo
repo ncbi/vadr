@@ -1,5 +1,0 @@
-MODEL entoy100a-dcr cmfile:"entoy100a-dcr.cm" group:"toy" length:"66" subgroup:"A"
-FEATURE entoy100a-dcr type:"gene" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one"
-FEATURE entoy100a-dcr type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
-FEATURE entoy100a-dcr type:"CDS" coords:"33..47:+" parent_idx_str:"GBNULL" gene:"two" product:"protein two"
-FEATURE entoy100a-dcr type:"CDS" coords:"65..51:-" parent_idx_str:"GBNULL" gene:"three" product:"protein three"
