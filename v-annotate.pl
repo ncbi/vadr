@@ -11262,7 +11262,8 @@ sub swap_gap_and_adjacent_nongap_in_rf {
   my $rflen = length($orig_rf);
 
   printf("in $sub_name, gap_apos: $gap_apos, do_before: $do_before, rflen: $rflen\n");
-  
+  printf("orig_rf  $orig_rf\n");
+
   # contract checks
   if($gap_apos < 1) { 
     return("", "ERROR in $sub_name, gap_apos $gap_apos is negative.\n");
@@ -11295,23 +11296,32 @@ sub swap_gap_and_adjacent_nongap_in_rf {
 
   # if we get here we can do the swap
   my $ret_rf = "";
-  $ret_rf .= substr($orig_rf, 0, ($gap_apos-2));
-  printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
-  print("ret_rf 0 $ret_rf\n");
   if($do_before) { 
+    $ret_rf .= substr($orig_rf, 0, ($gap_apos-2));
+    printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
+    print("ret_rf 0 $ret_rf\n");
     $ret_rf .= $orig_gap . $orig_nongap;
-    print("ret_rf .= $orig_gap . $orig_nongap\n");
+    print("ret_rf .= $orig_gap + $orig_nongap\n");
     print("ret_rf 1 $ret_rf\n");
+    $ret_rf .= substr($orig_rf, $gap_apos);
+    print("ret_rf .= substr(orig_rf, $gap_apos)\n");
+    print("ret_rf 2 $ret_rf\n");
   }
-  else { 
+  else {  # ! $do_before
+    $ret_rf .= substr($orig_rf, 0, ($gap_apos-1));
+    printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
+    print("ret_rf 0 $ret_rf\n");
     $ret_rf .= $orig_nongap . $orig_gap;
+    print("ret_rf .= $orig_nongap + $orig_gap\n");
+    print("ret_rf 1 $ret_rf\n");
+    $ret_rf .= substr($orig_rf, $gap_apos+1);
+    print("ret_rf .= substr(orig_rf, $gap_apos)\n");
+    print("ret_rf 2 $ret_rf\n");
   }
-  $ret_rf .= substr($orig_rf, $gap_apos);
-  print("ret_rf .= substr(orig_rf, $gap_apos)\n");
-  print("ret_rf 2 $ret_rf\n");
 
-  my $ret_rflen = length($ret_rf);
-  printf("do_before: $do_before, rflen: $rflen ret_rflen: $ret_rflen\n");
+  if(length($ret_rf) != $rflen) { 
+    return("", "ERROR in $sub_name, did not create RF string of correct length, should be $rflen, created " . length($ret_rf) . "\n");
+  }
 
   return ($ret_rf, "");
 }
