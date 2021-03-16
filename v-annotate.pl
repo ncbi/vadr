@@ -273,6 +273,7 @@ opt_Add("--tau",        "real",    1E-3,      $g,    undef,"--glsearch", "set th
 opt_Add("--nofixedtau", "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--cmindi",     "boolean", 0,         $g,    undef, "--nkb,--glsearch", "force cmalign to align one seq at a time",                              "force cmalign to align on seq at a time", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as alternative to cmalign";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
@@ -355,6 +356,7 @@ opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
+opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -421,6 +423,7 @@ my $options_okay =
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
+                'cmindi'        => \$GetOptions_H{"--cmindi"},
 # options for controlling glsearch alignment stage 
                 'glsearch'       => \$GetOptions_H{"--glsearch"},
                 'gls_match=s'    => \$GetOptions_H{"--gls_match"},
@@ -482,7 +485,8 @@ my $options_okay =
                 'origfa'        => \$GetOptions_H{"--origfa"},
                 'msub=s'        => \$GetOptions_H{"--msub"},
                 'xsub=s'        => \$GetOptions_H{"--xsub"},
-                'nodcr'         => \$GetOptions_H{"--nodcr"});
+                'nodcr'         => \$GetOptions_H{"--nodcr"},
+                'forcedcrins'   => \$GetOptions_H{"--forcedcrins"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -3175,6 +3179,7 @@ sub cmalign_or_glsearch_wrapper {
   my $start_secs; # timing start
   my $do_parallel = opt_Get("-p", $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
+  my $do_cmindi   = opt_Get("--cmindi", $opt_HHR);
   @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
                             # the matrix required to align them is too big
 
@@ -3204,7 +3209,8 @@ sub cmalign_or_glsearch_wrapper {
   my $r1_do_split = 0;     # set to '1' if we split up fasta file
   # we need to split up the sequence file, and submit a separate set of cmalign jobs for each
   my $targ_nseqfiles = vdr_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
-  if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
+  if(($targ_nseqfiles > 1) || ($do_cmindi)) { # we are going to split up the fasta file 
+    if($do_cmindi) { $targ_nseqfiles = -1; } # makes vdr_SplitFastaFile create 1 file per seq
     $r1_do_split = 1;
     $nr1 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, undef, $opt_HHR, $ofile_info_HHR);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
@@ -3655,8 +3661,9 @@ sub parse_stk_and_add_alignment_alerts {
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $do_alicheck      = opt_Get("--alicheck",    $opt_HHR); # check aligned sequences are identical to those fetched from $sqfile (except maybe Ns if -r) 
   my $do_replace_ns    = opt_Get("-r",            $opt_HHR); # only relevant if $do_alicheck
-  my $do_glsearch      = opt_Get("--glsearch",     $opt_HHR); # we won't have PP values if this is 1
+  my $do_glsearch      = opt_Get("--glsearch",    $opt_HHR); # we won't have PP values if this is 1
   my $do_nodcr         = opt_Get("--nodcr",       $opt_HHR); # do not doctor alignment to correct start/stop codons
+  my $do_forcedcrins   = opt_Get("--forcedcrins", $opt_HHR); # force doctoring of insert type, must be 1 seq per alignment (--forcedcrins requires --cmindi)
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -3706,6 +3713,9 @@ sub parse_stk_and_add_alignment_alerts {
   my $nseq = $msa->nseq; 
   if($do_glsearch && ($nseq != 1)) { 
     ofile_FAIL("ERROR in $sub_name, --glsearch enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
+  }
+  if($do_forcedcrins && ($nseq != 1)) { 
+    ofile_FAIL("ERROR in $sub_name, --forcedcrins enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
   }
 
   # for each sequence, go through all segments and fill in the start and stop (unaligned seq) positions
@@ -4069,11 +4079,12 @@ sub parse_stk_and_add_alignment_alerts {
               printf("HEYA dcr_ins set to 1\n");
               $dcr_ins = 1;
             }
-            if($dcr_del || ($dcr_ins && $do_glsearch)) { 
+            if($dcr_del || ($dcr_ins && $do_glsearch) || ($dcr_ins && $do_forcedcrins)) { 
               # we only do doctoring if it would give us a valid start codon for delete case, so check for that
-              # if insert case, we don't doctor unless $do_glsearch because otherwise we may have more than 1 seq in
+              # if insert case, we don't doctor unless $do_glsearch or $do_forcedcrins because otherwise we may have more than 1 seq in
               # the alignment and we can't manipulate RF and guarantee we will maintain alignment fidelity if > 1 seq 
               # (we checked that if $do_glsearch is true, that we only have 1 sequence in the alignment above)
+              # (we checked that if $do_forcedcrins is true, that we only have 1 sequence in the alignment above)
 
               # to check we need to get full unaligned sqstring, this is expensive, but should be rare
               my $ua_sqstring = $sqstring_aligned;
@@ -4140,11 +4151,12 @@ sub parse_stk_and_add_alignment_alerts {
                   (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == 1))) {  # - strand: insert before final RF stop position
               $dcr_ins = 1;
             }
-            if($dcr_del || ($dcr_ins && $do_glsearch)) { 
+            if($dcr_del || ($dcr_ins && $do_glsearch) || ($dcr_ins && $do_forcedcrins)) { 
               # we only do doctoring if it would give us a valid stop codon for delete case, so check for that
-              # if insert case, we don't doctor unless $do_glsearch because otherwise we may have more than 1 seq in
+              # if insert case, we don't doctor unless $do_glsearch or $do_forcedcrins because otherwise we may have more than 1 seq in
               # the alignment and we can't manipulate RF and guarantee we will maintain alignment fidelity if > 1 seq 
               # (we checked that if $do_glsearch is true, that we only have 1 sequence in the alignment above)
+              # (we checked that if $do_forcedcrins is true, that we only have 1 sequence in the alignment above)
 
               # to check we need to get full unaligned sqstring, this is expensive, but should be rare
               my $ua_sqstring = $sqstring_aligned;
@@ -4282,8 +4294,12 @@ sub parse_stk_and_add_alignment_alerts {
           }
           $msa->set_rf($new_rf);
           # update the insert information
-          my $orig_ins_tok = sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx], $doctor_indel_apos_A[$doc_idx]);
-          my $new_ins_tok  = sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_indel_apos_A[$doc_idx] - 1);
+          my $orig_ins_tok = ($doctor_before_A[$doc_idx]) ? 
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_indel_apos_A[$doc_idx]) : 
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_indel_apos_A[$doc_idx]);
+          my $new_ins_tok  = ($doctor_before_A[$doc_idx]) ? 
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_indel_apos_A[$doc_idx] - 1) : 
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_indel_apos_A[$doc_idx] + 1);
           $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_ReplaceInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
         }
       }
