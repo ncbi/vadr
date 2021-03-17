@@ -4094,16 +4094,20 @@ sub parse_stk_and_add_alignment_alerts {
               # to check we need to get full unaligned sqstring, this is expensive, but should be rare
               my $ua_sqstring = $sqstring_aligned;
               $ua_sqstring =~ s/\W//g;
-              my $new_start = undef;
+              my $orig_start = ($sgm_strand eq "+") ? 
+                  substr($ua_sqstring, $start_uapos-1, 3) : 
+                  substr($ua_sqstring, $start_uapos-3, 3);
+              my $new_start  = undef;
               if($dcr_del) { 
                 $new_start = substr($ua_sqstring, $start_uapos-2, 3);
               }
               else { 
-                $new_start = ($sgm_strand eq "+") ? 
+                $new_start  = ($sgm_strand eq "+") ? 
                     substr($ua_sqstring, $start_uapos,   3) : 
                     substr($ua_sqstring, $start_uapos-4, 3);
               }
               if($sgm_strand eq "-") { 
+                seq_SqstringReverseComplement(\$orig_start);
                 seq_SqstringReverseComplement(\$new_start);
               }
               # store information on this to dcr_output for eventual output in output_tabular()
@@ -4119,6 +4123,7 @@ sub parse_stk_and_add_alignment_alerts {
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"}          = $sgm_start_rfpos;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_seq_uapos"} = $start_uapos;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"}     = "start";
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_codon"}     = $orig_start;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}      = $new_start;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"}       = $seq_doctor_ctr+1;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}       = "no"; # possibly changed to "yes" below
@@ -4179,6 +4184,9 @@ sub parse_stk_and_add_alignment_alerts {
               # to check we need to get full unaligned sqstring, this is expensive, but should be rare
               my $ua_sqstring = $sqstring_aligned;
               $ua_sqstring =~ s/\W//g;
+              my $orig_stop = ($sgm_strand eq "+") ? 
+                  substr($ua_sqstring, $stop_uapos-3, 3) :
+                  substr($ua_sqstring, $stop_uapos-1, 3);
               my $new_stop = undef; 
               if($dcr_del) { 
                 $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
@@ -4189,6 +4197,7 @@ sub parse_stk_and_add_alignment_alerts {
                     substr($ua_sqstring, $stop_uapos,   3);
               }
               if($sgm_strand eq "-") { 
+                seq_SqstringReverseComplement(\$orig_stop);
                 seq_SqstringReverseComplement(\$new_stop);
               }
               # store information on this to dcr_output for eventual output in output_tabular()
@@ -4205,6 +4214,7 @@ sub parse_stk_and_add_alignment_alerts {
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"}          = $sgm_stop_rfpos;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_seq_uapos"} = $stop_uapos;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"}     = "stop";
+              $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_codon"}     = $orig_stop;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}      = $new_stop;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"}       = $seq_doctor_ctr+1;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}       = "no"; # possibly changed to "yes" below
@@ -8044,9 +8054,9 @@ sub output_tabular {
 
   my @head_dcr_AA = ();
   my @data_dcr_AA = ();
-  @{$head_dcr_AA[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "dcr", "model",  "indel",      "orig",       "new", "codon",  "codon",   "new",   "dcr",   "did");
-  @{$head_dcr_AA[1]} = ("idx", "name", "name", "type", "name",  "idx", "type",    "pos",  "apos", "seq-uapos", "seq-uapos",  "type", "coords", "codon",  "iter", "swap?");
-  my @clj_dcr_A      = (    1,      1,      1,      1,      1,      0,      1,        0,       0,           0,           0,       1,       0,        0,       0,       1);
+  @{$head_dcr_AA[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "dcr",  "model", "indel",      "orig",       "new", "codon",  "codon",  "orig",   "new",   "dcr",   "did");
+  @{$head_dcr_AA[1]} = ("idx", "name", "name", "type", "name",  "idx", "type",    "pos",  "apos", "seq-uapos", "seq-uapos",  "type", "coords", "codon", "codon",  "iter", "swap?");
+  my @clj_dcr_A      = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
 
   # optional .sda file
   my $do_sda = opt_Get("-s", $opt_HHR) ? 1 : 0;
@@ -8360,6 +8370,7 @@ sub output_tabular {
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"new_seq_uapos"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"codon_type"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"codon_coords"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"orig_codon"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"new_codon"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"dcr_iter"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"did_swap"})]);
