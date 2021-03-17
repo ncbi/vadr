@@ -3679,24 +3679,11 @@ sub parse_stk_and_add_alignment_alerts {
   }
 
   # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
-  my $alen = $msa->alen;
   my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
-  $rf2a_A[0] = -1; 
-  my $rf_str = $msa->get_rf;
-  my @rf_A = split("", $rf_str);
-  if(scalar(@rf_A) != $alen) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, unexpected alignment length mismatch $alen != %d\n", scalar(@rf_A)), 1, $FH_HR);
-  }
+  my $rflen = msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
   my $rfpos = 0; # nongap RF (model) position [1..$rflen]
   my $apos  = 0; # alignment position [1..$alen]
-  for($apos = 1; $apos <= $alen; $apos++) { 
-    if($rf_A[($apos-1)] ne ".") { 
-      # nongap RF (model position)
-      $rfpos++;
-      $rf2a_A[$rfpos] = $apos;
-    }
-  }
-  my $rflen = $rfpos;
+  my $alen  = $msa->alen;
 
   # 'doctor' flags, which keep track of when we need to doctor the alignment in an attempt
   # to fix gaps in first position of CDS starts and final positions of CDS stops
@@ -4147,6 +4134,7 @@ sub parse_stk_and_add_alignment_alerts {
                 push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
                 $seq_doctor_flag = 1;
                 $msa_doctor_flag = 1;
+                printf("HEYA 1 set msa_doctor_flag to 1\n");
                 if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
                   $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
                 }
@@ -4238,6 +4226,7 @@ sub parse_stk_and_add_alignment_alerts {
                 push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
                 $seq_doctor_flag = 1;
                 $msa_doctor_flag = 1;
+                printf("HEYA 2 set msa_doctor_flag to 1\n");
                 if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
                   $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
                 }
@@ -4315,7 +4304,9 @@ sub parse_stk_and_add_alignment_alerts {
     #    RF  GCGTAAATG
     #       stop^  ^start
     # 
+    printf("HEYA! seq_doctor_flag: $seq_doctor_flag seq_doctor_ctr: $seq_doctor_ctr\n");
     if(($seq_doctor_flag) && ($seq_doctor_ctr <= 1)) { 
+      printf("\tHEYA! in seq_doctor_flag if\n");
       $seq_doctor_ctr++; 
       for(my $doc_idx = 0; $doc_idx < scalar(@doctor_indel_apos_A); $doc_idx++) { 
         if($doctor_type_A[$doc_idx] eq "delete") { 
@@ -4334,6 +4325,10 @@ sub parse_stk_and_add_alignment_alerts {
             ofile_FAIL("ERROR in $sub_name, trying to rewrite RF for doctored alignment (insert type):\n$rf_errmsg\n", 1, $FH_HR);
           }
           $msa->set_rf($new_rf);
+
+          # update the rf2a_A map
+          msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
+
           # update the insert information
           my $orig_ins_tok = ($doctor_before_A[$doc_idx]) ? 
               sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_seq_uapos_A[$doc_idx]) : 
@@ -4348,6 +4343,7 @@ sub parse_stk_and_add_alignment_alerts {
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
     }
     else { 
+      printf("\tHEYA! in seq_doctor_flag else\n");
       # usual case: we did not doctor the alignment (or we already doctored it twice)
       $seq_doctor_ctr = 0; # reset this (we don't want to reset this in main loop above)
 
@@ -4394,6 +4390,8 @@ sub parse_stk_and_add_alignment_alerts {
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
   if($msa_doctor_flag) { 
+    system("cp $stk_file $stk_file.orig");
+    printf("REWRITING MSA!\n");
     $msa->write_msa($stk_file, "pfam", 0);
   }
 
@@ -4793,6 +4791,7 @@ sub add_frameshift_alerts_for_one_sequence {
         # create and output a stockholm file for each segment of this seq/CDS 
         # remove all sequences other than the one we want
         my $msa_nseq = $msa->nseq;
+        printf("HEYA in $sub_name, msa_rf\n" . $msa->get_rf() . "\n");
         for(my $s = 0; $s < $nsgm; $s++) { 
           my $sgm_idx      = $sgm_idx_A[$s];
           my $gr_frame_str = $gr_frame_str_A[$s];
@@ -4816,18 +4815,19 @@ sub add_frameshift_alerts_for_one_sequence {
           my $cds_sgm_apos_stop  = ($sgm_strand eq "+" ? $rf2a_AR->[$mstop]  : $rf2a_AR->[$mstart]) - 1; # -1 puts it into 0..alen-1 coords
           for(my $a = 0;                      $a <  $cds_sgm_apos_start; $a++) { $cds_sgm_col_A[$a] = 0; } # before CDS
           for(my $a = $cds_sgm_apos_start;    $a <= $cds_sgm_apos_stop;  $a++) { $cds_sgm_col_A[$a] = 1; } # CDS
-          for(my $a = $cds_sgm_apos_stop + 1; $a <  $alen;           $a++) { $cds_sgm_col_A[$a] = 0; } # after CDS
+          for(my $a = $cds_sgm_apos_stop + 1; $a <  $alen;               $a++) { $cds_sgm_col_A[$a] = 0; } # after CDS
           $cds_sgm_msa->column_subset(\@cds_sgm_col_A);
+          printf("HEYA in $sub_name, cds_sgm_msa_rf\n" . $cds_sgm_msa->get_rf() . "\n");
 
           # remove all gap columns
           $cds_sgm_msa->remove_all_gap_columns(1); # 1: don't delete any nongap RF columns
           
           # add GR annotation
-          # printf("in $sub_name, seq_name: $seq_name\n");
-          # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
-          # print("$gr_frame_str\n");
-          # printf("alen: %d\n", $cds_sgm_msa->alen());
-          # printf("adding GR (CS) for $seq_name\n");
+          printf("in $sub_name, seq_name: $seq_name\n");
+          printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
+          print("$gr_frame_str\n");
+          printf("alen: %d\n", $cds_sgm_msa->alen());
+          printf("adding GR (CS) for $seq_name\n");
           $cds_sgm_msa->addGR("CS", 0, $gr_frame_str);
           
           # output alignment, if nec
@@ -11350,4 +11350,50 @@ sub swap_gap_and_adjacent_nongap_in_rf {
   }
 
   return ($ret_rf, "");
+}
+
+#################################################################
+# Subroutine: msa_create_rfpos_to_apos_map
+# Incept:     EPN, Wed Mar 17 14:43:19 2021
+# Purpose:    Fill @{$rf2a_AR} array indicating what alignment 
+#             position each RF position maps to.
+#
+# Arguments:
+#  $msa:        the alignment
+#  $rf2a_AR:    [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  
+#               ($rf2a_A[0] = -1  (dummy value))
+#               FILLED HERE
+#  $FH_HR:      ref to hash of file handles
+#             
+# Returns:  nongap length of RF annotation
+#
+# Dies: If RF string does not match $msa->alen
+#
+#################################################################
+sub msa_create_rfpos_to_apos_map {
+  my $sub_name = "msa_create_rfpos_to_apos_map";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($msa, $rf2a_AR, $FH_HR) = (@_);
+
+  my $alen = $msa->alen;
+
+  @{$rf2a_AR} = ();
+  $rf2a_AR->[0] = -1; 
+  my $rf_str = $msa->get_rf;
+  my @rf_A = split("", $rf_str);
+  if(scalar(@rf_A) != $alen) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, alignment length and RF length mismatch $alen != %d\n", scalar(@rf_A)), 1, $FH_HR);
+  }
+  my $rfpos = 0; # nongap RF (model) position [1..$rflen]
+  my $apos  = 0; # alignment position [1..$alen]
+  for($apos = 1; $apos <= $alen; $apos++) { 
+    if($rf_A[($apos-1)] ne ".") { 
+      # nongap RF (model position)
+      $rfpos++;
+      $rf2a_AR->[$rfpos] = $apos;
+    }
+  }
+  return $rfpos;
 }
