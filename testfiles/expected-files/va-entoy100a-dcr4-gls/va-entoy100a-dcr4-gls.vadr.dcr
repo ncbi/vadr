@@ -1,0 +1,5 @@
+#     seq                      mdl                ftr   ftr          ftr  dcr     model  indel       orig        new  codon     codon    new   dcr  did  
+#idx  name                     name               type  name         idx  type      pos   apos  seq-uapos  seq-uapos  type     coords  codon  iter  swap?
+#---  -----------------------  -----------------  ----  -----------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  ----  -----
+2.1   ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  CDS   protein_two    2  insert     33     34         33         34  start  34..36:+    ATG     1  yes  
+#---  -----------------------  -----------------  ----  -----------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  ----  -----
