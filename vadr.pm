@@ -5187,8 +5187,8 @@ sub vdr_CigarToInsertsHash {
 
   printf("in $sub_name, cigar: $cigar, seqstart: $seqstart mdlstart: $mdlstart\n");
 
-  my $seqpos = $seqstart-1;
-  my $mdlpos = $mdlstart-1;
+  my $seqpos = $seqstart;
+  my $mdlpos = $mdlstart;
   my $orig_cigar = $cigar;
   my $spos = undef;
   my $epos = undef;
@@ -5206,7 +5206,7 @@ sub vdr_CigarToInsertsHash {
         $mdlpos += $len;
       }
       if($type eq "D") { 
-        $ins_str .= $mdlpos . ":" . ($seqpos + 1) . ":" . $len . ";";
+        $ins_str .= ($mdlpos-1) . ":" . $seqpos . ":" . $len . ";";
         $seqpos += $len;
       }
       $cigar =~ s/^\d+[MID]//;
@@ -5225,7 +5225,6 @@ sub vdr_CigarToInsertsHash {
   $inserts_HR->{"spos"} = $spos; 
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
-
 
   close(OUT);
 
