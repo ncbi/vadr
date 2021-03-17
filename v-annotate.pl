@@ -4057,13 +4057,17 @@ sub parse_stk_and_add_alignment_alerts {
         # not fix the problem and you'll still get an error when a valid start/stop exists,
         # possibly with non-standard translation tables.
         #
+        my $dcr_del = 0;
+        my $dcr_ins = 0;
         if(! $do_nodcr) { 
-          my $dcr_del = 0; # set to 1 if we identify a doctoring deletion type
-          my $dcr_ins = 0; # set to 1 if we identify a doctoring insertion type
           printf("sgm_start_rfpos: $sgm_start_rfpos, rf2ilen_A[$sgm_start_rfpos] $rf2ilen_A[$sgm_start_rfpos]\n");
-          # check for gap at start of start codon that we can try to fix
+
+          # check for gap at start of start codon that we can try to fix (delete type doctoring)
+          # or insert near start position that we can try to fix (insert type doctoring)
           if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
              ((($sgm_strand eq "+") && ($start_uapos > 1)) || (($sgm_strand eq "-") && ($start_uapos < $seq_len)))) { # we have an nt to swap with
+            $dcr_del = 0; # set to 1 if we identify a  deletion type doctoring
+            $dcr_ins = 0; # set to 1 if we identify an insertion type doctoring
 
             ###############################################################
             # check for two cases where we would doctor the alignment to fix a start: 
@@ -4141,10 +4145,13 @@ sub parse_stk_and_add_alignment_alerts {
             } # end of 'if($dcr_del || ($dcr_ins && $do_glsearch))'
           } # end of 'if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) && ...'
 
-          # check for gap at end of stop codon that we can try to fix
+          # check for gap at end of stop codon that we can try to fix (delete type doctoring)
+          # or insert near stop position that we can try to fix (insert type doctoring)
           if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
              ((($sgm_strand eq "+") && ($stop_uapos < $seq_len)) || (($sgm_strand eq "-") && ($stop_uapos > 1)))) {  # we have an nt to swap with
              
+            $dcr_del = 0; # set to 1 if we identify a  deletion type doctoring
+            $dcr_ins = 0; # set to 1 if we identify an insertion type doctoring
             ###############################################################
             # check for two cases where we would doctor the alignment to fix a stop:
             # dcr_del: gap in final RF position of stop (deletion)
