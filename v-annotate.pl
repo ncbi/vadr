@@ -3736,6 +3736,8 @@ sub parse_stk_and_add_alignment_alerts {
     my @doctor_indel_apos_A = (); # array of alignment positions in the alignment to doctor
                                   # type: "delete" this is a gap pos we swap with nearest nt
                                   # type: "insert" this is an inserted nt we doctor to make a RF pos 
+    my @doctor_seq_uapos_A = ();  # array of unaligned positions in the sequence that will become 
+                                  # new start (first posn of start) or stop (final posn of stop) posn
     my @doctor_rfpos_A = ();      # array of reference positions pertaining to alignment doctorings
                                   # type: "delete", irrelevant (not used) rf position that aligns to gap in sequence
                                   # type: "insert" rf position after which there is a single nt insertion
@@ -4060,7 +4062,7 @@ sub parse_stk_and_add_alignment_alerts {
         my $dcr_del = 0;
         my $dcr_ins = 0;
         if(! $do_nodcr) { 
-          printf("sgm_start_rfpos: $sgm_start_rfpos, rf2ilen_A[$sgm_start_rfpos] $rf2ilen_A[$sgm_start_rfpos]\n");
+          # printf("sgm_start_rfpos: $sgm_start_rfpos, rf2ilen_A[$sgm_start_rfpos] $rf2ilen_A[$sgm_start_rfpos]\n");
 
           # check for gap at start of start codon that we can try to fix (delete type doctoring)
           # or insert near start position that we can try to fix (insert type doctoring)
@@ -4109,6 +4111,7 @@ sub parse_stk_and_add_alignment_alerts {
                 @{$dcr_output_HAHR->{$seq_name}} = ();
               }
               my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
+              printf("HEYA start\n");
               %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}       = $mdl_name;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}        = $ftr_idx;
@@ -4134,6 +4137,7 @@ sub parse_stk_and_add_alignment_alerts {
               if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
                 push(@doctor_type_A, ($dcr_del == 1) ? "delete" : "insert");
                 push(@doctor_indel_apos_A, $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"});
+                push(@doctor_seq_uapos_A,  $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"});
                 push(@doctor_rfpos_A,      $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"});
                 push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
                 $seq_doctor_flag = 1;
@@ -4193,6 +4197,7 @@ sub parse_stk_and_add_alignment_alerts {
               }
               my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
               #my $dcr_indel_apos = ($dcr_del) ? $rf2a_A[$sgm_stop_rfpos] : $rf2a_A[$sgm_stop_rfpos]-1;
+              printf("HEYA stop\n");
               %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}       = $mdl_name;
               $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}        = $ftr_idx;
@@ -4218,6 +4223,7 @@ sub parse_stk_and_add_alignment_alerts {
               if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
                 push(@doctor_type_A, ($dcr_del == 1) ? "delete" : "insert");
                 push(@doctor_indel_apos_A, $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"});
+                push(@doctor_seq_uapos_A,  $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"});
                 push(@doctor_rfpos_A,      $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"});
                 push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
                 $seq_doctor_flag = 1;
@@ -4312,6 +4318,7 @@ sub parse_stk_and_add_alignment_alerts {
           if($nseq != 1) { 
             ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
           }
+          printf("calling swap_gap_and_adjacent_nongap_in_rf(rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx])\n");
           my ($new_rf, $rf_errmsg) = swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $doctor_indel_apos_A[$doc_idx], $doctor_before_A[$doc_idx]);
           if($rf_errmsg ne "") { 
             ofile_FAIL("ERROR in $sub_name, trying to rewrite RF for doctored alignment (insert type):\n$rf_errmsg\n", 1, $FH_HR);
@@ -4319,11 +4326,12 @@ sub parse_stk_and_add_alignment_alerts {
           $msa->set_rf($new_rf);
           # update the insert information
           my $orig_ins_tok = ($doctor_before_A[$doc_idx]) ? 
-              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_indel_apos_A[$doc_idx]) : 
-              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_indel_apos_A[$doc_idx]);
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_seq_uapos_A[$doc_idx]) : 
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_seq_uapos_A[$doc_idx]);
           my $new_ins_tok  = ($doctor_before_A[$doc_idx]) ? 
-              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_indel_apos_A[$doc_idx] - 1) : 
-              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_indel_apos_A[$doc_idx] + 1);
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx] - 1, $doctor_seq_uapos_A[$doc_idx] - 1) : 
+              sprintf("%d:%d:1", $doctor_rfpos_A[$doc_idx],     $doctor_seq_uapos_A[$doc_idx] + 1);
+          printf("calling vdr_ReplaceInsertTokenInInsertString for $seq_name\n");
           $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_ReplaceInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
         }
       }
