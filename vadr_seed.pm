@@ -1140,23 +1140,19 @@ sub join_alignments_and_add_unjoinbl_alerts {
       $subseq2stk_idx_H{$subseq_name} = $stk_idx;
       $ali_subseq_H{$subseq_name} = $msa->get_sqstring_aligned($i);
       $ali_subpp_H{$subseq_name}  = ($do_glsearch) ? undef : $msa->get_ppstring_aligned($i);
-      if($do_glsearch) { 
-        inserts_from_sqstring_and_rf_array(\%{$subseq_inserts_HH{$subseq_name}}, \@is_rf_A, $ali_subseq_H{$subseq_name}, $FH_HR);
-      }
     }
     $msa = undef;
   }
 
-  # if (! $do_glsearch): 
   # parse the ifile for this model, we may not have one if $ninstk is 0,
   # this will happen if and only if all seqs for this model had ungapped
   # blastn hits that spanned the full sequence
-  if(! $do_glsearch) { 
-    my $in_ifile = $out_root . "." . $mdl_name . ".align.ifile";
-    if($ninstk > 0) { 
-      vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);
-    }
+  my $in_ifile = $out_root . "." . $mdl_name . ".align.ifile";
+  if($ninstk > 0) { 
+    vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);
   }
+
+
   # define variables for the output insert file we will create
   my $out_ifile = $out_root . "." . $mdl_name . ".jalign.ifile";
   my $out_ifile_key = $mdl_name . ".jalign.ifile";
@@ -1790,85 +1786,6 @@ sub update_overflow_info_for_joined_alignments {
       }
     }
   }
-
-  return;
-}
-
-#################################################################
-# Subroutine: inserts_from_sqstring_and_rf_array
-# Incept:     EPN, Tue Feb 16 13:23:30 2021
-# Purpose:    Determine insert information from an aligned sqstring 
-#             and array indicating which positions are nongap RF positions
-#             and add it to %{$inserts_HR}, where keys are:
-#               "spos" is starting model position of aligned sequence
-#               "epos" is ending model position of aligned sequence
-#               "ins"  is the insert string in the format:
-#                      <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
-#                      for n inserts, where insert x is defined by:
-#                      <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
-#                      <uapos_x> is unaligned sequence position of the first aligned nt
-#                      <inslen_x> is length of the insert
-#
-# Arguments:
-#  $inserts_HR:   REF to hash to fill, see 'Purpose' for keys
-#  $is_rf_AR:     [0..$apos..$alen-1]: 0 if $apos is a nongap RF position, else 0
-#  $sqstring:     [0..$apos..$alen-1]: aligned sequence string
-#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
-# 
-# Returns:  void, fills @{$insert_HR}
-#
-# Dies:     If $sqstring contains no alphabetic characters
-#
-#################################################################
-sub inserts_from_sqstring_and_rf_array { 
-  my $sub_name = "inserts_from_sqstring_and_rf_array";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($inserts_HR, $is_rf_AR, $sqstring, $FH_HR) = (@_);
-
-  my %added_H = (); # used so we don't add overflow for same full seq twice
-  my $alen = scalar(@{$is_rf_AR});
-  my @sqstring_A = split("", $sqstring);
-  my $rfpos = 0;
-  my $nins = 0;
-  my $ins_str = "";
-  my $spos = -1;
-  my $epos = -1;
-  my $uapos = 0;
-  for(my $apos = 0; $apos < $alen; $apos++) { 
-    my $sq_is_char = ($sqstring_A[$apos] =~ m/\w/) ? 1 : 0;
-    if($sq_is_char) { 
-      $uapos++;
-      if($is_rf_AR->[$apos] == 0) { 
-        $nins++; 
-      }
-      else { 
-        if($nins > 0) { 
-          $ins_str .= $rfpos . ":" . ($uapos - $nins + 1) . ":" . $nins . ";";
-        }
-        $rfpos++;
-        $epos = $rfpos;
-        if($spos == -1) { $spos = $rfpos; }
-        $nins = 0;
-      }
-    }
-    elsif($is_rf_AR->[$apos] != 0) { 
-      $rfpos++;
-    }
-  }
-  # deal with insertions after final nongap RF position, if any:
-  if($nins > 0) { 
-    $ins_str .= $rfpos . ":" . ($uapos - $nins + 1) . ":" . $nins . ";";
-  }
-
-
-  if($uapos == 0) { 
-    ofile_FAIL("ERROR in $sub_name, sqstring contains 0 nongap chars:\n$sqstring\n", 1, $FH_HR);
-  }
-  $inserts_HR->{"spos"} = $spos;
-  $inserts_HR->{"epos"} = $epos;
-  $inserts_HR->{"ins"} = $ins_str;
 
   return;
 }
