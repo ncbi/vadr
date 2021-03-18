@@ -3605,16 +3605,19 @@ sub cmalign_or_glsearch_run {
 # 
 #             Added post v1.1.3 with --glsearch was added to deal with
 #             case where some SARS-CoV-2 seqs were failing due to a
-#             gap in a start codon: Potentially doctors (modifies) the
+#             indel near start/stop codon: Potentially doctors (modifies) the
 #             stockholm alignment for each sequence if (and this
 #             should be rare) a gap exists at first position of start
-#             or final position of stop codon, but only if that
-#             doctoring will create a valid start/stop. Potentially
-#             re-doctors already doctored aligned sequence exactly
-#             once if the initial doctoring disrupted a different
-#             valid start/stop.  See comments throughout (search for
-#             'doctor').
-# 
+#             or final position of stop codon, or single insertion occurs
+#             after first stop position or before final stop position.
+#             Only doctors if doctoring will create a valid start/stop.
+#             See toy examples in comments at beginning of 
+#             doctoring_check_new_codon_validity() subroutine.
+#
+#             Also, potentially re-doctors already doctored aligned
+#             sequence exactly once if the initial doctoring disrupted
+#             a different valid start/stop.
+
 #             Detects and adds the following alerts to 
 #             @{$alt_ftr_instances_AAHR}:
 #             indf5gap: gap at 5' boundary of model span for a feature segment
@@ -3883,19 +3886,6 @@ sub parse_stk_and_add_alignment_alerts {
     if($max_uapos != $seq_len) { 
       ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
     }      
-    
-    # Debugging print block
-#    printf("***************************************************\n");
-#    printf("DEBUG print $seq_name\n");
-#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
-#    }
-#    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -3918,6 +3908,7 @@ sub parse_stk_and_add_alignment_alerts {
       my $ftr_pp_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
       my $ftr_pp_msg    = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
 
+#####################################
 # Debugging print block
 #      printf("segment $sgm_idx $sgm_start_rfpos..$sgm_stop_rfpos\n");
 #      $rfpos = $sgm_start_rfpos;
@@ -3934,6 +3925,7 @@ sub parse_stk_and_add_alignment_alerts {
 #             $min_uapos_after_A[$rfpos],
 #             $max_rfpos_before_A[$rfpos],
 #             $max_uapos_before_A[$rfpos]);
+#####################################
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -4000,9 +3992,22 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_glsearch ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
 
         # Check for special case where CDS starts/stops with a gap
-        # if so, we may actually doctor the alignment and then 
+        # or has a single insert after first position of a start,
+        # or before final position of a stop.
+        # If so, we may actually doctor the alignment and then 
         # rerun the main loop over segments by setting $seq_doctor_flag to 1
         #
+        # Start/stop codons that start/end with a gap are referred to as
+        # 'delete' type doctorings in the code.
+        # Start/stop codons that have a single insertion in them
+        # are referred to as 'insert' type doctorings in the code.
+        #
+        # We deal with each type differently. 
+        #
+        # Both types of doctorings only actually take place if doing them
+        # will lead to a valid start/stop codon.
+        # 
+        # Delete type notes:
         # To fix a start or stop codon that starts/ends with a gap, 
         # we will doctor the alignment by swapping gap with closest nt
         # in proper 5'/3' direction (depending on start/stop and strand)
@@ -4014,21 +4019,27 @@ sub parse_stk_and_add_alignment_alerts {
         # - the swap will result in a valid start/stop codon, taking
         #   strand into account
         # 
-        # This corrects situations like these:
+        # Insert type notes:
+        # To fix a start or stop codon that has a single insert, 
+        # we will doctor the alignment by swapping the adjacent non-gap 
+        # RF position with gap RF position in the proper 5'/3' direction 
+        # (depending on start/stop and strand)
+        # if: 
+        # - single nt insertion after first start RF position or
+        #   single nt insertion before final stop RF position
+        # - this is first/final segment of a CDS
+        # - there exists another RF position to swap with
+        # - the swap will result in a valid start/stop codon, taking
+        #   strand into account
         # 
-        # seq         ACTAAA-TGTCTGA
-        # RF          ACTAAAATGTCTGA
-        #                   ^
-        #                   start codon
+        # See 8 toy examples of doctorings for the 8 possible combinations of
+        # delete/insert type, start/stop, +/- strand 
+        # in the comments of the doctoring_check_new_codon_validity() subroutine.
         #
-        # seq         ACTA-AGTGTCTGA
-        # RF          ACTAAAGTGTCTGA
-        #               ^
-        #               stop codon
-        #
-        # We just store the information on what positions to doctor here
-        # and do it after the 'for(sgm..' loop when all such doctorings have
-        # been collected.
+        # doctoring_check_new_codon_validity() does most of the work. It 
+        # stores the information on what positions to doctor in %{$dcr_output_HAHR}
+        # and then we actually do the doctoring after the 'for(sgm..' loop when all 
+        # such doctorings have been collected.
         # 
         # NOTE: there are some situations involving multiple gaps where this will likely
         # not fix the problem and you'll still get an error when a valid start/stop exists,
@@ -4036,7 +4047,7 @@ sub parse_stk_and_add_alignment_alerts {
         #
         my $dcr_delete_or_insert = ""; # set to 'delete' or 'insert' if we find doctoring possibility of type 'delete' or 'insert'
         my $do_dcr_idx; 
-        if(! $do_nodcr) { 
+        if(! $do_nodcr) { # if --nodcr we never doctor
           # printf("sgm_start_rfpos: $sgm_start_rfpos, rf2ilen_A[$sgm_start_rfpos] $rf2ilen_A[$sgm_start_rfpos]\n");
           # check for gap at start of start codon that we can try to fix (delete type doctoring)
           # or insert near start position that we can try to fix (insert type doctoring)
@@ -11423,7 +11434,29 @@ sub msa_create_rfpos_to_apos_map {
 # swap_before: 1 (true, does not change)        |
 # -----------------------------------------------
 # 
+# It is possible that doctoring one start/stop will
+# break another, in which case we re-doctor to fix the 
+# break. This is done by the caller
+# parse_stk_and_add_alignment_alerts() which takes
+# care to only allow 2 rounds of doctoring else we
+# could get into an infinite loop.
 # 
+# Example of situation where doctoring breaks a different
+# start/stop and so a second doctoring has to take place
+# to undo the first:
+# 
+# before 1st doctoring (and after 2nd):
+# seq         ACTAAA-TGTCTGA
+# RF          ACTAAAATGTCTGA
+#                   ^
+#                   start codon
+#
+# after 1st doctoring, before 2nd doctoring:
+# seq         ACTA-AGTGTCTGA
+# RF          ACTAAAGTGTCTGA
+#               ^
+#               stop codon
+#
 #################################################################
 sub doctoring_check_new_codon_validity { 
   my $sub_name = "doctoring_check_new_codon_validity";
