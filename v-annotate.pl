@@ -11307,6 +11307,123 @@ sub msa_create_rfpos_to_apos_map {
 #           sequence twice). If '1' $seq_dcr_info_HAR will have been added to
 #           and caller will actually do the doctoring of the alignment.
 #
+# Alignment doctoring examples: 
+#
+#################################################
+# Before doctoring:    |      After doctoring:  |
+# =================    |      ----------------  |
+#------------------------------------------------
+# 1. delete, + strand, start                    |
+#                      |                        |
+#     12 34            |        1 234           |
+# seq AA-TG            |    seq A-ATG           |
+# RF  AAATG            |    RF  AAATG           |
+#     12345            |        12345           |
+# (start) uapos: 3     | (start) uapos: 2       |
+# -----------------------------------------------
+# indel_apos:    3 (does not change)            |
+# start_rfpos:   3 (does not change)            |
+# swap_before:   1 (true, does not change)      |
+# -----------------------------------------------
+# 2. delete, + strand, stop                     |
+#                      |                        |
+#     1234 56          |        12345 6         |
+# seq GGTA-AC          |    seq GGTAA-C         |
+# RF  GGTAAAC          |    RF  GGTAAAC         |
+#     1234567          |        1234567         |
+# (stop) uapos: 4      | (stop) uapos: 5        |
+# -----------------------------------------------
+# indel_apos:    5 (does not change)            |
+# stop_rfpos:    5 (does not change)            |
+# swap_before:   0 (false, does not change)     |
+# -----------------------------------------------
+# 3. delete, - strand, start                    |
+#                      |                        |
+#     1234 567         |        12345 67        |
+# seq GGCA-TTT         |    seq GGCAT-TT        |
+# RF  GGCATTTT         |    RF  GGCATTTT        |
+#     12345678         |        12345678        |
+#       gta            |          gta           |
+# (start) uapos: 4     | (start) uapos: 5       |
+# -----------------------------------------------
+# indel_apos:    5 (does not change)            |
+# start_rfpos:   5 (does not change)            |
+# swap_before:   0 (false, does not change)     |
+# -----------------------------------------------
+# 4. delete, - strand, stop                     |
+#                      |          gat           |
+#     1234 567         |        1 23456         |
+# seq GC-TACC          |    seq G-CTACC         |
+# RF  GCTTACC          |    RF  GCTTACC         |
+#     1234567          |        1234567         |
+#      gaat            |          aat           |
+# (stop) uapos: 3      | (stop) uapos: 2        |
+# -----------------------------------------------
+# indel_apos:    3 (does not change)            |
+# stop_rfpos:    3 (does not change)            |
+# swap_before:   1 (true, does not change)      |
+# -----------------------------------------------
+# ===============================================
+# ===============================================
+# Before doctoring:    |      After doctoring:  |
+# =================    |      ----------------  |
+#------------------------------------------------
+# 5. insert, + strand, start                    |
+#                      |                        |
+#     123456           |        123456          |
+# seq AAAaTG           |    seq AAaATG          |
+# RF  AAA.TG           |    RF  AA.ATG          |
+#     123 45           |        12 345          |
+# (start) uapos: 3     | (start) uapos: 4       |
+# ins_str: 3:4:1       | ins_str: 2:3:1         |
+# -----------------------------------------------
+# indel_apos:  4 (does not change)              |
+# start_rfpos: 3 (insert after, does not change)|
+# swap_before: 1 (true, does not change)        |
+# -----------------------------------------------
+# 6. insert, + strand, stop                     |
+#                      |                        |
+#     1234567          |        1234567         |
+# seq GTAaACG          |    seq GTAAaCG         |
+# RF  GTA.ACG          |    RF  GTAA.CG         |
+#     123 456          |        1234.56         |
+# (stop) uapos: 5      | (stop) uapos: 4        |
+# ins_str: 3:4:1       | ins_str: 4:5:1         |
+# -----------------------------------------------
+# indel_apos: 5 (does not change)               |
+# stop_rfpos: 5 (insert before, does not change)|
+# swap_before:0 (false, does not change)        |
+# -----------------------------------------------
+# 7. insert, - strand, start                    |
+#                      |                        |
+#     12345678         |        12345678        |
+# seq GGCAtTTT         |    seq GGCATtTT        |
+# RF  GGCA.TTT         |    RF  GGCAT.TT        |
+#     1234 567         |        12345.67        |
+#       gt a           |          gta           |
+# (start) uapos: 6     | (start) uapos: 5       |
+# ins_str: 4:5:1       | ins_str: 5:6:1         |
+# -----------------------------------------------
+# indel_apos:  5 (does not change)              |
+# start_rfpos: 5 (insert before, doesn't change)|
+# swap_before: 0 (false, does not change)       |
+# -----------------------------------------------
+# 8. insert, - strand, stop                     |
+#                      |           aat          |
+#     12345678         |        12345678        |
+# seq GGCtTACC         |    seq GGcTTACC        |
+# RF  GGC.TACC         |    RF  GG.CTACC        |
+#     123.4567         |        12 34567        |
+#       g at           |           gat          |
+# (stop) uapos: 3      | (stop) uapos: 4        |
+# ins_str: 3:4:1       | ins_str: 2:3:1         |
+# -----------------------------------------------
+# indel_apos:  4 (does not change)              |
+# stop_rfpos:  3 (insert after, doesn't change) |
+# swap_before: 1 (true, does not change)        |
+# -----------------------------------------------
+# 
+# 
 #################################################################
 sub doctoring_check_new_codon_validity { 
   my $sub_name = "doctoring_check_new_codon_validity";
