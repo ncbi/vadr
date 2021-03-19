@@ -332,7 +332,7 @@ opt_Add("--maxnjobs",   "integer", 2500,       $g,    undef,  undef,      "maxim
 $opt_group_desc_H{++$g} = "options for skipping stages";
 #     option               type       default group   requires    incompat                        preamble-output                                            help-output    
 opt_Add("--pv_skip",       "boolean", 0,         $g,   undef,      undef,                         "do not perform blastx-based protein validation",          "do not perform blastx-based protein validation", \%opt_HH, \@opt_order_A);
-opt_Add("--align_skip",    "boolean", 0,         $g,   undef,      "-f,--nkb,--maxnjobs,--wait",  "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
+opt_Add("--align_skip",    "boolean", 0,         $g,   undef,      "-f",                          "skip the alignment step, use existing results",           "skip the alignment step, use results from an earlier run of the script", \%opt_HH, \@opt_order_A);
 opt_Add("--val_only",      "boolean", 0,         $g,   undef,      undef,                         "validate CM and other input files and exit",              "validate CM and other input files and exit", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "optional output files";
@@ -519,6 +519,7 @@ opt_ValidateSet(\%opt_HH, \@opt_order_A);
 
 my $do_keep       = opt_Get("--keep", \%opt_HH);
 my $do_replace_ns = opt_Get("-r", \%opt_HH);
+my $do_nofasta    = opt_Get("--out_nofasta", \%opt_HH);
 
 #######################################
 # deal with --alt_list option, if used
@@ -1049,11 +1050,11 @@ if($do_split) {
   my @chunk_outdir_A   = (); # output directory names for $nchunk v-annotate.pl jobs
   my @cpu_out_file_AH  = (); # holds name of output files that vdr_WaitForFarmJobsToFinish() will check
                              # to see when all jobs are complete, will be filled in write_v_annotate_scripts_for_split_mode()
-  my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root, \@nseqs_per_chunk_A, 
+  my $out_root_no_vadr = $dir . "/" . $dir_tail;
+  my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root_no_vadr, \@nseqs_per_chunk_A, 
                                                            \@chunk_outdir_A, \@cpu_out_file_AH, \%opt_HH, \%ofile_info_HH);
-
   my $nscript = scalar(@cpu_out_file_AH);
-
+  
   # execute the $ncpu scripts
   utl_RunCommand($script_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
@@ -1061,7 +1062,7 @@ if($do_split) {
   if($nscript > 1) { # we may need to wait for the rest of the jobs
     $nscripts_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
                                                      1, # do exit if any err files are written to
-                                                     "out", \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
+                                                     "out", 1, 15, \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
                                                      $ofile_info_HH{"FH"});
     if($nscripts_finished != $nscript) { 
       ofile_FAIL(sprintf("ERROR only $nscripts_finished of the $nscript --split scripts are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, $ofile_info_HH{"FH"});
@@ -1069,7 +1070,38 @@ if($do_split) {
     ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
   }
 
+  my $do_check_exists = 1; # require that all files we are expecting to concatenate below exist, if not exit with error message
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.tbl",  "pass_tbl",    "5 column feature table output for passing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.tbl",  "fail_tbl",    "5 column feature table output for failing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.list", "pass_list",   "list of passing sequences",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.list", "fail_list",   "list of failing sequences",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt.list",  "alerts_list", "list of alerts in the feature tables",                 $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  if(! opt_Get("--out_nofasta", \%opt_HH)) { 
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.fa",  "pass_fa", "fasta file with passing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  }
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".ftr",       "ftr",         "per-feature tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqc",       "cls",         "per-sequence tabular classification summary file",     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  if($do_blastn_ali) {
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sda",     "sda",         "ungapped seed alignment summary file (-s)",          $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  }
+  if($do_replace_ns) { 
+    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".rpn",     "rpn",         "replaced stretches of Ns summary file (-r)",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  }
+
+  # finish with cmd file?
+  # vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".cmd",       "cmd",         "List of executed commands",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
   # concatenate the output of the $ncpu scripts
+  # split_combine_alc
+  # split_combine_mdl
+  # split_combine_concatenate_and_update_index
+  # split_combine_concatenate_only
+  # 
+
+
   $total_seconds += ofile_SecondsSinceEpoch();
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 
@@ -2268,7 +2300,7 @@ sub cmsearch_wrapper {
                                             $progress_w, $log_FH, *STDOUT);
     my $njobs_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
                                                      (opt_Get("--errcheck", $opt_HHR)), 
-                                                     "tblout", \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
+                                                     "tblout", 15, 15, \@out_file_AH, undef, undef, "[ok]", $opt_HHR, $ofile_info_HHR->{"FH"});
     if($njobs_finished != $nseq_files) { 
       ofile_FAIL(sprintf("ERROR in $sub_name only $njobs_finished of the $nseq_files are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", $opt_HHR)), 1, $ofile_info_HHR->{"FH"});
     }
@@ -3430,7 +3462,7 @@ sub cmalign_or_glsearch_wrapper_helper {
                                               $progress_w, $log_FH, *STDOUT);
       my $njobs_finished = vdr_WaitForFarmJobsToFinish(($do_glsearch ? 0 : 1), # are we are doing cmalign?
                                                        (opt_Get("--errcheck", $opt_HHR)), 
-                                                       "stdout",
+                                                       "stdout", 15, 15, 
                                                        $out_file_AHR,
                                                        $success_AR, 
                                                        $mxsize_AR,  
@@ -10979,7 +11011,7 @@ sub validate_and_parse_sub_file {
 #  $nchunk:             number of fasta files we have created from original
 #  $ncpu:               number of scripts to write
 #  $in_fa_file:         main fasta file that was split up
-#  $out_root:           string for naming output files
+#  $out_root_no_vadr:   string for naming output files, without 'vadr' suffix
 #  $nseqs_per_chunk_AR: number of sequences per chunked fasta file, PRE-FILLED
 #  $chunk_outdir_AR:    [0..$nchunk-1] REF to array of output directories created for
 #                       each chunk, FILLED HERE
@@ -10998,7 +11030,7 @@ sub write_v_annotate_scripts_for_split_mode {
   my $nargs_exp = 9;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($nchunk, $ncpu, $in_fa_file, $out_root, $nseqs_per_chunk_AR, $chunk_outdir_AR, $cpu_out_file_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($nchunk, $ncpu, $in_fa_file, $out_root_no_vadr, $nseqs_per_chunk_AR, $chunk_outdir_AR, $cpu_out_file_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
 
@@ -11029,7 +11061,7 @@ sub write_v_annotate_scripts_for_split_mode {
   my @out_ncmd_A       = (); # [0..$fidx..$ncpu-1] num commands output to file $fidx
   my $fidx;
   for($fidx = 0; $fidx < $ncpu; $fidx++) { 
-    $out_scriptname_A[$fidx] = $out_root . ".annotate." . ($fidx+1) . ".sh";
+    $out_scriptname_A[$fidx] = $out_root_no_vadr . ".annotate." . ($fidx+1) . ".sh";
     $out_ncmd_A[$fidx] = 0;
     open($out_FH_A[$fidx], ">", $out_scriptname_A[$fidx]) || ofile_FileOpenFailure($out_scriptname_A[$fidx], $sub_name, $!, "writing", $FH_HR);
   }
@@ -11041,8 +11073,8 @@ sub write_v_annotate_scripts_for_split_mode {
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $fasta_file = ($nchunk == 1) ? $in_fa_file : $in_fa_file . "." . $i;
 
-    my $out_dir    = $out_root . "." . $i;
-    my $out_file   = $out_root . "." . $i . ".out";
+    my $out_dir    = $out_root_no_vadr . "." . $i;
+    my $out_file   = $out_root_no_vadr . "." . $i . ".out";
     $fidx = ($i-1) % $ncpu;
     $out_ncmd_A[$fidx]++;
     # determine --sidx option (note --sidx is incompatible with --split so we can assume --sidx for 
@@ -11064,7 +11096,7 @@ sub write_v_annotate_scripts_for_split_mode {
       if($script_cmd ne "") { 
         $script_cmd .= " &\n"; # run previous cpu's script in background
       } 
-      my $err_file = $out_root . ".cpu" . $fidx . ".err";
+      my $err_file = $out_scriptname_A[$fidx] . ".err";
       $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
       $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file"; 
     }

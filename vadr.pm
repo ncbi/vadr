@@ -150,6 +150,11 @@ require "sqp_utils.pm";
 # vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
+#
+# Subroutines related to the --split option:
+# vdr_CmalignCheckStdOutput()
+# vdr_CmalignParseInsertFile()
+# vdr_CmalignWriteInsertFile()
 # 
 # Other subroutines related to running infernal programs
 # vdr_CmemitConsensus()
@@ -160,6 +165,10 @@ require "sqp_utils.pm";
 # vdr_CdsFetchStockholmToFasta()
 # vdr_ParseSeqFileToSeqHash()
 # vdr_FrameAdjust()
+# vdr_WriteCommandScript()
+# vdr_GlsearchFormat3And9CToStockholmAndInsertFile()
+# vdr_CigarToInsertsHash()
+# vdr_ReplaceInsertTokenInInsertString()
 #
 #################################################################
 # Subroutine: vdr_FeatureInfoImputeCoords
@@ -2621,20 +2630,22 @@ sub vdr_SubmitJobAsScript {
 # 
 #
 # Arguments: 
-#  $do_cmalign:      '1' if we're running cmalign, which requires special care because we
-#                    handle two cases: finish successfully or die with a specific error
-#  $do_errcheck:     '1' if we should fail if any error file is written to
-#  $outkey:          key in second dimension of out_file_AHR we'll check to see if job is finished
-#  $out_file_AHR:    ref to array of hashes of output files that will be created by jobs we are waiting for
-#  $success_AR:      ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
-#                    these will always all be '1' unless $do_cmalign
-#                    if($do_cmalign) some may be '0'
-#  $mxsize_AR:       ref to array of required matrix sizes, CAN BE UNDEF
-#                    $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
-#                    else set to '0'
-#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
-#  $opt_HHR:         REF to options hash
-#  $FH_HR:           REF to hash of file handles
+#  $do_cmalign:       '1' if we're running cmalign, which requires special care because we
+#                     handle two cases: finish successfully or die with a specific error
+#  $do_errcheck:      '1' if we should fail if any error file is written to
+#  $outkey:           key in second dimension of out_file_AHR we'll check to see if job is finished
+#  $init_sleep_secs:  number of seconds to wait initially before checking 
+#  $input_chunk_secs: number of seconds to increment wait by until we reach 120s
+#  $out_file_AHR:     ref to array of hashes of output files that will be created by jobs we are waiting for
+#  $success_AR:       ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
+#                     these will always all be '1' unless $do_cmalign
+#                     if($do_cmalign) some may be '0'
+#  $mxsize_AR:        ref to array of required matrix sizes, CAN BE UNDEF
+#                     $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
+#                     else set to '0'
+#  $finished_str:     string that indicates a job is finished e.g. "[ok]"
+#  $opt_HHR:          ref to options hash
+#  $FH_HR:            ref to hash of file handles
 #
 # Returns:     Number of jobs (<= scalar(@outfile_A)) that have
 #              finished.
@@ -2644,11 +2655,11 @@ sub vdr_SubmitJobAsScript {
 ################################################################# 
 sub vdr_WaitForFarmJobsToFinish { 
   my $sub_name = "vdr_WaitForFarmJobsToFinish()";
-  my $nargs_expected = 9;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($do_cmalign, $do_errcheck, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
-
+  my ($do_cmalign, $do_errcheck, $outkey, $init_sleep_secs, $input_chunk_secs, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
+ 
   my $log_FH = $FH_HR->{"log"};
   my $nmin = opt_Get("--wait", $opt_HHR);
 
@@ -2674,10 +2685,14 @@ sub vdr_WaitForFarmJobsToFinish {
                             # to be finished), else 0. We only use this array if the --errcheck option is enabled.
   my $nfinished      = 0;   # number of jobs finished
   my $nfail          = 0;   # number of jobs that have failed
-  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
-  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
-  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
-  my $secs_waited    = 0;   # number of total seconds we've waited thus far
+
+  # variables related to wait times between checks
+  my $cur_sleep_secs = $init_sleep_secs;  # number of seconds to wait before first check
+  my $chunk_secs     = $input_chunk_secs; # number of seconds to increment wait time by until we reach 
+                                          # $doubling_secs at which point we'll double until we reach $max_sleep
+  my $doubling_secs  = 120;               # number of seconds to wait before starting to double $cur_sleep_secs
+  my $max_sleep_secs = 120;               # maximum number of seconds we'll wait between checks
+  my $secs_waited    = 0;                 # number of total seconds we've waited thus far
 
   # initialize @is_finished_A to all '0's
   for(my $i = 0; $i < $njobs; $i++) { 
@@ -2691,12 +2706,15 @@ sub vdr_WaitForFarmJobsToFinish {
         ($keep_going)) { 
     # check to see if jobs are finished, every $cur_sleep seconds
     sleep($cur_sleep_secs);
-    $secs_waited += $cur_sleep_secs;
+    $secs_waited += $chunk_secs;
     if($secs_waited >= $doubling_secs) { 
       $cur_sleep_secs *= 2;
-      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
-        $cur_sleep_secs = $max_sleep_secs;
-      }
+    }
+    else { 
+      $cur_sleep_secs += $chunk_secs;
+    }
+    if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
+      $cur_sleep_secs = $max_sleep_secs;
     }
 
     for(my $i = 0; $i < $njobs; $i++) { 
@@ -5245,7 +5263,7 @@ sub vdr_CigarToInsertsHash {
 #             and replace it with $new_ins_tok.
 #
 # Arguments: 
-#   $ins_str       insert string
+#   $ins_str:      insert string
 #   $orig_ins_tok: insert token that should exist in $ins_str to replace
 #   $new_ins_tok:  insert token to replace $orig_ins_tok with
 #   $FH_HR:        ref to hash of file handles, including "cmd"
@@ -5303,6 +5321,63 @@ sub vdr_ReplaceInsertTokenInInsertString {
   }
 
   return $ret_ins_str;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputConcatenateOnly()
+# Incept:      EPN, Fri Mar 19 09:19:11 2021
+#
+# Purpose:    Given $ins_str an 'insert string' in the format:
+#              <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#              for n inserts, where insert x is defined by:
+#              <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#              <uapos_x> is unaligned sequence position of the first aligned nt
+#              <inslen_x> is length of the insert
+#             Find the 'insert token' <mdlpos_n>:<uapos_n>:<inslen_n> equal to $orig_ins_tok 
+#             and replace it with $new_ins_tok.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $out_sfx:           output name suffix
+#   $ofile_key:         key for %{$ofile_info_HHR}
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputConcatenateOnly { 
+  my $nargs_exp = 8;
+  my $sub_name = "vdr_MergeOutputConcatenateOnly";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  my @concat_A = (); # array of files to concatenate to make $merged_file
+  my $nchunk = scalar(@{$chunk_outdir_AR});
+  for(my $i = 1; $i <= $nchunk; $i++) { 
+    my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
+    if(($do_check_exists) && (! -e $chunk_file)) { 
+      ofile_FAIL("ERROR in $sub_name, expected file to concatenate $chunk_file does not exist", 1, $FH_HR);
+    }
+    push(@concat_A, $chunk_file);
+  }
+  utl_ConcatenateListOfFiles(\@concat_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+
+  return;
 }
 
 ###########################################################################
