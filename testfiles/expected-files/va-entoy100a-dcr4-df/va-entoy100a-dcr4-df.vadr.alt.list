@@ -1,0 +1,8 @@
+#sequence	error	feature	error-description
+ENTOY100A-dcr-ins-Ains2	CDS_HAS_STOP_CODON	protein two	in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 33..47 (stop shifted 1 nt)]
+ENTOY100A-dcr-ins-Ains2	UNEXPECTED_LENGTH	protein two	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
+ENTOY100A-dcr-ins-Ains3	MUTATION_AT_END	protein three	expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+ENTOY100A-dcr-ins-Ains3	MUTATION_AT_START	protein three	expected start codon could not be identified [TTT starting at position 66 on - strand is not a valid start]
+ENTOY100A-dcr-ins-Ains3	UNEXPECTED_LENGTH	protein three	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
+ENTOY100A-dcr-ins-Tins1	CDS_HAS_STOP_CODON	protein three	in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 66..52 (stop shifted 1 nt)]
+ENTOY100A-dcr-ins-Tins1	UNEXPECTED_LENGTH	protein three	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]

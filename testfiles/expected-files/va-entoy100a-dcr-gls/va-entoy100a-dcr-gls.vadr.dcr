@@ -1,13 +1,13 @@
-#     seq                   mdl            ftr   ftr          ftr   gap    seq  codon     codon    new   dcr  did  
-#idx  name                  name           type  name         idx  apos  uapos  type     coords  codon  iter  swap?
-#---  --------------------  -------------  ----  -----------  ---  ----  -----  -----  --------  -----  ----  -----
-2.1   ENTOY100A-dcr-Adel    entoy100a-dcr  CDS   protein_two    2    33     32  start  32..34:+    ATG     1  yes  
-#---  --------------------  -------------  ----  -----------  ---  ----  -----  -----  --------  -----  ----  -----
-3.1   ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_two    2    33     31  start  31..33:+    ATG     1  yes  
-3.2   ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_one    1    31     31  stop   29..31:+    TAA     2  yes  
-3.3   ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_two    2    33     31  start  31..33:+    ATG     3  no   
-#---  --------------------  -------------  ----  -----------  ---  ----  -----  -----  --------  -----  ----  -----
-4.1   ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_one    1    31     31  stop   29..31:+    TAT     1  no   
-4.2   ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_two    2    33     30  start  30..32:+    ATG     1  yes  
-4.3   ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_one    1    31     30  stop   28..30:+    ATA     2  no   
-#---  --------------------  -------------  ----  -----------  ---  ----  -----  -----  --------  -----  ----  -----
+#     seq                   mdl                ftr   ftr          ftr  dcr     model  indel       orig        new  codon     codon   orig    new   dcr  did  
+#idx  name                  name               type  name         idx  type      pos   apos  seq-uapos  seq-uapos  type     coords  codon  codon  iter  swap?
+#---  --------------------  -----------------  ----  -----------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+2.1   ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_two    2  delete     33     33         33         32  start  32..34:+    TGG    ATG     1  yes  
+#---  --------------------  -----------------  ----  -----------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+3.1   ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    2  delete     33     33         32         31  start  31..33:+    TGG    ATG     1  yes  
+3.2   ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_one    1  delete     31     31         30         31  stop   29..31:+    ATA    TAA     2  yes  
+3.3   ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    2  delete     33     33         32         31  start  31..33:+    TGG    ATG     3  no   
+#---  --------------------  -----------------  ----  -----------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+4.1   ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    1  delete     31     31         30         31  stop   29..31:+    ATA    TAT     1  no   
+4.2   ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_two    2  delete     33     33         31         30  start  30..32:+    TGG    ATG     1  yes  
+4.3   ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    1  delete     31     31         29         30  stop   28..30:+    CAT    ATA     2  no   
+#---  --------------------  -----------------  ----  -----------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----

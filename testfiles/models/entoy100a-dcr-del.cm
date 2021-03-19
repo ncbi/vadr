@@ -1,5 +1,5 @@
 INFERNAL1/a [1.1.4 | Dec 2020]
-NAME     entoy100a-dcr
+NAME     entoy100a-dcr-del
 STATES   304
 NODES    99
 CLEN     100
@@ -8,8 +8,8 @@ ALPH     RNA
 RF       no
 CONS     yes
 MAP      yes
-DATE     Mon Feb 22 21:33:06 2021
-COM      [1] /panfs/pan1/infernal/notebook/21_0129_vadr_1p1p3_release/vadr-1p1p3-test-install/infernal/binaries/cmbuild -F -n entoy100a-dcr entoy100a-dcr.cm entoy100a-dcr.stk
+DATE     Tue Mar 16 15:58:30 2021
+COM      [1] /panfs/pan1/infernal/notebook/21_0223_vadr_1p2_release/install-tests-20210226/vadr-install-test/infernal/binaries/cmbuild entoy100a-dcr-del.cm entoy100a-dcr-del.stk
 PBEGIN   0.05
 PEND     0.05
 WBETA    1e-07
@@ -429,7 +429,7 @@ CM
      E   303   302 3    -1     0     0     0     0     0                                                 
 //
 HMMER3/f [3.3.2 | Nov 2020]
-NAME  entoy100a-dcr
+NAME  entoy100a-dcr-del
 LENG  100
 MAXL  207
 ALPH  RNA
@@ -438,8 +438,8 @@ MM    no
 CONS  yes
 CS    yes
 MAP   yes
-DATE  Mon Feb 22 21:33:06 2021
-COM   [1] /panfs/pan1/infernal/notebook/21_0129_vadr_1p1p3_release/vadr-1p1p3-test-install/infernal/binaries/cmbuild -F -n entoy100a-dcr entoy100a-dcr.cm entoy100a-dcr.stk
+DATE  Tue Mar 16 15:58:30 2021
+COM   [1] /panfs/pan1/infernal/notebook/21_0223_vadr_1p2_release/install-tests-20210226/vadr-install-test/infernal/binaries/cmbuild entoy100a-dcr-del.cm entoy100a-dcr-del.stk
 NSEQ  1
 EFFN  0.675781
 CKSUM 65691877

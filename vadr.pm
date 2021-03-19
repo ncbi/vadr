@@ -4837,9 +4837,8 @@ sub vdr_WriteCommandScript {
 #            "-d 1":    to specify max number of alignments displayed is 1
 # 
 # Arguments: 
-#   $alimerge:           path to esl-alimerge executable
 #   $gls_file:           name of output file from glsearch
-#   $stk_file:           name of stockholm file of all seqs to write
+#   $stk_file:           root name of stockholm files to create, we'll make one per seq
 #   $insert_file:        name of insert file for all seqs to write
 #   $blastn_db_sqfile_R: ref to open Bio:Easel:SqFile with model/target sequence
 #   $exp_mdl_name:       expected single target sequence name
@@ -4853,18 +4852,16 @@ sub vdr_WriteCommandScript {
 #
 ################################################################# 
 sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
-  my $nargs_exp = 8;
+  my $nargs_exp = 7;
   my $sub_name = "vdr_GlsearchFormat3And9CToStockholmAndInsertFile";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
-  my ($alimerge, $gls_file, $stk_file, $insert_file, $blastn_db_sqfile_R, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($gls_file, $stk_file, $insert_file, $blastn_db_sqfile_R, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   #printf("in $sub_name\n\tgls_file: $gls_file\n\tstk_file: $stk_file\n\tinsert_file: $insert_file\nexp_mdl_name: $exp_mdl_name\n\n");
   open(IN,   $gls_file)  || ofile_FileOpenFailure($gls_file,  $sub_name, $!, "reading", $FH_HR);
-  my $list_file = $stk_file . ".list";
-  open(LIST, ">", $list_file) || ofile_FileOpenFailure($list_file, $sub_name, $!, "writing", $FH_HR);
 
   # fetch the model sequence, so we can use it to add to RF in alignments
 
@@ -5130,8 +5127,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       printf OUT ("%-*s  %s\n", $q_name_len, "#=GC RF",   $t_afa);
       print  OUT ("//\n");
       close(OUT);
-
-      print LIST ($cur_stk_file . "\n");
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
@@ -5140,13 +5135,9 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   if($nq == 0) { 
     ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, did not read any alignments\n", 1, $FH_HR);
   }
-  close(LIST);
 
   # write insert file
   vdr_CmalignWriteInsertFile($insert_file, 0, $exp_mdl_name, $mdl_len, \@q_name_A, \%q_len_H, \%q_inserts_HH, $FH_HR);
-
-  # merge all temporary stockholm files into 1
-  sqf_EslAlimergeListRun($alimerge, $list_file, "--small", $stk_file, "pfam", $opt_HHR, $FH_HR);
 
   return $nq;
 }
@@ -5193,6 +5184,8 @@ sub vdr_CigarToInsertsHash {
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
   my ($inserts_HR, $cigar, $seqstart, $mdlstart, $FH_HR) = @_;
+  
+  # printf("in $sub_name, cigar: $cigar, seqstart: $seqstart mdlstart: $mdlstart\n");
 
   my $seqpos = $seqstart;
   my $mdlpos = $mdlstart;
@@ -5213,7 +5206,7 @@ sub vdr_CigarToInsertsHash {
         $mdlpos += $len;
       }
       if($type eq "D") { 
-        $ins_str .= $mdlpos . ":" . ($seqpos + 1) . ":" . $len . ";";
+        $ins_str .= ($mdlpos-1) . ":" . $seqpos . ":" . $len . ";";
         $seqpos += $len;
       }
       $cigar =~ s/^\d+[MID]//;
@@ -5228,6 +5221,7 @@ sub vdr_CigarToInsertsHash {
   if(! defined $epos) { 
     ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
   }
+  # printf("returning spos: $spos epos: $epos ins: $ins_str\n");
   $inserts_HR->{"spos"} = $spos; 
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
@@ -5235,6 +5229,80 @@ sub vdr_CigarToInsertsHash {
   close(OUT);
 
   return;
+}
+
+#################################################################
+# Subroutine:  vdr_ReplaceInsertTokenInInsertString()
+# Incept:      EPN, Mon Mar 15 12:22:21 2021
+#
+# Purpose:    Given $ins_str an 'insert string' in the format:
+#              <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#              for n inserts, where insert x is defined by:
+#              <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#              <uapos_x> is unaligned sequence position of the first aligned nt
+#              <inslen_x> is length of the insert
+#             Find the 'insert token' <mdlpos_n>:<uapos_n>:<inslen_n> equal to $orig_ins_tok 
+#             and replace it with $new_ins_tok.
+#
+# Arguments: 
+#   $ins_str       insert string
+#   $orig_ins_tok: insert token that should exist in $ins_str to replace
+#   $new_ins_tok:  insert token to replace $orig_ins_tok with
+#   $FH_HR:        ref to hash of file handles, including "cmd"
+#
+# Returns:     new insert string with $orig_ins_tok replaced with $new_ins_tok
+# 
+# Dies:        If we can't parse $ins_str
+#              If $orig_ins_tok does not exist in $ins_str
+#              If $orig_ins_tok exists more than once in $ins_str
+#
+################################################################# 
+sub vdr_ReplaceInsertTokenInInsertString { 
+  my $nargs_exp = 4;
+  my $sub_name = "vdr_ReplaceInsertTokenInInsertString";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($ins_str, $orig_ins_tok, $new_ins_tok, $FH_HR) = @_;
+
+  # contract checks
+  # $ins_str should be defined and not empty
+  if(! defined $ins_str) { ofile_FAIL("ERROR in $sub_name, insert string is undefined", 1, $FH_HR); }
+  if($ins_str eq "")     { ofile_FAIL("ERROR in $sub_name, insert string is empty", 1, $FH_HR); }
+
+  # $orig_ins_tok should defined and valid
+  if(! defined $orig_ins_tok) { ofile_FAIL("ERROR in $sub_name, orig_ins_tok string is undefined", 1, $FH_HR); }
+  if($orig_ins_tok !~ /^(\d+)\:(\d+)\:(\d+)/) { ofile_FAIL("ERROR in $sub_name, unable to parse orig_ins_tok $orig_ins_tok", 1, $FH_HR); }
+  
+  # $new_ins_tok  should defined and valid
+  if(! defined $new_ins_tok) { ofile_FAIL("ERROR in $sub_name, new_ins_tok string is undefined", 1, $FH_HR); }
+  if($new_ins_tok !~ /^(\d+)\:(\d+)\:(\d+)/) { ofile_FAIL("ERROR in $sub_name, unable to parse new_ins_tok $new_ins_tok", 1, $FH_HR); }
+  # end contract checks
+  
+  my @ins_A = split(";", $ins_str);
+  my $found_orig_ins_tok = 0;
+  my $ret_ins_str = "";
+  foreach my $ins_tok (@ins_A) {
+    if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+      if($ins_tok eq $orig_ins_tok) { 
+        if($found_orig_ins_tok) { 
+          ofile_FAIL("ERROR in $sub_name, found original token $orig_ins_tok twice in insert string $ins_str", 1, $FH_HR);
+        }
+        $ret_ins_str .= $new_ins_tok . ";";
+        $found_orig_ins_tok = 1;
+      }
+      else { 
+        $ret_ins_str .= $ins_tok . ";";
+      }
+    }
+    else {
+      ofile_FAIL("ERROR in $sub_name, unable to parse insert string $ins_str at at token $ins_tok", 1, $FH_HR);
+    }
+  }
+  if(! $found_orig_ins_tok) { 
+    ofile_FAIL("ERROR in $sub_name, unable to find orig_ins_tok $orig_ins_tok in insert string $ins_str", 1, $FH_HR);
+  }
+
+  return $ret_ins_str;
 }
 
 ###########################################################################

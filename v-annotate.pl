@@ -273,6 +273,7 @@ opt_Add("--tau",        "real",    1E-3,      $g,    undef,"--glsearch", "set th
 opt_Add("--nofixedtau", "boolean", 0,         $g,    undef,"--glsearch", "do not fix the tau value when running cmalign, allow it to increase if nec",   "do not fix the tau value when running cmalign, allow it to decrease if nec", \%opt_HH, \@opt_order_A);
 opt_Add("--nosub",      "boolean", 0,         $g,    undef,"--glsearch", "use alternative alignment strategy for truncated sequences",                   "use alternative alignment strategy for truncated sequences", \%opt_HH, \@opt_order_A);
 opt_Add("--noglocal",   "boolean", 0,         $g,"--nosub","--glsearch", "do not run cmalign in glocal mode (run in local mode)",                        "do not run cmalign in glocal mode (run in local mode)", \%opt_HH, \@opt_order_A);
+opt_Add("--cmindi",     "boolean", 0,         $g,    undef, "--nkb,--glsearch", "force cmalign to align one seq at a time",                              "force cmalign to align on seq at a time", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for controlling glsearch alignment stage as alternative to cmalign";
 #        option               type default group  requires incompat   preamble-output                                                                help-output    
@@ -355,6 +356,7 @@ opt_Add("--origfa",       "boolean", 0,             $g,    undef,   undef,    "d
 opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "read model substitution file from <s>",                                  "read model substitution file from <s>", \%opt_HH, \@opt_order_A);        
 opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
+opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -421,6 +423,7 @@ my $options_okay =
                 'nofixedtau'    => \$GetOptions_H{"--nofixedtau"},
                 'nosub'         => \$GetOptions_H{"--nosub"},
                 'noglocal'      => \$GetOptions_H{"--noglocal"},
+                'cmindi'        => \$GetOptions_H{"--cmindi"},
 # options for controlling glsearch alignment stage 
                 'glsearch'       => \$GetOptions_H{"--glsearch"},
                 'gls_match=s'    => \$GetOptions_H{"--gls_match"},
@@ -482,7 +485,8 @@ my $options_okay =
                 'origfa'        => \$GetOptions_H{"--origfa"},
                 'msub=s'        => \$GetOptions_H{"--msub"},
                 'xsub=s'        => \$GetOptions_H{"--xsub"},
-                'nodcr'         => \$GetOptions_H{"--nodcr"});
+                'nodcr'         => \$GetOptions_H{"--nodcr"},
+                'forcedcrins'   => \$GetOptions_H{"--forcedcrins"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -1452,9 +1456,9 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 
-###########################
-# Parse cmalign alignments
-###########################
+######################################
+# Parse cmalign or glsearch alignments
+######################################
 $start_secs = ofile_OutputProgressPrior("Determining annotation", $progress_w, $log_FH, *STDOUT);
 
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
@@ -1465,20 +1469,20 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, $FH_HR);
     initialize_ftr_or_sgm_results_for_model(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%{$sgm_results_HHAH{$mdl_name}}, $FH_HR);
     my %seq_inserts_HH = ();
-    my $cmalign_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
-    my $cmalign_ifile_file  = sprintf("%s.%s.align.ifile", $out_root, $mdl_name);
+    my $align_stdout_file = $out_root . "." . $mdl_name . ".align.stdout";
+    my $align_ifile_file  = sprintf("%s.%s.align.ifile", $out_root, $mdl_name);
     if($do_blastn_ali) { # use a different ifile
-      push(@to_remove_A, $cmalign_ifile_file);
-      $cmalign_ifile_file  = sprintf("%s.%s.jalign.ifile", $out_root, $mdl_name);
+      push(@to_remove_A, $align_ifile_file);
+      $align_ifile_file  = sprintf("%s.%s.jalign.ifile", $out_root, $mdl_name);
     }
 
     # parse the cmalign --ifile file
     if($mdl_nseq > $mdl_unexdivg_H{$mdl_name}) { # at least 1 sequence was aligned
-      vdr_CmalignParseInsertFile($cmalign_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%{$ofile_info_HH{"FH"}});
-      push(@to_remove_A, ($cmalign_stdout_file, $cmalign_ifile_file));
+      vdr_CmalignParseInsertFile($align_ifile_file, \%seq_inserts_HH, undef, undef, undef, undef, \%{$ofile_info_HH{"FH"}});
+      push(@to_remove_A, ($align_stdout_file, $align_ifile_file));
     }
 
-    # parse the cmalign alignments
+    # parse the stk alignments
     for(my $a = 0; $a < scalar(@{$stk_file_HA{$mdl_name}}); $a++) { 
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
         parse_stk_and_add_alignment_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, $mdl_tt,
@@ -1488,8 +1492,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
                                            \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
                                            $mdl_name, $out_root, 
                                            \%opt_HH, \%ofile_info_HH);
-        push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
       }
+      push(@to_remove_A, ($stk_file_HA{$mdl_name}[$a]));
     }
 
     # Create option-defined output alignments, if any. 
@@ -3115,7 +3119,7 @@ sub populate_per_model_data_structures_given_classification_results {
 # Purpose:     Run one or more cmalign or glsearch jobs on the farm
 #              or locally, after possibly splitting up the input
 #              sequence file with vdr_SplitFastaFile and 
-#              then calling vdr_CmalignOrCmsearchWrapperHelper(). 
+#              then calling cmalign_or_glsearch_wrapper_helper().
 #              We run glsearch if $mdl_file ends in '.hmm' else we run
 #              cmalign.
 # 
@@ -3175,6 +3179,7 @@ sub cmalign_or_glsearch_wrapper {
   my $start_secs; # timing start
   my $do_parallel = opt_Get("-p", $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
+  my $do_cmindi   = opt_Get("--cmindi", $opt_HHR);
   @{$overflow_seq_AR} = (); # we will fill this with names of sequences that fail cmalign because
                             # the matrix required to align them is too big
 
@@ -3182,7 +3187,6 @@ sub cmalign_or_glsearch_wrapper {
   my @concat_keys_A = (); # %r{1,2}_out_file_HAR keys we are going to concatenate files for
   my %concat_HA = ();     # hash of arrays of all files to concatenate together
   my $out_key;            # key for an output file: e.g. "stdout", "ifile", "tfile", "tblout", "err", "sh"
-  my @glsearch_to_remove_A = (); # list of files to remove if $do_glsearch
   
   push(@concat_keys_A, "stdout"); 
   push(@concat_keys_A, "ifile"); 
@@ -3205,7 +3209,8 @@ sub cmalign_or_glsearch_wrapper {
   my $r1_do_split = 0;     # set to '1' if we split up fasta file
   # we need to split up the sequence file, and submit a separate set of cmalign jobs for each
   my $targ_nseqfiles = vdr_SplitNumSeqFiles($tot_len_nt, $opt_HHR);
-  if($targ_nseqfiles > 1) { # we are going to split up the fasta file 
+  if(($targ_nseqfiles > 1) || ($do_cmindi)) { # we are going to split up the fasta file 
+    if($do_cmindi) { $targ_nseqfiles = -1; } # makes vdr_SplitFastaFile create 1 file per seq
     $r1_do_split = 1;
     $nr1 = vdr_SplitFastaFile($execs_HR->{"esl-ssplit"}, $seq_file, $targ_nseqfiles, undef, $opt_HHR, $ofile_info_HHR);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
@@ -3238,24 +3243,24 @@ sub cmalign_or_glsearch_wrapper {
       # run finished successfully
       # if $do_glsearch, create the stockholm output file and insert file
       if($do_glsearch) { 
-        my $glsearch_nstk = vdr_GlsearchFormat3And9CToStockholmAndInsertFile($execs_H{"esl-alimerge"}, 
-                                                                             $r1_out_file_AH[$r1_i]{"stdout"}, 
+        my $glsearch_nstk = vdr_GlsearchFormat3And9CToStockholmAndInsertFile($r1_out_file_AH[$r1_i]{"stdout"}, 
                                                                              $r1_out_file_AH[$r1_i]{"stk"},
                                                                              $r1_out_file_AH[$r1_i]{"ifile"},
                                                                              $blastn_db_sqfile_R, 
                                                                              $mdl_name, $opt_HHR, $ofile_info_HHR);
-        # add all files we just created to list of files to eventually remove
-        if(! $do_keep) { 
-          push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . ".list");
-          for(my $z = 1; $z <= $glsearch_nstk; $z++) { 
-            push(@glsearch_to_remove_A, $r1_out_file_AH[$r1_i]{"stk"} . "." . $z);
-          }
+        # add each individual sequence alignment file to our list of stk files
+        # we use one alignment file per sequence with --glsearch because only 1
+        # seq can exist in an alignment to deal with 'insert' doctor cases
+        for(my $z = 1; $z <= $glsearch_nstk; $z++) { 
+          push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"} . "." . $z);
         }
+      }
+      else { # $do_glsearch is 0, using cmalign, so we have 1 alignment file for all seqs
+        push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"});
       }
       foreach $out_key (@concat_keys_A) { 
         push(@{$concat_HA{$out_key}}, $r1_out_file_AH[$r1_i]{$out_key});
       }
-      push(@{$stk_file_AR}, $r1_out_file_AH[$r1_i]{"stk"});
     }
     else { 
       # run did not finish successfully
@@ -3321,10 +3326,6 @@ sub cmalign_or_glsearch_wrapper {
   # remove sequence files 
   if(($r1_do_split) && (! opt_Get("--keep", $opt_HHR))) { 
     utl_FileRemoveList(\@r1_seq_file_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
-  }
-  # remove glsearch temp files
-  if(scalar(@glsearch_to_remove_A) > 0) { 
-    utl_FileRemoveList(\@glsearch_to_remove_A, $sub_name, $opt_HHR, $ofile_info_HHR->{"FH"});
   }
 
   return;
@@ -3604,16 +3605,19 @@ sub cmalign_or_glsearch_run {
 # 
 #             Added post v1.1.3 with --glsearch was added to deal with
 #             case where some SARS-CoV-2 seqs were failing due to a
-#             gap in a start codon: Potentially doctors (modifies) the
+#             indel near start/stop codon: Potentially doctors (modifies) the
 #             stockholm alignment for each sequence if (and this
 #             should be rare) a gap exists at first position of start
-#             or final position of stop codon, but only if that
-#             doctoring will create a valid start/stop. Potentially
-#             re-doctors already doctored aligned sequence exactly
-#             once if the initial doctoring disrupted a different
-#             valid start/stop.  See comments throughout (search for
-#             'doctor').
-# 
+#             or final position of stop codon, or single insertion occurs
+#             after first stop position or before final stop position.
+#             Only doctors if doctoring will create a valid start/stop.
+#             See toy examples in comments at beginning of 
+#             doctoring_check_new_codon_validity() subroutine.
+#
+#             Also, potentially re-doctors already doctored aligned
+#             sequence exactly once if the initial doctoring disrupted
+#             a different valid start/stop.
+
 #             Detects and adds the following alerts to 
 #             @{$alt_ftr_instances_AAHR}:
 #             indf5gap: gap at 5' boundary of model span for a feature segment
@@ -3660,8 +3664,9 @@ sub parse_stk_and_add_alignment_alerts {
   my $pp_thresh_mp     = opt_Get("--indefann_mp", $opt_HHR); # threshold for mat_peptide features
   my $do_alicheck      = opt_Get("--alicheck",    $opt_HHR); # check aligned sequences are identical to those fetched from $sqfile (except maybe Ns if -r) 
   my $do_replace_ns    = opt_Get("-r",            $opt_HHR); # only relevant if $do_alicheck
-  my $do_glsearch      = opt_Get("--glsearch",     $opt_HHR); # we won't have PP values if this is 1
+  my $do_glsearch      = opt_Get("--glsearch",    $opt_HHR); # we won't have PP values if this is 1
   my $do_nodcr         = opt_Get("--nodcr",       $opt_HHR); # do not doctor alignment to correct start/stop codons
+  my $do_forcedcrins   = opt_Get("--forcedcrins", $opt_HHR); # force doctoring of insert type, must be 1 seq per alignment (--forcedcrins requires --cmindi)
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
@@ -3677,39 +3682,33 @@ sub parse_stk_and_add_alignment_alerts {
   }
 
   # build a map of aligned positions to model RF positions and vice versa, only need to do this once per alignment
-  my $alen = $msa->alen;
   my @rf2a_A = (); # [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  ($rf2a_A[0] = -1  (dummy value))
-  $rf2a_A[0] = -1; 
-  my $rf_str = $msa->get_rf;
-  my @rf_A = split("", $rf_str);
-  if(scalar(@rf_A) != $alen) { 
-    ofile_FAIL(sprintf("ERROR in $sub_name, unexpected alignment length mismatch $alen != %d\n", scalar(@rf_A)), 1, $FH_HR);
-  }
+  my $rflen = msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
   my $rfpos = 0; # nongap RF (model) position [1..$rflen]
   my $apos  = 0; # alignment position [1..$alen]
-  for($apos = 1; $apos <= $alen; $apos++) { 
-    if($rf_A[($apos-1)] ne ".") { 
-      # nongap RF (model position)
-      $rfpos++;
-      $rf2a_A[$rfpos] = $apos;
-    }
-  }
-  my $rflen = $rfpos;
+  my $alen  = $msa->alen;
 
   # 'doctor' flags, which keep track of when we need to doctor the alignment in an attempt
-  # to fix gaps in first position of CDS starts and final positions of CDS stops
+  # to fix indels in first position of CDS starts and final positions of CDS stops
   # We can doctor each sequence up to twice (second doctoring will actually revert previous one)
   # but no more, else we'll enter an infinite loop (relevant comments below include string 'infinite')
-  my $seq_doctor_ctr     = 0; # incremented when if we need to doctor the sequence because it had 
-                              # a gap in first/final position of a CDS, if this exceeds is going to 
-                              # exceed 2 we stop doctoring
-  my $seq_doctor_flag    = 0; # set to 1 if we should doctor the current sequence
-  my $msa_doctor_flag    = 0; # set to 1 if we end up doctoring any sequence, if 1 at end
-                              # we have to rewrite the stockholm MSA file to save doctored changes
+  my $seq_doctor_ctr   = 0; # incremented when if we need to doctor the sequence because it had 
+                            # an indel in first/final position of a CDS, if this is going to 
+                            # exceed 2 we stop doctoring
+  my $seq_doctor_flag  = 0; # set to 1 if we should doctor the current sequence
+  my $msa_doctor_flag  = 0; # set to 1 if we end up doctoring any sequence, if 1 at end
+                            # we have to rewrite the stockholm MSA file to save doctored changes
 
   # move through each sequence in the alignment and determine its boundaries for each model region
   my $nseq = $msa->nseq; 
-  # for each sequence, go through all models and fill in the start and stop (unaligned seq) positions
+  if($do_glsearch && ($nseq != 1)) { 
+    ofile_FAIL("ERROR in $sub_name, --glsearch enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
+  }
+  if($do_forcedcrins && ($nseq != 1)) { 
+    ofile_FAIL("ERROR in $sub_name, --forcedcrins enabled but $nseq > 1 seqs in alignment for parsing", 1, $FH_HR);
+  }
+
+  # for each sequence, go through all segments and fill in the start and stop (unaligned seq) positions
   for(my $i = 0; $i < $nseq; $i++) { 
     my $seq_name = $msa->get_sqname($i);
     if(! exists $seq_len_HR->{$seq_name}) { 
@@ -3720,13 +3719,11 @@ sub parse_stk_and_add_alignment_alerts {
       ofile_FAIL("ERROR in $sub_name, do not have insert information for sequence $seq_name from alignment in $stk_file", 1, $FH_HR);
     }
     my $seq_ins = $seq_inserts_HHR->{$seq_name}{"ins"}; # string of inserts
-    my $seq_doctor_flag = 0;
+    my @do_dcr_idx_A = (); # array of indices in $dcr_output_HAHR->{$seq_name} that we will actually doctor alignment for
+    $seq_doctor_flag = 0;
 
     @{$sgm_results_HAHR->{$seq_name}} = ();
-    my @doctor_gap_posn_A = (); # array of gap positions in the alignment to doctor by swapping with nearest nt
-    my @doctor_before_A   = (); # array of '1' for 'before' or '0' for 'after' indicating which direction to 
-                                # look for nearest nt when swapping
-
+    
     # arrays that hold per-alert info that we defer until after the 'for(sgm_idx...' block 
     # just in case we have to doctor the alignment and reevaluate the sequence
     # (we don't want to have reported any alerts for a seq we are going to reevaluate after doctoring)
@@ -3748,7 +3745,7 @@ sub parse_stk_and_add_alignment_alerts {
     if($seq_ins ne "") { 
       my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
       foreach my $ins_tok (@ins_A) { 
-        #printf("ins_tok: $ins_tok\n");
+        # printf("ins_tok: $ins_tok\n");
         if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
           my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
           $rf2ipos_A[$i_rfpos] = $i_uapos;
@@ -3889,19 +3886,6 @@ sub parse_stk_and_add_alignment_alerts {
     if($max_uapos != $seq_len) { 
       ofile_FAIL("ERROR in $sub_name, failed to account for all nucleotides when parsing alignment for $seq_name, pass 2 (max_uapos should be $seq_len but it is $max_uapos)", 1, $FH_HR);
     }      
-    
-    # Debugging print block
-#    printf("***************************************************\n");
-#    printf("DEBUG print $seq_name\n");
-#    for($rfpos = 0; $rfpos <= ($rflen+1); $rfpos++) { 
-#      printf("rfpos[%5d] min_rf_after_A: %5d  min_ua_after_A: %5d  max_rf_before_A: %5d  max_ua_before_A: %5d\n", 
-#             $rfpos, 
-#             $min_rfpos_after_A[$rfpos],
-#             $min_uapos_after_A[$rfpos],
-#             $max_rfpos_before_A[$rfpos],
-#             $max_uapos_before_A[$rfpos]);
-#    }
-#    printf("***************************************************\n");
 
     # given model span s..e
     # if strand eq "+"
@@ -3924,6 +3908,7 @@ sub parse_stk_and_add_alignment_alerts {
       my $ftr_pp_thresh = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? $pp_thresh_mp : $pp_thresh_non_mp;
       my $ftr_pp_msg    = (vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx)) ? " (mat_peptide feature)" : "";
 
+#####################################
 # Debugging print block
 #      printf("segment $sgm_idx $sgm_start_rfpos..$sgm_stop_rfpos\n");
 #      $rfpos = $sgm_start_rfpos;
@@ -3940,6 +3925,7 @@ sub parse_stk_and_add_alignment_alerts {
 #             $min_uapos_after_A[$rfpos],
 #             $max_rfpos_before_A[$rfpos],
 #             $max_uapos_before_A[$rfpos]);
+#####################################
 
       my $start_rfpos = -1; # model position of start of this model region for this aligned sequence, stays at -1 if none
       my $stop_rfpos  = -1; # model position of stop  of this model region for this aligned sequence, stays at -1 if none
@@ -4006,9 +3992,22 @@ sub parse_stk_and_add_alignment_alerts {
         $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}    = ($rfpos_pp_A[$sgm_stop_rfpos]  eq ".") ? -1 : ($do_glsearch ? "?" : convert_pp_char_to_pp_avg($rfpos_pp_A[$sgm_stop_rfpos], $FH_HR));
 
         # Check for special case where CDS starts/stops with a gap
-        # if so, we may actually doctor the alignment and then 
+        # or has a single insert after first position of a start,
+        # or before final position of a stop.
+        # If so, we may actually doctor the alignment and then 
         # rerun the main loop over segments by setting $seq_doctor_flag to 1
         #
+        # Start/stop codons that start/end with a gap are referred to as
+        # 'delete' type doctorings in the code.
+        # Start/stop codons that have a single insertion in them
+        # are referred to as 'insert' type doctorings in the code.
+        #
+        # We deal with each type differently. 
+        #
+        # Both types of doctorings only actually take place if doing them
+        # will lead to a valid start/stop codon.
+        # 
+        # Delete type notes:
         # To fix a start or stop codon that starts/ends with a gap, 
         # we will doctor the alignment by swapping gap with closest nt
         # in proper 5'/3' direction (depending on start/stop and strand)
@@ -4020,112 +4019,101 @@ sub parse_stk_and_add_alignment_alerts {
         # - the swap will result in a valid start/stop codon, taking
         #   strand into account
         # 
-        # This corrects situations like these:
+        # Insert type notes:
+        # To fix a start or stop codon that has a single insert, 
+        # we will doctor the alignment by swapping the adjacent non-gap 
+        # RF position with gap RF position in the proper 5'/3' direction 
+        # (depending on start/stop and strand)
+        # if: 
+        # - single nt insertion after first start RF position or
+        #   single nt insertion before final stop RF position
+        # - this is first/final segment of a CDS
+        # - there exists another RF position to swap with
+        # - the swap will result in a valid start/stop codon, taking
+        #   strand into account
         # 
-        # seq         ACTAAA-TGTCTGA
-        # RF          ACTAAAATGTCTGA
-        #                   ^
-        #                   start codon
+        # See 8 toy examples of doctorings for the 8 possible combinations of
+        # delete/insert type, start/stop, +/- strand 
+        # in the comments of the doctoring_check_new_codon_validity() subroutine.
         #
-        # seq         ACTA-AGTGTCTGA
-        # RF          ACTAAAGTGTCTGA
-        #               ^
-        #               stop codon
-        #
-        # We just store the information on what positions to doctor here
-        # and do it after the 'for(sgm..' loop when all such doctorings have
-        # been collected.
+        # doctoring_check_new_codon_validity() does most of the work. It 
+        # stores the information on what positions to doctor in %{$dcr_output_HAHR}
+        # and then we actually do the doctoring after the 'for(sgm..' loop when all 
+        # such doctorings have been collected.
         # 
         # NOTE: there are some situations involving multiple gaps where this will likely
         # not fix the problem and you'll still get an error when a valid start/stop exists,
         # possibly with non-standard translation tables.
         #
-        if(! $do_nodcr) { 
-          # check for gap at start of start codon that we can try to fix
+        my $dcr_delete_or_insert = ""; # set to 'delete' or 'insert' if we find doctoring possibility of type 'delete' or 'insert'
+        my $do_dcr_idx; 
+        if(! $do_nodcr) { # if --nodcr we never doctor
+          # printf("sgm_start_rfpos: $sgm_start_rfpos, rf2ilen_A[$sgm_start_rfpos] $rf2ilen_A[$sgm_start_rfpos]\n");
+          # check for gap at start of start codon that we can try to fix (delete type doctoring)
+          # or insert near start position that we can try to fix (insert type doctoring)
           if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_5p"})) &&  # this is first segment of a CDS
-             ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
-             ((($sgm_strand eq "+") && ($start_uapos > 1))                       || (($sgm_strand eq "-") && ($start_uapos < $seq_len))) && # we have an nt to swap with
-             ((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_start_rfpos)] == -1)))) { # we won't be swapping with an insert
-            # only swap gap/res if it would give us a valid start codon
-            # to check we need to get full unaligned sqstring, this is expensive, but should be rare
-            my $ua_sqstring = $sqstring_aligned;
-            $ua_sqstring =~ s/\W//g;
-            my $new_start = substr($ua_sqstring, $start_uapos-2, 3);
-            if($sgm_strand eq "-") { 
-              seq_SqstringReverseComplement(\$new_start);
+             ((($sgm_strand eq "+") && ($start_uapos > 1)) || (($sgm_strand eq "-") && ($start_uapos < $seq_len)))) { # we have an nt to swap with
+            $dcr_delete_or_insert = ""; # set to 'insert' or 'delete' if we identify an insertion or deletion type doctoring below
+            ###############################################################
+            # check for two cases where we would doctor the alignment to fix a start: 
+            # 'delete' type: gap in first RF position of start (deletion)
+            # 'insert' type: insert after first RF position of start (insertion)
+            if(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) && # first RF position of segment aligns to a gap
+               ((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_start_rfpos-1)] == -1)) ||  # + strand: we won't be swapping with an insert
+                (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_start_rfpos)]   == -1)))) { # - strand: we won't be swapping with an insert
+              $dcr_delete_or_insert = "delete";
             }
-            # store information on this to dcr_output for eventual output in output_tabular()
-            if(! defined $dcr_output_HAHR->{$seq_name}) { 
-              @{$dcr_output_HAHR->{$seq_name}} = ();
+            elsif((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_start_rfpos)]   == 1)) || # + strand: insert after first RF start position
+                  (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_start_rfpos-1)] == 1))) { # - strand: insert before first RF start position
+              $dcr_delete_or_insert = "insert";
             }
-            my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
-            my $dcr_gap_apos = $rf2a_A[$sgm_start_rfpos];
-            %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}  = $mdl_name;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}   = $ftr_idx;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"gap_apos"}  = $dcr_gap_apos;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"seq_uapos"} = ($sgm_strand eq "+") ? $start_uapos-1 : $start_uapos+1;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"} = "start";
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
-                vdr_CoordsSegmentCreate($start_uapos-1, $start_uapos+1, "+", $FH_HR) : 
-                vdr_CoordsSegmentCreate($start_uapos+1, $start_uapos-1, "-", $FH_HR);
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_start;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
-
-            if(sqstring_check_start($new_start, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR)) { 
-              push(@doctor_gap_posn_A, $dcr_gap_apos);
-              push(@doctor_before_A, ($sgm_strand eq "+") ? 1 : 0);
-              $seq_doctor_flag = 1;
-              $msa_doctor_flag = 1;
-              if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
-                $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+            if(($dcr_delete_or_insert eq "delete") || 
+               (($dcr_delete_or_insert eq "insert") && ($do_glsearch || $do_forcedcrins))) { 
+              $do_dcr_idx = doctoring_check_new_codon_validity($dcr_delete_or_insert, "start", $sgm_strand, 
+                                                               $seq_name, $mdl_name, $mdl_tt, $ftr_idx, 
+                                                               $start_uapos, $sgm_start_rfpos, $sqstring_aligned, 
+                                                               $seq_doctor_ctr, \@rf2a_A, $dcr_output_HAHR, 
+                                                               $opt_HHR, $FH_HR);
+              if($do_dcr_idx != -1) { 
+                push(@do_dcr_idx_A, $do_dcr_idx);
+                $seq_doctor_flag = 1;
+                $msa_doctor_flag = 1;
               }
             }
           }
-          # check for gap at end of stop codon that we can try to fix
-          if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) &&  # this is final segment of a CDS
-             ($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
-             ((($sgm_strand eq "+") && ($stop_uapos < $seq_len))            || (($sgm_strand eq "-") && ($stop_uapos > 1))) && # we have an nt to swap with
-             ((($sgm_strand eq "+") && ($rf2ilen_A[$sgm_stop_rfpos] == -1)) || (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == -1)))) { # we won't be swapping with an insert
-            # only swap gap/res if it would give us a valid stop codon
-            # to check we need to get full unaligned sqstring, this is expensive, but should be rare
-            my $ua_sqstring = $sqstring_aligned;
-            $ua_sqstring =~ s/\W//g;
-            my $new_stop = substr($ua_sqstring, $stop_uapos-2, 3);
-            if($sgm_strand eq "-") { 
-              seq_SqstringReverseComplement(\$new_stop);
+          # check for gap at end of stop codon that we can try to fix (delete type doctoring)
+          # or insert near stop position that we can try to fix (insert type doctoring)
+          if((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx) && ($sgm_info_AHR->[$sgm_idx]{"is_3p"})) && # this is final segment of a CDS
+             ((($sgm_strand eq "+") && ($stop_uapos < $seq_len)) || (($sgm_strand eq "-") && ($stop_uapos > 1)))) {  # we have an nt to swap with
+            $dcr_delete_or_insert = ""; # set to 'insert' or 'delete' if we identify an insertion or deletion type doctoring below
+            ###############################################################
+            # check for two cases where we would doctor the alignment to fix a stop:
+            # 'delete' type: gap in final RF position of stop (deletion)
+            # 'insert' type: insert before final RF position of stop (insertion)
+            if(($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) && # final RF position of segment aligns to a gap
+                ((($sgm_strand eq "+") && ($rf2ilen_A[$sgm_stop_rfpos]     == -1)) ||  # + strand: we won't be swapping with an insert
+                 (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == -1)))) { # - strand: we won't be swapping with an insert
+              $dcr_delete_or_insert = "delete";
             }
-            # store information on this to dcr_output for eventual output in output_tabular()
-            if(! defined $dcr_output_HAHR->{$seq_name}) { 
-              @{$dcr_output_HAHR->{$seq_name}} = ();
+            elsif((($sgm_strand eq "+") && ($rf2ilen_A[($sgm_stop_rfpos-1)] == 1))  || # + strand: insert before final RF stop position
+                  (($sgm_strand eq "-") && ($rf2ilen_A[($sgm_stop_rfpos)]   == 1))) {  # - strand: insert after final RF stop position
+              $dcr_delete_or_insert = "insert";
             }
-            my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
-            my $dcr_gap_apos = $rf2a_A[$sgm_stop_rfpos];
-            %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}  = $mdl_name;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}   = $ftr_idx;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"gap_apos"}  = $dcr_gap_apos;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"seq_uapos"} = ($sgm_strand eq "+") ? $stop_uapos+1 : $stop_uapos-1;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"} = "stop";
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = ($sgm_strand eq "+") ? 
-                vdr_CoordsSegmentCreate($stop_uapos-1, $stop_uapos+1, "+", $FH_HR) : 
-                vdr_CoordsSegmentCreate($stop_uapos+1, $stop_uapos-1, "-", $FH_HR);
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"} = $new_stop;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"} = $seq_doctor_ctr+1;
-            $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "no"; # possibly changed to "yes" below
-
-            if(sqstring_check_stop($new_stop, $mdl_tt, $FH_HR)) { 
-              push(@doctor_gap_posn_A, $dcr_gap_apos);
-              push(@doctor_before_A, ($sgm_strand eq "+") ? 0 : 1);
-              $seq_doctor_flag = 1;
-              $msa_doctor_flag = 1;
-              if($seq_doctor_ctr <= 1) { # we will actually do the doctoring
-                $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+            if(($dcr_delete_or_insert eq "delete") || 
+               (($dcr_delete_or_insert eq "insert") && ($do_glsearch || $do_forcedcrins))) { 
+              $do_dcr_idx = doctoring_check_new_codon_validity($dcr_delete_or_insert, "stop", $sgm_strand, 
+                                                               $seq_name, $mdl_name, $mdl_tt, $ftr_idx, 
+                                                               $stop_uapos, $sgm_stop_rfpos, $sqstring_aligned, 
+                                                               $seq_doctor_ctr, \@rf2a_A, $dcr_output_HAHR, 
+                                                               $opt_HHR, $FH_HR);
+              if($do_dcr_idx != -1) { 
+                push(@do_dcr_idx_A, $do_dcr_idx);
+                $seq_doctor_flag = 1;
+                $msa_doctor_flag = 1;
               }
             }
           }
-        }
+        } # end of 'if(! $do_nodcr)'
 
         # store info on alerts we will report later, if nec
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
@@ -4133,9 +4121,6 @@ sub parse_stk_and_add_alignment_alerts {
             push(@alt_code_A, "indf5gap");
             push(@alt_str_A, "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx));
             push(@alt_ftr_A, $ftr_idx);
-#            alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5gap", $seq_name, $ftr_idx,
-#                                       "RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
-#                                       $FH_HR);
           } 
           elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf5loc, but first check if the start of this segment is identical to 
@@ -4148,9 +4133,6 @@ sub parse_stk_and_add_alignment_alerts {
               push(@alt_code_A, "indf5loc");
               push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg));
               push(@alt_ftr_A, $ftr_idx);
-              #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf5loc", $seq_name, $ftr_idx,
-              #                           sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg),
-              #                         $FH_HR);
             }
           }
         }
@@ -4159,9 +4141,6 @@ sub parse_stk_and_add_alignment_alerts {
             push(@alt_code_A, "indf3gap");
             push(@alt_str_A, "RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx));
             push(@alt_ftr_A, $ftr_idx);
-            #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3gap", $seq_name, $ftr_idx,
-            #"RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), 
-            #$FH_HR);
           }
           elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
             # report indf3loc, but first check if the stop of this segment is identical to 
@@ -4174,9 +4153,6 @@ sub parse_stk_and_add_alignment_alerts {
               push(@alt_code_A, "indf3loc");
               push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg));
               push(@alt_ftr_A, $ftr_idx);
-              #alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "indf3loc", $seq_name, $ftr_idx,
-              #sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg),
-              #$FH_HR);
             }
           }
         }
@@ -4210,8 +4186,40 @@ sub parse_stk_and_add_alignment_alerts {
     # 
     if(($seq_doctor_flag) && ($seq_doctor_ctr <= 1)) { 
       $seq_doctor_ctr++; 
-      for(my $doc_idx = 0; $doc_idx < scalar(@doctor_gap_posn_A); $doc_idx++) { 
-        $msa->swap_gap_and_closest_residue($i, $doctor_gap_posn_A[$doc_idx], $doctor_before_A[$doc_idx]);
+      for(my $dcr_idx = 0; $dcr_idx < scalar(@do_dcr_idx_A); $dcr_idx++) { 
+        my $dcr_output_idx = $do_dcr_idx_A[$dcr_idx];
+        if($dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"dcr_type"} eq "delete") { 
+          $msa->swap_gap_and_closest_residue($i, 
+                                             $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"indel_apos"}, 
+                                             $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"});
+        }
+        else { # $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"dcr_type"} eq "insert"
+          # rewrite RF by swapping insert and start position, remember this can only happen if we have 1 seq in the alignment
+          # because we checked that $do_glsearch is true above, and that if $do_glsearch is true, then we only have 1 alignment
+          # but we do another sanity check here
+          if($nseq != 1) { 
+            ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
+          }
+          my ($new_rf, $rf_errmsg) = swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, 
+                                                                        $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"indel_apos"}, 
+                                                                        $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"});
+          if($rf_errmsg ne "") { 
+            ofile_FAIL("ERROR in $sub_name, trying to rewrite RF for doctored alignment (insert type):\n$rf_errmsg\n", 1, $FH_HR);
+          }
+          $msa->set_rf($new_rf);
+
+          # update the rf2a_A map
+          msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
+
+          # update the insert information
+          my $orig_ins_tok = ($dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"}) ? 
+              sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"},     $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"}) : 
+              sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"} - 1, $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"});
+          my $new_ins_tok  = ($dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"}) ? 
+              sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"} - 1, $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"} - 1) : 
+              sprintf("%d:%d:1", $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"rfpos"},     $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"new_seq_uapos"} + 1);
+          $seq_inserts_HHR->{$seq_name}{"ins"} = vdr_ReplaceInsertTokenInInsertString($seq_inserts_HHR->{$seq_name}{"ins"}, $orig_ins_tok, $new_ins_tok, $FH_HR)
+        }
       }
       $i--; # makes it so we'll reevaluate this sequence in next iteration of the loop
     }
@@ -4684,7 +4692,7 @@ sub add_frameshift_alerts_for_one_sequence {
           my $cds_sgm_apos_stop  = ($sgm_strand eq "+" ? $rf2a_AR->[$mstop]  : $rf2a_AR->[$mstart]) - 1; # -1 puts it into 0..alen-1 coords
           for(my $a = 0;                      $a <  $cds_sgm_apos_start; $a++) { $cds_sgm_col_A[$a] = 0; } # before CDS
           for(my $a = $cds_sgm_apos_start;    $a <= $cds_sgm_apos_stop;  $a++) { $cds_sgm_col_A[$a] = 1; } # CDS
-          for(my $a = $cds_sgm_apos_stop + 1; $a <  $alen;           $a++) { $cds_sgm_col_A[$a] = 0; } # after CDS
+          for(my $a = $cds_sgm_apos_stop + 1; $a <  $alen;               $a++) { $cds_sgm_col_A[$a] = 0; } # after CDS
           $cds_sgm_msa->column_subset(\@cds_sgm_col_A);
 
           # remove all gap columns
@@ -7922,9 +7930,9 @@ sub output_tabular {
 
   my @head_dcr_AA = ();
   my @data_dcr_AA = ();
-  @{$head_dcr_AA[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "gap",   "seq", "codon",  "codon",   "new",   "dcr",   "did");
-  @{$head_dcr_AA[1]} = ("idx", "name", "name", "type", "name",  "idx", "apos", "uapos",  "type", "coords", "codon",  "iter", "swap?");
-  my @clj_dcr_A      = (1,     1,      1,      1,      1,       0,      0,     0,       1,       0,        0,       0,        1);
+  @{$head_dcr_AA[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "dcr",  "model", "indel",      "orig",       "new", "codon",  "codon",  "orig",   "new",   "dcr",   "did");
+  @{$head_dcr_AA[1]} = ("idx", "name", "name", "type", "name",  "idx", "type",    "pos",  "apos", "seq-uapos", "seq-uapos",  "type", "coords", "codon", "codon",  "iter", "swap?");
+  my @clj_dcr_A      = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
 
   # optional .sda file
   my $do_sda = opt_Get("-s", $opt_HHR) ? 1 : 0;
@@ -8231,10 +8239,14 @@ sub output_tabular {
         push(@data_dcr_AA, [($dcr_idx2print, $seq_name, $dcr_mdl_name,
                              $ftr_info_HAHR->{$dcr_mdl_name}[$dcr_ftr_idx]{"type"}, 
                              $dcr_ftr_name2print, $dcr_ftr_idx, 
-                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"gap_apos"}, 
-                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"seq_uapos"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"dcr_type"},
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"rfpos"},
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"indel_apos"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"orig_seq_uapos"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"new_seq_uapos"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"codon_type"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"codon_coords"}, 
+                             $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"orig_codon"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"new_codon"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"dcr_iter"}, 
                              $dcr_output_HAHR->{$seq_name}[$dcr_idx]{"did_swap"})]);
@@ -11108,6 +11120,485 @@ sub get_command_and_opts {
 
   return $cmd;
 }
-  
-  
 
+#################################################################
+# Subroutine: swap_gap_and_adjacent_nongap_in_rf
+# Incept:     EPN, Fri Mar 12 08:06:40 2021
+# Purpose:    Given an aligned msa->RF string from an MSA, swap
+#             two adjacent positions in that string and return 
+#             the new string. 
+#             
+#             Purposefully not put into Bio-Easel because manipulating
+#             RF has other consequences this subroutine doesn't
+#             deal with, and is only called when we know certain
+#             things about the alignment, such as there is only
+#             1 sequence in it, which makes manipulating the 
+#             RF less fraught.
+#
+# Arguments:
+#  $orig_rf:    original RF string
+#  $gap_apos:   position that is a gap in $orig_rf ('.' character)
+#               that we will swap with adjacent nongap
+#  $do_before:  '1' to swap with first RF position before gap
+#               '0' to swap with first RF position after gap  
+#             
+# Returns:  Two values:
+#           1. new RF string, or "" if error encountered
+#           2. Error message, or "" if no error encountered
+#              Errors occur if 
+#                - $gap_apos is not a gap in $orig_rf
+#                -    $do_before  and position before $gap_apos in $orig_rf is also a gap or doesn't exist
+#                - (! $do_before) and position after  $gap_apos in $orig_rf is also a gap or doesn't exist
+#
+# Dies: Never
+#
+#################################################################
+sub swap_gap_and_adjacent_nongap_in_rf { 
+  my $sub_name = "swap_gap_and_adjacent_nongap_in_rf";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($orig_rf, $gap_apos, $do_before) = (@_);
+  my $err_str = "";
+
+  my $rflen = length($orig_rf);
+
+  # printf("in $sub_name, gap_apos: $gap_apos, do_before: $do_before, rflen: $rflen\n");
+  # printf("orig_rf  $orig_rf\n");
+
+  # contract checks
+  if($gap_apos < 1) { 
+    return("", "ERROR in $sub_name, gap_apos $gap_apos is negative.\n");
+  }
+  if($gap_apos > $rflen) { 
+    return("", "ERROR in $sub_name, gap_apos $gap_apos exceeds RF length $rflen.\n");
+  }
+  if(($gap_apos == 1) && ($do_before)) { 
+    return("", "ERROR in $sub_name, gap_apos is 1 and do_before is 1, can't do swap.\n");
+  }
+  if(($gap_apos == $rflen) && (! $do_before)) { 
+    return("", "ERROR in $sub_name, gap_apos is final RF position $rflen and do_before is 0, can't do swap.\n");
+  }
+
+  my $orig_gap    = substr($orig_rf, ($gap_apos-1), 1);
+  my $orig_nongap = ($do_before) ? 
+      substr($orig_rf, ($gap_apos-2), 1) : 
+      substr($orig_rf, $gap_apos,     1);
+  if($orig_gap ne ".") { 
+    return("", "ERROR in $sub_name, original RF position $gap_apos is $orig_gap, expected a '.' (gap) character.\n");
+  }
+  if($orig_nongap !~ m/\w/) { 
+    if($do_before) { 
+      return("", "ERROR in $sub_name, original RF position before $gap_apos is $orig_nongap, expected a nongap character.\n");
+    }
+    else { 
+      return("", "ERROR in $sub_name, original RF position after $gap_apos is $orig_nongap, expected a nongap character.\n");
+    }
+  }
+
+  # if we get here we can do the swap
+  my $ret_rf = "";
+  if($do_before) { 
+    $ret_rf .= substr($orig_rf, 0, ($gap_apos-2));
+    # printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
+    # print("ret_rf 0 $ret_rf\n");
+    $ret_rf .= $orig_gap . $orig_nongap;
+    # print("ret_rf .= $orig_gap + $orig_nongap\n");
+    # print("ret_rf 1 $ret_rf\n");
+    $ret_rf .= substr($orig_rf, $gap_apos);
+    # print("ret_rf .= substr(orig_rf, $gap_apos)\n");
+    # print("ret_rf 2 $ret_rf\n");
+  }
+  else {  # ! $do_before
+    $ret_rf .= substr($orig_rf, 0, ($gap_apos-1));
+    # printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
+    # print("ret_rf 0 $ret_rf\n");
+    $ret_rf .= $orig_nongap . $orig_gap;
+    # print("ret_rf .= $orig_nongap + $orig_gap\n");
+    # print("ret_rf 1 $ret_rf\n");
+    $ret_rf .= substr($orig_rf, $gap_apos+1);
+    # print("ret_rf .= substr(orig_rf, $gap_apos)\n");
+    # print("ret_rf 2 $ret_rf\n");
+  }
+
+  if(length($ret_rf) != $rflen) { 
+    return("", "ERROR in $sub_name, did not create RF string of correct length, should be $rflen, created " . length($ret_rf) . "\n");
+  }
+
+  return ($ret_rf, "");
+}
+
+#################################################################
+# Subroutine: msa_create_rfpos_to_apos_map
+# Incept:     EPN, Wed Mar 17 14:43:19 2021
+# Purpose:    Fill @{$rf2a_AR} array indicating what alignment 
+#             position each RF position maps to.
+#
+# Arguments:
+#  $msa:        the alignment
+#  $rf2a_AR:    [1..$rfpos..$rflen] = $apos;  rf position $rfpos maps to alignment position $apos [1..$alen]  
+#               ($rf2a_A[0] = -1  (dummy value))
+#               FILLED HERE
+#  $FH_HR:      ref to hash of file handles
+#             
+# Returns:  nongap length of RF annotation
+#
+# Dies: If RF string does not match $msa->alen
+#
+#################################################################
+sub msa_create_rfpos_to_apos_map {
+  my $sub_name = "msa_create_rfpos_to_apos_map";
+  my $nargs_exp = 3;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($msa, $rf2a_AR, $FH_HR) = (@_);
+
+  my $alen = $msa->alen;
+
+  @{$rf2a_AR} = ();
+  $rf2a_AR->[0] = -1; 
+  my $rf_str = $msa->get_rf;
+  my @rf_A = split("", $rf_str);
+  if(scalar(@rf_A) != $alen) { 
+    ofile_FAIL(sprintf("ERROR in $sub_name, alignment length and RF length mismatch $alen != %d\n", scalar(@rf_A)), 1, $FH_HR);
+  }
+  my $rfpos = 0; # nongap RF (model) position [1..$rflen]
+  my $apos  = 0; # alignment position [1..$alen]
+  for($apos = 1; $apos <= $alen; $apos++) { 
+    if($rf_A[($apos-1)] ne ".") { 
+      # nongap RF (model position)
+      $rfpos++;
+      $rf2a_AR->[$rfpos] = $apos;
+    }
+  }
+  return $rfpos;
+}
+
+#################################################################
+# Subroutine: doctoring_check_new_codon_validity
+# Incept:     EPN, Wed Mar 17 16:07:26 2021
+# Purpose:    Update output information in %{$dcr_output_HAHR} for
+#             a possible doctoring of a start codon. Check if 
+#             doctoring the start codon will make it valid
+#             and if so, fill information on how to do that doctoring
+#             for caller in %{$seq_dcr_info_HAR}.
+#
+# Arguments:
+#  $delete_or_insert: 'insert' or 'delete' doctoring type
+#  $start_or_stop:    'start' or 'stop' for codon type being (possibly) doctored
+#  $strand:            strand of segment
+#  $seq_name:          name of sequence
+#  $mdl_name:          name of model 
+#  $mdl_tt:            translation table for model
+#  $ftr_idx:           feature index the doctoring pertains to
+#  $uapos:             unaligned position of first start or final stop position (pre-doctoring)
+#  $rfpos:             reference position of first start or final stop position (doesn't change with doctoring)
+#  $sqstring_aligned:  aligned sequence string
+#  $seq_doctor_ctr:    how many times this sequence has already had >= 1 segment doctored
+#  $rf2a_AR:           reference to map of reference positions to alignment positions, PRE-FILLED
+#  $dcr_output_HAHR:   reference to output information for .dcr file, ADDED TO HERE
+#  $opt_HHR:           reference to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:             REF to hash of file handles, including "cmd"
+#   
+# Returns:  '1' if start or stop codon will be valid after doctoring and 
+#           doctoring limit hasn't been reached (we can only doctor a 
+#           sequence twice). If '1' $seq_dcr_info_HAR will have been added to
+#           and caller will actually do the doctoring of the alignment.
+#
+# Alignment doctoring examples: 
+#
+#################################################
+# Before doctoring:    |      After doctoring:  |
+# =================    |      ----------------  |
+#------------------------------------------------
+# 1. delete, + strand, start                    |
+#                      |                        |
+#     12 34            |        1 234           |
+# seq AA-TG            |    seq A-ATG           |
+# RF  AAATG            |    RF  AAATG           |
+#     12345            |        12345           |
+# (start) uapos: 3     | (start) uapos: 2       |
+# -----------------------------------------------
+# indel_apos:    3 (does not change)            |
+# start_rfpos:   3 (does not change)            |
+# swap_before:   1 (true, does not change)      |
+# -----------------------------------------------
+# 2. delete, + strand, stop                     |
+#                      |                        |
+#     1234 56          |        12345 6         |
+# seq GGTA-AC          |    seq GGTAA-C         |
+# RF  GGTAAAC          |    RF  GGTAAAC         |
+#     1234567          |        1234567         |
+# (stop) uapos: 4      | (stop) uapos: 5        |
+# -----------------------------------------------
+# indel_apos:    5 (does not change)            |
+# stop_rfpos:    5 (does not change)            |
+# swap_before:   0 (false, does not change)     |
+# -----------------------------------------------
+# 3. delete, - strand, start                    |
+#                      |                        |
+#     1234 567         |        12345 67        |
+# seq GGCA-TTT         |    seq GGCAT-TT        |
+# RF  GGCATTTT         |    RF  GGCATTTT        |
+#     12345678         |        12345678        |
+#       gta            |          gta           |
+# (start) uapos: 4     | (start) uapos: 5       |
+# -----------------------------------------------
+# indel_apos:    5 (does not change)            |
+# start_rfpos:   5 (does not change)            |
+# swap_before:   0 (false, does not change)     |
+# -----------------------------------------------
+# 4. delete, - strand, stop                     |
+#                      |          gat           |
+#     1234 567         |        1 23456         |
+# seq GC-TACC          |    seq G-CTACC         |
+# RF  GCTTACC          |    RF  GCTTACC         |
+#     1234567          |        1234567         |
+#      gaat            |          aat           |
+# (stop) uapos: 3      | (stop) uapos: 2        |
+# -----------------------------------------------
+# indel_apos:    3 (does not change)            |
+# stop_rfpos:    3 (does not change)            |
+# swap_before:   1 (true, does not change)      |
+# -----------------------------------------------
+# ===============================================
+# ===============================================
+# Before doctoring:    |      After doctoring:  |
+# =================    |      ----------------  |
+#------------------------------------------------
+# 5. insert, + strand, start                    |
+#                      |                        |
+#     123456           |        123456          |
+# seq AAAaTG           |    seq AAaATG          |
+# RF  AAA.TG           |    RF  AA.ATG          |
+#     123 45           |        12 345          |
+# (start) uapos: 3     | (start) uapos: 4       |
+# ins_str: 3:4:1       | ins_str: 2:3:1         |
+# -----------------------------------------------
+# indel_apos:  4 (does not change)              |
+# start_rfpos: 3 (insert after, does not change)|
+# swap_before: 1 (true, does not change)        |
+# -----------------------------------------------
+# 6. insert, + strand, stop                     |
+#                      |                        |
+#     1234567          |        1234567         |
+# seq GTAaACG          |    seq GTAAaCG         |
+# RF  GTA.ACG          |    RF  GTAA.CG         |
+#     123 456          |        1234.56         |
+# (stop) uapos: 5      | (stop) uapos: 4        |
+# ins_str: 3:4:1       | ins_str: 4:5:1         |
+# -----------------------------------------------
+# indel_apos: 5 (does not change)               |
+# stop_rfpos: 5 (insert before, does not change)|
+# swap_before:0 (false, does not change)        |
+# -----------------------------------------------
+# 7. insert, - strand, start                    |
+#                      |                        |
+#     12345678         |        12345678        |
+# seq GGCAtTTT         |    seq GGCATtTT        |
+# RF  GGCA.TTT         |    RF  GGCAT.TT        |
+#     1234 567         |        12345.67        |
+#       gt a           |          gta           |
+# (start) uapos: 6     | (start) uapos: 5       |
+# ins_str: 4:5:1       | ins_str: 5:6:1         |
+# -----------------------------------------------
+# indel_apos:  5 (does not change)              |
+# start_rfpos: 5 (insert before, doesn't change)|
+# swap_before: 0 (false, does not change)       |
+# -----------------------------------------------
+# 8. insert, - strand, stop                     |
+#                      |           aat          |
+#     12345678         |        12345678        |
+# seq GGCtTACC         |    seq GGcTTACC        |
+# RF  GGC.TACC         |    RF  GG.CTACC        |
+#     123.4567         |        12 34567        |
+#       g at           |           gat          |
+# (stop) uapos: 3      | (stop) uapos: 4        |
+# ins_str: 3:4:1       | ins_str: 2:3:1         |
+# -----------------------------------------------
+# indel_apos:  4 (does not change)              |
+# stop_rfpos:  3 (insert after, doesn't change) |
+# swap_before: 1 (true, does not change)        |
+# -----------------------------------------------
+# 
+# It is possible that doctoring one start/stop will
+# break another, in which case we re-doctor to fix the 
+# break. This is done by the caller
+# parse_stk_and_add_alignment_alerts() which takes
+# care to only allow 2 rounds of doctoring else we
+# could get into an infinite loop.
+# 
+# Example of situation where doctoring breaks a different
+# start/stop and so a second doctoring has to take place
+# to undo the first:
+# 
+# before 1st doctoring (and after 2nd):
+# seq         ACTAAA-TGTCTGA
+# RF          ACTAAAATGTCTGA
+#                   ^
+#                   start codon
+#
+# after 1st doctoring, before 2nd doctoring:
+# seq         ACTA-AGTGTCTGA
+# RF          ACTAAAGTGTCTGA
+#               ^
+#               stop codon
+#
+#################################################################
+sub doctoring_check_new_codon_validity { 
+  my $sub_name = "doctoring_check_new_codon_validity";
+  my $nargs_exp = 15;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my($delete_or_insert, $start_or_stop, $strand, $seq_name, $mdl_name, $mdl_tt, $ftr_idx, 
+     $uapos, $rfpos, $sqstring_aligned, $seq_doctor_ctr, $rf2a_AR, $dcr_output_HAHR, $opt_HHR, $FH_HR) = (@_);
+
+  # to check we need to get full unaligned sqstring, this is expensive, but should be rare
+  my $ua_sqstring = $sqstring_aligned;
+  $ua_sqstring =~ s/\W//g;
+
+  # store information on this to dcr_output for eventual output in output_tabular()
+  if(! defined $dcr_output_HAHR->{$seq_name}) { 
+    @{$dcr_output_HAHR->{$seq_name}} = ();
+  }
+  my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
+  %{$dcr_output_HAHR->{$seq_name}[$ndcr]} = ();
+  # fill information that is independent of start/stop, delete/insert, +/- strand
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"mdl_name"}       = $mdl_name;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"ftr_idx"}        = $ftr_idx;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_type"}       = $delete_or_insert;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"rfpos"}          = $rfpos;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_seq_uapos"} = $uapos;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_type"}     = $start_or_stop;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"dcr_iter"}       = $seq_doctor_ctr+1;
+  $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}       = "no"; # possibly changed to "yes" below
+
+  my $new_codon_is_valid = 0; # possibly set to '1' below
+  my $orig_codon = undef; # needed so we can reverse complement if nec
+  my $new_codon = undef;  # needed so we can reverse complement if nec
+  ###################################################
+  # start block
+  if($start_or_stop eq "start") { 
+    # fill in start-specific info that is insert/delete dependent and possibly strand-dependent
+    if($delete_or_insert eq "delete") { 
+      # start, delete
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"} = $rf2a_AR->[$rfpos];
+      if($strand eq "+") { 
+        # start, delete, + strand
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = substr($ua_sqstring, $uapos-2, 3);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos-1;
+      } 
+      else { 
+        # start, delete, - strand
+        $new_codon = substr($ua_sqstring, $uapos-2, 3);
+        seq_SqstringReverseComplement(\$new_codon);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = $new_codon;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos+1;
+      }
+    }
+    else { 
+      # start, insert
+      if($strand eq "+") { 
+        # start, insert, + strand
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = substr($ua_sqstring, $uapos, 3);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos+1;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"}    = $rf2a_AR->[$rfpos]+1;
+      }
+      else { 
+        # start, insert, - strand
+        $new_codon = substr($ua_sqstring, $uapos-4, 3);
+        seq_SqstringReverseComplement(\$new_codon);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = $new_codon;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos-1;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"}    = $rf2a_AR->[$rfpos]-1;
+      }
+    }
+
+    # fill in start-specific info that is strand-dependent but insert/delete independent
+    if($strand eq "+") { 
+      # start, insert or delete, + strand
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_codon"}   = substr($ua_sqstring, $uapos-1, 3);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = vdr_CoordsSegmentCreate($dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}, 
+                                                                                     $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}+2, 
+                                                                                     "+", $FH_HR);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"before"} = 1; 
+    }
+    else { # strand is -
+      # start, insert or delete, - strand
+      $orig_codon = substr($ua_sqstring, $uapos-3, 3);
+      seq_SqstringReverseComplement(\$orig_codon);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_codon"}   = $orig_codon;
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = vdr_CoordsSegmentCreate($dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}, 
+                                                                                     $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}-2, 
+                                                                                     "-", $FH_HR);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"before"} = 0; 
+    }
+    $new_codon_is_valid = sqstring_check_start($dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}, $mdl_tt, (opt_Get("--atgonly", $opt_HHR)), $FH_HR);
+  }
+  ###################################################
+  # stop block
+  else { # $start_or_stop eq "stop"
+    # fill in start-specific info that is insert/delete dependent and possibly strand-dependent
+    if($delete_or_insert eq "delete") {
+      # stop, delete
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"} = $rf2a_AR->[$rfpos];
+      if($strand eq "+") { 
+        # stop, delete, + strand
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = substr($ua_sqstring, $uapos-2, 3);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos+1;
+      }
+      else { 
+        # stop, delete, - strand
+        $new_codon = substr($ua_sqstring, $uapos-2, 3);
+        seq_SqstringReverseComplement(\$new_codon);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = $new_codon;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos-1;
+      }
+    }
+    else { 
+      # stop, insert
+      if($strand eq "+") { 
+        # stop, insert, + strand
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = substr($ua_sqstring, $uapos-4, 3);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"}    = $rf2a_AR->[$rfpos]-1;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos-1;
+      }
+      else { 
+        # stop, insert, - strand
+        $new_codon = substr($ua_sqstring, $uapos, 3);
+        seq_SqstringReverseComplement(\$new_codon);
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}     = $new_codon;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"indel_apos"}    = $rf2a_AR->[$rfpos]+1;
+        $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"} = $uapos+1;
+      }
+    }
+
+    # fill in stop-specific info that is strand-dependent but insert/delete independent
+    if($strand eq "+") { 
+      # stop, insert or delete, + strand
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_codon"}   = substr($ua_sqstring, $uapos-3, 3);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = vdr_CoordsSegmentCreate($dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}-2, 
+                                                                                     $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}, 
+                                                                                     "+", $FH_HR);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"before"} = 0; 
+    }
+    else { 
+      # stop, insert or delete, - strand
+      $orig_codon = substr($ua_sqstring, $uapos-1, 3);
+      seq_SqstringReverseComplement(\$orig_codon);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"orig_codon"}   = $orig_codon;
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"codon_coords"} = vdr_CoordsSegmentCreate($dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}+2, 
+                                                                                     $dcr_output_HAHR->{$seq_name}[$ndcr]{"new_seq_uapos"}, "-", $FH_HR);
+      $dcr_output_HAHR->{$seq_name}[$ndcr]{"before"} = 1; 
+    }
+    $new_codon_is_valid = sqstring_check_stop($dcr_output_HAHR->{$seq_name}[$ndcr]{"new_codon"}, $mdl_tt, $FH_HR);
+  }
+  ###################################################
+
+  if(($new_codon_is_valid) && ($seq_doctor_ctr <= 1)) { 
+    $dcr_output_HAHR->{$seq_name}[$ndcr]{"did_swap"}  = "yes";
+    return $ndcr;
+  }
+
+  return -1; # codon was not valid or $seq_doctor_ctr >= 2
+}
