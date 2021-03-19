@@ -5354,22 +5354,56 @@ sub vdr_MergeOutputConcatenateOnly {
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
-  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  utl_ConcatenateListOfFiles(\@filelist_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
+
+  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputGetFileList()
+# Incept:      EPN, Fri Mar 19 16:08:22 2021
+#
+# Purpose:    With --split, fill an array with a list of files
+#             to merge.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $out_sfx:           output name suffix
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $filelist_AR:       list of files to merge   
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $FH_HR:             ref to hash of file handles, including "cmd"
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputGetFileList {
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeOutputGetFileList";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $out_sfx, $do_check_exists, $filelist_AR, $chunk_outdir_AR, $FH_HR) = @_;
+
+  @{$filelist_AR} = ();
 
   # make list of files to concatenate
-  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
-  my @concat_A = (); # array of files to concatenate to make $merged_file
   my $nchunk = scalar(@{$chunk_outdir_AR});
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
     if(($do_check_exists) && (! -e $chunk_file)) { 
       ofile_FAIL("ERROR in $sub_name, expected file to concatenate $chunk_file does not exist", 1, $FH_HR);
     }
-    push(@concat_A, $chunk_file);
+    push(@{$filelist_AR}, $chunk_file);
   }
-  utl_ConcatenateListOfFiles(\@concat_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
-
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
 
   return;
 }
@@ -5408,17 +5442,8 @@ sub vdr_MergeOutputMdlTabularFile {
   my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
 
   # make list of files to concatenate
-  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
-  my @to_merge_A = (); # array of files to merge to make $merged_file
-  my $nchunk = scalar(@{$chunk_outdir_AR});
-  my $i = 0;
-  for($i = 1; $i <= $nchunk; $i++) { 
-    my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
-    if(($do_check_exists) && (! -e $chunk_file)) { 
-      ofile_FAIL("ERROR in $sub_name, expected file to concatenate $chunk_file does not exist", 1, $FH_HR);
-    }
-    push(@to_merge_A, $chunk_file);
-  }
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
 
   # th head_* definitions should be (manually) kept consistent with output_tabular()
   # alternatively we could parse the header lines in the files we want to merge,
@@ -5443,9 +5468,9 @@ sub vdr_MergeOutputMdlTabularFile {
   my %num_seqs_H = (); # key: model name, value: num seqs
   my %num_pass_H = (); # key: model name, value: num passing seqs
   my %num_fail_H = (); # key: model name, value: num failing seqs
-  for($i = 0; $i < scalar(@to_merge_A); $i++) { 
-    printf("in $sub_name, opening $to_merge_A[$i]\n");
-    open(IN, $to_merge_A[$i]) || ofile_FileOpenFailure($to_merge_A[$i], $sub_name, $!, "reading", $FH_HR);
+  for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
+    printf("in $sub_name, opening $filelist_A[$i]\n");
+    open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
     while(my $line = <IN>) { 
       ##                                                    num   num   num
       ##idx  model               group         subgroup    seqs  pass  fail
@@ -5462,7 +5487,7 @@ sub vdr_MergeOutputMdlTabularFile {
           ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail) = ($1, $2, $3, $4, $5, $6, $7);
         }
         else { 
-          ofile_FAIL("ERROR in $sub_name unable to parse $to_merge_A[$i] file line:\n$line\n", 1, $FH_HR);
+          ofile_FAIL("ERROR in $sub_name unable to parse $filelist_A[$i] file line:\n$line\n", 1, $FH_HR);
         }
         if(! defined $group_H{$model}) { 
           $group_H{$model} = $group;
@@ -5491,7 +5516,7 @@ sub vdr_MergeOutputMdlTabularFile {
                                         $a cmp $b 
                              } keys (%num_seqs_H));
 
-  # removespecial "*all*" and "*none*" lines from @tmp_mdl_order_A to make @mdl_order_A
+  # remove special "*all*" and "*none*" lines from @tmp_mdl_order_A to make @mdl_order_A
   my @mdl_tbl_order_A = ();
   foreach $model (@tmp_mdl_tbl_order_A) { 
     if(($model ne "*all*") && ($model ne "*none*")) { 
@@ -5514,11 +5539,13 @@ sub vdr_MergeOutputMdlTabularFile {
   push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
   push(@data_mdl_AA, []); # separator line
 
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
   ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "mdl", $merged_file, 1, 1, "per-model tabular summary file");
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
 
   return;
 }
+
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value
