@@ -1029,10 +1029,16 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
 my $do_split = opt_Get("--split", \%opt_HH);
 if($do_split) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  my $ncpu = opt_Get("--cpu", \%opt_HH);
+
+  $start_secs = ofile_OutputProgressPrior(sprintf("Splitting sequence file into chunks to run independently%s",
+                                                  ($ncpu > 1) ? " in parallel on $ncpu processors" : ""),
+                                          $progress_w, $FH_HR->{"log"}, *STDOUT);
+
   my $tot_len_nt  = utl_HSumValues(\%seq_len_H);
   my $nchunk_estimate = vdr_SplitNumSeqFiles($tot_len_nt, \%opt_HH);
   my $nchunk = 1; # rewritten if $nchunk_estimate > 1
-  my $ncpu = opt_Get("--cpu", \%opt_HH);
   my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
 
   if($nchunk_estimate > 1) { 
@@ -1055,8 +1061,16 @@ if($do_split) {
                                                            \@chunk_outdir_A, \@cpu_out_file_AH, \%opt_HH, \%ofile_info_HH);
   my $nscript = scalar(@cpu_out_file_AH);
   
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  $start_secs = ofile_OutputProgressPrior(sprintf("Executing $ncpu script%s to process $nchunk partition(s) of all %d sequence(s)",
+                                                  ($ncpu > 1) ? "s in parallel on $ncpu processors" : "",
+                                                  scalar(@seq_name_A)), 
+                                          $progress_w, $FH_HR->{"log"}, *STDOUT);
+
   # execute the $ncpu scripts
   utl_RunCommand($script_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
+
 
   my $nscripts_finished = 1; # the final script has finished
   if($nscript > 1) { # we may need to wait for the rest of the jobs
@@ -1069,6 +1083,9 @@ if($do_split) {
     }
     ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
   }
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
+  $start_secs = ofile_OutputProgressPrior("Merging and finalizing output", $progress_w, $FH_HR->{"log"}, *STDOUT);
 
   my $do_check_exists = 1; # require that all files we are expecting to concatenate below exist, if not exit with error message
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.tbl",  "pass_tbl",    "5 column feature table output for passing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
@@ -1100,6 +1117,7 @@ if($do_split) {
   # split_combine_concatenate_and_update_index
   # split_combine_concatenate_only
   # 
+  ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
 
   $total_seconds += ofile_SecondsSinceEpoch();
@@ -11053,7 +11071,7 @@ sub write_v_annotate_scripts_for_split_mode {
   }
   $v_annotate_plus_opts =~ s/\s+$//; # remove trailing whitespace if we created it
 
-  printf("CMD:\n$v_annotate_plus_opts\n");
+  # printf("in $sub_name, root command with opts:\n$v_annotate_plus_opts\n");
 
   # open all $ncpu script output files at the beginning
   my @out_FH_A         = (); # [0..$fidx..$ncpu-1] file handle for file $fidx
@@ -11091,25 +11109,27 @@ sub write_v_annotate_scripts_for_split_mode {
   }
 
   my $script_cmd = "";
-  for($fidx = 0; $fidx < $ncpu; $fidx++) { 
+  # output first script last, so we can run it in foreground (not background)
+  # we don't run final script last in foreground because it is most likely to be the 
+  # smallest sequence subset
+
+  my $err_file = undef;
+  for($fidx = 1; $fidx < $ncpu; $fidx++) { 
     if($out_ncmd_A[$fidx] > 0) { 
-      if($script_cmd ne "") { 
-        $script_cmd .= " &\n"; # run previous cpu's script in background
-      } 
-      my $err_file = $out_scriptname_A[$fidx] . ".err";
+      $err_file = $out_scriptname_A[$fidx] . ".err";
       $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
-      $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file"; 
+      $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file &\n"; 
     }
-    close($out_FH_A[$fidx]);
   }
-  if($script_cmd eq "") { 
-    ofile_FAIL("ERROR in $sub_name, no annotate commands created", 1, $FH_HR);
+  # add first script at the end to run in foreground, see comment above
+  if($out_ncmd_A[0] == 0) { 
+    ofile_FAIL("ERROR in $sub_name, first script file $out_scriptname_A[0] has 0 commands", 1, $FH_HR);
   }
-
-  # add final new line on final command, only one that will not be run in the background
-  # note, there will only be 1 command script unless $ncpu > 1 (--cpu <n> used with <n> > 1)
-  $script_cmd .= "\n"; 
-
+  $fidx = 0;
+  $err_file = $out_scriptname_A[$fidx] . ".err";
+  $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
+  $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file\n"; 
+  
   return $script_cmd;
 }
 
