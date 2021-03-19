@@ -5327,14 +5327,8 @@ sub vdr_ReplaceInsertTokenInInsertString {
 # Subroutine:  vdr_MergeOutputConcatenateOnly()
 # Incept:      EPN, Fri Mar 19 09:19:11 2021
 #
-# Purpose:    Given $ins_str an 'insert string' in the format:
-#              <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
-#              for n inserts, where insert x is defined by:
-#              <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
-#              <uapos_x> is unaligned sequence position of the first aligned nt
-#              <inslen_x> is length of the insert
-#             Find the 'insert token' <mdlpos_n>:<uapos_n>:<inslen_n> equal to $orig_ins_tok 
-#             and replace it with $new_ins_tok.
+# Purpose:    With --split, merge output files from multiple output
+#             directories in @{$chunk_outdir_AR} into a single file.
 #
 # Arguments: 
 #   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
@@ -5376,6 +5370,152 @@ sub vdr_MergeOutputConcatenateOnly {
   utl_ConcatenateListOfFiles(\@concat_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
 
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputMdlTabularFile()
+# Incept:      EPN, Fri Mar 19 13:27:00 2021
+#
+# Purpose:    With --split, merge .mdl tabular output files from 
+#             multiple output directories in @{$chunk_outdir_AR} 
+#             into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputMdlTabularFile { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeOutputMdlTabularFile";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $out_sfx   = ".mdl";
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  my @to_merge_A = (); # array of files to merge to make $merged_file
+  my $nchunk = scalar(@{$chunk_outdir_AR});
+  my $i = 0;
+  for($i = 1; $i <= $nchunk; $i++) { 
+    my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
+    if(($do_check_exists) && (! -e $chunk_file)) { 
+      ofile_FAIL("ERROR in $sub_name, expected file to concatenate $chunk_file does not exist", 1, $FH_HR);
+    }
+    push(@to_merge_A, $chunk_file);
+  }
+
+  # th head_* definitions should be (manually) kept consistent with output_tabular()
+  # alternatively we could parse the header lines in the files we want to merge,
+  # but not doing that currently
+  my @head_mdl_AA = ();
+  my @data_mdl_AA = ();
+  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
+  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
+  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
+
+  my %mdl_cls_ct_H = ();
+
+  my $sum_mdl_cls_ct     = 0;
+  my $sum_mdl_pass_ct    = 0;
+  my $sum_mdl_fail_ct    = 0;
+  my $sum_mdl_noannot_ct = 0;
+
+  # read each .mdl file and store info in it
+  my ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail);
+  my %group_H    = (); # key: model name, value: group
+  my %subgroup_H = (); # key: model name, value: subgroup
+  my %num_seqs_H = (); # key: model name, value: num seqs
+  my %num_pass_H = (); # key: model name, value: num passing seqs
+  my %num_fail_H = (); # key: model name, value: num failing seqs
+  for($i = 0; $i < scalar(@to_merge_A); $i++) { 
+    printf("in $sub_name, opening $to_merge_A[$i]\n");
+    open(IN, $to_merge_A[$i]) || ofile_FileOpenFailure($to_merge_A[$i], $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+      ##                                                    num   num   num
+      ##idx  model               group         subgroup    seqs  pass  fail
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #1     NC_045512           Sarbecovirus  SARS-CoV-2     2     1     1
+      #2     NC_045512-MW422255  Sarbecovirus  SARS-CoV-2     1     1     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #-     *all*               -             -              3     2     1
+      #-     *none*              -             -              0     0     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      if($line !~ m/^\#/) { 
+        chomp $line;
+        if($line =~ m/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
+          ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail) = ($1, $2, $3, $4, $5, $6, $7);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name unable to parse $to_merge_A[$i] file line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $group_H{$model}) { 
+          $group_H{$model} = $group;
+          # initialize other hashes for this model
+          $num_seqs_H{$model} = 0;
+          $num_pass_H{$model} = 0;
+          $num_fail_H{$model} = 0;
+        }
+        elsif($group_H{$model} ne $group) { 
+          ofile_FAIL("ERROR in $sub_name read more than one distinct group for model $model: $group_H{$model} and $group", 1, $FH_HR);
+        }
+        if(! defined $subgroup_H{$model}) { 
+          $subgroup_H{$model} = $subgroup;
+        }
+        elsif($subgroup_H{$model} ne $subgroup) { 
+          ofile_FAIL("ERROR in $sub_name read more than one distinct group for model $model: $group_H{$model} and $group", 1, $FH_HR);
+        }
+        $num_seqs_H{$model} += $num_seqs;
+        $num_pass_H{$model} += $num_pass;
+        $num_fail_H{$model} += $num_fail;
+      }
+    }
+  }
+
+  my @tmp_mdl_tbl_order_A = (sort { $num_seqs_H{$b} <=> $num_seqs_H{$a} or 
+                                        $a cmp $b 
+                             } keys (%num_seqs_H));
+
+  # removespecial "*all*" and "*none*" lines from @tmp_mdl_order_A to make @mdl_order_A
+  my @mdl_tbl_order_A = ();
+  foreach $model (@tmp_mdl_tbl_order_A) { 
+    if(($model ne "*all*") && ($model ne "*none*")) { 
+      push(@mdl_tbl_order_A, $model);
+    }
+  }
+
+  my $mdl_tbl_idx = 0;
+  foreach $model (@mdl_tbl_order_A) { 
+    if($num_seqs_H{$model} > 0) { 
+      $mdl_tbl_idx++;
+      push(@data_mdl_AA, [$mdl_tbl_idx, $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+    }
+  }
+  # add mdl summary line
+  push(@data_mdl_AA, []); # separator line
+  $model = "*all*";
+  push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+  $model = "*none*";
+  push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+  push(@data_mdl_AA, []); # separator line
+
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "mdl", $merged_file, 1, 1, "per-model tabular summary file");
+  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
 
   return;
 }

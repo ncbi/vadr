@@ -1097,10 +1097,12 @@ if($do_split) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.fa",  "pass_fa", "fasta file with passing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".ftr",       "ftr",         "per-feature tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqc",       "cls",         "per-sequence tabular classification summary file",     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".ftr",       "ftr",         "per-feature tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputMdlTabularFile ($out_root_no_vadr,                              "per-model tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt",       "alt",         "per-alert tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   if($do_blastn_ali) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sda",     "sda",         "ungapped seed alignment summary file (-s)",          $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
