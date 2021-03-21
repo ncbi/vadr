@@ -5454,13 +5454,6 @@ sub vdr_MergeOutputMdlTabularFile {
   @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
   my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
 
-  my %mdl_cls_ct_H = ();
-
-  my $sum_mdl_cls_ct     = 0;
-  my $sum_mdl_pass_ct    = 0;
-  my $sum_mdl_fail_ct    = 0;
-  my $sum_mdl_noannot_ct = 0;
-
   # read each .mdl file and store info in it
   my ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail);
   my %group_H    = (); # key: model name, value: group
@@ -5483,7 +5476,7 @@ sub vdr_MergeOutputMdlTabularFile {
       ##---  ------------------  ------------  ----------  ----  ----  ----
       if($line !~ m/^\#/) { 
         chomp $line;
-        if($line =~ m/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)/) { 
+        if($line =~ m/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)$/) { 
           ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail) = ($1, $2, $3, $4, $5, $6, $7);
         }
         else { 
@@ -5524,6 +5517,8 @@ sub vdr_MergeOutputMdlTabularFile {
     }
   }
 
+  # push data to @data_mdl_AA
+  # the following block should be (manually) kept consistent with output_tabular()
   my $mdl_tbl_idx = 0;
   foreach $model (@mdl_tbl_order_A) { 
     if($num_seqs_H{$model} > 0) { 
@@ -5542,6 +5537,161 @@ sub vdr_MergeOutputMdlTabularFile {
   my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
   ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "mdl", $merged_file, 1, 1, "per-model tabular summary file");
   ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputAlcTabularFile()
+# Incept:      EPN, Fri Mar 19 16:19:19 2021
+#
+# Purpose:    With --split, merge .alc tabular output files from 
+#             multiple output directories in @{$chunk_outdir_AR} 
+#             into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $alt_info_HHR:      ref to the alert info hash of arrays, PRE-FILLED
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputAlcTabularFile { 
+  my $nargs_exp = 7;
+  my $sub_name = "vdr_MergeOutputAlcTabularFile";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $alt_info_HHR, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $out_sfx   = ".alc";
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  # th head_* definitions should be (manually) kept consistent with output_tabular()
+  # alternatively we could parse the header lines in the files we want to merge,
+  # but not doing that currently
+  my @head_alc_AA = ();
+  my @data_alc_AA = ();
+  @{$head_alc_AA[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
+  @{$head_alc_AA[1]} = ("idx", "code",   "failure", "description", "type", "cases", "seqs", "description");
+  my @clj_alc_A      = (1,     1,        1,          1,            0,      0,      0,        1);
+
+  # read each .alc file and store info in it
+  my ($idx, $alt_code, $causes_failure, $short_description, $per_type, $num_cases, $num_seqs, $long_description);
+
+  my %data_HH = (); # key 1: alert code, key 2: column name, value: value from column
+  my @invariant_keys_A = ("causes_failure", "short_description", "per_type", "long_description");
+  my @sum_keys_A       = ("num_cases", "num_seqs"); 
+  my $key;
+  my %line_H = ();
+  for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
+    printf("in $sub_name, opening $filelist_A[$i]\n");
+    open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+       ##---  --------  -------  ---------------------------  --------  -----  ----  -----------
+       ##     alert     causes   short                       per    num   num  long       
+       ##idx  code      failure  description                type  cases  seqs  description
+       ##---  --------  -------  ----------------------  -------  -----  ----  -----------
+       #1     ambgnt5f  no       N_AT_FEATURE_START      feature      3     1  first nucleotide of non-CDS feature is an N
+       #2     ambgnt3f  no       N_AT_FEATURE_END        feature      3     1  final nucleotide of non-CDS feature is an N
+       #3     ambgnt5c  no       N_AT_CDS_START          feature      2     1  first nucleotide of CDS is an N
+       #4     ambgnt3c  no       N_AT_CDS_END            feature      2     1  final nucleotide of CDS is an N
+       #---  --------  -------  ----------------------  -------  -----  ----  -----------
+       #5     unexleng  yes*     UNEXPECTED_LENGTH       feature      1     1  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+       #6     cdsstopn  yes*     CDS_HAS_STOP_CODON      feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+       #7     fstukcnf  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  potential frameshift in CDS
+       #8     indfantn  yes      INDEFINITE_ANNOTATION   feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
+       #9     lowsimif  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature lacks significant similarity
+       ##---  --------  -------  ----------------------  -------  -----  ----  -----------
+      if($line !~ m/^\#/) { 
+        chomp $line;
+        if($line =~ m/^(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(.+)$/) { 
+          ($idx, $alt_code, 
+           $line_H{"causes_failure"}, 
+           $line_H{"short_description"}, 
+           $line_H{"per_type"}, 
+           $line_H{"num_cases"}, 
+           $line_H{"num_seqs"}, 
+           $line_H{"long_description"}) = ($1, $2, $3, $4, $5, $6, $7, $8);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name unable to parse $filelist_A[$i] file line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $data_HH{$alt_code}) { 
+          %{$data_HH{$alt_code}}= ();
+          # init counters
+          foreach $key (@sum_keys_A) { 
+            $data_HH{$alt_code}{$key} = 0;
+          }
+        }
+        foreach $key (@invariant_keys_A) { 
+          if(! defined $data_HH{$alt_code}{$key}) { 
+            $data_HH{$alt_code}{$key} = $line_H{$key};
+          }
+          elsif($data_HH{$alt_code}{$key} ne $line_H{$key}) { 
+            ofile_FAIL("ERROR in $sub_name read more than one distinct value for $key for alert code $alt_code: $data_HH{$alt_code}{$key} and $line_H{$key}", 1, $FH_HR);
+          }
+        }
+        foreach $key (@sum_keys_A) { 
+          $data_HH{$alt_code}{$key} += $line_H{$key};
+        }
+      }
+    }
+  }
+
+  # determine order of alert codes to print
+  my @alt_code_A = (); # all alerts in output order
+  alert_order_arrays($alt_info_HHR, \@alt_code_A, undef, undef);
+
+  # push data to @data_mdl_AA
+  # the following block should be (manually) kept consistent with output_tabular()
+  my $alt_idx = 0;
+  my $zero_alerts = 1; # set to '0' below if we have >= 1 alerts
+  my $alc_sep_flag = 0;
+  foreach my $alt_code (@alt_code_A) { 
+    if(defined $data_HH{$alt_code}) { 
+      if($data_HH{$alt_code}{"num_cases"} > 0) { 
+        if(! $alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+          $alc_sep_flag = 1; 
+        }
+        if(($alt_info_HHR->{$alt_code}{"causes_failure"}) && $alc_sep_flag) { 
+          # print separation line between alerts that cause and do not cause failure
+          push(@data_alc_AA, []); # separator line
+          $alc_sep_flag = 0; 
+        }
+        $alt_idx++;
+        # don't need to check if alert is 'misc_not_feature' already have '*' added to 'causes_failure' column values
+        # don't need to check if alert is 'causes_failure' already know that from tables we parsed
+        push(@data_alc_AA, [$alt_idx, $alt_code, 
+                            $data_HH{$alt_code}{"causes_failure"},
+                            $data_HH{$alt_code}{"short_description"},
+                            $data_HH{$alt_code}{"per_type"}, 
+                            $data_HH{$alt_code}{"num_cases"}, 
+                            $data_HH{$alt_code}{"num_seqs"}, 
+                            $data_HH{$alt_code}{"long_description"}]);
+        $zero_alerts = 0;
+      }
+    }
+  }
+  if(! $zero_alerts) { 
+    push(@data_alc_AA, []); # separator line
+  }
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "alc", $merged_file, 1, 1, "alert count tabular summary file");
+  ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
 
   return;
 }

@@ -1076,7 +1076,7 @@ if($do_split) {
   if($nscript > 1) { # we may need to wait for the rest of the jobs
     $nscripts_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
                                                      1, # do exit if any err files are written to
-                                                     "out", 1, 15, \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
+                                                     "out", 1, 5, \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
                                                      $ofile_info_HH{"FH"});
     if($nscripts_finished != $nscript) { 
       ofile_FAIL(sprintf("ERROR only $nscripts_finished of the $nscript --split scripts are finished after %d minutes. Increase wait time limit with --wait", opt_Get("--wait", \%opt_HH)), 1, $ofile_info_HH{"FH"});
@@ -1103,6 +1103,7 @@ if($do_split) {
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputMdlTabularFile ($out_root_no_vadr,                              "per-model tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt",       "alt",         "per-alert tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,               "alert count tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   if($do_blastn_ali) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sda",     "sda",         "ungapped seed alignment summary file (-s)",          $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
@@ -8335,10 +8336,10 @@ sub output_tabular {
   my $alc_sep_flag = 0;
   foreach my $alt_code (@alt_code_A) { 
     if($alt_ct_H{$alt_code} > 0) { 
-      if(! $alt_info_HH{$alt_code}{"causes_failure"}) { 
+      if(! $alt_info_HHR->{$alt_code}{"causes_failure"}) { 
         $alc_sep_flag = 1; 
       }
-      if(($alt_info_HH{$alt_code}{"causes_failure"}) && $alc_sep_flag) { 
+      if(($alt_info_HHR->{$alt_code}{"causes_failure"}) && $alc_sep_flag) { 
         # print separation line between alerts that cause and do not cause failure
         push(@data_alc_AA, []); # separator line
         $alc_sep_flag = 0; 
