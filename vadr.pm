@@ -5358,10 +5358,14 @@ sub vdr_MergeOutputConcatenateOnly {
   vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
 
   my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
-  utl_ConcatenateListOfFiles(\@filelist_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
-
-  ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
-
+  printf("in $sub_name, merged_file: $merged_file, concatenating %d files\n", scalar(@filelist_A));
+  if(scalar(@filelist_A) > 0) { 
+    utl_ConcatenateListOfFiles(\@filelist_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
+    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+  }
+  elsif($do_check_exists) { 
+    ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
+  }
   return;
 }
 
@@ -5399,10 +5403,13 @@ sub vdr_MergeOutputGetFileList {
   my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
-    if(($do_check_exists) && (! -e $chunk_file)) { 
+    printf("in $sub_name, checking if file $chunk_file exists\n");
+    if(-e $chunk_file) { 
+      push(@{$filelist_AR}, $chunk_file);
+    }
+    elsif($do_check_exists) { # file does not exist
       ofile_FAIL("ERROR in $sub_name, expected file to concatenate $chunk_file does not exist", 1, $FH_HR);
     }
-    push(@{$filelist_AR}, $chunk_file);
   }
 
   return;
@@ -5692,6 +5699,50 @@ sub vdr_MergeOutputAlcTabularFile {
   my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
   ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "alc", $merged_file, 1, 1, "alert count tabular summary file");
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
+
+  return;
+}
+
+
+#################################################################
+# Subroutine:  vdr_MergeFastaFiles()
+# Incept:      EPN, Mon Mar 22 06:28:21 2021
+#
+# Purpose:    With --out_allfasta or --keept merge per-feature fasta
+#             files for each model.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $mdl_info_AHR:      ref to the model info hash of arrays, PRE-FILLED
+#   $ftr_info_HAHR:     ref to hash of array of hashes with info on features per model, PRE-FILLED
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if problem concatenating files
+# 
+################################################################# 
+sub vdr_MergeFastaFiles { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeFastaFiles";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $mdl_info_AHR, $ftr_info_HAHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    my $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $ftr_out_sfx    = "." . $mdl_name . "." . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, ".") . ".fa";
+      my $ftr_ofile_key  = $mdl_name . ".pfa." . $ftr_idx;
+      my $ftr_ofile_desc = "model " . $mdl_name . " feature " . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, "#") . " predicted seqs";
+      printf("in $sub_name, mdl_name: $mdl_name, ftr_idx: $ftr_idx\n");
+      vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $ftr_out_sfx, $ftr_ofile_key, $ftr_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
+    }
+  }
 
   return;
 }

@@ -1087,6 +1087,10 @@ if($do_split) {
 
   $start_secs = ofile_OutputProgressPrior("Merging and finalizing output", $progress_w, $FH_HR->{"log"}, *STDOUT);
 
+  if(($do_keep) || (opt_Get("--out_allfasta", \%opt_HH))) { 
+    vdr_MergeFastaFiles($out_root_no_vadr, \@mdl_info_AH, \%ftr_info_HAH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  }
+  
   my $do_check_exists = 1; # require that all files we are expecting to concatenate below exist, if not exit with error message
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.tbl",  "pass_tbl",    "5 column feature table output for passing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.tbl",  "fail_tbl",    "5 column feature table output for failing sequences",  $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
@@ -3684,8 +3688,8 @@ sub cmalign_or_glsearch_run {
 #  $mdl_tt:                 the translation table ('1' for standard)
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
 #  $seq_inserts_HHR:        REF to hash of hashes with sequence insert information, PRE-FILLED
-#  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
-#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $sgm_info_AHR:           REF to array of hashes with information on the model segments, PRE-FILLED
+#  $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
 #  $alt_info_HHR:           REF to hash of hashes with information on the errors, PRE-FILLED
 #  $sgm_results_HAHR:       REF to results HAH, FILLED HERE
 #  $ftr_results_HAHR:       REF to feature results HAH, possibly ADDED TO HERE
@@ -4891,7 +4895,7 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 
   my $atg_only    = opt_Get("--atgonly", $opt_HHR);
   my $do_keep     = opt_Get("--keep", $opt_HHR);
-  my $do_allfasta = opt_Get("--out_allfasta", $opt_HHR);
+  my $do_allfasta = ($do_keep || opt_Get("--out_allfasta", $opt_HHR)) ? 1 : 0;
 
   my $ftr_idx;
   my @ftr_fileroot_A = (); # for naming output files for each feature
@@ -9864,7 +9868,7 @@ sub helper_output_feature_alert_strings {
 # Purpose:    Merge and output alignments in stockholm, aligned fasta
 #             or both for a single model. The logic differs
 #             significantly depending on whether -r is used or not.
-#             If -r is not used 
+#             If -r is not enabled: 
 #             
 #             If -r is enabled: --out_stk and --out_afa need to have
 #             original sequences in them, not the replaced sequences 
