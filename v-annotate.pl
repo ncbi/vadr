@@ -1100,6 +1100,9 @@ if($do_split) {
 
   $start_secs = ofile_OutputProgressPrior("Merging and finalizing output", $progress_w, $FH_HR->{"log"}, *STDOUT);
 
+  if(($do_keep) || (opt_Get("--out_fsstk", \%opt_HH))) { 
+    vdr_MergeFrameshiftStockholmFiles($out_root_no_vadr, \@mdl_info_AH, \%ftr_info_HAH, \%sgm_info_HAH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  }
   if(($do_keep) || (opt_Get("--out_stk", \%opt_HH)) || (opt_Get("--out_afa", \%opt_HH)) || (opt_Get("--out_rpstk", \%opt_HH)) || (opt_Get("--out_rpafa", \%opt_HH))) { 
     vdr_MergeAlignments($out_root_no_vadr, \%execs_H, \@mdl_info_AH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
@@ -1134,14 +1137,7 @@ if($do_split) {
   # finish with cmd file?
   # vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".cmd",       "cmd",         "List of executed commands",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
 
-  # concatenate the output of the $ncpu scripts
-  # split_combine_alc
-  # split_combine_mdl
-  # split_combine_concatenate_and_update_index
-  # split_combine_concatenate_only
-  # 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
 
   $total_seconds += ofile_SecondsSinceEpoch();
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);

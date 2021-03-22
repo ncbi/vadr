@@ -5747,6 +5747,55 @@ sub vdr_MergePerFeatureFastaFiles {
 }
 
 #################################################################
+# Subroutine:  vdr_MergeFrameshiftStockholmFiles()
+# Incept:      EPN, Mon Mar 22 10:56:39 2021
+#
+# Purpose:    With --out_fsstk or --keep merge per-segment Stockholm
+#             files for each model.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $mdl_info_AHR:      ref to the model info hash of arrays, PRE-FILLED
+#   $ftr_info_HAHR:     ref to hash of array of hashes with info on features per model, PRE-FILLED
+#   $sgm_info_HAHR:     ref to hash of array of hashes with info on segments per model, PRE-FILLED
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if problem concatenating files
+# 
+################################################################# 
+sub vdr_MergeFrameshiftStockholmFiles { 
+  my $nargs_exp = 7;
+  my $sub_name = "vdr_MergeFrameshiftStockholmFiles";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $mdl_info_AHR, $ftr_info_HAHR, $sgm_info_HAHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    my $ftr_info_AHR = $ftr_info_HAHR->{$mdl_name}; # for convenience
+    my $nftr = scalar(@{$ftr_info_AHR});
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+        for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+          my $cds_and_sgm_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . "." . ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
+          my $sgm_out_sfx    = "." . $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+          my $sgm_ofile_key  = $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+          my $sgm_ofile_desc = "Stockholm file for >= 1 possible frameshifts for $cds_and_sgm_idx for model $mdl_name";
+          vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $sgm_out_sfx, $sgm_ofile_key, $sgm_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine:  vdr_MergeAlignments()
 # Incept:      EPN, Mon Mar 22 07:26:57 2021
 #
