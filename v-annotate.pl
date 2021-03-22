@@ -4408,7 +4408,7 @@ sub add_frameshift_alerts_for_one_sequence {
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
 
-  my $do_output_frameshift_stk = opt_Get("--out_fsstk", $opt_HHR) ? 1 : 0;
+  my $do_output_frameshift_stk = ((opt_Get("--keep", $opt_HHR)) || (opt_Get("--out_fsstk", $opt_HHR))) ? 1 : 0;
   my $fst_min_nt     = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
   my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
