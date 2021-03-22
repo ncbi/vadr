@@ -337,14 +337,14 @@ opt_Add("--val_only",      "boolean", 0,         $g,   undef,      undef,       
 
 $opt_group_desc_H{++$g} = "optional output files";
 #       option       type       default   group  requires incompat  preamble-output                                                      help-output    
-opt_Add("--out_stk",        "boolean", 0,    $g,    undef, undef,   "output per-model full length stockholm alignments (.stk)",          "output per-model full length stockholm alignments (.stk)",      \%opt_HH, \@opt_order_A);
-opt_Add("--out_afa",        "boolean", 0,    $g,    undef, undef,   "output per-model full length fasta alignments (.afa)",              "output per-model full length fasta alignments (.afa)",          \%opt_HH, \@opt_order_A);
-opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r", undef,   "with -r, output stockholm alignments of seqs with Ns replaced",     "with -r, output stockholm alignments of seqs with Ns replaced", \%opt_HH, \@opt_order_A);
-opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, output fasta alignments of seqs with Ns replaced",         "with -r, output fasta alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
-opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",                "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
-opt_Add("--out_allfasta",   "boolean", 0,    $g,    undef,"--keep", "additionally output fasta files of features",                       "additionally output fasta files of features",                   \%opt_HH, \@opt_order_A);
-opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep,--out_allfasta", "do not output fasta files of passing/failing seqs",  "do not output fasta files of passing/failing seqs",                  \%opt_HH, \@opt_order_A);
-opt_Add("--out_debug",      "boolean", 0,    $g,    undef,"--split","dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",  \%opt_HH, \@opt_order_A);
+opt_Add("--out_stk",        "boolean", 0,    $g,    undef,"--keep", "output per-model full length stockholm alignments (.stk)",          "output per-model full length stockholm alignments (.stk)",          \%opt_HH, \@opt_order_A);
+opt_Add("--out_afa",        "boolean", 0,    $g,    undef,"--keep", "output per-model full length fasta alignments (.afa)",              "output per-model full length fasta alignments (.afa)",              \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpstk",      "boolean", 0,    $g,     "-r","--keep", "with -r, output stockholm alignments of seqs with Ns replaced",     "with -r, output stockholm alignments of seqs with Ns replaced",     \%opt_HH, \@opt_order_A);
+opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r","--keep", "with -r, output fasta alignments of seqs with Ns replaced",         "with -r, output fasta alignments of seqs with Ns replaced",         \%opt_HH, \@opt_order_A);
+opt_Add("--out_fsstk",      "boolean", 0,    $g,    undef,"--keep", "additionally output frameshift stockholm alignment files",          "additionally output frameshift stockholm alignment files",          \%opt_HH, \@opt_order_A);
+opt_Add("--out_allfasta",   "boolean", 0,    $g,    undef,"--keep", "additionally output fasta files of features",                       "additionally output fasta files of features",                       \%opt_HH, \@opt_order_A);
+opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep,--out_allfasta", "do not output fasta files of passing/failing seqs",  "do not output fasta files of passing/failing seqs",                 \%opt_HH, \@opt_order_A);
+opt_Add("--out_debug",      "boolean", 0,    $g,    undef,"--split","dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option            type          default     group  requires incompat  preamble-output                                                          help-output    
@@ -473,7 +473,7 @@ my $options_okay =
                 'out_afa'       => \$GetOptions_H{"--out_afa"}, 
                 'out_rpstk'     => \$GetOptions_H{"--out_rpstk"}, 
                 'out_rpafa'     => \$GetOptions_H{"--out_rpafa"}, 
-                'out_nofs'      => \$GetOptions_H{"--out_nofs"}, 
+                'out_fsstk'     => \$GetOptions_H{"--out_fsstk"}, 
                 'out_allfasta'  => \$GetOptions_H{"--out_allfasta"}, 
                 'out_nofasta'   => \$GetOptions_H{"--out_nofasta"}, 
                 'out_debug'     => \$GetOptions_H{"--out_debug"},
@@ -4408,7 +4408,7 @@ sub add_frameshift_alerts_for_one_sequence {
 
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
 
-  my $do_output_frameshift_stk = opt_Get("--out_nofs", $opt_HHR) ? 0 : 1;
+  my $do_output_frameshift_stk = opt_Get("--out_fsstk", $opt_HHR) ? 1 : 0;
   my $fst_min_nt     = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
   my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
