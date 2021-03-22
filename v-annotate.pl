@@ -1039,6 +1039,9 @@ if(! opt_Get("--noseqnamemax", \%opt_HH)) {
 
 # pre-processing complete
 ###############################
+
+###############################
+# if --split, split up the sequence file into chunks and run each chunk separately
 my $do_split = opt_Get("--split", \%opt_HH);
 if($do_split) {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1071,7 +1074,7 @@ if($do_split) {
                              # to see when all jobs are complete, will be filled in write_v_annotate_scripts_for_split_mode()
   my $out_root_no_vadr = $dir . "/" . $dir_tail;
   my $script_cmd = write_v_annotate_scripts_for_split_mode($nchunk, $ncpu, $in_fa_file, $out_root_no_vadr, \@nseqs_per_chunk_A, 
-                                                           \@chunk_outdir_A, \@cpu_out_file_AH, \%opt_HH, \%ofile_info_HH);
+                                                           \@chunk_outdir_A, \@cpu_out_file_AH, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
   my $nscript = scalar(@cpu_out_file_AH);
   
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -1145,6 +1148,7 @@ if($do_split) {
   vdr_MergeOutputMdlTabularFile ($out_root_no_vadr,                              "per-model tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt",       "alt",         "per-alert tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,               "alert count tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".dcr",       "dcr",         "alignment doctoring tabular summary file",             $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   if($do_blastn_ali) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sda",     "sda",         "ungapped seed alignment summary file (-s)",          $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
@@ -1166,13 +1170,27 @@ if($do_split) {
     }
     utl_FileRemoveList(\@to_actually_remove_A, "v-annotate.pl:main()", \%opt_HH, $FH_HR);
   }
-  
+
+  # remove per-chunk directories, unless --keep
+  if(! opt_Get("--keep", \%opt_HH)) { 
+    foreach my $chunk_outdir (@chunk_outdir_A) { 
+      printf("calling ls -a $chunk_outdir\n");
+      system("ls -a $chunk_outdir");
+      my $rm_cmd = "rm $chunk_outdir/*";
+      utl_RunCommand("rm $chunk_outdir/*", opt_Get("-v", \%opt_HH), 0, $FH_HR); 
+      rmdir $chunk_outdir; # we call this using Perl's 'rmdir' instead of utl_RunCommand() because sometimes a subdir 
+                           # won't get removed (b/c it's not empty) for reasons I don't understand (it seems like it 
+                           # actually is empty), using Perl's rmdir doesn't print an error if dir is not removed.
+      print $cmd_FH "rmdir $chunk_outdir\n";
+    }
+  }
+
   $total_seconds += ofile_SecondsSinceEpoch();
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 
   exit 0;
-}
-
+} # end of 'if($do_split)'
+###############################
 
 # open the sequence file into a Bio::Easel::SqFile object
 my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the sequence file object
@@ -11081,6 +11099,7 @@ sub validate_and_parse_sub_file {
 #  $chunk_outdir_AR:    [0..$nchunk-1] REF to array of output directories created for
 #                       each chunk, FILLED HERE
 #  $cpu_out_file_AHR:   [0..$ncpu-1], REF to array of hashes of output files names, FILLED HERE 
+#  $to_remove_AR:       REF to array of files to remove eventually, unless --keep
 #  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
 #             
@@ -11092,10 +11111,10 @@ sub validate_and_parse_sub_file {
 #################################################################
 sub write_v_annotate_scripts_for_split_mode { 
   my $sub_name = "write_v_annotate_scripts_for_split_mode";
-  my $nargs_exp = 9;
+  my $nargs_exp = 10;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($nchunk, $ncpu, $in_fa_file, $out_root_no_vadr, $nseqs_per_chunk_AR, $chunk_outdir_AR, $cpu_out_file_AHR, $opt_HHR, $ofile_info_HHR) = (@_);
+  my ($nchunk, $ncpu, $in_fa_file, $out_root_no_vadr, $nseqs_per_chunk_AR, $chunk_outdir_AR, $cpu_out_file_AHR, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
 
   my $FH_HR = $ofile_info_HHR->{"FH"};
 
@@ -11137,7 +11156,6 @@ sub write_v_annotate_scripts_for_split_mode {
   @{$cpu_out_file_AHR} = (); # tricky: need to fill "out" in i loop over chunks and "err" in fidx loop over cpus
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $fasta_file = ($nchunk == 1) ? $in_fa_file : $in_fa_file . "." . $i;
-
     my $out_dir    = $out_root_no_vadr . "." . $i;
     my $out_file   = $out_root_no_vadr . "." . $i . ".out";
     $fidx = ($i-1) % $ncpu;
@@ -11153,6 +11171,9 @@ sub write_v_annotate_scripts_for_split_mode {
     print $FH "$v_annotate_plus_opts $sidx_opt $fasta_file $out_dir > $out_file\n";
     push(@{$chunk_outdir_AR}, $out_dir); # save chunk directory
     $sidx += $nseqs_per_chunk_AR->[($i-1)]; # update number of sequences for next command
+
+    push(@{$to_remove_AR}, $fasta_file);
+    push(@{$to_remove_AR}, $out_file);
   }
 
   my $script_cmd = "";
@@ -11167,6 +11188,9 @@ sub write_v_annotate_scripts_for_split_mode {
       $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
       $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file &\n"; 
     }
+    push(@{$to_remove_AR}, $out_scriptname_A[$fidx]);
+    push(@{$to_remove_AR}, $err_file);
+    close $out_FH_A[$fidx];
   }
   # add first script at the end to run in foreground, see comment above
   if($out_ncmd_A[0] == 0) { 
@@ -11176,7 +11200,10 @@ sub write_v_annotate_scripts_for_split_mode {
   $err_file = $out_scriptname_A[$fidx] . ".err";
   $cpu_out_file_AHR->[$fidx]{"err"} = $err_file;
   $script_cmd .= "sh " . $out_scriptname_A[$fidx] . " > /dev/null 2> $err_file\n"; 
-  
+  push(@{$to_remove_AR}, $out_scriptname_A[$fidx]);
+  push(@{$to_remove_AR}, $err_file);
+  close $out_FH_A[$fidx];
+
   return $script_cmd;
 }
 
