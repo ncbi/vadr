@@ -1147,7 +1147,7 @@ if($do_split) {
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputMdlTabularFile ($out_root_no_vadr,                              "per-model tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt",       "alt",         "per-alert tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,               "alert count tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  my $zero_alt = vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,"alert count tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".dcr",       "dcr",         "alignment doctoring tabular summary file",             $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   if($do_blastn_ali) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sda",     "sda",         "ungapped seed alignment summary file (-s)",          $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
@@ -1158,25 +1158,11 @@ if($do_split) {
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-  # remove unwanted files, unless --keep
-  if(! opt_Get("--keep", \%opt_HH)) { 
-    my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
-    my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
-    foreach my $to_remove_file (@to_remove_A) { 
-      if((defined $to_remove_file) && (-e $to_remove_file) && (! defined $to_actually_remove_H{$to_remove_file})) { 
-        push(@to_actually_remove_A, $to_remove_file); 
-        $to_actually_remove_H{$to_remove_file} = 1; 
-      }
-    }
-    utl_FileRemoveList(\@to_actually_remove_A, "v-annotate.pl:main()", \%opt_HH, $FH_HR);
-  }
+  output_mdl_and_alc_files_and_remove_temp_files($zero_alt, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
   # remove per-chunk directories, unless --keep
   if(! opt_Get("--keep", \%opt_HH)) { 
     foreach my $chunk_outdir (@chunk_outdir_A) { 
-      printf("calling ls -a $chunk_outdir\n");
-      system("ls -a $chunk_outdir");
-      my $rm_cmd = "rm $chunk_outdir/*";
       utl_RunCommand("rm $chunk_outdir/*", opt_Get("-v", \%opt_HH), 0, $FH_HR); 
       rmdir $chunk_outdir; # we call this using Perl's 'rmdir' instead of utl_RunCommand() because sometimes a subdir 
                            # won't get removed (b/c it's not empty) for reasons I don't understand (it seems like it 
@@ -1843,45 +1829,7 @@ if(exists $ofile_info_HH{"FH"}{"sdaoutput"}) {
 ############
 # Conclude #
 ############
-# close the two files we may output to stdout and the log
-close($ofile_info_HH{"FH"}{"mdl"}); 
-close($ofile_info_HH{"FH"}{"alc"}); 
-    
-my @conclude_A = ();
-push(@conclude_A, "#");
-push(@conclude_A, "# Summary of classified sequences:");
-push(@conclude_A, "#");
-my @file_A = ();
-utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"mdl"}, 1, \@file_A, $FH_HR);
-push(@conclude_A, @file_A);
-push(@conclude_A, "#");
-if($zero_alt) { 
-  push(@conclude_A, "# Zero alerts were reported.");
-}
-else { 
-  push(@conclude_A, "# Summary of reported alerts:");
-  push(@conclude_A, "#");
-  my @file_A = ();
-  utl_FileLinesToArray($ofile_info_HH{"fullpath"}{"alc"}, 1, \@file_A, $FH_HR);
-  push(@conclude_A, @file_A);
-}
-
-foreach my $line (@conclude_A) { 
-  ofile_OutputString($log_FH, 1, $line . "\n");
-}
-
-# remove unwanted files, unless --keep
-if(! opt_Get("--keep", \%opt_HH)) { 
-  my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
-  my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
-  foreach my $to_remove_file (@to_remove_A) { 
-    if((defined $to_remove_file) && (-e $to_remove_file) && (! defined $to_actually_remove_H{$to_remove_file})) { 
-      push(@to_actually_remove_A, $to_remove_file); 
-      $to_actually_remove_H{$to_remove_file} = 1; 
-    }
-  }
-  utl_FileRemoveList(\@to_actually_remove_A, "v-annotate.pl:main()", \%opt_HH, $FH_HR);
-}
+output_mdl_and_alc_files_and_remove_temp_files($zero_alt, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
 
 $total_seconds += ofile_SecondsSinceEpoch();
 ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
@@ -11727,4 +11675,71 @@ sub doctoring_check_new_codon_validity {
   }
 
   return -1; # codon was not valid or $seq_doctor_ctr >= 2
+}
+
+#################################################################
+# Subroutine: output_mdl_and_alc_files_and_remove_temp_files()
+# Incept:     EPN, Mon Mar 22 16:32:35 2021
+# Purpose:    Output the mdl and alc files and remove all files
+#             if (@{$to_remove_A}) unless --keep. 
+#
+# Arguments:
+#  $zero_alt:       '1' if zero alerts were output (in which case we don't output alc file)
+#  $to_remove_AR:   ref to array of files to remove
+#  $opt_HHR:        ref to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR: ref to 2D hash of output file information, added to here
+#             
+# Returns:  void
+#
+#################################################################
+sub output_mdl_and_alc_files_and_remove_temp_files { 
+  my $sub_name = "output_mdl_and_alc_files_and_remove_temp_files";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($zero_alt, $to_remove_AR, $opt_HHR, $ofile_info_HHR) = (@_);
+
+  # close the two files we may output to stdout and the log
+  close($ofile_info_HHR->{"FH"}{"mdl"}); 
+  close($ofile_info_HHR->{"FH"}{"alc"}); 
+  
+  my $FH_HR  = $ofile_info_HH{"FH"};
+  
+  my @conclude_A = ();
+  push(@conclude_A, "#");
+  push(@conclude_A, "# Summary of classified sequences:");
+  push(@conclude_A, "#");
+  my @file_A = ();
+  utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"mdl"}, 1, \@file_A, $FH_HR);
+  push(@conclude_A, @file_A);
+  push(@conclude_A, "#");
+  if($zero_alt) { 
+    push(@conclude_A, "# Zero alerts were reported.");
+  }
+  else { 
+    push(@conclude_A, "# Summary of reported alerts:");
+    push(@conclude_A, "#");
+    my @file_A = ();
+    utl_FileLinesToArray($ofile_info_HHR->{"fullpath"}{"alc"}, 1, \@file_A, $FH_HR);
+    push(@conclude_A, @file_A);
+  }
+  
+  foreach my $line (@conclude_A) { 
+    ofile_OutputString($FH_HR->{"log"}, 1, $line . "\n");
+  }
+  
+# remove unwanted files, unless --keep
+  if(! opt_Get("--keep", $opt_HHR)) { 
+    my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
+    my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
+    foreach my $to_remove_file (@to_remove_A) { 
+      if((defined $to_remove_file) && (-e $to_remove_file) && (! defined $to_actually_remove_H{$to_remove_file})) { 
+        push(@to_actually_remove_A, $to_remove_file); 
+        $to_actually_remove_H{$to_remove_file} = 1; 
+      }
+    }
+    utl_FileRemoveList(\@to_actually_remove_A, $sub_name, $opt_HHR, $FH_HR);
+  }
+
+  return;
 }
