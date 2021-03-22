@@ -1097,8 +1097,26 @@ if($do_split) {
     ofile_OutputString($log_FH, 1, "# "); # necessary because waitForFarmJobsToFinish() creates lines that summarize wait time and so we need a '#' before 'done' printed by ofile_OutputProgressComplete()
   }
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
+  
+  # merge all per-chunk files together
   $start_secs = ofile_OutputProgressPrior("Merging and finalizing output", $progress_w, $FH_HR->{"log"}, *STDOUT);
+
+  # deal with .cmd file first, this one of the more complicated cases
+  my $cmd_file = $ofile_info_HH{"fullpath"}{"cmd"};
+  my @cmd_filelist_A = (); # array of chunk cmd files to concatenate
+  vdr_MergeOutputGetFileList($out_root_no_vadr, ".cmd", 1, \@cmd_filelist_A, \@chunk_outdir_A, $FH_HR);
+  my $chunk_cmd_file = $out_root_no_vadr . ".vadr.cmd.chunk";
+  utl_ConcatenateListOfFiles(\@cmd_filelist_A, $chunk_cmd_file, "v-annotate.pl:main", \%opt_HH, $FH_HR);
+  # close cmd file so we can append to it
+  close $ofile_info_HH{"FH"}{"cmd"};
+  my $cat_cmd = "cat $chunk_cmd_file >> $cmd_file";
+  utl_RunCommand($cat_cmd, opt_Get("-v", \%opt_HH), 0, undef); # pass undef instead of $FH_HR because $cmd file is closed
+  utl_RunCommand("echo $cat_cmd >> $cmd_file", opt_Get("-v", \%opt_HH), 0, undef); # record the command we just ran to the $cmd file
+  # reopen, so we can add to it again before exiting
+  if(! open($ofile_info_HH{"FH"}{"cmd"}, ">>", $ofile_info_HH{"fullpath"}{"cmd"})) { 
+    ofile_FAIL("ERROR in v-annotate.pl:main(), unable to re-open " . $ofile_info_HH{"fullpath"}{"cmd"} . " for appending", 1, $FH_HR);
+  }
+  push(@to_remove_A, $chunk_cmd_file); 
 
   if(($do_keep) || (opt_Get("--out_fsstk", \%opt_HH))) { 
     vdr_MergeFrameshiftStockholmFiles($out_root_no_vadr, \@mdl_info_AH, \%ftr_info_HAH, \%sgm_info_HAH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
@@ -1134,11 +1152,21 @@ if($do_split) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".rpn",     "rpn",         "replaced stretches of Ns summary file (-r)",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
 
-  # finish with cmd file?
-  # vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".cmd",       "cmd",         "List of executed commands",                            $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
+  # remove unwanted files, unless --keep
+  if(! opt_Get("--keep", \%opt_HH)) { 
+    my @to_actually_remove_A = (); # sanity check: make sure the files we're about to remove actually exist
+    my %to_actually_remove_H = (); # sanity check: to make sure we don't try to delete 
+    foreach my $to_remove_file (@to_remove_A) { 
+      if((defined $to_remove_file) && (-e $to_remove_file) && (! defined $to_actually_remove_H{$to_remove_file})) { 
+        push(@to_actually_remove_A, $to_remove_file); 
+        $to_actually_remove_H{$to_remove_file} = 1; 
+      }
+    }
+    utl_FileRemoveList(\@to_actually_remove_A, "v-annotate.pl:main()", \%opt_HH, $FH_HR);
+  }
+  
   $total_seconds += ofile_SecondsSinceEpoch();
   ofile_OutputConclusionAndCloseFilesOk($total_seconds, $dir, \%ofile_info_HH);
 

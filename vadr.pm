@@ -5334,13 +5334,13 @@ sub vdr_ReplaceInsertTokenInInsertString {
 #   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
 #   $out_sfx:           output name suffix
 #   $ofile_key:         key for %{$ofile_info_HHR}
-#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $ofile_desc:        description for %{$ofile_info_HHR}, "" to not add the file to %{$ofile_info_HHR}
 #   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
 #   $chunk_outdir_AR:   ref to array of output directories with files we are merging
 #   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
 #
-# Returns:     void
+# Returns:     name of the merged file created
 # 
 # Dies: if $check_exists is 1 and a file to merge does not exist
 # 
@@ -5361,12 +5361,14 @@ sub vdr_MergeOutputConcatenateOnly {
   printf("in $sub_name, merged_file: $merged_file, concatenating %d files\n", scalar(@filelist_A));
   if(scalar(@filelist_A) > 0) { 
     utl_ConcatenateListOfFiles(\@filelist_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
-    ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+    if($ofile_desc ne "") { 
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+    }
   }
   elsif($do_check_exists) { 
     ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
   }
-  return;
+  return $merged_file;
 }
 
 #################################################################
