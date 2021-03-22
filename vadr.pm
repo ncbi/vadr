@@ -5358,7 +5358,6 @@ sub vdr_MergeOutputConcatenateOnly {
   vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
 
   my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
-  printf("in $sub_name, merged_file: $merged_file, concatenating %d files\n", scalar(@filelist_A));
   if(scalar(@filelist_A) > 0) { 
     utl_ConcatenateListOfFiles(\@filelist_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
     if($ofile_desc ne "") { 
@@ -5405,7 +5404,6 @@ sub vdr_MergeOutputGetFileList {
   my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
   for(my $i = 1; $i <= $nchunk; $i++) { 
     my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
-    printf("in $sub_name, checking if file $chunk_file exists\n");
     if(-e $chunk_file) { 
       push(@{$filelist_AR}, $chunk_file);
     }
@@ -5471,7 +5469,6 @@ sub vdr_MergeOutputMdlTabularFile {
   my %num_pass_H = (); # key: model name, value: num passing seqs
   my %num_fail_H = (); # key: model name, value: num failing seqs
   for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
-    printf("in $sub_name, opening $filelist_A[$i]\n");
     open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
     while(my $line = <IN>) { 
       ##                                                    num   num   num
@@ -5567,7 +5564,7 @@ sub vdr_MergeOutputMdlTabularFile {
 #   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
 #   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
 #
-# Returns:     void
+# Returns:     '1' if zero alerts were reported, else '0'
 # 
 # Dies: if $check_exists is 1 and a file to merge does not exist
 # 
@@ -5606,7 +5603,6 @@ sub vdr_MergeOutputAlcTabularFile {
   my $key;
   my %line_H = ();
   for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
-    printf("in $sub_name, opening $filelist_A[$i]\n");
     open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
     while(my $line = <IN>) { 
        ##---  --------  -------  ---------------------------  --------  -----  ----  -----------
@@ -5702,7 +5698,7 @@ sub vdr_MergeOutputAlcTabularFile {
   ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "alc", $merged_file, 1, 1, "alert count tabular summary file");
   ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
 
-  return;
+  return $zero_alerts;
 }
 
 #################################################################
@@ -5740,7 +5736,6 @@ sub vdr_MergePerFeatureFastaFiles {
       my $ftr_out_sfx    = "." . $mdl_name . "." . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, ".") . ".fa";
       my $ftr_ofile_key  = $mdl_name . ".pfa." . $ftr_idx;
       my $ftr_ofile_desc = "model " . $mdl_name . " feature " . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, "#") . " predicted seqs";
-      printf("in $sub_name, mdl_name: $mdl_name, ftr_idx: $ftr_idx\n");
       vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $ftr_out_sfx, $ftr_ofile_key, $ftr_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
     }
   }
