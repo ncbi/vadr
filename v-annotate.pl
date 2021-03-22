@@ -1294,6 +1294,7 @@ else {
     sqf_FastaFileRemoveDescriptions($rpn_fa_file, $blastn_rpn_fa_file, \%ofile_info_HH);
     ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastn.rpn.fa", $blastn_rpn_fa_file, 0, $do_keep, "copy of input fasta file with Ns replaced with descriptions removed for blastn");
     push(@to_remove_A, $blastn_rpn_fa_file);
+    push(@to_remove_A, $blastn_rpn_fa_file.".ssi");
     $fa_file_for_analysis = $blastn_rpn_fa_file;
   }
   else { 
