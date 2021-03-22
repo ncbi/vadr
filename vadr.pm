@@ -5703,9 +5703,8 @@ sub vdr_MergeOutputAlcTabularFile {
   return;
 }
 
-
 #################################################################
-# Subroutine:  vdr_MergeFastaFiles()
+# Subroutine:  vdr_MergePerFeatureFastaFiles()
 # Incept:      EPN, Mon Mar 22 06:28:21 2021
 #
 # Purpose:    With --out_allfasta or --keept merge per-feature fasta
@@ -5724,9 +5723,9 @@ sub vdr_MergeOutputAlcTabularFile {
 # Dies: if problem concatenating files
 # 
 ################################################################# 
-sub vdr_MergeFastaFiles { 
+sub vdr_MergePerFeatureFastaFiles { 
   my $nargs_exp = 6;
-  my $sub_name = "vdr_MergeFastaFiles";
+  my $sub_name = "vdr_MergePerFeatureFastaFiles";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
   my ($out_root_no_vadr, $mdl_info_AHR, $ftr_info_HAHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
@@ -5741,6 +5740,99 @@ sub vdr_MergeFastaFiles {
       my $ftr_ofile_desc = "model " . $mdl_name . " feature " . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, "#") . " predicted seqs";
       printf("in $sub_name, mdl_name: $mdl_name, ftr_idx: $ftr_idx\n");
       vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $ftr_out_sfx, $ftr_ofile_key, $ftr_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeAlignments()
+# Incept:      EPN, Mon Mar 22 07:26:57 2021
+#
+# Purpose:    With --out_*{stk,afa} or --keep merge alignment 
+#             files for each model. If aligned fasta, we need to
+#             convert to pfam first. 
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $execs_HR:          ref to a hash with "esl-reformat" and "esl-alimerge"
+#   $mdl_info_AHR:      ref to the model info hash of arrays, PRE-FILLED
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if problem merging alignments
+# 
+################################################################# 
+sub vdr_MergeAlignments { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeAlignments";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $execs_HR, $mdl_info_AHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # determine which type of alignment files we will merge:
+  my $do_keep      = opt_Get("--keep", $opt_HHR);
+  my $do_out_stk   = $do_keep || opt_Get("--out_stk",   $opt_HHR) ? 1 : 0;
+  my $do_out_afa   = $do_keep || opt_Get("--out_afa",   $opt_HHR) ? 1 : 0;
+  my $do_out_rpstk = $do_keep || opt_Get("--out_rpstk",   $opt_HHR) ? 1 : 0;
+  my $do_out_rpafa = $do_keep || opt_Get("--out_rpafa",   $opt_HHR) ? 1 : 0;
+  # v-annotate.pl should have required that if --out_afa is used, --out_stk was also used
+  # and that if --out_rpafa is used, --out_rpstk was also used. These are required because
+  # we can't merge afa files (due to lack of RF annotation) so we need the stockholm equivalents
+  # but we check here again to be safe.
+  if(($do_out_afa) && (! $do_out_stk)) { 
+    ofile_FAIL("ERROR in $sub_name, trying to merge afa files but don't have stk files", 1, $FH_HR);
+  }
+  if(($do_out_rpafa) && (! $do_out_rpstk)) { 
+    ofile_FAIL("ERROR in $sub_name, trying to merge rpafa files but don't have rpstk files", 1, $FH_HR);
+  }
+
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  my @filelist_A = (); # array of alignment files to merge
+  my $out_stk = undef;
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    @filelist_A = ();
+    my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    my $afa_key = undef;
+    my $do_stk  = 0;
+    my $do_afa  = 0;
+    my $desc    = "";
+    foreach my $stk_key ("stk", "rpstk") { 
+      if($stk_key eq "stk") { 
+        $afa_key = "afa";
+        $do_stk  = $do_out_stk;
+        $do_afa  = $do_out_afa;
+        $desc = "model " . $mdl_name . " full original sequence alignment";
+      }
+      else { # stk_key eq "rpstk"
+        $afa_key = "rpafa";
+        $do_stk  = $do_out_rpstk;
+        $do_afa  = $do_out_rpafa;
+        $desc = "model " . $mdl_name . " full replaced sequence alignment";
+      }
+      my $stk_sfx = "." . $mdl_name . ".align." . $stk_key;
+      my $afa_sfx = "." . $mdl_name . ".align." . $afa_key;
+      vdr_MergeOutputGetFileList($out_root_no_vadr, $stk_sfx, 0, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+      if(scalar(@filelist_A) > 0) { 
+        my $stk_file = $out_root_no_vadr . ".vadr" . $stk_sfx;
+        my $afa_file = $out_root_no_vadr . ".vadr" . $afa_sfx;
+        my $stk_list_file = $stk_file . ".list";
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $stk_key . ".list", $stk_list_file, $do_keep, $do_keep, 
+                                        "model " . $mdl_name . " alignment list ($stk_key)");
+        utl_AToFile(\@filelist_A, $stk_list_file, 1, $FH_HR);
+        sqf_EslAlimergeListRun($execs_HR->{"esl-alimerge"}, $stk_list_file, "", $stk_file, "stockholm", $opt_HHR, $FH_HR);
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $stk_key, $stk_file, 1, 1, $desc . "(stk)");
+        if($do_afa) { 
+          sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "", $stk_file, $afa_file, "stockholm", "afa", $opt_HHR, $FH_HR);
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $afa_key, $afa_file, 1, 1, $desc . "(afa)");
+        }
+      }
     }
   }
 

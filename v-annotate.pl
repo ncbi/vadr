@@ -344,7 +344,7 @@ opt_Add("--out_rpafa",      "boolean", 0,    $g,     "-r", undef,   "with -r, ou
 opt_Add("--out_nofs",       "boolean", 0,    $g,    undef,"--keep", "do not output frameshift stockholm alignment files",                "do not output frameshift stockholm alignment files",            \%opt_HH, \@opt_order_A);
 opt_Add("--out_allfasta",   "boolean", 0,    $g,    undef,"--keep", "additionally output fasta files of features",                       "additionally output fasta files of features",                   \%opt_HH, \@opt_order_A);
 opt_Add("--out_nofasta",    "boolean", 0,    $g,    undef,"--keep,--out_allfasta", "do not output fasta files of passing/failing seqs",  "do not output fasta files of passing/failing seqs",                  \%opt_HH, \@opt_order_A);
-opt_Add("--out_debug",      "boolean", 0,    $g,    undef, undef,   "dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",  \%opt_HH, \@opt_order_A);
+opt_Add("--out_debug",      "boolean", 0,    $g,    undef,"--split","dump voluminous info from various data structures to output files", "dump voluminous info from various data structures to output files",  \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "other expert options";
 #       option            type          default     group  requires incompat  preamble-output                                                          help-output    
@@ -583,6 +583,19 @@ if(opt_IsUsed("--maxnjobs", \%opt_HH)) {
 if(opt_IsUsed("--cpu", \%opt_HH)) {
   if((! opt_IsUsed("--glsearch", \%opt_HH)) && (! opt_IsUsed("--split", \%opt_HH))) {
     die "ERROR, --cpu only makes sense in combination with --glsearch or --split";
+  }
+}
+
+# if --split and --out_afa,   we require --out_stk 
+# if --split and --out_rpafa, we require --out_fpstk 
+# this is because we can't merge afa alignments, only stockholm alignments
+# so if we want to merge afa alignments we need the stockholm equivalents
+if(opt_IsUsed("--split", \%opt_HH)) { 
+  if((opt_IsUsed("--out_afa", \%opt_HH)) && (! opt_IsUsed("--out_stk", \%opt_HH))) { 
+    die "ERROR, with --split and --out_afa, --out_stk is also required";
+  }
+  if((opt_IsUsed("--out_rpafa", \%opt_HH)) && (! opt_IsUsed("--out_rpstk", \%opt_HH))) { 
+    die "ERROR, with --split and --out_rpafa, --out_rpstk is also required";
   }
 }
 
@@ -1087,8 +1100,11 @@ if($do_split) {
 
   $start_secs = ofile_OutputProgressPrior("Merging and finalizing output", $progress_w, $FH_HR->{"log"}, *STDOUT);
 
+  if(($do_keep) || (opt_Get("--out_stk", \%opt_HH)) || (opt_Get("--out_afa", \%opt_HH)) || (opt_Get("--out_rpstk", \%opt_HH)) || (opt_Get("--out_rpafa", \%opt_HH))) { 
+    vdr_MergeAlignments($out_root_no_vadr, \%execs_H, \@mdl_info_AH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  }
   if(($do_keep) || (opt_Get("--out_allfasta", \%opt_HH))) { 
-    vdr_MergeFastaFiles($out_root_no_vadr, \@mdl_info_AH, \%ftr_info_HAH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergePerFeatureFastaFiles($out_root_no_vadr, \@mdl_info_AH, \%ftr_info_HAH, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
   
   my $do_check_exists = 1; # require that all files we are expecting to concatenate below exist, if not exit with error message
@@ -9931,7 +9947,7 @@ sub output_alignments {
     if($do_out_stk) { 
       my $out_rfrna_stk_file = $out_root . "." . $mdl_name . ".rfrna.align.stk";
       sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "", $out_rfrna_stk_file, "stockholm", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".rfrna.align.stk", $out_rfrna_stk_file, 0, $do_keep, sprintf("model $mdl_name full sequence alignment with RNA RF line (stockholm)"));
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".rfrna.align.stk", $out_rfrna_stk_file, 0, $do_keep, sprintf("model $mdl_name full sequence alignment with original RF line (stockholm)"));
       if(! $do_keep) { push(@{$to_remove_AR}, $out_rfrna_stk_file); }
       # for stockholm we need to replace RNA RF with DNA
       my $msa = Bio::Easel::MSA->new({
@@ -9957,7 +9973,7 @@ sub output_alignments {
       my $out_rfrna_rpstk_file = $out_root . "." . $mdl_name . ".rfrna.align.rpstk";
       my $out_stk_file         = $out_root . "." . $mdl_name . ".align.stk";
       sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rfrna_rpstk_file, "stockholm", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "rfrna.align.rpstk", $out_stk_file, 0, $do_keep, sprintf("model $mdl_name full replaced sequence alignment with RNA RF line (stockholm)"));
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "rfrna.align.rpstk", $out_rfrna_rpstk_file, 0, $do_keep, sprintf("model $mdl_name full replaced sequence alignment with original RF line (stockholm)"));
       if(! $do_keep) { push(@{$to_remove_AR}, $out_rfrna_rpstk_file); }
       # for stockholm we need to replace RNA RF with DNA
       my $msa = Bio::Easel::MSA->new({
@@ -9982,7 +9998,7 @@ sub output_alignments {
       my $out_rpafa_file = $out_root . "." . $mdl_name . ".align.rpafa";
       my $out_afa_file   = $out_root . "." . $mdl_name . ".align.afa";
       sqf_EslAlimergeListRun($execs_H{"esl-alimerge"}, $stk_list_file, "--dna", $out_rpafa_file, "afa", $opt_HHR, $FH_HR);
-      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpafa", $out_afa_file, $do_out_rpafa, $do_out_rpafa, sprintf("model $mdl_name full replaced sequence alignment (afa)"));
+      ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.rpafa", $out_rpafa_file, $do_out_rpafa, $do_out_rpafa, sprintf("model $mdl_name full replaced sequence alignment (afa)"));
       # for afa, no RF line so don't need to replace with DNA
       if($do_out_afa) { 
         # swap replaced sequences back with original sequences in the alignment
