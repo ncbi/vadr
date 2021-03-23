@@ -1091,7 +1091,7 @@ if($do_split) {
   my $nscripts_finished = 1; # the final script has finished
   if($nscript > 1) { # we may need to wait for the rest of the jobs
     $nscripts_finished = vdr_WaitForFarmJobsToFinish(0, # we're not running cmalign
-                                                     1, # do exit if any err files are written to
+                                                     0, # do not exit if any err files are written to (blastx outputs warnings to error files sometimes)
                                                      "out", 1, 5, \@cpu_out_file_AH, undef, undef, "[ok]", \%opt_HH, 
                                                      $ofile_info_HH{"FH"});
     if($nscripts_finished != $nscript) { 
@@ -8676,6 +8676,8 @@ sub output_feature_table {
 
   my $do_pv_blastx  = (opt_Get("--pv_skip", $opt_HHR) || opt_Get("--pv_hmmer", $opt_HHR)) ? 0 : 1;
   my $do_nofasta    = opt_Get("--out_nofasta", $opt_HHR) ? 1 : 0;
+  my $sidx_offset   = opt_Get("--sidx", $opt_HHR) - 1;
+  my $do_headers    = ($sidx_offset == 0) ? 1 : 0; # if --sidx value is not 1 do not print comment header lines
 
   my $FH_HR = $ofile_info_HHR->{"FH"}; # for convenience
   my $pass_ftbl_FH = $FH_HR->{"pass_tbl"};     # feature table for PASSing sequences
@@ -8683,7 +8685,9 @@ sub output_feature_table {
   my $pass_list_FH = $FH_HR->{"pass_list"};    # list of PASSing seqs
   my $fail_list_FH = $FH_HR->{"fail_list"};    # list of FAILing seqs
   my $alerts_FH    = $FH_HR->{"alerts_list"};  # list of alerts
-  print $alerts_FH "#sequence\terror\tfeature\terror-description\n";
+  if($do_headers) { 
+    print $alerts_FH "#sequence\terror\tfeature\terror-description\n";
+  }
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
   my $mdl_name = undef;
@@ -8741,6 +8745,7 @@ sub output_feature_table {
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
     my $seq_ntabftr = 0; # number of features for this sequence annotated in tabular .ftr file (may have shorter features than are permitted in .ftbl file)
+    my $seq_idx2print += $sidx_offset; # will be $seq_idx unless --sidx used and set to > 1
     
     my @ftout_AH      = (); # array of hashes with output for feature table, kept in a hash so we can sort before outputting
     my $ftidx         = 0;  # index in @ftout_AH
@@ -8936,7 +8941,7 @@ sub output_feature_table {
                 if((! $do_forceprotid) && (! $do_noseqnamemax)) { # neither --forceprotid and --noseqnamemax used
                   # make sure length of protein_id_value doesn't exceed the maximum, if so, shorten it.
                   if((length($protein_id_value)) > $max_protein_id_length) { 
-                    my $new_sfx = sprintf("...seq%d_%d", ($seq_idx + 1), $protein_id_idx);
+                    my $new_sfx = sprintf("...seq%d_%d", ($seq_idx2print + 1), $protein_id_idx);
                     my $len_new_sfx = length($new_sfx);
                     if($len_new_sfx > $max_protein_id_length) { 
                       ofile_FAIL("ERROR in $sub_name, suffix being used to prevent protein id from exceeding $max_protein_id_length characters is itself more than $max_protein_id_length characters:\n$new_sfx\n", 1, $FH_HR);
