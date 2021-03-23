@@ -7919,6 +7919,7 @@ sub output_tabular {
 
   # deal with --sidx offset
   my $sidx_offset = opt_Get("--sidx", $opt_HHR) - 1;
+  my $do_headers  = ($sidx_offset == 0) ? 1 : 0; # if --sidx value is not 1 do not print comment header lines
 
   # validate input and determine maximum counts of things
   my $nseq = scalar(@{$seq_name_AR});
@@ -8430,20 +8431,39 @@ sub output_tabular {
   push(@data_mdl_AA, []); # separator line
 
   # output the tables:
-  ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
-  ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
-
-  if($do_sda) {
-    ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+  # if we are doing headers, we always call ofile_TableHumanOutput()
+  if($do_headers) { 
+    ofile_TableHumanOutput(\@data_ant_AA, \@head_ant_AA, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_cls_AA, \@head_cls_AA, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_ftr_AA, \@head_ftr_AA, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_sgm_AA, \@head_sgm_AA, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_alt_AA, \@head_alt_AA, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
+    ofile_TableHumanOutput(\@data_dcr_AA, \@head_dcr_AA, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR);
+    if($do_sda) {
+      ofile_TableHumanOutput(\@data_sda_AA, \@head_sda_AA, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+    }
+    if($do_rpn) {
+      ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+    }
   }
-  if($do_rpn) {
-    ofile_TableHumanOutput(\@data_rpn_AA, \@head_rpn_AA, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+  else { 
+    # if we are not doing headers, we only call ofile_TableHumanOutput() if we have data, because ofile_TableHumanOutput() requires at least one of header and data arrays be non-empty
+    if(scalar(@data_ant_AA) > 0) { ofile_TableHumanOutput(\@data_ant_AA, undef, \@clj_ant_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ant"}, undef, $FH_HR); }
+    if(scalar(@data_cls_AA) > 0) { ofile_TableHumanOutput(\@data_cls_AA, undef, \@clj_cls_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"cls"}, undef, $FH_HR); }
+    if(scalar(@data_ftr_AA) > 0) { ofile_TableHumanOutput(\@data_ftr_AA, undef, \@clj_ftr_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"ftr"}, undef, $FH_HR); }
+    if(scalar(@data_sgm_AA) > 0) { ofile_TableHumanOutput(\@data_sgm_AA, undef, \@clj_sgm_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sgm"}, undef, $FH_HR); }
+    if(scalar(@data_alt_AA) > 0) { ofile_TableHumanOutput(\@data_alt_AA, undef, \@clj_alt_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"alt"}, undef, $FH_HR); }
+    if(scalar(@data_alc_AA) > 0) { ofile_TableHumanOutput(\@data_alc_AA, undef, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR); }
+    if(scalar(@data_mdl_AA) > 0) { ofile_TableHumanOutput(\@data_mdl_AA, undef, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR); }
+    if(scalar(@data_dcr_AA) > 0) { ofile_TableHumanOutput(\@data_dcr_AA, undef, \@clj_dcr_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"dcr"}, undef, $FH_HR); }
+    if(($do_sda) && (scalar(@data_sda_AA) > 0)) {
+      ofile_TableHumanOutput(\@data_sda_AA, undef, \@clj_sda_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"sda"}, undef, $FH_HR);
+    }
+    if(($do_rpn) && (scalar(@data_rpn_AA) > 0)) {
+      ofile_TableHumanOutput(\@data_rpn_AA, undef, \@clj_rpn_A, undef, undef, "  ", "-", "#", "#", "", 1, $FH_HR->{"rpn"}, undef, $FH_HR);
+    }
   }
   return ($zero_classifications, $zero_alerts);
 }
