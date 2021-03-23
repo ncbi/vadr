@@ -8100,9 +8100,6 @@ sub output_tabular {
       foreach $alt_code (@seq_alt_code_A) { 
         my $alt_instance = alert_sequence_instance_fetch($alt_seq_instances_HHR, $seq_name, $alt_code);
         if(defined $alt_instance) { 
-          if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
-            push(@data_alt_AA, []);  # push empty array --> blank line 
-          }
           if(! defined $alt_seqcode_H{$alt_code}) { 
             $alt_seq_ct_H{$alt_code}++; 
             $alt_seqcode_H{$alt_code} = 1;
@@ -8119,6 +8116,9 @@ sub output_tabular {
                                 $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                 helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                 $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+            if($alt_nprinted == 0) { 
+              push(@data_alt_AA, []);  # push empty array --> blank line 
+            }
             $alt_nprinted++;
           }
         }
@@ -8212,12 +8212,12 @@ sub output_tabular {
                 $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
                 $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
                 
-                if(($sgm_nprinted == 0) && (scalar(@data_sgm_AA) > 0)) { 
-                  push(@data_sgm_AA, []); # empty array -> blank line
-                }
                 push(@data_sgm_AA, [$sgm_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), 
                                     $ftr_nsgm, ($sgm_idx-$ftr_first_sgm+1), $sgm_sstart, $sgm_sstop, $sgm_mstart, $sgm_mstop, $sgm_slen, $sgm_strand, 
                                     $sgm_trunc, $sgm_pp5, $sgm_pp3, $sgm_gap5, $sgm_gap3]);
+                if($sgm_nprinted == 0) { 
+                  push(@data_sgm_AA, []); # empty array -> blank line
+                }
                 $sgm_nprinted++;
               }
             } # end of 'for' loop over sgms
@@ -8226,15 +8226,15 @@ sub output_tabular {
             if($ftr_len_by_sgm == 0) { $ftr_len_by_sgm = "-"; }
             if($ftr_alt_str eq "")   { $ftr_alt_str = "-"; }
 
-            if(($ftr_nprinted == 0) && (scalar(@data_ftr_AA) > 0)) { 
-              push(@data_ftr_AA, []); 
-            } # empty array -> blank line
             if($s_coords_str eq "") { $s_coords_str = "-"; } # will happen only for protein-validation only predictions
             if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
             push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
                                 ($ftr_idx+1), $ftr_parent_idx, $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5nlen, $ftr_3nlen, 
                                 $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
+            if($ftr_nprinted == 0) { 
+              push(@data_ftr_AA, []); # empty array -> blank line
+            } 
             $ftr_nprinted++;
 
             # print per-feature alerts, if any
@@ -8244,9 +8244,6 @@ sub output_tabular {
               foreach my $alt_code (@ftr_alt_code_A) { 
                 my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
                 if(defined $alt_instance) { 
-                  if(($alt_nprinted == 0) && (scalar(@data_alt_AA) > 0)) { 
-                    push(@data_alt_AA, []); # empty array -> blank line
-                  }
                   if(! defined $alt_seqcode_H{$alt_code}) { 
                     $alt_seq_ct_H{$alt_code}++; 
                     $alt_seqcode_H{$alt_code} = 1;
@@ -8263,6 +8260,9 @@ sub output_tabular {
                                         vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                         $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+                    if($alt_nprinted == 0) { 
+                      push(@data_alt_AA, []); # empty array -> blank line
+                    }
                     $alt_nprinted++;
                   }
                 }
