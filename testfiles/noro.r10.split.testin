@@ -1,0 +1,301 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+#
+# .sqa, .sqc, .ftr, .sgm, .alt files not diff'ed b/c with
+# --split they will have extra comment lines and different spacing
+# 
+# default 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --keep $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-df > va-noro-df.out
+desc: noro-df
+out: va-noro-df/va-noro-df.vadr.pass.tbl 
+out: va-noro-df/va-noro-df.vadr.fail.tbl
+out: va-noro-df/va-noro-df.vadr.mdl
+out: va-noro-df/va-noro-df.vadr.alc
+out: va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+out: va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+out: va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+out: va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+out: va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+out: va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+rmdir: va-noro-df
+# 
+# -r 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-r > va-noro-r.out
+desc: noro-r
+out: va-noro-r/va-noro-r.vadr.pass.tbl 
+out: va-noro-r/va-noro-r.vadr.fail.tbl
+out: va-noro-r/va-noro-r.vadr.mdl
+out: va-noro-r/va-noro-r.vadr.alc
+out: va-noro-r/va-noro-r.vadr.NC_029646.align.stk
+out: va-noro-r/va-noro-r.vadr.NC_039476.align.stk
+out: va-noro-r/va-noro-r.vadr.NC_039477.align.stk
+out: va-noro-r/va-noro-r.vadr.NC_029646.align.afa
+out: va-noro-r/va-noro-r.vadr.NC_039476.align.afa
+out: va-noro-r/va-noro-r.vadr.NC_039477.align.afa
+out: va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
+out: va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
+out: va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
+out: va-noro-r/va-noro-r.vadr.NC_029646.align.rpafa
+out: va-noro-r/va-noro-r.vadr.NC_039476.align.rpafa
+out: va-noro-r/va-noro-r.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpafa
+rmdir: va-noro-r
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --split --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-split > va-noro-split.out
+desc: noro-split
+out: va-noro-split/va-noro-split.vadr.pass.tbl 
+out: va-noro-split/va-noro-split.vadr.fail.tbl
+out: va-noro-split/va-noro-split.vadr.mdl
+out: va-noro-split/va-noro-split.vadr.alc
+out: va-noro-split/va-noro-split.vadr.NC_029646.align.stk
+out: va-noro-split/va-noro-split.vadr.NC_039476.align.stk
+out: va-noro-split/va-noro-split.vadr.NC_039477.align.stk
+out: va-noro-split/va-noro-split.vadr.NC_029646.align.afa
+out: va-noro-split/va-noro-split.vadr.NC_039476.align.afa
+out: va-noro-split/va-noro-split.vadr.NC_039477.align.afa
+out: va-noro-split/va-noro-split.vadr.NC_029646.align.rpstk
+out: va-noro-split/va-noro-split.vadr.NC_039476.align.rpstk
+out: va-noro-split/va-noro-split.vadr.NC_039477.align.rpstk
+out: va-noro-split/va-noro-split.vadr.NC_029646.align.rpafa
+out: va-noro-split/va-noro-split.vadr.NC_039476.align.rpafa
+out: va-noro-split/va-noro-split.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpafa
+rmdir: va-noro-split
+# 
+# --split --nkb 1 (4 chunks, 1 cpu)
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --nkb 1 --split --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-split-nkb1 > va-noro-split-nkb1.out
+desc: noro-split-nkb1
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.pass.tbl 
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.fail.tbl
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.mdl
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.alc
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_029646.align.stk
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039476.align.stk
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039477.align.stk
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_029646.align.afa
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039476.align.afa
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039477.align.afa
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_029646.align.rpstk
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039476.align.rpstk
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039477.align.rpstk
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_029646.align.rpafa
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039476.align.rpafa
+out: va-noro-split-nkb1/va-noro-split-nkb1.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpafa
+rmdir: va-noro-split-nkb1
+# 
+# --split --nkb 1 --cpu 3 (4 chunks, 3 cpus)
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --cpu 3 --nkb 1 --split --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-split-nkb1-cpu3 > va-noro-split-nkb1-cpu3.out
+desc: noro-split-nkb1-cpu3
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.pass.tbl 
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.fail.tbl
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.mdl
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.alc
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_029646.align.stk
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039476.align.stk
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039477.align.stk
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_029646.align.afa
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039476.align.afa
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039477.align.afa
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_029646.align.rpstk
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039476.align.rpstk
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039477.align.rpstk
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_029646.align.rpafa
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039476.align.rpafa
+out: va-noro-split-nkb1-cpu3/va-noro-split-nkb1-cpu3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpafa
+rmdir: va-noro-split-nkb1-cpu3
+# 
+# --split --cpu 3 (1 chunk, 3 cpus)
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --cpu 3 --split --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-split-cpu3 > va-noro-split-cpu3.out
+desc: noro-split-cpu3
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.pass.tbl 
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.fail.tbl
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.mdl
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.alc
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_029646.align.stk
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039476.align.stk
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039477.align.stk
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_029646.align.afa
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039476.align.afa
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039477.align.afa
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_029646.align.rpstk
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039476.align.rpstk
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039477.align.rpstk
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_029646.align.rpafa
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039476.align.rpafa
+out: va-noro-split-cpu3/va-noro-split-cpu3.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpafa
+rmdir: va-noro-split-cpu3
+# 
+#
+# -s -r, no --split
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f -s --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-s > va-noro-s.out
+desc: noro-s
+out: va-noro-s/va-noro-s.vadr.pass.tbl 
+out: va-noro-s/va-noro-s.vadr.fail.tbl
+out: va-noro-s/va-noro-s.vadr.mdl
+out: va-noro-s/va-noro-s.vadr.alc
+out: va-noro-s/va-noro-s.vadr.NC_029646.align.stk
+out: va-noro-s/va-noro-s.vadr.NC_039476.align.stk
+out: va-noro-s/va-noro-s.vadr.NC_039477.align.stk
+out: va-noro-s/va-noro-s.vadr.NC_029646.align.afa
+out: va-noro-s/va-noro-s.vadr.NC_039476.align.afa
+out: va-noro-s/va-noro-s.vadr.NC_039477.align.afa
+out: va-noro-s/va-noro-s.vadr.NC_029646.align.rpstk
+out: va-noro-s/va-noro-s.vadr.NC_039476.align.rpstk
+out: va-noro-s/va-noro-s.vadr.NC_039477.align.rpstk
+out: va-noro-s/va-noro-s.vadr.NC_029646.align.rpafa
+out: va-noro-s/va-noro-s.vadr.NC_039476.align.rpafa
+out: va-noro-s/va-noro-s.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.rpafa
+#rmdir: va-noro-s
+#
+# --split --nkb 1 --cpu 3 -s (4 chunks, 3 cpus)
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f -s --cpu 3 --split --keep -r $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-split-nkb1-cpu3-s > va-noro-split-nkb1-cpu3-s.out
+desc: noro-split-nkb1-cpu3-s
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.pass.tbl 
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.fail.tbl
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.mdl
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.alc
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_029646.align.stk
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039476.align.stk
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039477.align.stk
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_029646.align.afa
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039476.align.afa
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039477.align.afa
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_029646.align.rpstk
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039476.align.rpstk
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039477.align.rpstk
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_029646.align.rpafa
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039476.align.rpafa
+out: va-noro-split-nkb1-cpu3-s/va-noro-split-nkb1-cpu3-s.vadr.NC_039477.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.rpstk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_029646.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039476.align.rpafa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-s/va-noro-s.vadr.NC_039477.align.rpafa
+rmdir: va-noro-split-nkb1-cpu3-s
