@@ -306,14 +306,15 @@ opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
-opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible", \%opt_HH, \@opt_order_A);
-opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_minfract",      "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in subseq to trigger replacement is <x>",            "minimum fraction of Ns in subseq to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible",               \%opt_HH, \@opt_order_A);
+opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>",                      \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfract",      "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in subseq to trigger replacement is <x>",            "minimum fraction of Ns in subseq to trigger replacement is <x>",          \%opt_HH, \@opt_order_A);
 opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
-opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",        "detect CDS and MP alerts in sequences w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
-opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs", \%opt_HH, \@opt_order_A);
-opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace", \%opt_HH, \@opt_order_A);
-opt_Add("--r_list",       "string",   undef,   $g,    "-r", undef,    "with -r, only use models listed in file <s> for N replacement stage",       "with -r, only use models listed in file <s> for N replacement stage",  \%opt_HH, \@opt_order_A);
+opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",        "detect CDS and MP alerts in sequences w/Ns replaced, not originals",      \%opt_HH, \@opt_order_A);
+opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs",        \%opt_HH, \@opt_order_A);
+opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace",       \%opt_HH, \@opt_order_A);
+opt_Add("--r_list",       "string",   undef,   $g,    "-r", undef,    "with -r, only use models listed in file <s> for N replacement stage",       "with -r, only use models listed in file <s> for N replacement stage",     \%opt_HH, \@opt_order_A);
+opt_Add("--r_only",       "string",   undef,   $g,    "-r","--r_list","with -r, only use model named <s> for N replacement stage",                 "with -r, only use model named <s> for N replacement stage",               \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
@@ -455,6 +456,7 @@ my $options_okay =
                 'r_pvorig'      => \$GetOptions_H{"--r_pvorig"},
                 'r_prof'        => \$GetOptions_H{"--r_prof"},
                 'r_list=s'      => \$GetOptions_H{"--r_list"},
+                'r_only=s'      => \$GetOptions_H{"--r_only"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
@@ -626,8 +628,7 @@ my $do_blastn_any = ($do_blastn_rpn || $do_blastn_cls || $do_blastn_cdt || $do_b
 # they are all turned on/off with -s in case future changes
 # only need some but not all
 
-my $do_glsearch = opt_Get("--glsearch", \%opt_HH) ? 1 : 0;
-
+my $do_glsearch = opt_Get("--glsearch",  \%opt_HH) ? 1 : 0;
 
 #############################
 # create the output directory
@@ -799,7 +800,7 @@ if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need th
   foreach my $sfx (".nhr", ".nin", ".nsq", ".ndb", ".not", ".nto", ".ntf") { 
     utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "blastn $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   }
-  if(($do_glsearch) || (defined $replace_list)) { 
+  if(($do_glsearch) || (defined $replace_list) || (opt_IsUsed("--r_only", \%opt_HH))) { 
     foreach my $sfx (".ssi") { # for fetching seqs from
       utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "easel $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
     }
@@ -1193,36 +1194,41 @@ my $in_sqfile  = Bio::Easel::SqFile->new({ fileLocation => $in_fa_file }); # the
 my $rpn_sqfile = undef;
 # open the blastn_db sequence file too, if we need it
 my $blastn_db_sqfile = undef;
-my $rlist_blastn_db_file = undef;
+my $r_subset_blastn_db_file = undef;
 if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { 
   $blastn_db_sqfile = Bio::Easel::SqFile->new({ fileLocation => $blastn_db_file });
 
-  # deal with the --r_list option
-  if(defined $replace_list) {
+  # deal with the --r_list or --r_only option (they are incompatible so we can only have one or the other)
+  if((defined $replace_list) || (opt_IsUsed("--r_only", \%opt_HH))) { 
     # create the blastn db file that we will use with -r, which must
     # be a subset of seqs in $blastn_db_file (if not, script will exit in error in the fetch_seqs_given_names
     # call below
-    my @rlist_seq_name_A = (); # array of sequence names read from --r_list file
-    utl_FileLinesToArray($replace_list, 1, \@rlist_seq_name_A, $FH_HR);
-    $rlist_blastn_db_file = $out_root . ".rlist.blastn.fa";
-    $blastn_db_sqfile->fetch_seqs_given_names(\@rlist_seq_name_A, 60, $rlist_blastn_db_file);
-    sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $rlist_blastn_db_file, \%opt_HH, $FH_HR);
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.fa",  $rlist_blastn_db_file,          0, $do_keep, "--r_list blastn db fasta file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.nhr", $rlist_blastn_db_file . ".nhr", 0, $do_keep, "--r_list blastn db .nhr file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.nin", $rlist_blastn_db_file . ".nin", 0, $do_keep, "--r_list blastn db .nin file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.nsq", $rlist_blastn_db_file . ".nsq", 0, $do_keep, "--r_list blastn db .nsq file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.ndb", $rlist_blastn_db_file . ".ndb", 0, $do_keep, "--r_list blastn db .ndb file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.not", $rlist_blastn_db_file . ".not", 0, $do_keep, "--r_list blastn db .not file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.ntf", $rlist_blastn_db_file . ".ntf", 0, $do_keep, "--r_list blastn db .ntf file");
-    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "rlist.blastn.nto", $rlist_blastn_db_file . ".nto", 0, $do_keep, "--r_list blastn db .nto file");
-    push(@to_remove_A, $rlist_blastn_db_file);
-    push(@to_remove_A, $rlist_blastn_db_file . ".nhr");
-    push(@to_remove_A, $rlist_blastn_db_file . ".nin");
-    push(@to_remove_A, $rlist_blastn_db_file . ".nsq");
-    push(@to_remove_A, $rlist_blastn_db_file . ".ndb");
-    push(@to_remove_A, $rlist_blastn_db_file . ".not");
-    push(@to_remove_A, $rlist_blastn_db_file . ".ntf");
-    push(@to_remove_A, $rlist_blastn_db_file . ".nto");
+    my @r_subset_seq_name_A = (); # array of sequence names read from --r_list file
+    if(defined $replace_list) { 
+      utl_FileLinesToArray($replace_list, 1, \@r_subset_seq_name_A, $FH_HR);
+    }
+    else { # opt_IsUsed("--r_only", \%opt_HH)
+      @r_subset_seq_name_A = (opt_Get("--r_only", \%opt_HH));
+    }
+    $r_subset_blastn_db_file = $out_root . ".r_subset.blastn.fa";
+    $blastn_db_sqfile->fetch_seqs_given_names(\@r_subset_seq_name_A, 60, $r_subset_blastn_db_file);
+    sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $r_subset_blastn_db_file, \%opt_HH, $FH_HR);
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.fa",  $r_subset_blastn_db_file,          0, $do_keep, "--r_list blastn db fasta file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.nhr", $r_subset_blastn_db_file . ".nhr", 0, $do_keep, "--r_list blastn db .nhr file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.nin", $r_subset_blastn_db_file . ".nin", 0, $do_keep, "--r_list blastn db .nin file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.nsq", $r_subset_blastn_db_file . ".nsq", 0, $do_keep, "--r_list blastn db .nsq file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.ndb", $r_subset_blastn_db_file . ".ndb", 0, $do_keep, "--r_list blastn db .ndb file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.not", $r_subset_blastn_db_file . ".not", 0, $do_keep, "--r_list blastn db .not file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.ntf", $r_subset_blastn_db_file . ".ntf", 0, $do_keep, "--r_list blastn db .ntf file");
+    ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "r_subset.blastn.nto", $r_subset_blastn_db_file . ".nto", 0, $do_keep, "--r_list blastn db .nto file");
+    push(@to_remove_A, $r_subset_blastn_db_file);
+    push(@to_remove_A, $r_subset_blastn_db_file . ".nhr");
+    push(@to_remove_A, $r_subset_blastn_db_file . ".nin");
+    push(@to_remove_A, $r_subset_blastn_db_file . ".nsq");
+    push(@to_remove_A, $r_subset_blastn_db_file . ".ndb");
+    push(@to_remove_A, $r_subset_blastn_db_file . ".not");
+    push(@to_remove_A, $r_subset_blastn_db_file . ".ntf");
+    push(@to_remove_A, $r_subset_blastn_db_file . ".nto");
   }
 } 
 
@@ -1250,7 +1256,7 @@ if($do_replace_ns) {
   my %seq_replaced_H = ();
   my %mdl_seq_name_HA = ();
   classification_stage(\%execs_H, "rpn.cls", $cm_file,
-                       ((defined $replace_list) ? $rlist_blastn_db_file : $blastn_db_file),
+                       ((defined $r_subset_blastn_db_file) ? $r_subset_blastn_db_file : $blastn_db_file),
                        $blastn_in_fa_file, \%seq_len_H,
                        $qsub_prefix, $qsub_suffix, \@mdl_info_AH, \%stg_results_HHH, 
                        $out_root, $progress_w, \@to_remove_A, \%opt_HH, \%ofile_info_HH);
@@ -1268,12 +1274,11 @@ if($do_replace_ns) {
   # for each model with seqs to align to, create the sequence file and run cmalign/glsearch
   my $mdl_name;
   my $nseq_replaced = 0;
-  my $sqfile_for_replacement_R = (defined $rlist_blastn_db_file) ? \$rlist_blastn_db_file : \$blastn_db_file; # sqfile we'll use as a blastn 
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, \$in_sqfile, $sqfile_for_replacement_R, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                              \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
