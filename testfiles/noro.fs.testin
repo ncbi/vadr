@@ -12,7 +12,7 @@
 # 'out:' file is compared against the first 'exp:' file, the second 
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.fs.1.fa va-noro.fs.1 > va-noro.fs.1.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --out_fsstk --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.fs.1.fa va-noro.fs.1 > va-noro.fs.1.out
 desc: annotate-noro-fs.1
 out: va-noro.fs.1/va-noro.fs.1.vadr.pass.tbl 
 out: va-noro.fs.1/va-noro.fs.1.vadr.fail.tbl
@@ -42,7 +42,7 @@ rmdir: va-noro.fs.1
 ## 
 ## partial sequences extracted from noro.fs.1.fa
 ##
-command: perl $VADRSCRIPTSDIR/v-annotate.pl  --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.fs.2.fa va-noro.fs.2 > va-noro.fs.2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --out_fsstk --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.fs.2.fa va-noro.fs.2 > va-noro.fs.2.out
 desc: annotate-noro-fs.2
 out: va-noro.fs.2/va-noro.fs.2.vadr.pass.tbl 
 out: va-noro.fs.2/va-noro.fs.2.vadr.fail.tbl
