@@ -50,7 +50,6 @@ my $env_vadr_easel_dir    = utl_DirEnvVarValid("VADREASELDIR");
 # make sure the required executables exist and are executable
 my %execs_H = (); # hash with paths to all required executables
 $execs_H{"cmbuild"}       = $env_vadr_infernal_dir . "/cmbuild";
-$execs_H{"cmemit"}        = $env_vadr_infernal_dir . "/cmemit";
 $execs_H{"cmfetch"}       = $env_vadr_infernal_dir . "/cmfetch";
 $execs_H{"cmpress"}       = $env_vadr_infernal_dir . "/cmpress";
 $execs_H{"hmmbuild"}      = $env_vadr_hmmer_dir    . "/hmmbuild";
@@ -274,7 +273,8 @@ push(@early_cmd_A, $cmd);
 
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
-my $out_root = $dir . "/" . $dir_tail . ".vadr";
+my $out_root         = $dir . "/" . $dir_tail . ".vadr";
+my $out_root_no_vadr = $dir . "/" . $dir_tail;
 
 #######################
 # output program banner
@@ -618,6 +618,40 @@ else {
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 }
 
+###########################
+# Build the blastn database
+###########################
+$start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database ", $progress_w, $log_FH, *STDOUT);
+my $tmp_blastn_fa_file = $out_root_no_vadr . ".fa.tmp";
+my $blastn_fa_file     = $out_root_no_vadr . ".fa";
+
+sqf_EslReformatRun($execs_H{"esl-reformat"}, "-d -u", $fa_file, $tmp_blastn_fa_file, "fasta", "fasta", \%opt_HH, $FH_HR);
+ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "nucleotide blastn db fasta sequence file for $mdl_name");
+my $nt_sqfile    = Bio::Easel::SqFile->new({ fileLocation => $tmp_blastn_fa_file });
+my $tmp_seq_name = $nt_sqfile->fetch_seq_name_given_ssi_number(0);
+my $tmp_sqstring = $nt_sqfile->fetch_seq_to_sqstring($tmp_seq_name);
+printf { $ofile_info_HH{"FH"}{"blastn-fa"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($tmp_sqstring, 60);
+close $ofile_info_HH{"FH"}{"blastn-fa"};
+
+# run makeblastdb
+sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $blastn_fa_file, \%opt_HH, $FH_HR);
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
+ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
+
+if(! opt_Get("--keep", \%opt_HH)) { 
+  utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
+  if(-e $tmp_blastn_fa_file . ".ssi") { 
+    utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file . ".ssi", "v-build.pl main", \%opt_HH, $FH_HR);
+  }
+}
+
+ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
+
 ######################################################################
 # Finish populating @{$ftr_info_HAH{$mdl_name} and create @sgm_info_AH
 ######################################################################
@@ -808,41 +842,6 @@ if(! opt_Get("--skipbuild", \%opt_HH)) {
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1f",     $cm_file . ".i1f", 1, 1, "optimized p7 HMM filters (MSV part)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "i1p",     $cm_file . ".i1p", 1, 1, "optimized p7 HMM filters (remainder)");
   ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmpress", $cmpress_file,     1, 1, "cmpress output file");
-}
-
-#####################################################################
-# Build the blastn database, using the consensus sequence from the CM
-#####################################################################
-if(! opt_Get("--skipbuild", \%opt_HH)) { # we can only do this step if we built the CM
-  
-  $start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database of CM consensus ", $progress_w, $log_FH, *STDOUT);
-
-  # emit the consensus sequence to a file
-  my $cmemit_fa_file = $out_root . ".nt-cseq.fa";
-  my $cmemit_cseq = vdr_CmemitConsensus(\%execs_H, $cm_file, $mdl_name, $cmemit_fa_file, \%opt_HH, \%ofile_info_HH);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "cmemit-fasta", $cmemit_fa_file, 0, opt_Get("--keep", \%opt_HH), "cmemit -c output");
-
-  # make a new fasta file with same sequence but new name ($mdl_name)
-  my $blastn_fa_file = $out_root . ".nt.fa";
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "fasta sequence file with cmemit consensus sequence for $mdl_name");
-  printf { $ofile_info_HH{"FH"}{"blastn-fa"} } ">" . $mdl_name . "\n" . seq_SqstringAddNewlines($cmemit_cseq, 60);
-  close $ofile_info_HH{"FH"}{"blastn-fa"};
-
-  sqf_BlastDbCreate($execs_H{"makeblastdb"}, "nucl", $blastn_fa_file, \%opt_HH, $FH_HR);
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nhr", $blastn_fa_file . ".nhr", 1, 1, "BLAST db .nhr file for $mdl_name");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nin", $blastn_fa_file . ".nin", 1, 1, "BLAST db .nin file for $mdl_name");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nsq", $blastn_fa_file . ".nsq", 1, 1, "BLAST db .nsq file for $mdl_name");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ndb", $blastn_fa_file . ".ndb", 1, 1, "BLAST db .ndb file for $mdl_name");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-not", $blastn_fa_file . ".not", 1, 1, "BLAST db .not file for $mdl_name");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-ntf", $blastn_fa_file . ".ntf", 1, 1, "BLAST db .ntf file for $mdl_name");
-  ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, "blastdb-nto", $blastn_fa_file . ".nto", 1, 1, "BLAST db .nto file for $mdl_name");
-
-
-  if(! opt_Get("--keep", \%opt_HH)) { 
-    utl_FileRemoveUsingSystemRm($cmemit_fa_file, "v-build.pl main", \%opt_HH, $FH_HR);
-  }
-
-  ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 }
 
 ########################
