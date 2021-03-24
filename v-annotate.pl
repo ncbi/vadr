@@ -2093,7 +2093,7 @@ sub classification_stage {
   
   # parse the sorted tblout file
   cmsearch_parse_sorted_tblout($sort_tblout_file, $stg_key,
-                                         $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
+                               $mdl_info_AHR, $stg_results_HHHR, $opt_HHR, $FH_HR);
 
   return;
 }
@@ -3094,6 +3094,10 @@ sub add_classification_alerts {
         $cls_output_HHR->{$seq_name}{"model2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"model"};
         $cls_output_HHR->{$seq_name}{"group2"}    = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"group"};    # can be undef
         $cls_output_HHR->{$seq_name}{"subgroup2"} = $stg_results_HHHR->{$seq_name}{"std.cls.2"}{"subgroup"}; # can be undef
+      }
+      # save -r data (which may differ from std.cls data, especially if --r_list or --r_only)
+      if(defined $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}) { 
+        $cls_output_HHR->{$seq_name}{"rpn.model1"} = $stg_results_HHHR->{$seq_name}{"rpn.cls.1"}{"model"};
       }
     } # else entered if we didn't report a noannotn alert
   } # end of foreach seq loop
@@ -8094,6 +8098,8 @@ sub output_tabular {
     my $seq_subgrp1 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup1"})) ? $cls_output_HR->{"subgroup1"} : "-";
     my $seq_subgrp2 = ((defined $cls_output_HR) && (defined $cls_output_HR->{"subgroup2"})) ? $cls_output_HR->{"subgroup2"} : "-";
 
+    my $seq_mdl_rpn = ((defined $cls_output_HR) && (defined $cls_output_HR->{"rpn.model1"})) ? $cls_output_HR->{"rpn.model1"} : "-";
+
     my $sda_output_HR = (($do_sda) && (defined $sda_output_HHR->{$seq_name})) ? \%{$sda_output_HHR->{$seq_name}} : undef;
     my $sda_ugp_seq   = (($do_sda) && (defined $sda_output_HR->{"ugp_seq"}))  ? $sda_output_HR->{"ugp_seq"} : "-";
     my $sda_ugp_mdl   = (($do_sda) && (defined $sda_output_HR->{"ugp_mdl"}))  ? $sda_output_HR->{"ugp_mdl"} : "-";
@@ -8382,7 +8388,7 @@ sub output_tabular {
     if($do_rpn) {
       my $rpn_nnt_n_rp_fract2print = (($rpn_nnt_n_rp_fract ne "-") && ($rpn_nnt_n_tot ne "-") && ($rpn_nnt_n_tot > 0)) ? 
           sprintf("%.3f", $rpn_nnt_n_rp_fract) : "-";
-      push(@data_rpn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
+      push(@data_rpn_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl_rpn, $seq_pass_fail,
                           $rpn_nnt_n_tot, $rpn_nnt_n_rp_tot, $rpn_nnt_n_rp_fract2print,
                           $rpn_ngaps_tot, $rpn_ngaps_int, $rpn_ngaps_rp, 
                           $rpn_ngaps_rp_full, $rpn_ngaps_rp_part,
