@@ -163,6 +163,7 @@ $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
 $execs_H{"esl-ssplit"}    = $env_vadr_bioeasel_dir . "/scripts/esl-ssplit.pl";
 $execs_H{"blastx"}        = $env_vadr_blast_dir    . "/blastx";
 $execs_H{"blastn"}        = $env_vadr_blast_dir    . "/blastn";
+$execs_H{"makeblastdb"}   = $env_vadr_blast_dir    . "/makeblastdb";
 $execs_H{"parse_blast"}   = $env_vadr_scripts_dir  . "/parse_blast.pl";
 $execs_H{"glsearch"}      = $env_vadr_fasta_dir    . "/glsearch36";
 utl_ExecHValidate(\%execs_H, undef);
@@ -804,13 +805,6 @@ if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need th
       utl_FileValidateExistsAndNonEmpty($blastn_db_file . $sfx, "easel $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
     }
   }
-}
-# check that we have makeblastdb if we need it
-if((defined $replace_list) || (opt_IsUsed("--r_only", \%opt_HH))) { 
-    $execs_H{"makeblastdb"} = $env_vadr_blast_dir    . "/makeblastdb";
-    if(! -x $execs_H{"makeblastdb"}) { 
-      ofile_FAIL("ERROR required executable (due to --r_list or --r_only) " . $execs_H{"makeblastdb"} . " does not exist", 1, $FH_HR);
-    }
 }
 
 # only check for blastx db if we need it
