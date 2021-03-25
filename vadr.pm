@@ -150,6 +150,11 @@ require "sqp_utils.pm";
 # vdr_CmalignCheckStdOutput()
 # vdr_CmalignParseInsertFile()
 # vdr_CmalignWriteInsertFile()
+#
+# Subroutines related to the --split option:
+# vdr_CmalignCheckStdOutput()
+# vdr_CmalignParseInsertFile()
+# vdr_CmalignWriteInsertFile()
 # 
 # Other subroutines related to running infernal programs
 # vdr_CmemitConsensus()
@@ -160,6 +165,10 @@ require "sqp_utils.pm";
 # vdr_CdsFetchStockholmToFasta()
 # vdr_ParseSeqFileToSeqHash()
 # vdr_FrameAdjust()
+# vdr_WriteCommandScript()
+# vdr_GlsearchFormat3And9CToStockholmAndInsertFile()
+# vdr_CigarToInsertsHash()
+# vdr_ReplaceInsertTokenInInsertString()
 #
 #################################################################
 # Subroutine: vdr_FeatureInfoImputeCoords
@@ -2613,27 +2622,30 @@ sub vdr_SubmitJobAsScript {
 #          If($do_cmalign) behavior changes to a more detailed check
 #          of the cmalign output file, see cmalignCheckStdOutput().
 #          
-#          When $do_errcheck is 1, this function considers any output
+#          When --errcheck is used, this function considers any output
 #          written to stderr output files in @{$errfile_AR} to mean
 #          that the corresponding job has 'failed' and should be
-#          considered to have finished. When $do_errchecks is 0
-#          we don't look at the err files.
+#          considered to have finished. When --errcheck is not used we
+#          don't look at the err files.
 # 
 #
 # Arguments: 
-#  $do_cmalign:      '1' if we're running cmalign, which requires special care because we
-#                    handle two cases: finish successfully or die with a specific error
-#  $outkey:          key in second dimension of out_file_AHR we'll check to see if job is finished
-#  $out_file_AHR:    ref to array of hashes of output files that will be created by jobs we are waiting for
-#  $success_AR:      ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
-#                    these will always all be '1' unless $do_cmalign
-#                    if($do_cmalign) some may be '0'
-#  $mxsize_AR:       ref to array of required matrix sizes, CAN BE UNDEF
-#                    $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
-#                    else set to '0'
-#  $finished_str:    string that indicates a job is finished e.g. "[ok]"
-#  $opt_HHR:         REF to options hash
-#  $FH_HR:           REF to hash of file handles
+#  $do_cmalign:       '1' if we're running cmalign, which requires special care because we
+#                     handle two cases: finish successfully or die with a specific error
+#  $do_errcheck:      '1' if we should fail if any error file is written to
+#  $outkey:           key in second dimension of out_file_AHR we'll check to see if job is finished
+#  $init_sleep_secs:  number of seconds to wait initially before checking 
+#  $input_chunk_secs: number of seconds to increment wait by until we reach 120s
+#  $out_file_AHR:     ref to array of hashes of output files that will be created by jobs we are waiting for
+#  $success_AR:       ref to array of success values, FILLED HERE, can be undef if ! $do_cmalign
+#                     these will always all be '1' unless $do_cmalign
+#                     if($do_cmalign) some may be '0'
+#  $mxsize_AR:        ref to array of required matrix sizes, CAN BE UNDEF
+#                     $mxsize_AR->[$j] set to value readh from cmalign output, if $success_AR->[$j] == 0
+#                     else set to '0'
+#  $finished_str:     string that indicates a job is finished e.g. "[ok]"
+#  $opt_HHR:          ref to options hash
+#  $FH_HR:            ref to hash of file handles
 #
 # Returns:     Number of jobs (<= scalar(@outfile_A)) that have
 #              finished.
@@ -2643,14 +2655,13 @@ sub vdr_SubmitJobAsScript {
 ################################################################# 
 sub vdr_WaitForFarmJobsToFinish { 
   my $sub_name = "vdr_WaitForFarmJobsToFinish()";
-  my $nargs_expected = 8;
+  my $nargs_expected = 11;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($do_cmalign, $outkey, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
-
+  my ($do_cmalign, $do_errcheck, $outkey, $init_sleep_secs, $input_chunk_secs, $out_file_AHR, $success_AR, $mxsize_AR, $finished_str, $opt_HHR, $FH_HR) = @_;
+ 
   my $log_FH = $FH_HR->{"log"};
   my $nmin = opt_Get("--wait", $opt_HHR);
-  my $do_errcheck = opt_Get("--errcheck", $opt_HHR);
 
   # contract check
   if(! exists $out_file_AHR->[0]{$outkey}) { 
@@ -2674,10 +2685,14 @@ sub vdr_WaitForFarmJobsToFinish {
                             # to be finished), else 0. We only use this array if the --errcheck option is enabled.
   my $nfinished      = 0;   # number of jobs finished
   my $nfail          = 0;   # number of jobs that have failed
-  my $cur_sleep_secs = 15;  # number of seconds to wait between checks, we'll double this until we reach $max_sleep, every $doubling_secs seconds
-  my $doubling_secs  = 120; # number of seconds to wait before doublign $cur_sleep
-  my $max_sleep_secs = 120; # maximum number of seconds we'll wait between checks
-  my $secs_waited    = 0;   # number of total seconds we've waited thus far
+
+  # variables related to wait times between checks
+  my $cur_sleep_secs = $init_sleep_secs;  # number of seconds to wait before first check
+  my $chunk_secs     = $input_chunk_secs; # number of seconds to increment wait time by until we reach 
+                                          # $doubling_secs at which point we'll double until we reach $max_sleep
+  my $doubling_secs  = 120;               # number of seconds to wait before starting to double $cur_sleep_secs
+  my $max_sleep_secs = 120;               # maximum number of seconds we'll wait between checks
+  my $secs_waited    = 0;                 # number of total seconds we've waited thus far
 
   # initialize @is_finished_A to all '0's
   for(my $i = 0; $i < $njobs; $i++) { 
@@ -2691,12 +2706,15 @@ sub vdr_WaitForFarmJobsToFinish {
         ($keep_going)) { 
     # check to see if jobs are finished, every $cur_sleep seconds
     sleep($cur_sleep_secs);
-    $secs_waited += $cur_sleep_secs;
+    $secs_waited += $chunk_secs;
     if($secs_waited >= $doubling_secs) { 
       $cur_sleep_secs *= 2;
-      if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
-        $cur_sleep_secs = $max_sleep_secs;
-      }
+    }
+    else { 
+      $cur_sleep_secs += $chunk_secs;
+    }
+    if($cur_sleep_secs > $max_sleep_secs) { # reset to max if we've exceeded it
+      $cur_sleep_secs = $max_sleep_secs;
     }
 
     for(my $i = 0; $i < $njobs; $i++) { 
@@ -4530,31 +4548,32 @@ sub vdr_CmemitConsensus {
 #          the esl-ssplit perl script.
 #
 # Arguments: 
-#  $esl_ssplit:      path to the esl-ssplit.pl script to use
-#  $fasta_file:      fasta file to split up
-#  $nfiles:          desired number of files to split $fasta_file into, -1 for one file for each sequence
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information
+#  $esl_ssplit:       path to the esl-ssplit.pl script to use
+#  $fasta_file:       fasta file to split up
+#  $nfiles:           desired number of files to split $fasta_file into, -1 for one file for each sequence
+#  $nseq_per_file_AR: [0..$nfiles-1]: number of seqs in each file, can be undef if unwanted
+#  $opt_HHR:          REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:   REF to 2D hash of output file information
 # 
 # Returns:    Number of files actually created (can differ from requested
 #             amount (which is $nfiles)).
 #
-# Dies:       if esl-ssplit command fails
+# Dies:       if esl-ssplit command fails, or unable to open esl-ssplit output file
 #
 ################################################################# 
 sub vdr_SplitFastaFile { 
   my $sub_name = "vdr_SplitFastaFile()";
-  my $nargs_expected = 5;
+  my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($esl_ssplit, $fasta_file, $nfiles, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($esl_ssplit, $fasta_file, $nfiles, $nseq_per_file_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   # we can only pass $FH_HR to ofile_FAIL if that hash already exists
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   my $outfile = $fasta_file . ".esl-ssplit";
   my $cmd = undef;
-  if($nfiles == -1) { # special case: put 1 file per sequence
+  if($nfiles == -1) { # special case: put 1 sequence per file
     $cmd = "$esl_ssplit -v $fasta_file 1 > $outfile";
   }
   else { 
@@ -4565,6 +4584,20 @@ sub vdr_SplitFastaFile {
   # parse output to determine exactly how many files were created:
   # $esl_ssplit will have output exactly 1 line per fasta file it created
   my $nfiles_created = utl_FileCountLines($outfile, $FH_HR);
+
+  if(defined $nseq_per_file_AR) { 
+    open(IN, $outfile) || ofile_FileOpenFailure($outfile, $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+      #va-r400/va-r400.vadr.in.fa.1 finished (11 seqs, 325770 residues)
+      if($line =~ /^\S+\s+finished\s+\((\d+)\s+seqs,\s+\d+\s+residues\)/) { 
+        push(@{$nseq_per_file_AR}, $1);
+      }
+      else { 
+        ofile_FAIL("ERROR in $sub_name, unable to parse esl-ssplit.pl output file $outfile line:\n$line\n", 1, $FH_HR);
+      }
+    }
+    close(IN);
+  }
 
   if(! opt_Get("--keep", $opt_HHR)) { 
     utl_RunCommand("rm $outfile", opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -4822,9 +4855,8 @@ sub vdr_WriteCommandScript {
 #            "-d 1":    to specify max number of alignments displayed is 1
 # 
 # Arguments: 
-#   $alimerge:           path to esl-alimerge executable
 #   $gls_file:           name of output file from glsearch
-#   $stk_file:           name of stockholm file of all seqs to write
+#   $stk_file:           root name of stockholm files to create, we'll make one per seq
 #   $insert_file:        name of insert file for all seqs to write
 #   $blastn_db_sqfile_R: ref to open Bio:Easel:SqFile with model/target sequence
 #   $exp_mdl_name:       expected single target sequence name
@@ -4838,18 +4870,16 @@ sub vdr_WriteCommandScript {
 #
 ################################################################# 
 sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
-  my $nargs_exp = 8;
+  my $nargs_exp = 7;
   my $sub_name = "vdr_GlsearchFormat3And9CToStockholmAndInsertFile";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
-  my ($alimerge, $gls_file, $stk_file, $insert_file, $blastn_db_sqfile_R, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($gls_file, $stk_file, $insert_file, $blastn_db_sqfile_R, $exp_mdl_name, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   #printf("in $sub_name\n\tgls_file: $gls_file\n\tstk_file: $stk_file\n\tinsert_file: $insert_file\nexp_mdl_name: $exp_mdl_name\n\n");
   open(IN,   $gls_file)  || ofile_FileOpenFailure($gls_file,  $sub_name, $!, "reading", $FH_HR);
-  my $list_file = $stk_file . ".list";
-  open(LIST, ">", $list_file) || ofile_FileOpenFailure($list_file, $sub_name, $!, "writing", $FH_HR);
 
   # fetch the model sequence, so we can use it to add to RF in alignments
 
@@ -5115,8 +5145,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       printf OUT ("%-*s  %s\n", $q_name_len, "#=GC RF",   $t_afa);
       print  OUT ("//\n");
       close(OUT);
-
-      print LIST ($cur_stk_file . "\n");
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
@@ -5125,13 +5153,9 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   if($nq == 0) { 
     ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, did not read any alignments\n", 1, $FH_HR);
   }
-  close(LIST);
 
   # write insert file
   vdr_CmalignWriteInsertFile($insert_file, 0, $exp_mdl_name, $mdl_len, \@q_name_A, \%q_len_H, \%q_inserts_HH, $FH_HR);
-
-  # merge all temporary stockholm files into 1
-  sqf_EslAlimergeListRun($alimerge, $list_file, "--small", $stk_file, "pfam", $opt_HHR, $FH_HR);
 
   return $nq;
 }
@@ -5178,6 +5202,8 @@ sub vdr_CigarToInsertsHash {
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
   my ($inserts_HR, $cigar, $seqstart, $mdlstart, $FH_HR) = @_;
+  
+  # printf("in $sub_name, cigar: $cigar, seqstart: $seqstart mdlstart: $mdlstart\n");
 
   my $seqpos = $seqstart;
   my $mdlpos = $mdlstart;
@@ -5198,7 +5224,7 @@ sub vdr_CigarToInsertsHash {
         $mdlpos += $len;
       }
       if($type eq "D") { 
-        $ins_str .= $mdlpos . ":" . ($seqpos + 1) . ":" . $len . ";";
+        $ins_str .= ($mdlpos-1) . ":" . $seqpos . ":" . $len . ";";
         $seqpos += $len;
       }
       $cigar =~ s/^\d+[MID]//;
@@ -5213,6 +5239,7 @@ sub vdr_CigarToInsertsHash {
   if(! defined $epos) { 
     ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
   }
+  # printf("returning spos: $spos epos: $epos ins: $ins_str\n");
   $inserts_HR->{"spos"} = $spos; 
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
@@ -5221,6 +5248,643 @@ sub vdr_CigarToInsertsHash {
 
   return;
 }
+
+#################################################################
+# Subroutine:  vdr_ReplaceInsertTokenInInsertString()
+# Incept:      EPN, Mon Mar 15 12:22:21 2021
+#
+# Purpose:    Given $ins_str an 'insert string' in the format:
+#              <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#              for n inserts, where insert x is defined by:
+#              <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#              <uapos_x> is unaligned sequence position of the first aligned nt
+#              <inslen_x> is length of the insert
+#             Find the 'insert token' <mdlpos_n>:<uapos_n>:<inslen_n> equal to $orig_ins_tok 
+#             and replace it with $new_ins_tok.
+#
+# Arguments: 
+#   $ins_str:      insert string
+#   $orig_ins_tok: insert token that should exist in $ins_str to replace
+#   $new_ins_tok:  insert token to replace $orig_ins_tok with
+#   $FH_HR:        ref to hash of file handles, including "cmd"
+#
+# Returns:     new insert string with $orig_ins_tok replaced with $new_ins_tok
+# 
+# Dies:        If we can't parse $ins_str
+#              If $orig_ins_tok does not exist in $ins_str
+#              If $orig_ins_tok exists more than once in $ins_str
+#
+################################################################# 
+sub vdr_ReplaceInsertTokenInInsertString { 
+  my $nargs_exp = 4;
+  my $sub_name = "vdr_ReplaceInsertTokenInInsertString";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($ins_str, $orig_ins_tok, $new_ins_tok, $FH_HR) = @_;
+
+  # contract checks
+  # $ins_str should be defined and not empty
+  if(! defined $ins_str) { ofile_FAIL("ERROR in $sub_name, insert string is undefined", 1, $FH_HR); }
+  if($ins_str eq "")     { ofile_FAIL("ERROR in $sub_name, insert string is empty", 1, $FH_HR); }
+
+  # $orig_ins_tok should defined and valid
+  if(! defined $orig_ins_tok) { ofile_FAIL("ERROR in $sub_name, orig_ins_tok string is undefined", 1, $FH_HR); }
+  if($orig_ins_tok !~ /^(\d+)\:(\d+)\:(\d+)/) { ofile_FAIL("ERROR in $sub_name, unable to parse orig_ins_tok $orig_ins_tok", 1, $FH_HR); }
+  
+  # $new_ins_tok  should defined and valid
+  if(! defined $new_ins_tok) { ofile_FAIL("ERROR in $sub_name, new_ins_tok string is undefined", 1, $FH_HR); }
+  if($new_ins_tok !~ /^(\d+)\:(\d+)\:(\d+)/) { ofile_FAIL("ERROR in $sub_name, unable to parse new_ins_tok $new_ins_tok", 1, $FH_HR); }
+  # end contract checks
+  
+  my @ins_A = split(";", $ins_str);
+  my $found_orig_ins_tok = 0;
+  my $ret_ins_str = "";
+  foreach my $ins_tok (@ins_A) {
+    if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)/) { 
+      if($ins_tok eq $orig_ins_tok) { 
+        if($found_orig_ins_tok) { 
+          ofile_FAIL("ERROR in $sub_name, found original token $orig_ins_tok twice in insert string $ins_str", 1, $FH_HR);
+        }
+        $ret_ins_str .= $new_ins_tok . ";";
+        $found_orig_ins_tok = 1;
+      }
+      else { 
+        $ret_ins_str .= $ins_tok . ";";
+      }
+    }
+    else {
+      ofile_FAIL("ERROR in $sub_name, unable to parse insert string $ins_str at at token $ins_tok", 1, $FH_HR);
+    }
+  }
+  if(! $found_orig_ins_tok) { 
+    ofile_FAIL("ERROR in $sub_name, unable to find orig_ins_tok $orig_ins_tok in insert string $ins_str", 1, $FH_HR);
+  }
+
+  return $ret_ins_str;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputConcatenateOnly()
+# Incept:      EPN, Fri Mar 19 09:19:11 2021
+#
+# Purpose:    With --split, merge output files from multiple output
+#             directories in @{$chunk_outdir_AR} into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $out_sfx:           output name suffix
+#   $ofile_key:         key for %{$ofile_info_HHR}
+#   $ofile_desc:        description for %{$ofile_info_HHR}, "" to not add the file to %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     name of the merged file created
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputConcatenateOnly { 
+  my $nargs_exp = 8;
+  my $sub_name = "vdr_MergeOutputConcatenateOnly";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  if(scalar(@filelist_A) > 0) { 
+    utl_ConcatenateListOfFiles(\@filelist_A, $merged_file, $sub_name, $opt_HHR, $FH_HR);
+    if($ofile_desc ne "") { 
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+    }
+  }
+  elsif($do_check_exists) { 
+    ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
+  }
+  return $merged_file;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputGetFileList()
+# Incept:      EPN, Fri Mar 19 16:08:22 2021
+#
+# Purpose:    With --split, fill an array with a list of files
+#             to merge.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $out_sfx:           output name suffix
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $filelist_AR:       list of files to merge   
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $FH_HR:             ref to hash of file handles, including "cmd"
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputGetFileList {
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeOutputGetFileList";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $out_sfx, $do_check_exists, $filelist_AR, $chunk_outdir_AR, $FH_HR) = @_;
+
+  @{$filelist_AR} = ();
+
+  # make list of files to concatenate
+  my $nchunk = scalar(@{$chunk_outdir_AR});
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+  for(my $i = 1; $i <= $nchunk; $i++) { 
+    my $chunk_file = $chunk_outdir_AR->[($i-1)] . "/" . $out_dir_tail . "." . $i . ".vadr" . $out_sfx;
+    if(-e $chunk_file) { 
+      push(@{$filelist_AR}, $chunk_file);
+    }
+    elsif($do_check_exists) { # file does not exist
+      ofile_FAIL("ERROR in $sub_name, expected file to concatenate $chunk_file does not exist", 1, $FH_HR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputMdlTabularFile()
+# Incept:      EPN, Fri Mar 19 13:27:00 2021
+#
+# Purpose:    With --split, merge .mdl tabular output files from 
+#             multiple output directories in @{$chunk_outdir_AR} 
+#             into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputMdlTabularFile { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeOutputMdlTabularFile";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $out_sfx   = ".mdl";
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  # th head_* definitions should be (manually) kept consistent with output_tabular()
+  # alternatively we could parse the header lines in the files we want to merge,
+  # but not doing that currently
+  my @head_mdl_AA = ();
+  my @data_mdl_AA = ();
+  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
+  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
+  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
+
+  # read each .mdl file and store info in it
+  my ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail);
+  my %group_H    = (); # key: model name, value: group
+  my %subgroup_H = (); # key: model name, value: subgroup
+  my %num_seqs_H = (); # key: model name, value: num seqs
+  my %num_pass_H = (); # key: model name, value: num passing seqs
+  my %num_fail_H = (); # key: model name, value: num failing seqs
+  for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
+    open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+      ##                                                    num   num   num
+      ##idx  model               group         subgroup    seqs  pass  fail
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #1     NC_045512           Sarbecovirus  SARS-CoV-2     2     1     1
+      #2     NC_045512-MW422255  Sarbecovirus  SARS-CoV-2     1     1     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      #-     *all*               -             -              3     2     1
+      #-     *none*              -             -              0     0     0
+      ##---  ------------------  ------------  ----------  ----  ----  ----
+      if($line !~ m/^\#/) { 
+        chomp $line;
+        if($line =~ m/^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)$/) { 
+          ($idx, $model, $group, $subgroup, $num_seqs, $num_pass, $num_fail) = ($1, $2, $3, $4, $5, $6, $7);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name unable to parse $filelist_A[$i] file line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $group_H{$model}) { 
+          $group_H{$model} = $group;
+          # initialize other hashes for this model
+          $num_seqs_H{$model} = 0;
+          $num_pass_H{$model} = 0;
+          $num_fail_H{$model} = 0;
+        }
+        elsif($group_H{$model} ne $group) { 
+          ofile_FAIL("ERROR in $sub_name read more than one distinct group for model $model: $group_H{$model} and $group", 1, $FH_HR);
+        }
+        if(! defined $subgroup_H{$model}) { 
+          $subgroup_H{$model} = $subgroup;
+        }
+        elsif($subgroup_H{$model} ne $subgroup) { 
+          ofile_FAIL("ERROR in $sub_name read more than one distinct group for model $model: $group_H{$model} and $group", 1, $FH_HR);
+        }
+        $num_seqs_H{$model} += $num_seqs;
+        $num_pass_H{$model} += $num_pass;
+        $num_fail_H{$model} += $num_fail;
+      }
+    }
+  }
+
+  my @tmp_mdl_tbl_order_A = (sort { $num_seqs_H{$b} <=> $num_seqs_H{$a} or 
+                                        $a cmp $b 
+                             } keys (%num_seqs_H));
+
+  # remove special "*all*" and "*none*" lines from @tmp_mdl_order_A to make @mdl_order_A
+  my @mdl_tbl_order_A = ();
+  foreach $model (@tmp_mdl_tbl_order_A) { 
+    if(($model ne "*all*") && ($model ne "*none*")) { 
+      push(@mdl_tbl_order_A, $model);
+    }
+  }
+
+  # push data to @data_mdl_AA
+  # the following block should be (manually) kept consistent with output_tabular()
+  my $mdl_tbl_idx = 0;
+  foreach $model (@mdl_tbl_order_A) { 
+    if($num_seqs_H{$model} > 0) { 
+      $mdl_tbl_idx++;
+      push(@data_mdl_AA, [$mdl_tbl_idx, $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+    }
+  }
+  # add mdl summary line
+  push(@data_mdl_AA, []); # separator line
+  $model = "*all*";
+  push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+  $model = "*none*";
+  push(@data_mdl_AA, ["-", $model, $group_H{$model}, $subgroup_H{$model}, $num_seqs_H{$model}, $num_pass_H{$model}, $num_fail_H{$model}]);
+  push(@data_mdl_AA, []); # separator line
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "mdl", $merged_file, 1, 1, "per-model tabular summary file");
+  ofile_TableHumanOutput(\@data_mdl_AA, \@head_mdl_AA, \@clj_mdl_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"mdl"}, undef, $FH_HR);
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputAlcTabularFile()
+# Incept:      EPN, Fri Mar 19 16:19:19 2021
+#
+# Purpose:    With --split, merge .alc tabular output files from 
+#             multiple output directories in @{$chunk_outdir_AR} 
+#             into a single file.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $alt_info_HHR:      ref to the alert info hash of arrays, PRE-FILLED
+#   $ofile_desc:        description for %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     '1' if zero alerts were reported, else '0'
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputAlcTabularFile { 
+  my $nargs_exp = 7;
+  my $sub_name = "vdr_MergeOutputAlcTabularFile";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $alt_info_HHR, $ofile_desc, $do_check_exists, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $out_sfx   = ".alc";
+
+  my $out_dir_tail = utl_RemoveDirPath($out_root_no_vadr);
+
+  # make list of files to concatenate
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  # th head_* definitions should be (manually) kept consistent with output_tabular()
+  # alternatively we could parse the header lines in the files we want to merge,
+  # but not doing that currently
+  my @head_alc_AA = ();
+  my @data_alc_AA = ();
+  @{$head_alc_AA[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
+  @{$head_alc_AA[1]} = ("idx", "code",   "failure", "description", "type", "cases", "seqs", "description");
+  my @clj_alc_A      = (1,     1,        1,          1,            0,      0,      0,        1);
+
+  # read each .alc file and store info in it
+  my ($idx, $alt_code, $causes_failure, $short_description, $per_type, $num_cases, $num_seqs, $long_description);
+
+  my %data_HH = (); # key 1: alert code, key 2: column name, value: value from column
+  my @invariant_keys_A = ("causes_failure", "short_description", "per_type", "long_description");
+  my @sum_keys_A       = ("num_cases", "num_seqs"); 
+  my $key;
+  my %line_H = ();
+  for(my $i = 0; $i < scalar(@filelist_A); $i++) { 
+    open(IN, $filelist_A[$i]) || ofile_FileOpenFailure($filelist_A[$i], $sub_name, $!, "reading", $FH_HR);
+    while(my $line = <IN>) { 
+       ##---  --------  -------  ---------------------------  --------  -----  ----  -----------
+       ##     alert     causes   short                       per    num   num  long       
+       ##idx  code      failure  description                type  cases  seqs  description
+       ##---  --------  -------  ----------------------  -------  -----  ----  -----------
+       #1     ambgnt5f  no       N_AT_FEATURE_START      feature      3     1  first nucleotide of non-CDS feature is an N
+       #2     ambgnt3f  no       N_AT_FEATURE_END        feature      3     1  final nucleotide of non-CDS feature is an N
+       #3     ambgnt5c  no       N_AT_CDS_START          feature      2     1  first nucleotide of CDS is an N
+       #4     ambgnt3c  no       N_AT_CDS_END            feature      2     1  final nucleotide of CDS is an N
+       #---  --------  -------  ----------------------  -------  -----  ----  -----------
+       #5     unexleng  yes*     UNEXPECTED_LENGTH       feature      1     1  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
+       #6     cdsstopn  yes*     CDS_HAS_STOP_CODON      feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+       #7     fstukcnf  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  potential frameshift in CDS
+       #8     indfantn  yes      INDEFINITE_ANNOTATION   feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
+       #9     lowsimif  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature lacks significant similarity
+       ##---  --------  -------  ----------------------  -------  -----  ----  -----------
+      if($line !~ m/^\#/) { 
+        chomp $line;
+        if($line =~ m/^(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(.+)$/) { 
+          ($idx, $alt_code, 
+           $line_H{"causes_failure"}, 
+           $line_H{"short_description"}, 
+           $line_H{"per_type"}, 
+           $line_H{"num_cases"}, 
+           $line_H{"num_seqs"}, 
+           $line_H{"long_description"}) = ($1, $2, $3, $4, $5, $6, $7, $8);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name unable to parse $filelist_A[$i] file line:\n$line\n", 1, $FH_HR);
+        }
+        if(! defined $data_HH{$alt_code}) { 
+          %{$data_HH{$alt_code}}= ();
+          # init counters
+          foreach $key (@sum_keys_A) { 
+            $data_HH{$alt_code}{$key} = 0;
+          }
+        }
+        foreach $key (@invariant_keys_A) { 
+          if(! defined $data_HH{$alt_code}{$key}) { 
+            $data_HH{$alt_code}{$key} = $line_H{$key};
+          }
+          elsif($data_HH{$alt_code}{$key} ne $line_H{$key}) { 
+            ofile_FAIL("ERROR in $sub_name read more than one distinct value for $key for alert code $alt_code: $data_HH{$alt_code}{$key} and $line_H{$key}", 1, $FH_HR);
+          }
+        }
+        foreach $key (@sum_keys_A) { 
+          $data_HH{$alt_code}{$key} += $line_H{$key};
+        }
+      }
+    }
+  }
+
+  # determine order of alert codes to print
+  my @alt_code_A = (); # all alerts in output order
+  alert_order_arrays($alt_info_HHR, \@alt_code_A, undef, undef);
+
+  # push data to @data_mdl_AA
+  # the following block should be (manually) kept consistent with output_tabular()
+  my $alt_idx = 0;
+  my $zero_alerts = 1; # set to '0' below if we have >= 1 alerts
+  my $alc_sep_flag = 0;
+  foreach my $alt_code (@alt_code_A) { 
+    if(defined $data_HH{$alt_code}) { 
+      if($data_HH{$alt_code}{"num_cases"} > 0) { 
+        if(! $alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+          $alc_sep_flag = 1; 
+        }
+        if(($alt_info_HHR->{$alt_code}{"causes_failure"}) && $alc_sep_flag) { 
+          # print separation line between alerts that cause and do not cause failure
+          push(@data_alc_AA, []); # separator line
+          $alc_sep_flag = 0; 
+        }
+        $alt_idx++;
+        # don't need to check if alert is 'misc_not_feature' already have '*' added to 'causes_failure' column values
+        # don't need to check if alert is 'causes_failure' already know that from tables we parsed
+        push(@data_alc_AA, [$alt_idx, $alt_code, 
+                            $data_HH{$alt_code}{"causes_failure"},
+                            $data_HH{$alt_code}{"short_description"},
+                            $data_HH{$alt_code}{"per_type"}, 
+                            $data_HH{$alt_code}{"num_cases"}, 
+                            $data_HH{$alt_code}{"num_seqs"}, 
+                            $data_HH{$alt_code}{"long_description"}]);
+        $zero_alerts = 0;
+      }
+    }
+  }
+  if(! $zero_alerts) { 
+    push(@data_alc_AA, []); # separator line
+  }
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  ofile_OpenAndAddFileToOutputInfo($ofile_info_HHR, "alc", $merged_file, 1, 1, "alert count tabular summary file");
+  ofile_TableHumanOutput(\@data_alc_AA, \@head_alc_AA, \@clj_alc_A, undef, undef, "  ", "-", "#", "#", "", 0, $FH_HR->{"alc"}, undef, $FH_HR);
+
+  return $zero_alerts;
+}
+
+#################################################################
+# Subroutine:  vdr_MergePerFeatureFastaFiles()
+# Incept:      EPN, Mon Mar 22 06:28:21 2021
+#
+# Purpose:    With --out_allfasta or --keept merge per-feature fasta
+#             files for each model.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $mdl_info_AHR:      ref to the model info hash of arrays, PRE-FILLED
+#   $ftr_info_HAHR:     ref to hash of array of hashes with info on features per model, PRE-FILLED
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if problem concatenating files
+# 
+################################################################# 
+sub vdr_MergePerFeatureFastaFiles { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergePerFeatureFastaFiles";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $mdl_info_AHR, $ftr_info_HAHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    my $nftr = scalar(@{$ftr_info_HAHR->{$mdl_name}});
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      my $ftr_out_sfx    = "." . $mdl_name . "." . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, ".") . ".fa";
+      my $ftr_ofile_key  = $mdl_name . ".pfa." . $ftr_idx;
+      my $ftr_ofile_desc = "model " . $mdl_name . " feature " . vdr_FeatureTypeAndTypeIndexString($ftr_info_HAHR->{$mdl_name}, $ftr_idx, "#") . " predicted seqs";
+      vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $ftr_out_sfx, $ftr_ofile_key, $ftr_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeFrameshiftStockholmFiles()
+# Incept:      EPN, Mon Mar 22 10:56:39 2021
+#
+# Purpose:    With --out_fsstk or --keep merge per-segment Stockholm
+#             files for each model.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $mdl_info_AHR:      ref to the model info hash of arrays, PRE-FILLED
+#   $ftr_info_HAHR:     ref to hash of array of hashes with info on features per model, PRE-FILLED
+#   $sgm_info_HAHR:     ref to hash of array of hashes with info on segments per model, PRE-FILLED
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if problem concatenating files
+# 
+################################################################# 
+sub vdr_MergeFrameshiftStockholmFiles { 
+  my $nargs_exp = 7;
+  my $sub_name = "vdr_MergeFrameshiftStockholmFiles";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $mdl_info_AHR, $ftr_info_HAHR, $sgm_info_HAHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    my $ftr_info_AHR = $ftr_info_HAHR->{$mdl_name}; # for convenience
+    my $nftr = scalar(@{$ftr_info_AHR});
+    for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+      if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+        for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}; $sgm_idx <= $ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"}; $sgm_idx++) { 
+          my $cds_and_sgm_idx = vdr_FeatureTypeAndTypeIndexString($ftr_info_AHR, $ftr_idx, ".") . "." . ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"} + 1);
+          my $sgm_out_sfx    = "." . $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+          my $sgm_ofile_key  = $mdl_name . "." . $cds_and_sgm_idx . ".frameshift.stk";
+          my $sgm_ofile_desc = "Stockholm file for >= 1 possible frameshifts for $cds_and_sgm_idx for model $mdl_name";
+          vdr_MergeOutputConcatenateOnly($out_root_no_vadr, $sgm_out_sfx, $sgm_ofile_key, $sgm_ofile_desc, 0, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR);
+        }
+      }
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeAlignments()
+# Incept:      EPN, Mon Mar 22 07:26:57 2021
+#
+# Purpose:    With --out_*{stk,afa} or --keep merge alignment 
+#             files for each model. If aligned fasta, we need to
+#             convert to pfam first. 
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $execs_HR:          ref to a hash with "esl-reformat" and "esl-alimerge"
+#   $mdl_info_AHR:      ref to the model info hash of arrays, PRE-FILLED
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information, ADDED TO HERE 
+#
+# Returns:     void
+# 
+# Dies: if problem merging alignments
+# 
+################################################################# 
+sub vdr_MergeAlignments { 
+  my $nargs_exp = 6;
+  my $sub_name = "vdr_MergeAlignments";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $execs_HR, $mdl_info_AHR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+
+  # determine which type of alignment files we will merge:
+  my $do_keep      = opt_Get("--keep", $opt_HHR);
+  my $do_out_stk   = $do_keep || opt_Get("--out_stk",   $opt_HHR) ? 1 : 0;
+  my $do_out_afa   = $do_keep || opt_Get("--out_afa",   $opt_HHR) ? 1 : 0;
+  my $do_out_rpstk = $do_keep || opt_Get("--out_rpstk",   $opt_HHR) ? 1 : 0;
+  my $do_out_rpafa = $do_keep || opt_Get("--out_rpafa",   $opt_HHR) ? 1 : 0;
+  # v-annotate.pl should have required that if --out_afa is used, --out_stk was also used
+  # and that if --out_rpafa is used, --out_rpstk was also used. These are required because
+  # we can't merge afa files (due to lack of RF annotation) so we need the stockholm equivalents
+  # but we check here again to be safe.
+  if(($do_out_afa) && (! $do_out_stk)) { 
+    ofile_FAIL("ERROR in $sub_name, trying to merge afa files but don't have stk files", 1, $FH_HR);
+  }
+  if(($do_out_rpafa) && (! $do_out_rpstk)) { 
+    ofile_FAIL("ERROR in $sub_name, trying to merge rpafa files but don't have rpstk files", 1, $FH_HR);
+  }
+
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  my @filelist_A = (); # array of alignment files to merge
+  my $out_stk = undef;
+  for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    @filelist_A = ();
+    my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
+    my $afa_key = undef;
+    my $do_stk  = 0;
+    my $do_afa  = 0;
+    my $desc    = "";
+    foreach my $stk_key ("stk", "rpstk") { 
+      if($stk_key eq "stk") { 
+        $afa_key = "afa";
+        $do_stk  = $do_out_stk;
+        $do_afa  = $do_out_afa;
+        $desc = "model " . $mdl_name . " full original sequence alignment";
+      }
+      else { # stk_key eq "rpstk"
+        $afa_key = "rpafa";
+        $do_stk  = $do_out_rpstk;
+        $do_afa  = $do_out_rpafa;
+        $desc = "model " . $mdl_name . " full replaced sequence alignment";
+      }
+      my $stk_sfx = "." . $mdl_name . ".align." . $stk_key;
+      my $afa_sfx = "." . $mdl_name . ".align." . $afa_key;
+      vdr_MergeOutputGetFileList($out_root_no_vadr, $stk_sfx, 0, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+      if(scalar(@filelist_A) > 0) { 
+        my $stk_file = $out_root_no_vadr . ".vadr" . $stk_sfx;
+        my $afa_file = $out_root_no_vadr . ".vadr" . $afa_sfx;
+        my $stk_list_file = $stk_file . ".list";
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $stk_key . ".list", $stk_list_file, $do_keep, $do_keep, 
+                                        "model " . $mdl_name . " alignment list ($stk_key)");
+        utl_AToFile(\@filelist_A, $stk_list_file, 1, $FH_HR);
+        sqf_EslAlimergeListRun($execs_HR->{"esl-alimerge"}, $stk_list_file, "", $stk_file, "stockholm", $opt_HHR, $FH_HR);
+        ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $stk_key, $stk_file, 1, 1, $desc . "(stk)");
+        if($do_afa) { 
+          sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "", $stk_file, $afa_file, "stockholm", "afa", $opt_HHR, $FH_HR);
+          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $afa_key, $afa_file, 1, 1, $desc . "(afa)");
+        }
+      }
+    }
+  }
+
+  return;
+}
+
 
 ###########################################################################
 # the next line is critical, a perl module must return a true value

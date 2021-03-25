@@ -1,22 +1,22 @@
-#      seq                                  ftr   ftr          ftr  alert           alert                        alert 
-#idx   name                  model          type  name         idx  code      fail  desc                         detail
-#----  --------------------  -------------  ----  -----------  ---  --------  ----  ---------------------------  ------
-2.1.1  ENTOY100A-dcr-Adel    entoy100a-dcr  CDS   protein_two    3  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [TGG starting at position 33 on + strand is not a valid start]
-2.1.2  ENTOY100A-dcr-Adel    entoy100a-dcr  CDS   protein_two    3  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
-2.1.3  ENTOY100A-dcr-Adel    entoy100a-dcr  CDS   protein_two    3  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 33..38 (stop shifted 8 nt)]
-2.1.4  ENTOY100A-dcr-Adel    entoy100a-dcr  CDS   protein_two    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 33]
+#      seq                                      ftr   ftr          ftr  alert           alert                        alert 
+#idx   name                  model              type  name         idx  code      fail  desc                         detail
+#----  --------------------  -----------------  ----  -----------  ---  --------  ----  ---------------------------  ------
+2.1.1  ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_two    3  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [TGG starting at position 33 on + strand is not a valid start]
+2.1.2  ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_two    3  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
+2.1.3  ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_two    3  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 33..38 (stop shifted 8 nt)]
+2.1.4  ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_two    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 33]
 #
-3.1.1  ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_two    3  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [TGG starting at position 32 on + strand is not a valid start]
-3.1.2  ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_two    3  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
-3.1.3  ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_two    3  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..37 (stop shifted 8 nt)]
-3.1.4  ENTOY100A-dcr-AAdel   entoy100a-dcr  CDS   protein_two    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 33]
+3.1.1  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    3  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [TGG starting at position 32 on + strand is not a valid start]
+3.1.2  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    3  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
+3.1.3  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    3  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 32..37 (stop shifted 8 nt)]
+3.1.4  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 33]
 #
-4.1.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr  gene  one            1  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 31]
-4.2.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_one    2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA ending at position 30 on + strand is not a valid stop]
-4.2.2  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_one    2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
-4.2.3  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_one    2  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
-4.2.4  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_one    2  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 31]
-4.3.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_two    3  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [TGG starting at position 31 on + strand is not a valid start]
-4.3.2  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_two    3  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
-4.3.3  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_two    3  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 31..36 (stop shifted 8 nt)]
-4.3.4  ENTOY100A-dcr-AAAdel  entoy100a-dcr  CDS   protein_two    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 33]
+4.1.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  gene  one            1  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 31]
+4.2.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA ending at position 30 on + strand is not a valid stop]
+4.2.2  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  mutendns  yes   MUTATION_AT_END              expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+4.2.3  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
+4.2.4  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  indf3gap  yes   INDEFINITE_ANNOTATION_END    alignment to homology model is a gap at 3' boundary [RF position 31]
+4.3.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_two    3  mutstart  yes   MUTATION_AT_START            expected start codon could not be identified [TGG starting at position 31 on + strand is not a valid start]
+4.3.2  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_two    3  unexleng  yes   UNEXPECTED_LENGTH            length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
+4.3.3  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_two    3  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 31..36 (stop shifted 8 nt)]
+4.3.4  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_two    3  indf5gap  yes   INDEFINITE_ANNOTATION_START  alignment to homology model is a gap at 5' boundary [RF position 33]

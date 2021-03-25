@@ -1,0 +1,12 @@
+#      seq                                         ftr   ftr            ftr  alert           alert                alert 
+#idx   name                     model              type  name           idx  code      fail  desc                 detail
+#----  -----------------------  -----------------  ----  -------------  ---  --------  ----  -------------------  ------
+2.1.1  ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  CDS   protein_two      3  mutstart  yes   MUTATION_AT_START    expected start codon could not be identified [AAT starting at position 33 on + strand is not a valid start]
+2.1.2  ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  CDS   protein_two      3  mutendns  yes   MUTATION_AT_END      expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+2.1.3  ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  CDS   protein_two      3  unexleng  yes   UNEXPECTED_LENGTH    length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
+2.1.4  ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  CDS   protein_two      3  fstukcnf  yes   POSSIBLE_FRAMESHIFT  potential frameshift in CDS [nucleotide alignment of positions 33..34 (2 nt) on + strand are inconsistent with dominant frame (+2); inserts:34; deletes:none;]
+#
+5.1.1  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  mutendcd  yes   MUTATION_AT_END      expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAG ending at position 51 on - strand is not a valid stop]
+5.1.2  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  unexleng  yes   UNEXPECTED_LENGTH    length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
+5.1.3  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  cdsstopn  yes   CDS_HAS_STOP_CODON   in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 66..52 (stop shifted 1 nt)]
+5.1.4  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  fstukcnf  yes   POSSIBLE_FRAMESHIFT  potential frameshift in CDS [nucleotide alignment of positions 53..51 (3 nt) on - strand are inconsistent with dominant frame (-1); inserts:53; deletes:none;]
