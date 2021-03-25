@@ -4914,6 +4914,9 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   # version 36.3.8h May, 2020
   #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
 
+  # in rare cases there's a line like the following before the Query line:
+  # cannot read format 95 != lib_type 0
+
   # validate line 1
   ## /panfs/pan1/infernal/notebook/21_0213_vadr_hmmalign/fasta-experimenting-20210216/fasta-36.3.8h/bin/glsearch36 -z -1 -T 1 -3 -m 9C,3 -d 1 va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.glsearch.fa
   my $line_ctr = 0;
@@ -4950,6 +4953,10 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
   $line = <IN>; $line_ctr++;
   chomp $line;
+  if($line =~ m/^\s+cannot read format/) { 
+    $line = <IN>; $line_ctr++;
+    chomp $line;
+  }
   if($line !~ m/^Query/) { 
     ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, fourth line did not start with \"Query\"\n", 1, $FH_HR);
   }
