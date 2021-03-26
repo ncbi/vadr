@@ -792,7 +792,7 @@ if($cm_file !~ m/\.cm$/) {
   ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
 }
 
-utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $minfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for blastn db file if we need it
 if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
