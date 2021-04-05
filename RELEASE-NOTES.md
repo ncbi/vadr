@@ -20,7 +20,7 @@
     flaviviruses, has been split into two separate model sets and the
     default set is now only caliciviruses. Both sets still installed
     by default and flaviviruses models can be used with the '--mkey
-    flavi' option.
+    flavi --mdir $VADRMODELDIR/vadr-models-flavi' options.
   * some rare errors related to start and stop codons that can be
     corrected by doctoring (i.e. slightly changing) the alignment
     computed by cmalign or glsearch are now corrected which removes
