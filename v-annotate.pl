@@ -1090,8 +1090,10 @@ if($do_split) {
   
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-  $start_secs = ofile_OutputProgressPrior(sprintf("Executing $ncpu script%s to process $nchunk partition(s) of all %d sequence(s)",
-                                                  ($ncpu > 1) ? "s in parallel on $ncpu processors" : "",
+  my $ncpu2print = $ncpu;
+  if($ncpu2print > $nscript) { $ncpu2print = $nscript; }
+  $start_secs = ofile_OutputProgressPrior(sprintf("Executing $nscript script%s to process $nchunk partition(s) of all %d sequence(s)",
+                                                  ($ncpu2print > 1) ? "s in parallel on $ncpu processors" : "",
                                                   scalar(@seq_name_A)), 
                                           $progress_w, $FH_HR->{"log"}, *STDOUT);
 
