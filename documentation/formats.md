@@ -595,10 +595,32 @@ va-noro-r.9`.
 
 ### Explanation of `.dcr`-suffixed output files<a name="dcr"></a>
 
-`.dcr` data lines have 13 fields, the names of which appear in the
+`.dcr` data lines have 17 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
 **alignment doctoring** that was performed. An alignment doctoring
-occurs only in rare cases when the following criteria are met:
+occurs only in rare cases. There are two types of alignment
+doctorings: *insert* type and *delete* types. 
+
+An insert type alignment doctoring occurs when the following criteria
+are met:
+
+1. the initial alignment returned by cmalign or glsearch includes a
+  single nucleotide insertion after the first position of a start
+  codon or a before the final position of a stop codon
+
+2. at least one adjacent nucleotide in the input sequence exists 5' of insert
+   (start codon case) or 3' of insert (stop codon case)
+
+3. the adjacent nucleotide is aligned to a reference position (is not
+  an insertion)
+
+4. making the adjacent nucleotide an insertion instead of the 
+   inserted position in the start/stop codon with the
+   will result in a valid start or stop codon
+   aligned to the reference start or stop codon
+
+A delete type alignment doctoring occurs when the following criteria
+are met:
 
 1. the initial alignment returned by cmalign or glsearch includes a gap
   at the first position of a start codon of a CDS in the reference
@@ -614,17 +636,20 @@ occurs only in rare cases when the following criteria are met:
   adjacent nucleotide will result in a valid start or stop codon
   aligned to the reference start or stop codon
 
-For every situation where criteria 1 to 3 above are met, a line of
+For every situation where criteria 1 to 3 above are met for either
+insert or delete types, a line of
 information will be output to the `.dcr` file. If criteria 4 is also
-met, then field 13 will be `yes`, otherwise it will be `no`.
+met, then field 17 will be `yes`, otherwise it will be `no`.
 
 For any doctoring that causes an existing valid start or stop codon in
 a nearby CDS to become invalid (even more rare), a second doctoring
 takes place to undo the first, and an additional line for this
 undoctoring will appear in the `.dcr` file.
 
-The relevant code is in the `parse_stk_and_add_alignment_alerts`
-subroutine in `v-annotate.pl`.
+The relevant code is in the `parse_stk_and_add_alignment_alerts()`
+and `doctoring_check_new_codon_validity()` subroutines in `v-annotate.pl`.
+The latter subroutine includes simple examples in the comments of its
+header section. 
 
 [Example file](../testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.dcr)
 
@@ -633,16 +658,20 @@ subroutine in `v-annotate.pl`.
 |   1 | `idx`                 | index of doctoring instance in format `<d1>.<d2>`, where `<d1>` is the index of the sequence this doctoring instance pertains to in the input sequence file, `<d2>` is the index of the doctoring instance for this sequence |
 |   2 | `seq name`            | sequence name | 
 |   3 | `mdl name`            | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage, and is the model used to align the sequence |
-|   4 | `ftr type`            | type of the feature this doctoring instance pertains to (will always be `CDS`) |
-|   5 | `ftr name`            | name of the feature this doctoring instance pertains to |
+|   4 | `ftr type`            | type of the feature (will always be `CDS`) |
+|   5 | `ftr name`            | name of the CDS feature |
 |   6 | `ftr idx`             | index (in input model info file) this doctoring instance pertains to |
-|   7 | `gap apos`            | alignment position of gap in temporary alignment prior to doctoring either in first position of start codon (if `codon type` is `start`) or final position of stop codon (if `codon type` is `stop`) |
-|   8 | `seq uapos`           | unaligned sequence position that is eligible to be swapped with gap |
-|   9 | `codon type`          | `start` if gap is first position of a start codon, `stop` if gap is final position of a stop codon |
-|  10 | `codon coords`        | unaligned sequence coordinates of start or stop codon after potential swap, in vadr coords [format](#coords) |
-|  11 | `new codon`           | start or stop codon after potential doctoring (swap) | 
-|  12 | `dcr iter`            | doctoring iteration, `1` if first time the gap and nucleotide may be swapped, `2` if second (swapping back because first swap invalidated previously valid start/stop codon), cannot exceed `2` |
-|  13 | `did swap`            | `yes` if doctoring (swap) took place because it created a valid start or stop codon, `no` if doctoring (swap) did not occur because it would not have created a valid start or stop codon |
+|   7 | `dcr type`            | 'delete' or 'insert' indicating type of doctoring |
+|   8 | `model pos`           | reference model position, either first position of start codon, or final position of stop codon |
+|   9 | `indel apos`          | alignment position of the insertion (insert type) or deletion (delete type) |
+|  10 | `orig seq-uapos`      | unaligned sequence position of the first start or final stop position *before* swap |
+|  11 | `new seq-uapos`       | unaligned sequence position of the first start or final stop position *after* swap (if performed) |
+|  12 | `codon type`          | `start` if start codon, `stop` if stop codon |
+|  13 | `codon coords`        | unaligned sequence coordinates of start or stop codon after potential swap, in vadr coords [format](#coords) |
+|  14 | `orig codon`          | start or stop codon before potential doctoring (swap) | 
+|  15 | `new codon`           | start or stop codon after potential doctoring (swap) | 
+|  16 | `dcr iter`            | doctoring iteration, `1` if first time the gap and nucleotide may be swapped, `2` if second (swapping back because first swap invalidated previously valid start/stop codon), cannot exceed `2` |
+|  17 | `did swap`            | `yes` if doctoring (swap) took place because it created a valid start or stop codon, `no` if doctoring (swap) did not occur because it would not have created a valid start or stop codon |
 
 ---
 
