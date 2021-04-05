@@ -54,8 +54,8 @@ for(my $i = 0; $i < $nseq; $i++) {
   else { # sfx set as "NONE" on command-line
     $out_header = $header;
   }
-  $sqstring =~ s/^[Nn]+//; # remove leading sequences
-  $sqstring =~ s/[Nn]+$//; # remove trailing sequences
+  $sqstring =~ s/^[Nn]+//; # remove any 5'-terminal Ns
+  $sqstring =~ s/[Nn]+$//; # remove any 3'-terminal Ns
   print $out_header . "\n";
   print seq_SqstringAddNewlines($sqstring, 60);
 }
