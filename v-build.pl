@@ -274,7 +274,6 @@ push(@early_cmd_A, $cmd);
 my $dir_tail = $dir;
 $dir_tail =~ s/^.+\///; # remove all but last dir
 my $out_root         = $dir . "/" . $dir_tail . ".vadr";
-my $out_root_no_vadr = $dir . "/" . $dir_tail;
 
 #######################
 # output program banner
@@ -622,8 +621,8 @@ else {
 # Build the blastn database
 ###########################
 $start_secs = ofile_OutputProgressPrior("Building BLAST nucleotide database ", $progress_w, $log_FH, *STDOUT);
-my $tmp_blastn_fa_file = $out_root_no_vadr . ".fa.tmp";
-my $blastn_fa_file     = $out_root_no_vadr . ".fa";
+my $tmp_blastn_fa_file = $out_root . ".fa.tmp";
+my $blastn_fa_file     = $out_root . ".fa";
 
 sqf_EslReformatRun($execs_H{"esl-reformat"}, "-d -u", $fa_file, $tmp_blastn_fa_file, "fasta", "fasta", \%opt_HH, $FH_HR);
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "blastn-fa",  $blastn_fa_file, 1, 1, "nucleotide blastn db fasta sequence file for $mdl_name");
