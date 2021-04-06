@@ -39,9 +39,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 1.1 (May 2020)
+# VADR 1.2 (April 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed May  6 13:47:59 2020
+# date:    Mon Apr  5 14:26:43 2021
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -80,7 +80,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Wed May  6 15:01:34 2020
+# date:              Mon Apr  5 14:28:21 2021
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
 # $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -118,13 +118,15 @@ not be stored in the VADR model files:
 ```
 
 The fetched FASTA file is then reformatted to Stockholm for input to
-`cmbuild` to create the model CM file, feature information read from
-the feature tables is finalized internally, and CDS features are
-translated and used to create the BLAST database with `makeblastdb`,
-and the HMMER protein HMM database with `hmmbuild`. 
+`cmbuild` to create the model CM file, the BLAST nucleotide database
+is construced, feature information read from the feature tables is
+finalized internally, and CDS features are translated and used to
+create the BLAST database with `makeblastdb`, and the HMMER protein
+HMM database with `hmmbuild`.
 
 ```
 # Reformatting FASTA file to Stockholm file                    ... done. [    0.3 seconds]
+# Building BLAST nucleotide database                           ... done. [    1.2 seconds]
 # Finalizing feature information                               ... done. [    0.0 seconds]
 # Translating CDS                                              ... done. [    0.1 seconds]
 # Building BLAST protein database                              ... done. [    0.2 seconds]
@@ -200,12 +202,10 @@ These files include the FASTA and and their formats are described more
 Only some of these files will be used by `v-annotate.pl`. These are
 the files with the following suffixes:
 
-
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
 | `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST protein database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.fa.n{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
 | `.hmm` | HMMER 3.x HMM file | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
@@ -376,7 +376,7 @@ call it `my.vadr.cm`, for example, and move it to the
 call it `my.vadr.hmm`, for example, and move it to the
 `my-vadr-model-dir` directory.
 
-6. Concatenate all resulting `N` `.vadr.nt.fa` files into a single file,
+6. Concatenate all resulting `N` `.vadr.fa` files into a single file,
 call it `my.vadr.fa`, for example, and move it to the
 `my-vadr-model-dir` directory, and then create a BLAST nucleotide 
 database from it with the command:
@@ -448,6 +448,13 @@ file in the directory pointed to by your `$VADRMODELDIR` environment
 variable after installing VADR. To reproduce the construction of the
 1.1 library, you would run similar steps to those below but also
 adding the additional models listed in the `RELEASE-NOTES.txt` file.
+
+Additionally, as of version 1.2, the *Caliciviridae* models and
+*Flaviviridae* models have been split up into two different model
+sets, but both are installed by the VADR install script
+`vadr-install.sh`. The *Caliciviridae* models are used by default with
+`v-annotate.pl`. To use the *Flaviviridae* models, use the options `--mkey
+flavi --mdir $VADRMODELDIR/vadr-models-flavi`.
 
 ### Models in the VADR 1.0 library
 

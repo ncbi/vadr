@@ -1,5 +1,45 @@
 # VADR 1.x release notes 
 
+### VADR 1.2 release (April 2021): Minor update
+
+  v-annotate.pl changes:
+  * adds support for an alternative alignment program, glsearch from
+    the FASTA software package; FASTA is now installed by the
+    vadr-install.sh script. glsearch drastically reduces the maximum
+    amount of memory needed for alignment, especially for viruses >
+    20Kb, e.g. SARS-CoV-2. glsearch is used instead of the default
+    cmalign program when the --glsearch option is used.
+  * adds support for splitting up the input fasta file into chunks and
+    processing each chunk independently and then combining results
+    before exiting to reduce maximum memory usage by invoking the
+    --split option.
+  * adds support for parallelization using multiple threads (<n>
+    threads) with the '--cpu <n>' option. Currently only works in
+    combination with --split or --glsearch.
+  * the default set of models, which previously was caliciviruses and
+    flaviviruses, has been split into two separate model sets and the
+    default set is now only caliciviruses. Both sets still installed
+    by default and flaviviruses models can be used with the '--mkey
+    flavi --mdir $VADRMODELDIR/vadr-models-flavi' options.
+  * some rare errors related to start and stop codons that can be
+    corrected by doctoring (i.e. slightly changing) the alignment
+    computed by cmalign or glsearch are now corrected which removes
+    the errors.  
+  * slightly improved detailed error messages for MUTATION_AT_END
+    errors to indicate positions of full codon
+  * expensive validation of CM file is no longer performed by default,
+    but can still be with the --val_only option
+  * updates .ftr format by adding 'par idx' field for parent index of
+    feature
+
+  v-build.pl changes:
+  * nucleotide blastn database is now built from DNA sequence file,
+    not cmemit -c consensus sequence as it was previously
+
+  Other changes:
+  * updates versions of Bio-Easel dependency installed with vadr to
+    Bio-Easel 0.14
+
 ### VADR 1.1.3 release (Feb 2021): Minor update
 
   v-annotate.pl changes:

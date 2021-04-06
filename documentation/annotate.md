@@ -16,7 +16,9 @@
   * [options for using hmmer instead of blastx for protein validation](#options-hmmer)
   * [options related to blastn-based seeded alignment acceleration strategy](#options-seed)
   * [options related to pre-processing to replace Ns with expected nucleotides](#options-replace)
+  * [options related to splitting input fasta file and multithreading](#options-split)
   * [options related to parallelization on a compute farm/cluster](#options-parallel)
+  * [options related to both splitting input and parallelization on a compute farm/cluster](#options-split-and-parallel)
   * [options for skipping stages](#options-skip)
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
@@ -47,9 +49,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 1.2 (March 2021)
+# VADR 1.2 (April 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Mar  2 19:05:20 2021
+# date:    Mon Apr  5 10:31:24 2021
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -82,7 +84,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Tue Mar  2 19:05:52 2021
+# date:              Mon Apr  5 10:32:37 2021
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -427,23 +429,24 @@ file type is [here](formats.md#sqc).
 Next, take a look at the first few lines of the `.ftr` file (`va-noro.9.vadr.ftr`):
 
 ```
-#     seq          seq                   ftr          ftr                         ftr  ftr                                                                                     seq         model  ftr   
-#idx  name         len  p/f   model      type         name                        len  idx  str  n_from  n_to  n_instp  trc    p_from  p_to  p_instp  p_sc  nsa  nsn        coords        coords  alerts
-#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ------  ----  -------  -----  ------  ----  -------  ----  ---  ---  ------------  ------------  ------
-1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1    +       1  5083        -  5'          -     -        -     -    1    0     1..5083:+    22..5104:+  -     
-1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2    +       1  5083        -  5'          2  5080        -  9094    1    0     1..5083:+    22..5104:+  -     
-1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3    +    5064  6686        -  no          -     -        -     -    1    0  5064..6686:+  5085..6707:+  -     
-1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4    +    5064  6686        -  no       5064  6683        -  2878    1    0  5064..6686:+  5085..6707:+  -     
-1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5    +    6686  7492        -  no          -     -        -     -    1    0  6686..7492:+  6707..7513:+  -     
-1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6    +    6686  7492        -  no       6686  7486        -  1393    1    0  6686..7492:+  6707..7513:+  -     
-1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    +       1   979        -  5'          -     -        -     -    1    0      1..979:+    22..1000:+  -     
-1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    +     980  2077        -  no          -     -        -     -    1    0   980..2077:+  1001..2098:+  -     
-1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    +    2078  2608        -  no          -     -        -     -    1    0  2078..2608:+  2099..2629:+  -     
-1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    +    2609  3007        -  no          -     -        -     -    1    0  2609..3007:+  2630..3028:+  -     
-1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    +    3008  3550        -  no          -     -        -     -    1    0  3008..3550:+  3029..3571:+  -     
-1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    +    3551  5080        -  no          -     -        -     -    1    0  3551..5080:+  3572..5101:+  -     
+#     seq          seq                   ftr          ftr                         ftr  ftr  par                                                                                               seq         model  ftr   
+#idx  name         len  p/f   model      type         name                        len  idx  idx  str  n_from  n_to  n_instp  trc    5'N  3'N  p_from  p_to  p_instp  p_sc  nsa  nsn        coords        coords  alerts
+#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ---  ------  ----  -------  -----  ---  ---  ------  ----  -------  ----  ---  ---  ------------  ------------  ------
+1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1   -1    +       1  5083        -  5'       0    0       -     -        -     -    1    0     1..5083:+    22..5104:+  -     
+1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2   -1    +       1  5083        -  5'       0    0       2  5080        -  9094    1    0     1..5083:+    22..5104:+  -     
+1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3   -1    +    5064  6686        -  no       0    0       -     -        -     -    1    0  5064..6686:+  5085..6707:+  -     
+1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4   -1    +    5064  6686        -  no       0    0    5064  6683        -  2878    1    0  5064..6686:+  5085..6707:+  -     
+1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5   -1    +    6686  7492        -  no       0    0       -     -        -     -    1    0  6686..7492:+  6707..7513:+  -     
+1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6   -1    +    6686  7492        -  no       0    0    6686  7486        -  1393    1    0  6686..7492:+  6707..7513:+  -     
+1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    2    +       1   979        -  5'       0    0       -     -        -     -    1    0      1..979:+    22..1000:+  -     
+1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    2    +     980  2077        -  no       0    0       -     -        -     -    1    0   980..2077:+  1001..2098:+  -     
+1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    2    +    2078  2608        -  no       0    0       -     -        -     -    1    0  2078..2608:+  2099..2629:+  -     
+1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    2    +    2609  3007        -  no       0    0       -     -        -     -    1    0  2609..3007:+  2630..3028:+  -     
+1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    2    +    3008  3550        -  no       0    0       -     -        -     -    1    0  3008..3550:+  3029..3571:+  -     
+1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    2    +    3551  5080        -  no       0    0       -     -        -     -    1    0  3551..5080:+  3572..5101:+  -     
 #
 ```
+
 This file includes information on each annotated feature, organized by
 sequence. The lines above show the annotated features for the first
 sequence `KY887602.1` and include information on the feature length,
@@ -607,9 +610,9 @@ integer.
 |------------------|-------------|
 | `-f`             | if `<output directory>` already exists, then using this option will cause it to be overwritten, otherwise the progam exits in error |
 | `-v`             | *verbose* mode: all commands will be output to standard output as they are run | 
-| `--cpu <n>`      | parallelize across `<n>` CPU workers for multithreads (requires --glsearch) [0] |
 | `--atgonly`      | only consider ATG as a valid start codon, regardless of model's translation table <a name="options-basic-atgonly"></a> |
 | `--minpvlen <n>` | set the minimum length in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for protein validation analysis to `<n>`, default `<n>` is 30 |
+| `--nkb <n>`      | set the target number of Kb of sequence for each alignment job and/or chunk (with --split) to `<n>` Kb (thousand nucleotides), default `<n>` is `300` |
 | `--keep`         | keep [additional output files](formats.md#annotate-keep) that are normally removed |
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
@@ -697,6 +700,7 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 | `--nofixedtau`      | do not fix the tau value, allow it to increase if necessary (removes the `cmalign --fixedtau` option), default is to fix tau with `cmalign --fixedtau` |
 | `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
 | `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
+| `--cmindi`          | force cmalign to align one sequence at a time, mainly useful for debugging |
 ---
 
 ### `v-annotate.pl` options for controlling glsearch alignment stage as alternative to cmalign
@@ -800,19 +804,32 @@ with format described [here](formats.md#rpn).
 | `--r_cdsmpr`        | with `-r`, identify CDS- and mat_peptide-specific alerts using subsequences fetched from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_pvorig`        | with `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
 | `--r_prof`          | with `-r`, use slower profile methods, not blastn, to identify Ns to replaced |
+| `--r_list`          | with `-r`, only use models listed in file `<s>` for N replacement stage |
+| `--r_only <s>`      | with `-r`, only use model named `<s>` for N replacement stage |
+
+### `v-annotate.pl` options related to splitting input sequence file into chunks and processing each chunk separately and potentially in parallel <a name="options-split"></a>
+
+The `--split` option specifies that `v-annotate.pl` should split up the input file into chunks and 
+processing each chunk separately and then combining results at the end after all chunks have been processed.
+This limits total memory usage for large input sequence files.
+
+| ........option........ | explanation |
+|---------------------|--------------------|
+| `--split`      | split input fasta sequence file into chunks of `<n>` Kb where `<n>` is from `--nkb <n>` (300 Kb, by default) and run each chunk separately |
+| `--cpu <n>`    | with --split or --glsearch, parallelize across `<n>` CPU threads/workers (requires --split oor --glsearch) |
+| `--sidx <n>`   | start sequence indexing at `<n>` for output files, not intended to be set by user except when debugging | 
 
 ### `v-annotate.pl` options related to parallelization on a compute farm/cluster<a name="options-parallel"></a>
-
-The `-p` option specifies that `v-annotate.pl` should be run in [parallel mode](#exampleparallel).
-The following options are related to parallel mode.
 
 | ........option........ | explanation |
 |---------------------|--------------------|
 | `-p`           | run in parallel mode so that classification, and each per-model coverage determination and alignment step is split into multiple jobs and run in parallel on a cluster | 
 | `-q <s>`       | read cluster information file from file `<s>` instead of from the default file `$VADRSCRIPTSDIR/vadr.qsubinfo` |
-| `--nkb <n>`    | set the target size for split-up sequence files to `<n>` Kb (thousand nucleotides), higher values will result in fewer parallel jobs and slower total run times, default `<n>` is `300` |
-| `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
 | `--errcheck`   | consider any output to STDERR from a parallel job as an indication the job has failed, this will cause `v-annotate.pl` to exit, default is to ignore output to STDERR | 
+
+### `v-annotate.pl` options related to both splitting input and parallelization on compute farm<a name="options-split-and-parallel"></a>
+
+| `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
 | `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
 
 ### `v-annotate.pl` options for skipping stages<a name="options-skip"></a>
@@ -831,7 +848,7 @@ The following options are related to parallel mode.
 | `--out_afa`     | create additional per-model output aligned fasta alignments with `.afa` suffix |
 | `--out_rpstk`   | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
 | `--out_rpafa`   | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
-| `--out_nofs`    | do not output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
+| `--out_fsstk`   | output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
 | `--out_allfasta`| output fasta files of predicted features |
 | `--out_nofasta` | minimize total size of output; do not output fasta files of all passing and all failing sequences |
 | `--out_debug`   | create additional output files with information on various data structures |
@@ -848,6 +865,7 @@ The following options are related to parallel mode.
 | `--msub <s>`     | specify that file `<s>` lists models to substitute, each line should contain two space-delimited tokens, model listed in token 2 will substitute as best-matching model for all sequences classified as the model listed in token 1 |
 | `--xsub <s>`     | specify that file `<s>` lists blastx dbs to substitute, each line should contain two space-delimited tokens, blastx db for model listed in token 2 will substitute as blastx db for all sequences classified as the model listed in token 1 |
 | `--nodcr`        | never doctor alignments to shift gaps to correct start/stop codon annotation |
+| `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 

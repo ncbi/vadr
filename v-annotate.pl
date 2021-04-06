@@ -205,6 +205,7 @@ opt_Add("-f",           "boolean", 0,         $g,    undef, undef,      "force d
 opt_Add("-v",           "boolean", 0,         $g,    undef, undef,      "be verbose",                                                                              "be verbose; output commands to stdout as they're run", \%opt_HH, \@opt_order_A);
 opt_Add("--atgonly",    "boolean", 0,         $g,    undef, undef,      "only consider ATG a valid start codon",                                                   "only consider ATG a valid start codon", \%opt_HH, \@opt_order_A);
 opt_Add("--minpvlen",   "integer", 30,        $g,    undef, undef,      "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>",  "min CDS/mat_peptide/gene length for feature table output and protein validation is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--nkb",        "integer", 300,       $g,    undef,  undef,     "number of KB of sequence for each alignment job and/or chunk is <n>",                     "number of KB of sequence for each alignment job and/or chunk is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--keep",       "boolean", 0,         $g,    undef, undef,      "leaving intermediate files on disk",                                                      "do not remove intermediate files, keep them all on disk", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options for specifying classification";
@@ -228,7 +229,6 @@ opt_Add("-a",           "string",  undef,      $g, "--pv_hmmer",undef,    "use p
 opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("--nkb",        "integer", 300,        $g,    undef,  undef,      "number of KB of sequence for each alignment job and/or chunk is <n>",            "number of KB of sequence for each alignment job and/or chunk is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string","calici",     $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
 opt_Add("--mlist",      "string",  undef,      $g,    undef, "-s",        "only use models listed in file <s>",                                             "only use models listed in file <s>",  \%opt_HH, \@opt_order_A);
@@ -370,6 +370,7 @@ my $options_okay =
                 'v'             => \$GetOptions_H{"-v"},
                 'atgonly'       => \$GetOptions_H{"--atgonly"}, 
                 'minpvlen=s'    => \$GetOptions_H{"--minpvlen"},
+                'nkb=s'         => \$GetOptions_H{"--nkb"}, 
                 'keep'          => \$GetOptions_H{"--keep"},
 # options for specifiying classification
                 'group=s'       => \$GetOptions_H{"--group"},
@@ -464,7 +465,6 @@ my $options_okay =
 # options related to parallelization
                 'p'             => \$GetOptions_H{"-p"},
                 'q=s'           => \$GetOptions_H{"-q"},
-                'nkb=s'         => \$GetOptions_H{"--nkb"}, 
                 'errcheck'      => \$GetOptions_H{"--errcheck"},
 # options related to -p or --split
                 'wait=s'        => \$GetOptions_H{"--wait"},
@@ -499,8 +499,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.2dev4";
-my $releasedate   = "March 2021";
+my $version       = "1.2";
+my $releasedate   = "April 2021";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -792,7 +792,7 @@ if($cm_file !~ m/\.cm$/) {
   ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
 }
 
-utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $minfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
 
 # only check for blastn db file if we need it
 if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
@@ -1090,8 +1090,10 @@ if($do_split) {
   
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
 
-  $start_secs = ofile_OutputProgressPrior(sprintf("Executing $ncpu script%s to process $nchunk partition(s) of all %d sequence(s)",
-                                                  ($ncpu > 1) ? "s in parallel on $ncpu processors" : "",
+  my $ncpu2print = $ncpu;
+  if($ncpu2print > $nscript) { $ncpu2print = $nscript; }
+  $start_secs = ofile_OutputProgressPrior(sprintf("Executing $nscript script%s to process $nchunk partition(s) of all %d sequence(s)",
+                                                  ($ncpu2print > 1) ? "s in parallel on $ncpu processors" : "",
                                                   scalar(@seq_name_A)), 
                                           $progress_w, $FH_HR->{"log"}, *STDOUT);
 
