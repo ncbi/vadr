@@ -88,11 +88,11 @@ for(my $i = 0; $i < $nseq; $i++) {
   # trim the sequence at 5' end, then reverse it and trim at 3' end (this makes it so we can reuse same code for both ends)
   # then reverse it back and output it (if there's any sequence left after trimming)
   $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-  printf("5' trimmed length: %d\n", length($sqstring);
+  printf("5' trimmed length: %d\n", length($sqstring));
   if($sqstring ne "") { 
     $sqstring = reverse($sqstring);
     $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-    printf("3' trimmed length: %d\n", length($sqstring);
+    printf("3' trimmed length: %d\n", length($sqstring));
     if($sqstring ne "") { # reverse it back to original forward direction
       $sqstring = reverse($sqstring);
     }
