@@ -4579,7 +4579,7 @@ sub add_frameshift_alerts_for_one_sequence {
                 if($cur_delete_len > $local_nmaxdel) { 
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
                                              sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
-                                                     $cur_delete_len, $local_nmaxdel, $local_rfpos, $FH_HR));
+                                                     $cur_delete_len, $local_nmaxdel, $local_rfpos), $FH_HR);
                 }
                 $cur_delete_len = 0;
               }
