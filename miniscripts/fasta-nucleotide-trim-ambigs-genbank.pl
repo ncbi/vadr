@@ -8,38 +8,63 @@ require "sqp_seq.pm";
 require "sqp_utils.pm";
 
 my $usage;
-$usage  = "fasta-nucleotide-trim-ambigs-genbank.pl\n\n";
+$usage  = "fasta-sarscov2-trim-ambigs-genbank.pl\n\n";
 $usage .= "Usage:\n\n";
-$usage .= "perl fasta-nucleotide-trim-ambigs-genbank.pl [OPTIONS] <fasta file";
+$usage .= "perl fasta-sarscov2-trim-ambigs-genbank.pl [OPTIONS] <fasta file";
 $usage .= "\tOPTIONS:\n";
+$usage .= "\t\t--minlen <n> : min allowed sequence length after trimming [50]\n";
+$usage .= "\t\t--maxlen <n> : max allowed sequence length after trimming [30000]\n";
+$usage .= "\t\t--maxfrac <f>: max allowed fraction of sequence that can be Ns after trimming [0.5]\n";
 $usage .= "\t\t--ten <n>    : max number of ambiguous nucleotides allowed in first/final 10 [5]\n";
 $usage .= "\t\t--fifty <n>  : max number of ambiguous nucleotides allowed in first/final 10 [15]\n";
 $usage .= "\t\t--sfx <s>    : suffix to add to each sequence name is <s> [default: do not change names]\n";
-$usage .= "\t\t--skipzero   : silently skip seqs of length 0 after trimming [default: exit in error if seq becomes length 0]\n";
+$usage .= "\t\t--strict     : die (instead of skipping a seq) if any seq is not within minlen..maxlen range after trimming\n";
 
 # set defaults
+my $minlen          = 50;
+my $maxlen          = 30000;
+my $maxfrac_Ns      = 0.5;
 my $ten_max_ambig   = 5;
 my $fifty_max_ambig = 15;
 my $sfx             = undef;
-my $do_skipzero     = 0;
+my $do_strict       = 0;
 
 if(scalar(@ARGV) != 1) { 
   die $usage;
 
-&GetOptions( "ten=s"    => \$ten_max_ambig,
+&GetOptions( "minlen=s" => \$minlen,
+             "maxlen=s" => \$maxlen,
+             "maxfrac=s"=> \$maxfrac_Ns,
+             "ten=s"    => \$ten_max_ambig,
              "fifty=s"  => \$fifty_max_ambig,
              "sfx=s"    => \$sfx, 
-             "skipzero" => \$do_skipzero);
+             "strict"   => \$do_strict);
 }
 
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($fasta_file) = @ARGV;
 
+# enforce ranges that make sense for options
+if($minlen < 0) { 
+  die "ERROR with --minlen <n>, <n> must be >= 0";
+}
+if($maxlen < 0) { 
+  die "ERROR with --maxlen <n>, <n> must be >= 0";
+}
 if(($ten_max_ambig < 0) || ($ten_max_ambig >= 10)) { 
   die "ERROR with --ten <n>, <n> must in range [0..9]";
 }
 if(($fifty_max_ambig < 0) || ($fifty_max_ambig >= 49)) { 
   die "ERROR with --ten <n>, <n> must in range [0..49]";
+}
+if($minlen > $maxlen) { 
+  die "ERROR with --minlen <n1> and --maxlen <n2>, <n1> must not be greater than <n2>";
+}
+if($ten_max_ambig > $fifty_max_ambig) { 
+  die "ERROR with --ten <n1> and --fifty <n2>, <n1> must not be greater than <n2>";
+}
+if(($maxfrac_Ns < -0.00001) || ($maxfrac_Ns > 1.00001)) { 
+  die "ERROR with --maxfrac <f>, <f> must be between 0 and 1";
 }
 
 if(! -s $fasta_file) { 
@@ -99,14 +124,28 @@ for(my $i = 0; $i < $nseq; $i++) {
       $sqstring = reverse($sqstring);
     }
   }
-  if($sqstring eq "") { 
-    # zero length sequence
-    if($do_skipzero) { 
-      ; # --skipzero used, do nothing
+  my $seqlen = length($sqstring);
+  my $n_N    = () = $sqstring =~ /[Nn]/g; # count Ns
+  my $frac_N = $n_N / $seqlen;
+
+  if(($seqlen < $minlen) ||     # too short (after trimming)
+     ($seqlen > $maxlen) ||     # too long  (after trimming)
+     ($frac_N > $maxfrac_Ns)) { # too many Ns (after trimming)
+    # do not output sequence
+    if(! $do_strict) { 
+      ; # --strict not used, it's ok to skip seqs, do nothing
     }
     else { 
-      # --skipzero not used, die
-      die "ERROR sequence with the header line below is trimmed to length 0.\nTo silently skip these seqs (and not output them) use --skipzero.\n$header\n";
+      # --strict used, it's not ok to skip seqs, die
+      if($seqlen < $minlen) { 
+        die "ERROR sequence with the header line below is too short (after trimming) length is $seqlen minlen is $minlen.\n$header\n";
+      }
+      if($seqlen > $maxlen) { 
+        die "ERROR sequence with the header line below is too short (after trimming) length is $seqlen minlen is $minlen.\n$header\n";
+      }
+      else { 
+        die "ERROR sequence with the header line below has too many Ns (after trimming) fraction Ns is $frac_N, max allowed is $maxfrac_Ns\n$header\n";
+      }
     }
   }
   else { 
@@ -125,14 +164,14 @@ exit 0;
 # 
 # Purpose:   Given a sequence string <$sqstring>, remove ambiguous
 #            nts from the 5' end the same way that GenBank processing 
-#            does, using 3 rules:
-#            while any rule results in trimming 1 or more nt:
-#            - rule 1: remove 5' terminal non-ACGTU nts
-#            - rule 2: remove the 10 5'-most nt if > $ten_max_ambig 
+#            does, using 2 rules:
+#            while any rule results in trimming:
+#            - rule 1: remove the 10 5'-most nt if > $ten_max_ambig 
 #                      ambiguous nt exist in 10 5'-most nt [5 by default]
-#            - rule 3: remove the 50 5'-most nt if > $fifty_max_ambig 
+#            - rule 2: remove the 50 5'-most nt if > $fifty_max_ambig 
 #                      ambiguous nt exist in 50 5'-most nt [15 by default]
-#           
+#            Then after that trimming is finished, trim terminal ambiguous
+#            nucleotides before returning.
 #
 # Arguments:
 #   $sqstring:        the nucleotide sequence string
@@ -150,32 +189,54 @@ sub trim_5p_end_using_three_rules {
   my ($sqstring, $ten_max_ambig, $fifty_max_ambig) = @_;
 
   my $keep_going = 1;
+  my ($next_10, $next_50, $nambig, $trim_offset); 
+  my $ntrimmed = 0;
   while(($keep_going) && ($sqstring ne "")) { 
     $keep_going = 0; # set to 1 if we use any rules below
-    # rule 1: remove 5' terminal non-ACGTU nts
-    if($sqstring =~ m/[^ACGTUacgtu]/) { 
-      $sqstring =~ s/[^ACGTUacgtu]+//;
+    # rule 1: remove the 10 5'-most nt if > $ten_max_ambig ambiguous nt exist in 10 5'-most nt
+    $next_10 = substr($sqstring, 0, 10);
+    $nambig = () = $next_10 =~ /[^ACGTUacgtu]/g;
+    if($nambig > $ten_max_ambig) { 
+      # determine how many to trim, start trimming at first ambig char
+      if($nambig == 10) { 
+        $trim_offset = 10;
+      }
+      else { 
+        # at least one non-ambiguous character, remove all trailing ambigs to get size to trim
+        $next_10 =~ s/^[^ACGTUacgtu]+//;
+        $trim_offset = length($next_10);
+      }
+
+      $ntrimmed += (10 - $trim_offset);
+      printf("nambig: $nambig, trimming (10 - $trim_offset): %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
+
+      $sqstring = substr($sqstring, $trim_offset);
       $keep_going = 1;
     }
-    # rule 2: remove the 10 5'-most nt if > $ten_max_ambig ambiguous nt exist in 10 5'-most nt
-    if(! $keep_going) { # only enforce next rule if we didn't use any previous rules
-      my $next_10 = substr($sqstring, 0, 10);
-      my $nambig = () = $next_10 =~ /[^ACGTUacgtu]/g;
-      if($nambig > $ten_max_ambig) { 
-        # trim first 10 away
-        $sqstring = substr($sqstring, 10);
-        $keep_going = 1;
-      }
-    }
-    if(! $keep_going) { # only enforce next rule if we didn't use any previous rules
-      my $next_50 = substr($sqstring, 0, 50);
-      my $nambig = () = $next_50 =~ /[^ACGTUacgtu]/g;
+    # rule 2: remove the 50 5'-most nt if > $fifty_max_ambig ambiguous nt exist in 50 5'-most nt
+    if(! $keep_going) { # only enforce this rule if we didn't use rule 1
+      $next_50 = substr($sqstring, 0, 50);
+      $nambig = () = $next_50 =~ /[^ACGTUacgtu]/g;
       if($nambig > $fifty_max_ambig) { 
-        # trim first 50 away
-        $sqstring = substr($sqstring, 50);
+        # determine how many to trim, start trimming at first ambig char
+        if($nambig == 50) { 
+          $trim_offset = 50;
+        }
+        else { 
+          # at least one non-ambiguous character, remove all trailing ambigs to get size to trim
+          $next_50 =~ s/^[^ACGTUacgtu]+//;
+          $trim_offset = length($next_50);
+        }
+
+        $sqstring = substr($sqstring, $trim_offset);
         $keep_going = 1;
       }
     }
   }
+
+  # finally, trim any leading (terminal) ambiguities
+  $sqstring =~ s/^[^ACGTUacgtu]+//;
+
   return $sqstring;
 }
+
