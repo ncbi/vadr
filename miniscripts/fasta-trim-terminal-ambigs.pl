@@ -11,6 +11,7 @@
 
 use strict;
 use warnings;
+use Getopt::Long;
 use Bio::Easel::MSA;
 use Bio::Easel::SqFile;
 require "sqp_seq.pm";
@@ -42,9 +43,6 @@ my $maxlen          = 1000000000; # 1Gb
 my $sfx             = undef;
 my $do_strict       = 0;
 
-if(scalar(@ARGV) != 1) { 
-  die $usage;
-
 &GetOptions( "minlen=s" => \$minlen,
              "maxlen=s" => \$maxlen,
 ###             "maxfrac=s"=> \$maxfrac_Ns,
@@ -52,6 +50,9 @@ if(scalar(@ARGV) != 1) {
 ###             "fifty=s"  => \$fifty_max_ambig,
              "sfx=s"    => \$sfx, 
              "strict"   => \$do_strict);
+
+if(scalar(@ARGV) != 1) { 
+  die $usage;
 }
 
 if(scalar(@ARGV) != 1) { die $usage; }
@@ -146,7 +147,7 @@ for(my $i = 0; $i < $nseq; $i++) {
 ###    my $frac_N = $n_N / $seqlen;
 
   if(($seqlen < $minlen) ||     # too short (after trimming)
-     ($seqlen > $maxlen) {      # too long  (after trimming)
+     ($seqlen > $maxlen)) {      # too long  (after trimming)
 ###       ($frac_N > $maxfrac_Ns)) { # too many Ns (after trimming)
     # do not output sequence
     if(! $do_strict) { 
@@ -160,9 +161,9 @@ for(my $i = 0; $i < $nseq; $i++) {
       if($seqlen > $maxlen) { 
         die "ERROR sequence with the header line below is too short (after trimming) length is $seqlen minlen is $minlen.\n$header\n";
       }
-      else { 
-        die "ERROR sequence with the header line below has too many Ns (after trimming) fraction Ns is $frac_N, max allowed is $maxfrac_Ns\n$header\n";
-      }
+      ###else { 
+      ###die "ERROR sequence with the header line below has too many Ns (after trimming) fraction Ns is $frac_N, max allowed is $maxfrac_Ns\n$header\n";
+      ###}
     }
   }
   else { 
