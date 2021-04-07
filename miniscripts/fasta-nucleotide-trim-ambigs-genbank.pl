@@ -10,7 +10,7 @@ require "sqp_utils.pm";
 my $usage;
 $usage  = "fasta-nucleotide-trim-ambigs-genbank.pl\n\n";
 $usage .= "Usage:\n\n";
-$usage .= "fasta-nucleotide-trim-ambigs-genbank.pl [OPTIONS] <fasta file";
+$usage .= "perl fasta-nucleotide-trim-ambigs-genbank.pl [OPTIONS] <fasta file";
 $usage .= "\tOPTIONS:\n";
 $usage .= "\t\t--ten <n>    : max number of ambiguous nucleotides allowed in first/final 10 [5]\n";
 $usage .= "\t\t--fifty <n>  : max number of ambiguous nucleotides allowed in first/final 10 [15]\n";
@@ -84,15 +84,17 @@ for(my $i = 0; $i < $nseq; $i++) {
 
   my $orig_sqstring = $sqstring;
 
-  printf("original length: %d\n", length($sqstring));
+  #print $out_header . "\n";
+  #printf("original length: %d\n", length($sqstring));
+
   # trim the sequence at 5' end, then reverse it and trim at 3' end (this makes it so we can reuse same code for both ends)
   # then reverse it back and output it (if there's any sequence left after trimming)
   $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-  printf("5' trimmed length: %d\n", length($sqstring));
+  #printf("5' trimmed length: %d\n", length($sqstring));
   if($sqstring ne "") { 
     $sqstring = reverse($sqstring);
     $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-    printf("3' trimmed length: %d\n", length($sqstring));
+    #printf("3' trimmed length: %d\n", length($sqstring));
     if($sqstring ne "") { # reverse it back to original forward direction
       $sqstring = reverse($sqstring);
     }
@@ -110,7 +112,7 @@ for(my $i = 0; $i < $nseq; $i++) {
   else { 
     # $sqstring is not empty, output it
     print $out_header . "\n";
-    #print seq_SqstringAddNewLines($sqstring);
+    print seq_SqstringAddNewlines($sqstring, 60);
   }
 }
 
