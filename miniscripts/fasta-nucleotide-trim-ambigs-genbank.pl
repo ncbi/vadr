@@ -190,25 +190,20 @@ sub trim_5p_end_using_three_rules {
 
   my $keep_going = 1;
   my ($next_10, $next_50, $nambig, $trim_offset); 
-  my $ntrimmed = 0;
+  #my $ntrimmed = 0;
   while(($keep_going) && ($sqstring ne "")) { 
     $keep_going = 0; # set to 1 if we use any rules below
     # rule 1: remove the 10 5'-most nt if > $ten_max_ambig ambiguous nt exist in 10 5'-most nt
     $next_10 = substr($sqstring, 0, 10);
     $nambig = () = $next_10 =~ /[^ACGTUacgtu]/g;
     if($nambig > $ten_max_ambig) { 
-      # determine how many to trim, start trimming at first ambig char
-      if($nambig == 10) { 
-        $trim_offset = 10;
-      }
-      else { 
-        # at least one non-ambiguous character, remove all trailing ambigs to get size to trim
-        $next_10 =~ s/^[^ACGTUacgtu]+//;
-        $trim_offset = length($next_10);
-      }
+      # determine how many to trim, stop trimming at final ambig char in region
+      # remove all non-ambiguous nt from the end to determine length to trim
+      $next_10 =~ s/[ACGTUacgtu]+$//;
+      $trim_offset = length($next_10);
 
-      $ntrimmed += (10 - $trim_offset);
-      printf("nambig: $nambig, trimming (10 - $trim_offset): %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
+      #$ntrimmed += $trim_offset;
+      #printf("nambig: $nambig, trimming $trim_offset: %s (ntrimmed: $ntrimmed)\n", substr($sqstring, 0, $trim_offset));
 
       $sqstring = substr($sqstring, $trim_offset);
       $keep_going = 1;
@@ -218,16 +213,10 @@ sub trim_5p_end_using_three_rules {
       $next_50 = substr($sqstring, 0, 50);
       $nambig = () = $next_50 =~ /[^ACGTUacgtu]/g;
       if($nambig > $fifty_max_ambig) { 
-        # determine how many to trim, start trimming at first ambig char
-        if($nambig == 50) { 
-          $trim_offset = 50;
-        }
-        else { 
-          # at least one non-ambiguous character, remove all trailing ambigs to get size to trim
-          $next_50 =~ s/^[^ACGTUacgtu]+//;
-          $trim_offset = length($next_50);
-        }
-
+        # determine how many to trim, stop trimming at final ambig char in region
+        # remove all non-ambiguous nt from the end to determine length to trim
+        $next_50 =~ s/[ACGTUacgtu]+$//;
+        $trim_offset = length($next_50);
         $sqstring = substr($sqstring, $trim_offset);
         $keep_going = 1;
       }
