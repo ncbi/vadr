@@ -41,6 +41,7 @@ my @to_remove_A = ();
 my $tmp_out  = "out.fa.tmp";
 my $diff_out = "out.fa.diff";
 push(@to_remove_A, $tmp_out);
+push(@to_remove_A, $diff_out);
 
 my $cmd;
 my $exp_val;
