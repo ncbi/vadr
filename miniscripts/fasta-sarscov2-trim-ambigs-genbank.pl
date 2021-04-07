@@ -1,5 +1,14 @@
 #!/usr/bin/env perl
 
+### comments that start with ### pertain to code that could be used
+### to try and reproduce how submission portal trims seqs for sars-cov-2
+### - trim in 10nt chunks if > 5 ambigs
+### - trim in 50nt chunks if > 15 ambigs
+### - trim terminal nt
+### - min length 50
+### - max length 30000
+### - max fraction Ns is 0.5
+
 use strict;
 use warnings;
 use Bio::Easel::MSA;
@@ -8,24 +17,28 @@ require "sqp_seq.pm";
 require "sqp_utils.pm";
 
 my $usage;
-$usage  = "fasta-sarscov2-trim-ambigs-genbank.pl\n\n";
+###$usage  = "fasta-sarscov2-trim-ambigs-genbank.pl\n\n";
+$usage  = "fasta-trim-terminal-ambigs.pl\n\n";
 $usage .= "Usage:\n\n";
-$usage .= "perl fasta-sarscov2-trim-ambigs-genbank.pl [OPTIONS] <fasta file";
+$usage .= "perl fasta-trim-terminal-ambigs.pl [OPTIONS] <fasta file";
 $usage .= "\tOPTIONS:\n";
-$usage .= "\t\t--minlen <n> : min allowed sequence length after trimming [50]\n";
-$usage .= "\t\t--maxlen <n> : max allowed sequence length after trimming [30000]\n";
-$usage .= "\t\t--maxfrac <f>: max allowed fraction of sequence that can be Ns after trimming [0.5]\n";
-$usage .= "\t\t--ten <n>    : max number of ambiguous nucleotides allowed in first/final 10 [5]\n";
-$usage .= "\t\t--fifty <n>  : max number of ambiguous nucleotides allowed in first/final 10 [15]\n";
+$usage .= "\t\t--minlen <n> : min allowed sequence length after trimming [df: 1]\n";
+$usage .= "\t\t--maxlen <n> : max allowed sequence length after trimming [df: 1Gb]\n";
+###$usage .= "\t\t--maxfrac <f>: max allowed fraction of sequence that can be Ns after trimming [0.5]\n";
+###$usage .= "\t\t--ten <n>    : max number of ambiguous nucleotides allowed in first/final 10 [5]\n";
+###$usage .= "\t\t--fifty <n>  : max number of ambiguous nucleotides allowed in first/final 10 [15]\n";
 $usage .= "\t\t--sfx <s>    : suffix to add to each sequence name is <s> [default: do not change names]\n";
 $usage .= "\t\t--strict     : die (instead of skipping a seq) if any seq is not within minlen..maxlen range after trimming\n";
 
 # set defaults
-my $minlen          = 50;
-my $maxlen          = 30000;
-my $maxfrac_Ns      = 0.5;
-my $ten_max_ambig   = 5;
-my $fifty_max_ambig = 15;
+###my $minlen          = 50;
+###my $maxlen          = 30000;
+my $minlen          = 1;
+my $maxlen          = 1000000000; # 1Gb
+
+### my $maxfrac_Ns      = 0.5;
+### my $ten_max_ambig   = 5;
+### my $fifty_max_ambig = 15;
 my $sfx             = undef;
 my $do_strict       = 0;
 
@@ -34,9 +47,9 @@ if(scalar(@ARGV) != 1) {
 
 &GetOptions( "minlen=s" => \$minlen,
              "maxlen=s" => \$maxlen,
-             "maxfrac=s"=> \$maxfrac_Ns,
-             "ten=s"    => \$ten_max_ambig,
-             "fifty=s"  => \$fifty_max_ambig,
+###             "maxfrac=s"=> \$maxfrac_Ns,
+###             "ten=s"    => \$ten_max_ambig,
+###             "fifty=s"  => \$fifty_max_ambig,
              "sfx=s"    => \$sfx, 
              "strict"   => \$do_strict);
 }
@@ -51,21 +64,21 @@ if($minlen < 0) {
 if($maxlen < 0) { 
   die "ERROR with --maxlen <n>, <n> must be >= 0";
 }
-if(($ten_max_ambig < 0) || ($ten_max_ambig >= 10)) { 
-  die "ERROR with --ten <n>, <n> must in range [0..9]";
-}
-if(($fifty_max_ambig < 0) || ($fifty_max_ambig >= 49)) { 
-  die "ERROR with --ten <n>, <n> must in range [0..49]";
-}
+###if(($ten_max_ambig < 0) || ($ten_max_ambig >= 10)) { 
+###  die "ERROR with --ten <n>, <n> must in range [0..9]";
+###}
+###if(($fifty_max_ambig < 0) || ($fifty_max_ambig >= 49)) { 
+###  die "ERROR with --ten <n>, <n> must in range [0..49]";
+###}
 if($minlen > $maxlen) { 
   die "ERROR with --minlen <n1> and --maxlen <n2>, <n1> must not be greater than <n2>";
 }
-if($ten_max_ambig > $fifty_max_ambig) { 
-  die "ERROR with --ten <n1> and --fifty <n2>, <n1> must not be greater than <n2>";
-}
-if(($maxfrac_Ns < -0.00001) || ($maxfrac_Ns > 1.00001)) { 
-  die "ERROR with --maxfrac <f>, <f> must be between 0 and 1";
-}
+###if($ten_max_ambig > $fifty_max_ambig) { 
+###  die "ERROR with --ten <n1> and --fifty <n2>, <n1> must not be greater than <n2>";
+###}
+###if(($maxfrac_Ns < -0.00001) || ($maxfrac_Ns > 1.00001)) { 
+###  die "ERROR with --maxfrac <f>, <f> must be between 0 and 1";
+###}
 
 if(! -s $fasta_file) { 
   die "ERROR fasta file $fasta_file does not exist or is empty";
@@ -107,30 +120,34 @@ for(my $i = 0; $i < $nseq; $i++) {
     $out_header = $header;
   }
 
-  my $orig_sqstring = $sqstring;
+#####################################################
+###  
+###    # trim the sequence at 5' end, then reverse it and trim at 3' end (this makes it so we can reuse same code for both ends)
+###    # then reverse it back and output it (if there's any sequence left after trimming)
+###    $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
+###    #printf("5' trimmed length: %d\n", length($sqstring));
+###    if($sqstring ne "") { 
+###      $sqstring = reverse($sqstring);
+###      $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
+###      #printf("3' trimmed length: %d\n", length($sqstring));
+###      if($sqstring ne "") { # reverse it back to original forward direction
+###        $sqstring = reverse($sqstring);
+###      }
+###    }
+######################################################
 
-  #print $out_header . "\n";
-  #printf("original length: %d\n", length($sqstring));
+  # the following two lines should be removed if above block is commented out and 
+  # trim_5p_end_using_three_rules() gets called 
+  $sqstring =~ s/^[^ACGTUacgtu]+//; # remove any 5'-terminal ambiguous nts
+  $sqstring =~ s/[^ACGTUacgtu]+$//; # remove any 3'-terminal ambiguous nts
 
-  # trim the sequence at 5' end, then reverse it and trim at 3' end (this makes it so we can reuse same code for both ends)
-  # then reverse it back and output it (if there's any sequence left after trimming)
-  $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-  #printf("5' trimmed length: %d\n", length($sqstring));
-  if($sqstring ne "") { 
-    $sqstring = reverse($sqstring);
-    $sqstring = trim_5p_end_using_three_rules($sqstring, $ten_max_ambig, $fifty_max_ambig);
-    #printf("3' trimmed length: %d\n", length($sqstring));
-    if($sqstring ne "") { # reverse it back to original forward direction
-      $sqstring = reverse($sqstring);
-    }
-  }
   my $seqlen = length($sqstring);
-  my $n_N    = () = $sqstring =~ /[Nn]/g; # count Ns
-  my $frac_N = $n_N / $seqlen;
+###    my $n_N    = () = $sqstring =~ /[Nn]/g; # count Ns
+###    my $frac_N = $n_N / $seqlen;
 
   if(($seqlen < $minlen) ||     # too short (after trimming)
-     ($seqlen > $maxlen) ||     # too long  (after trimming)
-     ($frac_N > $maxfrac_Ns)) { # too many Ns (after trimming)
+     ($seqlen > $maxlen) {      # too long  (after trimming)
+###       ($frac_N > $maxfrac_Ns)) { # too many Ns (after trimming)
     # do not output sequence
     if(! $do_strict) { 
       ; # --strict not used, it's ok to skip seqs, do nothing
@@ -158,6 +175,10 @@ for(my $i = 0; $i < $nseq; $i++) {
 exit 0;
 
 #################################################################
+# THIS SUBROUTINE IS EXPERIMENTAL AND NOT USED
+# COULD BE USED TO TRY AND REPRODUCE WHAT 
+# SUBMISSION PORTAL DOES TO SARS-COV-2 SEQS
+# 
 # Subroutine:  trim_5p_end_using_three_rules()
 # Incept:      EPN, Wed Apr  7 07:22:43 2021
 #
