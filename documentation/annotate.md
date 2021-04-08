@@ -812,7 +812,8 @@ with format described [here](formats.md#rpn).
 
 The `--split` option specifies that `v-annotate.pl` should split up the input file into chunks and 
 processing each chunk separately and then combining results at the end after all chunks have been processed.
-This limits total memory usage for large input sequence files.
+This limits total memory usage for large input sequence files as
+explained more [here](#memory).
 
 | ........option........ | explanation |
 |---------------------|--------------------|
