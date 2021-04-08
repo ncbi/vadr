@@ -25,6 +25,7 @@
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Limiting memory usage and multi-threading](#memory)
 
 ---
 
@@ -1159,6 +1160,38 @@ misc_feature-ization:
    `misc_feature`s not to be reported in `.fail.tbl` files.)
 
 ---
+
+## <a name="memory"></a>Limiting memory usage and parallelization with
+   multi-threading
+
+The `v-annotate.pl` script, in particular the alignment step, is memory intensive.
+For Norovirus and Dengue virus, it is recommended to
+have 16G of RAM available. For larger viruses, such as the roughly
+30Kb SARS-CoV-2 virus, 64G of available RAM is available. However,
+the `--glsearch` and `--split` options can be used to reduce the
+memory requirements.
+
+The `--glsearch` option causes the more memory efficient `glsearch`
+program from the FASTA software package to be used instead of
+Infernal's `cmalign` program.  However, `--glsearch` has only been
+extensively tested for SARS-CoV-2 sequences, for which it is now
+recommended due to the high 64G memory requirement if `cmalign` is
+used.
+
+With `--glsearch` the amount of required memory is roughly 2G of RAM
+for small input fasta files with 1000 sequences or less, but can
+exceed 2G for very large input files; required memory will increase
+with the size of the input file. 
+
+Using the `--split` option will remove the dependence of required
+memory on input file size because it causes the input fasta file to be
+split into independent chunks and each chunk is processed
+independently, with results from all chunks combined at the end.
+
+Also, in combination with the `--glsearch` and `--split` options, the
+user can specify multi-threading with `<n>` CPUs by using the `--cpu
+<n>` option.  It is recommended that at least 2G * `<n>` total RAM is
+available when using this option.
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
