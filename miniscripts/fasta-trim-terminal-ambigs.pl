@@ -88,7 +88,9 @@ if(! -s $fasta_file) {
 # determine number of sequences in file
 my $nseq = `grep ^\\> $fasta_file | wc -l`;
 chomp $nseq;
-if($nseq !~ /^\d+$/) { 
+$nseq =~ s/^\s+//; # remove leading whitespace
+$nseq =~ s/\s+$//; # remove trailing whitespace
+if($nseq !~ /^\s*\d+\s*$/) { 
   die "ERROR could not determine number of sequences in file using grep and wc";
 }
 
