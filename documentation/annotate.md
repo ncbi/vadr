@@ -25,6 +25,7 @@
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Limiting memory usage and multi-threading](#memory)
 
 ---
 
@@ -1157,6 +1158,43 @@ misc_feature-ization:
    for expendable features as explained above even when the
    option `--nomisc` is used. (The `--nomisc` option causes
    `misc_feature`s not to be reported in `.fail.tbl` files.)
+
+---
+
+## <a name="memory"></a>Limiting memory usage and parallelization with multi-threading
+
+The `v-annotate.pl` script, in particular the alignment step, is memory intensive.
+For Norovirus and Dengue virus, it is recommended to
+have 16G of RAM available. For larger viruses, such as the roughly
+30Kb SARS-CoV-2 virus, 64G of available RAM is recommended. However,
+the `--glsearch` and `--split` options can be used to reduce the
+memory requirements.
+
+The `--glsearch` option causes the glsearch` program from the FASTA
+software package to be used instead of Infernal's memory intensive
+`cmalign` program.  However, `--glsearch` has only been extensively
+tested for SARS-CoV-2 sequences, for which it is now recommended due
+to the high 64G memory recommendation with `cmalign`.
+
+With `--glsearch` the amount of required memory is roughly 2G of RAM
+for small input fasta files with 2000 sequences or less, but can
+exceed 2G for very large input files. Required memory will increase
+with the size of the input file. 
+
+Using the `--split` option removes the dependence of required
+memory on input file size as it causes splitting of the input fasta file
+into independent chunks with each chunk processed separately and
+results from all chunks combined at the end.
+
+Also, in combination with the `--glsearch` and `--split` options, the
+user can specify multi-threading with `<n>` CPUs by using the `--cpu
+<n>` option.  It is recommended that at least 2G * `<n>` total RAM is
+available when using this option.
+
+In summary, the following combination of options are recommended to
+reduce memory usage and speed-up processing for
+SARS-CoV-2 annotation, provided you are running on a machine with 8
+available cores and 16G of total RAM: `--glsearch --split --cpu 8`. 
 
 ---
 
