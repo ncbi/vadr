@@ -77,14 +77,14 @@ push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f -s --mdir \$VADRSCRIPTSDIR/test
 push(@desc_A, "v-annotate.pl noro.subseq.fa -s --mdir --mkey");
 push(@fail_A, "0");
 
-# --mdir --mkey --hmmer: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --hmmer \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa --hmmer --mdir --mkey");
+# --mdir --mkey --pv_hmmer: pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --pv_hmmer \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa --pv_hmmer --mdir --mkey");
 push(@fail_A, "0");
 
-# --mdir --mkey -s --hmmer: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f -s --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --hmmer \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa -s --hmmer --mdir --mkey");
+# --mdir --mkey -s --pv_hmmer: pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -f -s --mdir \$VADRSCRIPTSDIR/testfiles/models --mkey NC_001959 --pv_hmmer \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa -s --pv_hmmer --mdir --mkey");
 push(@fail_A, "0");
 
 # valid -m -i -x: pass
@@ -117,14 +117,14 @@ push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl -s -f -m \$VADRSCRIPTSDIR/testfile
 push(@desc_A, "v-annotate.pl noro.subseq.fa -s -m -i -x bad -n");
 push(@fail_A, "1");
 
-# --hmmer and valid -m -i -a: pass
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/NC_001959.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa --hmmer -m -i -a");
+# --pv_hmmer and valid -m -i -a: pass
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --pv_hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/NC_001959.pt.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa --pv_hmmer -m -i -a");
 push(@fail_A, "0");
 
-# --hmmer and valid -m -i bad -a: fail
-push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/bogus.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
-push(@desc_A, "v-annotate.pl noro.subseq.fa --hmmer -m -i bad -a");
+# --pv_hmmer and valid -m -i bad -a: fail
+push(@cmd_A,  "\$VADRSCRIPTSDIR/v-annotate.pl --pv_hmmer -f -m \$VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i \$VADRSCRIPTSDIR/testfiles/models/NC_001959.minfo -a \$VADRSCRIPTSDIR/testfiles/models/bogus.hmm \$VADRSCRIPTSDIR/testfiles/noro.subseq.fa va-test > /dev/null 2>&1");
+push(@desc_A, "v-annotate.pl noro.subseq.fa --pv_hmmer -m -i bad -a");
 push(@fail_A, "1");
 
 push (@rmdir_A, "va-test");

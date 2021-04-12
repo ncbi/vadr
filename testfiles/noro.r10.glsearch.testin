@@ -1,0 +1,43 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+#
+# no --glsearch, no -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --fstminnt 7 --fstlowthr 0.0 --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-nogls.r10 > va-noro-nogls.r10.out
+desc: noro-10-noglsearch
+out: va-noro-nogls.r10/va-noro-nogls.r10.vadr.pass.tbl 
+out: va-noro-nogls.r10/va-noro-nogls.r10.vadr.fail.tbl 
+out: va-noro-nogls.r10/va-noro-nogls.r10.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alt
+rmdir: va-noro-nogls.r10
+# yes --glsearch, no -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --fstminnt 7 --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-gls.r10 > va-noro-gls.r10.out
+desc: annotate-noro-10-glsearch
+out: va-noro-gls.r10/va-noro-gls.r10.vadr.pass.tbl 
+out: va-noro-gls.r10/va-noro-gls.r10.vadr.fail.tbl 
+out: va-noro-gls.r10/va-noro-gls.r10.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alt
+# yes --glsearch, yes -s
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --glsearch --fstminnt 7 --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-gls-seed.r10 > va-noro-gls-seed.r10.out
+desc: annotate-noro-10-glsearch-seed
+out: va-noro-gls-seed.r10/va-noro-gls-seed.r10.vadr.pass.tbl 
+out: va-noro-gls-seed.r10/va-noro-gls-seed.r10.vadr.fail.tbl 
+out: va-noro-gls-seed.r10/va-noro-gls-seed.r10.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alt

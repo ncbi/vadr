@@ -1,0 +1,13 @@
+#     seq                                   mdl                ftr   ftr            ftr  dcr     model  indel       orig        new  codon     codon   orig    new   dcr  did  
+#idx  name                                  name               type  name           idx  type      pos   apos  seq-uapos  seq-uapos  type     coords  codon  codon  iter  swap?
+#---  ------------------------------------  -----------------  ----  -------------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+2.1   ENTOY100A-dcr-rev-Cdel-near-stop      entoy100a-dcr-del  CDS   protein_three    3  delete     51     51         51         50  stop   52..50:-    GTA    TAG     1  yes  
+#---  ------------------------------------  -----------------  ----  -------------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+3.1   ENTOY100A-dcr-rev-CCdel-near-stop     entoy100a-dcr-del  CDS   protein_three    3  delete     51     51         50         49  stop   51..49:-    GTA    TAG     1  yes  
+#---  ------------------------------------  -----------------  ----  -------------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+4.1   ENTOY100A-dcr-rev-CCCdel-near-stop    entoy100a-dcr-del  CDS   protein_three    3  delete     51     51         49         48  stop   50..48:-    GTA    TAG     1  yes  
+#---  ------------------------------------  -----------------  ----  -------------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+5.1   ENTOY100A-dcr-rev-CCCCdel-near-stop   entoy100a-dcr-del  CDS   protein_three    3  delete     51     51         48         47  stop   49..47:-    GTA    TAT     1  no   
+#---  ------------------------------------  -----------------  ----  -------------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----
+6.1   ENTOY100A-dcr-rev-TTTTdel-near-start  entoy100a-dcr-del  CDS   protein_three    3  delete     65     65         64         65  start  65..63:-    TGC    CTG     1  no   
+#---  ------------------------------------  -----------------  ----  -------------  ---  ------  -----  -----  ---------  ---------  -----  --------  -----  -----  ----  -----

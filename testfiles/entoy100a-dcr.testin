@@ -1,0 +1,247 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+# 
+##########################################
+# First test file, tests 'delete' type doctoring, including swap and then swap
+# back example
+# 
+# no --glsearch, no --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-df > va-entoy100a-dcr-df.out
+desc: annotate-entoy100a-dcr-df
+out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.pass.list
+out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.fail.list
+out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.alt.list
+out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.alt
+out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.dcr
+out: va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-df/va-entoy100a-dcr-df.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr-df
+# 
+# no --glsearch, yes --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-nodcr > va-entoy100a-dcr-nodcr.out
+desc: annotate-entoy100a-dcr-nodcr
+out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.pass.list
+out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.fail.list
+out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.alt.list
+out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.alt
+out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.dcr
+out: va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-nodcr/va-entoy100a-dcr-nodcr.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr-nodcr
+# 
+# yes --glsearch, no --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-gls > va-entoy100a-dcr-gls.out
+desc: annotate-entoy100a-dcr-gls
+out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.pass.list
+out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.fail.list
+out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.alt.list
+out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.alt
+out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.dcr
+out: va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr-gls
+# 
+# yes --glsearch, yes --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in.fa va-entoy100a-dcr-glsnodcr > va-entoy100a-dcr-glsnodcr.out
+desc: annotate-entoy100a-dcr-glsnodcr
+out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.pass.list
+out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.fail.list
+out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.alt.list
+out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.alt
+out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.dcr
+out: va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr-glsnodcr/va-entoy100a-dcr-glsnodcr.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr-glsnodcr
+# 
+##############################################
+# Second seq file, tests 'delete' type doctorings, seqs with no nts on either side to swap with
+# 
+# yes --glsearch, no --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-gls > va-entoy100a-dcr2-gls.out
+desc: annotate-entoy100a-dcr2-gls
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt.list
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.dcr
+out: va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr2-gls
+#
+# yes --glsearch, yes --nodcr, note output files are same as without --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in2.fa va-entoy100a-dcr2-glsnodcr > va-entoy100a-dcr2-glsnodcr.out
+desc: annotate-entoy100a-dcr2-glsnodcr
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.pass.list
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.fail.list
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.alt.list
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.alt
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.dcr
+out: va-entoy100a-dcr2-glsnodcr/va-entoy100a-dcr2-glsnodcr.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr2-gls/va-entoy100a-dcr2-gls.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr2-gls
+#
+################################
+# 
+# Third seq file, tests 'delete' type doctorings, reverse strand CDS
+# 
+# yes --glsearch, no --nodcr, --atgonly
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-gls > va-entoy100a-dcr3-gls.out
+desc: annotate-entoy100a-dcr3-gls
+out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.pass.list
+out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.fail.list
+out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.alt.list
+out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.alt
+out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.dcr
+out: va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-gls/va-entoy100a-dcr3-gls.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr3-gls
+#
+# yes --glsearch, yes --nodcr, --atgonly
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --atgonly --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-del -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in3.fa va-entoy100a-dcr3-glsnodcr > va-entoy100a-dcr3-glsnodcr.out
+desc: annotate-entoy100a-dcr3-glsnodcr
+out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.pass.list
+out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.fail.list
+out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt.list
+out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt
+out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.dcr
+out: va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.entoy100a-dcr-del.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr3-glsnodcr/va-entoy100a-dcr3-glsnodcr.vadr.entoy100a-dcr-del.align.stk
+rmdir: va-entoy100a-dcr3-glsnodcr
+################################
+# 
+# Fourth seq file, tests 'insert' type doctorings, simple cases, fwd
+# and reverse strands
+#
+# default (not really, but baseline for the entoy100a-dcr.in4.fa tests
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-ins -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in4.fa va-entoy100a-dcr4-df > va-entoy100a-dcr4-df.out
+desc: annotate-entoy100a-dcr4-df
+out: va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.pass.list
+out: va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.fail.list
+out: va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.alt.list
+out: va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.alt
+out: va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.dcr
+out: va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.entoy100a-dcr-ins.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-df/va-entoy100a-dcr4-df.vadr.entoy100a-dcr-ins.align.stk
+rmdir: va-entoy100a-dcr4-df
+# --nodcr, has same output as default
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-ins -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in4.fa va-entoy100a-dcr4-nodcr > va-entoy100a-dcr4-nodcr.out
+desc: annotate-entoy100a-dcr4-nodcr
+out: va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.pass.list
+out: va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.fail.list
+out: va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.alt.list
+out: va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.alt
+out: va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.dcr
+out: va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.entoy100a-dcr-ins.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-nodcr/va-entoy100a-dcr4-nodcr.vadr.entoy100a-dcr-ins.align.stk
+rmdir: va-entoy100a-dcr4-nodcr
+# --cmindi --forcedcrins, forces single seq stks (--cmindi) which enables (and forces --forcedcrins) insert doctoring with cmalign
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --cmindi --forcedcrins --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-ins -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in4.fa va-entoy100a-dcr4-cmindi > va-entoy100a-dcr4-cmindi.out
+desc: annotate-entoy100a-dcr4-cmindi
+out: va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.pass.list
+out: va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.fail.list
+out: va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.alt.list
+out: va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.alt
+out: va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.dcr
+out: va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.entoy100a-dcr-ins.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-cmindi/va-entoy100a-dcr4-cmindi.vadr.entoy100a-dcr-ins.align.stk
+rmdir: va-entoy100a-dcr4-cmindi
+# --glsearch
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-ins -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in4.fa va-entoy100a-dcr4-gls > va-entoy100a-dcr4-gls.out
+desc: annotate-entoy100a-dcr4-gls
+out: va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.pass.list
+out: va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.fail.list
+out: va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.alt.list
+out: va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.alt
+out: va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.dcr
+out: va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.entoy100a-dcr-ins.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-gls/va-entoy100a-dcr4-gls.vadr.entoy100a-dcr-ins.align.stk
+rmdir: va-entoy100a-dcr4-gls
+# --glsearch --nodcr
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --nodcr --glsearch --alicheck --fstminnt 1 --minpvlen 3 --keep --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a-dcr-ins -f $VADRSCRIPTSDIR/testfiles/entoy100a-dcr.in4.fa va-entoy100a-dcr4-glsnodcr > va-entoy100a-dcr4-glsnodcr.out
+desc: annotate-entoy100a-dcr4-glsnodcr
+out: va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.pass.list
+out: va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.fail.list
+out: va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.alt.list
+out: va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.alt
+out: va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.dcr
+out: va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.entoy100a-dcr-ins.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.fail.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.dcr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-dcr4-glsnodcr/va-entoy100a-dcr4-glsnodcr.vadr.entoy100a-dcr-ins.align.stk
+rmdir: va-entoy100a-dcr4-glsnodcr
+

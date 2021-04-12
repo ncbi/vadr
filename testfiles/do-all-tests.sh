@@ -43,6 +43,9 @@ for t in \
     do-sub-tests.sh \
     do-lowsim-tests.sh \
     do-mnf-tests.sh \
+    do-dcr-tests.sh \
+    do-glsearch-tests.sh \
+    do-split-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t

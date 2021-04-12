@@ -16,13 +16,16 @@
   * [options for using hmmer instead of blastx for protein validation](#options-hmmer)
   * [options related to blastn-based seeded alignment acceleration strategy](#options-seed)
   * [options related to pre-processing to replace Ns with expected nucleotides](#options-replace)
+  * [options related to splitting input fasta file and multithreading](#options-split)
   * [options related to parallelization on a compute farm/cluster](#options-parallel)
+  * [options related to both splitting input and parallelization on a compute farm/cluster](#options-split-and-parallel)
   * [options for skipping stages](#options-skip)
   * [options for additional output files](#options-output)
   * [additional expert options](#options-expert)
 * [Basic Information on `v-annotate.pl` alerts](#alerts)
 * [Additional information on `v-annotate.pl` alerts](#alerts2)
 * [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
+* [Limiting memory usage and multi-threading](#memory)
 
 ---
 
@@ -47,9 +50,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 1.1.3 (Feb 2021)
+# VADR 1.2 (April 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Thu Feb 11 14:00:15 2021
+# date:    Mon Apr  5 10:31:24 2021
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -82,7 +85,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Thu Feb 11 14:02:55 2021
+# date:              Mon Apr  5 10:32:37 2021
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -132,8 +135,8 @@ The output of `v-annotate.pl` lists one or more steps per stage. The
 first two steps are:
 
 ```
-# Validating input                                                                        ... done. [    4.9 seconds]
-# Classifying sequences (9 seqs)                                                          ... done. [   16.3 seconds]
+# Validating input                                                                        ... done. [    0.2 seconds]
+# Classifying sequences (9 seqs)                                                          ... done. [   39.4 seconds]
 ```
 
 The first step validates that the VADR library `.minfo` file being
@@ -143,41 +146,41 @@ classification stage is performed. After that, each model that is
 determination stage for all of its sequences:
 
 ```
-# Determining sequence coverage (NC_001959: 1 seq)                                        ... done. [    0.5 seconds]
-# Determining sequence coverage (NC_008311: 2 seqs)                                       ... done. [    1.8 seconds]
-# Determining sequence coverage (NC_029645: 2 seqs)                                       ... done. [    0.6 seconds]
-# Determining sequence coverage (NC_039477: 2 seqs)                                       ... done. [    1.8 seconds]
-# Determining sequence coverage (NC_044854: 2 seqs)                                       ... done. [    0.4 seconds]
+# Determining sequence coverage (NC_001959: 1 seq)                                        ... done. [    0.8 seconds]
+# Determining sequence coverage (NC_008311: 2 seqs)                                       ... done. [    3.1 seconds]
+# Determining sequence coverage (NC_029645: 2 seqs)                                       ... done. [    1.1 seconds]
+# Determining sequence coverage (NC_039477: 2 seqs)                                       ... done. [    3.4 seconds]
+# Determining sequence coverage (NC_044854: 2 seqs)                                       ... done. [    0.9 seconds]
 ```
 
 Next, the alignments are performed for each model, and used to map
 feature annotation:
 
 ```
-# Aligning sequences (NC_001959: 1 seq)                                                   ... done. [    0.5 seconds]
-# Aligning sequences (NC_008311: 2 seqs)                                                  ... done. [    7.7 seconds]
-# Aligning sequences (NC_029645: 2 seqs)                                                  ... done. [    1.0 seconds]
-# Aligning sequences (NC_039477: 2 seqs)                                                  ... done. [    8.2 seconds]
-# Aligning sequences (NC_044854: 2 seqs)                                                  ... done. [    0.5 seconds]
-# Determining annotation                                                                  ... done. [    0.2 seconds]
+# Aligning sequences (NC_001959: 1 seq)                                                   ... done. [    0.7 seconds]
+# Aligning sequences (NC_008311: 2 seqs)                                                  ... done. [   12.8 seconds]
+# Aligning sequences (NC_029645: 2 seqs)                                                  ... done. [    1.7 seconds]
+# Aligning sequences (NC_039477: 2 seqs)                                                  ... done. [   13.2 seconds]
+# Aligning sequences (NC_044854: 2 seqs)                                                  ... done. [    0.7 seconds]
+# Determining annotation                                                                  ... done. [    0.4 seconds]
 ```
 
 The classification and alignment stages are typically the
 slowest. The protein validation stage is usually relatively fast:
 
 ```
-# Validating proteins with blastx (NC_001959: 1 seq)                                      ... done. [    0.4 seconds]
-# Validating proteins with blastx (NC_008311: 2 seqs)                                     ... done. [    0.2 seconds]
-# Validating proteins with blastx (NC_029645: 2 seqs)                                     ... done. [    0.1 seconds]
-# Validating proteins with blastx (NC_039477: 2 seqs)                                     ... done. [    0.2 seconds]
-# Validating proteins with blastx (NC_044854: 2 seqs)                                     ... done. [    0.1 seconds]
+# Validating proteins with blastx (NC_001959: 1 seq)                                      ... done. [    1.2 seconds]
+# Validating proteins with blastx (NC_008311: 2 seqs)                                     ... done. [    1.4 seconds]
+# Validating proteins with blastx (NC_029645: 2 seqs)                                     ... done. [    1.2 seconds]
+# Validating proteins with blastx (NC_039477: 2 seqs)                                     ... done. [    1.2 seconds]
+# Validating proteins with blastx (NC_044854: 2 seqs)                                     ... done. [    1.1 seconds]
 ```
 
 The only remaining steps are to create the output files:
 
 ```
-# Generating tabular output                                                               ... done. [    0.0 seconds]
 # Generating feature table output                                                         ... done. [    0.0 seconds]
+# Generating tabular output                                                               ... done. [    0.0 seconds]
 ```
 
 After the output files are generated, a summary of the results is
@@ -237,70 +240,29 @@ Next, the list of output files created by `v-annotate.pl` is
 printed, along with elapsed time:
 
 ```
-# Output printed to screen saved in:                               va-noro.9.vadr.log
-# List of executed commands saved in:                              va-noro.9.vadr.cmd
-# List and description of all output files saved in:               va-noro.9.vadr.filelist
-# copy of input fasta file saved in:                               va-noro.9.vadr.in.fa
-# esl-seqstat -a output for input fasta file saved in:             va-noro.9.vadr.seqstat
-# model NC_001959 feature gene#1 predicted seqs saved in:          va-noro.9.vadr.NC_001959.gene.1.fa
-# model NC_001959 feature CDS#1 predicted seqs saved in:           va-noro.9.vadr.NC_001959.CDS.1.fa
-# model NC_001959 feature gene#2 predicted seqs saved in:          va-noro.9.vadr.NC_001959.gene.2.fa
-# model NC_001959 feature CDS#2 predicted seqs saved in:           va-noro.9.vadr.NC_001959.CDS.2.fa
-# model NC_001959 feature mat_peptide#6 predicted seqs saved in:   va-noro.9.vadr.NC_001959.mat_peptide.6.fa
-# model NC_008311 feature gene#1 predicted seqs saved in:          va-noro.9.vadr.NC_008311.gene.1.fa
-# model NC_008311 feature CDS#1 predicted seqs saved in:           va-noro.9.vadr.NC_008311.CDS.1.fa
-# model NC_008311 feature gene#2 predicted seqs saved in:          va-noro.9.vadr.NC_008311.gene.2.fa
-# model NC_008311 feature CDS#2 predicted seqs saved in:           va-noro.9.vadr.NC_008311.CDS.2.fa
-# model NC_008311 feature gene#3 predicted seqs saved in:          va-noro.9.vadr.NC_008311.gene.3.fa
-# model NC_008311 feature CDS#3 predicted seqs saved in:           va-noro.9.vadr.NC_008311.CDS.3.fa
-# model NC_008311 feature mat_peptide#6 predicted seqs saved in:   va-noro.9.vadr.NC_008311.mat_peptide.6.fa
-# model NC_008311 feature gene#4 predicted seqs saved in:          va-noro.9.vadr.NC_008311.gene.4.fa
-# model NC_008311 feature CDS#4 predicted seqs saved in:           va-noro.9.vadr.NC_008311.CDS.4.fa
-# model NC_008311 feature mat_peptide#1 predicted seqs saved in:   va-noro.9.vadr.NC_008311.mat_peptide.1.fa
-# model NC_008311 feature mat_peptide#2 predicted seqs saved in:   va-noro.9.vadr.NC_008311.mat_peptide.2.fa
-# model NC_008311 feature mat_peptide#3 predicted seqs saved in:   va-noro.9.vadr.NC_008311.mat_peptide.3.fa
-# model NC_008311 feature mat_peptide#4 predicted seqs saved in:   va-noro.9.vadr.NC_008311.mat_peptide.4.fa
-# model NC_008311 feature mat_peptide#5 predicted seqs saved in:   va-noro.9.vadr.NC_008311.mat_peptide.5.fa
-# model NC_029645 feature gene#1 predicted seqs saved in:          va-noro.9.vadr.NC_029645.gene.1.fa
-# model NC_029645 feature CDS#1 predicted seqs saved in:           va-noro.9.vadr.NC_029645.CDS.1.fa
-# model NC_029645 feature gene#2 predicted seqs saved in:          va-noro.9.vadr.NC_029645.gene.2.fa
-# model NC_029645 feature CDS#2 predicted seqs saved in:           va-noro.9.vadr.NC_029645.CDS.2.fa
-# model NC_029645 feature mat_peptide#6 predicted seqs saved in:   va-noro.9.vadr.NC_029645.mat_peptide.6.fa
-# model NC_039477 feature gene#1 predicted seqs saved in:          va-noro.9.vadr.NC_039477.gene.1.fa
-# model NC_039477 feature CDS#1 predicted seqs saved in:           va-noro.9.vadr.NC_039477.CDS.1.fa
-# model NC_039477 feature gene#2 predicted seqs saved in:          va-noro.9.vadr.NC_039477.gene.2.fa
-# model NC_039477 feature CDS#2 predicted seqs saved in:           va-noro.9.vadr.NC_039477.CDS.2.fa
-# model NC_039477 feature gene#3 predicted seqs saved in:          va-noro.9.vadr.NC_039477.gene.3.fa
-# model NC_039477 feature CDS#3 predicted seqs saved in:           va-noro.9.vadr.NC_039477.CDS.3.fa
-# model NC_039477 feature mat_peptide#1 predicted seqs saved in:   va-noro.9.vadr.NC_039477.mat_peptide.1.fa
-# model NC_039477 feature mat_peptide#2 predicted seqs saved in:   va-noro.9.vadr.NC_039477.mat_peptide.2.fa
-# model NC_039477 feature mat_peptide#3 predicted seqs saved in:   va-noro.9.vadr.NC_039477.mat_peptide.3.fa
-# model NC_039477 feature mat_peptide#4 predicted seqs saved in:   va-noro.9.vadr.NC_039477.mat_peptide.4.fa
-# model NC_039477 feature mat_peptide#5 predicted seqs saved in:   va-noro.9.vadr.NC_039477.mat_peptide.5.fa
-# model NC_039477 feature mat_peptide#6 predicted seqs saved in:   va-noro.9.vadr.NC_039477.mat_peptide.6.fa
-# model NC_044854 feature gene#1 predicted seqs saved in:          va-noro.9.vadr.NC_044854.gene.1.fa
-# model NC_044854 feature CDS#1 predicted seqs saved in:           va-noro.9.vadr.NC_044854.CDS.1.fa
-# model NC_044854 feature mat_peptide#6 predicted seqs saved in:   va-noro.9.vadr.NC_044854.mat_peptide.6.fa
-# model NC_044854 feature gene#2 predicted seqs saved in:          va-noro.9.vadr.NC_044854.gene.2.fa
-# model NC_044854 feature CDS#2 predicted seqs saved in:           va-noro.9.vadr.NC_044854.CDS.2.fa
-# 5 column feature table output for passing sequences saved in:    va-noro.9.vadr.pass.tbl
-# 5 column feature table output for failing sequences saved in:    va-noro.9.vadr.fail.tbl
-# list of passing sequences saved in:                              va-noro.9.vadr.pass.list
-# list of failing sequences saved in:                              va-noro.9.vadr.fail.list
-# list of alerts in the feature tables saved in:                   va-noro.9.vadr.alt.list
-# fasta file with passing sequences saved in:                      va-noro.9.vadr.pass.fa
-# fasta file with failing sequences saved in:                      va-noro.9.vadr.fail.fa
-# per-sequence tabular annotation summary file saved in:           va-noro.9.vadr.sqa
-# per-sequence tabular classification summary file saved in:       va-noro.9.vadr.sqc
-# per-feature tabular summary file saved in:                       va-noro.9.vadr.ftr
-# per-model-segment tabular summary file saved in:                 va-noro.9.vadr.sgm
-# per-model tabular summary file saved in:                         va-noro.9.vadr.mdl
-# per-alert tabular summary file saved in:                         va-noro.9.vadr.alt
-# alert count tabular summary file saved in:                       va-noro.9.vadr.alc
+# Output printed to screen saved in:                              va-noro.9.vadr.log
+# List of executed commands saved in:                             va-noro.9.vadr.cmd
+# List and description of all output files saved in:              va-noro.9.vadr.filelist
+# esl-seqstat -a output for input fasta file saved in:            va-noro.9.vadr.seqstat
+# 5 column feature table output for passing sequences saved in:   va-noro.9.vadr.pass.tbl
+# 5 column feature table output for failing sequences saved in:   va-noro.9.vadr.fail.tbl
+# list of passing sequences saved in:                             va-noro.9.vadr.pass.list
+# list of failing sequences saved in:                             va-noro.9.vadr.fail.list
+# list of alerts in the feature tables saved in:                  va-noro.9.vadr.alt.list
+# fasta file with passing sequences saved in:                     va-noro.9.vadr.pass.fa
+# fasta file with failing sequences saved in:                     va-noro.9.vadr.fail.fa
+# per-sequence tabular annotation summary file saved in:          va-noro.9.vadr.sqa
+# per-sequence tabular classification summary file saved in:      va-noro.9.vadr.sqc
+# per-feature tabular summary file saved in:                      va-noro.9.vadr.ftr
+# per-model-segment tabular summary file saved in:                va-noro.9.vadr.sgm
+# per-model tabular summary file saved in:                        va-noro.9.vadr.mdl
+# per-alert tabular summary file saved in:                        va-noro.9.vadr.alt
+# alert count tabular summary file saved in:                      va-noro.9.vadr.alc
+# alignment doctoring tabular summary file saved in:              va-noro.9.vadr.dcr
 #
 # All output files created in directory ./va-noro.9/
 #
-# Elapsed time:  00:00:45.57
+# Elapsed time:  00:01:25.82
 #                hh:mm:ss
 # 
 [ok]
@@ -318,19 +280,7 @@ file](formats.md#filelist) which lists the output files created by
 `v-annotate.pl`. Next comes a [`.seqstat` file](annotate.md#seqstat)
 with lengths for each sequence in the input file.
 
-Then come about 40 FASTA-formatted sequence files with subsequences
-of the predicted features for each sequence, grouped by each
-model. There will be one file for each model/feature pair that is
-annotated in at least one sequence.  Each file will contain all
-subsequences of input sequences that match best to the corresponding
-model, and that have the corresponding feature annotated. An example
-of this type of file is `va-noro.9.vadr.NC_039477.CDS.2.fa`, which
-contains the predicted CDS sequences for CDS #2 for the sequences for
-which the best matching model was `NC_039477`. The convention used for
-naming the sequences in these files is explained
-[here](formats#seqnames).
-
-In addition to the tabular output files, `v-annotate.pl` also creates 
+`v-annotate.pl` also creates 
 5-column tab-delimited feature table files that end with the suffix
 `.tbl`. There is a separate file for passing
 (`va-noro9.vadr.pass.tbl`) and failing (`va-noro9.vadr.fail.tbl`)
@@ -395,7 +345,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not exten
 ```
 
 Note that this file lists only four ERRORs while the `.alt` output
-file above listed five alerts. **Not all** fatal alerts will be
+file below lists five alerts. **Not all** fatal alerts will be
 printed to this `.fail.tbl` file, because when specific pairs of
 alerts occur, only one is output to reduce the number of overlapping
 or redundant problems reported to the submitter/user. In this case the
@@ -424,9 +374,8 @@ JN975492.1	INDEFINITE_ANNOTATION_END	VF1	protein-based alignment does not extend
 JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
 ```
 
-After that are two more FASTA-formatted sequence files, these two
-include the full input sequences instead of per-feature
-subsequences. One of these files includes all
+After that are two FASTA-formatted sequence files.
+One of these files includes all
 passing sequences (`va-noro.9.vadr.pass.fa`) and the other includes all
 failing sequences (`va-noro.9.vadr.fail.fa`).
 
@@ -442,6 +391,7 @@ with three letter suffixes:
 | `.sgm` | per-segment information                 | [description of format](formats.md#sgm) |
 | `.sqa` | per-sequence annotation information     | [description of format](formats.md#sqa) |
 | `.sqc` | per-sequence classification information | [description of format](formats.md#sqc) |
+| `.dcr` | alignment doctoring information         | [description of format](formats.md#dcr) |
 
 The contents of the `.mdl` and `.alc` files were already output by
 `v-annotate.pl` as covered above. To get more information on each
@@ -480,23 +430,24 @@ file type is [here](formats.md#sqc).
 Next, take a look at the first few lines of the `.ftr` file (`va-noro.9.vadr.ftr`):
 
 ```
-#     seq          seq                   ftr          ftr                         ftr  ftr                                                                                     seq         model  ftr   
-#idx  name         len  p/f   model      type         name                        len  idx  str  n_from  n_to  n_instp  trc    p_from  p_to  p_instp  p_sc  nsa  nsn        coords        coords  alerts
-#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ------  ----  -------  -----  ------  ----  -------  ----  ---  ---  ------------  ------------  ------
-1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1    +       1  5083        -  5'          -     -        -     -    1    0     1..5083:+    22..5104:+  -     
-1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2    +       1  5083        -  5'          2  5080        -  9094    1    0     1..5083:+    22..5104:+  -     
-1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3    +    5064  6686        -  no          -     -        -     -    1    0  5064..6686:+  5085..6707:+  -     
-1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4    +    5064  6686        -  no       5064  6683        -  2878    1    0  5064..6686:+  5085..6707:+  -     
-1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5    +    6686  7492        -  no          -     -        -     -    1    0  6686..7492:+  6707..7513:+  -     
-1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6    +    6686  7492        -  no       6686  7486        -  1393    1    0  6686..7492:+  6707..7513:+  -     
-1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    +       1   979        -  5'          -     -        -     -    1    0      1..979:+    22..1000:+  -     
-1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    +     980  2077        -  no          -     -        -     -    1    0   980..2077:+  1001..2098:+  -     
-1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    +    2078  2608        -  no          -     -        -     -    1    0  2078..2608:+  2099..2629:+  -     
-1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    +    2609  3007        -  no          -     -        -     -    1    0  2609..3007:+  2630..3028:+  -     
-1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    +    3008  3550        -  no          -     -        -     -    1    0  3008..3550:+  3029..3571:+  -     
-1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    +    3551  5080        -  no          -     -        -     -    1    0  3551..5080:+  3572..5101:+  -     
+#     seq          seq                   ftr          ftr                         ftr  ftr  par                                                                                               seq         model  ftr   
+#idx  name         len  p/f   model      type         name                        len  idx  idx  str  n_from  n_to  n_instp  trc    5'N  3'N  p_from  p_to  p_instp  p_sc  nsa  nsn        coords        coords  alerts
+#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ---  ------  ----  -------  -----  ---  ---  ------  ----  -------  ----  ---  ---  ------------  ------------  ------
+1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1   -1    +       1  5083        -  5'       0    0       -     -        -     -    1    0     1..5083:+    22..5104:+  -     
+1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2   -1    +       1  5083        -  5'       0    0       2  5080        -  9094    1    0     1..5083:+    22..5104:+  -     
+1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3   -1    +    5064  6686        -  no       0    0       -     -        -     -    1    0  5064..6686:+  5085..6707:+  -     
+1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4   -1    +    5064  6686        -  no       0    0    5064  6683        -  2878    1    0  5064..6686:+  5085..6707:+  -     
+1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5   -1    +    6686  7492        -  no       0    0       -     -        -     -    1    0  6686..7492:+  6707..7513:+  -     
+1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6   -1    +    6686  7492        -  no       0    0    6686  7486        -  1393    1    0  6686..7492:+  6707..7513:+  -     
+1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    2    +       1   979        -  5'       0    0       -     -        -     -    1    0      1..979:+    22..1000:+  -     
+1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    2    +     980  2077        -  no       0    0       -     -        -     -    1    0   980..2077:+  1001..2098:+  -     
+1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    2    +    2078  2608        -  no       0    0       -     -        -     -    1    0  2078..2608:+  2099..2629:+  -     
+1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    2    +    2609  3007        -  no       0    0       -     -        -     -    1    0  2609..3007:+  2630..3028:+  -     
+1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    2    +    3008  3550        -  no       0    0       -     -        -     -    1    0  3008..3550:+  3029..3571:+  -     
+1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    2    +    3551  5080        -  no       0    0       -     -        -     -    1    0  3551..5080:+  3572..5101:+  -     
 #
 ```
+
 This file includes information on each annotated feature, organized by
 sequence. The lines above show the annotated features for the first
 sequence `KY887602.1` and include information on the feature length,
@@ -662,6 +613,7 @@ integer.
 | `-v`             | *verbose* mode: all commands will be output to standard output as they are run | 
 | `--atgonly`      | only consider ATG as a valid start codon, regardless of model's translation table <a name="options-basic-atgonly"></a> |
 | `--minpvlen <n>` | set the minimum length in nucleotides for CDS/mat_peptide/gene features to be output to feature tables and for protein validation analysis to `<n>`, default `<n>` is 30 |
+| `--nkb <n>`      | set the target number of Kb of sequence for each alignment job and/or chunk (with --split) to `<n>` Kb (thousand nucleotides), default `<n>` is `300` |
 | `--keep`         | keep [additional output files](formats.md#annotate-keep) that are normally removed |
 
 ### `v-annotate.pl` options for specifying expected sequence classification<a name="options-classification"></a>
@@ -749,7 +701,23 @@ User's Guide manual page for `cmalign` (section 8 of http://eddylab.org/infernal
 | `--nofixedtau`      | do not fix the tau value, allow it to increase if necessary (removes the `cmalign --fixedtau` option), default is to fix tau with `cmalign --fixedtau` |
 | `--nosub`           | use alternative alignment strategy for truncated sequences (removes the `cmalign --sub --notrunc` options), default is use sub-CM alignment strategy with `cmalign --sub --notrunc` |
 | `--noglocal`        | run in local mode instead of glocal mode (removes the `cmalign -g` option), default is to use glocal mode with `cmalign -g` |
+| `--cmindi`          | force cmalign to align one sequence at a time, mainly useful for debugging |
 ---
+
+### `v-annotate.pl` options for controlling glsearch alignment stage as alternative to cmalign
+
+The `glsearch` program from the [FASTA package](#https://fasta.bioch.virginia.edu/fasta_www2/fasta_list2.shtml)
+can be used as an alternative to the `cmalign` program.
+For more information on these options and how they control `glsearch`, see the FASTA documentation
+(https://fasta.bioch.virginia.edu/wrp_fasta/fasta_guide.pdf).
+
+| .........option......... | explanation |
+|----------------------|--------------------|
+| `--glsearch`         | align with glsearch instead of cmalign |
+| `--gls_match <n>`    | set glsearch match score to `<n> > 0` (-r option in glsearch), default is `5' |
+| `--gls_mismatch <n>` | set glsearch mismatch score to `<n> < 0` (-r option in glsearch), default is `-3` |
+| `--gls_gapopen <n>`  | set glsearch gap open score to `<n> < 0` (-f option in glsearch), default is `-17` |
+| `--gls_gapextend <n>`| set glsearch gap extend score to `<n> < 0` (-g option in glsearch), default is `-4` |
 
 ### `v-annotate.pl` options for controlling blastx protein validation stage<a name="options-blastx"></a>
 
@@ -770,13 +738,13 @@ how they control `blastx`, see the NCBI BLAST documentation
 
 Optionally, HMMER's hmmsearch program can be used instead of blastx for the protein validation stage.
 **CAUTION:** This feature is relatively new and untested.
-validaation stage. Several of these control command-line options that
+Several of these control command-line options that
 will be passed to `blastx`. For more information on HMMER, see
 the HMMER user's guide (http://eddylab.org/software/hmmer/Userguide.pdf).
 
 | ......option......  | explanation |
 |---------------------|--------------------|
-| `--hmmer`           | use hmmer instead of blastx for protein validation |
+| `--pv_hmmer`           | use hmmer instead of blastx for protein validation |
 | `--h_max`           | use the `--max` option with hmmsearch |
 | `--h_minbit <x>`    | set the minimum hmmsearch bit score threshold to `<x>`, the default `<x>` is `-10`.
 
@@ -837,27 +805,42 @@ with format described [here](formats.md#rpn).
 | `--r_cdsmpr`        | with `-r`, identify CDS- and mat_peptide-specific alerts using subsequences fetched from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_pvorig`        | with `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
 | `--r_prof`          | with `-r`, use slower profile methods, not blastn, to identify Ns to replaced |
+| `--r_list`          | with `-r`, only use models listed in file `<s>` for N replacement stage |
+| `--r_only <s>`      | with `-r`, only use model named `<s>` for N replacement stage |
+
+### `v-annotate.pl` options related to splitting input sequence file into chunks and processing each chunk separately and potentially in parallel <a name="options-split"></a>
+
+The `--split` option specifies that `v-annotate.pl` should split up the input file into chunks and 
+processing each chunk separately and then combining results at the end after all chunks have been processed.
+This limits total memory usage for large input sequence files as
+explained more [here](#memory).
+
+| ........option........ | explanation |
+|---------------------|--------------------|
+| `--split`      | split input fasta sequence file into chunks of `<n>` Kb where `<n>` is from `--nkb <n>` (300 Kb, by default) and run each chunk separately |
+| `--cpu <n>`    | with --split or --glsearch, parallelize across `<n>` CPU threads/workers (requires --split oor --glsearch) |
+| `--sidx <n>`   | start sequence indexing at `<n>` for output files, not intended to be set by user except when debugging | 
 
 ### `v-annotate.pl` options related to parallelization on a compute farm/cluster<a name="options-parallel"></a>
-
-The `-p` option specifies that `v-annotate.pl` should be run in [parallel mode](#exampleparallel).
-The following options are related to parallel mode.
 
 | ........option........ | explanation |
 |---------------------|--------------------|
 | `-p`           | run in parallel mode so that classification, and each per-model coverage determination and alignment step is split into multiple jobs and run in parallel on a cluster | 
 | `-q <s>`       | read cluster information file from file `<s>` instead of from the default file `$VADRSCRIPTSDIR/vadr.qsubinfo` |
-| `--nkb <n>`    | set the target size for split-up sequence files to `<n>` Kb (thousand nucleotides), higher values will result in fewer parallel jobs and slower total run times, default `<n>` is `10` |
-| `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
 | `--errcheck`   | consider any output to STDERR from a parallel job as an indication the job has failed, this will cause `v-annotate.pl` to exit, default is to ignore output to STDERR | 
+
+### `v-annotate.pl` options related to both splitting input and parallelization on compute farm<a name="options-split-and-parallel"></a>
+
+| `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
 | `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
 
 ### `v-annotate.pl` options for skipping stages<a name="options-skip"></a>
 
 | ......option...... | explanation | 
 |--------|-------------| 
-| `--skip_align` | skip the `cmalign` stage, use results from previous run, this is mostly useful for debugging purposes | 
-| `--skip_pv`    | do not perform protein validation stage for CDS |
+| `--pv_skip`    | do not perform protein validation stage for CDS |
+| `--align_skip` | skip the `cmalign` stage, use results from previous run, this is mostly useful for debugging purposes | 
+| `--val_only`   | validate CM and other input files and exit |
 
 ### `v-annotate.pl` options for optional output files<a name="options-output"></a>
 
@@ -867,11 +850,10 @@ The following options are related to parallel mode.
 | `--out_afa`     | create additional per-model output aligned fasta alignments with `.afa` suffix |
 | `--out_rpstk`   | with `-r`, create additional per-model output [stockholm](formats.md#stockholmformat) alignments with sequences *with Ns replaced* with `.rpstk` suffix |
 | `--out_rpafa`   | create additional per-model output aligned fasta alignments with sequences *with Ns replaced* with `.rpafa` suffix |
-| `--out_nofs`    | do not output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
-| `--out_nofasta` | minimize total size of output; do not output fasta files of predicted features, or of all passing and all failing sequences |
-| `--out_ftrinfo` | create additional output file with `.ftrinfo` suffix with per-model feature information, mainly useful for debugging |
-| `--out_sgminfo` | create additional output file with `.sgminfo` suffix with per-model segment information, mainly useful for debugging |
-| `--out_altinfo` | create additional output file with `.altinfo` suffix with alert information, mainly useful for debugging |
+| `--out_fsstk`   | output frameshift [stockholm](formats.md#stockholmformat) alignment files with `.frameshift.stk` suffix |
+| `--out_allfasta`| output fasta files of predicted features |
+| `--out_nofasta` | minimize total size of output; do not output fasta files of all passing and all failing sequences |
+| `--out_debug`   | create additional output files with information on various data structures |
 
 ### Other `v-annotate.pl` expert options<a name="options-expert"></a>
 
@@ -884,6 +866,8 @@ The following options are related to parallel mode.
 | `--origfa`       | do not copy the input fasta file into output directory prior to analysis, use the original |
 | `--msub <s>`     | specify that file `<s>` lists models to substitute, each line should contain two space-delimited tokens, model listed in token 2 will substitute as best-matching model for all sequences classified as the model listed in token 1 |
 | `--xsub <s>`     | specify that file `<s>` lists blastx dbs to substitute, each line should contain two space-delimited tokens, blastx db for model listed in token 2 will substitute as blastx db for all sequences classified as the model listed in token 1 |
+| `--nodcr`        | never doctor alignments to shift gaps to correct start/stop codon annotation |
+| `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -936,6 +920,7 @@ features as described more [below](#mnf).
 | [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
 | [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
 | [*fsthicnf*](#fsthicnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
+| [*fstukcnf*](#fstukcnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcnf1"></a> potential frameshift in CDS (only reported if `glsearch` |
 | [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
 | [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
 | [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
@@ -1018,6 +1003,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*cdsstopn*](#cdsstopn1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
 | [*cdsstopp*](#cdsstopp1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopp2"></a> | 
 | [*fsthicnf*](#fsthicnf1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fsthicnf2"></a> |
+| [*fstukcnf*](#fstukcnf1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstukcnf2"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
 | [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
@@ -1173,6 +1159,43 @@ misc_feature-ization:
    for expendable features as explained above even when the
    option `--nomisc` is used. (The `--nomisc` option causes
    `misc_feature`s not to be reported in `.fail.tbl` files.)
+
+---
+
+## <a name="memory"></a>Limiting memory usage and parallelization with multi-threading
+
+The `v-annotate.pl` script, in particular the alignment step, is memory intensive.
+For Norovirus and Dengue virus, it is recommended to
+have 16G of RAM available. For larger viruses, such as the roughly
+30Kb SARS-CoV-2 virus, 64G of available RAM is recommended. However,
+the `--glsearch` and `--split` options can be used to reduce the
+memory requirements.
+
+The `--glsearch` option causes the glsearch` program from the FASTA
+software package to be used instead of Infernal's memory intensive
+`cmalign` program.  However, `--glsearch` has only been extensively
+tested for SARS-CoV-2 sequences, for which it is now recommended due
+to the high 64G memory recommendation with `cmalign`.
+
+With `--glsearch` the amount of required memory is roughly 2G of RAM
+for small input fasta files with 2000 sequences or less, but can
+exceed 2G for very large input files. Required memory will increase
+with the size of the input file. 
+
+Using the `--split` option removes the dependence of required
+memory on input file size as it causes splitting of the input fasta file
+into independent chunks with each chunk processed separately and
+results from all chunks combined at the end.
+
+Also, in combination with the `--glsearch` and `--split` options, the
+user can specify multi-threading with `<n>` CPUs by using the `--cpu
+<n>` option.  It is recommended that at least 2G * `<n>` total RAM is
+available when using this option.
+
+In summary, the following combination of options are recommended to
+reduce memory usage and speed-up processing for
+SARS-CoV-2 annotation, provided you are running on a machine with 8
+available cores and 16G of total RAM: `--glsearch --split --cpu 8`. 
 
 ---
 

@@ -13,7 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alicheck --nomisc --minpvlen 3 --keep --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.genematchcds.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-rev.nends.fa va-entoy100a-rev.nends > va-entoy100a-rev.nends.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alicheck --nomisc --minpvlen 3 --keep --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.genematchcds.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-rev.nends.fa va-entoy100a-rev.nends > va-entoy100a-rev.nends.out
 desc: annotate-entoy100a-rev.nends
 out: va-entoy100a-rev.nends/va-entoy100a-rev.nends.vadr.pass.tbl 
 out: va-entoy100a-rev.nends/va-entoy100a-rev.nends.vadr.fail.tbl

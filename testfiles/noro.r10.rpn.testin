@@ -87,3 +87,37 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-prof.r10/va-noro-rpn-prof.r10.vadr.rpn
 rmdir: va-noro-rpn-prof.r10
+#
+# -r --r_list
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r --r_list $VADRSCRIPTSDIR/testfiles/models/noro.3.rlist $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-rlist.r10 > va-noro-rpn-rlist.r10.out
+desc: annotate-noro-10-rpn-rlist
+out: va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.pass.list 
+out: va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.fail.list
+out: va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.pass.tbl 
+out: va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.fail.tbl
+out: va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.alt.list
+out: va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.fail.list 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.rpn
+rmdir: va-noro-rpn-rlist.r10
+#
+# -r --r_only
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r --r_only NC_039476 $VADRSCRIPTSDIR/testfiles/noro.r10.rpn.fa va-noro-rpn-ronly.r10 > va-noro-rpn-ronly.r10.out
+desc: annotate-noro-10-rpn-ronly
+out: va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.pass.list 
+out: va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.fail.list
+out: va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.pass.tbl 
+out: va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.fail.tbl
+out: va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.alt.list
+out: va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.rpn
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.pass.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.fail.list 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-rlist.r10/va-noro-rpn-rlist.r10.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn-ronly.r10/va-noro-rpn-ronly.r10.vadr.rpn
+rmdir: va-noro-rpn-ronly.r10

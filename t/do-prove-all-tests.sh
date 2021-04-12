@@ -39,6 +39,7 @@ for test in \
     06-iss12-longseqnames.t \
     07-iss22-modelname-parantheses.t \
     08-modelinfo.t \
+    09-fasta-trim.t \
 ; do
     if [ $do_teamcity = 1 ]; then
         echo "##teamcity[testStarted name=\"$test\" captureStandardOutput='true']"

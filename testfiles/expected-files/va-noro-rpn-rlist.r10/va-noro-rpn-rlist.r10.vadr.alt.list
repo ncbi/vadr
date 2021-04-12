@@ -1,0 +1,8 @@
+#sequence	error	feature	error-description
+gi|507309522|gb|JX439803.1|	INDEFINITE_ANNOTATION_END	VP1	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75 > 5 (strand:+ CM:1336 blastx:1261, no valid stop codon in CM prediction)]
+gi|1203184899|gb|KX722332.1|	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.892<0.900]
+gi|1203184899|gb|KX722332.1|	INDEFINITE_ANNOTATION_START	VP1	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [71 > 5 (strand:+ CM:1 blastx:72)]
+gi|959141925|gb|KR107577.1|	INDEFINITE_ANNOTATION_END	VP1	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [38 > 5 (strand:+ CM:387 blastx:349, no valid stop codon in CM prediction)]
+gi|1150565489|gb|KX514171.1|	LOW_COVERAGE	*sequence*	low sequence fraction with significant similarity to homology model [0.825<0.900]
+gi|1339273835|gb|MG746117.1|	N_AT_CDS_END	VP1	final nucleotide of CDS is an N [final 3 positions are Ns, final non-N is position 1623]
+gi|1339273835|gb|MG746117.1|	MUTATION_AT_START	VP1	expected start codon could not be identified [ANN starting at position 1 on + strand is not a valid start]
