@@ -499,7 +499,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.2";
+my $version       = "1.2.1dev1";
 my $releasedate   = "April 2021";
 my $pkgname       = "VADR";
 
@@ -781,18 +781,21 @@ if($opt_n_used)     { $blastn_extra_string   .= " -n"; }
 if($opt_x_used)     { $blastx_extra_string   .= " -x"; }
 if($opt_q_used)     { $qsubinfo_extra_string .= " -q"; }
 
-# check for files we always need, cm file and minfo file
-utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
-  utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-}
-# cm file must end in .cm, it's how cmalign_or_glsearch*() subroutines
-# determine if they should run cmalign or glsearch.
-if($cm_file !~ m/\.cm$/) { 
-  ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
-}
-
+# check for minfo file which we always need
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $minfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+
+# only check for cm file if we need it
+if((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only"), \%opt_HH)) { 
+  utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
+    utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
+  # cm file must end in .cm, it's how cmalign_or_glsearch*() subroutines
+  # determine if they should run cmalign or glsearch.
+  if($cm_file !~ m/\.cm$/) { 
+    ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
+  }
+}
 
 # only check for blastn db file if we need it
 if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
@@ -826,7 +829,7 @@ if($do_pv_hmmer) {
 # only check for qsubinfo file if we need it
 my ($qsub_prefix, $qsub_suffix) = (undef, undef);
 if(opt_IsUsed("-p", \%opt_HH)) { 
-  utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($qsubinfo_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   # parse the qsubinfo file
   ($qsub_prefix, $qsub_suffix) = vdr_ParseQsubFile($qsubinfo_file, $ofile_info_HH{"FH"});
 }
@@ -1280,7 +1283,7 @@ if($do_replace_ns) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                              \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
@@ -10237,7 +10240,6 @@ sub msa_replace_sequences {
 #
 # Arguments: 
 #  $tblout_file:           tblout file from a 'cvd' stage for a single model
-#  $cm_file:               path to main cm file
 #  $sqfile_R:              REF to Bio::Easel::SqFile object from main fasta file
 #  $blastn_db_sqfile_R:    REF to Bio::Easel::SqFile object for blastn db 
 #  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
@@ -10258,10 +10260,10 @@ sub msa_replace_sequences {
 ################################################################# 
 sub parse_cdt_tblout_file_and_replace_ns { 
   my $sub_name = "parse_cdt_tblout_file_and_replace_ns";
-  my $nargs_exp = 14;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $cm_file, $sqfile_R, $blastn_db_sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
+  my ($tblout_file, $sqfile_R, $blastn_db_sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
       $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};

@@ -204,7 +204,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.2";
+my $version       = "1.2.1dev1";
 my $releasedate   = "April 2021";
 my $pkgname       = "VADR";
 
@@ -648,6 +648,9 @@ if(! opt_Get("--keep", \%opt_HH)) {
     utl_FileRemoveUsingSystemRm($tmp_blastn_fa_file . ".ssi", "v-build.pl main", \%opt_HH, $FH_HR);
   }
 }
+# index the new file
+my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file";
+utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
 
@@ -726,7 +729,6 @@ if($ncds > 0) {
   $start_secs = ofile_OutputProgressPrior("Building HMMER protein database ", $progress_w, $log_FH, *STDOUT);
 
   # run esl-seqstat and parse it
-  my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $protein_fa_file";
   my $protein_sqfile = Bio::Easel::SqFile->new({ fileLocation => $protein_fa_file });
   my $nhmm = 0;
   my @hmm_file_A      = (); # array of names of individual HMM files to be concatenated to make the library
