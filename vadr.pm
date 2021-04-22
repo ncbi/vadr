@@ -4886,6 +4886,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   my $t_uaseq = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
 
   my $q_name;         # name of query sequence
+  my $prv_q_name;     # name of previously read query sequence
   my $q_len;          # length of query sequence
   my $nq = 0;         # number of queries read
   my $t_name;         # name of target sequence
@@ -4894,6 +4895,8 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   my ($pn0, $px0);    # start/stop position of displayed query
   my ($pn1, $px1);    # start/stop position of displayed library (target)
   my $cigar;          # CIGAR string 
+  my $q_afa;          # aligned sequence string for query
+  my $t_afa;          # aligned sequence string for library (target)
   my %q_len_H = ();   # key is query/sequence name, value is length
   my @q_name_A = ();  # array of query names
   # hash for storing insert info we will write to insert_file
@@ -4907,6 +4910,14 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
                          # <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
                          # <uapos_x> is unaligned sequence position of the first aligned nt
                          # <inslen_x> is length of the insert
+
+  # variables necessary only to parse alignments that come in 
+  # multiple 'parts' (first encountered for HSV2, which is >150Kb)
+  # max size of 1 part seems to be 39990 nt
+  my $part_idx; # index of alignment 'part', typically '1' unless alignment has multiple parts
+  # arrays of $an1 and $ax1 values read for the current alignment, 
+  my @an1_A = ();
+  my @ax1_A = ();
 
   # First 4 lines should look like this:
   ## /panfs/pan1/infernal/notebook/21_0213_vadr_hmmalign/fasta-experimenting-20210216/fasta-36.3.8h/bin/glsearch36 -z -1 -T 1 -3 -m 9C,3 -d 1 va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.glsearch.fa
@@ -4974,13 +4985,43 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       # end of all alignments
       $keep_going = 0;
     }
-    elsif($line =~ /^\s*\d+\>\>\>(\S+).*(\d+)\s+nt/) { 
+    elsif($line =~ /^\s*(\d+)\>\>\>(\S+).*\s+(\d+)\s+nt/) { 
       # 1>>>lcl|SARS-CoV-2/human/USA/IN-CDC-LC00002770/2021/17579-27826 - 10248 nt (forward-only)
+      # OR
+      # 4>>>HSV2_strainG_LHRI_genome - 39990 nt - 39990 nt - 39990 nt - 35538 nt (forward-only)
       #start of new query
-      ($q_name, $q_len) = ($1, $2);
-      push(@q_name_A, $q_name);
-      $nq++;
-      $q_len_H{$q_name} = $q_len;
+      ($part_idx, $q_name, $q_len) = ($1, $2, $3);
+      printf("HEYA q_len: $q_len, line\n\t$line\n");
+      # determine if previous alignment is complete based on $part_idx, if so, output it
+      if($part_idx != 1) { 
+        if(! defined $q_name) { 
+          ofile_FAIL("ERROR first alignment read had part_idx != 1 ($part_idx) on line $line_ctr\n$line\n", 1, $FH_HR); 
+        }
+        if($prv_q_name ne $q_name) { 
+          ofile_FAIL("ERROR read alignment part idx $part_idx for $q_name but previous part read was for $prv_q_name on line $line_ctr\n$line\n", 1, $FH_HR); 
+        }
+        if(scalar(@ax1_A) != ($part_idx-1)) { 
+          ofile_FAIL(sprintf("ERROR problem with alignment part idx $part_idx, have only read %d parts on line $line_ctr\n$line\n", scalar(@ax1_A)), 1, $FH_HR);
+        }
+        $q_len_H{$q_name} += $q_len;
+      }
+      else { # $part_idx == 1
+        # output previous alignment, if we have one
+        if(defined $prv_q_name) { 
+          vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $prv_q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($part_idx-1)], $ofile_info_HHR);
+        }
+        @an1_A = ();
+        @ax1_A = ();
+        push(@q_name_A, $q_name);
+        $nq++;
+        $q_len_H{$q_name} = $q_len; 
+        $q_afa = "";
+        $t_afa = "";
+      }
+      $prv_q_name = $q_name;
+      push(@an1_A, $an1);
+      push(@ax1_A, $ax1);
+
       # parse next two lines
       $line = <IN>; $line_ctr++;
       if($line !~ m/^Library/) { 
@@ -5063,9 +5104,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected line beginning with \"global/local\", but got:\n$line\n", 1, $FH_HR);
       }
       $line = <IN>; $line_ctr++;
-      my $q_afa = "";
-      my $nspace_5p = 0;
-      my $nspace_3p = 0;
       if($line !~ /^\>/) { 
         ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, expected line beginning with \">\" indicating beginning of q seq, but got:\n$line\n", 1, $FH_HR);
       }
@@ -5086,7 +5124,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, read end of alignment before aligned target\n", 1, $FH_HR);
       }
       $line = <IN>; $line_ctr++;
-      my $t_afa = "";
       while($line !~ /^\>\>\>\<\<\</) { 
         if(! defined $line) { 
           ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, ran out of lines before end of target aligned seq", 1, $FH_HR);
@@ -5096,10 +5133,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         $line = <IN>; $line_ctr++;
       }
       # currently line is ">>><<<"
-      # output alignment (TEMP)
-      vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $q_name, $q_afa, $t_afa, $t_uaseq, $an1, $ax1, $ofile_info_HHR);
-      #my $npart = scalar(@ax1_A);
-#      vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($npart-1)], $ofile_info_HHR);
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
@@ -5108,6 +5141,9 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   if($nq == 0) { 
     ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, did not read any alignments\n", 1, $FH_HR);
   }
+  
+  # output final alignment
+  vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $prv_q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($part_idx-1)], $ofile_info_HHR);
 
   # write insert file
   vdr_CmalignWriteInsertFile($insert_file, 0, $exp_mdl_name, $mdl_len, \@q_name_A, \%q_len_H, \%q_inserts_HH, $FH_HR);
@@ -5234,6 +5270,11 @@ sub vdr_GlsearchOutputStockholm {
 #             I indicates insertion in target/model, so deletion  in query
 #             D indicates deletion  in target/model, so insertion in query (and so stored in %{$inserts_HR}{"ins"})
 #
+#             If $inserts_HR->{"spos"} is already defined then we know that
+#             we are *adding* to insert info. This means that we do not 
+#             update it but rather leave it alone. 
+#             Caller should have verified that $mdlstart is valid in this case.
+# 
 # Reference:  https://en.wikipedia.org/wiki/Sequence_alignment#Representations
 #             https://jef.works/blog/2017/03/28/CIGAR-strings-for-dummies/
 # 
@@ -5241,7 +5282,7 @@ sub vdr_GlsearchOutputStockholm {
 #   $inserts_HR:  ref to hash to fill, see 'Purpose' for keys
 #   $cigar:       CIGAR string
 #   $seqstart:    first sequence position of alignment (typically 1)
-#   $mdlstart:    first model RF position of alignment (varies)
+#   $mdlstart:    first model RF position of alignment (varies), if undef,
 #   $FH_HR:       ref to hash of file handles, including "cmd"
 #
 # Returns:     void
@@ -5293,10 +5334,23 @@ sub vdr_CigarToInsertsHash {
     ofile_FAIL("ERROR, in $sub_name, unable to determine spos for mdlstart: $mdlstart and cigar: $cigar", 1, $FH_HR);
   }
   # printf("returning spos: $spos epos: $epos ins: $ins_str\n");
-  $inserts_HR->{"spos"} = $spos; 
-  $inserts_HR->{"epos"} = $epos; 
-  $inserts_HR->{"ins"} = $ins_str;
 
+  # update %{$inserts_HR}
+  # if defined, it means a previous call to this subroutine set it on initial 'part' of the alignment
+  if(! defined $inserts_HR->{"spos"}) { 
+    $inserts_HR->{"spos"} = $spos; 
+    $inserts_HR->{"epos"} = $epos; 
+    $inserts_HR->{"ins"} = $ins_str;
+  } 
+  else { 
+    # spos already defined in initial alignment 'part', do not update it!
+    # sanity check
+    if($inserts_HR->{"epos"} != ($mdlstart-1)) { 
+      ofile_FAIL(sprintf("ERROR, in $sub_name, epos already set as %d but mdlstart ($mdlstart) is not epos+1", $inserts_HR->{"epos"}), 1, $FH_HR);
+    }
+    $inserts_HR->{"epos"} = $epos; 
+    $inserts_HR->{"ins"} .= $ins_str;
+  }
   close(OUT);
 
   return;
