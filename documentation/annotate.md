@@ -919,8 +919,8 @@ features as described more [below](#mnf).
 | [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
 | [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
 | [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
-| [*fsthicnf*](#fsthicnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
-| [*fstukcnf*](#fstukcnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcnf1"></a> potential frameshift in CDS (only reported if `glsearch` |
+| [*fsthicnf*](#fsthicnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS (not reported if `--glsearch`)|
+| [*fstukcnf*](#fstukcnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcnf1"></a> potential frameshift in CDS (only reported if `--glsearch`) |
 | [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
 | [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
 | [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
@@ -952,7 +952,7 @@ features as described more [below](#mnf).
 | [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
 | [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
 | [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
-| [*fstlocnf*](#fstlocnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
+| [*fstlocnf*](#fstlocnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS (not reported if `--glsearch`) |
 | [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
 | [*deletinn*](#deletinn2)  | feature  | no    | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
 | [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
