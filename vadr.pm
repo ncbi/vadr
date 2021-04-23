@@ -4895,8 +4895,10 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   my ($pn0, $px0);    # start/stop position of displayed query
   my ($pn1, $px1);    # start/stop position of displayed library (target)
   my $cigar;          # CIGAR string 
-  my $q_afa;          # aligned sequence string for query
-  my $t_afa;          # aligned sequence string for library (target)
+  my $q_afa;          # full aligned sequence string for query, for current alignment 'part'
+  my $t_afa;          # full aligned sequence string for library (target), for current alignment 'part'
+  my $part_q_afa;     # aligned sequence string for query, for current alignment 'part'
+  my $part_t_afa;     # aligned sequence string for library (target), for current alignment 'part'
   my %q_len_H = ();   # key is query/sequence name, value is length
   my @q_name_A = ();  # array of query names
   # hash for storing insert info we will write to insert_file
@@ -4994,6 +4996,8 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       # we use check of previous q_name to see if this is the continuation of a previous alignment or not
       #start of new query
       ($q_name, $q_len) = ($1, $2);
+      $part_q_afa = "";
+      $part_t_afa = "";
       printf("HEYA q_len: $q_len, line\n\t$line\n");
       # determine if previous alignment is complete based on whether the query name is new or same as previous
       if((defined $prv_q_name) && ($q_name eq $prv_q_name)) { 
@@ -5114,7 +5118,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         chomp $line; 
         # do not remove leading/trailing whitespace, we deal with this after
         # we've read the full seq
-        $q_afa .= $line;
+        $part_q_afa .= $line;
         
         $line = <IN>; $line_ctr++;
       }
@@ -5128,10 +5132,41 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
           ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, ran out of lines before end of target aligned seq", 1, $FH_HR);
         }
         chomp $line; 
-        $t_afa .= $line;
+        $part_t_afa .= $line;
         $line = <IN>; $line_ctr++;
       }
-      # currently line is ">>><<<"
+      # currently line is ">>><<<" indicating end of alignment for this query seq and target seq
+      # for this alignment 'part'
+      # make sure only spaces are at beginning and end of query seq,
+      # count how many, and remove them and corresponding number of nt
+      # from beginning/end of target seq too.
+      my $nspace_5p = 0;
+      my $nspace_3p = 0;
+      if($part_q_afa =~ m/^(\s*)\S+(\s*)$/) { 
+        $nspace_5p = length($1);
+        $nspace_3p = length($2);
+        $part_q_afa =~ s/^\s+//; # remove leading  whitespace
+        $part_q_afa =~ s/\s+$//; # remove trailing whitespace
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read query aligned sequence correctly:\n$part_q_afa\n", 1, $FH_HR);
+      }
+      if($part_t_afa !~ m/^\S+$/) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read target aligned sequence correctly:\n$part_t_afa\n", 1, $FH_HR);
+      }
+      if($nspace_5p > 0) { 
+        $part_t_afa = substr($part_t_afa, $nspace_5p);
+      }
+      if($nspace_3p > 0) { 
+        $part_t_afa = substr($part_t_afa, 0, -1 * $nspace_3p);
+      }
+      my $part_q_len = length($part_q_afa);
+      my $part_t_len = length($part_t_afa);
+      if($part_q_len != $part_t_len) { 
+        ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr; aligned query length $part_q_len differs from aligned target length $part_t_len", 1, $FH_HR);
+      }
+      $q_afa .= $part_q_afa;
+      $t_afa .= $part_t_afa;
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, at line $line_ctr, expected line beginning with \\d+>>> indicating next query or >>>/// line indicating end of alignments, got:\n$line\n", 1, $FH_HR);
@@ -5188,28 +5223,11 @@ sub vdr_GlsearchOutputStockholm {
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
 
   printf("in $sub_name\n");
-  # make sure only spaces are at beginning and end of query seq,
-  # count how many, and remove them and corresponding number of nt
-  # from beginning/end of target seq too.
-  my $nspace_5p;
-  my $nspace_3p;
-  if($q_afa =~ m/^(\s*)\S+(\s*)$/) { 
-    $nspace_5p = length($1);
-    $nspace_3p = length($2);
-    $q_afa =~ s/^\s+//; # remove leading  whitespace
-    $q_afa =~ s/\s+$//; # remove trailing whitespace
-  }
-  else { 
+  if($q_afa !~ m/^\S+$/) { 
     ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read query aligned sequence correctly:\n$q_afa\n", 1, $FH_HR);
   }
   if($t_afa !~ m/^\S+$/) { 
-    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read target aligned sequence correctly:\n$q_afa\n", 1, $FH_HR);
-  }
-  if($nspace_5p > 0) { 
-    $t_afa = substr($t_afa, $nspace_5p);
-  }
-  if($nspace_3p > 0) { 
-    $t_afa = substr($t_afa, 0, -1 * $nspace_3p);
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, on line $line_ctr, did not read target aligned sequence correctly:\n$t_afa\n", 1, $FH_HR);
   }
   my $q_len = length($q_afa);
   my $t_len = length($t_afa);
