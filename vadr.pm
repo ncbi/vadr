@@ -4914,7 +4914,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   # variables necessary only to parse alignments that come in 
   # multiple 'parts' (first encountered for HSV2, which is >150Kb)
   # max size of 1 part seems to be 39990 nt
-  my $part_idx; # index of alignment 'part', typically '1' unless alignment has multiple parts
+  my $npart;  # number of alignment 'parts' read so far, typically '1' unless seq is so long (>39990 nt) it had to be split into > 1 parts
   # arrays of $an1 and $ax1 values read for the current alignment, 
   my @an1_A = ();
   my @ax1_A = ();
@@ -4985,30 +4985,28 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       # end of all alignments
       $keep_going = 0;
     }
-    elsif($line =~ /^\s*(\d+)\>\>\>(\S+).*\s+(\d+)\s+nt/) { 
+    elsif($line =~ /^\s*\d+\>\>\>(\S+).*\s+(\d+)\s+nt/) { 
       # 1>>>lcl|SARS-CoV-2/human/USA/IN-CDC-LC00002770/2021/17579-27826 - 10248 nt (forward-only)
+      # 2>>>lcl|SARS-CoV-2/human/USA/AZ-CDC-LC0003932/2021/21408-29713 - 8306 nt (forward-only)
       # OR
+      # 3>>>HSV2_strainG_LHRI_genome - 39990 nt - 39990 nt - 39990 nt (forward-only)
       # 4>>>HSV2_strainG_LHRI_genome - 39990 nt - 39990 nt - 39990 nt - 35538 nt (forward-only)
+      # we use check of previous q_name to see if this is the continuation of a previous alignment or not
       #start of new query
-      ($part_idx, $q_name, $q_len) = ($1, $2, $3);
+      ($q_name, $q_len) = ($1, $2);
       printf("HEYA q_len: $q_len, line\n\t$line\n");
-      # determine if previous alignment is complete based on $part_idx, if so, output it
-      if($part_idx != 1) { 
-        if(! defined $q_name) { 
-          ofile_FAIL("ERROR first alignment read had part_idx != 1 ($part_idx) on line $line_ctr\n$line\n", 1, $FH_HR); 
-        }
-        if($prv_q_name ne $q_name) { 
-          ofile_FAIL("ERROR read alignment part idx $part_idx for $q_name but previous part read was for $prv_q_name on line $line_ctr\n$line\n", 1, $FH_HR); 
-        }
-        if(scalar(@ax1_A) != ($part_idx-1)) { 
-          ofile_FAIL(sprintf("ERROR problem with alignment part idx $part_idx, have only read %d parts on line $line_ctr\n$line\n", scalar(@ax1_A)), 1, $FH_HR);
+      # determine if previous alignment is complete based on whether the query name is new or same as previous
+      if((defined $prv_q_name) && ($q_name eq $prv_q_name)) { 
+        $npart++;
+        if(scalar(@ax1_A) != ($npart-1)) { 
+          ofile_FAIL(sprintf("ERROR problem with alignment part $npart, but have only read %d previous parts so far on line $line_ctr\n$line\n", scalar(@ax1_A)), 1, $FH_HR);
         }
         $q_len_H{$q_name} += $q_len;
       }
-      else { # $part_idx == 1
+      else { # new query
         # output previous alignment, if we have one
         if(defined $prv_q_name) { 
-          vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $prv_q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($part_idx-1)], $ofile_info_HHR);
+          vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $prv_q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($npart-1)], $ofile_info_HHR);
         }
         @an1_A = ();
         @ax1_A = ();
@@ -5017,6 +5015,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         $q_len_H{$q_name} = $q_len; 
         $q_afa = "";
         $t_afa = "";
+        $npart = 1;
       }
       $prv_q_name = $q_name;
       push(@an1_A, $an1);
@@ -5143,7 +5142,9 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   }
   
   # output final alignment
-  vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $prv_q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($part_idx-1)], $ofile_info_HHR);
+  printf("new q_afa len: " . length($q_afa) . "\n");
+  printf("new t_afa len: " . length($t_afa) . "\n");
+  vdr_GlsearchOutputStockholm($stk_file . "." . $nq, $mdl_len, $gls_file, $line_ctr, $prv_q_name, $q_afa, $t_afa, $t_uaseq, $an1_A[0], $ax1_A[($npart-1)], $ofile_info_HHR);
 
   # write insert file
   vdr_CmalignWriteInsertFile($insert_file, 0, $exp_mdl_name, $mdl_len, \@q_name_A, \%q_len_H, \%q_inserts_HH, $FH_HR);
