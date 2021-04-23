@@ -8270,7 +8270,7 @@ sub output_tabular {
                 if($s_coords_str ne "") { $s_coords_str .= ","; }
                 if($m_coords_str ne "") { $m_coords_str .= ","; }
                 $s_coords_str .= $sgm_sstart . ".." . $sgm_sstop . ":" . $sgm_strand;
-                $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
+                $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":" . $sgm_strand;
                 $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
                 
                 if(($sgm_nprinted == 0) && ((scalar(@data_sgm_AA) > 0) || (! $do_headers))) { 
