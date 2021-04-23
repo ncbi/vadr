@@ -5018,8 +5018,6 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         $npart = 1;
       }
       $prv_q_name = $q_name;
-      push(@an1_A, $an1);
-      push(@ax1_A, $ax1);
 
       # parse next two lines
       $line = <IN>; $line_ctr++;
@@ -5078,6 +5076,8 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
         }
         ($an0, $ax0, $pn0, $px0, $an1, $ax1, $pn1, $px1, $cigar) = 
             ($el_A[5], $el_A[6], $el_A[7], $el_A[8], $el_A[9], $el_A[10], $el_A[11], $el_A[12], $el_A[16]);
+        push(@an1_A, $an1);
+        push(@ax1_A, $ax1);
         if($mdl_name ne $exp_mdl_name) { 
           ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, line $line_ctr, expected single target sequence name $mdl_name but read $mdl_name", 1, $FH_HR);
         }
