@@ -250,9 +250,12 @@ opt_Add("--lowcov",     "real",      0.9,       $g,   undef,   undef,           
 opt_Add("--dupregolp",  "integer",   20,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--dupregsc",   "real",      10,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum bit score is <x>",                             "dupregin/DUPLICATE_REGIONS minimum bit score is <x>",                             \%opt_HH, \@opt_order_A);
 opt_Add("--indefstr",   "real",      25,        $g,   undef,   undef,            "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim5term", "integer",  15,        $g,   undef,   undef,            "lowsim5{s,f}/LOW_{FEATURE_}SIMILARITY_START minimum length is <n>",               "lowsim5{s,f}/LOW_{FEATURE_}SIMILARITY_START minimum length is <n>",               \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim3term", "integer",  15,        $g,   undef,   undef,            "lowsim3{s,f}/LOW_{FEATURE_}SIMILARITY_END minimum length is <n>",                 "lowsim3{s,f}/LOW_{FEATURE_}SIMILARITY_END minimum length is <n>",                 \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimint",  "integer",   1,         $g,   undef,   undef,            "lowsimi{s,f}/LOW_{FEATURE_}SIMILARITY (internal) minimum length is <n>",          "lowsimi{s,f}/LOW_{FEATURE_}SIMILARITY (internal) minimum length is <n>",          \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5seq", "integer",  15,         $g,   undef,   undef,            "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3seq", "integer",  15,         $g,   undef,   undef,            "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimiseq", "integer",   1,         $g,   undef,   undef,            "lowsimis/LOW_SIMILARITY (internal) minimum length is <n>",                        "lowsimi/LOW_SIMILARITY (internal) minimum length is <n>",                         \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5ftr", "integer",   3,         $g,   undef,   undef,            "lowsim5f/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     "lowsim5f/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3ftr", "integer",   3,         $g,   undef,   undef,            "lowsim3f/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       "lowsim3f/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimif/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                "lowsimif/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -405,9 +408,12 @@ my $options_okay =
                 'dupregolp=s'   => \$GetOptions_H{"--dupregolp"},  
                 'dupregsc=s'    => \$GetOptions_H{"--dupregsc"},  
                 'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
-                'lowsim5term=s' => \$GetOptions_H{"--lowsim5term"},
-                'lowsim3term=s' => \$GetOptions_H{"--lowsim3term"},
-                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
+                'lowsim5seq=s'  => \$GetOptions_H{"--lowsim5seq"},
+                'lowsim3seq=s'  => \$GetOptions_H{"--lowsim3seq"},
+                'lowsimiseq=s'  => \$GetOptions_H{"--lowsimiseq"},
+                'lowsim5ftr=s'  => \$GetOptions_H{"--lowsim5ftr"},
+                'lowsim3ftr=s'  => \$GetOptions_H{"--lowsim3ftr"},
+                'lowsimiftr=s'  => \$GetOptions_H{"--lowsimiftr"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
@@ -5635,15 +5641,21 @@ sub add_low_similarity_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $terminal_5_min_length = opt_Get("--lowsim5term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
-  my $terminal_3_min_length = opt_Get("--lowsim3term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
-  my $internal_min_length   = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
+  my $terminal_seq_5_min_length = opt_Get("--lowsim5seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
+  my $terminal_seq_3_min_length = opt_Get("--lowsim3seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
+  my $internal_seq_min_length   = opt_Get("--lowsimiseq", $opt_HHR); # minimum length of internal missing region that triggers a lowsimis alert
+  my $terminal_ftr_5_min_length = opt_Get("--lowsim5ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5f alert
+  my $terminal_ftr_3_min_length = opt_Get("--lowsim3ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3f alert
+  my $internal_ftr_min_length   = opt_Get("--lowsimiftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimif alert
   my $do_skip_pv            = opt_Get("--pv_skip",     $opt_HHR) ? 1 : 0;
 
   # set $min_length as minimum of the 5 length thresholds
-  my $min_length = $terminal_5_min_length;
-  if($min_length > $terminal_3_min_length) { $min_length = $terminal_3_min_length; }
-  if($min_length > $internal_min_length)   { $min_length = $internal_min_length; }
+  my $min_length = $internal_ftr_min_length;
+  if($min_length > $internal_seq_min_length)   { $min_length = $internal_seq_min_length; }
+  if($min_length > $terminal_ftr_5_min_length) { $min_length = $terminal_ftr_5_min_length; }
+  if($min_length > $terminal_ftr_3_min_length) { $min_length = $terminal_ftr_3_min_length; }
+  if($min_length > $terminal_seq_5_min_length) { $min_length = $terminal_seq_5_min_length; }
+  if($min_length > $terminal_seq_3_min_length) { $min_length = $terminal_seq_3_min_length; }
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
@@ -5716,13 +5728,13 @@ sub add_low_similarity_alerts {
                       if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
                         #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
                         my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
-                        if(($is_start) && ($length >= $terminal_5_min_length)) { 
+                        if(($is_start) && ($length >= $terminal_ftr_5_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
-                        if(($is_end) && ($length >= $terminal_3_min_length)) { 
+                        if(($is_end) && ($length >= $terminal_ftr_3_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
-                        if((! $is_start) && (! $is_end) && ($length >= $internal_min_length)) { 
+                        if((! $is_start) && (! $is_end) && ($length >= $internal_ftr_min_length)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimif", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                       }
@@ -5730,15 +5742,15 @@ sub add_low_similarity_alerts {
                   }
                 }
               } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
-              if($nftr_overlap == 0) { # no features overlapped, throw lowsim5s, lowsim3s, or lowsimis
+              if($nftr_overlap == 0) { # no features overlapped, potentially report lowsim5s, lowsim3s, or lowsimis
                 my $alt_str = "low similarity region of length $length ($start..$stop)";
-                if(($is_start) && ($length >= $terminal_5_min_length)) { 
+                if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
                 }
-                if(($is_end) && ($length >= $terminal_3_min_length)) { 
+                if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_str, $FH_HR);
                 }
-                if((! $is_start) && (! $is_end) && ($length >= $internal_min_length)) { 
+                if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_str, $FH_HR);
                 }
               }
