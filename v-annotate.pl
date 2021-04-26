@@ -5697,8 +5697,8 @@ sub add_low_similarity_alerts {
             if($bstrand eq "+") { 
               my $is_start   = ($start == 1)        ? 1 : 0;
               my $is_end     = ($stop  == $seq_len) ? 1 : 0;
-              # does this overlap with a feature? 
-              my $nftr_overlap = 0;
+              # does this overlap with a feature by at least minimum overlap length threshold? 
+              my $ftr_overlap_flag = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
                 # determine if we should even report lowsim{5,3,i}f alerts for this feature
                 # we will UNLESS:
@@ -5722,19 +5722,25 @@ sub add_low_similarity_alerts {
                     my $stop2  = utl_Max($f_start, $f_stop);
                     ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
                     if($noverlap > 0) { 
-                      $nftr_overlap++;
-                      # only actually report an alert for non-CDS and non-MP features
+                      #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
+                      # for 5'/3'/internal cases: only actually report an alert for non-CDS and non-MP features
                       # because CDS and MP are independently validated by blastx (unless --pv_skip)
-                      if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
-                        #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
-                        my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
-                        if(($is_start) && ($length >= $terminal_ftr_5_min_length)) { 
+                      my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                      if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
+                        $ftr_overlap_flag = 1;
+                        if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
-                        if(($is_end) && ($length >= $terminal_ftr_3_min_length)) { 
+                      }
+                      if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
+                        $ftr_overlap_flag = 1;
+                        if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
-                        if((! $is_start) && (! $is_end) && ($length >= $internal_ftr_min_length)) { 
+                      }
+                      if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
+                        $ftr_overlap_flag = 1;
+                        if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
                           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimif", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                         }
                       }
@@ -5742,7 +5748,7 @@ sub add_low_similarity_alerts {
                   }
                 }
               } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
-              if($nftr_overlap == 0) { # no features overlapped, potentially report lowsim5s, lowsim3s, or lowsimis
+              if(! $ftr_overlap_flag) { # no features overlapped above length threshold, potentially report lowsim5s, lowsim3s, or lowsimis
                 my $alt_str = "low similarity region of length $length ($start..$stop)";
                 if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
