@@ -2063,15 +2063,39 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5c", "feature",
                    "LOW_FEATURE_SIMILARITY_START", # short description
-                   "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
+                   "region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5n", "feature",
+                   "LOW_FEATURE_SIMILARITY_START", # short description
+                   "region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3f", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3c", "feature",
                    "LOW_FEATURE_SIMILARITY_END", # short description
-                   "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
+                   "region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3n", "feature",
+                   "LOW_FEATURE_SIMILARITY_END", # short description
+                   "region within annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsimic", "feature",
+                   "LOW_FEATURE_SIMILARITY", # short description
+                   "region within annotated feature that is or matches a CDS lacks significant similarity", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsimin", "feature",
+                   "LOW_FEATURE_SIMILARITY", # short description
+                   "region within annotated feature that does not match a CDS lacks significant similarity", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -5637,7 +5661,7 @@ sub vdr_MergeOutputAlcTabularFile {
        #6     cdsstopn  yes*     CDS_HAS_STOP_CODON      feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
        #7     fstukcnf  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  potential frameshift in CDS
        #8     indfantn  yes      INDEFINITE_ANNOTATION   feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
-       #9     lowsimif  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature lacks significant similarity
+       #9     lowsimic  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature that is or matches a CDS lacks significant similarity
        ##---  --------  -------  ----------------------  -------  -----  ----  -----------
       if($line !~ m/^\#/) { 
         chomp $line;

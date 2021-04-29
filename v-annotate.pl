@@ -114,7 +114,7 @@ require "sqp_utils.pm";
 #     unexdivg (1)
 #
 #  4. parse_stk_and_add_alignment_alerts()
-#     indf5gap, indf5lcc, indf5lcn, indf3gap, indf3lcc, indf3lcn, deletinf, deletins (6)
+#     indf5gap, indf5lcc, indf5lcn, indf3gap, indf3lcc, indf3lcn, deletinf, deletins (8)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
@@ -126,7 +126,7 @@ require "sqp_utils.pm";
 #     peptrans (1)
 # 
 #  8. add_low_similarity_alerts()
-#     lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
+#     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5s, lowsim3s, lowsimis (9)
 # 
 #  9. add_frameshift_alerts_for_one_sequence()
 #     fsthicnf, fstlocnf (2)
@@ -253,9 +253,9 @@ opt_Add("--indefstr",   "real",      25,        $g,   undef,   undef,           
 opt_Add("--lowsim5seq", "integer",  15,         $g,   undef,   undef,            "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
 opt_Add("--lowsim3seq", "integer",  15,         $g,   undef,   undef,            "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimiseq", "integer",   1,         $g,   undef,   undef,            "lowsimis/LOW_SIMILARITY (internal) minimum length is <n>",                        "lowsimi/LOW_SIMILARITY (internal) minimum length is <n>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim5ftr", "integer",   3,         $g,   undef,   undef,            "lowsim5f/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     "lowsim5f/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim3ftr", "integer",   3,         $g,   undef,   undef,            "lowsim3f/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       "lowsim3f/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimif/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                "lowsimif/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5ftr", "integer",   3,         $g,   undef,   undef,            "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3ftr", "integer",   3,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
@@ -5609,8 +5609,9 @@ sub OLD_sqstring_find_stops {
 #
 # Purpose:   For each sequence with >1 hits in the sequence coverage
 #            determine stage (r2 search stage), report any 
-#            low similarity per-sequence alerts (lowsim5s, lowsim3s, lowsimis) and
-#            low similarity per-feature alerts (lowsim5f, lowsim3f, lowsimif). 
+#            low similarity per-sequence alerts          (lowsim5s, lowsim3s, lowsimis) and
+#            low similarity per-coding-feature alerts    (lowsim5c, lowsim3c, lowsimic) and 
+#            low similarity per-noncoding-feature alerts (lowsim5n, lowsim3n, lowsimin).
 #
 # Arguments:
 #  $mdl_name:               name of model these sequences were assigned to
@@ -5706,14 +5707,10 @@ sub add_low_similarity_alerts {
               # does this overlap with a feature by at least minimum overlap length threshold? 
               my $ftr_overlap_flag = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                # determine if we should even report lowsim{5,3,i}f alerts for this feature
-                # we will UNLESS:
+                # determine if this feature qualifies as a 'coding' feature for purposes of the alert
+                # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
                 # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
-                #   and feature does not have a 'misc_not_failure' attribute
-                # If feature has an 'misc_not_failure' attribute then we report these anyway because they can be 
-                # more extreme than the 'misc_not_failure' alerts
-                my $report_lowsim_alerts_for_this_feature = ((vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx)) && 
-                                                             (! $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"})) ? 0 : 1;
+                my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
                 my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
                 if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
                   my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
@@ -5734,21 +5731,15 @@ sub add_low_similarity_alerts {
                       my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
                       if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
                         $ftr_overlap_flag = 1;
-                        if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                       if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
                         $ftr_overlap_flag = 1;
-                        if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim3c" : "lowsim3n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                       if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
                         $ftr_overlap_flag = 1;
-                        if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimif", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsimic" : "lowsimin"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                     }
                   }
