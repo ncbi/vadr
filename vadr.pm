@@ -1973,9 +1973,15 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "indf5loc", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "indf5lcc", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
-                   "alignment to homology model has low confidence at 5' boundary", # long description
+                   "alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "indf5lcn", "feature",
+                   "INDEFINITE_ANNOTATION_START", # short description
+                   "alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -1997,9 +2003,15 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "indf3loc", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "indf3lcc", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
-                   "alignment to homology model has low confidence at 3' boundary", # long description
+                   "alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "indf3lcn", "feature",
+                   "INDEFINITE_ANNOTATION_END", # short description
+                   "alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 

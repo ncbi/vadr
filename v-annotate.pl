@@ -114,7 +114,7 @@ require "sqp_utils.pm";
 #     unexdivg (1)
 #
 #  4. parse_stk_and_add_alignment_alerts()
-#     indf5gap, indf5loc, indf3gap, indf3loc, deletinf, deletins (6)
+#     indf5gap, indf5lcc, indf5lcn, indf3gap, indf3lcc, indf3lcn, deletinf, deletins (6)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
@@ -257,8 +257,8 @@ opt_Add("--lowsim5ftr", "integer",   3,         $g,   undef,   undef,           
 opt_Add("--lowsim3ftr", "integer",   3,         $g,   undef,   undef,            "lowsim3f/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       "lowsim3f/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimif/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                "lowsimif/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
-opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnt",   "integer",    6,        $g,   undef,   undef,            "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--glsearch",         "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",              "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstlowthr",  "real",      0.3,       $g,   undef,"--glsearch",         "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",               "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
@@ -3748,8 +3748,10 @@ sub cmalign_or_glsearch_run {
 #             @{$alt_ftr_instances_AAHR}:
 #             indf5gap: gap at 5' boundary of model span for a feature segment
 #             indf3gap: gap at 5' boundary of model span for a feature segment
-#             indf5loc: low posterior prob at 5' boundary of model span for a feature segment
-#             indf3loc: low posterior prob at 5' boundary of model span for a feature segment
+#             indf5lcc: low posterior prob at 5' boundary of model span for a coding feature segment
+#             indf5lcn: low posterior prob at 5' boundary of model span for a noncoding feature segment
+#             indf3lcc: low posterior prob at 3' boundary of model span for a coding feature segment
+#             indf3lcn: low posterior prob at 3' boundary of model span for a noncoding feature segment
 #
 # Arguments: 
 #  $stk_file:               stockholm alignment file to parse
@@ -4249,17 +4251,19 @@ sub parse_stk_and_add_alignment_alerts {
             push(@alt_ftr_A, $ftr_idx);
           } 
           elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
-            # report indf5loc, but first check if the start of this segment is identical to 
-            # the stop of a CDS or mat_peptide or gene feature
-            # if so we don't report indf5loc because there's other (better) checks of the start codon position
-            # (e.g. that it is a valid start codon)
-            if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx))                || # feature is NOT CDS or mat_peptide or gene (so we can always report indf5loc)
-               (! $sgm_info_AHR->[$sgm_idx]{"is_5p"})                                             || # segment is NOT first segment in feature (so we can always report indf5loc)
-               (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # start does not match a CDS start (so we can always report indf5loc)
-              push(@alt_code_A, "indf5loc");
-              push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg));
-              push(@alt_ftr_A, $ftr_idx);
+            # report indf5lcc or indf5lcn
+            # indf5lcc: if this segment is 5'-most segment of a CDS or 5'-most segment of a feature that has same start position as a CDS
+            # indf5lcn: if not indf5lcc
+            if(($sgm_info_AHR->[$sgm_idx]{"is_5p"}) && # segment is 5'-most segment in feature
+               ((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) || # feature is a CDS
+                (vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR)))) { # segment has start same as a CDS start
+              push(@alt_code_A, "indf5lcc");
             }
+            else { 
+              push(@alt_code_A, "indf5lcn");
+            }
+            push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg));
+            push(@alt_ftr_A, $ftr_idx);
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
@@ -4269,17 +4273,19 @@ sub parse_stk_and_add_alignment_alerts {
             push(@alt_ftr_A, $ftr_idx);
           }
           elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
-            # report indf3loc, but first check if the stop of this segment is identical to 
-            # the stop of a CDS or gene feature (mat_peptide excluded because it won't include stop codon)
-            # if so we don't report indf3loc because there's other (better) checks of the stop codon position
-            # (e.g. that it is a valid in-frame stop)
-            if((! vdr_FeatureTypeIsCdsOrGene($ftr_info_AHR, $ftr_idx))                           || # feature is NOT CDS or gene (so we can always report indf3loc)
-               (! $sgm_info_AHR->[$sgm_idx]{"is_3p"})                                            || # segment is NOT final segment in feature (so we can always report indf3loc)
-               (! vdr_SegmentStopIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # stop does not match a CDS stop (so we can always report indf3loc)
-              push(@alt_code_A, "indf3loc");
-              push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg));
-              push(@alt_ftr_A, $ftr_idx);
+            # report indf3lcc or indf3lcn
+            # indf5lcc: if this segment is 3'-most segment of a CDS or 3'-most segment of a feature that has same stop position as a CDS
+            # indf5lcn: if not indf5lcc
+            if(($sgm_info_AHR->[$sgm_idx]{"is_3p"}) && # segment is 3'-most segment in feature
+               ((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) || # feature is a CDS
+                (vdr_SegmentStopIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR)))) { # segment has stop same as a CDS stop
+              push(@alt_code_A, "indf3lcc");
             }
+            else { 
+              push(@alt_code_A, "indf3lcn");
+            }
+            push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg));
+            push(@alt_ftr_A, $ftr_idx);
           }
         }
 
