@@ -10358,13 +10358,22 @@ sub parse_cdt_tblout_file_and_replace_ns {
       # will get revcompl alerts and *not* be annotated (aligned) anyway
       if($seq_strand eq "+") { 
         # add this hit to the growing model and seq coords strings if
-        # it does not overlap with any of the segments so far added
+        # it does not *completely* overlap with any of the segments so far added
+        # Note: until version 1.2.1 we disallowed any overlap, but this prevented
+        # the replacement of Ns in some regions in seqs with chance
+        # similarity at sequence ends surrounding a model deletion
+        # from being found and replaced correctly. See github issue #37.
+        # Now we allow overlaps as long as they're not 100%, and then downstream
+        # code that analyzes each missing region can handle overlaps as long 
+        # as none are complete. If none are complete this guarantees that
+        # if we sort by start position we will also be sorted by stop position.
         my $found_overlap = 0;
         my $ncoords = (defined $tblout_coords_HAH{$seq_name}) ? scalar(@{$tblout_coords_HAH{$seq_name}}) : 0;
         if(defined $tblout_coords_HAH{$seq_name}) { 
           for(my $i = 0; $i < $ncoords; $i++) { 
             my ($noverlap, undef) = seq_Overlap($seq_start, $seq_stop, $tblout_coords_HAH{$seq_name}[$i]{"seq_start"}, $tblout_coords_HAH{$seq_name}[$i]{"seq_stop"}, $FH_HR);  
-            if($noverlap > 0) { 
+            my $min_length = utl_Min((abs($seq_stop-$seq_start)+1), (abs($tblout_coords_HAH{$seq_name}[$i]{"seq_stop"} - $tblout_coords_HAH{$seq_name}[$i]{"seq_start"})+1));
+            if($noverlap >= $min_length) { # actually max this can be should be $min_length
               $found_overlap = 1;
               $i = $ncoords; # breaks loop
             }
@@ -10460,6 +10469,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     # replace this region. An alternative would be to replace to 
     # the end of the model, but I think that's too aggressive.
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
+      #printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
       if($cur_missing_mdl_stop <= $mdl_len) { 
