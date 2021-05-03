@@ -1,0 +1,16 @@
+>Feature NC_029646.1-N2
+<1	644	misc_feature
+			note	similar to p48
+<1	>795	gene
+			gene	ORF1
+<1	>795	misc_feature
+			note	similar to nonstructural polyprotein
+645	>795	misc_feature
+			note	similar to NTPase
+
+Additional note(s) to submitter:
+ERROR: N_AT_CDS_END: (nonstructural polyprotein) final nucleotide of CDS is an N [final 70 positions are Ns, final non-N is position 795]
+ERROR: DELETION_OF_NT: (nonstructural polyprotein) too large of a deletion in protein-based alignment [blastx predicted delete of length 45>27 starting at reference amino acid posn 330]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: INDEFINITE_ANNOTATION_START: (NTPase) alignment to homology model has low confidence at 5' boundary [0.50 < 0.60 (mat_peptide feature), RF position 995]
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem
