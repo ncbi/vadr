@@ -1,0 +1,4 @@
+#seq  seq             seq                   num_Ns  num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
+#idx  name            len  model      p/f      tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
+#---  --------------  ---  ---------  ----  ------  ------  --------  -----  -----  -----  -------  -------  -------  -------  ---------------------
+1     NC_029646.1-N2  865  NC_029646  FAIL     210     140     0.667      3      2      2        2        0      140        0  S:71..140,M:421..490,N:70/70;S:796..865,M:1191..1260,N:70/70;
