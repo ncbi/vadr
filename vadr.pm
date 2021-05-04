@@ -1925,21 +1925,57 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf5", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence potential frameshift in CDS", # long description
+                   "high confidence possible frameshift at 5' end of CDS", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf3", "feature",
+                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
+                   "high confidence possible frameshift at 3' end of CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicfi", "feature",
+                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
+                   "high confidence possible frameshift in CDS (internal)", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf5", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence potential frameshift in CDS", # long description
+                   "low confidence possible frameshift at 5' end of CDS", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcnf", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf3", "feature",
+                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
+                   "low confidence possible frameshift at 3' end of CDS", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocfi", "feature",
+                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
+                   "low confidence possible frameshift in CDS (internal)", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf5", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "potential frameshift in CDS", # long description
+                   "possible frameshift at 5' end of CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf3", "feature",
+                   "POSSIBLE_FRAMESHIFT", # short description
+                   "possible frameshift at 3' end of CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcfi", "feature",
+                   "POSSIBLE_FRAMESHIFT", # short description
+                   "possible frameshift in CDS (internal)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -5623,7 +5659,7 @@ sub vdr_MergeOutputAlcTabularFile {
        #---  --------  -------  ----------------------  -------  -----  ----  -----------
        #5     unexleng  yes*     UNEXPECTED_LENGTH       feature      1     1  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
        #6     cdsstopn  yes*     CDS_HAS_STOP_CODON      feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
-       #7     fstukcnf  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  potential frameshift in CDS
+       #7     fstukcfi  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  possible frameshift in CDS (internal)
        #8     indfantn  yes      INDEFINITE_ANNOTATION   feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
        #9     lowsimif  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature lacks significant similarity
        ##---  --------  -------  ----------------------  -------  -----  ----  -----------

@@ -129,7 +129,7 @@ require "sqp_utils.pm";
 #     lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
 # 
 #  9. add_frameshift_alerts_for_one_sequence()
-#     fsthicnf, fstlocnf (2)
+#     fsthicf5, fsthicf3, fsthicfi, fstlof5, fstlocf3, fstlocfi, fstukcf5, fstukcf3, fstukcfi (9)
 #
 # 10. join_alignments_and_add_unjoinbl_alerts()
 #     unjoinbl (1)
@@ -256,9 +256,11 @@ opt_Add("--lowsimint",  "integer",   1,         $g,   undef,   undef,           
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstminnt",   "integer",    6,        $g,   undef,   undef,            "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", "fst{hi,lo}cnf/POSSIBLE_FRAMESHIFT_{HIGH,LOW}_CONF max allowed frame disagreement nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--glsearch",         "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",              "fsthicnf/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstlowthr",  "real",      0.3,       $g,   undef,"--glsearch",         "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",               "fstlocnf/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminnt5",  "integer",    2,        $g,   undef,   undef,            "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>",   "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminnt3",  "integer",    2,        $g,   undef,   undef,            "fst{hi,lo,uk}cf3/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 3' end w/o alert is <n>",   "fst{hi,lo,uk}cf3/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 3' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminnti",  "integer",    6,        $g,   undef,   undef,            "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length  w/o alert is <n>",   "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--glsearch",        "fsthicf{5,3,i}/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",                  "fsthicf{5,3,i}/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstlowthr",  "real",      0.0,       $g,   undef,"--glsearch",        "fstlocf{5,3,i}/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",                   "fstlocf{5,3,i}/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--xalntol",    "integer",   5,         $g,   undef,   undef,            "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",   "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",     "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
@@ -412,7 +414,9 @@ my $options_okay =
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'fstminnt=s'    => \$GetOptions_H{"--fstminnt"},
+                'fstminnt5=s'   => \$GetOptions_H{"--fstminnt5"},
+                'fstminnt3=s'   => \$GetOptions_H{"--fstminnt3"},
+                'fstminnti=s'   => \$GetOptions_H{"--fstminnti"},
                 'fsthighthr=s'  => \$GetOptions_H{"--fsthighthr"},
                 'fstlowthr=s'   => \$GetOptions_H{"--fstlowthr"},
                 'xalntol=s'     => \$GetOptions_H{"--xalntol"},
@@ -571,7 +575,7 @@ if(opt_Get("--fsthighthr", \%opt_HH) < opt_Get("--fstlowthr", \%opt_HH)) {
     die "ERROR if using --fstlowthr <x>, <x> must be < " . opt_Get("--fsthighthr", \%opt_HH);
   }
   else {
-    die "ERROR, default value for --fsthighthr (" . opt_Get("--fsthighthr", \%opt_HH) . ") is less than default value for --fstlowthr (" . opt_Get("--fslowthr", \%opt_HH) . ")";
+    die "ERROR, default value for --fsthighthr (" . opt_Get("--fsthighthr", \%opt_HH) . ") is less than default value for --fstlowthr (" . opt_Get("--fstlowthr", \%opt_HH) . ")";
   }
 }
 
@@ -4403,15 +4407,27 @@ sub parse_stk_and_add_alignment_alerts {
 # Subroutine : add_frameshift_alerts_for_one_sequence()
 # Incept:      EPN, Mon Mar  2 19:54:25 2020
 #
+
 # Purpose:    Given information about a parsed alignment of a single
-#             sequence, detect frameshift alerts (fsthicnf and fstlocnf)
-#             and report them. Also create frameshift-annotated stockholm
-#             files if --keep.
+#             sequence, detect frameshift alerts and report them. Also
+#             create frameshift-annotated stockholm files if --keep or
+#             --out_fsstk.
 #             
 #             Detects and adds the following alerts to 
 #             @{$alt_ftr_instances_AAHR}:
-#             fsthicnf: CDS has a possible frameshift, high confidence
-#             fstlocnf: CDS has a possible frameshift, low confidence
+#
+#             If --glsearch NOT used:
+#             fsthicf5: CDS has a possible frameshift at 5' end, high confidence
+#             fsthicf3: CDS has a possible frameshift at 3' end, high confidence
+#             fsthicfi: CDS has a possible internal frameshift,  high confidence
+#             fstlocf5: CDS has a possible frameshift at 5' end, low confidence
+#             fstlocf3: CDS has a possible frameshift at 3' end, low confidence
+#             fstlocfi: CDS has a possible internal frameshift,  low confidence
+#
+#             If --glsearch IS used:
+#             fstukcf5: CDS has a possible frameshift at 5' end, unknown confidence
+#             fstukcf3: CDS has a possible frameshift at 3' end, unknown confidence
+#             fstukcfi: CDS has a possible internal frameshift,  unknown confidence
 #
 # Arguments: 
 #  $msa:                    the ESL_MSA alignment object
@@ -4458,8 +4474,10 @@ sub add_frameshift_alerts_for_one_sequence {
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
 
   my $do_output_frameshift_stk = ((opt_Get("--keep", $opt_HHR)) || (opt_Get("--out_fsstk", $opt_HHR))) ? 1 : 0;
-  my $fst_min_nt     = opt_Get("--fstminnt",    $opt_HHR); # maximum allowed nt length of non-dominant frame without a fst{hi,lo}cnf alert 
-  my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert 
+  my $fst_min_nt5    = opt_Get("--fstminnt5"    $opt_HHR); # maximum allowed nt length of non-dominant frame at 5' end without a frameshift alert 
+  my $fst_min_nt3    = opt_Get("--fstminnt3"    $opt_HHR); # maximum allowed nt length of non-dominant frame at 3' end without a frameshift alert 
+  my $fst_min_nti    = opt_Get("--fstminnti"    $opt_HHR); # maximum allowed nt length of internal region non-dominant frame without a frameshift alert 
+  my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert  
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
   my $nmaxdel        = opt_Get("--nmaxdel",     $opt_HHR); # maximum allowed deletion length in nucleotide alignment
@@ -4478,7 +4496,7 @@ sub add_frameshift_alerts_for_one_sequence {
     vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "nmaxdel_exc", \%{$nmaxdel_exc_AH[$ftr_idx]}, $FH_HR);
   }
 
-  # for each CDS: determine frame, and report fsthicnf and fstlocnf alerts
+  # for each CDS: determine frame, and report frameshift alerts
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
       my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
@@ -4660,6 +4678,8 @@ sub add_frameshift_alerts_for_one_sequence {
         my $insert_str = "";    # string of inserts to put in alert string
         my $delete_str = "";    # string of deletes to put in alert string
         my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
+        my $is_5p      = 0;     # set to 1 if the frameshifted region includes 5'-most nt of CDS feature, else 0, must be 0 if $is_3p == 1
+        my $is_3p      = 0;     # set to 1 if the frameshifted region includes 3'-most nt of CDS feature, else 0, must be 0 if $is_5p == 1
         for(my $f = 0; $f < $nframe_tok; $f++) { 
           #printf("f: $f frame_tok: %s\n", $frame_tok_A[$f]);
           if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
@@ -4695,12 +4715,18 @@ sub add_frameshift_alerts_for_one_sequence {
               }
             }
 
-            # Determine if we may have a frameshift alert (fsthicnf, fstlocnf, or fstukcnf)
+            # Determine if we may have a frameshift alert
             # Two possible cases:
             # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_tok ($f != 0))
             # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
             if((($cur_frame == $dominant_frame) && ($f > 0) && ($prv_frame != $dominant_frame)) ||  # Case 1
                (($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1)))) {  # Case 2
+              $is_5p = 0; # set to '1' below if frameshift region includes 5'-most nt of CDS feature
+              $is_3p = 0; # set to '1' below if frameshift region includes 3'-most nt of CDS feature
+              # note: if $is_3p == 1, $is_5p == 0 
+              # (b/c for $is_5p to be 1, cur_frame == $dominant_frame and
+              #      for $is_3p to be 1, cur_frame != $dominant_frame)
+
               # determine $span_start: the first position of the non-dominant frame subseq
               if(defined $prv_dom_stop) { 
                 # we've seen at least one dominant frame segment,
@@ -4711,29 +4737,35 @@ sub add_frameshift_alerts_for_one_sequence {
                 # we haven't seen a dominant frame segment yet, 
                 # span start is first nt of CDS ($ftr_sstart)
                 $span_start = $ftr_sstart; 
+                $is_5p = 1; 
               }
               # determine $span_stop: the final position of the non-dominant frame subseq
               if(($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1))) { 
                 # (case 2) this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
                 # so final nt of the non-dominant stretch is the final nt of the CDS ($ftr_sstop) 
                 $span_stop = $ftr_sstop;
+                $is_3p = 1; 
               }
               else { 
-                # previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
+                # (case 1) previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
                 # is 1 nt 5' of start of current frame token
                 $span_stop = ($ftr_strand eq "+") ? $cur_start - 1 : $cur_start + 1;
               }
               $span_len = abs($span_stop - $span_start) + 1;
-              if($span_len >= $fst_min_nt) { 
+              if((($is_5p) && ($span_len >= $fst_min_nt5)) || 
+                 (($is_3p) && ($span_len >= $fst_min_nt3)) || 
+                 ((! $is_5p) && (! $is_3p) && ($span_len >= $fst_min_nti))) { 
                 # above our length threshold, if $do_glsearch, we always report this, if not it depends on the avg PP value
                 if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
                   my $span_str = sprintf("%d..%d (%d nt)", $span_start, $span_stop, $span_len);
-                  my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                  my $loc_str  = "internal";
+                  my $alt_code = "fstukcfi";
+                  if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
+                  if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
+                  my $alt_str = "nucleotide alignment of $loc_str positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
-                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
-                                             "fstukcnf",
-                                             $seq_name, $ftr_idx, $alt_str, $FH_HR);
+                  alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
                   push(@cds_alt_str_A, $alt_str);
@@ -4752,12 +4784,17 @@ sub add_frameshift_alerts_for_one_sequence {
                   ($span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($span_ppstr);
                   if($span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
                     my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, $span_avgpp);
-                    my $alt_str  = "nucleotide alignment of positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                    my $loc_str     = "internal";
+                    my $hi_alt_code = "fsthicfi";
+                    my $lo_alt_code = "fstlocfi";
+                    if($is_5p) { $loc_str = "5'-most"; $hi_alt_code = "fsthicf5"; $lo_alt_code = "fstlocf5"; }
+                    if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
+                    my $alt_str  = "nucleotide alignment of $loc_str positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
-                                               ($is_hicnf) ? "fsthicnf" : "fstlocnf", 
+                                               ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
                                                $seq_name, $ftr_idx, $alt_str, $FH_HR);
                     $insert_str = "";
                     $delete_str = "";
