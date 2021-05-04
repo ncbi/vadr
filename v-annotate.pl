@@ -306,9 +306,11 @@ opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
-opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible",               \%opt_HH, \@opt_order_A);
-opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>",                      \%opt_HH, \@opt_order_A);
-opt_Add("--r_minfract",      "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in subseq to trigger replacement is <x>",            "minimum fraction of Ns in subseq to trigger replacement is <x>",          \%opt_HH, \@opt_order_A);
+opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible",                \%opt_HH, \@opt_order_A);
+opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>",                       \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfract5",     "real",   0.25,   $g,    "-r", undef,    "minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>",  "minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfract3",     "real",   0.25,   $g,    "-r", undef,    "minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>",  "minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfracti",     "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in internal subseq to trigger replacement is <x>",   "minimum fraction of Ns in internal subseq to trigger replacement is <x>",  \%opt_HH, \@opt_order_A);
 opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
 opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",        "detect CDS and MP alerts in sequences w/Ns replaced, not originals",      \%opt_HH, \@opt_order_A);
 opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs",        \%opt_HH, \@opt_order_A);
@@ -452,7 +454,9 @@ my $options_okay =
 # options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
                 'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
-                'r_minfract=s'  => \$GetOptions_H{"--r_minfract"},
+                'r_minfract5=s' => \$GetOptions_H{"--r_minfract5"},
+                'r_minfract3=s' => \$GetOptions_H{"--r_minfract3"},
+                'r_minfracti=s' => \$GetOptions_H{"--r_minfracti"},
                 'r_fetchr'      => \$GetOptions_H{"--r_fetchr"},
                 'r_cdsmpr'      => \$GetOptions_H{"--r_cdsmpr"},
                 'r_pvorig'      => \$GetOptions_H{"--r_pvorig"},
@@ -10274,14 +10278,18 @@ sub msa_replace_sequences {
 #              and 'missing' regions of sequence not covered by that
 #              set of hits. For each missing region determine if it
 #              satisfies the minimum criteria for being replaced
-#              (length >= --r_minlen, fraction_ns >= --r_minfract, 
+#              (length >= --r_minlen, fraction_ns >= --r_minfract{5,3,i}, 
 #              missing length of sequence region == missing length of 
 #              model region) and if so replace all Ns in that region 
 #              with the expected nt at each corresponding position.
 #              Then output that new sequence to a fasta file.
 #
+#              The three --r_minfract{5,3,i} options control fraction
+#              of Ns at 5' end, 3' end and internal regions 
+#              independently.
+#
 # Arguments: 
-#  $tblout_file:           tblout file from a 'cvd' stage for a single model
+#  $tblout_file:           tblout file from a 'cdt' stage for a single model
 #  $sqfile_R:              REF to Bio::Easel::SqFile object from main fasta file
 #  $blastn_db_sqfile_R:    REF to Bio::Easel::SqFile object for blastn db 
 #  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
@@ -10310,10 +10318,12 @@ sub parse_cdt_tblout_file_and_replace_ns {
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
-  my $r_minlen_opt   = opt_Get("--r_minlen", $opt_HHR);
-  my $small_value    = 0.00000001;
-  my $r_minfract_opt = opt_Get("--r_minfract", $opt_HHR) - $small_value;
-  my $do_keep        = opt_Get("--keep", $opt_HHR);
+  my $r_minlen_opt    = opt_Get("--r_minlen", $opt_HHR);
+  my $small_value     = 0.00000001;
+  my $r_minfract5_opt = opt_Get("--r_minfract5", $opt_HHR) - $small_value;
+  my $r_minfract3_opt = opt_Get("--r_minfract3", $opt_HHR) - $small_value;
+  my $r_minfracti_opt = opt_Get("--r_minfracti", $opt_HHR) - $small_value;
+  my $do_keep         = opt_Get("--keep", $opt_HHR);
   my %tblout_coords_HAH = (); # hash of arrays of hashes 
                               # key is seq name
                               # value is array of hashes with hash keys: "seq_coords", "mdl_coords", "seq_start"
@@ -10517,12 +10527,19 @@ sub parse_cdt_tblout_file_and_replace_ns {
       for($i = 0; $i < $nmissing; $i++) {
         my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
         my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
+        my $cur_r_minfract_opt = $r_minfracti_opt; # set to 5' or 3' threshold below if nec
+        if($missing_seq_start_A[$i] == 1) { 
+          $cur_r_minfract_opt = $r_minfract5_opt;
+        }
+        if($missing_seq_stop_A[$i] == $seq_len) { 
+          $cur_r_minfract_opt = $r_minfract3_opt;
+        }
         if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $r_minlen_opt)) { 
           my $missing_sqstring = substr($sqstring, ($missing_seq_start_A[$i]-1), $missing_seq_len);
           $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
           my $count_n = $missing_sqstring =~ tr/N//;
           my $fract_n = $count_n / $missing_seq_len;
-          if($fract_n >= $r_minfract_opt) { 
+          if($fract_n >= $cur_r_minfract_opt) { 
             # replace Ns in this region with expected nt
             # 
             # get the model consensus sequence if we don't have it already
@@ -10570,7 +10587,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
             }
             $original_seq_start = $missing_seq_stop_A[$i] + 1;
             $nreplaced_regions++;
-          } # end of 'if($fract_n >= $r_minfract_opt)
+          } # end of 'if($fract_n >= $cur_r_minfract_opt)
         }
       } # end of 'for($i = 0; $i < nmissing; $i++);'
     } # end of 'if($nmissing > 0)'
