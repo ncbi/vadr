@@ -676,7 +676,9 @@ In the table below, `<n>` represents a positive interger argument and
 | `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
 | `--indefann <x>`    | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
 | `--indefann_mp <x>` | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | <a name="options-alerts-indefann_mp"></a> set posterior probability threshold for mat_peptide features for alert to `<x>` |
-| `--fstminnt <n>`    | [*fsthicnf*](#fsthicnf1), [*fstlocnf*](#fstlocnf1)   | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF | >= 6 | <a name="options-alerts-fstminnt"></a> set maximum allowed length of aligned region in different frame to `<n>` |
+| `--fstminnt5 <n>`   | [*fsthicf5*](#fsthicf51), [*fstlocf5*](#fstlocf51), [*fstukcf5*](#fstukcf51) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIT | >= 2 | <a name="options-alerts-fstminnt5"></a> set maximum allowed length of aligned region in different frame at 5' end of CDS to `<n>` |
+| `--fstminnt3 <n>`   | [*fsthicf3*](#fsthicf31), [*fstlocf3*](#fstlocf31), [*fstukcf3*](#fstukcf31) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIT | >= 2 | <a name="options-alerts-fstminnt3"></a> set maximum allowed length of aligned region in different frame at 3' end of CDS to `<n>` |
+| `--fstminnti <n>`   | [*fsthicfi*](#fsthicfi1), [*fstlocfi*](#fstlocfi1), [*fstukcfi*](#fstukcfi1) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIT | >= 6 | <a name="options-alerts-fstminnti"></a> set maximum allowed length of aligned internal CDS region in different frame to `<n>` |
 | `--fsthighthr <x>`  | [*fsthicnf*](#fsthicnf1)                             | POSSIBLE_FRAMESHIFT_HIGH_CONF         | >= 0.8  | <a name="options-alerts-fsthighthr"></a> set average posterior probability threshold for potentially frameshifted region for high confidence alert to `<x>` |
 | `--fstlowthr <x>`   | [*fstlocnf*](#fstlocnf1)                             | POSSIBLE_FRAMESHIFT_LOW_CONF          | >= 0.3  | <a name="options-alerts-fstlowthr"></a> set average posterior probability threshold for potentially frameshifted region for low confidence alert to `<x>` |
 | `--xalntol <n>`     | [*indf5pst*](#indf5pst1), [*indf3pst*](#indf3pst1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | <a name="options-alerts-xalntol"></a> set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) |
@@ -919,8 +921,12 @@ features as described more [below](#mnf).
 | [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
 | [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
 | [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
-| [*fsthicnf*](#fsthicnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS (not reported if `--glsearch`)|
-| [*fstukcnf*](#fstukcnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcnf1"></a> potential frameshift in CDS (only reported if `--glsearch`) |
+| [*fsthicf5*](#fsthicf52)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicf51"></a> high confidence potential frameshift at 5' end of CDS (not reported if `--glsearch`)|
+| [*fsthicf3*](#fsthicf32)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicf31"></a> high confidence potential frameshift at 3' end of CDS (not reported if `--glsearch`)|
+| [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence potential internal frameshift in CDS (not reported if `--glsearch`)|
+| [*fstukcf5*](#fstukcf52)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcf51"></a> potential frameshift at 5' end of CDS (only reported if `--glsearch`) |
+| [*fstukcf3*](#fstukcf32)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcf31"></a> potential frameshift at 3' end of CDS (only reported if `--glsearch`) |
+| [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> potential internal frameshift in CDS (only reported if `--glsearch`) |
 | [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
 | [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
 | [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
@@ -952,7 +958,9 @@ features as described more [below](#mnf).
 | [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
 | [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
 | [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
-| [*fstlocnf*](#fstlocnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS (not reported if `--glsearch`) |
+| [*fstlocf5*](#fstlocf52)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocf51"></a> low confidence potential frameshift at 5' end of CDS (not reported if `--glsearch`)|
+| [*fstlocf3*](#fstlocf32)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocf31"></a> low confidence potential frameshift at 3' end of CDS (not reported if `--glsearch`)|
+| [*fstlocfi*](#fstlocfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocfi1"></a> low confidence potential internal frameshift in CDS (not reported if `--glsearch`)|
 | [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
 | [*deletinn*](#deletinn2)  | feature  | no    | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
 | [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
@@ -1002,8 +1010,12 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*unexleng*](#unexleng1)  | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - <a name="unexleng2"></a> | 
 | [*cdsstopn*](#cdsstopn1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
 | [*cdsstopp*](#cdsstopp1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopp2"></a> | 
-| [*fsthicnf*](#fsthicnf1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fsthicnf2"></a> |
-| [*fstukcnf*](#fstukcnf1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstukcnf2"></a> |
+| [*fsthicf5*](#fsthicf51)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt5`](#options-alerts-fstminnt5) | CDS | - <a name="fsthicf52"></a> |
+| [*fsthicf3*](#fsthicf31)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt3`](#options-alerts-fstminnt3) | CDS | - <a name="fsthicf32"></a> |
+| [*fsthicfi*](#fsthicfi1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fsthicfi2"></a> |
+| [*fstukcf5*](#fstukcf51)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt5`](#options-alerts-fstminnt5)   | CDS | - <a name="fstukcf52"></a> |
+| [*fstukcf3*](#fstukcf31)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt3`](#options-alerts-fstminnt3)   | CDS | - <a name="fstukcf32"></a> |
+| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
 | [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
@@ -1037,7 +1049,9 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
-| [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstlocnf2"></a> |
+| [*fstlocf5*](#fstlocf51)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt5`](#options-alerts-fstminnt5) | CDS | - <a name="fstlocf52"></a> |
+| [*fstlocf3*](#fstlocf31)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt3`](#options-alerts-fstminnt3) | CDS | - <a name="fstlocf32"></a> |
+| [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
 | [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
 | [*ambgnt5f*](#ambgnt5s1)  | N_AT_FEATURE_START              | none | - | - <a name="ambgnt5s2"></a> | 
