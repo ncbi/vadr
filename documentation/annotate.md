@@ -795,8 +795,10 @@ are then replaced with the expected nucleotide at each corresponding position:
 * length of missing sequence region must equal length of
    missing model region
 
-* missing sequence region must be `>= 0.50` fraction Ns
-  (controllable with `--r_minfract` option)
+* missing sequence region must be `>= 0.25` fraction Ns if it includes
+  the 5' end or 3' end of the sequence, or `>= 0.50` fraction Ns if it
+  does not (controllable with `--r_minfract5`, `--r_minfract3` and
+  `--r_minfracti` options).
 
 When `-r` is used, an additional output file with suffix `.rpn` is created,
 with format described [here](formats.md#rpn).
@@ -805,7 +807,9 @@ with format described [here](formats.md#rpn).
 |---------------------|--------------------|
 | `-r`                | turn on the replace-N strategy: replace stretches of Ns with expected nucleotides, where possible |
 | `--r_minlen <n>`    | with `-r`, set minimum length subsequence to possibly replace Ns in to `<n>`, the default value for `<n>` is `5` |
-| `--r_minfract <n>`  | with `-r`, set the minimum fraction of nucleotides in a subsequence to trigger N replacement to `<x>`, the default value for `<x>` is `0.5` |
+| `--r_minfract5 <f>` | with `-r`, set the minimum fraction of nucleotides in a subsequence at the 5' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
+| `--r_minfract3 <f>` | with `-r`, set the minimum fraction of nucleotides in a subsequence at the 3' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
+| `--r_minfracti <f>` | with `-r`, set the minimum fraction of nucleotides in an internal subsequence to trigger N replacement to `<x>`, the default value for `<x>` is `0.5` |
 | `--r_fetchr`        | with `-r`, fetch features to fasta files from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_cdsmpr`        | with `-r`, identify CDS- and mat_peptide-specific alerts using subsequences fetched from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_pvorig`        | with `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
