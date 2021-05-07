@@ -114,7 +114,7 @@ require "sqp_utils.pm";
 #     unexdivg (1)
 #
 #  4. parse_stk_and_add_alignment_alerts()
-#     indf5gap, indf5loc, indf3gap, indf3loc, deletinf, deletins (6)
+#     indf5gap, indf5lcc, indf5lcn, indf3gap, indf3lcc, indf3lcn, deletinf, deletins (8)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
@@ -126,7 +126,7 @@ require "sqp_utils.pm";
 #     peptrans (1)
 # 
 #  8. add_low_similarity_alerts()
-#     lowsim5f, lowsim3f, lowsimif, lowsim5s, lowsim3s, lowsimis (6)
+#     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5s, lowsim3s, lowsimis (9)
 # 
 #  9. add_frameshift_alerts_for_one_sequence()
 #     fsthicf5, fsthicf3, fsthicfi, fstlof5, fstlocf3, fstlocfi, fstukcf5, fstukcf3, fstukcfi (9)
@@ -250,12 +250,15 @@ opt_Add("--lowcov",     "real",      0.9,       $g,   undef,   undef,           
 opt_Add("--dupregolp",  "integer",   20,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         "dupregin/DUPLICATE_REGIONS minimum model overlap is <n>",                         \%opt_HH, \@opt_order_A);
 opt_Add("--dupregsc",   "real",      10,        $g,   undef,   undef,            "dupregin/DUPLICATE_REGIONS minimum bit score is <x>",                             "dupregin/DUPLICATE_REGIONS minimum bit score is <x>",                             \%opt_HH, \@opt_order_A);
 opt_Add("--indefstr",   "real",      25,        $g,   undef,   undef,            "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               "indfstrn/INDEFINITE_STRAND minimum weaker strand bit score is <x>",               \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim5term", "integer",  15,        $g,   undef,   undef,            "lowsim5{s,f}/LOW_{FEATURE_}SIMILARITY_START minimum length is <n>",               "lowsim5{s,f}/LOW_{FEATURE_}SIMILARITY_START minimum length is <n>",               \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim3term", "integer",  15,        $g,   undef,   undef,            "lowsim3{s,f}/LOW_{FEATURE_}SIMILARITY_END minimum length is <n>",                 "lowsim3{s,f}/LOW_{FEATURE_}SIMILARITY_END minimum length is <n>",                 \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimint",  "integer",   1,         $g,   undef,   undef,            "lowsimi{s,f}/LOW_{FEATURE_}SIMILARITY (internal) minimum length is <n>",          "lowsimi{s,f}/LOW_{FEATURE_}SIMILARITY (internal) minimum length is <n>",          \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5seq", "integer",  15,         $g,   undef,   undef,            "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3seq", "integer",  15,         $g,   undef,   undef,            "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimiseq", "integer",   1,         $g,   undef,   undef,            "lowsimis/LOW_SIMILARITY (internal) minimum length is <n>",                        "lowsimi/LOW_SIMILARITY (internal) minimum length is <n>",                         \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5ftr", "integer",   3,         $g,   undef,   undef,            "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3ftr", "integer",   3,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
-opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}loc/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}loc/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnt5",  "integer",    2,        $g,   undef,   undef,            "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>",   "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnt3",  "integer",    2,        $g,   undef,   undef,            "fst{hi,lo,uk}cf3/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 3' end w/o alert is <n>",   "fst{hi,lo,uk}cf3/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 3' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnti",  "integer",    6,        $g,   undef,   undef,            "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length  w/o alert is <n>",   "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
@@ -408,9 +411,12 @@ my $options_okay =
                 'dupregolp=s'   => \$GetOptions_H{"--dupregolp"},  
                 'dupregsc=s'    => \$GetOptions_H{"--dupregsc"},  
                 'indefstr=s'    => \$GetOptions_H{"--indefstr"},  
-                'lowsim5term=s' => \$GetOptions_H{"--lowsim5term"},
-                'lowsim3term=s' => \$GetOptions_H{"--lowsim3term"},
-                'lowsimint=s'   => \$GetOptions_H{"--lowsimint"},
+                'lowsim5seq=s'  => \$GetOptions_H{"--lowsim5seq"},
+                'lowsim3seq=s'  => \$GetOptions_H{"--lowsim3seq"},
+                'lowsimiseq=s'  => \$GetOptions_H{"--lowsimiseq"},
+                'lowsim5ftr=s'  => \$GetOptions_H{"--lowsim5ftr"},
+                'lowsim3ftr=s'  => \$GetOptions_H{"--lowsim3ftr"},
+                'lowsimiftr=s'  => \$GetOptions_H{"--lowsimiftr"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
@@ -3748,8 +3754,10 @@ sub cmalign_or_glsearch_run {
 #             @{$alt_ftr_instances_AAHR}:
 #             indf5gap: gap at 5' boundary of model span for a feature segment
 #             indf3gap: gap at 5' boundary of model span for a feature segment
-#             indf5loc: low posterior prob at 5' boundary of model span for a feature segment
-#             indf3loc: low posterior prob at 5' boundary of model span for a feature segment
+#             indf5lcc: low posterior prob at 5' boundary of model span for a coding feature segment
+#             indf5lcn: low posterior prob at 5' boundary of model span for a noncoding feature segment
+#             indf3lcc: low posterior prob at 3' boundary of model span for a coding feature segment
+#             indf3lcn: low posterior prob at 3' boundary of model span for a noncoding feature segment
 #
 # Arguments: 
 #  $stk_file:               stockholm alignment file to parse
@@ -4249,17 +4257,19 @@ sub parse_stk_and_add_alignment_alerts {
             push(@alt_ftr_A, $ftr_idx);
           } 
           elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
-            # report indf5loc, but first check if the start of this segment is identical to 
-            # the stop of a CDS or mat_peptide or gene feature
-            # if so we don't report indf5loc because there's other (better) checks of the start codon position
-            # (e.g. that it is a valid start codon)
-            if((! vdr_FeatureTypeIsCdsOrMatPeptideOrGene($ftr_info_AHR, $ftr_idx))                || # feature is NOT CDS or mat_peptide or gene (so we can always report indf5loc)
-               (! $sgm_info_AHR->[$sgm_idx]{"is_5p"})                                             || # segment is NOT first segment in feature (so we can always report indf5loc)
-               (! vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # start does not match a CDS start (so we can always report indf5loc)
-              push(@alt_code_A, "indf5loc");
-              push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg));
-              push(@alt_ftr_A, $ftr_idx);
+            # report indf5lcc or indf5lcn
+            # indf5lcc: if this segment is 5'-most segment of a CDS or 5'-most segment of a feature that has same start position as a CDS
+            # indf5lcn: if not indf5lcc
+            if(($sgm_info_AHR->[$sgm_idx]{"is_5p"}) && # segment is 5'-most segment in feature
+               ((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) || # feature is a CDS
+                (vdr_SegmentStartIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR)))) { # segment has start same as a CDS start
+              push(@alt_code_A, "indf5lcc");
             }
+            else { 
+              push(@alt_code_A, "indf5lcn");
+            }
+            push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_start_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg));
+            push(@alt_ftr_A, $ftr_idx);
           }
         }
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
@@ -4269,17 +4279,19 @@ sub parse_stk_and_add_alignment_alerts {
             push(@alt_ftr_A, $ftr_idx);
           }
           elsif((! $do_glsearch) && (($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"} - $ftr_pp_thresh) < (-1 * $small_value))) { # only check PP if it's not a gap
-            # report indf3loc, but first check if the stop of this segment is identical to 
-            # the stop of a CDS or gene feature (mat_peptide excluded because it won't include stop codon)
-            # if so we don't report indf3loc because there's other (better) checks of the stop codon position
-            # (e.g. that it is a valid in-frame stop)
-            if((! vdr_FeatureTypeIsCdsOrGene($ftr_info_AHR, $ftr_idx))                           || # feature is NOT CDS or gene (so we can always report indf3loc)
-               (! $sgm_info_AHR->[$sgm_idx]{"is_3p"})                                            || # segment is NOT final segment in feature (so we can always report indf3loc)
-               (! vdr_SegmentStopIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR))) { # stop does not match a CDS stop (so we can always report indf3loc)
-              push(@alt_code_A, "indf3loc");
-              push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg));
-              push(@alt_ftr_A, $ftr_idx);
+            # report indf3lcc or indf3lcn
+            # indf5lcc: if this segment is 3'-most segment of a CDS or 3'-most segment of a feature that has same stop position as a CDS
+            # indf5lcn: if not indf5lcc
+            if(($sgm_info_AHR->[$sgm_idx]{"is_3p"}) && # segment is 3'-most segment in feature
+               ((vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) || # feature is a CDS
+                (vdr_SegmentStopIdenticalToCds($ftr_info_AHR, $sgm_info_AHR, $sgm_idx, $FH_HR)))) { # segment has stop same as a CDS stop
+              push(@alt_code_A, "indf3lcc");
             }
+            else { 
+              push(@alt_code_A, "indf3lcn");
+            }
+            push(@alt_str_A, sprintf("%.2f < %.2f%s, RF position $sgm_stop_rfpos" . vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx), $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg));
+            push(@alt_ftr_A, $ftr_idx);
           }
         }
 
@@ -5636,8 +5648,9 @@ sub OLD_sqstring_find_stops {
 #
 # Purpose:   For each sequence with >1 hits in the sequence coverage
 #            determine stage (r2 search stage), report any 
-#            low similarity per-sequence alerts (lowsim5s, lowsim3s, lowsimis) and
-#            low similarity per-feature alerts (lowsim5f, lowsim3f, lowsimif). 
+#            low similarity per-sequence alerts          (lowsim5s, lowsim3s, lowsimis) and
+#            low similarity per-coding-feature alerts    (lowsim5c, lowsim3c, lowsimic) and 
+#            low similarity per-noncoding-feature alerts (lowsim5n, lowsim3n, lowsimin).
 #
 # Arguments:
 #  $mdl_name:               name of model these sequences were assigned to
@@ -5674,15 +5687,21 @@ sub add_low_similarity_alerts {
   my $nftr = scalar(@{$ftr_info_AHR});
   my $nsgm = scalar(@{$sgm_info_AHR});
 
-  my $terminal_5_min_length = opt_Get("--lowsim5term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
-  my $terminal_3_min_length = opt_Get("--lowsim3term", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
-  my $internal_min_length   = opt_Get("--lowsimint",   $opt_HHR); # minimum length of internal missing region that trigger an alert
+  my $terminal_seq_5_min_length = opt_Get("--lowsim5seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
+  my $terminal_seq_3_min_length = opt_Get("--lowsim3seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
+  my $internal_seq_min_length   = opt_Get("--lowsimiseq", $opt_HHR); # minimum length of internal missing region that triggers a lowsimis alert
+  my $terminal_ftr_5_min_length = opt_Get("--lowsim5ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5f alert
+  my $terminal_ftr_3_min_length = opt_Get("--lowsim3ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3f alert
+  my $internal_ftr_min_length   = opt_Get("--lowsimiftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimif alert
   my $do_skip_pv            = opt_Get("--pv_skip",     $opt_HHR) ? 1 : 0;
 
   # set $min_length as minimum of the 5 length thresholds
-  my $min_length = $terminal_5_min_length;
-  if($min_length > $terminal_3_min_length) { $min_length = $terminal_3_min_length; }
-  if($min_length > $internal_min_length)   { $min_length = $internal_min_length; }
+  my $min_length = $internal_ftr_min_length;
+  if($min_length > $internal_seq_min_length)   { $min_length = $internal_seq_min_length; }
+  if($min_length > $terminal_ftr_5_min_length) { $min_length = $terminal_ftr_5_min_length; }
+  if($min_length > $terminal_ftr_3_min_length) { $min_length = $terminal_ftr_3_min_length; }
+  if($min_length > $terminal_seq_5_min_length) { $min_length = $terminal_seq_5_min_length; }
+  if($min_length > $terminal_seq_3_min_length) { $min_length = $terminal_seq_3_min_length; }
 
   for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
     my $seq_name = $seq_name_AR->[$seq_idx];
@@ -5724,17 +5743,13 @@ sub add_low_similarity_alerts {
             if($bstrand eq "+") { 
               my $is_start   = ($start == 1)        ? 1 : 0;
               my $is_end     = ($stop  == $seq_len) ? 1 : 0;
-              # does this overlap with a feature? 
-              my $nftr_overlap = 0;
+              # does this overlap with a feature by at least minimum overlap length threshold? 
+              my $ftr_overlap_flag = 0;
               for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                # determine if we should even report lowsim{5,3,i}f alerts for this feature
-                # we will UNLESS:
+                # determine if this feature qualifies as a 'coding' feature for purposes of the alert
+                # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
                 # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
-                #   and feature does not have a 'misc_not_failure' attribute
-                # If feature has an 'misc_not_failure' attribute then we report these anyway because they can be 
-                # more extreme than the 'misc_not_failure' alerts
-                my $report_lowsim_alerts_for_this_feature = ((vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx)) && 
-                                                             (! $ftr_info_AHR->[$ftr_idx]{"misc_not_failure"})) ? 0 : 1;
+                my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
                 my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
                 if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
                   my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
@@ -5749,35 +5764,35 @@ sub add_low_similarity_alerts {
                     my $stop2  = utl_Max($f_start, $f_stop);
                     ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
                     if($noverlap > 0) { 
-                      $nftr_overlap++;
-                      # only actually report an alert for non-CDS and non-MP features
+                      #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
+                      # for 5'/3'/internal cases: only actually report an alert for non-CDS and non-MP features
                       # because CDS and MP are independently validated by blastx (unless --pv_skip)
-                      if(($report_lowsim_alerts_for_this_feature) || ($do_skip_pv)) { 
-                        #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
-                        my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
-                        if(($is_start) && ($length >= $terminal_5_min_length)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim5f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
-                        if(($is_end) && ($length >= $terminal_3_min_length)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsim3f", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
-                        if((! $is_start) && (! $is_end) && ($length >= $internal_min_length)) { 
-                          alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "lowsimif", $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                        }
+                      my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                      if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
+                        $ftr_overlap_flag = 1;
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      }
+                      if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
+                        $ftr_overlap_flag = 1;
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim3c" : "lowsim3n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                      }
+                      if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
+                        $ftr_overlap_flag = 1;
+                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsimic" : "lowsimin"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                       }
                     }
                   }
                 }
               } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
-              if($nftr_overlap == 0) { # no features overlapped, throw lowsim5s, lowsim3s, or lowsimis
+              if(! $ftr_overlap_flag) { # no features overlapped above length threshold, potentially report lowsim5s, lowsim3s, or lowsimis
                 my $alt_str = "low similarity region of length $length ($start..$stop)";
-                if(($is_start) && ($length >= $terminal_5_min_length)) { 
+                if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
                 }
-                if(($is_end) && ($length >= $terminal_3_min_length)) { 
+                if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_str, $FH_HR);
                 }
-                if((! $is_start) && (! $is_end) && ($length >= $internal_min_length)) { 
+                if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
                   alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_str, $FH_HR);
                 }
               }
@@ -10426,6 +10441,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
           $tblout_coords_HAH{$seq_name}[$ncoords]{"seq_stop"}  = $seq_stop;
           $tblout_coords_HAH{$seq_name}[$ncoords]{"mdl_start"} = $mdl_start;
           $tblout_coords_HAH{$seq_name}[$ncoords]{"mdl_stop"}  = $mdl_stop;
+          printf("added S:$seq_start..$seq_stop M:$mdl_start..$mdl_stop\n");
         }
       } # end of 'if($seq_strand eq "+")'
     } # end of 'if($line !~ m/^#/)'
@@ -10465,6 +10481,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
       $seq_stop_A[$i]  = $cur_seq_tblout_coords_AH[$i]{"seq_stop"};
       $mdl_start_A[$i] = $cur_seq_tblout_coords_AH[$i]{"mdl_start"};
       $mdl_stop_A[$i]  = $cur_seq_tblout_coords_AH[$i]{"mdl_stop"};
+      printf("HEYA set seq_stop_A[$i] to $seq_stop_A[$i]\n");
     }
 
     # determine missing regions
@@ -10502,15 +10519,22 @@ sub parse_cdt_tblout_file_and_replace_ns {
     }
     # check for missing sequence after final aligned region, 
     # infer final model position, if it's longer than our model then 
-    # the region is not the correct length so we don't attemp to 
+    # the region is not the correct length so we don't attempt to 
     # replace this region. An alternative would be to replace to 
     # the end of the model, but I think that's too aggressive.
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
+      printf("HEYA in $sub_name, checking 3' end\n");
       #printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
+      printf("seq_stop_A[(ncoords-1)] +1 : " . ($seq_stop_A[($ncoords-1)]+1) . "\n");
+      printf("missing_seq_len:      $missing_seq_len\n");
+      printf("mdl_stop_A[$i]:      " . $mdl_stop_A[$i] . "\n");
+      printf("cur_missing_mdl_stop: $cur_missing_mdl_stop\n");
+      printf("mdl_len:              $mdl_len\n");
       if($cur_missing_mdl_stop <= $mdl_len) { 
         # only add this missing region if it doesn't extend past end of model
+        printf("ummm adding\n");
         push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
         push(@missing_seq_stop_A,  $seq_len);
         push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
@@ -10559,6 +10583,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
           $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
           my $count_n = $missing_sqstring =~ tr/N//;
           my $fract_n = $count_n / $missing_seq_len;
+          printf("i: $i, count_n: $count_n, fract_n: $fract_n, missing_seq_len: $missing_seq_len\n");
           if($fract_n >= $r_minfract_opt) { 
             # replace Ns in this region with expected nt
             # 
