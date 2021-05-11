@@ -1086,16 +1086,13 @@ if($do_split) {
     $nchunk_estimate = $ncpu; # sets number of chunks to number of cpus
   }
   else { 
-    # HERE HERE HERE, consider making $nchunk_estimate+1 a multiple of $ncpu
-    # but only after verifying that nchunk_estimate is often 1 less than $nchunk reeturned from 
-    # vdr_SplitFastaFile
     # ensure number of chunks is a multiple of number of cpus
     while(($nchunk_estimate % $ncpu) != 0) { 
       $nchunk_estimate++;
     }
   } 
-
   printf("nchunk_estimate 1: $nchunk_estimate\n");
+
   if($nchunk_estimate != 1) { 
     $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
@@ -1108,7 +1105,6 @@ if($do_split) {
   }
   printf("nchunk: $nchunk\n");
 
-  exit 0;
 
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
   my @chunk_outdir_A   = (); # output directory names for $nchunk v-annotate.pl jobs
@@ -1120,8 +1116,6 @@ if($do_split) {
   my $nscript = scalar(@cpu_out_file_AH);
   
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-  exit 0;
 
   my $ncpu2print = $ncpu;
   if($ncpu2print > $nscript) { $ncpu2print = $nscript; }
