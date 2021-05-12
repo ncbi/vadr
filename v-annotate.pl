@@ -1071,9 +1071,29 @@ if($do_split) {
   my $tot_len_nt  = utl_HSumValues(\%seq_len_H);
   my $nchunk_estimate = vdr_SplitNumSeqFiles($tot_len_nt, \%opt_HH);
   my $nchunk = 1; # rewritten if $nchunk_estimate > 1
+  my $nseq = scalar(@seq_name_A);
   my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
 
-  if($nchunk_estimate > 1) { 
+  printf("\nnchunk_estimate 0: $nchunk_estimate\n");
+  # update nchunk_estimate to make parallelization as efficient as possible
+  if($nseq == 1) { 
+    ; # do nothing, we won't split into chunks
+  }
+  elsif($nseq <= $ncpu) { 
+    $nchunk_estimate = -1; # this will put one sequence per chunk
+  }
+  elsif($nchunk_estimate < $ncpu) { 
+    $nchunk_estimate = $ncpu; # sets number of chunks to number of cpus
+  }
+  else { 
+    # ensure number of chunks is a multiple of number of cpus
+    while(($nchunk_estimate % $ncpu) != 0) { 
+      $nchunk_estimate++;
+    }
+  } 
+  printf("nchunk_estimate 1: $nchunk_estimate\n");
+
+  if($nchunk_estimate != 1) { 
     $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $nchunk_estimate) that we pass in. 
@@ -1083,6 +1103,8 @@ if($do_split) {
     # fasta file name in this case (there is no .1 suffix)
     $nseqs_per_chunk_A[0] = scalar(@seq_name_A); # all seqs will be in only seq file
   }
+  printf("nchunk: $nchunk\n");
+
 
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
   my @chunk_outdir_A   = (); # output directory names for $nchunk v-annotate.pl jobs
