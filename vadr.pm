@@ -4661,7 +4661,7 @@ sub vdr_SplitFastaFile {
     open(IN, $outfile) || ofile_FileOpenFailure($outfile, $sub_name, $!, "reading", $FH_HR);
     while(my $line = <IN>) { 
       #va-r400/va-r400.vadr.in.fa.1 finished (11 seqs, 325770 residues)
-      if($line =~ /^\S+\s+finished\s+\((\d+)\s+seqs,\s+\d+\s+residues\)/) { 
+      if($line =~ /^\S+\s+finished\s+\((\d+)\s+seqs/) { 
         push(@{$nseq_per_file_AR}, $1);
       }
       else { 
