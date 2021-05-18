@@ -157,6 +157,7 @@ $execs_H{"hmmfetch"}      = $env_vadr_hmmer_dir    . "/hmmfetch";
 $execs_H{"hmmscan"}       = $env_vadr_hmmer_dir    . "/hmmscan";
 $execs_H{"hmmsearch"}     = $env_vadr_hmmer_dir    . "/hmmsearch";
 $execs_H{"esl-alimerge"}  = $env_vadr_easel_dir    . "/esl-alimerge";
+$execs_H{"esl-alimanip"}  = $env_vadr_easel_dir    . "/esl-alimanip";
 $execs_H{"esl-reformat"}  = $env_vadr_easel_dir    . "/esl-reformat";
 $execs_H{"esl-seqstat"}   = $env_vadr_easel_dir    . "/esl-seqstat";
 $execs_H{"esl-translate"} = $env_vadr_easel_dir    . "/esl-translate";
@@ -4537,7 +4538,8 @@ sub add_frameshift_alerts_for_one_sequence {
   # for each CDS: determine frame, and report frameshift alerts
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
-      my $frame_tok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
+      my $frame_stok_str = ""; # string of ';' delimited tokens that describe subsequence stretches that imply the same frame
+      my $frame_mtok_str = ""; # string of ';' delimited tokens that describe model stretches that correspond to $frame_stok_str
       my @frame_ct_A = (0, 0, 0, 0); # [0..3], number of RF positions that 'vote' for each candidate frame (frame_ct_A[0] is invalid and will stay as 0)
       my $ftr_strand = undef; # strand for this feature
       my $ftr_sstart = undef; # starting sequence position of this CDS feature
@@ -4626,11 +4628,13 @@ sub add_frameshift_alerts_for_one_sequence {
                   # frame changed, 
                   # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
                   if(defined $F_prv) { 
-                    $frame_tok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
+                    $frame_stok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
+                    $frame_mtok_str .= $rfpos_prv . ";" # HEYA or should this be $rfpos?
                     # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                   } 
                   # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                  $frame_tok_str .= $F_cur . ":" . $uapos . "-";
+                  $frame_stok_str .= $F_cur . ":" . $uapos . "-";
+                  $frame_mtok_str .= $F_cur . ":" . $rfpos . "-";
                 }
                 $uapos_prv = $uapos;
                 $rfpos_prv = $rfpos;
@@ -4677,7 +4681,8 @@ sub add_frameshift_alerts_for_one_sequence {
               else               { $rfpos--; }
             }
             # complete final frame token
-            $frame_tok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            $frame_stok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? $rfpos-1 : $rfpos+1)); # we already incremented/decremented rfpos for next segment
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
             # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
@@ -4694,60 +4699,82 @@ sub add_frameshift_alerts_for_one_sequence {
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
       #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-      #printf("frame_str: $frame_tok_str\n");
+      printf("frame_stok_str: $frame_stok_str\n");
+      printf("frame_mtok_str: $frame_mtok_str\n");
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
       $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} = $dominant_frame;
 
-      # deconstruct $frame_tok_str, looking for potential frameshifts, 
+      # deconstruct $frame_stok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the dominant frame together and
       # then check if any (possibly joined) non-dominant frame subseqs
       # are long enough to trigger an alert
-      my @frame_tok_A = split(";", $frame_tok_str);
-      my $nframe_tok = scalar(@frame_tok_A); # number of frame tokens
-      if($nframe_tok > 1) { # if there's only one frame_tok, we can't have a frameshift
-        my $prv_stop   = undef; # last nucleotide in the previous frame token 
+      my @frame_stok_A = split(";", $frame_stok_str);
+      my @frame_mtok_A = split(";", $frame_mtok_str);
+      my $nframe_stok = scalar(@frame_stok_A); # number of sequence frame tokens
+      my $nframe_mtok = scalar(@frame_mtok_A); # number of model frame tokens
+      if($nframe_stok != $nframe_mtok) { 
+        ofile_FAIL("ERROR, in $sub_name, different numbers of sequence and model frame tokens, internal coding error: frame_stok_str: $frame_stok_str, frame_mtok_str: $frame_mtok_str", 1, $FH_HR);
+      }
+      if($nframe_stok > 1) { # if there's only one frame_stok, we can't have a frameshift
+        my $prv_sstop   = undef; # last sequence position in the previous frame token
+        my $prv_mstop   = undef; # last model    position in the previous frame token
         my $prv_frame  = undef; # frame of previous frame token 
-        my $prv_dom_stop = undef; # last nucleotide in the previous dominant frame token
-        my $span_start = undef; # first position of a non-dominant frame subseq
-        my $span_stop  = undef; # final position of a non-dominant frame subseq
-        my $span_len   = undef; # length of a non-dominant frame subseq
+        my $prv_dom_sstop = undef; # last sequence position in the previous dominant frame token
+        my $prv_dom_mstop = undef; # last model    position in the previous dominant frame token
+        my $span_sstart = undef; # first sequence position of a non-dominant frame subseq 
+        my $span_sstop  = undef; # final sequence position of a non-dominant frame subseq 
+        my $span_slen   = undef; # length in sequence of a non-dominant frame subseq
+        my $span_mstart = undef; # first model    position of a non-dominant frame subseq
+        my $span_mstop  = undef; # final model    position of a non-dominant frame subseq
+        my $span_mlen   = undef; # length in model of a non-dominant frame subseq
         my $insert_str = "";    # string of inserts to put in alert string
         my $delete_str = "";    # string of deletes to put in alert string
         my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
         my $is_5p      = 0;     # set to 1 if the frameshifted region includes 5'-most nt of CDS feature, else 0, must be 0 if $is_3p == 1
         my $is_3p      = 0;     # set to 1 if the frameshifted region includes 3'-most nt of CDS feature, else 0, must be 0 if $is_5p == 1
-        for(my $f = 0; $f < $nframe_tok; $f++) { 
-          #printf("f: $f frame_tok: %s\n", $frame_tok_A[$f]);
-          if($frame_tok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
-            my ($cur_frame, $cur_start, $cur_stop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
+        for(my $f = 0; $f < $nframe_stok; $f++) { 
+          #printf("f: $f frame_stok: %s\n", $frame_stok_A[$f]);
+          if($frame_stok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
+            my ($cur_frame,  $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
+            my ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend);
             # add to growing list of inserts, if nec
             # we do this before we report an alert because insert info 
             # in the current frame token is relevant to the alert we may be about to report
             # we add to delete info *after* we report an alert because delete
             # info in this frame token is relevant to the next alert we may report
+
+            if($frame_mtok_A[$f] =~ /([123])\:(\d+)\-(\d+)(\!*)/) { 
+              ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend) = ($1, $2, $3, $4);
+              if($cur_frame != $cur_mframe) { 
+                ofile_FAIL("ERROR, in $sub_name, different frame in sequence and model frame tokens, internal coding error:\nstok:$frame_stok_A[$f]\nmtok:$frame_mtok_A[$f]", 1, $FH_HR);
+              }
+            }              
+            else { 
+              ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: $frame_mtok_A[$f]", 1, $FH_HR);
+            }
             if($f > 0) { 
               # add any inserted positions between previous frame token and this one to insert_str
               if($ftr_strand eq "+") { 
-                if((($prv_stop + 1) < ($cur_start)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
+                if((($prv_sstop + 1) < ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                   if($insert_str ne "") { $insert_str .= ","; }
-                  if(($prv_stop + 1) == ($cur_start - 1)) { # exactly one inserted nt
-                    $insert_str .= sprintf("%d", ($prv_stop + 1));
+                  if(($prv_sstop + 1) == ($cur_sstart - 1)) { # exactly one inserted nt
+                    $insert_str .= sprintf("S:%d,M:%d", ($prv_sstop + 1), $prv_mstop);
                   }
                   else { # more than one inserted nt, specify the range
-                    $insert_str .= sprintf("%d-%d", $prv_stop+1, $cur_start-1);
+                    $insert_str .= sprintf("S:%d..%d,M:%d", $prv_sstop+1, $cur_sstart-1, $prv_mstop);
                   }
                 }
               }
               else { # negative strand
-                if((($prv_stop - 1) > ($cur_start)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
+                if((($prv_sstop - 1) > ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                   if($insert_str ne "") { $insert_str .= ","; }
-                  if(($prv_stop - 1) == ($cur_start + 1)) { # exactly one inserted nt
-                    $insert_str .= sprintf("%d", ($prv_stop - 1));
+                  if(($prv_sstop - 1) == ($cur_sstart + 1)) { # exactly one inserted nt
+                    $insert_str .= sprintf("S:%d,M:%d;", ($prv_sstop - 1), $prv_mstop);
                   }
                   else { # more than one inserted nt, specify the range
-                    $insert_str .= sprintf("%d-%d", $prv_stop-1, $cur_start+1);
+                    $insert_str .= sprintf("S:%d..%d,M:%d", $prv_sstop-1, $cur_sstart+1, $prv_mstop);
                   }
                 }
               }
@@ -4755,52 +4782,57 @@ sub add_frameshift_alerts_for_one_sequence {
 
             # Determine if we may have a frameshift alert
             # Two possible cases:
-            # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_tok ($f != 0))
-            # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
+            # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_stok ($f != 0))
+            # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_stok - 1))
             if((($cur_frame == $dominant_frame) && ($f > 0) && ($prv_frame != $dominant_frame)) ||  # Case 1
-               (($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1)))) {  # Case 2
+               (($cur_frame != $dominant_frame) && ($f == ($nframe_stok-1)))) {  # Case 2
               $is_5p = 0; # set to '1' below if frameshift region includes 5'-most nt of CDS feature
               $is_3p = 0; # set to '1' below if frameshift region includes 3'-most nt of CDS feature
               # note: if $is_3p == 1, $is_5p == 0 
               # (b/c for $is_5p to be 1, cur_frame == $dominant_frame and
               #      for $is_3p to be 1, cur_frame != $dominant_frame)
 
-              # determine $span_start: the first position of the non-dominant frame subseq
-              if(defined $prv_dom_stop) { 
+              # determine $span_sstart: the first position of the non-dominant frame subseq
+              if(defined $prv_dom_sstop) { 
                 # we've seen at least one dominant frame segment,
                 # start of the non-dominant stretch is 1 nt 3' of that
-                $span_start = ($ftr_strand eq "+") ? $prv_dom_stop + 1 : $prv_dom_stop - 1;
+                $span_sstart = ($ftr_strand eq "+") ? $prv_dom_sstop + 1 : $prv_dom_sstop - 1;
+                $span_mstart = ($ftr_strand eq "+") ? $prv_dom_mstop + 1 : $prv_dom_mstop - 1;
               }
               else { 
                 # we haven't seen a dominant frame segment yet, 
                 # span start is first nt of CDS ($ftr_sstart)
-                $span_start = $ftr_sstart; 
+                $span_sstart = $ftr_sstart; 
+                $span_mstart = $ftr_mstart; 
                 $is_5p = 1; 
               }
-              # determine $span_stop: the final position of the non-dominant frame subseq
-              if(($cur_frame != $dominant_frame) && ($f == ($nframe_tok-1))) { 
-                # (case 2) this subseq is not in dominant frame and it's the final one ($f == ($nframe_tok - 1))
+              # determine $span_sstop: the final position of the non-dominant frame subseq
+              if(($cur_frame != $dominant_frame) && ($f == ($nframe_stok-1))) { 
+                # (case 2) this subseq is not in dominant frame and it's the final one ($f == ($nframe_stok - 1))
                 # so final nt of the non-dominant stretch is the final nt of the CDS ($ftr_sstop) 
-                $span_stop = $ftr_sstop;
+                $span_sstop = $ftr_sstop;
+                $span_mstop = $ftr_mstop;
                 $is_3p = 1; 
               }
               else { 
                 # (case 1) previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
                 # is 1 nt 5' of start of current frame token
-                $span_stop = ($ftr_strand eq "+") ? $cur_start - 1 : $cur_start + 1;
+                $span_sstop = ($ftr_strand eq "+") ? $cur_sstart - 1 : $cur_sstart + 1;
+                $span_mstop = ($ftr_strand eq "+") ? $cur_mstart - 1 : $cur_mstart + 1;
               }
-              $span_len = abs($span_stop - $span_start) + 1;
-              if((($is_5p) && ($span_len >= $fst_min_nt5)) || 
-                 (($is_3p) && ($span_len >= $fst_min_nt3)) || 
-                 ((! $is_5p) && (! $is_3p) && ($span_len >= $fst_min_nti))) { 
+              $span_slen = abs($span_sstop - $span_sstart) + 1;
+              $span_mlen = abs($span_mstop - $span_mstart) + 1;
+              if((($is_5p) && ($span_slen >= $fst_min_nt5)) || 
+                 (($is_3p) && ($span_slen >= $fst_min_nt3)) || 
+                 ((! $is_5p) && (! $is_3p) && ($span_slen >= $fst_min_nti))) { 
                 # above our length threshold, if $do_glsearch, we always report this, if not it depends on the avg PP value
                 if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
-                  my $span_str = sprintf("%d..%d (%d nt)", $span_start, $span_stop, $span_len);
+                  my $span_str = sprintf("sequence positions %d..%d (%d nt) to model positions %d..%d (%d nt)", $span_sstart, $span_sstop, $span_slen, $span_mstart, $span_mstop, $span_mlen);
                   my $loc_str  = "internal";
                   my $alt_code = "fstukcfi";
                   if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
                   if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
-                  my $alt_str = "nucleotide alignment of $loc_str positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                  my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $cur_frame (dominant frame is $dominant_frame);";
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
@@ -4816,24 +4848,27 @@ sub add_frameshift_alerts_for_one_sequence {
                     $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
                   }
                   my $span_ppstr = ($ftr_strand eq "+") ? 
-                      substr($full_ppstr, $span_start - 1, ($span_len)) : 
-                      substr($full_ppstr, $span_stop  - 1, ($span_len));
+                      substr($full_ppstr, $span_sstart - 1, ($span_slen)) : 
+                      substr($full_ppstr, $span_sstop  - 1, ($span_slen));
                   my $span_avgpp;
                   ($span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($span_ppstr);
                   if($span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
-                    my $span_str = sprintf("%d..%d (%d nt, avgpp: %.3f)", $span_start, $span_stop, $span_len, $span_avgpp);
+                    my $span_str = sprintf("sequence positions %d..%d (%d nt, avgpp: %.3f) to model positions %d..%d (%d nt)", $span_sstart, $span_sstop, $span_slen, $span_avgpp, $span_mstart, $span_mstop, $span_mlen);
+
                     my $loc_str     = "internal";
                     my $hi_alt_code = "fsthicfi";
                     my $lo_alt_code = "fstlocfi";
                     if($is_5p) { $loc_str = "5'-most"; $hi_alt_code = "fsthicf5"; $lo_alt_code = "fstlocf5"; }
                     if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
-                    my $alt_str  = "nucleotide alignment of $loc_str positions $span_str on $ftr_strand strand are inconsistent with dominant frame (" . $ftr_strand . $dominant_frame . ");";
+                    my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($span_sstart, $span_sstop, $ftr_strand, $FH_HR) . ";";
+                    my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
+                    my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $cur_frame (dominant frame is $dominant_frame);";
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
-                                               $seq_name, $ftr_idx, $alt_str, $FH_HR);
+                                               $seq_name, $ftr_idx, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
                     $insert_str = "";
                     $delete_str = "";
                     push(@cds_alt_str_A, $alt_str);
@@ -4843,26 +4878,28 @@ sub add_frameshift_alerts_for_one_sequence {
             } # end of 2 case if entered if we have a frameshift alert
 
             # add to growing list of deletes, if nec
-            if($f != ($nframe_tok-1)) { 
+            if($f != ($nframe_stok-1)) { 
               if($cur_ndelete > 0) { 
                 if($delete_str ne "") { $delete_str .= ","; }
-                $delete_str .= sprintf("%d(%d)", $cur_stop, $cur_ndelete);
+                $delete_str .= sprintf("S:%d(%d),M:%s", $cur_sstop, $cur_ndelete, ($cur_ndelete == 1) ? $cur_mstop : ($cur_mstop-$cur_ndelete+1) . ".." . $cur_mstop);
               }
             }
 
             # keep track of previous values we may need in next loop iteration
             if($cur_frame == $dominant_frame) { 
-              $prv_dom_stop = $cur_stop; 
+              $prv_dom_sstop = $cur_sstop; 
+              $prv_dom_mstop = $cur_mstop; 
             }
-            $prv_stop  = $cur_stop;
+            $prv_sstop = $cur_sstop;
+            $prv_mstop = $cur_mstop;
             $prv_frame = $cur_frame;
             $prv_tok_sgm_end_flag = ($cur_sgmend eq "!") ? 1 : 0;
-          } # end if statement that parses $frame_tok_A[$f]
+          } # end if statement that parses $frame_stok_A[$f]
           else { 
-            ofile_FAIL("ERROR, in $sub_name, unable to parse frame_tok, internal coding error: $frame_tok_A[$f]", 1, $FH_HR);
+            ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[$f]", 1, $FH_HR);
           }
-        } # end of 'for(my $f = 0; $f < $nframe_tok; $f++) {'
-      } # end of 'if($nframe_tok > 1)'
+        } # end of 'for(my $f = 0; $f < $nframe_stok; $f++) {'
+      } # end of 'if($nframe_stok > 1)'
 
       if(scalar(@cds_alt_str_A) > 0) { 
         # create and output a stockholm file for each segment of this seq/CDS 
@@ -7820,7 +7857,9 @@ sub alert_instance_parse {
   my $mcoords = "VADRNULL";
   my $detail  = "VADRNULL";
 
-  if($alt_instance_str =~ m/^seq\:([^\;]+);mdl\:([^\;]+);(.*)$/) { 
+  printf("in $sub_name, alt_instance_str: $alt_instance_str\n");
+
+  if($alt_instance_str =~ /^seq\:([^\;]+);mdl\:([^\;]+);(.*)$/) { 
     ($scoords, $mcoords, $detail) = ($1, $2, $3);
   }
   elsif($alt_instance_str eq "VADRNULL") { 
