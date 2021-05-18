@@ -106,13 +106,13 @@ ENTOY100A-fs6         ATGCCCCCGTGATCG--TTACCATAA
   an alignment file is below. The `#=GC RFCOL*` lines indicate the
   positions of each reference model position (`01` to `50`) in this example.
 
-
+```
 ENTOY100A-fs6          GAAATCACCGATGCCCCCGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
 #=GR ENTOY100A-fs6  PP ************9888889*****9..68**************************
 #=GC RF                GAAATCACCGatG.....GTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.           0000000001111.....1111112222222222333333333344444444445
 #=GC RFCOL.X           1234567890123.....4567890123456789012345678901234567890
-
+```
 ---
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
