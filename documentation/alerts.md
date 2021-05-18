@@ -48,12 +48,13 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 
 ## Example `.alt` output for different alert types:
 
-* Frameshift alerts: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
+### Frameshift alerts
 
-  Corresponding error messages: *POSSIBLE_FRAMESHIFT_HIGH_CONF*,
-  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT*
+#### alert codes: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
 
-  Example line from `.alt` file:
+#### corresponding error messages: *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT*
+
+#### Example line from `.alt` file:
 
 ```
 #       seq                        ftr          ftr              ftr  alert           alert                               seq       mdl  alert 
