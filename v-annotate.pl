@@ -4629,7 +4629,7 @@ sub add_frameshift_alerts_for_one_sequence {
                   # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
                   if(defined $F_prv) { 
                     $frame_stok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
-                    $frame_mtok_str .= $rfpos_prv . ";" # HEYA or should this be $rfpos?
+                    $frame_mtok_str .= $rfpos_prv . ";"
                     # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                   } 
                   # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
@@ -4758,23 +4758,21 @@ sub add_frameshift_alerts_for_one_sequence {
               # add any inserted positions between previous frame token and this one to insert_str
               if($ftr_strand eq "+") { 
                 if((($prv_sstop + 1) < ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
-                  if($insert_str ne "") { $insert_str .= ","; }
                   if(($prv_sstop + 1) == ($cur_sstart - 1)) { # exactly one inserted nt
-                    $insert_str .= sprintf("S:%d,M:%d", ($prv_sstop + 1), $prv_mstop);
+                    $insert_str .= sprintf("S:%d(%d),M:%d;", ($prv_sstop + 1), 1, $prv_mstop);
                   }
                   else { # more than one inserted nt, specify the range
-                    $insert_str .= sprintf("S:%d..%d,M:%d", $prv_sstop+1, $cur_sstart-1, $prv_mstop);
+                    $insert_str .= sprintf("S:%d..%d(%d),M:%d;", $prv_sstop+1, $cur_sstart-1, (abs(($prv_sstop+1) - ($cur_sstart-1))+1), $prv_mstop);
                   }
                 }
               }
               else { # negative strand
                 if((($prv_sstop - 1) > ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
-                  if($insert_str ne "") { $insert_str .= ","; }
                   if(($prv_sstop - 1) == ($cur_sstart + 1)) { # exactly one inserted nt
-                    $insert_str .= sprintf("S:%d,M:%d;", ($prv_sstop - 1), $prv_mstop);
+                    $insert_str .= sprintf("S:%d(%d),M:%d;", ($prv_sstop - 1), 1, $prv_mstop);
                   }
                   else { # more than one inserted nt, specify the range
-                    $insert_str .= sprintf("S:%d..%d,M:%d", $prv_sstop-1, $cur_sstart+1, $prv_mstop);
+                    $insert_str .= sprintf("S:%d..%d(%d),M:%d;", $prv_sstop-1, $cur_sstart+1, (abs(($prv_sstop-1) - ($cur_sstart+1))+1), $prv_mstop);
                   }
                 }
               }
@@ -4832,9 +4830,9 @@ sub add_frameshift_alerts_for_one_sequence {
                   my $alt_code = "fstukcfi";
                   if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
                   if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
-                  my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $cur_frame (dominant frame is $dominant_frame);";
-                  $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
-                  $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
+                  my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);";
+                  $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
+                  $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
@@ -4862,9 +4860,9 @@ sub add_frameshift_alerts_for_one_sequence {
                     if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
                     my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($span_sstart, $span_sstop, $ftr_strand, $FH_HR) . ";";
                     my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
-                    my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $cur_frame (dominant frame is $dominant_frame);";
-                    $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str . ";");
-                    $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str . ";");
+                    my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);";
+                    $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
+                    $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
@@ -4880,8 +4878,17 @@ sub add_frameshift_alerts_for_one_sequence {
             # add to growing list of deletes, if nec
             if($f != ($nframe_stok-1)) { 
               if($cur_ndelete > 0) { 
-                if($delete_str ne "") { $delete_str .= ","; }
-                $delete_str .= sprintf("S:%d(%d),M:%s", $cur_sstop, $cur_ndelete, ($cur_ndelete == 1) ? $cur_mstop : ($cur_mstop-$cur_ndelete+1) . ".." . $cur_mstop);
+                if($cur_ndelete == 1) { 
+                  $delete_str .= sprintf("S:%d,M:%d(%d);", $cur_sstop, ($cur_mstop+1), $cur_ndelete);
+                }
+                else { 
+                  if($ftr_strand eq "+") { 
+                    $delete_str .= sprintf("S:%d,M:%d..%d(%d);", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
+                  }
+                  else { 
+                    $delete_str .= sprintf("S:%d,M:%d..%d(%d);", $cur_sstop, ($cur_mstop-1), ($cur_mstop-$cur_ndelete), $cur_ndelete);
+                  }
+                }
               }
             }
 
