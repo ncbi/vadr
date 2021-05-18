@@ -7790,6 +7790,50 @@ sub alert_feature_instance_fetch {
 }
 
 #################################################################
+# Subroutine: alert_instance_parse()
+# Incept:     EPN, Tue May 18 09:28:13 2021
+# Purpose:    Parse a (feature or sequence) alert instance 
+#             string and return:
+#             <scoords> (seq coords string)
+#             <mcoords> (model coords string)
+#             <detail>  (detail on the coords string)
+#
+# Arguments:
+#  $alt_instance_str: the alert instance string
+#
+# Returns:  3 values: 
+#           <scoords>: sequence coords, or 'VADRNULL' if none
+#           <mcoords>: model coords,    or 'VADRNULL' if none
+#           <detail>:  detail string,   or 'VADRNULL' if none
+#
+# Dies:     never
+#
+#################################################################
+sub alert_instance_parse { 
+  my $sub_name = "alert_instance_parse";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_instance_str) = (@_);
+  
+  my $scoords = "VADRNULL";
+  my $mcoords = "VADRNULL";
+  my $detail  = "VADRNULL";
+
+  if($alt_instance_str =~ m/^seq\:([^\;]+);mdl\:([^\;]+);(.*)$/) { 
+    ($scoords, $mcoords, $detail) = ($1, $2, $3);
+  }
+  elsif($alt_instance_str eq "VADRNULL") { 
+    $detail = "VADRNULL";
+  }
+  else { 
+    $detail = $alt_instance_str;
+  }
+    
+  return ($scoords, $mcoords, $detail);
+}
+
+#################################################################
 # Subroutine: alert_add_parent_based()
 # Incept:     EPN, Fri Mar 27 06:37:18 2020
 # Purpose:    Adds alerts to children features that have 
@@ -8155,9 +8199,9 @@ sub output_tabular {
 
   my @head_alt_AA = ();
   my @data_alt_AA = ();
-  @{$head_alt_AA[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "alert");
-  @{$head_alt_AA[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "detail");
-  my @clj_alt_A      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
+  @{$head_alt_AA[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "seq",    "mdl",    "alert");
+  @{$head_alt_AA[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "coords", "coords", "detail");
+  my @clj_alt_A      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        0,        0,        1);
 
   my @head_alc_AA = ();
   my @data_alc_AA = ();
@@ -8440,13 +8484,16 @@ sub output_tabular {
                   }
                   my @instance_str_A = split(":VADRSEP:", $alt_instance);
                   foreach my $instance_str (@instance_str_A) { 
+                    my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
                     $alt_nseqftr++;
                     $alt_ct_H{$alt_code}++;
                     my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
                     push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, $ftr_type, $ftr_name2print, ($ftr_idx+1), $alt_code, 
                                         vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
-                                        $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+                                        ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                        ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
+                                        $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_detail eq "VADRNULL") ? "" : " [" . $instance_detail . "]")]);
                     $alt_nprinted++;
                   }
                 }
