@@ -4446,7 +4446,6 @@ sub parse_stk_and_add_alignment_alerts {
 # Subroutine : add_frameshift_alerts_for_one_sequence()
 # Incept:      EPN, Mon Mar  2 19:54:25 2020
 #
-
 # Purpose:    Given information about a parsed alignment of a single
 #             sequence, detect frameshift alerts and report them. Also
 #             create frameshift-annotated stockholm files if --keep or
@@ -5310,6 +5309,8 @@ sub fetch_features_and_add_cds_and_mp_alerts {
           # and no ambgnt5c alert already reported
           if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt5c"})) { 
             if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
+              #my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR);
+              #my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
               $alt_str_H{"mutstart"} = sprintf("%s starting at position %d on %s strand is not a valid start", 
                                                substr($ftr_sqstring_alt, 0, 3), 
                                                $ftr2org_pos_A[1], $ftr_strand);
