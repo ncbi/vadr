@@ -3974,6 +3974,11 @@ sub parse_stk_and_add_alignment_alerts {
                                  #                       special values: $rfpos_pp_A[0] = -1, $rfpos_pp_A[$rflen+1] = -1
                                  # 
 
+    my @ua2rf_A = ();            # [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
+                                 #                      if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
+                                 #                      if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
+                                 #                      $ua2rf_A[0] is invalid (set to 0)
+
     $rfpos = 0;    # model positions (nongap RF position)
     my $uapos = 0; # unaligned sequence position (position in actual sequence)
     # initialize
@@ -3984,6 +3989,7 @@ sub parse_stk_and_add_alignment_alerts {
       $max_uapos_before_A[$rfpos] = -1;
       $rfpos_pp_A[$rfpos]         = ".";
     }
+    $ua2rf_A[0] = 0; # invalid
     # get aligned sequence, length will be alen
     my $sqstring_aligned = $msa->get_sqstring_aligned($i);
     my $ppstring_aligned = ($do_glsearch) ? undef : $msa->get_ppstring_aligned($i);
@@ -4037,9 +4043,13 @@ sub parse_stk_and_add_alignment_alerts {
       }
       if($insert_after) { 
         $min_uapos -= $rf2ilen_A[$rfpos]; # subtract inserts between $rfpos and ($rfpos+1)
+        for(my $tmp_uapos = $min_uapos; $tmp_uapos < ($min_uapos + $rf2ilen_A[$rfpos]); $tmp_uapos++) { 
+          $ua2rf_A[$tmp_uapos] = -1 * $rfpos; # note if $rfpos is 0, this will be 0
+        }
       }
       if($nongap_rf) { 
         $min_uapos--;
+        $ua2rf_A[$min_uapos] = $rfpos;
         $rfpos_pp_A[$rfpos] = ($do_glsearch) ? "?" : $pp_A[($apos-1)];
       }
       $min_rfpos_after_A[$rfpos] = $min_rfpos;
@@ -4467,7 +4477,7 @@ sub parse_stk_and_add_alignment_alerts {
         $do_separate_cds_fa_files, $mdl_name, $mdl_tt, 
         $seq_name, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
         $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
-        $ftr_fileroot_AR, $ftr_outroot_AR, 
+        \@ua2rf_A, $ftr_fileroot_AR, $ftr_outroot_AR, 
         $to_remove_AR, $opt_HHR, $ofile_info_HHR);
 
     } # end of 'else' entered if ! $doctor_flag
@@ -5509,6 +5519,11 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 #  $sgm_results_HAHR:          REF to model segment results HAH, pre-filled
 #  $ftr_results_HAHR:          REF to feature results HAH, added to here
 #  $alt_ftr_instances_HHHR:    REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $ua2rf_AR:                  REF to array that maps unaligned positions to reference positions
+#                              [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
+#                              if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
+#                              if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
+#                              $ua2rf_A[0] is invalid (set to 0)
 #  $ftr_fileroot_AR:           REF to array of per-feature file root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $ftr_outroot_AR:            REF to array of per-feature output root values, pre-calc'ed and passed in so we don't need to do it per-seq
 #  $to_remove_AR:              REF to array of files to remove before exiting, possibly added to here if $do_separate_cds_fa_files
@@ -5522,14 +5537,14 @@ sub fetch_features_and_add_cds_and_mp_alerts {
 #################################################################
 sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence { 
   my $sub_name = "fetch_features_and_add_cds_and_mp_alerts_for_one_sequence";
-  my $nargs_exp = 19;
+  my $nargs_exp = 20;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
       $do_separate_cds_fa_files, $mdl_name, $mdl_tt, 
       $seq_name, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
-      $ftr_fileroot_AR, $ftr_outroot_AR, $to_remove_AR, 
+      $ua2rf_AR, $ftr_fileroot_AR, $ftr_outroot_AR, $to_remove_AR, 
       $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
@@ -5547,6 +5562,11 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
   my $sqfile_for_pv_path            = $sqfile_for_pv->path;
 
   my $seq_len  = $seq_len_HR->{$seq_name};
+
+  # TEMP
+  for(my $uapos = 0; $uapos <= $seq_len; $uapos++) { 
+    printf("HEYA! uapos: $uapos ua2rf_A[$uapos] = $ua2rf_AR->[$uapos]\n");
+  }
 
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
