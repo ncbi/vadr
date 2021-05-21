@@ -4865,7 +4865,9 @@ sub add_frameshift_alerts_for_one_sequence {
                   my $alt_code = "fstukcfi";
                   if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
                   if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
-                  my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);";
+                  my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($span_sstart, $span_sstop, $ftr_strand, $FH_HR) . ";";
+                  my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
+                  my $alt_str  = sprintf("%s%snucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);", $alt_scoords, $alt_mcoords);
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
@@ -4895,13 +4897,13 @@ sub add_frameshift_alerts_for_one_sequence {
                     if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
                     my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($span_sstart, $span_sstop, $ftr_strand, $FH_HR) . ";";
                     my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
-                    my $alt_str  = "nucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);";
+                    my $alt_str  = sprintf("%s%snucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);", $alt_scoords, $alt_mcoords);
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
-                                               $seq_name, $ftr_idx, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
+                                               $seq_name, $ftr_idx, $alt_str, $FH_HR);
                     $insert_str = "";
                     $delete_str = "";
                     push(@cds_alt_str_A, $alt_str);
@@ -5134,11 +5136,6 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
   my $seq_len  = $seq_len_HR->{$seq_name};
 
-  # TEMP
-  for(my $uapos = 0; $uapos <= $seq_len; $uapos++) { 
-    printf("HEYA! uapos: $uapos ua2rf_A[$uapos] = $ua2rf_AR->[$uapos]\n");
-  }
-
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
     my $ftr_is_cds       = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
@@ -5171,7 +5168,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
     my %alt_str_H = (); # added to as we find alerts below
     # ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f, mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
-    
+    my $alt_scoords; # sequence coordinates related to an alert
+    my $alt_mcoords; # model    coordinates related to an alert
+
     # determine if this feature is 5' and/or 3' truncated
     # we do this outside the main loop since the logic is a bit complex:
     # - a feature is 5' truncated if:
@@ -5343,40 +5342,45 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         print { $ofile_info_HHR->{"FH"}{$pv_ftr_ofile_key} } (">" . $ftr_seq_name . "\n" . 
                                                               seq_SqstringAddNewlines($ftr_sqstring_pv, 60)); 
       }
-      
       # deal with mutstart for all CDS that are not 5' truncated
       if(! $ftr_is_5trunc) {
         # feature is not 5' truncated, look for a start codon if it's a CDS
         # and no ambgnt5c alert already reported
         if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt5c"})) { 
           if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
-            $alt_str_H{"mutstart"} = sprintf("%s starting at position %d on %s strand is not a valid start", 
+            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR) . ";";
+            $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[1])]), abs($ua2rf_AR->[($ftr2org_pos_A[3])]), $ftr_strand, $FH_HR) . ";";
+            $alt_str_H{"mutstart"} = sprintf("%s%s%s starting at sequence position %d (model position %d) on %s strand is not a valid start", 
+                                             $alt_scoords, $alt_mcoords, 
                                              substr($ftr_sqstring_alt, 0, 3), 
-                                             $ftr2org_pos_A[1], $ftr_strand);
-          }
-        }
-        # deal with mutstart for all CDS that are not 5' truncated
-        if(! $ftr_is_5trunc) {
-          # feature is not 5' truncated, look for a start codon if it's a CDS
-          # and no ambgnt5c alert already reported
-          if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt5c"})) { 
-            if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
-              #my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR);
-              #my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
-              $alt_str_H{"mutstart"} = sprintf("%s starting at position %d on %s strand is not a valid start", 
-                                               substr($ftr_sqstring_alt, 0, 3), 
-                                               $ftr2org_pos_A[1], $ftr_strand);
-            }
+                                             $ftr2org_pos_A[1], abs($ua2rf_AR->[($ftr2org_pos_A[1])]), $ftr_strand);
           }
         }
       }
+      # deal with mutendcd for all CDS that are not 3' truncated BUT are 5' truncated
+      if((! $ftr_is_3trunc) && ($ftr_is_5trunc)) { 
+        # feature is not 3' truncated, but it is 5' truncated, look for a stop codon if it's a CDS
+        # and no ambgnt3c already reported
+        if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt3c"})) { 
+          if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR))) { 
+            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len-2)], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
+            $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand, $FH_HR) . ";";
+            $alt_str_H{"mutendcd"} = sprintf("%s%s%s ending at sequence position %d (model position %d) on %s strand is not a valid stop", 
+                                             $alt_scoords, $alt_mcoords, 
+                                             substr($ftr_sqstring_alt, -3, 3), 
+                                             $ftr2org_pos_A[$ftr_len], abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand);
+          }
+        }
+      }      
       # deal with all CDS that are not 5' truncated and not 3' truncated
       if((! $ftr_is_5trunc) && (! $ftr_is_3trunc)) { 
         if($ftr_is_cds_or_mp) { 
           # feature is not truncated on either end, look for stop codons
           if(($ftr_len % 3) != 0) { 
             # not a multiple of 3, unexleng alert 
-            $alt_str_H{"unexleng"} = "$ftr_len";
+            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
+            $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr2org_pos_A[1]]), abs($ua2rf_AR->[$ftr2org_pos_A[$ftr_len]]), $ftr_strand, $FH_HR) . ";";
+            $alt_str_H{"unexleng"} = $alt_scoords . $alt_mcoords . $ftr_len;
           }
 
           # if CDS: look for all valid in-frame stops 
@@ -5385,9 +5389,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
             sqstring_find_stops($ftr_sqstring_alt, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
             # check that final add codon is a valid stop, and add 'mutendcd' alert if not (and ambgnt3c not already reported)
             if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
-              $alt_str_H{"mutendcd"} = sprintf("%s ending at position %d on %s strand is not a valid stop", 
-                                               substr($ftr_sqstring_alt, -3, 3),
-                                               $ftr2org_pos_A[$ftr_len], $ftr_strand);
+              $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len-2)], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
+              $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand, $FH_HR) . ";";
+              $alt_str_H{"mutendcd"} = sprintf("%s%s%s ending at sequence position %d (model position %d) on %s strand is not a valid stop", 
+                                             $alt_scoords, $alt_mcoords, 
+                                             substr($ftr_sqstring_alt, -3, 3), 
+                                             $ftr2org_pos_A[$ftr_len], abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand);
             }
             if($ftr_nxt_stp_A[1] != $ftr_len) { 
               # first stop codon 3' of $ftr_start is not $ftr_stop
@@ -5426,9 +5433,18 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                     # determine what position it is
                     $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
                     if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
-                      $alt_str_H{"mutendex"} = sprintf("sequence positions %d to %d on %s strand", 
-                                                       (($ftr_strand eq "+") ? $ftr_stop_c - 2 : $ftr_stop_c + 2), 
-                                                       $ftr_stop_c, $ftr_strand);
+                      if($ftr_strand eq "+") { 
+                        $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                      }
+                      else {
+                        $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                      }
+                      $alt_str_H{"mutendex"} = sprintf("sequence positions %d to %d (model positions %d to %d) on %s strand", 
+                                                       (($ftr_strand eq "+") ? $ftr_stop_c - 2 : $ftr_stop_c + 2), $ftr_stop_c, 
+                                                       (($ftr_strand eq "+") ? abs($ua2rf_AR->[($ftr_stop_c-2)]) : abs($ua2rf_AR->[($ftr_stop_c+2)])), abs($ua2rf_AR->[$ftr_stop_c]),
+                                                       $ftr_strand);
                     }
                   }
                 } # end of 'if($ftr_stop < $seq_len)'
@@ -5438,6 +5454,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   # either way, we have a mutendns alert:
                   $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                   if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                    # we don't provide scoords or mcoords for this alert
                     $alt_str_H{"mutendns"} = "VADRNULL";
                   }
                 }
@@ -5449,7 +5466,15 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
                 }
                 $ftr_stop_c = $ftr2org_pos_A[$ftr_nxt_stp_A[1]];
-                $alt_str_H{"cdsstopn"} = sprintf("revised to %d..%d (stop shifted %d nt)", $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
+                if($ftr_strand eq "+") { 
+                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                }
+                else {
+                  $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                  $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                }
+                $alt_str_H{"cdsstopn"} = sprintf("%s%srevised to %d..%d (stop shifted %d nt)", $alt_scoords, $alt_mcoords, $ftr_start, $ftr_stop_c, abs($ftr_stop - $ftr_stop_c));
               }
             } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
           } # end of 'if($ftr_is_cds) {' 
@@ -5485,21 +5510,27 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         if($sgm_5p_valid && $sgm_3p_valid) { # both are valid 
           if((abs($stop_5p - $start_3p)) != 1) { # they're not adjacent
             # 1) both mature peptides are annotated but not adjacent, alert on $ftr_idx
+            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($stop_5p, $start_3p, $ftr_strand, $FH_HR) . ";";
+            $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$stop_5p]), abs($ua2rf_AR->[$start_3p]), $ftr_strand, $FH_HR) . ";";
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "pepadjcy", $seq_name, $ftr_idx, 
-                                       sprintf("abs($stop_5p - $start_3p) != 1 (strand:%s)", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}), 
+                                       sprintf("%s%sabs($stop_5p - $start_3p) != 1 (strand:%s)", $alt_scoords, $alt_mcoords, $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}), 
                                        $FH_HR);
           }
         }
         elsif(($sgm_5p_valid) && (! $sgm_3p_valid) && (! $sgm_5p_3flush)) { 
           # 2) 5' mature peptide is annotated and ends before end of sequence, but 3' mature peptide is not annotated, alert for $ftr_idx
+          $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($stop_5p, $stop_5p, $ftr_strand, $FH_HR) . ";";
+          $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$stop_5p]), abs($ua2rf_AR->[$stop_5p]), $ftr_strand, $FH_HR) . ";";
           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "pepadjcy", $seq_name, $ftr_idx, 
-                                     sprintf("feature stops at seq position $stop_5p on %s strand which is not terminal but expected 3'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}),
+                                     sprintf("%s%sfeature stops at seq position $stop_5p on %s strand which is not terminal but expected 3'-adjacent feature is not annotated", $alt_scoords, $alt_mcoords, $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}),
                                      $FH_HR);
         }
         elsif(($sgm_3p_valid) && (! $sgm_5p_valid) && (! $sgm_3p_5flush)) { 
           # 3) 3' mature peptide is annotated and starts after start of sequence, but 5' mature peptide is not annotated, alert for $ftr_3pa_idx (NOT $ftr_idx)
+          $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($start_3p, $start_3p, $ftr_strand, $FH_HR) . ";";
+          $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start_3p]), abs($ua2rf_AR->[$start_3p]), $ftr_strand, $FH_HR) . ";";
           alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "pepadjcy", $seq_name, $ftr_3pa_idx, 
-                                     sprintf("feature starts at seq position $start_3p on %s strand which is not terminal but expected 5'-adjacent feature is not annotated", $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"strand"}),
+                                     sprintf("%s%sfeature starts at seq position $start_3p on %s strand which is not terminal but expected 5'-adjacent feature is not annotated", $alt_scoords, $alt_mcoords, $sgm_results_HAHR->{$seq_name}[$sgm_3p_idx]{"strand"}),
                                      $FH_HR);
         }
       } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
@@ -8425,12 +8456,15 @@ sub output_tabular {
           }
           my @instance_str_A = split(":VADRSEP:", $alt_instance);
           foreach my $instance_str (@instance_str_A) { 
+            my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
             $alt_nseqftr++;
             $alt_ct_H{$alt_code}++;
             my $alt_idx2print = $seq_idx2print . "." . $alt_nftr . "." . $alt_nseqftr;
             push(@data_alt_AA, [$alt_idx2print, $seq_name, $seq_mdl1, "-", "-", "-", $alt_code, 
                                 $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                 helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
                                 $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
             $alt_nprinted++;
           }
@@ -10648,7 +10682,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
       $seq_stop_A[$i]  = $cur_seq_tblout_coords_AH[$i]{"seq_stop"};
       $mdl_start_A[$i] = $cur_seq_tblout_coords_AH[$i]{"mdl_start"};
       $mdl_stop_A[$i]  = $cur_seq_tblout_coords_AH[$i]{"mdl_stop"};
-      printf("HEYA set seq_stop_A[$i] to $seq_stop_A[$i]\n");
+      #printf("HEYA set seq_stop_A[$i] to $seq_stop_A[$i]\n");
     }
 
     # determine missing regions
