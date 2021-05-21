@@ -5289,7 +5289,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $ftr_start_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen + 1), $FH_HR) : -1;
       if($ftr_5nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
-        $alt_str_H{$ambg_alt} = sprintf("first %d positions are Ns, %s", $ftr_5nlen,
+        $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR) . ";";
+        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[1])]), abs($ua2rf_AR->[($ftr2org_pos_A[3])]), $ftr_strand, $FH_HR) . ";";
+        $alt_str_H{$ambg_alt} = sprintf("%s%sfirst %d positions are Ns, %s", $ftr_5nlen,
                                         (($ftr_5nlen == $ftr_len) ? 
                                          (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
                                          ("first non-N is position $ftr_start_non_n")));
