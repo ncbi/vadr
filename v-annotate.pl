@@ -1183,7 +1183,7 @@ if($do_split) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
 
-  my $nlines_preserve_spacing = 1;
+  my $nlines_preserve_spacing = 100;
   my @head_AA = ();
   my @cljust_A = ();
 

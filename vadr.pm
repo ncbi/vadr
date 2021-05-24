@@ -5437,15 +5437,16 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
   
   if(scalar(@filelist_A) > 0) { 
     foreach my $file (@filelist_A) {
+      $seen_noncomment_line = 0; # used to skip header lines
       open(IN, $file) || ofile_FileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while($line = <IN>) { 
         chomp $line;
-        @{$data_AA[$nline]} = ();
         print("$line\n");
         my @el_A = split(/\s+/, $line);
         my $nel = scalar(@el_A);
         if($line !~ m/^\#/) { # a non-comment line
           $seen_noncomment_line = 1;
+          @{$data_AA[$nline]} = ();
           for($j = 0; $j < $ncol; $j++) {
             push(@{$data_AA[$nline]}, $el_A[$j]);
           }
@@ -5459,21 +5460,23 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
             $toadd .= $el_A[($nel-1)];
             push(@{$data_AA[$nline]}, $toadd);
           }
+          $nline++;
+          $nline_tot++;
         }
         else { # a comment-line
+          printf("seen_noncomment_line: $seen_noncomment_line\n");
           if($seen_noncomment_line) {
             push(@data_AA, []);  # push empty array --> blank line 
+            $nline++;
+            $nline_tot++;
           }
         }
-        $nline++;
-        $nline_tot++;
       }
       if($nline >= $np) {
         ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
         undef @data_AA;
         @data_AA = ();
         $nline = 0;
-        $seen_noncomment_line = 1;
         $nout++;
       }
     }
