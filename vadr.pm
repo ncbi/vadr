@@ -5394,7 +5394,9 @@ sub vdr_MergeOutputConcatenateOnly {
 #   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
 #   $np:                number of lines to preserve spacing for, -1 to preserve spacing for all lines
 #   $csep:              column separator string, often "  "
-#   $head_AAR:          header lines
+#   $empty_flag:        '1' to output empty lines for empty arrays of data, '0'
+#                       to output empty lines as header separation lines
+#   $head_AAR:          header values
 #   $cljust_AR:         ref to '1'/'0' array of indicating if a column is left justified or not
 #   $chunk_outdir_AR:   ref to array of output directories with files we are merging
 #   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
@@ -5406,17 +5408,16 @@ sub vdr_MergeOutputConcatenateOnly {
 # 
 ################################################################# 
 sub vdr_MergeOutputConcatenatePreserveSpacing { 
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   my $sub_name = "vdr_MergeOutputConcatenatePreserveSpacing";
   if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
 
-  my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $np, $csep, $head_AAR, $cljust_AR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $np, $csep, $empty_flag, $head_AAR, $cljust_AR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
   printf("HEYA in $sub_name\n");
 
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $ncol  = scalar(@{$cljust_AR});
-  my $nhead = scalar(@{$head_AAR});
   
   my @filelist_A = (); # array of files to concatenate to make $merged_file
   vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
@@ -5425,134 +5426,71 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
   my $out_FH = undef; # output file handle
   open($out_FH, ">", $merged_file) || ofile_FileOpenFailure($merged_file, $sub_name, $!, "writing", $FH_HR);
 
-  # initialize max width values to header widths
-  my @width_A = ();
-  my ($i, $j); # counters
-  for($j = 0; $j < $ncol; $j++) {
-    $width_A[$j] = 0;
-  }
-  for($i = 0; $i < $nhead; $i++) { 
-    for($j = 0; $j < $ncol; $j++) {
-      $width_A[$j] = utl_Max($width_A[$j], length($head_AAR->[$i][$j]));
-    }
-  }
-
   my $line; 
   my $nline     = 0; # line number for current file
   my $nline_tot = 0; # line number over all files
   my $ncol2print = $ncol; # updated below by adding 1 if nec
   my @data_AA = (); # [0..$i..$nline-1][0..$j..$ncol2print-1], data read from input to output again with correct spacing
-  my $seen_noncomment_line = 0;
+  my $seen_noncomment_line = 0; # used to skip header lines
   my $nout = 0; # number of times we output a chunk
+  my $j;
+  
   if(scalar(@filelist_A) > 0) { 
     foreach my $file (@filelist_A) {
       open(IN, $file) || ofile_FileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while($line = <IN>) { 
+        chomp $line;
+        @{$data_AA[$nline]} = ();
         print("$line\n");
         my @el_A = split(/\s+/, $line);
         my $nel = scalar(@el_A);
-        if($line !~ m/^\#/) {
-          for($j = 0; $j < $ncol; $j++) {
-            $width_A[$j] = utl_Max($width_A[$j], length($el_A[$j]));
-            $data_AA[$nline][$j] = $el_A[$j];
-          }
+        if($line !~ m/^\#/) { # a non-comment line
           $seen_noncomment_line = 1;
-        }
-        # combine all columns after $ncol into one, separated by single space
-        if($nel > $ncol) {
-          $ncol2print = $ncol + 1; 
-          for($j = $ncol; $j < ($nel-1); $j++) {
-            $data_AA[$nline][$ncol] .= $el_A[$j] . " ";
+          for($j = 0; $j < $ncol; $j++) {
+            push(@{$data_AA[$nline]}, $el_A[$j]);
           }
-          $data_AA[$nline][$ncol] .= $el_A[($nel-1)];
+          # combine all columns after $ncol into one, separated by single space
+          if($nel > $ncol) {
+            my $toadd = "";
+            $ncol2print = $ncol + 1; 
+            for($j = $ncol; $j < ($nel-1); $j++) {
+              $toadd .= $el_A[$j] . " ";
+            }
+            $toadd .= $el_A[($nel-1)];
+            push(@{$data_AA[$nline]}, $toadd);
+          }
+        }
+        else { # a comment-line
+          if($seen_noncomment_line) {
+            push(@data_AA, []);  # push empty array --> blank line 
+          }
         }
         $nline++;
         $nline_tot++;
       }
       if($nline >= $np) {
-        # output all lines we currently have in @data_AA
-        vdr_MergeOutputConcatenatePreserveSpacingHelper($out_FH, $ncol2print, $csep, \@width_A, $cljust_AR, $head_AAR, \@data_AA);
+        ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
         undef @data_AA;
-        undef @width_A;
         @data_AA = ();
-        @width_A = ();
         $nline = 0;
+        $seen_noncomment_line = 1;
         $nout++;
       }
     }
     # output remaining lines
     if(($nline > 0) || ($nout == 0)) {
-      vdr_MergeOutputConcatenatePreserveSpacingHelper($out_FH, $ncol2print, $csep, \@width_A, $cljust_AR, $head_AAR, \@data_AA);
+      ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
+    }
+    close($out_FH);
+    if($ofile_desc ne "") { 
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
     }
   }
-  close $out_FH;
+  elsif($do_check_exists) { 
+    ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
+  }
   
   return $merged_file;
-}
-
-
-#################################################################
-# Subroutine:  vdr_MergeOutputConcatenatePreserveSpacingHelper()
-# Incept:      EPN, Mon May 24 09:42:17 2021
-#
-# Purpose:    Helper subroutine for vdr_MergeOutputConcatenatePreserveSpacing()
-#             that actually outputs the data.
-#
-# Arguments: 
-#   $out_FH:          file handle to print to
-#   $ncol:            number of columns
-#   $csep:            column separator string, often "  "
-#   $width_AR:        ref to array with widths for each column
-#   $cljust_AR:       ref to array with column justification for each column
-#                     (first column is always left justified regardless of value of $cljust_AR->[0])
-#   $head_AAR:        ref to 2D array with header data to output
-#   $data_AAR:        ref to 2D array with data to output
-#
-# Returns: void
-# 
-# Dies: never
-# 
-################################################################# 
-sub vdr_MergeOutputConcatenatePreserveSpacingHelper { 
-  my $nargs_exp = 7;
-  my $sub_name = "vdr_MergeOutputConcatenatePreserveSpacingHelper";
-  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
-
-  my ($out_FH, $ncol, $csep, $width_AR, $cljust_AR, $head_AAR, $data_AAR) = @_;
-
-  my $nhead = scalar(@{$head_AAR});
-  my $nline = scalar(@{$data_AAR});
-  my $out_line;
-  my ($i, $j);
-  # output heaader lines
-  for($i = 0; $i < $nhead; $i++) {
-    $out_line = sprintf("%-*s", $width_AR->[0], $head_AAR->[$i][0]);
-    if($ncol > 1) { 
-      $out_line .= $csep;
-      for($j = 1; $j < $ncol; $j++) { 
-        if($cljust_AR->[$j]) { $out_line .= sprintf("%-*s", $width_AR->[$j], $head_AAR->[$i][$j]); }
-        else                 { $out_line .= sprintf("%*s",  $width_AR->[$j], $head_AAR->[$i][$j]); }
-        if($j < ($ncol-1)) { $out_line .= $csep; }
-      }
-    }
-    print $out_FH $out_line . "\n";
-  }
-
-  # output all lines we currently have in @data_AA
-  for($i = 0; $i < $nline; $i++) {
-    $out_line = sprintf("%-*s", $width_AR->[0], $data_AAR->[$i][0]);
-    if($ncol > 1) { 
-      $out_line .= $csep;
-      for($j = 1; $j < $ncol; $j++) { 
-        if($cljust_AR->[$j]) { $out_line .= sprintf("%-*s", $width_AR->[$j], $data_AAR->[$i][$j]); }
-        else                 { $out_line .= sprintf("%*s",  $width_AR->[$j], $data_AAR->[$i][$j]); }
-        if($j < ($ncol-1)) { $out_line .= $csep; }
-      }
-    }
-    print $out_FH $out_line . "\n";
-  }
-
-  return;
 }
 
 #################################################################
