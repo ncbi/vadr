@@ -1074,7 +1074,6 @@ if($do_split) {
   my $nseq = scalar(@seq_name_A);
   my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
 
-  printf("\nnchunk_estimate 0: $nchunk_estimate\n");
   # update nchunk_estimate to make parallelization as efficient as possible
   if($nseq == 1) { 
     ; # do nothing, we won't split into chunks
@@ -1091,7 +1090,6 @@ if($do_split) {
       $nchunk_estimate++;
     }
   } 
-  printf("nchunk_estimate 1: $nchunk_estimate\n");
 
   if($nchunk_estimate != 1) { 
     $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
@@ -1103,11 +1101,9 @@ if($do_split) {
     # fasta file name in this case (there is no .1 suffix)
     $nseqs_per_chunk_A[0] = scalar(@seq_name_A); # all seqs will be in only seq file
   }
-  printf("nchunk: $nchunk\n");
 
 
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
-  printf("nchunk: $nchunk\n");
   my @chunk_outdir_A   = (); # output directory names for $nchunk v-annotate.pl jobs
   my @cpu_out_file_AH  = (); # holds name of output files that vdr_WaitForFarmJobsToFinish() will check
                              # to see when all jobs are complete, will be filled in write_v_annotate_scripts_for_split_mode()
@@ -1183,28 +1179,40 @@ if($do_split) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
 
-  my $nlines_preserve_spacing = 100;
-  my @head_AA = ();
-  my @cljust_A = ();
+  # merge files for which we take special care to preserve spacing
+  my $nlines_preserve_spacing = 100; # we preserve spacing for up to 100 lines
+  my @head_AA = ();  # 2D array with header strings
+  my @cljust_A = (); # '1'/'0' array for whether each column is left-justified or not
 
-  @{$head_AA[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
-  @{$head_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
-  @cljust_A      = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
-  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  helper_tabular_fill_header_and_justification_arrays("ant", \@head_AA, \@cljust_A, $FH_HR);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqa", "ant", "per-sequence tabular annotation summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   
-  #  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqc",       "cls",         "per-sequence tabular classification summary file",     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".ftr",       "ftr",         "per-feature tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputMdlTabularFile ($out_root_no_vadr,                              "per-model tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".alt",       "alt",         "per-alert tabular summary file",                       $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  my $zero_alt = vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,"alert count tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".dcr",       "dcr",         "alignment doctoring tabular summary file",             $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  helper_tabular_fill_header_and_justification_arrays("cls", \@head_AA, \@cljust_A, $FH_HR);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqc", "cls", "per-sequence tabular classification summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  helper_tabular_fill_header_and_justification_arrays("ftr", \@head_AA, \@cljust_A, $FH_HR);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".ftr", "ftr", "per-feature tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  helper_tabular_fill_header_and_justification_arrays("sgm", \@head_AA, \@cljust_A, $FH_HR);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sgm", "sgm", "per-model-segment tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  helper_tabular_fill_header_and_justification_arrays("alt", \@head_AA, \@cljust_A, $FH_HR);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".alt", "alt", "per-alert tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  my $zero_alt = vdr_MergeOutputAlcTabularFile ($out_root_no_vadr, \%alt_info_HH,"alert count tabular summary file", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  vdr_MergeOutputMdlTabularFile ($out_root_no_vadr, "per-model tabular summary file", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  helper_tabular_fill_header_and_justification_arrays("dcr", \@head_AA, \@cljust_A, $FH_HR);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".dcr", "dcr", "alignment doctoring tabular summary file", $do_check_exists, $nlines_preserve_spacing, "  ", 0, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
   if($do_blastn_ali) {
-    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sda",     "sda",         "ungapped seed alignment summary file (-s)",          $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    helper_tabular_fill_header_and_justification_arrays("sda", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sda", "sda", "ungapped seed alignment summary file (-s)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
   if($do_replace_ns) { 
-    vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".rpn",     "rpn",         "replaced stretches of Ns summary file (-r)",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    helper_tabular_fill_header_and_justification_arrays("rpn", \@head_AA, \@cljust_A, $FH_HR);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".rpn", "rpn", "replaced stretches of Ns summary file (-r)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
 
   ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
@@ -8086,67 +8094,57 @@ sub output_tabular {
   # define the header columns
   my @head_ant_AA = ();
   my @data_ant_AA = ();
-  @{$head_ant_AA[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
-  @{$head_ant_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
-  my @clj_ant_A      = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
+  my @clj_ant_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("ant", \@head_ant_AA, \@clj_ant_A, $FH_HR);
 
   my @head_cls_AA = ();
   my @data_cls_AA = ();
-  @{$head_cls_AA[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "seq");
-  @{$head_cls_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
-  my @clj_cls_A      = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
+  my @clj_cls_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("cls", \@head_cls_AA, \@clj_cls_A, $FH_HR);
 
   my @head_ftr_AA = ();
   my @data_ftr_AA = ();
-  @{$head_ftr_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
-  @{$head_ftr_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "idx", "str", "n_from", "n_to", "n_instp", "trc", "5'N",  "3'N",  "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
-  my @clj_ftr_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,     0,        0,      0,         1,     0,      0,      0,        0,      0,         0,      0,     0,     0,        0,        1);
+  my @clj_ftr_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("ftr", \@head_ftr_AA, \@clj_ftr_A, $FH_HR);
 
   my @head_sgm_AA = ();
   my @data_sgm_AA = ();
-  @{$head_sgm_AA[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "num", "sgm", "seq",  "seq", "mdl",  "mdl", "sgm", "",    "",    "5'", "3'", "5'",  "3'");
-  @{$head_sgm_AA[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "idx", "sgm", "idx", "from", "to",  "from", "to",  "len", "str", "trc", "pp", "pp", "gap", "gap");
-  my @clj_sgm_A      = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
+  my @clj_sgm_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("sgm", \@head_sgm_AA, \@clj_sgm_A, $FH_HR);
 
   my @head_alt_AA = ();
   my @data_alt_AA = ();
-  @{$head_alt_AA[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "alert");
-  @{$head_alt_AA[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "detail");
-  my @clj_alt_A      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
+  my @clj_alt_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("alt", \@head_alt_AA, \@clj_alt_A, $FH_HR);
 
   my @head_alc_AA = ();
   my @data_alc_AA = ();
-  @{$head_alc_AA[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
-  @{$head_alc_AA[1]} = ("idx", "code",   "failure", "description", "type", "cases", "seqs", "description");
-  my @clj_alc_A      = (1,     1,        1,          1,            0,      0,      0,        1);
+  my @clj_alc_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("alc", \@head_alc_AA, \@clj_alc_A, $FH_HR);
 
   my @head_mdl_AA = ();
   my @data_mdl_AA = ();
-  @{$head_mdl_AA[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
-  @{$head_mdl_AA[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
-  my @clj_mdl_A      = (1,     1,       1,       1,          0,      0,      0);
+  my @clj_mdl_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("mdl", \@head_mdl_AA, \@clj_mdl_A, $FH_HR);
 
   my @head_dcr_AA = ();
   my @data_dcr_AA = ();
-  @{$head_dcr_AA[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "dcr",  "model", "indel",      "orig",       "new", "codon",  "codon",  "orig",   "new",   "dcr",   "did");
-  @{$head_dcr_AA[1]} = ("idx", "name", "name", "type", "name",  "idx", "type",    "pos",  "apos", "seq-uapos", "seq-uapos",  "type", "coords", "codon", "codon",  "iter", "swap?");
-  my @clj_dcr_A      = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
+  my @clj_dcr_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("dcr", \@head_dcr_AA, \@clj_dcr_A, $FH_HR);
 
   # optional .sda file
   my $do_sda = opt_Get("-s", $opt_HHR) ? 1 : 0;
   my @head_sda_AA = ();
   my @data_sda_AA = ();
-  @{$head_sda_AA[0]} = ("seq", "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
-  @{$head_sda_AA[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
-  my @clj_sda_A      = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
+  my @clj_sda_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("sda", \@head_sda_AA, \@clj_sda_A, $FH_HR);
 
   # optional .rpn file
   my $do_rpn = opt_Get("-r", $opt_HHR) ? 1 : 0;
   my @head_rpn_AA = ();
   my @data_rpn_AA = ();
-  @{$head_rpn_AA[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
-  @{$head_rpn_AA[1]} = ("idx", "name",   "len", "model", "p/f",   "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
-  my @clj_rpn_A      = (1,     1,        0,     1,       1,       0,         0,        0,          0,       0,        0,         0,         0,         0,         0,         1);
+  my @clj_rpn_A   = ();
+  helper_tabular_fill_header_and_justification_arrays("rpn", \@head_rpn_AA, \@clj_rpn_A, $FH_HR);
 
   my $zero_classifications = 1; # set to '0' below if we have >= 1 seqs that are classified ($seq_mdl1 ne "-")
 
@@ -11915,5 +11913,88 @@ sub output_mdl_and_alc_files_and_remove_temp_files {
     utl_FileRemoveList(\@to_actually_remove_A, $sub_name, $opt_HHR, $FH_HR);
   }
 
+  return;
+}
+
+#################################################################
+# Subroutine: helper_tabular_fill_header_and_justification_arrays
+# Incept:     EPN, Mon May 24 15:28:52 2021
+# Purpose:    For a given tabular output file, fill the header and
+#             left justification arrays.
+#
+# Arguments:
+#  $ofile_key: key for tabular file in ofile_info_HHR
+#  $head_AAR:  ref to 2D array of header values
+#  $clj_AR:    ref to '1'/'0' array of indicating if a column is left justified or not
+#  $FH_HR:     ref to hash of file handles, including "cmd"
+#             
+# Returns:  void
+#
+#################################################################
+sub helper_tabular_fill_header_and_justification_arrays { 
+  my $sub_name = "helper_tabular_fill_header_and_justification_arrays";
+  my $nargs_exp = 4;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ofile_key, $head_AAR, $clj_AR, $FH_HR) = (@_);
+
+  undef @{$head_AAR};
+  undef @{$clj_AR};
+  @{$head_AAR} = ();
+  @{$clj_AR}   = ();
+  
+  if($ofile_key eq "ant") {
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
+  }
+  elsif($ofile_key eq "cls") {
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "seq");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
+  }
+  elsif($ofile_key eq "ftr") {
+    @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "ftr", "par", "",    "",       "",     "",        "",    "",     "",     "",       "",     "",        "",     "",    "",    "seq",    "model",  "ftr");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "len", "idx", "idx", "str", "n_from", "n_to", "n_instp", "trc", "5'N",  "3'N",  "p_from", "p_to", "p_instp", "p_sc", "nsa", "nsn", "coords", "coords", "alerts");
+    @{$clj_AR}        = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,     0,        0,      0,         1,     0,      0,      0,        0,      0,         0,      0,     0,     0,        0,        1);
+  }
+  elsif($ofile_key eq "sgm") {
+    @{$head_AAR->[0]} = ("",    "seq",  "seq", "",    "",      "ftr",  "ftr",  "ftr", "num", "sgm", "seq",  "seq", "mdl",  "mdl", "sgm", "",    "",    "5'", "3'", "5'",  "3'");
+    @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "model", "type", "name", "idx", "sgm", "idx", "from", "to",  "from", "to",  "len", "str", "trc", "pp", "pp", "gap", "gap");
+    @{$clj_AR}     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
+  }
+  elsif($ofile_key eq "alt") {
+    @{$head_AAR->[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "alert");
+    @{$head_AAR->[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "detail");
+    @{$clj_AR  }      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        1);
+  }
+  elsif($ofile_key eq "alc") {
+    @{$head_AAR->[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
+    @{$head_AAR->[1]} = ("idx", "code",   "failure", "description", "type", "cases", "seqs", "description");
+    @{$clj_AR}        = (1,     1,        1,          1,            0,      0,      0,        1);
+  }
+  elsif($ofile_key eq "mdl") {
+    @{$head_AAR->[0]} = ("",    "",      "",      "",         "num",  "num",  "num");
+    @{$head_AAR->[1]} = ("idx", "model", "group", "subgroup", "seqs", "pass", "fail");
+    @{$clj_AR}        = (1,     1,       1,       1,          0,      0,      0);
+  }
+  elsif($ofile_key eq "dcr") {
+    @{$head_AAR->[0]} = ("",    "seq",   "mdl",  "ftr",  "ftr",  "ftr",  "dcr",  "model", "indel",      "orig",       "new", "codon",  "codon",  "orig",   "new",   "dcr",   "did");
+    @{$head_AAR->[1]} = ("idx", "name", "name", "type", "name",  "idx", "type",    "pos",  "apos", "seq-uapos", "seq-uapos",  "type", "coords", "codon", "codon",  "iter", "swap?");
+    @{$clj_AR}        = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
+  }
+  elsif($ofile_key eq "sda") {
+    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
+    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
+    @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
+  }  
+  elsif($ofile_key eq "rpn") {
+    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
+    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
+    @{$clj_AR}        = (1,     1,        0,     1,       1,       0,         0,        0,          0,       0,        0,         0,         0,         0,         0,         1);
+  }  
+  else {
+    ofile_FAIL("ERROR in $sub_name, unrecognized ofile_key $ofile_key", 1, $FH_HR);
+  }
   return;
 }

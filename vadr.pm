@@ -5414,8 +5414,6 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
 
   my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $np, $csep, $empty_flag, $head_AAR, $cljust_AR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
 
-  printf("HEYA in $sub_name\n");
-
   my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
   my $ncol  = scalar(@{$cljust_AR});
   
@@ -5441,20 +5439,19 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
       open(IN, $file) || ofile_FileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
       while($line = <IN>) { 
         chomp $line;
-        print("$line\n");
         my @el_A = split(/\s+/, $line);
         my $nel = scalar(@el_A);
         if($line !~ m/^\#/) { # a non-comment line
           $seen_noncomment_line = 1;
           @{$data_AA[$nline]} = ();
-          for($j = 0; $j < $ncol; $j++) {
+          for($j = 0; $j < ($ncol-1); $j++) {
             push(@{$data_AA[$nline]}, $el_A[$j]);
           }
           # combine all columns after $ncol into one, separated by single space
-          if($nel > $ncol) {
+          if($nel >= $ncol) {
             my $toadd = "";
             $ncol2print = $ncol + 1; 
-            for($j = $ncol; $j < ($nel-1); $j++) {
+            for($j = ($ncol-1); $j < ($nel-1); $j++) {
               $toadd .= $el_A[$j] . " ";
             }
             $toadd .= $el_A[($nel-1)];
@@ -5464,7 +5461,6 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
           $nline_tot++;
         }
         else { # a comment-line
-          printf("seen_noncomment_line: $seen_noncomment_line\n");
           if($seen_noncomment_line) {
             push(@data_AA, []);  # push empty array --> blank line 
             $nline++;
