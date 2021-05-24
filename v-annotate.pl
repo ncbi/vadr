@@ -360,6 +360,7 @@ opt_Add("--msub",         "string",  undef,         $g,    undef,   undef,    "r
 opt_Add("--xsub",         "string",  undef,         $g,    undef,   undef,    "read blastx db substitution file from <s>",                              "read blastx db substitution file from <s>", \%opt_HH, \@opt_order_A);
 opt_Add("--nodcr",        "boolean", 0,             $g,    undef,   undef,    "do not doctor alignments to shift gaps in start/stop codons",            "do not doctor alignments to shift gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--forcedcrins",  "boolean", 0,             $g,"--cmindi",  undef,    "force insert type alignment doctoring, requires --cmindi",               "force insert type alignment doctoring, requires --cmindi", \%opt_HH, \@opt_order_A);
+opt_Add("--xnoid",        "boolean", 0,             $g,    undef,"--pv_hmmer,--pv_skip", "ignore blastx hits that are full length and 100% identical",  "ignore blastx hits that are full length and 100% identical", \%opt_HH, \@opt_order_A);
 
 # This section needs to be kept in sync (manually) with the opt_Add() section above
 my %GetOptions_H = ();
@@ -491,7 +492,8 @@ my $options_okay =
                 'msub=s'        => \$GetOptions_H{"--msub"},
                 'xsub=s'        => \$GetOptions_H{"--xsub"},
                 'nodcr'         => \$GetOptions_H{"--nodcr"},
-                'forcedcrins'   => \$GetOptions_H{"--forcedcrins"});
+                'forcedcrins'   => \$GetOptions_H{"--forcedcrins"},
+                'xnoid'         => \$GetOptions_H{"--xnoid"});
 
 my $total_seconds = -1 * ofile_SecondsSinceEpoch(); # by multiplying by -1, we can just add another secondsSinceEpoch call at end to get total time
 my $execname_opt  = $GetOptions_H{"--execname"};
@@ -499,7 +501,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.2";
+my $version       = "1.2.1dev1";
 my $releasedate   = "April 2021";
 my $pkgname       = "VADR";
 
@@ -781,18 +783,21 @@ if($opt_n_used)     { $blastn_extra_string   .= " -n"; }
 if($opt_x_used)     { $blastx_extra_string   .= " -x"; }
 if($opt_q_used)     { $qsubinfo_extra_string .= " -q"; }
 
-# check for files we always need, cm file and minfo file
-utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
-  utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
-}
-# cm file must end in .cm, it's how cmalign_or_glsearch*() subroutines
-# determine if they should run cmalign or glsearch.
-if($cm_file !~ m/\.cm$/) { 
-  ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
-}
-
+# check for minfo file which we always need
 utl_FileValidateExistsAndNonEmpty($minfo_file,  sprintf("model info file%s",  ($minfo_extra_string  eq "") ? "" : ", due to $minfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+
+# only check for cm file if we need it
+if((! $do_glsearch) || (opt_Get("--r_prof", \%opt_HH)) || (opt_Get("--val_only", \%opt_HH))) { 
+  utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("CM file%s",  ($cm_extra_string  eq "") ? "" : ", due to $cm_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  for my $sfx (".i1f", ".i1i", ".i1m", ".i1p") { 
+    utl_FileValidateExistsAndNonEmpty($cm_file . $sfx, "cmpress created $sfx file", undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  }
+  # cm file must end in .cm, it's how cmalign_or_glsearch*() subroutines
+  # determine if they should run cmalign or glsearch.
+  if($cm_file !~ m/\.cm$/) { 
+    ofile_FAIL("ERROR, CM file name must end in '.cm', but $cm_file does not", $cm_file, 1, $FH_HR);
+  }
+}
 
 # only check for blastn db file if we need it
 if(($do_blastn_any) || ($do_replace_ns) || ($do_glsearch)) { # we always need this file if $do_replace_ns (-r) because we fetch the consensus model sequence from it
@@ -826,7 +831,7 @@ if($do_pv_hmmer) {
 # only check for qsubinfo file if we need it
 my ($qsub_prefix, $qsub_suffix) = (undef, undef);
 if(opt_IsUsed("-p", \%opt_HH)) { 
-  utl_FileValidateExistsAndNonEmpty($cm_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
+  utl_FileValidateExistsAndNonEmpty($qsubinfo_file,  sprintf("qsub info file%s",  ($qsubinfo_extra_string  eq "") ? "" : ", specified with $qsubinfo_extra_string"), undef, 1, \%{$ofile_info_HH{"FH"}}); # '1' says: die if it doesn't exist or is empty
   # parse the qsubinfo file
   ($qsub_prefix, $qsub_suffix) = vdr_ParseQsubFile($qsubinfo_file, $ofile_info_HH{"FH"});
 }
@@ -1066,9 +1071,29 @@ if($do_split) {
   my $tot_len_nt  = utl_HSumValues(\%seq_len_H);
   my $nchunk_estimate = vdr_SplitNumSeqFiles($tot_len_nt, \%opt_HH);
   my $nchunk = 1; # rewritten if $nchunk_estimate > 1
+  my $nseq = scalar(@seq_name_A);
   my @nseqs_per_chunk_A = (); # [0..$nchunk-1] number of sequences in each chunked fasta file
 
-  if($nchunk_estimate > 1) { 
+  printf("\nnchunk_estimate 0: $nchunk_estimate\n");
+  # update nchunk_estimate to make parallelization as efficient as possible
+  if($nseq == 1) { 
+    ; # do nothing, we won't split into chunks
+  }
+  elsif($nseq <= $ncpu) { 
+    $nchunk_estimate = -1; # this will put one sequence per chunk
+  }
+  elsif($nchunk_estimate < $ncpu) { 
+    $nchunk_estimate = $ncpu; # sets number of chunks to number of cpus
+  }
+  else { 
+    # ensure number of chunks is a multiple of number of cpus
+    while(($nchunk_estimate % $ncpu) != 0) { 
+      $nchunk_estimate++;
+    }
+  } 
+  printf("nchunk_estimate 1: $nchunk_estimate\n");
+
+  if($nchunk_estimate != 1) { 
     $nchunk = vdr_SplitFastaFile($execs_H{"esl-ssplit"}, $in_fa_file, $nchunk_estimate, \@nseqs_per_chunk_A, \%opt_HH, \%ofile_info_HH);
     # vdr_SplitFastaFile will return the actual number of fasta files created, 
     # which can differ from the requested amount (which is $nchunk_estimate) that we pass in. 
@@ -1078,6 +1103,8 @@ if($do_split) {
     # fasta file name in this case (there is no .1 suffix)
     $nseqs_per_chunk_A[0] = scalar(@seq_name_A); # all seqs will be in only seq file
   }
+  printf("nchunk: $nchunk\n");
+
 
   # write $ncpu scripts that will execute the $nchunk v-annotate.pl jobs
   printf("nchunk: $nchunk\n");
@@ -1291,7 +1318,7 @@ if($do_replace_ns) {
     $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
-      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, $cm_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
+      $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
                                                              \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
@@ -6283,6 +6310,7 @@ sub parse_blastx_results {
   my $line_idx   = 0;
   my $minpvlen   = opt_Get("--minpvlen",  $opt_HHR);
   my $xlonescore = opt_Get("--xlonescore", $opt_HHR);
+  my $do_xnoid   = opt_Get("--xnoid", $opt_HHR);
   my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
   my $q_ftr_idx  = undef; # feature index query pertains to [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
@@ -6355,6 +6383,15 @@ sub parse_blastx_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse HACC line $line", 1, $FH_HR);
         }
       }
+      elsif($key eq "SLEN") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read SLEN line before QACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        }
+        if($value !~ /^(\d+)$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary SLEN line $line", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+      }
       elsif($key eq "HSP") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"})) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HSP line before one or both of QACC and HACC lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
@@ -6372,6 +6409,24 @@ sub parse_blastx_results {
         if($value !~ /^(\d+)$/) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary RAWSCORE line $line", 1, $FH_HR);
         }
+      }
+      elsif($key eq "HLEN") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read HLEN line before one or more of QACC, HACC, HSP, or RAWSCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        }
+        if($value !~ /^(\d+)$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary HLEN line $line", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
+      }
+      elsif($key eq "IDENT") { 
+        if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"})) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read IDENT line before one or more of QACC, HACC, HSP, or RAWSCORE lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        }
+        if($value !~ /^(\d+)$/) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary IDENT line $line", 1, $FH_HR);
+        }
+        $cur_H{$key} = $value;
       }
       elsif($key eq "FRAME") { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"})) { 
@@ -6413,17 +6468,19 @@ sub parse_blastx_results {
             my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
             
             # should we store this query/target/hit trio?
-            # we do if A, B, and C are all TRUE and at least one of D or E or F is TRUE
+            # we do if A, B, C, D are all TRUE and at least one of X or Y or Z is TRUE
             #  A. this query/target pair is compatible (query is full sequence or correct CDS feature) 
             #  B. if --xlongest not used: this is the highest scoring hit for this feature for this sequence (query/target pair)? 
             #     if --xlongest is  used: this is the longest hit (query coords) for this feature for this sequence (query/target pair)? 
             #  C. query length (full length seq or predicted CDS) is at least <x> nt from --minpvlen
+            #  D. --xnoid NOT used OR alignment is not full length and 100% identical (--xnoid is an option used for
+            #     testing training sets where we want to ignore self hits)
             # 
-            #  D. query is a single predicted CDS feature (not the full sequence), in this case checking for overlap
+            #  X. query is a single predicted CDS feature (not the full sequence), in this case checking for overlap
             #     won't work because blast coords are relative to CDS not full sequence, and we already know it
             #     must overlap because query/target are compatible and query is not full seq (A)
-            #  E. hit score is above minimum (--xlonescore)
-            #  F. query is the full sequence ($q_ftr_idx == -1) and blast hit overlaps by at least 1 nt 
+            #  Y. hit score is above minimum (--xlonescore)
+            #  Z. query is the full sequence ($q_ftr_idx == -1) and blast hit overlaps by at least 1 nt 
             #     with a nucleotide prediction for the current target CDS
 
             my $blast_hit_qlen = abs($blast_start - $blast_stop) + 1;
@@ -6439,19 +6496,29 @@ sub parse_blastx_results {
             }
 
             my $c_true = ($q_len >= $minpvlen) ? 1 : 0; # length >= --minpvlen
-            if($a_true && $b_true && $c_true) { 
-              my $d_true = ($q_ftr_idx != -1) ? 1 : 0; # D is true if query is a single CDS as opposed to full sequence
-              my $e_true = ($cur_H{"RAWSCORE"} >= $xlonescore) ? 1 : 0; # E is true if raw score exceeds --xlonescore
-              my $f_true = 0; 
-              # only bother determining $f_true if $d_true and $e_true are both false (0)
-              if((! $d_true) && (! $e_true)) { 
+            my $d_true = $do_xnoid ? 0 : 1;
+            if(! $d_true) { 
+              if(((defined $cur_H{"SLEN"}) && (defined $cur_H{"HLEN"}) && (defined $cur_H{"IDENT"})) && 
+                 ($cur_H{"SLEN"} == $cur_H{"HLEN"}) && ($cur_H{"SLEN"} == $cur_H{"IDENT"})) { 
+                $d_true = 0; # 100% identical full length blast hit, --xnoid is enabled so we want to skip this
+              }
+              else { 
+                $d_true = 1; 
+              }
+            }
+            if($a_true && $b_true && $c_true && $d_true) { 
+              my $x_true = ($q_ftr_idx != -1) ? 1 : 0; # D is true if query is a single CDS as opposed to full sequence
+              my $y_true = ($cur_H{"RAWSCORE"} >= $xlonescore) ? 1 : 0; # E is true if raw score exceeds --xlonescore
+              my $z_true = 0; 
+              # only bother determining $z_true if $x_true and $y_true are both false (0)
+              if((! $x_true) && (! $y_true)) { 
                 if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
                    ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
                   my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx], $blast_start, $blast_stop, $blast_strand, $FH_HR);
-                  if($noverlap > 0) { $f_true = 1; }
+                  if($noverlap > 0) { $z_true = 1; }
                 }
               }
-              if($d_true || $e_true || $f_true) { 
+              if($x_true || $y_true || $z_true) { 
                 # store the hit
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
@@ -6803,20 +6870,20 @@ sub parse_hmmer_domtblout {
       my $c_true = ($seq_source_len_nt >= $hminntlen) ? 1 : 0; # length >= --minpvlen
 
       if($a_true && $b_true && $c_true) { 
-        my $d_true = ($hit_score >= $hlonescore) ? 1 : 0;
-        my $e_true = 0; 
-        # only bother determining $e_true if $d_true is 0
-        if(! $d_true) { 
+        my $x_true = ($hit_score >= $hlonescore) ? 1 : 0;
+        my $y_true = 0; 
+        # only bother determining $y_true if $x_true is 0
+        if(! $x_true) { 
           $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
           if((defined $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"n_strand"}) &&
              ($ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"n_strand"} eq $hmmer_summary_strand)) { 
             $hmmer_nsgm = vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
             my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx], 
                                                                    $hmmer_start_A[0], $hmmer_stop_A[($hmmer_nsgm-1)], $hmmer_summary_strand, $FH_HR);
-            if($noverlap > 0) { $e_true = 1; }
+            if($noverlap > 0) { $y_true = 1; }
           }
         }
-        if($d_true || $e_true) { 
+        if($x_true || $y_true) { 
           if($hmmer_nsgm == 0) { # if != 0, we already called FeatureStartStopStrandArrays() above
             vdr_FeatureStartStopStrandArrays($hmmer_env_nt_coords, \@hmmer_start_A, \@hmmer_stop_A, \@hmmer_strand_A, $FH_HR);
           }
@@ -6830,7 +6897,7 @@ sub parse_hmmer_domtblout {
           $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_query"}  = $source_val;
           $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_score"}  = $hit_score;
           $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_frame"}  = convert_esl_translate_to_blastx_frame($frame, $FH_HR);
-        } # end of 'if($d_true || $e_true)'
+        } # end of 'if($x_true || $y_true)'
       } # end of 'if($a_true && $b_true && $c_true)'
     } # end of 'if($line !~ m/^\#/)'
   } # end of 'while($my $line = <IN>)'
@@ -10248,7 +10315,6 @@ sub msa_replace_sequences {
 #
 # Arguments: 
 #  $tblout_file:           tblout file from a 'cvd' stage for a single model
-#  $cm_file:               path to main cm file
 #  $sqfile_R:              REF to Bio::Easel::SqFile object from main fasta file
 #  $blastn_db_sqfile_R:    REF to Bio::Easel::SqFile object for blastn db 
 #  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
@@ -10269,10 +10335,10 @@ sub msa_replace_sequences {
 ################################################################# 
 sub parse_cdt_tblout_file_and_replace_ns { 
   my $sub_name = "parse_cdt_tblout_file_and_replace_ns";
-  my $nargs_exp = 14;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($tblout_file, $cm_file, $sqfile_R, $blastn_db_sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
+  my ($tblout_file, $sqfile_R, $blastn_db_sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
       $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
@@ -10325,13 +10391,22 @@ sub parse_cdt_tblout_file_and_replace_ns {
       # will get revcompl alerts and *not* be annotated (aligned) anyway
       if($seq_strand eq "+") { 
         # add this hit to the growing model and seq coords strings if
-        # it does not overlap with any of the segments so far added
+        # it does not *completely* overlap with any of the segments so far added
+        # Note: until version 1.2.1 we disallowed any overlap, but this prevented
+        # the replacement of Ns in some regions in seqs with chance
+        # similarity at sequence ends surrounding a model deletion
+        # from being found and replaced correctly. See github issue #37.
+        # Now we allow overlaps as long as they're not 100%, and then downstream
+        # code that analyzes each missing region can handle overlaps as long 
+        # as none are complete. If none are complete this guarantees that
+        # if we sort by start position we will also be sorted by stop position.
         my $found_overlap = 0;
         my $ncoords = (defined $tblout_coords_HAH{$seq_name}) ? scalar(@{$tblout_coords_HAH{$seq_name}}) : 0;
         if(defined $tblout_coords_HAH{$seq_name}) { 
           for(my $i = 0; $i < $ncoords; $i++) { 
             my ($noverlap, undef) = seq_Overlap($seq_start, $seq_stop, $tblout_coords_HAH{$seq_name}[$i]{"seq_start"}, $tblout_coords_HAH{$seq_name}[$i]{"seq_stop"}, $FH_HR);  
-            if($noverlap > 0) { 
+            my $min_length = utl_Min((abs($seq_stop-$seq_start)+1), (abs($tblout_coords_HAH{$seq_name}[$i]{"seq_stop"} - $tblout_coords_HAH{$seq_name}[$i]{"seq_start"})+1));
+            if($noverlap >= $min_length) { # actually max this can be should be $min_length
               $found_overlap = 1;
               $i = $ncoords; # breaks loop
             }
@@ -10427,6 +10502,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     # replace this region. An alternative would be to replace to 
     # the end of the model, but I think that's too aggressive.
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
+      #printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
       if($cur_missing_mdl_stop <= $mdl_len) { 

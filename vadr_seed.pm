@@ -344,7 +344,7 @@ sub parse_blastn_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read BITSCORE line before one or more of QACC, HACC, or HSP lines (line: $line_idx)\n", 1, $FH_HR);
         }
         $cur_H{$key} = $value;
-        if(($value !~ /^\d+\.\d+$/) && ($value !~ /^\d+$/)) { 
+        if(($value !~ /^\d+\.\d+$/) && ($value !~ /^\d+$/) && ($value !~ /^\d+\.\d+e[+-]\d+/)) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastn summary BITSCORE line $line", 1, $FH_HR);
         }
       }
