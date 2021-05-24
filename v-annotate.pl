@@ -1154,7 +1154,17 @@ if($do_split) {
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".pass.fa",  "pass_fa", "fasta file with passing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
     vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".fail.fa",  "fail_fa", "fasta file with failing sequences", $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
-  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+
+  my $nlines_preserve_spacing = 1;
+  my @head_AA = ();
+  my @cljust_A = ();
+
+  @{$head_AA[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
+  @{$head_AA[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
+  @cljust_A      = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
+  vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, $nlines_preserve_spacing, "  ", \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+  
+  #  vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqa",       "ant",         "per-sequence tabular annotation summary file",         $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sqc",       "cls",         "per-sequence tabular classification summary file",     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".ftr",       "ftr",         "per-feature tabular summary file",                     $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   vdr_MergeOutputConcatenateOnly($out_root_no_vadr, ".sgm",       "sgm",         "per-model-segment tabular summary file",               $do_check_exists, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
