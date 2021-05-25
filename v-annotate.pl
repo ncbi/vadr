@@ -1999,6 +1999,7 @@ exit 0;
 # get_hmm_list_for_model
 # helper_protein_validation_breakdown_source
 # helper_blastx_breakdown_max_indel_str
+# helper_blastx_max_indel_token_to_alt_coords
 # helper_protein_validation_db_seqname_to_ftr_idx 
 # helper_protein_validation_check_overlap()
 #
@@ -6154,6 +6155,7 @@ sub add_protein_validation_alerts {
     if($seq_len_HR->{$seq_name} >= $minpvlen) { 
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+          my $ftr_strand = vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR);
           my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
           # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx] ");
           my %alt_str_H = ();   # added to as we find alerts below, possible keys are:
@@ -6184,6 +6186,9 @@ sub add_protein_validation_alerts {
           
           my $start_diff = undef; # difference in start values between CM and blastx
           my $stop_diff  = undef; # difference in start values between CM and blastx
+
+          my $alt_scoords = undef; # sequence coords for an alert
+          my $alt_mcoords = undef; # model coords for an alert
           
           if(defined $ftr_results_HR->{"n_start"}) { 
             $n_start    = $ftr_results_HR->{"n_start"};
@@ -6331,7 +6336,14 @@ sub add_protein_validation_alerts {
                       if($p_ins_len_A[$ins_idx] > $local_xmaxins) { 
                         if(defined $alt_str_H{"insertnp"}) { $alt_str_H{"insertnp"} .= ":VADRSEP:"; } # we are adding another instance
                         else                               { $alt_str_H{"insertnp"}  = ""; } # initialize
-                        $alt_str_H{"insertnp"} .= "blastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                        ($alt_scoords, $alt_mcoords) = helper_blastx_max_indel_token_to_alt_coords($p_ins_qpos_A[$ins_idx], $p_ins_spos_A[$ins_idx], $p_ins_len_A[$ins_idx], 
+                                                                                                   $p_blastx_feature_flag, $ftr_info_AHR->[$ftr_idx]{"coords"}, $ftr_strand, $p_strand, 
+                                                                                                   $seq_len_HR->{$seq_name}, $FH_HR);
+ 
+                        #$alt_str_H{"insertnp"} .= "%s%sblastx predicted insert of length " . $p_ins_len_A[$ins_idx] . ">$local_xmaxins starting at reference amino acid posn " . $p_ins_spos_A[$ins_idx];
+                        $alt_str_H{"insertnp"} .= sprintf("%s%sblastx predicted insert of length %d>%d starting at reference amino acid posn %d", 
+                                                          $alt_scoords, $alt_mcoords, $p_ins_len_A[$ins_idx], $local_xmaxins, $p_ins_spos_A[$ins_idx]);
+                        
                       }
                     }
                   }
@@ -7307,6 +7319,71 @@ sub helper_blastx_breakdown_max_indel_str {
   }
 
   return scalar(@str_A);
+}
+
+#################################################################
+# Subroutine: helper_blastx_max_indel_token_to_alt_coords
+# Incept:     EPN, Tue May 25 18:42:57 2021
+#
+# Purpose: Given Given a string of one or more indel strings in the format:
+#          "Q<d1>:S<d2>[+-]<d3>", separated by ";" if more than one.
+#          fill arrays with <d1>, <d2>, and <d3>.
+#
+# Arguments:
+#   $spos:          sequence position of indel
+#   $aa_mpos:       amino acid position of indel
+#   $len:           length of indel in nucleotides
+#   $is_feature:    '1' if sequence is a feature so $ins_spos is relative to the feature coords $ftr_coords
+#                   '0' if sequence is a the full sequence (not a feature) so $ins_spos is absolute coords
+#   $ftr_coords:    feature coordinates
+#   $ftr_strand:    feature summary strand
+#   $blastx_strand: strand of blastx query 
+#   $seq_len:       total length of sequence
+#   $FH_HR:         ref to hash of file handles, including 'log'
+#             
+# Returns:  2 values:
+#           $alt_scoords: alert sequence coords string
+#           $alt_mcoords: alert model    coords string
+#
+#################################################################
+sub helper_blastx_max_indel_token_to_alt_coords {
+  my $sub_name  = "helper_blastx_max_indel_token_to_alt_coords";
+  my $nargs_expected = 9;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($spos, $aa_mpos, $len, $is_feature, $ftr_coords, $ftr_strand, $blastx_strand, $seq_len, $FH_HR) = (@_);
+
+  my $absolute_scoords = undef; # absolute sequence coords
+  my $relative_scoords = undef; # relative sequence coords
+  my $absolute_mpos    = undef; # absolute model (nt) position
+  my $absolute_mstrand = undef; # model strand
+  my $absolute_mcoords = undef; # absolute query (sequence) coords
+  my $alt_scoords      = undef; # to return: alert sequence coords string
+  my $alt_mcoords      = undef; # to return: alert model    coords string
+
+  # determine sequence coordinates
+  # determine coordinates in full sequence, this is complicated by fact that blastx query can be full seq or a single feature
+  if(($is_feature && ($ftr_strand eq "+")) || ((! $is_feature) && ($blastx_strand eq "+"))) { 
+    # blast alignment is to positive strand
+    $relative_scoords = vdr_CoordsSegmentCreate($spos, $spos + $len - 1, $blastx_strand, $FH_HR);
+  }
+  else { 
+    # blast alignment is to negative strand
+    $relative_scoords = vdr_CoordsSegmentCreate($spos, $spos - $len + 1, $blastx_strand, $FH_HR);
+  }
+  $absolute_scoords = ($is_feature) ? 
+      $ftr_coords : vdr_CoordsSegmentCreate(1, $seq_len, "+", $FH_HR); # the full sequence
+  $alt_scoords = sprintf("seq:%s;", vdr_CoordsRelativeToAbsolute($absolute_scoords, $relative_scoords, $FH_HR));
+
+  # determine model coordinates
+  $absolute_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_coords,
+                                                          vdr_CoordsSegmentCreate($aa_mpos, $aa_mpos, "+", $FH_HR), $FH_HR);
+  # $absolute_mcoords will now be a full codon, but we only want the final position
+  (undef, $absolute_mpos, $absolute_mstrand) = vdr_CoordsSegmentParse($absolute_mcoords, $FH_HR);
+  $absolute_mcoords = vdr_CoordsSegmentCreate($absolute_mpos, $absolute_mpos, $absolute_mstrand, $FH_HR); # yes, we want same start/end
+  $alt_mcoords = sprintf("mdl:%s;", $absolute_mcoords);
+  
+  return($alt_scoords, $alt_mcoords);
 }
 
 #################################################################
