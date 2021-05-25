@@ -4884,8 +4884,8 @@ sub add_frameshift_alerts_for_one_sequence {
                   my $alt_code = "fstukcfi";
                   if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
                   if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
-                  my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($span_sstart, $span_sstop, $ftr_strand, $FH_HR) . ";";
-                  my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
+                  my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR) . ";";
+                  my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
                   my $alt_str  = sprintf("%s%snucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);", $alt_scoords, $alt_mcoords);
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
@@ -4914,8 +4914,8 @@ sub add_frameshift_alerts_for_one_sequence {
                     my $lo_alt_code = "fstlocfi";
                     if($is_5p) { $loc_str = "5'-most"; $hi_alt_code = "fsthicf5"; $lo_alt_code = "fstlocf5"; }
                     if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
-                    my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($span_sstart, $span_sstop, $ftr_strand, $FH_HR) . ";";
-                    my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR) . ";";
+                    my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR) . ";";
+                    my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
                     my $alt_str  = sprintf("%s%snucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);", $alt_scoords, $alt_mcoords);
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
@@ -5310,7 +5310,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
         my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ((defined $pos_retval) ? $ftr_5nlen : $ftr_len), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_final_n, $ftr_strand, $FH_HR) . ";";
-        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($ua2rf_AR->[$ftr_start], $ua2rf_AR->[$ftr_final_n], $ftr_strand, $FH_HR) . ";";
+        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_final_n]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sfirst %d positions are Ns, %s", 
                                         $alt_scoords, $alt_mcoords, $ftr_5nlen,
                                         (($ftr_5nlen == $ftr_len) ? 
@@ -5335,7 +5335,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt3c" : "ambgnt3f";
         my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ((defined $pos_retval) ? ($ftr_len - $ftr_3nlen + 1) : 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_first_n, $ftr_stop, $ftr_strand, $FH_HR) . ";";
-        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate($ua2rf_AR->[$ftr_first_n], $ua2rf_AR->[$ftr_stop], $ftr_strand, $FH_HR) . ";";
+        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_first_n]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sfinal %d positions are Ns, %s", 
                                         $alt_scoords, $alt_mcoords, $ftr_3nlen,
                                         (($ftr_3nlen == $ftr_len) ? 
@@ -8481,7 +8481,9 @@ sub output_tabular {
                                 $alt_info_HHR->{$alt_code}{"causes_failure"} ? "yes" : "no", 
                                 helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                 ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_scoords, $FH_HR),
                                 ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
+                                ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_mcoords, $FH_HR),
                                 $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
             $alt_nprinted++;
           }
@@ -8631,7 +8633,9 @@ sub output_tabular {
                                         vdr_FeatureAlertCausesFailure($ftr_info_AHR, $alt_info_HHR, $ftr_idx, $alt_code) ? "yes" : "no", 
                                         helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
                                         ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                        ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_scoords, $FH_HR),
                                         ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
+                                        ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_mcoords, $FH_HR),
                                         $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_detail eq "VADRNULL") ? "" : " [" . $instance_detail . "]")]);
                     $alt_nprinted++;
                   }
@@ -12219,9 +12223,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
   }
   elsif($ofile_key eq "alt") {
-    @{$head_AAR->[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "seq",    "mdl",    "alert");
-    @{$head_AAR->[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "coords", "coords", "detail");
-    @{$clj_AR  }      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        0,        0,        1);
+    @{$head_AAR->[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "seq",    "seq",    "mdl",    "mdl",    "alert");
+    @{$head_AAR->[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "coords", "length", "coords", "length", "detail");
+    @{$clj_AR  }      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        0,        0,        0,        0,        1);
   }
   elsif($ofile_key eq "alc") {
     @{$head_AAR->[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
