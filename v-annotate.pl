@@ -5183,7 +5183,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $ftr_stop_non_n     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
     my $ftr_start_non_n_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is Ns
     my $ftr_stop_non_n_pv  = undef; # sequence position of first non-N on 3' end in protein validation sqstring, commonly $ftr_stop, -1 if complete feature is Ns
-    my $ftr_coords = undef; # coords string with sequence coordinates of all segments of the feature
+    my $ftr_scoords = undef; # coords string with sequence coordinates of all segments of the feature
+    my $ftr_mcoords = undef; # coords string with model    coordinates of all segments of the feature
 
     my %alt_str_H = (); # added to as we find alerts below
     # ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f, mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
@@ -5219,19 +5220,20 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
          (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]) && 
          (defined $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"})) { 
         my $sgm_results_HR = $sgm_results_HAHR->{$seq_name}[$sgm_idx]; # for convenience
-        my ($start, $stop, $strand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
+        my ($sstart, $sstop, $sstrand) = ($sgm_results_HR->{"sstart"}, $sgm_results_HR->{"sstop"}, $sgm_results_HR->{"strand"});
+        my ($mstart, $mstop)           = ($sgm_results_HR->{"mstart"}, $sgm_results_HR->{"mstop"});
         
         # only update start and 5trunc value if this is the first segment annotated
-        if(! defined $ftr_start) { $ftr_start = $start; }
-        $ftr_stop = $stop; # always update $ftr_stop
+        if(! defined $ftr_start) { $ftr_start = $sstart; }
+        $ftr_stop = $sstop; # always update $ftr_stop
         
         # set feature strand if this is the first segment annotated
         # else for cds/mp validate it hasn't changed and fail if it has
         # or update strand to "!" if not cds/mp and it has changed
         if(! defined $ftr_strand) { 
-          $ftr_strand = $strand; 
+          $ftr_strand = $sstrand; 
         }
-        elsif($ftr_strand ne $strand) { 
+        elsif($ftr_strand ne $sstrand) { 
           # mixture of strands on different segments, this shouldn't happen if we're a CDS or mat_peptide
           if($ftr_is_cds_or_mp) { 
             # this 'shouldn't happen' for a CDS or mature peptide, all segments should be the sames strand
@@ -5242,12 +5244,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         }
         
         # update $ftr_sqstring_alt, $ftr_sqstring_out, $ftr_sqstring_pv, $ftr_seq_name, $ftr_len, @ftr2org_pos_A, and @ftr2sgm_idx_A
-        my $sgm_len = abs($stop - $start) + 1;
+        my $sgm_len = abs($sstop - $sstart) + 1;
 
         ###############
         # fetch the sequence string, only do this when nec, some files may be identical and we take advantage of that
         # alt
-        my $cur_ftr_sqstring_alt = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+        my $cur_ftr_sqstring_alt = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $sstart, $sstop, ($sstrand eq "-"));
         $ftr_sqstring_alt .= $cur_ftr_sqstring_alt;
 
         # out
@@ -5256,7 +5258,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           $ftr_sqstring_out .= $cur_ftr_sqstring_alt;
         }
         else { # fetch
-          $cur_ftr_sqstring_out = $sqfile_for_output_fastas->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          $cur_ftr_sqstring_out = $sqfile_for_output_fastas->fetch_subseq_to_sqstring($seq_name, $sstart, $sstop, ($sstrand eq "-"));
           $ftr_sqstring_out .= $cur_ftr_sqstring_out;
         }
 
@@ -5268,7 +5270,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           $ftr_sqstring_pv .= $cur_ftr_sqstring_out;
         }
         else { 
-          $ftr_sqstring_pv .= $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $start, $stop, ($strand eq "-"));
+          $ftr_sqstring_pv .= $sqfile_for_pv->fetch_subseq_to_sqstring($seq_name, $sstart, $sstop, ($sstrand eq "-"));
         }
         ###############
 
@@ -5278,17 +5280,18 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         else { 
           $ftr_seq_name .= ",";
         }
-        $ftr_seq_name .= $start . ".." . $stop . ":" . $strand;
+        $ftr_seq_name .= $sstart . ".." . $sstop . ":" . $sstrand;
         
         if($ftr_is_cds_or_mp) { 
           # update ftr2org_pos_A, if nec
           my $sgm_offset = 0;
           for(my $sgm_offset = 0; $sgm_offset < $sgm_len; $sgm_offset++) { 
-            $ftr2org_pos_A[$ftr_len + $sgm_offset + 1] = ($strand eq "-") ? $start - $sgm_offset : $start + $sgm_offset;
+            $ftr2org_pos_A[$ftr_len + $sgm_offset + 1] = ($sstrand eq "-") ? $sstart - $sgm_offset : $sstart + $sgm_offset;
             # slightly wasteful in certain cases, if $ftr_is_5trunc && $ftr_is_3trunc then we won't use this
           }
         }
-        $ftr_coords = vdr_CoordsAppendSegment($ftr_coords, vdr_CoordsSegmentCreate($start, $stop, $strand, $FH_HR));
+        $ftr_scoords = vdr_CoordsAppendSegment($ftr_scoords, vdr_CoordsSegmentCreate($sstart, $sstop, $sstrand, $FH_HR));
+        $ftr_mcoords = vdr_CoordsAppendSegment($ftr_mcoords, vdr_CoordsSegmentCreate($mstart, $mstop, $sstrand, $FH_HR));
         $ftr_len += $sgm_len;
       } # end of 'if(defined $sgm_results_HAHR->{$seq_name}...'
     } # end of 'for(my $sgm_idx = $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}...
@@ -5305,10 +5308,10 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $pos_retval = pos($ftr_sqstring_alt); # returns position of first non-N/n
       # if $pos_retval is undef entire sqstring is N or n
       $ftr_5nlen       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_start_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen + 1), $FH_HR) : -1;
+      $ftr_start_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
       if($ftr_5nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
-        my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ((defined $pos_retval) ? $ftr_5nlen : $ftr_len), $FH_HR);
+        my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? $ftr_5nlen : $ftr_len), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_final_n, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_final_n]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sfirst %d positions are Ns, %s", 
@@ -5323,17 +5326,17 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $pos_retval = pos($ftr_sqstring_pv); # returns position of first non-N/n
       # if $pos_retval is undef entire sqstring is N or n
       $ftr_5nlen_pv       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_start_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
+      $ftr_start_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
       $rev_ftr_sqstring_alt =~ m/[^Nn]/g; 
       $pos_retval = pos($rev_ftr_sqstring_alt); # returns position of first non-N/n in reversed string
       # if $pos_retval is undef entire sqstring is N or n
       $ftr_3nlen      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_stop_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
+      $ftr_stop_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
       if($ftr_3nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt3c" : "ambgnt3f";
-        my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ((defined $pos_retval) ? ($ftr_len - $ftr_3nlen + 1) : 1), $FH_HR);
+        my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? ($ftr_len - $ftr_3nlen + 1) : 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_first_n, $ftr_stop, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_first_n]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sfinal %d positions are Ns, %s", 
@@ -5349,7 +5352,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $pos_retval = pos($rev_ftr_sqstring_pv); # returns position of first non-N/n in reversed string
       # if $pos_retval is undef entire sqstring is N or n
       $ftr_3nlen_pv      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_stop_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_coords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
+      $ftr_stop_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
 
       # output the sequence
       if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -5405,8 +5408,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           # feature is not truncated on either end, look for stop codons
           if(($ftr_len % 3) != 0) { 
             # not a multiple of 3, unexleng alert 
-            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
-            $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr2org_pos_A[1]]), abs($ua2rf_AR->[$ftr2org_pos_A[$ftr_len]]), $ftr_strand, $FH_HR) . ";";
+            $alt_scoords  = "seq:" . $ftr_scoords . ";";
+            $alt_mcoords  = "mdl:" . $ftr_mcoords . ";"; 
             $alt_str_H{"unexleng"} = $alt_scoords . $alt_mcoords . $ftr_len;
           }
 
