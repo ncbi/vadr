@@ -6352,7 +6352,7 @@ sub add_protein_validation_alerts {
                   }
                   # check for 'cdsstopp': blast predicted truncation
                   if(defined $p_trcstop) { 
-                    $alt_str_H{"cdsstopp"} = "stop codon(s) end at position(s) $p_trcstop";
+                    $alt_str_H{"cdsstopp"} = $p_trcstop . "VADRNULL";
                   }
                 }
               }
@@ -6506,7 +6506,7 @@ sub parse_blastx_results {
   my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
   my $q_ftr_idx  = undef; # feature index query pertains to [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
-  my $t_ftr_idx  = undef; # feature index target pertains to [0..$nftr-1]
+  my $t_ftr_idx  = undef; # feature index target (subject) pertains to [0..$nftr-1]
   my %cur_H = (); # values for current hit (HSP)
   
   # 
@@ -6526,7 +6526,8 @@ sub parse_blastx_results {
   # IDENT  ignored
   # GAPS   ignored
   # FRAME
-  # STOP   not always present
+  # QSTOP  not always present
+  # SSTOP  not always present
   # DEL    not always present
   # MAXDE  not always present
   # INS    not always present
@@ -6632,7 +6633,7 @@ sub parse_blastx_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
         }
       }
-      elsif(($key eq "STOP") || ($key eq "DEL") || ($key eq "INS")) { 
+      elsif(($key eq "QSTOP") || ($key eq "SSTOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"}) || (! defined $cur_H{"FRAME"})) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, RAWSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
@@ -6731,8 +6732,21 @@ sub parse_blastx_results {
                 else { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = undef;
                 }
-                if(defined $cur_H{"STOP"}) { 
-                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = $cur_H{"STOP"};
+                if(defined $cur_H{"QSTOP"}) { 
+                  if(! defined $cur_H{"SSTOP"}) { 
+                    ofile_FAIL("ERROR in $sub_name, read QSTOP but not SSTOP line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+                  }
+                  # we want to store only the first (5'-most) stop codon
+                  # query is the sequence, subject is the model (protein sequence)
+                  my $first_qstop = $cur_H{"QSTOP"};
+                  $first_qstop =~ s/\;.*$//; # remove first ';' and anything after it
+                  if($q_ftr_idx != -1) { # query is a feature, not the full sequence, so we need to determine coords in full seq
+                    $first_qstop = vdr_CoordsRelativeToAbsolute("1.." . $seq_len_HR->{$seq_name} . ":+", $first_qstop, $FH_HR);
+                  }
+                  my $first_sstop = $cur_H{"SSTOP"};
+                  $first_sstop =~ s/\;.*$//; # remove first ';' and anything after it
+                  $first_sstop = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $first_sstop, $FH_HR);
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_sstop . ";";
                 }
                 else { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = undef;
