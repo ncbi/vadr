@@ -5450,6 +5450,121 @@ sub vdr_MergeOutputConcatenateOnly {
 }
 
 #################################################################
+# Subroutine:  vdr_MergeOutputConcatenatePreserveSpacing()
+# Incept:      EPN, Sat May 22 09:16:03 2021
+#
+# Purpose:    With --split, merge output files from multiple output
+#             directories in @{$chunk_outdir_AR} into a single file
+#             and preserve spacing on <$np> at least consecutive
+#             lines.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $out_sfx:           output name suffix
+#   $ofile_key:         key for %{$ofile_info_HHR}
+#   $ofile_desc:        description for %{$ofile_info_HHR}, "" to not add the file to %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $np:                number of lines to preserve spacing for, -1 to preserve spacing for all lines
+#   $csep:              column separator string, often "  "
+#   $empty_flag:        '1' to output empty lines for empty arrays of data, '0'
+#                       to output empty lines as header separation lines
+#   $head_AAR:          header values
+#   $cljust_AR:         ref to '1'/'0' array of indicating if a column is left justified or not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information
+#
+# Returns:     name of the merged file created
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputConcatenatePreserveSpacing { 
+  my $nargs_exp = 13;
+  my $sub_name = "vdr_MergeOutputConcatenatePreserveSpacing";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $np, $csep, $empty_flag, $head_AAR, $cljust_AR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $ncol  = scalar(@{$cljust_AR});
+  
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  my $out_FH = undef; # output file handle
+  open($out_FH, ">", $merged_file) || ofile_FileOpenFailure($merged_file, $sub_name, $!, "writing", $FH_HR);
+
+  my $line; 
+  my $nline     = 0; # line number for current file
+  my $nline_tot = 0; # line number over all files
+  my $ncol2print = $ncol; # updated below by adding 1 if nec
+  my @data_AA = (); # [0..$i..$nline-1][0..$j..$ncol2print-1], data read from input to output again with correct spacing
+  my $seen_noncomment_line = 0; # used to skip header lines
+  my $nout = 0; # number of times we output a chunk
+  my $j;
+  
+  if(scalar(@filelist_A) > 0) { 
+    foreach my $file (@filelist_A) {
+      $seen_noncomment_line = 0; # used to skip header lines
+      open(IN, $file) || ofile_FileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
+      while($line = <IN>) { 
+        chomp $line;
+        my @el_A = split(/\s+/, $line);
+        my $nel = scalar(@el_A);
+        if($line !~ m/^\#/) { # a non-comment line
+          $seen_noncomment_line = 1;
+          @{$data_AA[$nline]} = ();
+          for($j = 0; $j < ($ncol-1); $j++) {
+            push(@{$data_AA[$nline]}, $el_A[$j]);
+          }
+          # combine all columns after $ncol into one, separated by single space
+          if($nel >= $ncol) {
+            my $toadd = "";
+            $ncol2print = $ncol + 1; 
+            for($j = ($ncol-1); $j < ($nel-1); $j++) {
+              $toadd .= $el_A[$j] . " ";
+            }
+            $toadd .= $el_A[($nel-1)];
+            push(@{$data_AA[$nline]}, $toadd);
+          }
+          $nline++;
+          $nline_tot++;
+        }
+        else { # a comment-line
+          if($seen_noncomment_line) {
+            push(@data_AA, []);  # push empty array --> blank line 
+            $nline++;
+            $nline_tot++;
+          }
+        }
+      }
+      if($nline >= $np) {
+        ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
+        undef @data_AA;
+        @data_AA = ();
+        $nline = 0;
+        $nout++;
+      }
+    }
+    # output remaining lines
+    if(($nline > 0) || ($nout == 0)) {
+      ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
+    }
+    close($out_FH);
+    if($ofile_desc ne "") { 
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+    }
+  }
+  elsif($do_check_exists) { 
+    ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
+  }
+  
+  return $merged_file;
+}
+
+#################################################################
 # Subroutine:  vdr_MergeOutputGetFileList()
 # Incept:      EPN, Fri Mar 19 16:08:22 2021
 #
