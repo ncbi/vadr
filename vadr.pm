@@ -2917,6 +2917,38 @@ sub vdr_CoordsSegmentCreate {
 }
 
 #################################################################
+# Subroutine: vdr_CoordsSinglePositionSegmentCreate()
+# Incept:     EPN, Wed May 26 07:32:43 2021
+#
+# Synopsis: Create a length 1 coords token from a given position
+#           and strand. Removes any carrots in $posn.
+# 
+# Arguments:
+#  $posn:     start and stop position
+#  $strand:   strand ("+" or "-")
+#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    coordinate token <posn>..<posn>:<strand>
+#
+# Dies:  if $posn is invalid
+#        if $strand is not "+" or "-"
+#
+#################################################################
+sub vdr_CoordsSinglePositionSegmentCreate {
+  my $sub_name = "vdr_CoordsSinglePositionSegmentCreate";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($posn, $strand, $FH_HR) = @_;
+  if(($posn !~ /^\<?(\d+)$/) && ($posn !~ /^\>?(\d+)$/)) { ofile_FAIL("ERROR in $sub_name, posn is invalid ($posn)", 1, $FH_HR); }
+  if(($strand ne "+")        && ($strand ne "-"))        { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", 1, $FH_HR); }
+  $posn =~ s/^\>//;
+  $posn =~ s/^\<//;
+
+  return $posn . ".." . $posn . ":" . $strand;
+}
+
+#################################################################
 # Subroutine: vdr_CoordsAppendSegment()
 #
 # Incept:     EPN, Fri Mar 20 09:11:03 2020
