@@ -4579,6 +4579,8 @@ sub add_frameshift_alerts_for_one_sequence {
   my $small_value = 0.000001; # for checking if PPs are below threshold
   my $nftr = scalar(@{$ftr_info_AHR});
   my $ftr_idx;
+  my $alert_scoords = undef; # sequence coords string for an alert
+  my $alert_mcoords = undef; # model coords string for an alert
 
   # get info on position-specific insert and delete maximum exceptions if there are any
   my @nmaxins_exc_AH = ();
@@ -4697,9 +4699,15 @@ sub add_frameshift_alerts_for_one_sequence {
                 my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
                 my $local_nmaxdel = defined ($nmaxdel_exc_AH[$ftr_idx]{$local_rfpos}) ? $nmaxdel_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
                 if($cur_delete_len > $local_nmaxdel) { 
+                  $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
+                                           vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
+                                           vdr_CoordsSegmentCreate($uapos+1, $uapos+1, $strand, $FH_HR));
+                  $alert_mcoords = sprintf("mdl:%s;", ($strand eq "+") ? 
+                                           vdr_CoordsSegmentCreate($local_rfpos, $rfpos - 1, $strand, $FH_HR) : 
+                                           vdr_CoordsSegmentCreate($local_rfpos, $rfpos + 1, $strand, $FH_HR));
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                             sprintf("nucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
-                                                     $cur_delete_len, $local_nmaxdel, $local_rfpos), $FH_HR);
+                                             sprintf("%s%snucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
+                                                     $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel, $local_rfpos), $FH_HR);
                 }
                 $cur_delete_len = 0;
               }
@@ -4728,7 +4736,13 @@ sub add_frameshift_alerts_for_one_sequence {
               # add insertnn alert, if nec
               my $local_nmaxins = defined ($nmaxins_exc_AH[$ftr_idx]{$rfpos}) ? $nmaxins_exc_AH[$ftr_idx]{$rfpos} : $nmaxins;
               if($rf2ilen_AR->[$rfpos] > $local_nmaxins) { 
-                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, "nucleotide alignment insert of length " . $rf2ilen_AR->[$rfpos] . ">$local_nmaxins after reference nucleotide posn $rfpos on strand $strand", $FH_HR);
+                $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
+                                         vdr_CoordsSegmentCreate($uapos+1, $uapos+1 + $rf2ilen_AR->[$rfpos]-1, $strand, $FH_HR) : 
+                                         vdr_CoordsSegmentCreate($uapos-1, $uapos-1 - $rf2ilen_AR->[$rfpos]+1, $strand, $FH_HR));
+                $alert_mcoords = sprintf("mdl:%s;", vdr_CoordsSegmentCreate($rfpos, $rfpos, $strand, $FH_HR));
+                alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, 
+                                           sprintf("%s%snucleotide alignment insert of length %d>%d after reference nucleotide posn %d on strand %s", 
+                                                   $alert_scoords, $alert_mcoords, $rf2ilen_AR->[$rfpos], $local_nmaxins, $rfpos, $strand), $FH_HR);
               }
 
               # increment or decrement rfpos
@@ -4742,10 +4756,18 @@ sub add_frameshift_alerts_for_one_sequence {
             push(@gr_frame_str_A, $gr_frame_str);
             # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
             # print("$gr_frame_str\n");
-            if($cur_delete_len > $nmaxdel) { 
+            my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
+            my $local_nmaxdel = defined ($nmaxdel_exc_AH[$ftr_idx]{$local_rfpos}) ? $nmaxdel_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
+            if($cur_delete_len > $local_nmaxdel) { 
+              $alert_scoords = sprintf("seq:%s;", ($strand eq "+") ? 
+                                       vdr_CoordsSegmentCreate($uapos-1, $uapos-1, $strand, $FH_HR) : 
+                                       vdr_CoordsSegmentCreate($uapos+1, $uapos+1, $strand, $FH_HR));
+              $alert_mcoords = sprintf("mdl:%s;", ($strand eq "+") ? 
+                                       vdr_CoordsSegmentCreate($local_rfpos, $rfpos - 1, $strand, $FH_HR) : 
+                                       vdr_CoordsSegmentCreate($local_rfpos, $rfpos + 1, $strand, $FH_HR));
               alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                         sprintf("nucleotide alignment delete of length %d>%d after reference nucleotide posn %d on strand $strand", 
-                                                 $cur_delete_len, $nmaxdel, ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len)), $FH_HR);
+                                         sprintf("%s%snucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
+                                                 $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel, $local_rfpos), $FH_HR);
             }
           } # end of 'if' entered if segment has valid results 
         } # end of 'for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) {' 
