@@ -1,35 +1,12 @@
-# <a name="top"></a> Examples and explanations of `v-annotate.pl` detailed alert and error messages
+# <a name="top"></a> Explanations and examples of `v-annotate.pl` detailed alert and error messages
 
-* [`v-annotate.pl` example usage](#exampleusage)
-  * [example annotation of norovirus sequences](#examplebasic)
-  * [example of using `--alt_pass` to change alerts from fatal to non-fatal](#examplealtpass)
-  * [example of using `-p` to run in parallel mode](#exampleparallel)
-* [`v-annotate.pl` command-line options](#options)
-  * [basic options](#options-basic)
-  * [options for specifying expected sequence classification](#options-classification)
-  * [options for controlling which alerts are fatal](#options-fatal)
-  * [options related to model files](#options-modelfiles)
-  * [options for controlling output feature table](#options-featuretable)
-  * [options for controlling alert thresholds](#options-alerts)
-  * [options for controlling the alignment stage](#options-align)
-  * [options for controlling the blastx protein validation stage](#options-blastx)
-  * [options for using hmmer instead of blastx for protein validation](#options-hmmer)
-  * [options related to blastn-based seeded alignment acceleration strategy](#options-seed)
-  * [options related to pre-processing to replace Ns with expected nucleotides](#options-replace)
-  * [options related to splitting input fasta file and multithreading](#options-split)
-  * [options related to parallelization on a compute farm/cluster](#options-parallel)
-  * [options related to both splitting input and parallelization on a compute farm/cluster](#options-split-and-parallel)
-  * [options for skipping stages](#options-skip)
-  * [options for additional output files](#options-output)
-  * [additional expert options](#options-expert)
-* [Basic Information on `v-annotate.pl` alerts](#alerts)
-* [Additional information on `v-annotate.pl` alerts](#alerts2)
-* [Expendable features: allowing sequences to pass despite fatal alerts for specific features](#mnf)
-* [Limiting memory usage and multi-threading](#memory)
+* [Output fiels with detailed alert and error messages](#files)
+* [Meaning of sequence and model coordinates in `.alt` files](#coords)
+* [Example `.alt` output for different alert types](#examples)
 
 ---
 
-## Output files with detailed alert and error messages
+##<aname="files"></a> Output files with detailed alert and error messages
 
 `v-annotate.pl` outputs two types of files with detailed alert/error
 messages: 
@@ -46,15 +23,17 @@ This page includes example lines for all the different alerts from
 coords`, `mdl coords`, and `alert detail` is also present in the
 `.alt.list` files. 
 
-## Meaning of sequence and model coordinates in `.alt` files
+##<aname="coords"></a> Meaning of sequence and model coordinates in `.alt` files
 
 | alert code(s) | alert desc(s) | sequence coords description | sequence coords length constraints | model coords explanation | model coords length constraints | link to example | 
 |---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
-| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | none | model positions of the frameshifted region | none | [frameshift alert example](#example-frameshift) | 
+| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | none | model (reference) positions of the frameshifted region, may some nucleotides may be inserted **before or after** these positions | none | [frameshift alert example](#example-frameshift) | 
+| *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of a 'large' insertion with respect to the model |  none | model (reference) position after which insertion occurs | always length 1 | [insert alert example](#example-insert) | 
+| *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model | always length 1 | model (reference) positions that are deleted in sequence | none | [delete alert example](#example-delete) | 
 
 ## Example `.alt` output for different alert types:
 
-###<a name="example-frameshift"></a>Frameshift alerts
+###<a name="example-frameshift"></a>Example frameshift alert
 
 #### alert codes: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
 
@@ -63,12 +42,11 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 #### Example line from `.alt` file:
 
 ```
-#       seq                        ftr          ftr              ftr  alert           alert                               seq       mdl  alert 
-#idx    name            model      type         name             idx  code      fail  desc                             coords    coords  detail
-#-----  --------------  ---------  -----------  ---------------  ---  --------  ----  -----------------------------  --------  --------  ------
-7.1.2   ENTOY100A-fs6   ENTOY100A  CDS          protein_one        2  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  14..25:+  14..22:+  high confidence possible frameshift in CDS (internal) [nucleotide alignment of internal sequence positions 14..25 (12 nt, avgpp: 0.890) to model positions 14..22 (9 nt) on + strand are frame 3 (dominant frame is 1); inserts:S:14..18(5),M:13; deletes:S:25,M:21..22(2);]
+#       seq                        ftr          ftr              ftr  alert           alert                               seq     seq       mdl     mdl  alert 
+#idx    name            model      type         name             idx  code      fail  desc                             coords  length    coords  length  detail
+#-----  --------------  ---------  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ------  --------  ------  ------
+7.1.2   ENTOY100A-fs6   ENTOY100A  CDS          protein_one        2  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  14..25:+      12  14..22:+       9  high confidence possible frameshift in CDS (internal) [nucleotide alignment of internal sequence positions 14..25 (12 nt, avgpp: 0.890) to model positions 14..22 (9 nt) on + strand are frame 3 (dominant frame is 1); inserts:S:14..18(5),M:13; deletes:S:25,M:21..22(2);]
 ```
-
 
   **Explanation**: a possible frameshift exists in the CDS named
   `protein_one` in the sequence named `ENTOY100A-fs6` which matches
@@ -121,6 +99,80 @@ ENTOY100A-fs6          GAAATCACCGATGCCCCCGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOL.X           1234567890123.....4567890123456789012345678901234567890
 ```
 ---
+
+###<a name="example-insert"></a>Example insert alerts
+
+#### alert codes: *insertnn*, *insertnp*
+
+#### corresponding error messages: *INSERTION_OF_NT*
+
+#### Example line from `.alt` file:
+
+```
+#       seq                          ftr          ftr                ftr  alert           alert                seq     seq       mdl     mdl  alert 
+#idx    name              model      type         name               idx  code      fail  desc              coords  length    coords  length  detail
+#-----  ----------------  ---------  -----------  -----------------  ---  --------  ----  ---------------  -------  ------  --------  ------  ------
+19.1.2  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_three        6  insertnn  no    INSERTION_OF_NT  88..93:+      5  86..86:+       1  too large of an insertion in nucleotide-based alignment of CDS feature [nucleotide alignment insert of length 6>2 after reference nucleotide posn 86 on strand +]
+19.1.3  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_three        6  insertnp  yes   INSERTION_OF_NT  88..93:+      5  86..86:+       1  too large of an insertion in protein-based alignment [blastx predicted insert of length nucleotide alignment insert of length 6>2 starting after reference amino acid position 5]
+```
+
+  **Explanation**: in sequence named `ENTOY100A-2-fs18`, the CDS
+  feature with name `protein three`, the nucleotides 88 to 93 (length
+  6) on the + strand insert after reference model position 86.  This
+  length exceeds the minimum allowed length of 2 (set with the
+  `v-annotate.pl` option `--nmaxins 2` option for purposes of this
+  example). Both lines of the `.alt` file pertain to the same
+  insertion, which is common. The `insertnn` alert is detected during
+  the nucleotide alignment stage of the entire sequence. The
+  `insertnp` alert is detected in the protein validation stage with
+  `blastx`. The `alert detail` field for the `insertnp` alert reports
+  the additional information that the insertion occurs after the 5th
+  amino acid of `protein three`.
+
+  The alignment of the sequence to the model (`#=GC RF` line) below
+  shows the insertion of `TTTTTT` after position 86:
+
+```
+ENTOY100A-2-fs18         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAAATTGCCATTCATTTTTTCGTACGTAGCATCA
+#=GR ENTOY100A-2-fs18 PP ************************************************************************9752799****999855555579************
+#=GC RF                  GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAA.ATTGCCATTCA......CGTACGTAGCATCA
+#=GC RFCOLX..            000000000000000000000000000000000000000000000000000000000000000000000000000.00000000000......00000000000001
+#=GC RFCOL.X.            000000000111111111122222222223333333333444444444455555555556666666666777777.77778888888......88899999999990
+#=GC RFCOL..X            123456789012345678901234567890123456789012345678901234567890123456789012345.67890123456......78901234567890
+```
+
+---
+###<a name="example-delete"></a>Example delete alerts
+
+#### alert codes: *insertnn*
+
+#### corresponding error messages: *INSERTION_OF_NT*
+
+#### Example line from `.alt` file:
+
+```
+#       seq                          ftr          ftr                ftr  alert           alert                                                 seq     seq                         mdl     mdl  alert 
+#idx    name              model      type         name               idx  code      fail  desc                                               coords  length                      coords  length  detail
+#-----  ----------------  ---------  -----------  -----------------  ---  --------  ----  -----------------------------  --------------------------  ------  --------------------------  ------  ------
+19.1.2  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_three        6  insertnn  no    INSERTION_OF_NT                                  88..92:+       5                    86..86:+       1  too large of an insertion in nucleotide-based alignment of CDS feature [nucleotide alignment insert of length 5>2 after reference nucleotide posn 86 on strand +]
+```
+
+
+  **Explanation**: in sequence named `ENTOY100A-2-fs18`, the CDS feature with name `protein_three`, the nucleotides 88 to 92 (length 5) on the + strand insert after reference model position 86. 
+  This length exceeds the minimum allowed of 2 (set with the option `--nmaxins 2` option for purposes of this example). The alignment of the sequence to the model (`#=GC RF` line) below shows the insertion
+  of `TTTTT` after position 86:
+
+```
+ENTOY100A-2-fs18         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAAATTGCCATTCATTTTTCGTACGTAGCATCA
+#=GR ENTOY100A-2-fs18 PP ************************************************************************9752799****99985555579************
+#=GC RF                  GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAA.ATTGCCATTCA.....CGTACGTAGCATCA
+#=GC RFCOLX..            000000000000000000000000000000000000000000000000000000000000000000000000000.00000000000.....00000000000001
+#=GC RFCOL.X.            000000000111111111122222222223333333333444444444455555555556666666666777777.77778888888.....88899999999990
+#=GC RFCOL..X            123456789012345678901234567890123456789012345678901234567890123456789012345.67890123456.....78901234567890
+```
+
+---
+
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
