@@ -256,7 +256,7 @@ while($keep_going) {
         # output info from final HSP from previous query/target pair
         if ($overall_query_stop_representation) {
           print "QSTOP\t" .$overall_query_stop_representation . "\n";
-          print "SSTOP\t" .$overall_subject_stop_representation . "\n";
+          print "HSTOP\t" .$overall_subject_stop_representation . "\n";
         }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
@@ -266,8 +266,8 @@ while($keep_going) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
           print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 		
         }	    	    
-        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         # finished with previous query/target pair: re-initialize per-HSP variables
         $processing_alignment = 0;
         $query_strand = "";
@@ -311,7 +311,7 @@ while($keep_going) {
         # output info from previous HSP
         if ($overall_query_stop_representation) {
           print "QSTOP\t" .$overall_query_stop_representation . "\n";
-          print "SSTOP\t" .$overall_subject_stop_representation . "\n";
+          print "HSTOP\t" .$overall_subject_stop_representation . "\n";
         }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
@@ -321,8 +321,8 @@ while($keep_going) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
           print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 				
         }
-        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         # finished with previous HSP: re-initialize per-HSP variables
         $processing_alignment = 0;
         $query_strand = "";
@@ -497,8 +497,8 @@ while($keep_going) {
   if(! defined $overall_query_end)     { $overall_query_end   = ""; }
   if(! defined $overall_subject_start) { $overall_subject_start = ""; }
   if(! defined $overall_subject_end)   { $overall_subject_end   = ""; }
-  print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+  print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "END_MATCH\n";  #print END_MATCH
   # finished with previous query: re-initialize per-HSP variables
   $overall_query_stop_representation = "";
