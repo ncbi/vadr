@@ -50,7 +50,7 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 
 | alert   | alert               |                             | sequence coords    |                          | model coords       | link to | 
 | code(s) | desc(s)             | sequence coords description | length constraints | model coords explanation | length constraints | example | 
-|---------|---------------------|-----------------------------|--------------------------|---------|
+|---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
 | *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | none | model positions of the frameshifted region | none | [frameshift alert example](#example-frameshift) | 
 
 ## Example `.alt` output for different alert types:
