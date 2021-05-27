@@ -1496,7 +1496,7 @@ my %ftr_results_HHAH  = ();     # 1st dim: hash, keys are model names
                                 # 3rd dim: array, 0..$nsgm-1, one per segment
                                 # 4th dim: hash of feature results, keys are:
                                 # keys include "n_start", "n_stop", "n_stop_c", "n_strand", "n_5trunc", "n_3trunc"
-                                # "p_start", "p_stop", "p_strand", "p_query", "p_ins", p_del", "p_trcstop", "p_score", and more
+                                # "p_qstart", "p_qstop", "p_hstart", "p_hstop", "p_strand", "p_query", "p_ins", p_del", "p_trcstop", "p_score", and more
 my %sgm_results_HHAH  = ();     # 1st dim: hash, keys are model names
                                 # 2nd dim: hash, keys are sequence names
                                 # 3rd dim: array, 0..$nsgm-1, one per segment
@@ -5512,7 +5512,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
                         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
                       }
-                      $alt_str_H{"mutendex"} = sprintf("sequence positions %d to %d (model positions %d to %d) on %s strand", 
+                      $alt_str_H{"mutendex"} = sprintf("%s%ssequence positions %d to %d (model positions %d to %d) on %s strand", 
+                                                       $alt_scoords, $alt_mcoords, 
                                                        (($ftr_strand eq "+") ? $ftr_stop_c - 2 : $ftr_stop_c + 2), $ftr_stop_c, 
                                                        (($ftr_strand eq "+") ? abs($ua2rf_AR->[($ftr_stop_c-2)]) : abs($ua2rf_AR->[($ftr_stop_c+2)])), abs($ua2rf_AR->[$ftr_stop_c]),
                                                        $ftr_strand);
@@ -5967,9 +5968,9 @@ sub add_low_similarity_alerts {
                 # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
                 my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
                 my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
-                if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
-                  my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_start"};
-                  my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_stop"};
+                if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
+                  my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_qstart"};
+                  my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_qstop"};
                   my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
                   if($f_strand eq $bstrand) { 
                     my $noverlap = undef;
@@ -6210,10 +6211,14 @@ sub add_protein_validation_alerts {
           my $n_len          = undef; # predicted length from CM (summed over all segments)
           my $n_5nlen_pv     = undef; # number of Ns at 5' end of CDS
           my $n_3nlen_pv     = undef; # number of Ns at 3' end of CDS
-          my $p_start        = undef; # predicted start  from blastx
-          my $p_stop         = undef; # predicted stop   from blastx
-          my $p_start2print  = undef; # predicted start  from blastx, to output
-          my $p_stop2print   = undef; # predicted stop   from blastx, to output
+          my $p_qstart       = undef; # predicted query start  from blastx
+          my $p_qstop        = undef; # predicted query stop   from blastx
+          my $p_sstart       = undef; # blastx predicted sequence start, in 1..seqlen sequence coords
+          my $p_sstop        = undef; # blastx predicted sequence stop, in 1..seqlen sequence coords
+          my $p_hstart       = undef; # predicted subject start  from blastx
+          my $p_hstop        = undef; # predicted subject stop   from blastx
+          my $p_mstart       = undef; # blastx predicted model start, in 1..mdllen model coords
+          my $p_mstop        = undef; # blastx predicted model stop,  in 1..mdllen model coords
           my $p_strand       = undef; # predicted strand from blastx
           my $p_ins          = undef; # insert string from blastx
           my $p_del          = undef; # delete string from blastx
@@ -6245,10 +6250,10 @@ sub add_protein_validation_alerts {
           # only proceed if we have a nucleotide prediction >= min length OR
           # we have no nucleotide prediction
           if(((defined $n_start) && ($n_len >= $minpvlen)) || (! defined $n_start)) { 
-            if((defined $ftr_results_HR->{"p_start"}) && 
-               (defined $ftr_results_HR->{"p_stop"})) { 
-              $p_start   = $ftr_results_HR->{"p_start"};
-              $p_stop    = $ftr_results_HR->{"p_stop"};
+            if((defined $ftr_results_HR->{"p_qstart"}) && 
+               (defined $ftr_results_HR->{"p_qstop"})) { 
+              $p_qstart  = $ftr_results_HR->{"p_qstart"};
+              $p_qstop   = $ftr_results_HR->{"p_qstop"};
               $p_strand  = $ftr_results_HR->{"p_strand"};
               $p_query   = $ftr_results_HR->{"p_query"};
               $p_hlen    = $ftr_results_HR->{"p_len"};
@@ -6263,16 +6268,16 @@ sub add_protein_validation_alerts {
                 ofile_FAIL("ERROR, in $sub_name, unexpected query name parsed from $p_query (parsed $p_qseq_name, expected $seq_name)", 1, $FH_HR);
               }
               $p_blastx_feature_flag = ((! $do_pv_hmmer) && ($p_qftr_idx ne "")) ? 1 : 0;
-              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_blastx_feature_flag: $p_blastx_feature_flag p_start: $p_start p_stop: $p_stop p_score: $p_score\n");
+              # printf("seq_name: $seq_name ftr: $ftr_idx p_query: $p_query p_qlen: $p_qlen p_blastx_feature_flag: $p_blastx_feature_flag p_qstart: $p_qstart p_qstop: $p_qstop p_score: $p_score\n");
             }
 
             # add alerts as needed:
             # check for indfantp
-            if((! defined $n_start) && (defined $p_start) && (defined $p_score))  { 
+            if((! defined $n_start) && (defined $p_qstart) && (defined $p_score))  { 
               # no nucleotide-based prediction but there is a protein-based blastx prediction
               # only add this if length meets our minimum
               if($p_hlen >= $minpvlen) { 
-                $alt_str_H{"indfantp"} = "$p_start to $p_stop with score $p_score";
+                $alt_str_H{"indfantp"} = "$p_qstart to $p_qstop with score $p_score";
               }
             }
             if(defined $n_start) { 
@@ -6293,11 +6298,11 @@ sub add_protein_validation_alerts {
               }
 
               # check for indfantn
-              if(! defined $p_start) { 
+              if(! defined $p_qstart) { 
                 $alt_str_H{"indfantn"} = "VADRNULL";
               }
               else { 
-                # we have both $n_start and $p_start, we can compare CM and blastx predictions
+                # we have both $n_start and $p_qstart, we can compare CM and blastx predictions
 
                 # check for indfstrp: strand mismatch failure, differently depending on $p_blastx_feature_flag
                 if(((  $p_blastx_feature_flag) && ($p_strand eq "-")) || 
@@ -6305,40 +6310,47 @@ sub add_protein_validation_alerts {
                   $alt_str_H{"indfstrp"} = "";
                 }
                 else { 
-                  # we have both $n_start and $p_start and predictions are on the same strand
+                  # we have both $n_start and $p_qstart and predictions on the same strand
                   # determine if predictions are 'close enough' in terms of sequence positions
                   # calcuate $start_diff and $stop_diff, differently depending on if hit
                   # was to the full sequence or a fetched feature (true if $p_blastx_feature_flag == 1)
                   if($p_blastx_feature_flag) { 
-                    $start_diff = $p_start - 1; 
-                    $stop_diff  = $p_qlen - $p_stop;
-                    $p_start2print = sprintf("$n_start %s $start_diff", ($n_strand eq "+") ? "+" : "-");
-                    $p_stop2print  = sprintf("$n_stop %s $stop_diff",  ($n_strand eq "+") ? "-" : "+");
-                    # printf("p_blastx_feature_flag: $p_blastx_feature_flag, p_start: $p_start, n_start: $n_start p_stop: $p_stop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
-                  }
+                    $start_diff = $p_qstart - 1; 
+                    $stop_diff  = $p_qlen - $p_qstop;
+                    $p_sstart = ($n_strand eq "+") ? $n_start + $start_diff : $n_start - $start_diff;
+                    $p_sstop  = ($n_strand eq "+") ? $n_stop  - $stop_diff  : $n_stop  + $stop_diff;
+                    # printf("p_blastx_feature_flag: $p_blastx_feature_flag, p_qstart: $p_qstart, n_start: $n_start p_qstop: $p_qstop, n_stop: $n_stop, start_diff: $start_diff, stop_diff: $stop_diff\n");
+                 }
                   else { 
-                    $start_diff = abs($n_start - $p_start);
-                    $stop_diff  = abs($n_stop  - $p_stop);
-                    $p_start2print = $p_start;
-                    $p_stop2print  = $p_stop;
+                    $start_diff = abs($n_start - $p_qstart);
+                    $stop_diff  = abs($n_stop  - $p_qstop);
+                    $p_sstart = $p_qstart;
+                    $p_sstop  = $p_qstop;
                   }
-                  # check for 'indf5plg': only for non-feature seqs blastx alignment extends outside of nucleotide/CM alignment on 5' end
+                  # check for 'indf5plg': only for non-feature seqs, blastx alignment extends outside of nucleotide/CM alignment on 5' end
                   if((! $p_blastx_feature_flag) && 
-                     ((($n_strand eq "+") && ($p_start < $n_start)) || 
-                      (($n_strand eq "-") && ($p_start > $n_start)))) { 
-                    $alt_str_H{"indf5plg"} = "strand:$n_strand CM:$n_start blastx:$p_start2print";
+                     ((($n_strand eq "+") && ($p_sstart < $n_start)) || 
+                      (($n_strand eq "-") && ($p_sstart > $n_start)))) { 
+                    $alt_str_H{"indf5plg"} = sprintf("%s%sVADRNULL\n", 
+                                                     "seq:" . vdr_CoordsSegmentCreate($p_sstart, (($n_strand eq "+") ? $n_start-1 : $n_start+1), $n_strand, $FH_HR) . ";", 
+                                                     "mdl:" . vdr_CoordsSinglePositionSegmentCreate(vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR), $n_strand, $FH_HR) . ";");
                   }
                   # check for 'indf5pst': blastx 5' end too short, not within $cur_5aln_tol nucleotides
                   if(! exists $alt_str_H{"indf5plg"}) { # only add indf5pst if indf5plg does not exist
                     if($start_diff > $cur_5aln_tol) { 
-                      $alt_str_H{"indf5pst"} = "$start_diff > $cur_5aln_tol (strand:$n_strand CM:$n_start blastx:$p_start2print)";
+                      $alt_str_H{"indf5pst"} = sprintf("%s%s%d>%d", 
+                                                       "seq:" . vdr_CoordsSegmentCreate($n_start, (($n_strand eq "+") ? $p_sstart-1 : $p_sstart+1), $n_strand, $FH_HR) . ";", 
+                                                       "mdl:" . vdr_CoordsSinglePositionSegmentCreate(vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR), $n_strand, $FH_HR) . ";",
+                                                       $start_diff, $cur_5aln_tol);
                     }                
                   }
                   # check for 'indf3plg': blastx alignment extends outside of nucleotide/CM alignment on 3' end
                   if((! $p_blastx_feature_flag) && 
-                     ((($n_strand eq "+") && ($p_stop  > $n_stop)) || 
-                      (($n_strand eq "-") && ($p_stop  < $n_stop)))) { 
-                    $alt_str_H{"indf3plg"} = "(strand:$n_strand CM:$n_stop blastx:$p_stop2print)";
+                     ((($n_strand eq "+") && ($p_qstop  > $n_stop)) || 
+                      (($n_strand eq "-") && ($p_qstop  < $n_stop)))) { 
+                    $alt_str_H{"indf3plg"} = sprintf("%s%sVADRNULL\n", 
+                                                     "seq:" . vdr_CoordsSegmentCreate((($n_strand eq "+") ? $n_stop+1 : $n_stop-1), $p_sstop, $n_strand, $FH_HR) . ";", 
+                                                     "mdl:" . vdr_CoordsSinglePositionSegmentCreate(vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR), $n_strand, $FH_HR) . ";");
                   }
                   # check for 'indf3pst': blastx 3' end too short, not within $cur_3aln_tol nucleotides
                   # for the stop coordinates, we do this differently if the nucleotide prediction 
@@ -6361,11 +6373,13 @@ sub add_protein_validation_alerts {
                   }
                   if(! exists $alt_str_H{"indf3plg"}) { # only add indf3pst if indf3plg does not exist
                     if($stop_diff > $cur_aln_tol) { 
-                      $alt_str_H{"indf3pst"} = "$stop_diff > $cur_aln_tol (strand:$n_strand CM:$n_stop blastx:$p_stop2print"; 
+                      $alt_str_H{"indf3pst"} = sprintf("%s%s%d>%d", 
+                                                       "seq:" . vdr_CoordsSegmentCreate((($n_strand eq "+") ? $p_sstop+1 : $p_sstop-1), $n_stop, $n_strand, $FH_HR) . ";", 
+                                                       "mdl:" . vdr_CoordsSinglePositionSegmentCreate(vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, $FH_HR), $n_strand, $FH_HR) . ";",
+                                                       $stop_diff, $cur_aln_tol);
                       if(! defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "unexleng"))) { 
-                        $alt_str_H{"indf3pst"} .= ", $cur_stop_str in CM prediction";
+                        $alt_str_H{"indf3pst"} .= ", $cur_stop_str in nucleotide-based prediction";
                       }
-                      $alt_str_H{"indf3pst"} .= ")";
                     }
                   }
                   # check for 'insertnp': too long of an insert
@@ -6586,13 +6600,13 @@ sub parse_blastx_results {
   # GAPS   ignored
   # FRAME
   # QSTOP  not always present
-  # SSTOP  not always present
+  # HSTOP  not always present
   # DEL    not always present
   # MAXDE  not always present
   # INS    not always present
   # MAXINS not always present
   # QRANGE
-  # SRANGE ignored
+  # SRANGE
   # ------per-HSP-block------
   # END_MATCH
 
@@ -6692,7 +6706,7 @@ sub parse_blastx_results {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
         }
       }
-      elsif(($key eq "QSTOP") || ($key eq "SSTOP") || ($key eq "DEL") || ($key eq "INS")) { 
+      elsif(($key eq "QSTOP") || ($key eq "HSTOP") || ($key eq "DEL") || ($key eq "INS")) { 
         if((! defined $cur_H{"QACC"}) || (! defined $cur_H{"HACC"}) || (! defined $cur_H{"HSP"}) || (! defined $cur_H{"RAWSCORE"}) || (! defined $cur_H{"FRAME"})) { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before one or more of QACC, HACC, HSP, RAWSCORE or FRAME lines (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
@@ -6700,11 +6714,32 @@ sub parse_blastx_results {
           $cur_H{$key} = $value;
         } 
       }
+      elsif($key eq "SRANGE") { 
+        # we don't require all of QACC, HACC, HSP, RAWSCORE and FRAME even though we should have them
+        # sometimes we don't (may be a bug in parse-blastx.pl), we only require HACC
+        if(! defined $cur_H{"HACC"}) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before HACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+        }
+        if($value eq "..") { # special case, no hits, silently move on
+          ;
+        }
+        elsif(! defined $cur_H{"RAWSCORE"}) { # special case, no RAWSCORE lines yet seen (may be a bug in parse-blastx.pl?), silently move on
+          ;
+        }
+        else { 
+          # determine if we should store this hit
+          if($value =~ /^\d+..\d+$/) { 
+            $cur_H{$key} = $value;
+          }
+          else { 
+            ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary QRANGE line $line", 1, $FH_HR);
+          }
+        }
+      }
       elsif($key eq "QRANGE") { 
         # we don't require all of QACC, HACC, HSP, RAWSCORE and FRAME even though we should have them
         # sometimes we don't (may be a bug in parse-blastx.pl), we only require QACC
         if(! defined $cur_H{"QACC"}) { 
-
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, read $key line before QACC line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
         }
         if($value eq "..") { # special case, no hits, silently move on
@@ -6716,8 +6751,8 @@ sub parse_blastx_results {
         else { 
           # determine if we should store this hit
           if($value =~ /^(\d+)..(\d+)$/) { 
-            my ($blast_start, $blast_stop) = ($1, $2);
-            my $blast_strand = ($blast_start <= $blast_stop) ? "+" : "-";
+            my ($blast_qstart, $blast_qstop) = ($1, $2);
+            my $blast_strand = ($blast_qstart <= $blast_qstop) ? "+" : "-";
             
             # should we store this query/target/hit trio?
             # we do if A, B, C, D are all TRUE and at least one of X or Y or Z is TRUE
@@ -6735,7 +6770,7 @@ sub parse_blastx_results {
             #  Z. query is the full sequence ($q_ftr_idx == -1) and blast hit overlaps by at least 1 nt 
             #     with a nucleotide prediction for the current target CDS
 
-            my $blast_hit_qlen = abs($blast_start - $blast_stop) + 1;
+            my $blast_hit_qlen = abs($blast_qstart - $blast_qstop) + 1;
             my $a_true = (($q_ftr_idx == -1) || ($q_ftr_idx == $t_ftr_idx)) ? 1 : 0; # query is full sequence OR query is fetched CDS that pertains to target
             my $b_true = undef;
             if(! $do_xlongest) { 
@@ -6766,14 +6801,14 @@ sub parse_blastx_results {
               if((! $x_true) && (! $y_true)) { 
                 if((defined $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"}) &&
                    ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"n_strand"} eq $blast_strand)) { 
-                  my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx], $blast_start, $blast_stop, $blast_strand, $FH_HR);
+                  my $noverlap = helper_protein_validation_check_overlap($ftr_results_HAHR->{$seq_name}[$t_ftr_idx], $blast_qstart, $blast_qstop, $blast_strand, $FH_HR);
                   if($noverlap > 0) { $z_true = 1; }
                 }
               }
               if($x_true || $y_true || $z_true) { 
                 # store the hit
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_start"}  = $blast_start;
-                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_stop"}   = $blast_stop;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstart"} = $blast_qstart;
+                $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstop"}  = $blast_qstop;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_len"}    = $blast_hit_qlen;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
@@ -6791,9 +6826,16 @@ sub parse_blastx_results {
                 else { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_del"} = undef;
                 }
+                if((defined $cur_H{"SRANGE"}) && ($cur_H{"SRANGE"} =~ /^(\d+)..(\d+)$/)) { 
+                  ($ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_hstart"}, $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_hstop"}) = 
+                      ($1, $2);
+                }
+                else { 
+                  ofile_FAIL("ERROR in $sub_name, trying to store hit but don't have defined and parseable SRANGE line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+                }
                 if(defined $cur_H{"QSTOP"}) { 
-                  if(! defined $cur_H{"SSTOP"}) { 
-                    ofile_FAIL("ERROR in $sub_name, read QSTOP but not SSTOP line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
+                  if(! defined $cur_H{"HSTOP"}) { 
+                    ofile_FAIL("ERROR in $sub_name, read QSTOP but not HSTOP line (seq: $seq_name, line: $line_idx)\n", 1, $FH_HR);
                   }
                   # we want to store only the first (5'-most) stop codon
                   # query is the sequence, subject is the model (protein sequence)
@@ -6802,10 +6844,10 @@ sub parse_blastx_results {
                   if($q_ftr_idx != -1) { # query is a feature, not the full sequence, so we need to determine coords in full seq
                     $first_qstop = vdr_CoordsRelativeToAbsolute("1.." . $seq_len_HR->{$seq_name} . ":+", $first_qstop, $FH_HR);
                   }
-                  my $first_sstop = $cur_H{"SSTOP"};
-                  $first_sstop =~ s/\;.*$//; # remove first ';' and anything after it
-                  $first_sstop = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $first_sstop, $FH_HR);
-                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_sstop . ";";
+                  my $first_hstop = $cur_H{"HSTOP"};
+                  $first_hstop =~ s/\;.*$//; # remove first ';' and anything after it
+                  $first_hstop = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $first_hstop, $FH_HR);
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_hstop . ";";
                 }
                 else { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = undef;
@@ -7155,8 +7197,8 @@ sub parse_hmmer_domtblout {
           if(! defined $hmmer_summary_strand) { # if defined, we already calculated it above
             $hmmer_summary_strand = vdr_FeatureSummaryStrand($hmmer_env_nt_coords, $FH_HR);
           }
-          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_start"}  = $hmmer_start_A[0];
-          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_stop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_qstart"}  = $hmmer_start_A[0];
+          $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_qstop"}   = $hmmer_stop_A[($hmmer_nsgm-1)];
           $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_strand"} = $hmmer_summary_strand;
           $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_len"}    = vdr_CoordsLength($hmmer_env_nt_coords, $FH_HR);
           $ftr_results_HAHR->{$seq_name}[$mdl_ftr_idx]{"p_query"}  = $source_val;
@@ -8660,7 +8702,7 @@ sub output_tabular {
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx])) { 
           my $ftr_results_HR = $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}[$ftr_idx]; # for convenience
           my $ftr_idx2print = $seq_idx2print . "." . ($seq_nftr_annot + 1);
-          if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_start"})) { 
+          if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
             $seq_nftr_annot++;
             my $ftr_name = $ftr_info_AHR->[$ftr_idx]{"outname"};
             my $ftr_name2print = helper_tabular_replace_spaces($ftr_name);
@@ -8674,11 +8716,11 @@ sub output_tabular {
             my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
             my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
             if(($ftr_n_stop_c ne "-") && ($ftr_n_stop_c ne "?") && ($ftr_n_stop_c == $ftr_n_stop)) { $ftr_n_stop_c = "-"; }
-            my $ftr_p_start  = (defined $ftr_results_HR->{"p_start"})   ? $ftr_results_HR->{"p_start"}   : "-";
-            my $ftr_p_stop   = (defined $ftr_results_HR->{"p_stop"})    ? $ftr_results_HR->{"p_stop"}    : "-";
-            my $ftr_p_stop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
-            if($ftr_p_stop_c ne "-") { 
-              $ftr_p_stop_c =~ s/;.*$//; # keep only first early stop position
+            my $ftr_p_qstart  = (defined $ftr_results_HR->{"p_qstart"})   ? $ftr_results_HR->{"p_qstart"}   : "-";
+            my $ftr_p_qstop   = (defined $ftr_results_HR->{"p_qstop"})    ? $ftr_results_HR->{"p_qstop"}    : "-";
+            my $ftr_p_qstop_c = (defined $ftr_results_HR->{"p_trcstop"}) ? $ftr_results_HR->{"p_trcstop"} : "-";
+            if($ftr_p_qstop_c ne "-") { 
+              $ftr_p_qstop_c =~ s/;.*$//; # keep only first early stop position
             }
             my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
             if(((defined $ftr_results_HR->{"n_5trunc"})  && ($ftr_results_HR->{"n_5trunc"})) ||      # feature is 5' truncated due to sequence end
@@ -8761,7 +8803,7 @@ sub output_tabular {
             if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
             push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
                                 ($ftr_idx+1), $ftr_parent_idx, $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5nlen, $ftr_3nlen, 
-                                $ftr_p_start, $ftr_p_stop, $ftr_p_stop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
+                                $ftr_p_qstart, $ftr_p_qstop, $ftr_p_qstop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
             $ftr_nprinted++;
 
@@ -9340,7 +9382,7 @@ sub output_feature_table {
           my $cds_codon_start         = undef; # codon start value, only set for CDS
 
           my $defined_n_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_start"}) ? 1: 0;
-          my $defined_p_start   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ? 1: 0;
+          my $defined_p_qstart   = (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_qstart"}) ? 1: 0;
           my $ftr_is_trimmable  = (($do_notrim) || (defined $noftrtrim_H{$feature_type})) ? 0 : 1; # should we possible trim this feature due to Ns
 
           # sanity check
@@ -9350,7 +9392,7 @@ sub output_feature_table {
           
           # determine coordinates for the feature
           if(! $defined_n_start) { 
-            # $defined_p_start must be TRUE
+            # $defined_p_qstart must be TRUE
             ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) =
                  helper_ftable_coords_prot_only_prediction($seq_name, $ftr_idx, $ftr_results_HAHR, $FH_HR);
@@ -9788,7 +9830,7 @@ sub helper_ftable_coords_from_nt_prediction {
 #             $is_5trunc:           always 0, we don't try to truncate for protein only predictions
 #             $is_3trunc:           always 0, we don't try to truncate for protein only predictions
 # 
-# Dies:       if p_start or p_stop does not exist in the ftr_results_HAHR->{$seq_name}[$ftr_idx] hash
+# Dies:       if p_qstart or p_qstop does not exist in the ftr_results_HAHR->{$seq_name}[$ftr_idx] hash
 #             If $N_{5,3}trunc is > 0 and corresponding strand is not "+" or "-"
 ################################################################# 
 sub helper_ftable_coords_prot_only_prediction { 
@@ -9798,14 +9840,14 @@ sub helper_ftable_coords_prot_only_prediction {
 
   my ($seq_name, $ftr_idx, $ftr_results_HAHR, $FH_HR) = @_;
 
-  # NOTE: for 'indfantp' alerts, the p_start and p_stop are always set at the feature level
-  if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"}) ||
-     (! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"})) { 
-    ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_start|p_stop} does not exists", 1, $FH_HR);
+  # NOTE: for 'indfantp' alerts, the p_qstart and p_qstop are always set at the feature level
+  if((! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_qstart"}) ||
+     (! exists $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_qstop"})) { 
+    ofile_FAIL("ERROR in $sub_name, ftr_results_HAHR->{$seq_name}[$ftr_idx]{p_qstart|p_qstop} does not exists", 1, $FH_HR);
   }
 
-  my @start_A     = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_start"});
-  my @stop_A      = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_stop"});
+  my @start_A     = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_qstart"});
+  my @stop_A      = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_qstop"});
   my @strand_A    = ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"p_strand"});
   my @is_5trunc_A = (0); # can't detect truncation for protein predictions, currently
   my @is_3trunc_A = (0); # can't detect truncation for protein predictions, currently
@@ -11199,7 +11241,7 @@ sub group_subgroup_string_from_classification_results {
 #             else return '0'.
 #
 # Arguments:
-#  $results_HR:     hash potentially with keys "n_start", "p_start", "n_len";
+#  $results_HR:     hash potentially with keys "n_start", "p_qstart", "n_len";
 #  $min_len:        minimum length for the feature, can be 0
 #             
 # Returns:  1 if a valid feature prediction exists, else 0
@@ -11215,7 +11257,7 @@ sub check_for_tabular_ftr_feature_prediction {
   my ($results_HR) = (@_);
 
   if((defined $results_HR->{"n_start"} || 
-      defined $results_HR->{"p_start"})) { 
+      defined $results_HR->{"p_qstart"})) { 
     return 1;
   }
 
@@ -11229,7 +11271,7 @@ sub check_for_tabular_ftr_feature_prediction {
 #             output to a feature table, else return '0'.
 #
 # Arguments:
-#  $results_HR:     hash potentially with keys "n_start", "p_start", "n_len";
+#  $results_HR:     hash potentially with keys "n_start", "p_qstart", "n_len";
 #  $min_len:        minimum length for the feature, can be 0
 #             
 # Returns:  1 if a valid feature prediction exists, else 0
@@ -11245,7 +11287,7 @@ sub check_for_valid_ftbl_feature_prediction {
   my ($results_HR, $min_len) = (@_);
 
   if((defined $results_HR->{"n_start"} || 
-      defined $results_HR->{"p_start"}) && 
+      defined $results_HR->{"p_qstart"}) && 
      ((! defined $results_HR->{"n_len"}) || 
       ($results_HR->{"n_len"} >= $min_len))) { 
     return 1;
