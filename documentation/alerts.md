@@ -49,7 +49,7 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 ```
 
   **Explanation**: a possible frameshift exists in the CDS named
-  `protein_one` in the sequence named `ENTOY100A-fs6` which matches
+  `protein one` in the sequence named `ENTOY100A-fs6` which matches
   best to the model named `ENTOY100A`. The frameshifted region is
   sequence positions 14 to 25 (`seq coords: 14..25:+`) which is
   aligned to the reference model positions 14 to 22 (`mdl coords:
@@ -64,7 +64,8 @@ coords`, `mdl coords`, and `alert detail` is also present in the
   threshold for high confidence (`0.8` by default). Other possible
   frameshifts with lower posterior probability values will be reported
   with the `POSSIBLE_FRAMESHIFT_LOW_CONF` error. If the `--glsearch`
-  option is used with `v-annotate.pl` posterior probability values are
+  option is used with `v-annotate.pl`, as is recommended with
+  SARS-CoV-2 analysis, posterior probability values are
   not calculated and so all frameshifts are reported with the
   `POSSIBLE_FRAMESHIFT` error. 
 
@@ -144,9 +145,9 @@ ENTOY100A-2-fs18         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGC
 ---
 ###<a name="example-delete"></a>Example delete alerts
 
-#### alert codes: *insertnn*
+#### alert codes: *insertnp*, *deletinp*
 
-#### corresponding error messages: *INSERTION_OF_NT*
+#### corresponding error messages: *DELETION_OF_NT*
 
 #### Example line from `.alt` file:
 
@@ -154,21 +155,36 @@ ENTOY100A-2-fs18         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGC
 #       seq                          ftr          ftr                ftr  alert           alert                                                 seq     seq                         mdl     mdl  alert 
 #idx    name              model      type         name               idx  code      fail  desc                                               coords  length                      coords  length  detail
 #-----  ----------------  ---------  -----------  -----------------  ---  --------  ----  -----------------------------  --------------------------  ------  --------------------------  ------  ------
-19.1.2  ENTOY100A-2-fs18  ENTOY100A  CDS          protein_three        6  insertnn  no    INSERTION_OF_NT                                  88..92:+       5                    86..86:+       1  too large of an insertion in nucleotide-based alignment of CDS feature [nucleotide alignment insert of length 5>2 after reference nucleotide posn 86 on strand +]
+22.4.1  ENTOY100A-2-fs21  ENTOY100A  CDS          protein_four         9  deletinn  no    DELETION_OF_NT                                   86..86:-       1                    89..87:-       2  too large of a deletion in nucleotide-based alignment of CDS feature [nucleotide alignment delete of length 3>2 starting at reference nucleotide posn 88 on strand -]
 ```
 
+  **Explanation**: in sequence named `ENTOY100A-2-fs21`, for the CDS
+  feature with name `protein_four`, the reference model positions 89
+  to 87 (length 3) on the negative (-) strand are deleted. This
+  deletion occurs 'after' (3' of) sequence position 86 (that is,
+  sequence position 85 is the first nucleotide in the CDS that is 3'
+  of the deletion, so the the nucleotides 85 and 86 bracket the
+  deletion). This length 3 deletion exceeds the minimum allowed of 2
+  (set with the `v-annotate.pl` option `--nmaxdel 2` option for purposes of this
+  example). 
+  Both lines of the `.alt` file pertain to the same
+  deletion, which is common. The `deletinn` alert is detected during
+  the nucleotide alignment stage of the entire sequence. The
+  `deletinp` alert is detected in the protein validation stage with
+  `blastx`. The `alert detail` field for the `deletinp` alert reports
+  the additional information that the deletioninsertion occurs after the 3rd
+  amino acid of `protein four`.
 
-  **Explanation**: in sequence named `ENTOY100A-2-fs18`, the CDS feature with name `protein_three`, the nucleotides 88 to 92 (length 5) on the + strand insert after reference model position 86. 
-  This length exceeds the minimum allowed of 2 (set with the option `--nmaxins 2` option for purposes of this example). The alignment of the sequence to the model (`#=GC RF` line) below shows the insertion
-  of `TTTTT` after position 86:
+  The alignment of the sequence to the model (`#=GC RF`
+  line) below shows the deletion at reference positions 87, 88 and 89.
 
 ```
-ENTOY100A-2-fs18         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAAATTGCCATTCATTTTTCGTACGTAGCATCA
-#=GR ENTOY100A-2-fs18 PP ************************************************************************9752799****99985555579************
-#=GC RF                  GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAA.ATTGCCATTCA.....CGTACGTAGCATCA
-#=GC RFCOLX..            000000000000000000000000000000000000000000000000000000000000000000000000000.00000000000.....00000000000001
-#=GC RFCOL.X.            000000000111111111122222222223333333333444444444455555555556666666666777777.77778888888.....88899999999990
-#=GC RFCOL..X            123456789012345678901234567890123456789012345678901234567890123456789012345.67890123456.....78901234567890
+ENTOY100A-2-fs21         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAATT-CCATTCA---ACGTAGCATCA
+#=GR ENTOY100A-2-fs21 PP ***************************************************************************998.789998A...8**********
+#=GC RF                  GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAATTGCCATTCACGTACGTAGCATCA
+#=GC RFCOLX..            0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+#=GC RFCOL.X.            0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+#=GC RFCOL..X            1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
 ```
 
 ---
