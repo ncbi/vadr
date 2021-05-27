@@ -23,7 +23,7 @@ This page includes example lines for all the different alerts from
 coords`, `mdl coords`, and `alert detail` is also present in the
 `.alt.list` files. 
 
-##<aname="coords"></a> Meaning of sequence and model coordinates in `.alt` files
+## Explanation of sequence and model coordinate fields in `.alt` files
 
 | alert code(s) | alert desc(s) | sequence coords description | sequence coords length constraints | model coords explanation | model coords length constraints | link to example | 
 |---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
