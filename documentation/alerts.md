@@ -1,6 +1,6 @@
 # <a name="top"></a> Explanations and examples of `v-annotate.pl` detailed alert and error messages
 
-* [Output fiels with detailed alert and error messages](#files)
+* [Output fields with detailed alert and error messages](#files)
 * [Meaning of sequence and model coordinates in `.alt` files](#coords)
 * [Example `.alt` output for different alert types](#examples)
 
@@ -27,13 +27,18 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 
 | alert code(s) | alert desc(s) | sequence coords description | sequence coords length constraints | model coords explanation | model coords length constraints | link to example | 
 |---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
-| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | none | model (reference) positions of the frameshifted region, may some nucleotides may be inserted **before or after** these positions | none | [frameshift alert example](#example-frameshift) | 
-| *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of a 'large' insertion with respect to the model |  none | model (reference) position after which insertion occurs | always length 1 | [insert alert example](#example-insert) | 
+| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | none | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | none | [frameshift alert example](#example-frameshift) | 
+| *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model |  none | model (reference) position after which insertion occurs | always length 1 | [insert alert example](#example-insert) | 
 | *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model | always length 1 | model (reference) positions that are deleted in sequence | none | [delete alert example](#example-delete) | 
+| *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon | length <= 3 | model (reference) positions that align to the predicted start codon | none | [mutstart alert example](#example-mutstart) | 
+| *mutendcd* | *MUTATION_AT_END*  | sequence positions of predicted stop codon | length <= 3 | model (reference) positions that align to the predicted stop codon | none | [mutend* alert examples](#example-mutend) | 
+| *mutendex* | *MUTATION_AT_END*  | sequence positions of 5'-most in-frame stop codon in the CDS, this stop codon will be 3' of expected stop codon position | always length 3 | model (reference) positions that align to stop codon in `sequence coords` | none | [mutend* alert examples](#example-mutend) | 
+| *mutendns* | *MUTATION_AT_END*  | will be blank (`-`) | N/A | will be blank (`-`) | N/A | [mutend* alert examples](#example-mutend) | 
+| *unexleng* | *UNEXPECTED_LENGTH* | sequence positions of the predicted CDS, the length of which is not a multiple of 3 | none | model (reference) positions that the predicted CDS align to, some nucleotides may be inserted *before or after* these positions | none | [mutend* alert examples](#example-mutend) |
 
 ## Example `.alt` output for different alert types:
 
-###<a name="example-frameshift"></a>Example frameshift alert
+### <a name="example-frameshift"></a>Example frameshift alert
 
 #### alert codes: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
 
@@ -101,7 +106,7 @@ ENTOY100A-fs6          GAAATCACCGATGCCCCCGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
 ```
 ---
 
-###<a name="example-insert"></a>Example insert alerts
+### <a name="example-insert"></a>Example insert alerts
 
 #### alert codes: *insertnn*, *insertnp*
 
@@ -143,9 +148,9 @@ ENTOY100A-2-fs18         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGC
 ```
 
 ---
-###<a name="example-delete"></a>Example delete alerts
+### <a name="example-delete"></a>Example delete alerts
 
-#### alert codes: *insertnp*, *deletinp*
+#### alert codes: *deletinn*, *deletinp*
 
 #### corresponding error messages: *DELETION_OF_NT*
 
@@ -185,6 +190,89 @@ ENTOY100A-2-fs21         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGC
 #=GC RFCOLX..            0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
 #=GC RFCOL.X.            0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
 #=GC RFCOL..X            1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+```
+---
+### <a name="example-mutstart"></a>Example *mutstart* alert
+
+#### alert code: *mutstart*
+
+#### corresponding error messages: *MUTATION_AT_START*
+
+#### Example line from `.alt` file:
+
+```
+#      seq                   ftr          ftr              ftr  alert           alert                             seq     seq       mdl     mdl  alert 
+#idx   name       model      type         name             idx  code      fail  desc                           coords  length    coords  length  detail
+#----  ---------  ---------  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
+1.1.1  ENTOY100A  ENTOY100A  CDS          protein_one        2  mutstart  yes   MUTATION_AT_START            10..12:+       3  11..13:+       3  expected start codon could not be identified [ATT starting at sequence position 10 (model position 11) on + strand is not a valid start]
+```
+
+  **Explanation**: The first three nucleotides of any CDS feature are checked to see if they 
+  are a valid start codon, and if not, the *mutstart* alert is reported. For this specific example, the
+  CDS starts at model (reference) position 11, and the first 3 nucleotides of the predicted CDS are positions 10 to 12.
+  The alignment of the sequence `ENTOY100A` to the model (`#=GC RF`
+  line) below shows the invalid `ATT` start codon aligned to reference positions 11 to 13.
+
+```
+                            vvv
+ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAATTGCCATTCACGTACGTAGCATCA
+#=GR ENTOY100A PP ****************************************************************************************************
+#=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAATTGCCATTCACGTACGTAGCATCA
+#=GC RFCOLX..     0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+#=GC RFCOL.X.     0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+#=GC RFCOL..X     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+```
+
+---
+### <a name="example-mutend"></a>Example *mutend** alerts
+
+#### alert code: *mutendcd*, *mutendns*, *mutendex*, *unexleng*
+
+#### corresponding error messages: *MUTATION_AT_END*, *UNEXPECTED_LENGTH*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                         ftr   ftr          ftr  alert           alert                           seq     seq       mdl     mdl  alert 
+#idx   name              model     type  name         idx  code      fail  desc                         coords  length    coords  length  detail
+#----  ----------------  --------  ----  -----------  ---  --------  ----  -------------------------  --------  ------  --------  ------  ------
+2.1.1  ENTOY50A.mutend1  ENTOY50A  CDS   protein_one    1  mutendcd  yes   MUTATION_AT_END            28..30:+       3  29..31:+       3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TAC ending at sequence position 30 (model position 31) on + strand is not a valid stop]
+2.1.2  ENTOY50A.mutend1  ENTOY50A  CDS   protein_one    1  mutendns  yes   MUTATION_AT_END                   -       -         -       -  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+#
+3.1.1  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  mutendcd  yes   MUTATION_AT_END            27..29:+       3  28..30:+       3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA ending at sequence position 29 (model position 30) on + strand is not a valid stop]
+3.1.2  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  mutendex  yes   MUTATION_AT_END            31..33:+       3  33..35:+       3  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [sequence positions 31 to 33 (model positions 33 to 35) on + strand]
+3.2.3  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  unexleng  yes   UNEXPECTED_LENGTH          10..29:+      20  11..30:+      20  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
+```
+
+  **Explanation**: The sequence `ENTOY50A.mutend1` has an invalid
+    `TAC` stop codon for the CDS with name `protein one` at the
+    expected position in the reference model, causing the *mutendcd*
+    alert. There are zero valid in-frame stop codons (in the same frame as the predicted start codon) in the 
+    remainder of the sequence, so a *mutendns* alert is also reported.
+
+    The sequence `ENTOY50.mutend2` also has an invalid stop codon, the
+    final 3 nt in the predicted CDS are `ATA`, which are seuqence
+    positions 27 to 29 and align to model reference positions 28 to 30
+    (see alignment below). There is an in-frame stop codon 3' of this
+    though, at sequence positions 31 to 33 which align to model
+    reference positions 33 to 35, which result in the *mutendex*
+    alert. Finally, the predicted CDS is length 20 (positions 10 to
+    29) and aligns to positions 11 to 30, this CDS length is not a
+    multiple of 3 so the *unexleng* alert is reported.
+
+    The alignment of the two sequences is below, with the three positions of the 
+    stop codon in the reference model marked with `vvv`:.
+
+```
+                                                     vvv
+ENTOY50A.mutend1         -AAATCACCGATGGTGATCGCTTTACCATACATGAGCAT-----------
+#=GR ENTOY50A.mutend1 PP .**************************************...........
+ENTOY50A.mutend2         -AAATCACCGATGGTGATCGCTTTACCATA-CTGAGCAT-----------
+#=GR ENTOY50A.mutend2 PP .***************************96.69******...........
+#=GC SS_cons             :::::::::<<<____>>>:::::::::::::::::::::::::::::::
+#=GC RF                  GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.             00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X             12345678901234567890123456789012345678901234567890
 ```
 
 ---
