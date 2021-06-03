@@ -2135,12 +2135,6 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "lowsimif", "feature",
-                   "LOW_FEATURE_SIMILARITY", # short description
-                   "region within annotated feature lacks significant similarity", # long description
-                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
                    "N_AT_FEATURE_START", # short description
                    "first nucleotide of non-CDS feature is an N", # long  description
