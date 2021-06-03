@@ -44,6 +44,11 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *indf3lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 3' feature boundary | always length 1 | model (reference) position of the 3' feature boundary | always length 1 | [indf* alert examples](#example-indf) | 
 | *indf3pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 3' end of the CDS **not** covered by the protein-based alignment | none | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | none | 
 | *indf3plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 3' end of the CDS | none | model (reference) position of the 3' boundary of the CDS | always length 1 | 
+| *ambgnt5f*, ambgnt5c* | *N_AT_FEATURE_START*, *N_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive Ns ending at the 3' end of a feature | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg3* alert examples](#example-ambg5) | 
+| *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg3* alert examples](#example-ambg3) | 
+| *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | none | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide | always length 2 | [pep* alert examples](#example-pep) | 
+| *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | N/A | will be blank (`-`) | N/A | [pep* alert examples](#example-pep) | 
+
 | - | - | - | - | - | - | - | 
 | *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
 
@@ -253,6 +258,7 @@ ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCA
 3.1.1  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  mutendcd  yes   MUTATION_AT_END            27..29:+       3  28..30:+       3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA ending at sequence position 29 (model position 30) on + strand is not a valid stop]
 3.1.2  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  mutendex  yes   MUTATION_AT_END            31..33:+       3  33..35:+       3  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [sequence positions 31 to 33 (model positions 33 to 35) on + strand]
 3.2.3  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  unexleng  yes   UNEXPECTED_LENGTH          10..29:+      20  11..30:+      20  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
+#
 4.2.1  ENTOY50A.mutend3  ENTOY50A  CDS   protein_one    1  cdsstopn  yes   CDS_HAS_STOP_CODON         22..24:+       3  23..25:+       3  in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 10..24 (stop shifted 6 nt)]
 4.2.2  ENTOY50A.mutend3  ENTOY50A  CDS   protein_one    1  cdsstopn  yes   CDS_HAS_STOP_CODON         22..24:+       3  23..25:+       3  stop codon in protein-based alignment
 ```
@@ -318,7 +324,9 @@ ENTOY50A.earlystop         -AAATCACCGATGGTGATCGCTTAACCATAAATGAGCAT-----------
 #idx   name         model     type  name         idx  code      fail  desc                           coords  length    coords  length  detail
 #----  -----------  --------  ----  -----------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
 2.2.4  ENTOY50A.5A  ENTOY50A  CDS   protein_one    1  indf5gap  yes   INDEFINITE_ANNOTATION_START  10..10:+       1  11..11:+       1  alignment to homology model is a gap at 5' boundary [RF position 11]
+#
 3.2.1  ENTOY50A.5B  ENTOY50A  CDS   protein_one    1  indf5lcc  no    INDEFINITE_ANNOTATION_START    8..8:+       1  11..11:+       1  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS [0.70 < 0.80, RF position 11]
+#
 4.2.1  ENTOY50A.5C  ENTOY50A  CDS   protein_one    1  indf5pst  yes   INDEFINITE_ANNOTATION_START  10..18:+       9  11..19:+       9  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9>5]
 ```
 
@@ -395,7 +403,9 @@ ENTOY50A.5C         -AAATCACCGCTGCTGTTCGCTTTACCATAAATGAGCAT-----------
 #idx   name         model     type  name         idx  code      fail  desc                           coords  length    coords  length  detail
 #----  -----------  --------  ----  -----------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
 5.2.4  ENTOY50A.3A  ENTOY50A  CDS   protein_one    1  indf3gap  yes   INDEFINITE_ANNOTATION_END    28..28:+       1  31..31:+       1  alignment to homology model is a gap at 3' boundary [RF position 31]
+#
 6.2.1  ENTOY50A.3B  ENTOY50A  CDS   protein_one    1  indf3lcc  no    INDEFINITE_ANNOTATION_END    30..30:+       1  31..31:+       1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.70 < 0.80, RF position 31]
+#
 7.2.1  ENTOY50A.3C  ENTOY50A  CDS   protein_one    1  indf3pst  yes   INDEFINITE_ANNOTATION_END    22..30:+       9  23..31:+       9  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [9>8]
 ```
 
@@ -459,8 +469,159 @@ ENTOY50A.3C         -AAATCACCGATGGTGATCGCTATAGCAGAAATGAGCAT-----------
                                        ^  ^  ^
 ```                                             
 
----
+### <a name="example-ambg5"></a>Examples of *N_AT_START* 
 
+#### alert codes: *ambgnt5s*, *ambgnt5c*, *ambgnt5f* 
+
+#### corresponding error message: *N_AT_START*, *N_AT_CDS_START*, *N_AT_FEATURE_START*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr   ftr          ftr  alert           alert                       seq     seq       mdl     mdl  alert 
+#idx   name          model     type  name         idx  code      fail  desc                     coords  length    coords  length  detail
+#----  ------------  --------  ----  -----------  ---  --------  ----  ---------------------  --------  ------  --------  ------  ------
+2.1.1  ENTOY50A.N5L  ENTOY50A  -     -              -  ambgnt5s  no    N_AT_START                    -       -         -       -  first nucleotide of the sequence is an N [first 13 positions are Ns, first non-N is position 14]
+2.2.1  ENTOY50A.N5L  ENTOY50A  CDS   protein_one    1  ambgnt5c  no    N_AT_CDS_START         10..13:+       4  11..14:+       4  first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 14]
+#
+3.2.1  ENTOY50A.N5S  ENTOY50A  CDS   protein_one    1  ambgnt5c  no    N_AT_CDS_START         10..13:+       4  11..14:+       4  first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 14]
+#
+```
+  **Explanation of `ambgnt5s` alert**: The sequence `ENTOY50A.N5L` begins with 13 consecutive Ns.
+  Any sequence that begins with 1 or consecutive Ns will cause this alert.
+  
+  **Explanation of `ambgnt5c` alert**: Both sequences `ENTOY50A.N5L`
+  and `ENTOY50A.N5S` have 4 consecutive Ns from sequence positions 10
+  to 13 that align to the first four positions of the CDS `protein
+  one`, which is model (reference) positions 11 to 14. You can 
+  see this in the alignment below.
+
+  A similar `ambgnt5f` alert exists for non-coding (non-CDS and
+  non-mature peptide) features, but no example is shown here.  Having
+  separate alerts for coding and non-coding features gives the user
+  control over whether these types of alerts in coding versus non-coding
+  features cause a sequence to fail or not.
+
+The alignment of the two sequences is below, the first four positions of the 
+CDS are marked by `v` chacacters:
+
+```                                             
+                               vvvv
+ENTOY50A.N5L         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
+#=GR ENTOY50A.N5L PP .**************************************...........
+ENTOY50A.N5S         -AAATCACCGNNNNTGATCGCTTTACCATAAATGAGCAT-----------
+#=GR ENTOY50A.N5S PP .**************************************...........
+#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X         12345678901234567890123456789012345678901234567890
+```                                             
+
+---
+### <a name="example-ambg3"></a>Examples of *N_AT_END* 
+
+#### alert codes: *ambgnt3s*, *ambgnt3c*, *ambgnt3f* 
+
+#### corresponding error message: *N_AT_END*, *N_AT_CDS_END*, *N_AT_FEATURE_END*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr   ftr          ftr  alert           alert                       seq     seq       mdl     mdl  alert 
+#idx   name          model     type  name         idx  code      fail  desc                     coords  length    coords  length  detail
+#----  ------------  --------  ----  -----------  ---  --------  ----  ---------------------  --------  ------  --------  ------  ------
+4.1.1  ENTOY50A.N3L  ENTOY50A  -     -              -  ambgnt3s  no    N_AT_END                      -       -         -       -  final nucleotide of the sequence is an N [final 11 positions are Ns, final non-N is position 27]
+4.2.1  ENTOY50A.N3L  ENTOY50A  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END           29..30:+       2  30..31:+       2  final nucleotide of CDS is an N [final 2 positions are Ns, final non-N is position 28]
+#
+5.2.1  ENTOY50A.N3S  ENTOY50A  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END           29..30:+       2  30..31:+       2  final nucleotide of CDS is an N [final 2 positions are Ns, final non-N is position 28]
+#
+```
+  **Explanation of `ambgnt3s` alert**: The sequence `ENTOY50A.N3L` ends with 11 consecutive Ns.
+  Any sequence that ends with 1 or consecutive Ns will cause this alert.
+  
+  **Explanation of `ambgnt3c` alert**: Both sequences `ENTOY50A.N3L`
+  and `ENTOY50A.N3S` have 2 consecutive Ns from sequence positions 29
+  to 30 that align to the final two positions of the CDS `protein
+  one`, which is model (reference) positions 30 to 31. You can 
+  see this in the alignment below.
+
+  A similar `ambgnt3f` alert exists for non-coding (non-CDS and
+  non-mature peptide) features, but no example is shown here.  Having
+  separate alerts for coding and non-coding features gives the user
+  control over whether these types of alerts in coding versus non-coding
+  features cause a sequence to fail or not.
+
+The alignment of the two sequences is below, the final two positions of the 
+CDS are marked by `v` chacacters:
+
+
+```                                             
+                                                  vv
+ENTOY50A.N3S         -AAATCACCGATGGTGATCGCTTTACCATNNATGAGCAT-----------
+#=GR ENTOY50A.N3S PP .**************************************...........
+ENTOY50A.N3L         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
+#=GR ENTOY50A.N3L PP .**************************************...........
+#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X         12345678901234567890123456789012345678901234567890
+```                                             
+
+---
+### <a name="example-pep"></a>Examples of *PEPTIDE_ADJACENCY_PROBLEM* and *PEPTIDE_TRANSLATION_PROBLEM*
+
+#### alert codes: *pepadjcy*, *peptrans*
+
+#### corresponding error message: *PEPTIDE_ADJACENCY_PROBLEM*, *PEPTIDE_TRANSLATION_PROBLEM*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr          ftr              ftr  alert           alert                             seq     seq       mdl     mdl  alert 
+#idx   name          model     type         name             idx  code      fail  desc                           coords  length    coords  length  detail
+#----  ------------  --------  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
+2.1.1  ENTOY50A.MP1  ENTOY50A  mat_peptide  protein_one_mp1    2  pepadjcy  yes   PEPTIDE_ADJACENCY_PROBLEM    22..24:+       3  22..23:+       2  predictions of two mat_peptides expected to be adjacent are not adjacent [abs(21 - 25) != 1 (strand:+)]
+#
+3.1.1  ENTOY50A.MP2  ENTOY50A  CDS          protein_one        1  mutstart  yes   MUTATION_AT_START            10..12:+       3  11..13:+       3  expected start codon could not be identified [GTG starting at sequence position 10 (model position 11) on + strand is not a valid start]
+3.2.1  ENTOY50A.MP2  ENTOY50A  mat_peptide  protein_one_mp1    2  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -       -         -       -  mat_peptide may not be translated because its parent CDS has a problem
+3.3.1  ENTOY50A.MP2  ENTOY50A  mat_peptide  protein_one_mp2    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -       -         -       -  mat_peptide may not be translated because its parent CDS has a problem
+```
+
+  **Explanation of `pepadjcy` alert**: The three nucleotides from
+  positions 22 to 24 in the sequence `ENTOY50A.MP1` are inserted
+  between the end of the `mat_peptide` called `protein one mp1` and
+  the second `mat_peptide` called `protein one mp2` (not shown), which
+  means that they are not annotated as adjacent as they are expected
+  to be. The `protein one mp1` mature peptide ends at model
+  (reference) position 22 and the `protein one mp2` mature peptide
+  begins at model (reference) position 23. This alert is specific to
+  only `mat_peptide` features. 
+
+  **Explanation of `peptrans` alert**: The CDS `protein_one` which is
+  the *parent* CDS of the `protein one mp1` and `protein one mp2`
+  mature peptides has a *MUTATION_AT_START* error, which means that
+  the children mature peptides may not be translated, so a `peptrans`
+  alert is reported. This alert is specific to only `mat_peptide`
+  features and occurs for all children mature peptides when the parent
+  CDS has any fatal alert. The parent/child relationship is defined
+  in the *modelinfo* file, an example of which is [here](formats.md#minfo).
+
+The alignment of the two sequences is below, the three inserted `G`
+nucleotides in `ENTOY50A.MP1` are marked by `v` chacacters at the top
+of the alignment. The mutated and invalid `GTG` start codon in
+`ENTOY50A.MP2` is marked by `^` chacacters at the bottom of the
+alignment.
+
+
+```                                             
+                                           vvv
+ENTOY50A.MP1         -AAATCACCGATGGTGATCGCTGGGTTACCATAAATGAGCAT-----------
+#=GR ENTOY50A.MP1 PP .********************97779****************...........
+ENTOY50A.MP2         -AAATCACCGGTGGTGATCGCT---TTACCATAAATGAGCAT-----------
+#=GR ENTOY50A.MP2 PP .*********************...*****************...........
+#=GC RF              GAAATCACCGatGGTGatCGCT...TTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         0000000001111111111222...2222222333333333344444444445
+#=GC RFCOL.X         1234567890123456789012...3456789012345678901234567890
+                               ^^^   
+```                                             
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
