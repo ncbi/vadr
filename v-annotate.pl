@@ -125,7 +125,7 @@ require "sqp_utils.pm";
 #  7. alert_add_parent_based()
 #     peptrans (1)
 # 
-#  8. add_low_similarity_alerts()
+#  8. add_low_similarity_alerts_for_one_sequence()
 #     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5s, lowsim3s, lowsimis (9)
 # 
 #  9. add_frameshift_alerts_for_one_sequence()
@@ -1708,7 +1708,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       if(-s $stk_file_HA{$mdl_name}[$a]) { # skip empty alignments, which may exist if all seqs were not alignable
         parse_stk_and_add_alignment_cds_and_mp_alerts($stk_file_HA{$mdl_name}[$a], \$in_sqfile, $mdl_tt,
                                                       \%seq_len_H, \%seq_inserts_HH, \@{$sgm_info_HAH{$mdl_name}},
-                                                      \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                      \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%stg_results_HHH,
                                                       \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
                                                       \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%dcr_output_HAH,
                                                       $mdl_name, \@ftr_fileroot_A, \@ftr_outroot_A, 
@@ -1729,19 +1729,6 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 }
 
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
-
-#################################
-# add low similarity alerts for seqs with multiple hits in coverage determination stage
-#################################
-for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
-  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
-  if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    add_low_similarity_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                              \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
-                              \%stg_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
-                              \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
-  }
-}
 
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
@@ -3819,6 +3806,7 @@ sub cmalign_or_glsearch_run {
 #  $sgm_info_AHR:              REF to array of hashes with information on the model segments, PRE-FILLED
 #  $ftr_info_AHR:              REF to array of hashes with information on the features, PRE-FILLED
 #  $alt_info_HHR:              REF to hash of hashes with information on the errors, PRE-FILLED
+#  $stg_results_HHHR:          REF to 3D hash of classification results, PRE-FILLED
 #  $sgm_results_HAHR:          REF to results HAH, FILLED HERE
 #  $ftr_results_HAHR:          REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_seq_instances_HHR:     REF to array of hash with per-sequence alerts, ADDED TO HERE
@@ -3847,11 +3835,11 @@ sub cmalign_or_glsearch_run {
 ################################################################# 
 sub parse_stk_and_add_alignment_cds_and_mp_alerts { 
   my $sub_name = "parse_stk_and_add_alignment_cds_and_mp_alerts()";
-  my $nargs_exp = 24;
+  my $nargs_exp = 25;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($stk_file, $in_sqfile_R, $mdl_tt, $seq_len_HR, $seq_inserts_HHR, $sgm_info_AHR, 
-      $ftr_info_AHR, $alt_info_HHR, $sgm_results_HAHR, $ftr_results_HAHR, 
+      $ftr_info_AHR, $alt_info_HHR, $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
       $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $dcr_output_HAHR, 
       $mdl_name, $ftr_fileroot_AR, $ftr_outroot_AR, 
       $sqfile_for_cds_mp_alerts, $sqfile_for_output_fastas, $sqfile_for_pv,
@@ -4504,6 +4492,14 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
                                                                 $sgm_results_HAHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
                                                                 \@ua2rf_A, $ftr_fileroot_AR, $ftr_outroot_AR, 
                                                                 $to_remove_AR, $opt_HHR, $ofile_info_HHR);
+      
+      # add low similarity alerts for this sequence
+      # we have to do this here becuase we need @ua2rf_A map of unaligned positions 
+      # to RF positions to report model positions for alerts
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, 
+                                                 $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+                                                 $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
+                                                 $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR);
       
     } # end of 'else' entered if ! $doctor_flag
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
@@ -5860,19 +5856,23 @@ sub OLD_sqstring_find_stops {
 }
 
 #################################################################
-# Subroutine: add_low_similarity_alerts()
-# Incept:     EPN, Mon Apr 29 13:29:37 2019
+# Subroutine: add_low_similarity_alerts_for_one_sequence()
+# Incept:    EPN, Thu Jun  3 14:58:10 2021 
+#            EPN, Mon Apr 29 13:29:37 2019 [version for an array of seqs]
 #
-# Purpose:   For each sequence with >1 hits in the sequence coverage
-#            determine stage (r2 search stage), report any 
+# Purpose:   For a given sequence, check for and report any of the following alerts:
 #            low similarity per-sequence alerts          (lowsim5s, lowsim3s, lowsimis) and
 #            low similarity per-coding-feature alerts    (lowsim5c, lowsim3c, lowsimic) and 
 #            low similarity per-noncoding-feature alerts (lowsim5n, lowsim3n, lowsimin).
 #
 # Arguments:
-#  $mdl_name:               name of model these sequences were assigned to
-#  $seq_name_AR:            REF to array of sequence names
+#  $seq_name:               name of the sequence
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $ua2rf_AR:               REF to array that maps unaligned positions to reference positions
+#                           [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
+#                           if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
+#                           if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
+#                           $ua2rf_A[0] is invalid (set to 0)
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
@@ -5889,20 +5889,18 @@ sub OLD_sqstring_find_stops {
 # Dies:     never
 #
 #################################################################
-sub add_low_similarity_alerts { 
-  my $sub_name = "add_low_similarity_alerts";
+sub add_low_similarity_alerts_for_one_sequence { 
+  my $sub_name = "add_low_similarity_alerts_for_one_sequence";
   my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+  my ($seq_name, $seq_len_HR, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
       $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"}; # for convenience
 
-  my $nseq = scalar(@{$seq_name_AR});
   my $nftr = scalar(@{$ftr_info_AHR});
-  my $nsgm = scalar(@{$sgm_info_AHR});
 
   my $terminal_seq_5_min_length = opt_Get("--lowsim5seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim5s alert
   my $terminal_seq_3_min_length = opt_Get("--lowsim3seq", $opt_HHR); # minimum length of terminal missing region that triggers a lowsim3s alert
@@ -5910,7 +5908,6 @@ sub add_low_similarity_alerts {
   my $terminal_ftr_5_min_length = opt_Get("--lowsim5ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim5f alert
   my $terminal_ftr_3_min_length = opt_Get("--lowsim3ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3f alert
   my $internal_ftr_min_length   = opt_Get("--lowsimiftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimif alert
-  my $do_skip_pv            = opt_Get("--pv_skip",     $opt_HHR) ? 1 : 0;
 
   # set $min_length as minimum of the 5 length thresholds
   my $min_length = $internal_ftr_min_length;
@@ -5920,118 +5917,115 @@ sub add_low_similarity_alerts {
   if($min_length > $terminal_seq_5_min_length) { $min_length = $terminal_seq_5_min_length; }
   if($min_length > $terminal_seq_3_min_length) { $min_length = $terminal_seq_3_min_length; }
 
-  for(my $seq_idx = 0; $seq_idx < $nseq; $seq_idx++) { 
-    my $seq_name = $seq_name_AR->[$seq_idx];
-    my $seq_len  = $seq_len_HR->{$seq_name};
-    # determine number of nucleotides not covered by r2.bs search stage 
-    # at 5' and 3' ends
-    if((defined $stg_results_HHHR->{$seq_name}) && 
-       (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}) && 
-       (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"})) { 
-      my @tmp_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"}); # only do this to get nhits
-      my $nhits = scalar(@tmp_A); 
-      my $missing_coords = "";
-      my $bstrand = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"};
-      if($nhits == 1) { 
-        # only 1 hit
-        my $min_coord = vdr_CoordsMin($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
-        my $max_coord = vdr_CoordsMax($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
-        if($min_coord != 1) { 
-          if($bstrand eq "+") { $missing_coords = vdr_CoordsSegmentCreate(1, $min_coord-1, "+", $FH_HR); }
-          else                { $missing_coords = vdr_CoordsSegmentCreate($min_coord-1, 1, "-", $FH_HR); }
-        }
-        if($max_coord != $seq_len) { 
-          if($missing_coords ne "") { $missing_coords .= ","; }
-          if($bstrand eq "+") { $missing_coords .= vdr_CoordsSegmentCreate($max_coord+1, $seq_len, "+", $FH_HR); }
-          else                { $missing_coords .= vdr_CoordsSegmentCreate($seq_len, $max_coord+1, "-", $FH_HR); }
-        }
+  my $seq_len  = $seq_len_HR->{$seq_name};
+  # determine number of nucleotides not covered by r2.bs search stage 
+  # at 5' and 3' ends
+  if((defined $stg_results_HHHR->{$seq_name}) && 
+     (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}) && 
+     (defined $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"})) { 
+    my @tmp_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"}); # only do this to get nhits
+    my $nhits = scalar(@tmp_A); 
+    my $missing_coords = "";
+    my $bstrand = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"};
+    if($nhits == 1) { 
+      # only 1 hit
+      my $min_coord = vdr_CoordsMin($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
+      my $max_coord = vdr_CoordsMax($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $FH_HR);
+      if($min_coord != 1) { 
+        if($bstrand eq "+") { $missing_coords = vdr_CoordsSegmentCreate(1, $min_coord-1, "+", $FH_HR); }
+        else                { $missing_coords = vdr_CoordsSegmentCreate($min_coord-1, 1, "-", $FH_HR); }
       }
-      else { 
-        # multiple hits
-        $missing_coords .= vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $bstrand, $seq_len, $FH_HR);
+      if($max_coord != $seq_len) { 
+        if($missing_coords ne "") { $missing_coords .= ","; }
+        if($bstrand eq "+") { $missing_coords .= vdr_CoordsSegmentCreate($max_coord+1, $seq_len, "+", $FH_HR); }
+        else                { $missing_coords .= vdr_CoordsSegmentCreate($seq_len, $max_coord+1, "-", $FH_HR); }
       }
-      if($missing_coords ne "") { 
-        my @missing_coords_A = split(",", $missing_coords);
-        foreach my $missing_coords_tok (@missing_coords_A) { 
-          my ($start, $stop, undef) = vdr_CoordsSegmentParse($missing_coords_tok, $FH_HR);
-          my $length = abs($start - $stop) + 1;
-          if($length >= $min_length) { 
-            # length is greater than the minimum of all alert length reporting thresholds
-            if($bstrand eq "+") { 
-              my $is_start   = ($start == 1)        ? 1 : 0;
-              my $is_end     = ($stop  == $seq_len) ? 1 : 0;
-              # does this overlap with a feature by at least minimum overlap length threshold? 
-              my $ftr_overlap_flag = 0;
-              for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-                # determine if this feature qualifies as a 'coding' feature for purposes of the alert
-                # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
-                # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
-                my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
-                my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
-                if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
-                  my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_qstart"};
-                  my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_qstop"};
-                  my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
-                  if($f_strand eq $bstrand) { 
-                    my $noverlap = undef;
-                    my $overlap_reg = "";
-                    my $start1 = utl_Min($start,   $stop);
-                    my $stop1  = utl_Max($start,   $stop);
-                    my $start2 = utl_Min($f_start, $f_stop);
-                    my $stop2  = utl_Max($f_start, $f_stop);
-                    ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
-                    if($noverlap > 0) { 
-                      #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
-                      # for 5'/3'/internal cases: only actually report an alert for non-CDS and non-MP features
-                      # because CDS and MP are independently validated by blastx (unless --pv_skip)
-                      printf("HEYA overlap_reg: $overlap_reg\n");
-                      my ($soverlap_start, $soverlap_stop, $alt_scoords, $alt_mcoords);
-                      if($overlap_reg =~ /^(\d+)\-(\d+)$/) { 
-                        $soverlap_start = ($f_strand eq "+") ? $1 : $2;
-                        $soverlap_stop  = ($f_strand eq "+") ? $2 : $1;
-                      }
-                      else { 
-                        ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
-                      }
-                      $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
+    }
+    else { 
+      # multiple hits
+      $missing_coords .= vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $bstrand, $seq_len, $FH_HR);
+    }
+    if($missing_coords ne "") { 
+      my @missing_coords_A = split(",", $missing_coords);
+      foreach my $missing_coords_tok (@missing_coords_A) { 
+        my ($start, $stop, undef) = vdr_CoordsSegmentParse($missing_coords_tok, $FH_HR);
+        my $length = abs($start - $stop) + 1;
+        if($length >= $min_length) { 
+          # length is greater than the minimum of all alert length reporting thresholds
+          if($bstrand eq "+") { 
+            my $is_start   = ($start == 1)        ? 1 : 0;
+            my $is_end     = ($stop  == $seq_len) ? 1 : 0;
+            # does this overlap with a feature by at least minimum overlap length threshold? 
+            my $ftr_overlap_flag = 0;
+            for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+              # determine if this feature qualifies as a 'coding' feature for purposes of the alert
+              # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
+              # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
+              my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
+              my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
+              if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
+                my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_qstart"};
+                my $f_stop   = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_stop"}   : $ftr_results_HR->{"p_qstop"};
+                my $f_strand = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_strand"} : $ftr_results_HR->{"p_strand"};
+                if($f_strand eq $bstrand) { 
+                  my $noverlap = undef;
+                  my $overlap_reg = "";
+                  my $start1 = utl_Min($start,   $stop);
+                  my $stop1  = utl_Max($start,   $stop);
+                  my $start2 = utl_Min($f_start, $f_stop);
+                  my $stop2  = utl_Max($f_start, $f_stop);
+                  ($noverlap, $overlap_reg) = seq_Overlap($start1, $stop1, $start2, $stop2, $FH_HR);
+                  if($noverlap > 0) { 
+                    #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
+                    # for 5'/3'/internal cases: only actually report an alert for non-CDS and non-MP features
+                    # because CDS and MP are independently validated by blastx (unless --pv_skip)
+                    printf("HEYA overlap_reg: $overlap_reg\n");
+                    my ($soverlap_start, $soverlap_stop, $alt_scoords, $alt_mcoords);
+                    if($overlap_reg =~ /^(\d+)\-(\d+)$/) { 
+                      $soverlap_start = ($f_strand eq "+") ? $1 : $2;
+                      $soverlap_stop  = ($f_strand eq "+") ? $2 : $1;
+                    }
+                    else { 
+                      ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
+                    }
+                    $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
 
-                      my $alt_mcoords = "-;";
-                      my $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
-                                            $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
-                      if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
-                        $ftr_overlap_flag = 1;
-                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                      }
-                      if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
-                        $ftr_overlap_flag = 1;
-                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim3c" : "lowsim3n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                      }
-                      if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
-                        $ftr_overlap_flag = 1;
-                        alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsimic" : "lowsimin"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
-                      }
+                    $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
+                    my $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
+                                          $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
+                    if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
+                      $ftr_overlap_flag = 1;
+                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                    }
+                    if(($is_end) && ($noverlap >= $terminal_ftr_3_min_length)) { 
+                      $ftr_overlap_flag = 1;
+                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim3c" : "lowsim3n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
+                    }
+                    if((! $is_start) && (! $is_end) && ($noverlap >= $internal_ftr_min_length)) { 
+                      $ftr_overlap_flag = 1;
+                      alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsimic" : "lowsimin"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
                     }
                   }
                 }
-              } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
-              if(! $ftr_overlap_flag) { # no features overlapped above length threshold, potentially report lowsim5s, lowsim3s, or lowsimis
-                my $alt_str = "low similarity region of length $length ($start..$stop)";
-                if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
-                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
-                }
-                if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
-                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_str, $FH_HR);
-                }
-                if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
-                  alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_str, $FH_HR);
-                }
+              }
+            } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
+            if(! $ftr_overlap_flag) { # no features overlapped above length threshold, potentially report lowsim5s, lowsim3s, or lowsimis
+              my $alt_str = "low similarity region of length $length ($start..$stop)";
+              if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
+              }
+              if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_str, $FH_HR);
+              }
+              if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_str, $FH_HR);
               }
             }
-          } # end of 'if($length >= $min_length)'
-        } # end of 'foreach my $missing_coords_tok (@missing_coords_A)'
-      }
+          }
+        } # end of 'if($length >= $min_length)'
+      } # end of 'foreach my $missing_coords_tok (@missing_coords_A)'
     }
-  }  
+  }
   return;
 }
 
