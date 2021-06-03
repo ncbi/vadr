@@ -5984,7 +5984,20 @@ sub add_low_similarity_alerts {
                       #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
                       # for 5'/3'/internal cases: only actually report an alert for non-CDS and non-MP features
                       # because CDS and MP are independently validated by blastx (unless --pv_skip)
-                      my $alt_msg = "$noverlap nt overlap b/t low similarity region of length $length ($start..$stop) and annotated feature ($f_start..$f_stop), strand: $bstrand";
+                      printf("HEYA overlap_reg: $overlap_reg\n");
+                      my ($soverlap_start, $soverlap_stop, $alt_scoords, $alt_mcoords);
+                      if($overlap_reg =~ /^(\d+)\-(\d+)$/) { 
+                        $soverlap_start = ($f_strand eq "+") ? $1 : $2;
+                        $soverlap_stop  = ($f_strand eq "+") ? $2 : $1;
+                      }
+                      else { 
+                        ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
+                      }
+                      $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
+
+                      my $alt_mcoords = "-;";
+                      my $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
+                                            $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
                       if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
                         $ftr_overlap_flag = 1;
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
