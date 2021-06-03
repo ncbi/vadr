@@ -5582,7 +5582,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         if($sgm_5p_valid && $sgm_3p_valid) { # both are valid 
           if((abs($stop_5p - $start_3p)) != 1) { # they're not adjacent
             # 1) both mature peptides are annotated but not adjacent, alert on $ftr_idx
-            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($stop_5p, $start_3p, $ftr_strand, $FH_HR) . ";";
+            $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate((($ftr_strand eq "+") ? $stop_5p + 1 : $stop_5p - 1), (($ftr_strand eq "+") ? $start_3p - 1 : $start_3p + 1), $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$stop_5p]), abs($ua2rf_AR->[$start_3p]), $ftr_strand, $FH_HR) . ";";
             alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "pepadjcy", $seq_name, $ftr_idx, 
                                        sprintf("%s%sabs($stop_5p - $start_3p) != 1 (strand:%s)", $alt_scoords, $alt_mcoords, $sgm_results_HAHR->{$seq_name}[$sgm_5p_idx]{"strand"}), 
