@@ -4496,7 +4496,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
       # add low similarity alerts for this sequence
       # we have to do this here becuase we need @ua2rf_A map of unaligned positions 
       # to RF positions to report model positions for alerts
-      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, 
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, \@ua2rf_A, 
                                                  $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
                                                  $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
                                                  $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR);
@@ -5868,6 +5868,11 @@ sub OLD_sqstring_find_stops {
 # Arguments:
 #  $seq_name:               name of the sequence
 #  $seq_len_HR:             REF to hash of sequence lengths, PRE-FILLED
+#  $ua2rf_AR:               REF to array that maps unaligned positions to reference positions
+#                           [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
+#                           if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
+#                           if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
+#                           $ua2rf_A[0] is invalid (set to 0)
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
@@ -5886,10 +5891,10 @@ sub OLD_sqstring_find_stops {
 #################################################################
 sub add_low_similarity_alerts_for_one_sequence { 
   my $sub_name = "add_low_similarity_alerts_for_one_sequence";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $seq_len_HR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
+  my ($seq_name, $seq_len_HR, $ua2rf_AR, $ftr_info_AHR, $sgm_info_AHR, $alt_info_HHR, 
       $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, 
       $opt_HHR, $ofile_info_HHR) = @_;
 
@@ -5985,7 +5990,7 @@ sub add_low_similarity_alerts_for_one_sequence {
                     }
                     $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
 
-                    $alt_mcoords = "-;";
+                    $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
                     my $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
                                           $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
                     if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
