@@ -48,6 +48,10 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg3* alert examples](#example-ambg3) | 
 | *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | none | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide | always length 2 | [pep* alert examples](#example-pep) | 
 | *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | N/A | will be blank (`-`) | N/A | [pep* alert examples](#example-pep) | 
+| *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsim5* alert examples](#example-lowsim5) | 
+| *lowsim5s* | *LOW_SIMILARITY_START* | sequence position(s) at 5' end of sequence (not overlapping with a feature) that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsim5* alert examples](#example-lowsim5) | 
+| *lowsim3c*, *lowsim3n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 3' end of predicted feature that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsim3* alert examples](#example-lowsim5) | 
+| *lowsim3s* | *LOW_SIMILARITY_START* | sequence position(s) at 3' end of sequence (not overlapping with a feature) that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsim3* alert examples](#example-lowsim5) | 
 
 | - | - | - | - | - | - | - | 
 | *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
@@ -610,7 +614,6 @@ of the alignment. The mutated and invalid `GTG` start codon in
 `ENTOY50A.MP2` is marked by `^` chacacters at the bottom of the
 alignment.
 
-
 ```                                             
                                            vvv
 ENTOY50A.MP1         -AAATCACCGATGGTGATCGCTGGGTTACCATAAATGAGCAT-----------
@@ -621,6 +624,69 @@ ENTOY50A.MP2         -AAATCACCGGTGGTGATCGCT---TTACCATAAATGAGCAT-----------
 #=GC RFCOLX.         0000000001111111111222...2222222333333333344444444445
 #=GC RFCOL.X         1234567890123456789012...3456789012345678901234567890
                                ^^^   
+```                                             
+
+---
+### <a name="example-lowsim5"></a>Examples of 5' low similarity problems
+
+#### alert codes: *lowsim5c*, *lowsim5n*
+
+#### corresponding error message: *LOW_FEATURE_SIMILARITY_START*, *LOW_SIMILARITY_START*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr          ftr              ftr  alert           alert                               seq     seq       mdl     mdl  alert 
+#idx   name          model     type         name             idx  code      fail  desc                             coords  length    coords  length  detail
+#----  ------------  --------  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ------  --------  ------  ------
+2.2.1  ENTOY50A.LS1  ENTOY50A  CDS          protein_one        1  lowsim5c  no    LOW_FEATURE_SIMILARITY_START   12..13:+       2  11..12:+       2  region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity [2 nt overlap b/t low similarity region of length 13 (1..13) and annotated feature (12..31), strand: +]
+#
+3.1.2  ENTOY50A.LS2  ENTOY50A  -            -                  -  lowsim5s  yes   LOW_SIMILARITY_START            1..10:+      10   3..10:+       8  significant similarity not detected at 5' end of the sequence [seq:1..10:+;mdl:3..10:+;low similarity region of length 10 (1..10)]
+```
+
+  **Explanation of `lowsim5c` alert**: The two nucleotides from
+  positions 12 to 13 in the sequence `ENTOY50A.LS1` are the 5' end
+  of the predicted CDS `protein one` but are not similar to the reference
+  model. These two nucleotides align to reference model positions 11 and 12.
+  The alignment below shows the region of low similarity actually extends from 
+  sequence position 1 to position 13. 
+
+  A similar `lowsim5f` alert exists for non-coding (non-CDS and
+  non-mature peptide) features, but no example is shown here.  Having
+  separate alerts for coding and non-coding features gives the user
+  control over whether these types of alerts in coding versus non-coding
+
+  **Explanation of `lowsim5s` alert**: The first ten nucleotides 
+  in the sequence `ENTOY50A.LS2` are not similar to the reference model 
+  and do not overlap with any predicted features.  These ten nucleotides align to reference model positions 3 to 10,
+  and include insertions after reference position 10.
+  The alignment below shows the region of low similarity.
+
+  Regions of low similarity are detected in the *coverage determination* 
+  stage, as regions that are not covered by local alignment *hits* between the 
+  sequence and the model, not based on the global alignment determined in the 
+  alignment stage.
+
+The alignment of the two sequences is below, the two nucleotides that
+overlap with the beginning of the CDS in `ENTOY50A.LS1` are marked with 
+`v` characters at the top of the alignment. The two inserted nucleotides
+in sequence `ENTOY50A.LS2` after model position 10 are marked by `^` characters at the bottom 
+of the alignment. Note that the nucleotides in the low similarity regions at
+the beginning of each sequence do not match the nucleotides in the reference
+model (`#=GC RF` line).
+
+
+```                                             
+                                  vv
+ENTOY50A.LS1         TTGTAGGTTCG--AC-GTGATCGCTTTACCATAAATGAGCAT-----------
+#=GR ENTOY50A.LS1 PP 64156677889..97.79************************...........
+ENTOY50A.LS2         ---GTTTAGTGGCATGGTGATCGCTTTACCATAAATGAGCAT-----------
+#=GR ENTOY50A.LS2 PP ...******99889****************************...........
+#=GC SS_cons         ::.:::::::<..<<____>>>:::::::::::::::::::::::::::::::
+#=GC RF              GA.AATCACCG..atGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         00.00000001..1111111112222222222333333333344444444445
+#=GC RFCOL.X         12.34567890..1234567890123456789012345678901234567890
+                                ^^
 ```                                             
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
