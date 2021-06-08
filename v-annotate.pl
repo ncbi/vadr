@@ -5909,6 +5909,12 @@ sub add_low_similarity_alerts_for_one_sequence {
   my $terminal_ftr_3_min_length = opt_Get("--lowsim3ftr", $opt_HHR); # minimum length of terminal missing region in a feature that triggers a lowsim3f alert
   my $internal_ftr_min_length   = opt_Get("--lowsimiftr", $opt_HHR); # minimum length of internal missing region in a feature that triggers a lowsimif alert
 
+  my $alt_msg        = undef; # message for reporting an alert
+  my $alt_scoords    = undef; # sequence coords string for alert message
+  my $alt_mcoords    = undef; # model    coords string for alert message
+  my $soverlap_start = undef; # sequence position of start of overlap region
+  my $soverlap_stop  = undef; # sequence position of end   of overlap region
+
   # set $min_length as minimum of the 5 length thresholds
   my $min_length = $internal_ftr_min_length;
   if($min_length > $internal_seq_min_length)   { $min_length = $internal_seq_min_length; }
@@ -5989,10 +5995,9 @@ sub add_low_similarity_alerts_for_one_sequence {
                       ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
                     }
                     $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
-
                     $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
-                    my $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
-                                          $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
+                    $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
+                                       $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
                     if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
                       $ftr_overlap_flag = 1;
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
@@ -6010,15 +6015,18 @@ sub add_low_similarity_alerts_for_one_sequence {
               }
             } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
             if(! $ftr_overlap_flag) { # no features overlapped above length threshold, potentially report lowsim5s, lowsim3s, or lowsimis
-              my $alt_str = "low similarity region of length $length ($start..$stop)";
+              $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR) . ";"; 
+              $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start]), abs($ua2rf_AR->[$stop]), "+", $FH_HR) . ";"; 
+              $alt_msg = sprintf("%s%slow similarity region of length %d (%d..%d)", 
+                                 $alt_scoords, $alt_mcoords, $length, $start, $stop);
               if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_str, $FH_HR);
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
               }
               if(($is_end) && ($length >= $terminal_seq_3_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_str, $FH_HR);
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim3s", $seq_name, $alt_msg, $FH_HR);
               }
               if((! $is_start) && (! $is_end) && ($length >= $internal_seq_min_length)) { 
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_str, $FH_HR);
+                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsimis", $seq_name, $alt_msg, $FH_HR);
               }
             }
           }
