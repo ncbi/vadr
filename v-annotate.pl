@@ -4141,6 +4141,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
 
       # determine if we have a valid annotation for this segment
       my $is_valid = 1; # assume we do, and check for 3 cases in which we don't below
+
       if(($start_rfpos == -1) || ($stop_rfpos == -1)) { 
         # alignment doesn't span segment RF positions
         $is_valid = 0; 
@@ -4155,7 +4156,10 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         # deletinf alert here in %ftr_deletinf_alt_msg_HA and then deal with it after
         # the 'for($sgm_idx=0..$nsgm-1)' block below
         my $ftr_nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
-        my $alt_msg = ($ftr_nsgm > 1) ? 
+        my $alt_scoords = "seq:VADRNULL;"; # feature is deleted, no sequence info available
+        my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($sgm_start_rfpos, $sgm_stop_rfpos, $sgm_strand, $FH_HR) . ";"; 
+        my $alt_msg = $alt_scoords . $alt_mcoords;
+        $alt_msg .= ($ftr_nsgm > 1) ? 
             sprintf("segment %d of %d deleted", ($sgm_idx - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1, $ftr_nsgm) : 
             "complete single segment feature deleted";
         if(! defined $ftr_deletinf_alt_msg_HA{$ftr_idx}) { 
@@ -4457,8 +4461,11 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             # all segments are deleted, report deletins (per-sequence) alert, 
             # we do NOT report any deletinf alerts, one reason is there is no 
             # feature annotation for $ftr_idx in this case
+            my $alt_scoords = "seq:VADRNULL;"; # feature is deleted, no sequence info available
+            my $alt_mcoords = "mdl:" . $ftr_info_AHR->[$ftr_idx]{"coords"} . ";";
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
-                                        sprintf("%s feature number %s: %s",
+                                        sprintf("%s%s%s feature number %s: %s",
+                                                $alt_scoords, $alt_mcoords,
                                                 $ftr_info_AHR->[$ftr_idx]{"type"}, 
                                                 vdr_FeatureTypeIndex($ftr_info_AHR, $ftr_idx), 
                                                 $ftr_info_AHR->[$ftr_idx]{"outname"}), 
@@ -8192,7 +8199,8 @@ sub alert_instance_parse {
   else { 
     $detail = $alt_instance_str;
   }
-    
+
+  printf("returning: scoords: $scoords mcoords: $mcoords detail: $detail\n");
   return ($scoords, $mcoords, $detail);
 }
 
@@ -8700,8 +8708,8 @@ sub output_tabular {
                                 ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
                                 ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_scoords, $FH_HR),
                                 ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
-                                ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_mcoords, $FH_HR),
-                                $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_str eq "VADRNULL") ? "" : " [" . $instance_str . "]")]);
+                                ($instance_mcoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_mcoords, $FH_HR),
+                                $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_detail eq "VADRNULL") ? "" : " [" . $instance_detail . "]")]);
             $alt_nprinted++;
           }
         }
@@ -8852,7 +8860,7 @@ sub output_tabular {
                                         ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
                                         ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_scoords, $FH_HR),
                                         ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
-                                        ($instance_scoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_mcoords, $FH_HR),
+                                        ($instance_mcoords eq "VADRNULL") ? "-" : vdr_CoordsLength($instance_mcoords, $FH_HR),
                                         $alt_info_HHR->{$alt_code}{"ldesc"} . (($instance_detail eq "VADRNULL") ? "" : " [" . $instance_detail . "]")]);
                     $alt_nprinted++;
                   }

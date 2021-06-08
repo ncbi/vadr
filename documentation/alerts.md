@@ -54,7 +54,8 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *lowsim3s* | *LOW_SIMILARITY_START* | sequence position(s) at 3' end of sequence (not overlapping with a feature) that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsim3* alert examples](#example-lowsim5) | 
 | *lowsimic*, *lowsimin* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsimi* alert examples](#example-lowsimi) | 
 | *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsimi* alert examples](#example-lowsimi) | 
-
+| *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | N/A | model (reference) positions that correspond to the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
+| *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | N/A | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
 | - | - | - | - | - | - | - | 
 | *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
 
@@ -808,6 +809,42 @@ ENTOY50A.LS5         -A-AATCACCG--ATGGTGATCGCTTTACCAAAGCAGTACAGGCACATGACAAAGCAGT
 #=GC RFCOL.X.        00.00000001..111111.....................................................................................1112222222222333333333344..444444445..
 #=GC RFCOL..X        12.34567890..123456.....................................................................................7890123456789012345678901..234567890..
                        
+```                                             
+---
+### <a name="example-deletin"></a>Examples of deleted feature problems
+
+#### alert codes: *deletins*, *deletinf* (not shown)
+
+#### corresponding error message: *DELETION_OF_FEATURE*, *DELETION_OF_FEATURE_SECTION*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr   ftr   ftr  alert           alert                     seq     seq       mdl     mdl  alert 
+#idx   name          model     type  name  idx  code      fail  desc                   coords  length    coords  length  detail
+#----  ------------  --------  ----  ----  ---  --------  ----  -------------------  --------  ------  --------  ------  ------
+2.1.1  ENTOY50A.DF1  ENTOY50A  -     -       -  deletins  yes   DELETION_OF_FEATURE         -       -  23..28:+       6  internal deletion of a complete feature [mat_peptide feature number 2: protein one mp2]
+```
+
+  **Explanation of `deletins` alert**: The mature peptide feature named `protein one mp2` 
+  is deleted in the sequence `ENTOY50A.DF1`. This is inferred based on the alignment of the sequence
+  to the model in region from model positions 23 to 28 which correspond to that mature peptide.
+  
+  A similar `deletinf` alert exists for *multi-segment* features for which
+  one or more but not all segments are deleted. The associated value for this
+  alert in the `alert desc` field is `DELETION_OF_FEATURE_SECTION`. 
+  No example of this alert is shown here.
+  
+The alignment of the sequence is below, note that the model positions 23 to 28, 
+marked by `v` characters at the top of the alignment, are all gaps in the sequence
+
+```
+                                           vvvvvv
+ENTOY50A.DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
+#=GR ENTOY50A.DF1 PP .*******************8........89*******************
+#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X         12345678901234567890123456789012345678901234567890
 ```                                             
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
