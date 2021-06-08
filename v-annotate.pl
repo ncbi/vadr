@@ -4508,6 +4508,10 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
                                                  $stg_results_HHHR, $sgm_results_HAHR, $ftr_results_HAHR, 
                                                  $alt_seq_instances_HHR, $alt_ftr_instances_HHHR, $opt_HHR, $ofile_info_HHR);
       
+      # update the model coords for ambgnt5s/ambgnt3s seqs, now that we have the alignment
+      alert_sequence_instance_update_mdl_coords($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, \@ua2rf_A, $FH_HR);
+      alert_sequence_instance_update_mdl_coords($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, \@ua2rf_A, $FH_HR);
+
     } # end of 'else' entered if ! $doctor_flag
   } # end of 'for(my $i = 0; $i < $nseq; $i++)'
 
@@ -8072,6 +8076,91 @@ sub alert_sequence_instance_add {
 }
 
 #################################################################
+# Subroutine: alert_sequence_instance_update_mdl_coords()
+# Incept:     EPN, Tue Jun  8 14:21:01 2021
+# Purpose:    Updates model coordinates for a per-sequence alert
+#             given the @{$ua2rf_AR} map of unaligned positions to 
+#             model coordinates.
+#
+# Arguments:
+#  $alt_seq_instances_HHR: REF to 2D hash with per-sequence alerts, PRE-FILLED
+#  $alt_info_HHR           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code:              alert code we're adding an alert for
+#  $seq_name:              sequence name
+#  $ua2rf_AR:              REF to array that maps unaligned positions to reference positions
+#                          [1..$uapos..$ualen]: reference position that unaligned position $uapos aligns to 
+#                          if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
+#                          if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
+#                          $ua2rf_A[0] is invalid (set to 0)
+#  $FH_HR:                 REF to hash of file handles
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub alert_sequence_instance_update_mdl_coords { 
+  my $sub_name = "alert_sequence_instance_update_mdl_coords";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($alt_seq_instances_HHR, $alt_info_HHR, $alt_code, $seq_name, $ua2rf_AR, $FH_HR) = @_;
+
+  if(! defined $alt_seq_instances_HHR) { 
+    ofile_FAIL("ERROR in $sub_name, alt_seq_instances_HHR is undefined", 1, $FH_HR);
+  }
+  if(! defined $alt_info_HHR->{$alt_code}) { 
+    ofile_FAIL("ERROR in $sub_name, unrecognized alert code $alt_code", 1, $FH_HR);
+  }
+  if($alt_info_HHR->{$alt_code}{"pertype"} ne "sequence") { 
+    ofile_FAIL("ERROR in $sub_name alert code $alt_code is not a per-sequence alert", 1, $FH_HR);
+  }
+  if(! defined $ua2rf_AR) { 
+    ofile_FAIL("ERROR in $sub_name, ua2rf_AR is undefined", 1, $FH_HR);
+  }
+
+  if(defined $alt_seq_instances_HHR->{$seq_name}) { 
+    my $alt_instance = undef;
+    $alt_instance = alert_sequence_instance_fetch($alt_seq_instances_HHR, $seq_name, $alt_code);
+    if(defined $alt_instance) { 
+      my $new_alt_instance = "";
+      my @instance_str_A = split(":VADRSEP:", $alt_instance);
+      my $instance_ctr = 0;
+      foreach my $instance_str (@instance_str_A) { 
+        my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
+        # alert_instance_parse removes 'seq:' and ';', 'mdl:', and ';'
+        my $new_mcoords = "mdl:";
+        if($instance_scoords ne "VADRNULL") { 
+          my @start_A  = (); 
+          my @stop_A   = (); 
+          my @strand_A = ();
+          vdr_FeatureStartStopStrandArrays($instance_scoords, \@start_A, \@stop_A, \@strand_A, $FH_HR);
+          for(my $i = 0; $i < scalar(@start_A); $i++) { 
+            if($i > 0) { $new_mcoords .= ","; }
+            $new_mcoords .= vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start_A[$i]]), 
+                                                    abs($ua2rf_AR->[$stop_A[$i]]), 
+                                                    $strand_A[$i], $FH_HR);
+          }
+          $new_mcoords .= ";";
+        }
+        else { 
+          $new_mcoords .= "VADRNULL;";
+        }
+        if($instance_ctr > 0) { $new_alt_instance .= ":VADRSEP:"; }
+        $new_alt_instance .= "seq:" . $instance_scoords . ";" . $new_mcoords . $instance_detail;
+      }
+      # update the alert instance somehow! maybe set it to blank and then rewrite it?
+      printf("in $sub_name\n");
+      printf("\told: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
+      $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $new_alt_instance;
+      printf("\tnew: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine:  alert_feature_instance_add()
 # Incept:      EPN, Thu Apr  4 11:40:09 2019
 #
@@ -8409,7 +8498,7 @@ sub alert_add_unexdivg {
 #
 #################################################################
 sub alert_add_ambgnt5s_ambgnt3s {
-  my $sub_name = "alert_add_unexdivg";
+  my $sub_name = "alert_add_ambgnt5s_ambgnt3s";
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -8434,8 +8523,12 @@ sub alert_add_ambgnt5s_ambgnt3s {
       my $pos_retval = pos($sqstring);
       # if $pos_retval is undef entire sqstring is N or n
       my $first_non_n = (defined $pos_retval) ? $pos_retval : $seq_len;
+      my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(1, ($first_non_n-1), "+", $FH_HR) . ";";
+      my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, 
-                                  sprintf("first %d positions are Ns, %s", (($first_non_n == $seq_len) ? $seq_len : $first_non_n-1), 
+                                  sprintf("%s%sfirst %d positions are Ns, %s", 
+                                          $alt_scoords, $alt_mcoords, 
+                                          (($first_non_n == $seq_len) ? $seq_len : $first_non_n-1), 
                                           (($first_non_n == $seq_len) ? "entire sequence is Ns" : "first non-N is position $first_non_n")), 
                                   $FH_HR);
     }
@@ -8448,8 +8541,11 @@ sub alert_add_ambgnt5s_ambgnt3s {
       my $sqlen = length($sqstring);
       my $nlen  = (defined $pos_retval) ? $pos_retval : $seq_len;
       my $first_non_n = $sqlen - $nlen;
+      my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(($seq_len - $nlen + 1), $seq_len, "+", $FH_HR) . ";";
+      my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, 
-                                  sprintf("final %d positions are Ns, %s", $nlen,
+                                  sprintf("%s%sfinal %d positions are Ns, %s", 
+                                          $alt_scoords, $alt_mcoords, $nlen,
                                           (($first_non_n == 0) ? "entire sequence is Ns" : "final non-N is position $first_non_n")), 
                                   $FH_HR);
     }
