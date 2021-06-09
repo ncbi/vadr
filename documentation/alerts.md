@@ -57,9 +57,11 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *lowsimic*, *lowsimin* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsimi* alert examples](#example-lowsimi) | 
 | *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsimi* alert examples](#example-lowsimi) | 
 | *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | N/A | model (reference) positions that correspond to the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
-| *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | N/A | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
-| *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [duplicate regions examples*#example-dupregin) | 
-| *discontn* | *DISCONTINUOUS_SIMILARITY* | *N* sets of sequence coordinates, one for each hit in the coverage determination stage | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [discontinuous similarity example*#example-discontn) | 
+| *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | N/A | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | none | [deleted feature examples](#example-deletin) | 
+| *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [duplicate regions examples](#example-dupregin) | 
+| *discontn* | *DISCONTINUOUS_SIMILARITY* | *N* sets of sequence coordinates, one for each hit in the coverage determination stage | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [discontinuous similarity example](#example-discontn) | 
+| *indfstrn* | *INDEFINITE_STRAND* | sequence coordinates of the best hit on the **opposite** strand from the overall best hit for this sequence in the coverage determination stage | none | model (reference) coordinates for the hit pertaining to the sequence coordinates in `sequence coords` | none | [indefinite strand example](#example-indfstrn) | 
+| *lowcovrg* | *LOW_COVERAGE* | one or more set of sequence coordinates that are **not** covered by any hit to the model on the top-scoring strand in the coverage determination stage | none | will be blank (`-`) | N/A | [low coverage example](#example-lowcovrg) | 
 | - | - | - | - | - | - | - | 
 | *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
 
@@ -907,10 +909,14 @@ ENTOY50A.DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATACCGATGGT
 2.1.1  ENTOY50A.DC1  ENTOY50A  -     -       -  discontn  yes   DISCONTINUOUS_SIMILARITY  1..26:+,27..49:+      49  25..50:+,2..24:+      49  not all hits are in the same order in the sequence and the homology model [seq order: 1,2, mdl order: 2,1]
 ```
 
-  **Explanation of `discontn` alert**: There are two hits in the coverage determination stage and they 
-  are not in the same order in sequence and model coordinates. Specifically, hit 1 is from positions 1 to 26 in the 
-  sequence and 25 to 50 in the model and hit 2 is from positions 27 to 49 in the sequence and positions 2
-  to 24 in the model. So hit 1 comes before hit 2 in the sequence, but hit 2 comes before hit 1 in the model.
+  **Explanation of `discontn` alert**: For the `ENTOY5A.DC1` sequence,
+  there are two hits in the coverage determination stage and they are
+  not in the same order in sequence and model
+  coordinates. Specifically, hit 1 is from positions 1 to 26 in the
+  sequence and 25 to 50 in the model and hit 2 is from positions 27 to
+  49 in the sequence and positions 2 to 24 in the model. So hit 1
+  comes before hit 2 in the sequence, but hit 2 comes before hit 1 in
+  the model.
 
 The alignment of the sequence is below, and sequence positions 27 to 49 are marked 
 marked by `v` characters at the top of the alignment, which match identically
@@ -919,7 +925,7 @@ the alignment.
 
 ```
                                                                        |-27 to 49 in the seq-|
-                                                                       vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+                                                                       vvvvvvvvvvvvvvvvvvvvvvv
 ENTOY50A.DC1         ------------------------ACCATAAATGAGCATTCTACGTGCATAAATCACCGATGGTGATCGCTTT
 #=GR ENTOY50A.DC1 PP ........................*************************************************
 #=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT.......................
@@ -927,6 +933,76 @@ ENTOY50A.DC1         ------------------------ACCATAAATGAGCATTCTACGTGCATAAATCACCG
 #=GC RFCOL.X         12345678901234567890123456789012345678901234567890.......................
                       ^^^^^^^^^^^^^^^^^^^^^^^
                       |--2-24 in the model--|
+```                                             
+---
+### <a name="example-indfstrn"></a>Example of indefinite strand
+
+#### alert codes: *indfstrn*
+
+#### corresponding error message: *INDEFINITE_STRAND*
+
+#### Example lines from `.alt` file:
+```
+#      seq                     ftr   ftr   ftr  alert           alert                              seq     seq       mdl     mdl  alert 
+#idx   name          model     type  name  idx  code      fail  desc                            coords  length    coords  length  detail
+#----  ------------  --------  ----  ----  ---  --------  ----  ----------------------------  --------  ------  --------  ------  ------
+2.1.2  ENTOY50A.ID1  ENTOY50A  -     -       -  indfstrn  yes   INDEFINITE_STRAND             49..25:-      25  26..50:+      25  significant similarity detected on both strands [best hit is on + strand, but hit on - strand from 49 to 25 has score 12.8 > 12.0]
+```
+
+  **Explanation of `indfstrn` alert**: For the `ENTOY50A.ID1` sequence there are two hits in the coverage determination stage and they 
+  are not to the same strand. The top-scoring hit is to the `+` strand, but the second hit with a score of 12.8 bits is on the `-` strand,
+  that hit occurs from positions to 49 to 25 on the negative strand to positions 26 to 50 in the reference model. The second hit therefore
+  conflicts with the top-scoring hit and so it is the one that is described in the `seq coords` and `mdl coords` fields. Normally, a 
+  *indfstrn* alert is only reported if a hit on the opposite strand from the top hit exceeds 25 bits, but to construct this example, the
+  minimum of 25 bits was lowered to 12 bits with the `--indefstr 12` flag to `v-annotate.pl`.
+
+The alignment of the sequence is below, and sequence positions 25 to
+49 are marked marked by `v` characters at the top of the alignment,
+*after reverse complementing* these match identically to positions 2
+to 27 in the reference model, marked by '^' at the bottom of the
+alignment.
+
+```
+                                              |  25 to 49 in the seq  |
+                                              vvvvvvvvvvvvvvvvvvvvvvvvv
+ENTOY50A.ID1         -AAATCACCGATGGTGATCGCTTTAATGCACGTAGAATGCTCATTTATGG-----
+#=GR ENTOY50A.ID1 PP .***********************8654433333499*************.....
+#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATA.....AATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         000000000111111111122222222223.....33333333344444444445
+#=GC RFCOL.X         123456789012345678901234567890.....12345678901234567890
+                                              ^^^^^     ^^^^^^^^^^^^^^^^^^^^
+                                              |   27 to 50 in the model    |
+```                                             
+---
+### <a name="example-lowcovrg"></a>Example of low coverage
+
+#### alert codes: *lowcovrg*
+
+#### corresponding error message: *LOW_COVERAGE*
+
+#### Example lines from `.alt` file:
+```
+#      seq                     ftr   ftr   ftr  alert           alert                     seq     seq     mdl     mdl  alert 
+#idx   name          model     type  name  idx  code      fail  desc                   coords  length  coords  length  detail
+#----  ------------  --------  ----  ----  ---  --------  ----  --------------------  -------  ------  ------  ------  ------
+2.1.1  ENTOY50A.LC1  ENTOY50A  -     -       -  lowcovrg  yes   LOW_COVERAGE          1..25:+      25       -       -  low sequence fraction with significant similarity to homology model [0.545 < 0.900]
+```
+
+  **Explanation of `lowcovrg` alert**: For the `ENTOY50A.LC1` sequence the nucleotides from 1 to 25 are not part of any hit to the model
+  in the coverage determation stage. These 25 nucleotides make up 45.5\% the total length of the sequence, meaning that only 54.5\% of
+  the sequence *is covered* by hits to the model. 
+
+The alignment of the sequence is below. Note that positions 1..25 do
+not match well to the model. These are marked by `v` characters at the top of the alignment.
+
+```
+                     |1 to 25 in the sequence|
+                     vvvvvvvvvvvvvvvvvvvvvvvvv
+ENTOY50A.LC1         GATACATAACCATAAAATCCGGGACAAATCACCGATGGTGATCGCTTTACCATAA-------------------
+#=GR ENTOY50A.LC1 PP *6444444444444444444444444789**************************...................
+#=GC RF              GA........................AATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.         00........................000000011111111112222222222333333333344444444445
+#=GC RFCOL.X         12........................345678901234567890123456789012345678901234567890
 ```                                             
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

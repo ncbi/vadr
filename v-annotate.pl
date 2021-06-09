@@ -3029,7 +3029,10 @@ sub add_classification_alerts {
 
         # low coverage (lowcovrg)
         if($scov < $lowcov_opt) { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowcovrg", $seq_name, $scov2print . "<" . $lowcov_opt2print, $FH_HR);
+          $alt_scoords = "seq:" . vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"}, $seq_len, $FH_HR) . ";";
+          $alt_mcoords = "mdl:VADRNULL;";
+          $alt_str = sprintf("%s < %s", $scov2print, $lowcov_opt2print);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowcovrg", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
         }
 
         # high bias (biasdseq) 
@@ -3043,15 +3046,22 @@ sub add_classification_alerts {
           my @ostrand_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"score"});
           my $top_ostrand_score = $ostrand_score_A[0];
           if($top_ostrand_score > $indefstr_opt) { 
-            my @ostrand_start_A = ();
-            my @ostrand_stop_A  = ();
-            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"s_coords"}, \@ostrand_start_A, \@ostrand_stop_A, undef, $FH_HR);
+            my @ostrand_sstart_A  = ();
+            my @ostrand_sstop_A   = ();
+            my @ostrand_sstrand_A = ();
+            my @ostrand_mstart_A  = ();
+            my @ostrand_mstop_A   = ();
+            my @ostrand_mstrand_A = ();
+            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"s_coords"}, \@ostrand_sstart_A, \@ostrand_sstop_A, \@ostrand_sstrand_A, $FH_HR);
+            vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"m_coords"}, \@ostrand_mstart_A, \@ostrand_mstop_A, \@ostrand_mstrand_A, $FH_HR);
+            $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($ostrand_sstart_A[0], $ostrand_sstop_A[0], $ostrand_sstrand_A[0], $FH_HR) . ";";
+            $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR) . ";";
             $alt_str = sprintf("best hit is on %s strand, but hit on %s strand from %d to %d has score %.1f > %s", 
                                $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"}, 
                                $stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"bstrand"}, 
-                               $ostrand_start_A[0], $ostrand_stop_A[0], $top_ostrand_score, 
+                               $ostrand_sstart_A[0], $ostrand_sstop_A[0], $top_ostrand_score, 
                                $indefstr_opt2print);
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_str, $FH_HR);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
           }
         }
 
