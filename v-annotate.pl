@@ -3147,8 +3147,13 @@ sub add_classification_alerts {
             }
           }
           if($out_of_order_flag) { 
-            $alt_str = "seq order: " . $seq_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ")";
-            $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ")";
+#            $alt_str = "seq order: " . $seq_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ")";
+#            $alt_str .= ", model order: " . $mdl_hit_order_str . "(" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ")";
+            $alt_str = sprintf("%s%sseq order: %s, mdl order: %s",
+                               "seq:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ";", 
+                               "mdl:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ";", 
+                               $seq_hit_order_str, 
+                               $mdl_hit_order_str);
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "discontn", $seq_name, $alt_str, $FH_HR);
           }
         }

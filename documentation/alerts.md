@@ -59,6 +59,7 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | N/A | model (reference) positions that correspond to the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
 | *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | N/A | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
 | *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [duplicate regions examples*#example-dupregin) | 
+| *discontn* | *DISCONTINUOUS_SIMILARITY* | *N* sets of sequence coordinates, one for each hit in the coverage determination stage | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [discontinuous similarity example*#example-discontn) | 
 | - | - | - | - | - | - | - | 
 | *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
 
@@ -874,7 +875,7 @@ ENTOY50A.DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
   to 43 in the model. So the two hits overlap by 37 model positions from 7 to 43. The first hit has a bit
   score of 37.7 bits and the second hit of 25.5 bits. 
 
-The alignment of the sequence is below, and the positions 50 to 86 are marked 
+The alignment of the sequence is below, and sequence positions 50 to 86 are marked 
 marked by `v` characters at the top of the alignment, which match identically
 to positions 7 to 43 in the reference model, marked by '^' at the bottom of
 the alignment. 
@@ -889,6 +890,43 @@ ENTOY50A.DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATACCGATGGT
 #=GC RFCOL.X         12345678901234567890123456789012345678901234567890.....................................
                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                            |--positions 7 to 43 in the model---|
+```                                             
+---
+### <a name="example-discontn"></a>Example of discontinuous similarity
+
+#### alert codes: *discontn*
+
+#### corresponding error message: *DISCONTINUOUS SIMILARITY*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr   ftr   ftr  alert           alert                                  seq     seq               mdl     mdl  alert 
+#idx   name          model     type  name  idx  code      fail  desc                                coords  length            coords  length  detail
+#----  ------------  --------  ----  ----  ---  --------  ----  ------------------------  ----------------  ------  ----------------  ------  ------
+2.1.1  ENTOY50A.DC1  ENTOY50A  -     -       -  discontn  yes   DISCONTINUOUS_SIMILARITY  1..26:+,27..49:+      49  25..50:+,2..24:+      49  not all hits are in the same order in the sequence and the homology model [seq order: 1,2, mdl order: 2,1]
+```
+
+  **Explanation of `discontn` alert**: There are two hits in the coverage determination stage and they 
+  are not in the same order in sequence and model coordinates. Specifically, hit 1 is from positions 1 to 26 in the 
+  sequence and 25 to 50 in the model and hit 2 is from positions 27 to 49 in the sequence and positions 2
+  to 24 in the model. So hit 1 comes before hit 2 in the sequence, but hit 2 comes before hit 1 in the model.
+
+The alignment of the sequence is below, and sequence positions 27 to 49 are marked 
+marked by `v` characters at the top of the alignment, which match identically
+to positions 2 to 24 in the reference model, marked by '^' at the bottom of
+the alignment. 
+
+```
+                                                                       |-27 to 49 in the seq-|
+                                                                       vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+ENTOY50A.DC1         ------------------------ACCATAAATGAGCATTCTACGTGCATAAATCACCGATGGTGATCGCTTT
+#=GR ENTOY50A.DC1 PP ........................*************************************************
+#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT.......................
+#=GC RFCOLX.         00000000011111111112222222222333333333344444444445.......................
+#=GC RFCOL.X         12345678901234567890123456789012345678901234567890.......................
+                      ^^^^^^^^^^^^^^^^^^^^^^^
+                      |--2-24 in the model--|
 ```                                             
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
