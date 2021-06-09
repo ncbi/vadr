@@ -2853,6 +2853,9 @@ sub add_classification_alerts {
   my $incspec_opt2print    = sprintf("%.3f", opt_Get("--incspec",    $opt_HHR));
   my $dupregsc_opt2print   = sprintf("%.1f", opt_Get("--dupregsc",   $opt_HHR));
 
+  my $alt_scoords; # sequence coordinates related to an alert
+  my $alt_mcoords; # model    coordinates related to an alert
+
   # if we used blastn for the cdt stage, we may have overlapping hits in sequence coords, 
   # this is relevant if/when we call helper_sort_hit_array for the dupregin alert below
   my $do_blastn_cdt = opt_Get("-s", \%opt_HH) ? 1 : 0;
@@ -3055,11 +3058,15 @@ sub add_classification_alerts {
         # inconsistent hits: duplicate regions (dupregin) 
         $alt_str = "";
         if($nhits > 1) { 
-          my @m_start_A = ();
-          my @m_stop_A  = ();
-          my @s_start_A = ();
-          my @s_stop_A  = ();
-          vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, undef, $FH_HR);
+          my @m_start_A  = ();
+          my @m_stop_A   = ();
+          my @m_strand_A = ();
+          my @s_start_A  = ();
+          my @s_stop_A   = ();
+          my @s_strand_A = ();
+          $alt_scoords = "";
+          $alt_mcoords = "";
+          vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, \@m_strand_A, $FH_HR);
           my @dupreg_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
           for(my $i = 0; $i < $nhits; $i++) { 
             if($dupreg_score_A[$i] > $dupregsc_opt) { 
@@ -3068,22 +3075,30 @@ sub add_classification_alerts {
                   my ($noverlap, $overlap_str) = seq_Overlap($m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], $FH_HR);
                   if($noverlap >= $dupregolp_opt) { 
                     if(scalar(@s_start_A) == 0) { # first overlap above threshold, fill seq start/stop arrays:
-                      vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, undef, $FH_HR);
+                      vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, \@s_strand_A, $FH_HR);
                     }
-                    $alt_str .= sprintf("%s%s (len %d >= %d) hits %d (%.1f bits) and %d (%.1f bits) (model:%d..%d,%d..%d seq:%d..%d,%d..%d)", 
+                    $alt_scoords .= sprintf("%s%s,%s", 
+                                            ($alt_scoords eq "") ? "seq:" : ",",
+                                            vdr_CoordsSegmentCreate($s_start_A[$i], $s_stop_A[$i], $s_strand_A[$i], $FH_HR), 
+                                            vdr_CoordsSegmentCreate($s_start_A[$j], $s_stop_A[$j], $s_strand_A[$j], $FH_HR));
+                    $alt_mcoords .= sprintf("%s%s,%s", 
+                                            ($alt_mcoords eq "") ? "mdl:" : ",",
+                                            vdr_CoordsSegmentCreate($m_start_A[$i], $m_stop_A[$i], $m_strand_A[$i], $FH_HR), 
+                                            vdr_CoordsSegmentCreate($m_start_A[$j], $m_stop_A[$j], $m_strand_A[$j], $FH_HR));
+                    $alt_str     .= sprintf("%s%s (len %d >= %d) hits %d (%.1f bits) and %d (%.1f bits) (seq:%d..%d,%d..%d mdl:%d..%d,%d..%d)", 
                                         ($alt_str eq "") ? "" : ", ",
                                         $overlap_str, $noverlap, $dupregolp_opt, 
                                         ($i+1), $dupreg_score_A[$i], 
                                         ($j+1), $dupreg_score_A[$j], 
-                                        $m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], 
-                                        $s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j]);
+                                        $s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j],
+                                        $m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j]);
                   }
                 }
               }
             }
           }
           if($alt_str ne "") { 
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "dupregin", $seq_name, $alt_str, $FH_HR);
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "dupregin", $seq_name, $alt_scoords . ";" . $alt_mcoords . ";" . $alt_str, $FH_HR);
           }
         }
       
