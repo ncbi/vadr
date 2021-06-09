@@ -45,7 +45,9 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *indf3pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 3' end of the CDS **not** covered by the protein-based alignment | none | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | none | 
 | *indf3plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 3' end of the CDS | none | model (reference) position of the 3' boundary of the CDS | always length 1 | 
 | *ambgnt5f*, ambgnt5c* | *N_AT_FEATURE_START*, *N_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive Ns ending at the 3' end of a feature | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg3* alert examples](#example-ambg5) | 
+| *ambgnt5s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns starting at position 1 of the sequence | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg5* alert examples](#example-ambg5) | 
 | *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg3* alert examples](#example-ambg3) | 
+| *ambgnt3s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns ending at the final position of the sequence | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none| [ambg3* alert examples](#example-ambg3) | 
 | *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | none | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide | always length 2 | [pep* alert examples](#example-pep) | 
 | *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | N/A | will be blank (`-`) | N/A | [pep* alert examples](#example-pep) | 
 | *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsim5* alert examples](#example-lowsim5) | 
@@ -56,6 +58,7 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | none | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | none | [lowsimi* alert examples](#example-lowsimi) | 
 | *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | N/A | model (reference) positions that correspond to the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
 | *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | N/A | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | none | [deleted feature examples*#example-deletin) | 
+| *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [duplicate regions examples*#example-dupregin) | 
 | - | - | - | - | - | - | - | 
 | *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
 
@@ -488,13 +491,14 @@ ENTOY50A.3C         -AAATCACCGATGGTGATCGCTATAGCAGAAATGAGCAT-----------
 #      seq                     ftr   ftr          ftr  alert           alert                       seq     seq       mdl     mdl  alert 
 #idx   name          model     type  name         idx  code      fail  desc                     coords  length    coords  length  detail
 #----  ------------  --------  ----  -----------  ---  --------  ----  ---------------------  --------  ------  --------  ------  ------
-2.1.1  ENTOY50A.N5L  ENTOY50A  -     -              -  ambgnt5s  no    N_AT_START                    -       -         -       -  first nucleotide of the sequence is an N [first 13 positions are Ns, first non-N is position 14]
+2.1.1  ENTOY50A.N5L  ENTOY50A  -     -              -  ambgnt5s  no    N_AT_START              1..13:+      13   2..14:+      13  first nucleotide of the sequence is an N [first 13 positions are Ns, first non-N is position 14]
 2.2.1  ENTOY50A.N5L  ENTOY50A  CDS   protein_one    1  ambgnt5c  no    N_AT_CDS_START         10..13:+       4  11..14:+       4  first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 14]
 #
 3.2.1  ENTOY50A.N5S  ENTOY50A  CDS   protein_one    1  ambgnt5c  no    N_AT_CDS_START         10..13:+       4  11..14:+       4  first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 14]
 #
 ```
-  **Explanation of `ambgnt5s` alert**: The sequence `ENTOY50A.N5L` begins with 13 consecutive Ns.
+  **Explanation of `ambgnt5s` alert**: The sequence `ENTOY50A.N5L` begins with 13 consecutive Ns
+  that align to model (reference) positions 2 to 14. 
   Any sequence that begins with 1 or consecutive Ns will cause this alert.
   
   **Explanation of `ambgnt5c` alert**: Both sequences `ENTOY50A.N5L`
@@ -536,13 +540,14 @@ ENTOY50A.N5S         -AAATCACCGNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 #      seq                     ftr   ftr          ftr  alert           alert                       seq     seq       mdl     mdl  alert 
 #idx   name          model     type  name         idx  code      fail  desc                     coords  length    coords  length  detail
 #----  ------------  --------  ----  -----------  ---  --------  ----  ---------------------  --------  ------  --------  ------  ------
-4.1.1  ENTOY50A.N3L  ENTOY50A  -     -              -  ambgnt3s  no    N_AT_END                      -       -         -       -  final nucleotide of the sequence is an N [final 11 positions are Ns, final non-N is position 27]
+4.1.1  ENTOY50A.N3L  ENTOY50A  -     -              -  ambgnt3s  no    N_AT_END               28..38:+      11  29..39:+      11  final nucleotide of the sequence is an N [final 11 positions are Ns, final non-N is position 27]
 4.2.1  ENTOY50A.N3L  ENTOY50A  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END           29..30:+       2  30..31:+       2  final nucleotide of CDS is an N [final 2 positions are Ns, final non-N is position 28]
 #
 5.2.1  ENTOY50A.N3S  ENTOY50A  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END           29..30:+       2  30..31:+       2  final nucleotide of CDS is an N [final 2 positions are Ns, final non-N is position 28]
 #
 ```
-  **Explanation of `ambgnt3s` alert**: The sequence `ENTOY50A.N3L` ends with 11 consecutive Ns.
+  **Explanation of `ambgnt3s` alert**: The sequence `ENTOY50A.N3L` ends with 11 consecutive Ns
+  from positions 28 to 38, which align to model (reference) positions 29 to 39.
   Any sequence that ends with 1 or consecutive Ns will cause this alert.
   
   **Explanation of `ambgnt3c` alert**: Both sequences `ENTOY50A.N3L`
@@ -845,6 +850,45 @@ ENTOY50A.DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
 #=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.         00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X         12345678901234567890123456789012345678901234567890
+```                                             
+
+---
+### <a name="example-dupregin"></a>Example of duplicate region
+
+#### alert codes: *dupregin*
+
+#### corresponding error message: *DUPLICATE_REGION*
+
+#### Example lines from `.alt` file:
+
+```
+#      seq                     ftr   ftr   ftr  alert           alert                           seq     seq              mdl     mdl  alert 
+#idx   name          model     type  name  idx  code      fail  desc                         coords  length           coords  length  detail
+#----  ------------  --------  ----  ----  ---  --------  ----  -----------------  ----------------  ------  ---------------  ------  ------
+2.1.1  ENTOY50A.DR1  ENTOY50A  -     -       -  dupregin  yes   DUPLICATE_REGIONS  1..49:+,50..86:+      86  2..50:+,7..43:+      86  similarity to a model region occurs more than once [7-43 (len 37 >= 20) hits 1 (37.7 bits) and 2 (25.5 bits) (seq:1..49,50..86 mdl:2..50,7..43)]
+```
+
+  **Explanation of `dupregin` alert**: There are two hits in the coverage determination stage, which 
+  overlap in model coordinates by more than 20 positions. Specifically, hit 1 is from positions 1 to 49 in the 
+  sequence and 2 to 50 in the model and hit 2 is from positions 50 to 86 in the sequence and positions 7 
+  to 43 in the model. So the two hits overlap by 37 model positions from 7 to 43. The first hit has a bit
+  score of 37.7 bits and the second hit of 25.5 bits. 
+
+The alignment of the sequence is below, and the positions 50 to 86 are marked 
+marked by `v` characters at the top of the alignment, which match identically
+to positions 7 to 43 in the reference model, marked by '^' at the bottom of
+the alignment. 
+
+```
+                                                                       |positions 50 to 86 in the sequence-|
+                                                                       vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+ENTOY50A.DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATACCGATGGTGATCGCTTTACCATAAATGAGCATTCTA
+#=GR ENTOY50A.DR1 PP .**************************************************************************************
+#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT.....................................
+#=GC RFCOLX.         00000000011111111112222222222333333333344444444445.....................................
+#=GC RFCOL.X         12345678901234567890123456789012345678901234567890.....................................
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                           |--positions 7 to 43 in the model---|
 ```                                             
 
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
