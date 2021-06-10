@@ -8,7 +8,7 @@
 
 ---
 
-## <aname="files"></a> Output files with detailed alert and error messages
+## <a name="files"></a> Output files with detailed alert and error messages
 
 `v-annotate.pl` outputs two types of files with detailed alert/error
 messages: 
@@ -23,7 +23,7 @@ Documentation on the format of `.alt` files can be found
 This page includes examples of many of the different alerts and 
 corresponding `.alt` file output [below](#examples).
 
-## <aname="coords"></a> Explanation of sequence and model coordinate fields in `.alt` files
+## <a name="coords"></a> Explanation of sequence and model coordinate fields in `.alt` files
 
 | alert code(s) | alert desc(s) | sequence coords description | sequence coords length constraints | model coords explanation | model coords length constraints | link to example | 
 |---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
@@ -106,7 +106,7 @@ formats")
 
 --- 
 
-## <aname="examples"></a>Examples of different types of alerts and corresponding `.alt` output lines
+## <a name="examples"></a>Examples of different types of alerts and corresponding `.alt` output lines
 
 ### <a name="example-frameshift"></a>Example frameshift alert
 
