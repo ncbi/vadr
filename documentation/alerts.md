@@ -1,12 +1,14 @@
 # <a name="top"></a> Explanations and examples of `v-annotate.pl` detailed alert and error messages
 
 * [Output fields with detailed alert and error messages](#files)
-* [Meaning of sequence and model coordinates in `.alt` files](#coords)
+* [Explanation of sequence and model coordinate fields in `.alt` files](#coords)
+* [TOY50 toy model used in examples of alert messages](#toy)
 * [Example `.alt` output for different alert types](#examples)
+* [TOY50 toy model used in examples of alert messages](#toy)
 
 ---
 
-##<aname="files"></a> Output files with detailed alert and error messages
+## <aname="files"></a> Output files with detailed alert and error messages
 
 `v-annotate.pl` outputs two types of files with detailed alert/error
 messages: 
@@ -18,12 +20,10 @@ Documentation on the format of `.alt` files can be found
 [here](formats.md#alt) and for `.alt.list` files can be found
 [here](formats.md#altlist).
 
-This page includes example lines for all the different alerts from
-`.alt` files. Much of the same information, in particular the `seq
-coords`, `mdl coords`, and `alert detail` is also present in the
-`.alt.list` files. 
+This page includes examples of many of the different alerts and 
+corresponding `.alt` file output [below](#examples).
 
-## Explanation of sequence and model coordinate fields in `.alt` files
+## <aname="coords"></a> Explanation of sequence and model coordinate fields in `.alt` files
 
 | alert code(s) | alert desc(s) | sequence coords description | sequence coords length constraints | model coords explanation | model coords length constraints | link to example | 
 |---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
@@ -62,10 +62,51 @@ coords`, `mdl coords`, and `alert detail` is also present in the
 | *discontn* | *DISCONTINUOUS_SIMILARITY* | *N* sets of sequence coordinates, one for each hit in the coverage determination stage | none | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | none | [discontinuous similarity example](#example-discontn) | 
 | *indfstrn* | *INDEFINITE_STRAND* | sequence coordinates of the best hit on the **opposite** strand from the overall best hit for this sequence in the coverage determination stage | none | model (reference) coordinates for the hit pertaining to the sequence coordinates in `sequence coords` | none | [indefinite strand example](#example-indfstrn) | 
 | *lowcovrg* | *LOW_COVERAGE* | one or more set of sequence coordinates that are **not** covered by any hit to the model on the top-scoring strand in the coverage determination stage | none | will be blank (`-`) | N/A | [low coverage example](#example-lowcovrg) | 
-| - | - | - | - | - | - | - | 
-| *peptrans* | **various** | will be blank (`-`) | N/A | will be blank (`-`) | N/A | - | 
 
-## Example `.alt` output for different alert types:
+### <a name="toy"></a>TOY50 toy model used in examples of alert messages
+
+The TOY50 model is a toy example used to illustrate many of the
+problems with sequences that VADR can detect using simple examples on
+this page. The TOY50 model is 50 nucleotides long and includes 1 CDS
+feature from positions 11 to 31 with the name (product) of `protein
+one` . That CDS is composed of two adjacent mature peptides: `protein
+one mp1` from positions 11 to 22 and `protein one mp2` from positions
+23 to 28. The final 3 nucleotides of the CDS, 29 to 31, are the stop
+codon. The `model info` file for the TOY50 model is shown below.
+
+```
+MODEL TOY50 cmfile:"toy50.cm" group:"toy" length:"50" subgroup:"A" blastdb:"toy50.protein.fa"
+FEATURE TOY50 type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE TOY50 type:"mat_peptide" coords:"11..22:+" parent_idx_str:"0" product:"protein one mp1"
+FEATURE TOY50 type:"mat_peptide" coords:"23..28:+" parent_idx_str:"0" product:"protein one mp2"
+```
+
+The reference sequence for the TOY50 model is shown below, as a
+Stockholm format *alignment* file (even though it has one sequence)
+with special markup in the form of `#=GC` columns to show where the
+CDS and mature peptide features are, as well as the sequence position
+information:
+
+```
+# STOCKHOLM 1.0
+
+TOY50              GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC CDS1.11..31:+ ..........123123123123123123stp...................
+#=GC MP1.11..22:+  ..........123123123123............................
+#=GC MP2.23..28:+  ......................123123......................
+#=GC COLX.         00000000011111111112222222222333333333344444444445
+#=GC COL.X         12345678901234567890123456789012345678901234567890
+//
+```
+
+Stockholm format is described in more detail at
+https://en.wikipedia.org/wiki/Stockholm_format and
+http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output
+formats") 
+
+--- 
+
+## <aname="examples"></a>Examples of different types of alerts and corresponding `.alt` output lines
 
 ### <a name="example-frameshift"></a>Example frameshift alert
 
@@ -1005,6 +1046,120 @@ ENTOY50A.LC1         GATACATAACCATAAAATCCGGGACAAATCACCGATGGTGATCGCTTTACCATAA----
 #=GC RFCOL.X         12........................345678901234567890123456789012345678901234567890
 ```                                             
 
-#### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
+---
+### <a name="toy50"></a>Toy example of a model: TOY50
+
+The TOY50 model is a toy example used to illustrate many of the
+problems with sequences that VADR can detect using simple examples on
+this page. The TOY50 model is 50 nucleotides long and includes 1 CDS
+feature from positions 11 to 31 with the name (product) of `protein
+one` . That CDS is composed of two adjacent mature peptides: `protein
+one mp1` from positions 11 to 22 and `protein one mp2` from positions
+23 to 28. The final 3 nucleotides of the CDS, 29 to 31, are the stop
+codon. The `model info` file for the TOY50 model is shown below.
+
+```
+MODEL TOY50 cmfile:"toy50.cm" group:"toy" length:"50" subgroup:"A" blastdb:"toy50.protein.fa"
+FEATURE TOY50 type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE TOY50 type:"mat_peptide" coords:"11..22:+" parent_idx_str:"0" product:"protein one mp1"
+FEATURE TOY50 type:"mat_peptide" coords:"23..28:+" parent_idx_str:"0" product:"protein one mp2"
+```
+
+The reference sequence for the TOY50 model is shown below, as a
+Stockholm format *alignment* file (even though it has one sequence)
+with special markup in the form of `#=GC` columns to show where the
+CDS and mature peptide features are, as well as the sequence position
+information:
+
+```
+# STOCKHOLM 1.0
+
+TOY50              GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC CDS1.11..31:+ ..........123123123123123123stp...................
+#=GC MP1.11..22:+  ..........123123123123............................
+#=GC MP2.23..28:+  ......................123123......................
+#=GC RFCOLX.       00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X       12345678901234567890123456789012345678901234567890
+//
+```
+
+Stockholm format is described in more detail at
+https://en.wikipedia.org/wiki/Stockholm_format and
+http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output
+formats") 
+
+---
+### <a name="pp"></a>Posterior probability annotation in VADR output Stockholm alignments
+
+The `v-annotate.pl` script uses a probabilistic model called a
+covariance model (CM) to calculate glocal alignments of input
+sequences in the alignment stage (unless the `--glsearch` option is
+used, in which case a non-probabilistic alignment algorithm is used).
+As part of the CM alignment calculation, the posterior probability
+(PP) that each aligned nucleotide appears at its assigned alignment
+position is calculated. These posterior probabilities are confidence
+estimates that each nucleotide is correctly aligned given the
+parameters of the CM.  The Stockholm alignments output from
+`v-annotate.pl` include annotation on the alignment that indicates
+these PP values. An example is below:
+
+```
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.4
+
+toy50-1         GGTATCACAGATGGGATCCGCTGACTCAT-AATGTGTGTTCAaAAGTGCAT
+#=GR toy50-1 PP 999*********99888888877766766.567888887775257999999
+#=GC RF         GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCT.ACGTGCAT
+#=GC RFCOLX.    000000000111111111122222222223333333333444.44444445
+#=GC RFCOL.X    123456789012345678901234567890123456789012.34567890
+
+```
+
+The top line beginning with `toy50-1` shows the alignment of the sequence named
+`toy50-1`. `-` characters here indicate deletions with respect to the model (gaps).
+
+The `#=GC RF` line shows the reference model sequence. `.` characters in this line indicate
+positions that are insertions relative to the model in one or more of the aligned sequences.
+
+The `#=GC RFCOLX.` line shows the tens value of the reference position of each column.
+The `#=GC RFCOL.X` line shows the ones value of the reference position of each column.
+(E.g. the final column is reference position 50.)
+
+The posterior probability confidence estimates are shown in the `#=GR
+toy50-1 PP` line. Characters in PP rows have 12 possible values:
+
+| PP character | meaning | 
+|--------------|---------|
+|`.`| this position is a gap in the sequence |
+|`0`| posterior probability between 0.00 and 0.05 | 
+|`1`| posterior probability between 0.05 and 0.15 | 
+|`2`| posterior probability between 0.15 and 0.25 | 
+|`3`| posterior probability between 0.25 and 0.35 | 
+|`4`| posterior probability between 0.35 and 0.45 | 
+|`5`| posterior probability between 0.45 and 0.55 | 
+|`6`| posterior probability between 0.55 and 0.65 | 
+|`7`| posterior probability between 0.65 and 0.75 | 
+|`8`| posterior probability between 0.75 and 0.85 | 
+|`9`| posterior probability between 0.85 and 0.95 | 
+|`*`| posterior probability between 0.95 and 1.00 | 
+
+In the above alignment, the 9 positions 4 to 12 have `*` PP values, indicating that
+those positions are very confidently aligned at the correct positions given the parameters of the model. 
+As you might expect, these positions nearly exactly match the model nucleotides they are aligned to.
+
+Positions surrounding insertions and deletions tend to have lower PP
+values because there is more uncertainty as to where each specific
+nucleotide should be placed in the alignment.  For example, reference
+position 29 and 30 which are separated by an insertion in the sequence
+have PP values of `6` and `5`.
+
+PP values are used by `v-annotate.pl` in two contexts: 
+
+1. To distinguish between low-confidence and high-confidence frameshift regions (*fsthicf** vs *fstlocf** alerts, see this [example](#example-frameshift)).
+2. To report alerts when feature boundaries have low confidence (*indf5lc** and *indf3lc** alerts, see example at [5' end](#example-indf5) and [3' end](#example-indf3).
+
+---
+#### Questions, comments or feature requests? Send a
+mail to eric.nawrocki@nih.gov.
 
 
