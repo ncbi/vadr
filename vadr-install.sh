@@ -207,19 +207,6 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     mv ncbi-blast-$BVERSION+ ncbi-blast
     echo "------------------------------------------------------------"
 
-    # download fasta binaries
-    if [ "$INPUTSYSTEM" = "linux" ]; then
-        echo "Downloading FASTA version $FVERSION for Linux"
-        curl -k -L -o fasta.tar.gz https://faculty.virginia.edu/wrpearson/fasta/executables/fasta-$FVERSION-linux64.tar.gz
-    else 
-        echo "Downloading FASTA version $FVERSION for Mac/OSX"
-        curl -k -L -o fasta.tar.gz https://faculty.virginia.edu/wrpearson/fasta/executables/fasta-$FVERSION-macosuniv.tar.gz
-    fi
-    tar xfz fasta.tar.gz
-    rm fasta.tar.gz
-    mv fasta-$FVERSION fasta
-    echo "------------------------------------------------------------"
-
     # download vadr models, calici and flavi model sets only
     for v in calici flavi; do 
         echo "Downloading VADR ${v}viridae models ($MVERSION) ... "
