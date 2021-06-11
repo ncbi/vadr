@@ -26,7 +26,7 @@ corresponding `.alt` file output [below](#examples).
 ## <a name="coords"></a> Explanation of sequence and model coordinate fields in `.alt` files
 
 | alert code(s) | alert desc(s) | sequence coords description | model coords explanation | link to example | 
-|---------|---------------------|-----------------------------|--------------------|--------------------------|--------------------|---------|
+|---------------|---------------|-----------------------------|--------------------------|-----------------|
 | *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions  [frameshift alert example](#example-frameshift) | 
 | *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model | model (reference) position after which insertion occurs (always length 1) | [insert alert example](#example-insert) | 
 | *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [delete alert example](#example-delete) | 
