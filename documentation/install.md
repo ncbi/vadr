@@ -1,17 +1,19 @@
 #  <a name="top"></a> VADR installation instructions
 
-* [Installation using `vadr-install.sh`](#install.sh)
+* [Installation using `vadr-install.sh`](#install)
+  * [Alternative two step installation](#alt-install)
   * [Installing Inline and LWP if installation fails](#inline)
 * [Setting environment variables](#environment)
 * [Verifying successful installation](#tests)
 * [Further information](#further)
 
 ---
-## VADR installation using the `vadr-install.sh` script <a name="install"></a>
+##<a name="install"></a> VADR installation using the `vadr-install.sh` script
 
-The file `vadr-install.sh` is an executable file for installing VADR
-and its dependencies. That file is located online at github.
-To install the latest version of VADR download this file:
+The file `vadr-install.sh` is an executable file for downloading
+and/or installing VADR and its dependencies. That file is located
+online at github. To install the latest version of VADR download this
+file:
 
 https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
 
@@ -55,6 +57,22 @@ fail. If this happens, read [this](#inline).
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
+
+###<a name="alt-install"></a> Alternative two step method for installation: download first, then build
+Alternatively, you can install VADR in two steps, downloading the
+dependencies and source code files in step 1, and building packages in
+step 2. This alternative approach, using the following two commands, may be more convenient for some
+users. The build step must be run from the same directory
+that the download step was run in:
+
+```
+sh ./vadr-install.sh linux download
+sh ./vadr-install.sh build
+```
+
+The download command should have `macosx` instead of `linux` if you are
+installing on Mac/OSX. The build command will work on either Linux or
+Mac/OSX without the need to specify. 
 
 ---
 ### <a name="inline"></a> If installation or `do-install-tests-local.sh` fails because the `Inline` or `LWP` perl modules are not installed...

@@ -1,5 +1,5 @@
 Brief installation instructions 
-VADR 1.2; April 2021
+VADR 1.2.1; June 2021
 -------------------------------------------------------------
 
 These are quick installation instructions. For complete documentation,
@@ -18,7 +18,7 @@ If you are installing on a Linux system, execute the command:
 
 sh ./vadr-install.sh linux
 
-Alternatively, if you are installing on a Mac/OSX, execute the command:
+If you are installing on a Mac/OSX, execute the command:
 
 sh ./vadr-install.sh macosx
 
@@ -31,6 +31,32 @@ running the command:
 $VADRSCRIPTSDIR/testfiles/do-install-tests-local.sh
 
 ---
+
+Alternative two-step installation: 
+
+It may be more convenient for some users to perform two separate steps
+to first download the necessary files and then build them. To do that,
+replace the single 'sh ./vadr-install.sh' command recommended above
+with two commands, as follows:
+
+If you are installing on a Linux system, execute the commands:
+
+sh ./vadr-install.sh linux download
+sh ./vadr-install.sh build
+
+If you are installing on a Mac/OSX, execute the commands:
+
+sh ./vadr-install.sh macosx download
+sh ./vadr-install.sh build
+
+These two commands must be run from the same directory.
+
+Then proceed with setting the environment variables as explained at
+the end of the second vadr-install.sh command above, and with running
+tests as explained above.
+
+---
+
 See 
 https://github.com/ncbi/vadr/blob/master/documentation/install.md
 for more details and information on troubleshooting.
