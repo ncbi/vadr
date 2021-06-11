@@ -27,7 +27,7 @@ set -e
 VADRINSTALLDIR=$PWD
 
 # versions
-VERSION="1.2"
+VERSION="1.2.1"
 # bio-easel (need this version info here only so we can check out correct easel branch in Bio-Easel/src)
 BEVERSION="Bio-Easel-0.14"
 # blast+
@@ -38,6 +38,8 @@ IVERSION="1.1.4"
 HVERSION="3.3.2"
 # fasta
 FVERSION="36.3.8h"
+FVERSIONGIT="v36.3.8h_04-May-2020"
+FVERSIONGITNOV="36.3.8h_04-May-2020"
 # dependency git tag
 VVERSION="vadr-$VERSION"
 # vadr models
@@ -182,6 +184,16 @@ if [ "$DOWNLOADORBUILD" != "build" ]; then
     rm hmmer.tar.gz
     echo "------------------------------------------------------------"
 
+    # download fasta source distribution from github
+    echo "Downloading FASTA version $FVERSIONGIT src distribution"
+    curl -k -L -o $FVERSIONGIT.zip https://github.com/wrpearson/fasta36/archive/$FVERSIONGIT.zip; unzip $FVERSIONGIT.zip; mv fasta36-$FVERSIONGITNOV fasta; rm $FVERSIONGIT.zip
+    if [ "$INPUTSYSTEM" = "linux" ]; then
+        cp fasta/make/Makefile.linux_sse2 fasta/make/Makefile.vadr_install
+    else 
+        cp fasta/make/Makefile.os_x86_64 fasta/make/Makefile.vadr_install
+    fi
+    echo "------------------------------------------------------------"
+    
     # download blast binaries
     if [ "$INPUTSYSTEM" = "linux" ]; then
         echo "Downloading BLAST version $BVERSION for Linux"
@@ -310,6 +322,29 @@ if [ "$DOWNLOADORBUILD" != "download" ]; then
     make install
     cd ..
     echo "Finished building HMMER."
+    echo "------------------------------------------------------------"
+
+    # Build FASTA:
+    if [ ! -d fasta ]; then
+        echo ""
+        echo "ERROR: fasta dir does not exist"
+        if [ "$DOWNLOADORBUILD" = "build" ]; then
+            echo ""
+            echo "This may be because you did not yet run this script in download mode from this directory,"
+            echo "which is required prior to running in build mode. To do that, execute:"
+            echo "  $0 <\"linux\" or \"macosx\"> download"
+            echo ""
+            exit 1
+        fi
+        exit 1
+    fi
+    echo "------------------------------------------------------------"
+    echo "Building FASTA ... "
+    cd fasta/src
+    # note, download step copied either ../make/Makefile.linux_sse2 or ../make/Makefile.os_x86_64 to ../make/Makefile.vadr_install
+    make -f ../make/Makefile.vadr_install all
+    cd ../../
+    echo "Finished building FASTA."
     echo "------------------------------------------------------------"
     
     ###############################################

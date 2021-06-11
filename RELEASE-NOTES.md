@@ -1,5 +1,20 @@
 # VADR 1.x release notes 
 
+### VADR 1.2.1 release (June 2021): Bug fix update
+
+  * The vadr-install.sh script was updated in two ways:
+    - to download and build the
+      FASTA package from github instead of downloading pre-built
+      executables from 
+      https://faculty.virginia.edu/wrpearson/fasta/executables/
+      which has been decommissioned since the v1.2 release.
+    - to enable two step installation: download necessary files in 
+      step 1 and build programs in step 2 (github issue #36).
+  * NO changes at all were made to the code between versions v1.2 and
+    v1.2.1 so results from v1.2 and v1.2.1 should be identical.  There
+    is no need to upgrade to v1.2.1 from v1.2 if you already have v1.2
+    installed.
+
 ### VADR 1.2 release (April 2021): Minor update
 
   v-annotate.pl changes:
