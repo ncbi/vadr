@@ -4448,13 +4448,16 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
           if($nseq != 1) { 
             ofile_FAIL("ERROR in $sub_name, trying to perform doctoring of insert type, but have more than 1 seq in alignment", 1, $FH_HR);
           }
-          my ($new_rf, $rf_errmsg) = swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, 
-                                                                        $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"indel_apos"}, 
-                                                                        $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"});
+          my $msa_ss_cons = undef;
+          if($msa->has_ss_cons) { $msa_ss_cons = $msa->get_ss_cons; }
+          my ($new_rf, $new_sscons, $rf_errmsg) = swap_gap_and_adjacent_nongap_in_rf($msa->get_rf, $msa_ss_cons, 
+                                                                                     $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"indel_apos"}, 
+                                                                                     $dcr_output_HAHR->{$seq_name}[$dcr_output_idx]{"before"});
           if($rf_errmsg ne "") { 
             ofile_FAIL("ERROR in $sub_name, trying to rewrite RF for doctored alignment (insert type):\n$rf_errmsg\n", 1, $FH_HR);
           }
           $msa->set_rf($new_rf);
+          if(defined $new_sscons) { $msa->set_ss_cons($new_sscons); }
 
           # update the rf2a_A map
           msa_create_rfpos_to_apos_map($msa, \@rf2a_A, $FH_HR);
@@ -9174,6 +9177,7 @@ sub output_tabular {
   my $sum_mdl_fail_ct    = 0;
   my $sum_mdl_noannot_ct = 0;
   foreach $mdl_name (@mdl_tbl_order_A) { 
+    printf("HEYA mdl_name: $mdl_name\n");
     if($mdl_cls_ct_HR->{$mdl_name} > 0) { 
       $mdl_tbl_idx++;
       $mdl_idx = $mdl_idx_H{$mdl_name};
@@ -10779,6 +10783,7 @@ sub output_alignments {
         # swap replaced sequences back with original sequences in the alignment
         msa_replace_sequences($execs_HR, $out_rpstk_file, $out_stk_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, 
                               "stockholm", "stockholm", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
+        msa_stockholm_num_rf($execs_HR, $out_rpstk_file, ".tmp", $to_remove_AR, $FH_HR);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
       }
       if(! $do_out_rpstk) { push(@{$to_remove_AR}, $out_rpstk_file); }
@@ -10924,6 +10929,7 @@ sub msa_replace_sequences {
 
   return;
 }
+
 
 #################################################################
 #
@@ -12040,15 +12046,17 @@ sub get_command_and_opts {
 #             RF less fraught.
 #
 # Arguments:
-#  $orig_rf:    original RF string
-#  $gap_apos:   position that is a gap in $orig_rf ('.' character)
-#               that we will swap with adjacent nongap
-#  $do_before:  '1' to swap with first RF position before gap
-#               '0' to swap with first RF position after gap  
+#  $orig_rf:     original RF string
+#  $orig_sscons: original SS_cons string, can be undef
+#  $gap_apos:    position that is a gap in $orig_rf ('.' character)
+#                that we will swap with adjacent nongap
+#  $do_before:   '1' to swap with first RF position before gap
+#                '0' to swap with first RF position after gap  
 #             
-# Returns:  Two values:
+# Returns:  Three values:
 #           1. new RF string, or "" if error encountered
-#           2. Error message, or "" if no error encountered
+#           2. new SS_cons string, or "" if error encountered, or undef if $orig_sscons is undef
+#           3. Error message, or "" if no error encountered
 #              Errors occur if 
 #                - $gap_apos is not a gap in $orig_rf
 #                -    $do_before  and position before $gap_apos in $orig_rf is also a gap or doesn't exist
@@ -12059,10 +12067,10 @@ sub get_command_and_opts {
 #################################################################
 sub swap_gap_and_adjacent_nongap_in_rf { 
   my $sub_name = "swap_gap_and_adjacent_nongap_in_rf";
-  my $nargs_exp = 3;
+  my $nargs_exp = 4;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($orig_rf, $gap_apos, $do_before) = (@_);
+  my ($orig_rf, $orig_sscons, $gap_apos, $do_before) = (@_);
   my $err_str = "";
 
   my $rflen = length($orig_rf);
@@ -12072,64 +12080,85 @@ sub swap_gap_and_adjacent_nongap_in_rf {
 
   # contract checks
   if($gap_apos < 1) { 
-    return("", "ERROR in $sub_name, gap_apos $gap_apos is negative.\n");
+    return("", "", "ERROR in $sub_name, gap_apos $gap_apos is negative.\n");
   }
   if($gap_apos > $rflen) { 
-    return("", "ERROR in $sub_name, gap_apos $gap_apos exceeds RF length $rflen.\n");
+    return("", "", "ERROR in $sub_name, gap_apos $gap_apos exceeds RF length $rflen.\n");
   }
   if(($gap_apos == 1) && ($do_before)) { 
-    return("", "ERROR in $sub_name, gap_apos is 1 and do_before is 1, can't do swap.\n");
+    return("", "", "ERROR in $sub_name, gap_apos is 1 and do_before is 1, can't do swap.\n");
   }
   if(($gap_apos == $rflen) && (! $do_before)) { 
-    return("", "ERROR in $sub_name, gap_apos is final RF position $rflen and do_before is 0, can't do swap.\n");
+    return("", "", "ERROR in $sub_name, gap_apos is final RF position $rflen and do_before is 0, can't do swap.\n");
   }
 
-  my $orig_gap    = substr($orig_rf, ($gap_apos-1), 1);
-  my $orig_nongap = ($do_before) ? 
+  my $orig_gap_rf    = substr($orig_rf, ($gap_apos-1), 1);
+  my $orig_nongap_rf = ($do_before) ? 
       substr($orig_rf, ($gap_apos-2), 1) : 
       substr($orig_rf, $gap_apos,     1);
-  if($orig_gap ne ".") { 
-    return("", "ERROR in $sub_name, original RF position $gap_apos is $orig_gap, expected a '.' (gap) character.\n");
+  if($orig_gap_rf ne ".") { 
+    return("", "", "ERROR in $sub_name, original RF position $gap_apos is $orig_gap_rf, expected a '.' (gap) character.\n");
   }
-  if($orig_nongap !~ m/\w/) { 
+  if($orig_nongap_rf !~ m/\w/) { 
     if($do_before) { 
-      return("", "ERROR in $sub_name, original RF position before $gap_apos is $orig_nongap, expected a nongap character.\n");
+      return("", "", "ERROR in $sub_name, original RF position before $gap_apos is $orig_nongap_rf, expected a nongap character.\n");
     }
     else { 
-      return("", "ERROR in $sub_name, original RF position after $gap_apos is $orig_nongap, expected a nongap character.\n");
+      return("", "", "ERROR in $sub_name, original RF position after $gap_apos is $orig_nongap_rf, expected a nongap character.\n");
     }
+  }
+
+  # we are not as strict with checks to the SS_cons
+  my $orig_gap_ss    = undef;
+  my $orig_nongap_ss = undef;
+  if(defined $orig_sscons) { 
+    $orig_gap_ss    = substr($orig_sscons, ($gap_apos-1), 1);
+    $orig_nongap_ss = ($do_before) ? 
+      substr($orig_sscons, ($gap_apos-2), 1) : 
+      substr($orig_sscons, $gap_apos,     1);
   }
 
   # if we get here we can do the swap
   my $ret_rf = "";
+  my $ret_sscons = (defined $orig_sscons) ? "" : undef;
   if($do_before) { 
     $ret_rf .= substr($orig_rf, 0, ($gap_apos-2));
+    if(defined $ret_sscons) { $ret_sscons .= substr($orig_sscons, 0, ($gap_apos-2)); } 
     # printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
     # print("ret_rf 0 $ret_rf\n");
-    $ret_rf .= $orig_gap . $orig_nongap;
-    # print("ret_rf .= $orig_gap + $orig_nongap\n");
+
+    $ret_rf .= $orig_gap_rf . $orig_nongap_rf;
+    if(defined $ret_sscons) { $ret_sscons .= $orig_gap_ss . $orig_nongap_ss; } 
+    # print("ret_rf .= $orig_gap_rf + $orig_nongap_rf\n");
     # print("ret_rf 1 $ret_rf\n");
+
     $ret_rf .= substr($orig_rf, $gap_apos);
+    if(defined $ret_sscons) { $ret_sscons .= substr($orig_sscons, $gap_apos); }
     # print("ret_rf .= substr(orig_rf, $gap_apos)\n");
     # print("ret_rf 2 $ret_rf\n");
   }
   else {  # ! $do_before
     $ret_rf .= substr($orig_rf, 0, ($gap_apos-1));
+    if(defined $ret_sscons) { $ret_sscons .= substr($orig_sscons, 0, ($gap_apos-1)); } 
     # printf("ret_rf = substr(orig_rf, 0, %d)\n", ($gap_apos-2));
     # print("ret_rf 0 $ret_rf\n");
-    $ret_rf .= $orig_nongap . $orig_gap;
-    # print("ret_rf .= $orig_nongap + $orig_gap\n");
+
+    $ret_rf .= $orig_nongap_rf . $orig_gap_rf;
+    if(defined $ret_sscons) { $ret_sscons .= $orig_nongap_ss . $orig_gap_ss; } 
+    # print("ret_rf .= $orig_nongap_rf + $orig_gap_rf\n");
     # print("ret_rf 1 $ret_rf\n");
+
     $ret_rf .= substr($orig_rf, $gap_apos+1);
+    if(defined $ret_sscons) { $ret_sscons .= substr($orig_sscons, $gap_apos+1); }
     # print("ret_rf .= substr(orig_rf, $gap_apos)\n");
     # print("ret_rf 2 $ret_rf\n");
   }
 
   if(length($ret_rf) != $rflen) { 
-    return("", "ERROR in $sub_name, did not create RF string of correct length, should be $rflen, created " . length($ret_rf) . "\n");
+    return("", "", "ERROR in $sub_name, did not create RF string of correct length, should be $rflen, created " . length($ret_rf) . "\n");
   }
 
-  return ($ret_rf, "");
+  return ($ret_rf, $ret_sscons, "");
 }
 
 #################################################################
