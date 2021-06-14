@@ -2,7 +2,7 @@
 
 * [Output fields with detailed alert and error messages](#files)
 * [Explanation of sequence and model coordinate fields in `.alt` files](#coords)
-* [TOY50 toy model used in examples of alert messages](#toy)
+* [`toy50` toy model used in examples of alert messages](#toy)
 * [Example `.alt` output for different alert types](#examples)
 * [Posterior probability annotation in VADR output Stockholm alignments]
 
@@ -27,7 +27,7 @@ corresponding `.alt` file output [below](#examples).
 
 | alert code(s) | alert desc(s) | sequence coords description | model coords explanation | link to example | 
 |---------------|---------------|-----------------------------|--------------------------|-----------------|
-| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions  [frameshift alert example](#example-frameshift) | 
+| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift alert example](#example-frameshift) | 
 | *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model | model (reference) position after which insertion occurs (always length 1) | [insert alert example](#example-insert) | 
 | *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [delete alert example](#example-delete) | 
 | *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon (length <= 3) | model (reference) positions that align to the predicted start codon | [mutstart alert example](#example-mutstart) | 
@@ -64,25 +64,25 @@ corresponding `.alt` file output [below](#examples).
 | *lowcovrg* | *LOW_COVERAGE* | one or more set of sequence coordinates that are **not** covered by any hit to the model on the top-scoring strand in the coverage determination stage | will be blank (`-`) | [low coverage example](#example-lowcovrg) | 
 
 
-### <a name="toy"></a>TOY50 toy model used in examples of alert messages
+### <a name="toy"></a>`toy50` toy model used in examples of alert messages
 
-The TOY50 model is a toy example used to illustrate many of the
+The toy50 model is a toy example used to illustrate many of the
 problems with sequences that VADR can detect using simple examples on
-this page. The TOY50 model is 50 nucleotides long and includes 1 CDS
+this page. The toy50 model is 50 nucleotides long and includes 1 CDS
 feature from positions 11 to 31 with the name (product) of `protein
 one` . That CDS is composed of two adjacent mature peptides: `protein
 one mp1` from positions 11 to 22 and `protein one mp2` from positions
 23 to 28. The final 3 nucleotides of the CDS, 29 to 31, are the stop
-codon. The `model info` file for the TOY50 model is shown below.
+codon. The `model info` file for the toy50 model is shown below.
 
 ```
-MODEL TOY50 cmfile:"toy50.cm" group:"toy" length:"50" subgroup:"A" blastdb:"toy50.protein.fa"
-FEATURE TOY50 type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
-FEATURE TOY50 type:"mat_peptide" coords:"11..22:+" parent_idx_str:"0" product:"protein one mp1"
-FEATURE TOY50 type:"mat_peptide" coords:"23..28:+" parent_idx_str:"0" product:"protein one mp2"
+MODEL toy50 cmfile:"toy50.cm" group:"toy" length:"50" subgroup:"A" blastdb:"toy50.protein.fa"
+FEATURE toy50 type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE toy50 type:"mat_peptide" coords:"11..22:+" parent_idx_str:"0" product:"protein one mp1"
+FEATURE toy50 type:"mat_peptide" coords:"23..28:+" parent_idx_str:"0" product:"protein one mp2"
 ```
 
-The reference sequence for the TOY50 model is shown below, as a
+The reference sequence for the toy50 model is shown below, as a
 Stockholm format *alignment* file (even though it has one sequence)
 with special markup in the form of `#=GC` columns to show where the
 CDS and mature peptide features are, as well as the sequence position
@@ -91,7 +91,7 @@ information:
 ```
 # STOCKHOLM 1.0
 
-TOY50              GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+toy50              GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC CDS1.11..31:+ ..........123123123123123123stp...................
 #=GC MP1.11..22:+  ..........123123123123............................
 #=GC MP2.23..28:+  ......................123123......................
@@ -107,21 +107,40 @@ formats")
 
 --- 
 
-## <a name="examples"></a>Examples of different types of alerts and corresponding `.alt` output lines
+## <a name="examples"></a>Examples of alerts and their corresponding `.alt` output lines
 
-### <a name="example-frameshift"></a>Example frameshift alert
+### <a name="example-frameshift"></a>Example frameshift
 
 #### alert codes: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
 
-#### corresponding error messages: *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT*
+#### corresponding alert desc (GenBank error messages): *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT*
 
-#### Example line from `.alt` file:
+  **Sequence**: a possible frameshift exists in the CDS named
+
+  **Command to reproduce**: 
+  ```
+  > cat $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.sh
+  perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --pv_skip --keep --mkey toy50 -mdir $VADRSCRIPTSDIR/documentation/alert-files -f $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.fa va-example-frameshift
+
+  **Instructions to reproduce**: 
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.sh
+  ```
+  
+  Relevant line from `.alt` file (`va-example-frameshift/va-example-frameshift.vadr.alt`):
 
 ```
-#       seq                        ftr          ftr              ftr  alert           alert                               seq     seq       mdl     mdl  alert 
-#idx    name            model      type         name             idx  code      fail  desc                             coords  length    coords  length  detail
-#-----  --------------  ---------  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ------  --------  ------  ------
-7.1.2   ENTOY100A-fs6   ENTOY100A  CDS          protein_one        2  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  14..25:+      12  14..22:+       9  high confidence possible frameshift in CDS (internal) [nucleotide alignment of internal sequence positions 14..25 (12 nt, avgpp: 0.890) to model positions 14..22 (9 nt) on + strand are frame 3 (dominant frame is 1); inserts:S:14..18(5),M:13; deletes:S:25,M:21..22(2);]
+#      seq               ftr   ftr          ftr  alert           alert                              seq     seq       mdl     mdl  alert 
+#idx   name       model  type  name         idx  code      fail  desc                            coords  length    coords  length  detail
+#----  ---------  -----  ----  -----------  ---  --------  ----  ----------------------------  --------  ------  --------  ------  ------
+2.1.1  TOY50-FS1  toy50  CDS   protein_one    1  fstlocfi  no    POSSIBLE_FRAMESHIFT_LOW_CONF  13..24:+      12  14..22:+       9  low confidence possible frameshift in CDS (internal) [nucleotide alignment of internal sequence positions 13..24 (12 nt, avgpp: 0.742) to model positions 14..22 (9 nt) on + strand are frame 3 (dominant frame is 1); inserts:S:13..17(5),M:13; deletes:S:24,M:21..22(2);]
+```
+
+  **Alignment of sequence:** (`va-example-frameshift/va-example-frameshift.vadr.toy50.align.stk`)
+```
+TOY50-FS1         -AAATCACCGATGcccccGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
+#=GR TOY50-FS1 PP .**********98666668999987..789*************************
+#=GC RF           GAAATCACCGATG.....GTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 ```
 
   **Explanation**: a possible frameshift exists in the CDS named
@@ -319,12 +338,13 @@ ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCA
 ```
 
   **Explanation**: The sequence `ENTOY50A.mutend1` has an invalid
-  `TAC` stop codon for the CDS with name `protein one` at the
-    expected position in the reference model, causing the *mutendcd*
-  alert. There are zero valid in-frame stop codons (in the same frame as the predicted start codon) in the 
-  remainder of the sequence, so a *mutendns* alert is also reported.
+  `TAC` stop codon for the CDS with name `protein one` at the expected
+  position in the reference model, causing the *mutendcd* alert. There
+  are zero valid in-frame stop codons (in the same frame as the
+  predicted start codon) in the remainder of the sequence, so a
+  *mutendns* alert is also reported.
 
-    The sequence `ENTOY50.mutend2` also has an invalid stop codon, the
+   The sequence `ENTOY50.mutend2` also has an invalid stop codon, the
     final 3 nt in the predicted CDS are `ATA`, which are sequence
     positions 27 to 29 and align to model reference positions 28 to 30
     (see alignment below). There is an in-frame stop codon 3' of this
@@ -351,6 +371,7 @@ ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCA
     that align to the early stop codon in the `ENTOY50.mutend3` sequence are 
     marked with `^^^`.
 
+    TEST
 ```
                                                        vvv
 ENTOY50A.mutend1           -AAATCACCGATGGTGATCGCTTTACCATACATGAGCAT-----------
