@@ -121,6 +121,7 @@ formats")
   ```
   > cat $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.sh
   perl $VADRSCRIPTSDIR/v-annotate.pl --minpvlen 3 --pv_skip --keep --mkey toy50 -mdir $VADRSCRIPTSDIR/documentation/alert-files -f $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.fa va-example-frameshift
+  ```
 
   **Instructions to reproduce**: 
   ```
@@ -371,7 +372,6 @@ ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCA
     that align to the early stop codon in the `ENTOY50.mutend3` sequence are 
     marked with `^^^`.
 
-    TEST
 ```
                                                        vvv
 ENTOY50A.mutend1           -AAATCACCGATGGTGATCGCTTTACCATACATGAGCAT-----------
