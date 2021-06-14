@@ -345,32 +345,33 @@ ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCA
   predicted start codon) in the remainder of the sequence, so a
   *mutendns* alert is also reported.
 
-   The sequence `ENTOY50.mutend2` also has an invalid stop codon, the
-    final 3 nt in the predicted CDS are `ATA`, which are sequence
-    positions 27 to 29 and align to model reference positions 28 to 30
-    (see alignment below). There is an in-frame stop codon 3' of this
-    though, at sequence positions 31 to 33 which align to model
-    reference positions 33 to 35, which result in the *mutendex*
-    alert. Finally, the predicted CDS is length 20 (positions 10 to
-    29) and aligns to positions 11 to 30, this CDS length is not a
-    multiple of 3 so the *unexleng* alert is reported.
+  The sequence `ENTOY50.mutend2` also has an invalid stop codon, the
+  final 3 nt in the predicted CDS are `ATA`, which are sequence
+  positions 27 to 29 and align to model reference positions 28 to 30
+  (see alignment below). There is an in-frame stop codon 3' of this
+  though, at sequence positions 31 to 33 which align to model
+  reference positions 33 to 35, which result in the *mutendex*
+  alert. Finally, the predicted CDS is length 20 (positions 10 to
+  29) and aligns to positions 11 to 30, this CDS length is not a
+  multiple of 3 so the *unexleng* alert is reported.
 
-    The sequence `ENTOY50.earlystop` has a valid stop codon at the
-    expected position (reference positions 29 to 31) but also has an
-    earlier in-frame stop codon at reference positions 23 to 25, which
-    correspond to sequence positions 22 to 24. This results in
-    *cdsstopn* and *cdsstopp* alerts. The *cdsstopn* alert is reported
-    when an early stop is identified during the nucleotide-based
-    alignment stage, and the *cdsstopp* alert is reported when an
-    early stop is detected in the protein-based alignment of the
-    protein validation stage. They are often reported together but not
-    always, because some cases of predicted earlier stops are
-    detectable only in one of the two types of alignment.
+  The sequence `ENTOY50.earlystop` has a valid stop codon at the
+  expected position (reference positions 29 to 31) but also has an
+  earlier in-frame stop codon at reference positions 23 to 25, which
+  correspond to sequence positions 22 to 24. This results in
+  *cdsstopn* and *cdsstopp* alerts. The *cdsstopn* alert is reported
+  when an early stop is identified during the nucleotide-based
+  alignment stage, and the *cdsstopp* alert is reported when an
+  early stop is detected in the protein-based alignment of the
+  protein validation stage. They are often reported together but not
+  always, because some cases of predicted earlier stops are
+  detectable only in one of the two types of alignment.
 
-    The alignment of the three sequences is below, with the three positions of the 
-    stop codon in the reference model marked with `vvv`. The reference positions 
-    that align to the early stop codon in the `ENTOY50.mutend3` sequence are 
-    marked with `^^^`.
+  The alignment of the three sequences is below, with the three positions of the 
+  stop codon in the reference model marked with `vvv`. The reference positions 
+  that align to the early stop codon in the `ENTOY50.mutend3` sequence are 
+  marked with `^^^`.
+
 
 ```
                                                        vvv
