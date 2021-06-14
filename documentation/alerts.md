@@ -4,7 +4,7 @@
 * [Explanation of sequence and model coordinate fields in `.alt` files](#coords)
 * [`toy50` toy model used in examples of alert messages](#toy)
 * [Example `.alt` output for different alert types](#examples)
-* [Posterior probability annotation in VADR output Stockholm alignments]
+* [Posterior probability annotation in VADR output Stockholm alignments](#pp)
 
 ---
 
@@ -131,32 +131,42 @@ formats")
   Relevant line from `.alt` file (`va-example-frameshift/va-example-frameshift.vadr.alt`):
 
 ```
-#      seq               ftr   ftr          ftr  alert           alert                              seq     seq       mdl     mdl  alert 
-#idx   name       model  type  name         idx  code      fail  desc                            coords  length    coords  length  detail
-#----  ---------  -----  ----  -----------  ---  --------  ----  ----------------------------  --------  ------  --------  ------  ------
-2.1.1  TOY50-FS1  toy50  CDS   protein_one    1  fstlocfi  no    POSSIBLE_FRAMESHIFT_LOW_CONF  13..24:+      12  14..22:+       9  low confidence possible frameshift in CDS (internal) [nucleotide alignment of internal sequence positions 13..24 (12 nt, avgpp: 0.742) to model positions 14..22 (9 nt) on + strand are frame 3 (dominant frame is 1); inserts:S:13..17(5),M:13; deletes:S:24,M:21..22(2);]
+#      seq               ftr   ftr          ftr  alert           alert                              seq  seq       mdl  mdl  alert 
+#idx   name       model  type  name         idx  code      fail  desc                            coords  len    coords  len  detail
+#----  ---------  -----  ----  -----------  ---  --------  ----  ----------------------------  --------  ---  --------  ---  ------
+2.1.1  TOY50-FS1  toy50  CDS   protein_one    1  fstlocfi  no    POSSIBLE_FRAMESHIFT_LOW_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (internal) [inserts:S:13..17(5),M:13; deletes:S:25,M:22..23(2); frame:3, dominant:1; avgpp:0.825;]
 ```
 
-  **Alignment of sequence:** (`va-example-frameshift/va-example-frameshift.vadr.toy50.align.stk`)
+  **Alignment of sequence:** File
+  `va-example-frameshift/va-example-frameshift.vadr.toy50.align.stk`.
+  This alignment is only output when the `--keep` or
+  `--out_stk` options are used with `v-annotate.pl`.
+
 ```
-TOY50-FS1         -AAATCACCGATGcccccGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
-#=GR TOY50-FS1 PP .**********98666668999987..789*************************
+TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
+#=GR TOY50-FS1 PP .**********987777789***998..59*************************
 #=GC RF           GAAATCACCGATG.....GTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.      0000000001111.....1111112222222222333333333344444444445
+#=GC RFCOL.X      1234567890123.....4567890123456789012345678901234567890
+
 ```
 
   **Explanation**: a possible frameshift exists in the CDS named
-  `protein one` in the sequence named `ENTOY100A-fs6` which matches
-  best to the model named `ENTOY100A`. The frameshifted region is
-  sequence positions 14 to 25 (`seq coords: 14..25:+`) which is
-  aligned to the reference model positions 14 to 22 (`mdl coords:
-  14..22:+`) and are in frame 3, while the dominant frame for the CDS
-  (frame in which the most nucleotides are in) is frame 1. The indels
+  `protein one` in the sequence named `TOY50-FS1` which matches
+  best to the model named `toy50`. The frameshifted region is
+  sequence positions 13 to 25 (`seq coords: 13..25:+`) which is
+  aligned to the reference model positions 14 to 23 (`mdl coords:
+  14..23:+`). The `alert detail` field provides further information:
+  the indels
   that cause the frameshifted region are an insertion of length 5 of nucleotides
-  14 to 18 after model position 13 (`inserts:S:14..18(5),M:13;`) and a
+  13 to 17 after model position 13 (`inserts:S:13..17(5),M:13;`) and a
   deletion of length 2 *after* nucleotide 25 corresponding to model
-  positions 21 and 22 (`deletes:S:25,M:21..22(2);`).  This frameshift is a high confidence
+  positions 22 and 23 (`deletes:S:25,M:22..23(2);`). 
+  The frameshifted region is in frame 3, while the dominant frame for the CDS
+  (frame in which the most nucleotides are in) is frame 1. 
+  This frameshift is a high confidence
   frameshift in that the average posterior probability of the aligned
-  nucleotides in the frameshifted region is `0.890` which exceeds the
+  nucleotides in the frameshifted region is `0.825` which exceeds the
   threshold for high confidence (`0.8` by default). Other possible
   frameshifts with lower posterior probability values will be reported
   with the `POSSIBLE_FRAMESHIFT_LOW_CONF` error. If the `--glsearch`
@@ -165,36 +175,26 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
   not calculated and so all frameshifts are reported with the
   `POSSIBLE_FRAMESHIFT` error. 
 
-  An alignment file showing the CDS features that include possible
+  A separate alignment file showing the CDS features that include possible
   frameshifts can be optionally output from `v-annotate.pl` using the
   `--out_fsstk` option. An example excerpt from such an alignment file
   for this possible frameshift is below. The `#=GR PP` shows an
-  estimate of the posterior probability of each aligned nucleotide,
-  (`*` is the highest value, next highest is `9`, then `8`, then `7`,
-  etc.). The `#=GR CS` line shows the implied frame of each aligned
+  estimate of the posterior probability of each aligned nucleotide as
+  explained more [here](#pp).
+  The `#=GR CS` line shows the implied frame of each aligned
   nucleotide and have `i` for inserted nucleotides and `d` for deleted
   reference positions. The `#=GC RF` line shows the reference model
   sequence.
 
 ```
-ENTOY100A-fs6         ATGCCCCCGTGATCG--TTACCATAA
-#=GR ENTOY100A-fs6 PP **9888889*****9..68*******
-#=GR ENTOY100A-fs6 CS 111iiiii3333333dd111111111
-#=GC RF               atG.....GTGatCGCTTTACCATAA
+TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
+#=GR TOY50-FS1 PP *987777789***998..59******
+#=GR TOY50-FS1 CS 111iiiii33333333dd11111111
+#=GC RF           ATG.....GTGATCGCTTTACCATAA
+#=GC RFCOLX.      111.....111111222222222233
+#=GC RFCOL.X      123.....456789012345678901
 ```
 
-  Alignment files with complete aligned sequences can be output using
-  the `--out_stk` or `--out_afa` options. An example excerpt from such
-  an alignment file is below. The `#=GC RFCOL*` lines indicate the
-  positions of each reference model position (`01` to `50`) in this example.
-
-```
-ENTOY100A-fs6          GAAATCACCGATGCCCCCGTGATCG--TTACCATAAATGAGCATTCTACGTGCAT
-#=GR ENTOY100A-fs6  PP ************9888889*****9..68**************************
-#=GC RF                GAAATCACCGatG.....GTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
-#=GC RFCOLX.           0000000001111.....1111112222222222333333333344444444445
-#=GC RFCOL.X           1234567890123.....4567890123456789012345678901234567890
-```
 ---
 
 ### <a name="example-insert"></a>Example insert alerts

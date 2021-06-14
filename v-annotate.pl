@@ -4960,16 +4960,16 @@ sub add_frameshift_alerts_for_one_sequence {
                  ((! $is_5p) && (! $is_3p) && ($span_slen >= $fst_min_nti))) { 
                 # above our length threshold, if $do_glsearch, we always report this, if not it depends on the avg PP value
                 if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
-                  my $span_str = sprintf("sequence positions %d..%d (%d nt) to model positions %d..%d (%d nt)", $span_sstart, $span_sstop, $span_slen, $span_mstart, $span_mstop, $span_mlen);
                   my $loc_str  = "internal";
                   my $alt_code = "fstukcfi";
                   if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
                   if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
                   my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR) . ";";
                   my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
-                  my $alt_str  = sprintf("%s%snucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);", $alt_scoords, $alt_mcoords);
-                  $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
+                  my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
+                  $alt_str .= sprintf("inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
+                  $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
@@ -4988,8 +4988,6 @@ sub add_frameshift_alerts_for_one_sequence {
                   my $span_avgpp;
                   ($span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($span_ppstr);
                   if($span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
-                    my $span_str = sprintf("sequence positions %d..%d (%d nt, avgpp: %.3f) to model positions %d..%d (%d nt)", $span_sstart, $span_sstop, $span_slen, $span_avgpp, $span_mstart, $span_mstop, $span_mlen);
-
                     my $loc_str     = "internal";
                     my $hi_alt_code = "fsthicfi";
                     my $lo_alt_code = "fstlocfi";
@@ -4997,9 +4995,11 @@ sub add_frameshift_alerts_for_one_sequence {
                     if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
                     my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR) . ";";
                     my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
-                    my $alt_str  = sprintf("%s%snucleotide alignment of $loc_str $span_str on $ftr_strand strand are frame $prv_frame (dominant frame is $dominant_frame);", $alt_scoords, $alt_mcoords);
-                    $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
+                    my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
+                    $alt_str .= sprintf("inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
+                    $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
+                    $alt_str .= sprintf(" avgpp:%.3f;", $span_avgpp);
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
@@ -5066,7 +5066,7 @@ sub add_frameshift_alerts_for_one_sequence {
           my $cds_sgm_msa = $msa->sequence_subset(\@cds_sgm_seq_A);
           my $alen = $cds_sgm_msa->alen;
           $cds_sgm_msa->addGC_rf_column_numbers(); # number RF columns
-          
+
           # remove columns outside the CDS segment
           my @cds_sgm_col_A = (); # [0..$alen-1], 0 to remove this column, 1 to keep (if within CDS) 
           my $cds_sgm_apos_start = ($sgm_strand eq "+" ? $rf2a_AR->[$mstart] : $rf2a_AR->[$mstop])  - 1; # -1 puts it into 0..alen-1 coords
@@ -10751,6 +10751,8 @@ sub output_alignments {
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
       $msa->addGC_rf_column_numbers();
+      $msa->capitalize_based_on_rf();
+
       my $out_stk_file = $out_root . "." . $mdl_name . ".align.stk";
       $msa->write_msa($out_stk_file, "stockholm", 0); # 0: do not append to file if it exists
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
@@ -10778,6 +10780,8 @@ sub output_alignments {
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
       $msa->addGC_rf_column_numbers();
+      $msa->capitalize_based_on_rf();
+
       my $out_rpstk_file = $out_root . "." . $mdl_name . ".align.rpstk";
       $msa->write_msa($out_rpstk_file, "stockholm", 0); # 0: do not append to file if it exists
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.rpstk", $out_rpstk_file, $do_out_rpstk, $do_out_rpstk, sprintf("model $mdl_name replaced sequence alignment (stockholm)"));
@@ -12659,9 +12663,9 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}     = (1,     1,      0,     1,     1,       1,      1,      0,     0,     0,     0,      0,     0,      0,     0,     0,     1,     0,    0,    1,     1);
   }
   elsif($ofile_key eq "alt") {
-    @{$head_AAR->[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "seq",    "seq",    "mdl",    "mdl",    "alert");
-    @{$head_AAR->[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "coords", "length", "coords", "length", "detail");
-    @{$clj_AR  }      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        0,        0,        0,        0,        1);
+    @{$head_AAR->[0]} = ("",    "seq",  "",      "ftr",  "ftr",  "ftr", "alert", "",     "alert",  "seq",    "seq", "mdl",    "mdl", "alert");
+    @{$head_AAR->[1]} = ("idx", "name", "model", "type", "name", "idx", "code",  "fail", "desc",   "coords", "len", "coords", "len", "detail");
+    @{$clj_AR  }      = (1,     1,      1,       1,      1,      0,     1,       1,      1,        0,        0,     0,        0,     1);
   }
   elsif($ofile_key eq "alc") {
     @{$head_AAR->[0]} = ("",    "alert",  "causes",  "short",       "per",  "num",   "num",  "long");
