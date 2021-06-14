@@ -516,8 +516,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a CM library";
 my $date          = scalar localtime();
-my $version       = "1.2.1dev1";
-my $releasedate   = "April 2021";
+my $version       = "1.2.2dev1";
+my $releasedate   = "June 2021";
 my $pkgname       = "VADR";
 
 # make *STDOUT file handle 'hot' so it automatically flushes whenever we print to it
@@ -5065,6 +5065,7 @@ sub add_frameshift_alerts_for_one_sequence {
           # for(my $i2 = 0; $i2 < $msa_nseq; $i2++) { printf("cds_sgm_seq_A[$i2]: $cds_sgm_seq_A[$i2]\n"); }
           my $cds_sgm_msa = $msa->sequence_subset(\@cds_sgm_seq_A);
           my $alen = $cds_sgm_msa->alen;
+          $cds_sgm_msa->addGC_rf_column_numbers(); # number RF columns
           
           # remove columns outside the CDS segment
           my @cds_sgm_col_A = (); # [0..$alen-1], 0 to remove this column, 1 to keep (if within CDS) 
@@ -10749,6 +10750,7 @@ sub output_alignments {
       my $rna_rf = $msa->get_rf();
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
+      $msa->addGC_rf_column_numbers();
       my $out_stk_file = $out_root . "." . $mdl_name . ".align.stk";
       $msa->write_msa($out_stk_file, "stockholm", 0); # 0: do not append to file if it exists
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full sequence alignment (stockholm)"));
@@ -10775,6 +10777,7 @@ sub output_alignments {
       my $rna_rf = $msa->get_rf();
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
+      $msa->addGC_rf_column_numbers();
       my $out_rpstk_file = $out_root . "." . $mdl_name . ".align.rpstk";
       $msa->write_msa($out_rpstk_file, "stockholm", 0); # 0: do not append to file if it exists
       ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . ".align.rpstk", $out_rpstk_file, $do_out_rpstk, $do_out_rpstk, sprintf("model $mdl_name replaced sequence alignment (stockholm)"));
@@ -10924,8 +10927,13 @@ sub msa_replace_sequences {
   }
   close(IN);
 
-  # convert newly created pfam file to desired output format
-  sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "-d", $tmp_pfam_new_aln_file, $out_aln_file, "stockholm", $outformat, $opt_HHR, $FH_HR);
+  # convert newly created pfam file to desired output format and add numbering of RF columns if outformat is stockholm/pfam
+  my $alimanip_opts = " --informat stockholm --dna --outformat $outformat";
+  if(($outformat eq "stockholm") || ($outformat eq "pfam")) { 
+    $alimanip_opts .= " --num-rf";
+  }
+  my $cmd = $execs_HR->{"esl-alimanip"} . $alimanip_opts . " " . $tmp_pfam_new_aln_file . " > " . $out_aln_file;
+  utl_RunCommand($cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
 
   return;
 }
