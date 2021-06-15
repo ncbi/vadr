@@ -5462,10 +5462,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
             $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[1])]), abs($ua2rf_AR->[($ftr2org_pos_A[3])]), $ftr_strand, $FH_HR) . ";";
-            $alt_str_H{"mutstart"} = sprintf("%s%s%s starting at sequence position %d (model position %d) on %s strand is not a valid start", 
+            $alt_str_H{"mutstart"} = sprintf("%s%s%s", 
                                              $alt_scoords, $alt_mcoords, 
-                                             substr($ftr_sqstring_alt, 0, 3), 
-                                             $ftr2org_pos_A[1], abs($ua2rf_AR->[($ftr2org_pos_A[1])]), $ftr_strand);
+                                             substr($ftr_sqstring_alt, 0, 3));
           }
         }
       }

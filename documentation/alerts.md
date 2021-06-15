@@ -27,10 +27,10 @@ corresponding `.alt` file output [below](#examples).
 
 | alert code(s) | alert desc(s) | sequence coords description | model coords explanation | link to example | 
 |---------------|---------------|-----------------------------|--------------------------|-----------------|
-| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift alert example](#example-frameshift) | 
-| *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model | model (reference) position after which insertion occurs (always length 1) | [insert alert example](#example-insert) | 
-| *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [delete alert example](#example-delete) | 
-| *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon (length <= 3) | model (reference) positions that align to the predicted start codon | [mutstart alert example](#example-mutstart) | 
+| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift example](#example-frameshift) | 
+| *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model | model (reference) position after which insertion occurs (always length 1) | [large insertion example](#example-insert) | 
+| *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [large deletion example](#example-delete) | 
+| *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon (length <= 3) | model (reference) positions that align to the predicted start codon | [mutated start codon example](#example-start) | 
 | *mutendcd* | *MUTATION_AT_END*  | sequence positions of predicted stop codon (length <= 3) | model (reference) positions that align to the predicted stop codon | [stop codon alert examples](#example-stop) | 
 | *mutendex* | *MUTATION_AT_END*  | sequence positions of 5'-most in-frame stop codon in the CDS, this stop codon will be 3' of expected stop codon position (always length 3) | model (reference) positions that align to stop codon in `sequence coords` | [mutend* alert examples](#example-stop) | 
 | *mutendns* | *MUTATION_AT_END*  | will be blank (`-`) | will be blank (`-`) | [mutend* alert examples](#example-stop) | 
@@ -208,7 +208,7 @@ explanation of output related to the alert.
 
 #### This example is relevant to alert codes: *insertnn*, *insertnp*
 
-#### Corresponding alert descriptions (GenBank error messages): *INSERTION_OF_NT*
+#### Corresponding alert description (GenBank error message): *INSERTION_OF_NT*
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
@@ -262,7 +262,7 @@ TOY50-I1         -AAATCACCGATGGTGATCGCTTggggggTACCATAAATGAGCATTCTACGTGCAT
 
 #### This example is relevant to alert codes: *deletinn*, *deletinp*
 
-#### Corresponding alert descriptions (GenBank error messages): *DELETION_OF_NT*
+#### Corresponding alert description (GenBank error message): *DELETION_OF_NT*
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
@@ -314,36 +314,58 @@ TOY50-D1         -AAATCACCGATGGTG---GCTTTACCATAAATGAGCATTCTACGTGCAT
   same deletion. 
 
 ---
-### <a name="example-mutstart"></a>Example *mutstart* alert
+## <a name="example-start"></a>Mutated start codon example
 
-#### alert code: *mutstart*
+#### This example is relevant to alert code: *mutstart*
 
-#### corresponding error messages: *MUTATION_AT_START*
+#### Corresponding alert description (GenBank error message): *MUTATION_AT_START*
 
-#### Example line from `.alt` file:
-
-```
-#      seq                   ftr          ftr              ftr  alert           alert                             seq     seq       mdl     mdl  alert 
-#idx   name       model      type         name             idx  code      fail  desc                           coords  length    coords  length  detail
-#----  ---------  ---------  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
-1.1.1  ENTOY100A  ENTOY100A  CDS          protein_one        2  mutstart  yes   MUTATION_AT_START            10..12:+       3  11..13:+       3  expected start codon could not be identified [ATT starting at sequence position 10 (model position 11) on + strand is not a valid start]
-```
-
-  **Explanation**: The first three nucleotides of any CDS feature are checked to see if they 
-  are a valid start codon, and if not, the *mutstart* alert is reported. For this specific example, the
-  CDS starts at model (reference) position 11, and the first 3 nucleotides of the predicted CDS are positions 10 to 12.
-  The alignment of the sequence `ENTOY100A` to the model (`#=GC RF`
-  line) below shows the invalid `ATT` start codon aligned to reference positions 11 to 13.
+  **Instructions to reproduce this example and create the files discussed below:**
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-start.sh
+  ```
+  
+  **Relevant line from `.alt` output file (`va-example-start/va-example-start.vadr.alt`):**
 
 ```
-                            vvv
-ENTOY100A         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAATTGCCATTCACGTACGTAGCATCA
-#=GR ENTOY100A PP ****************************************************************************************************
-#=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCATCTTGCGGTGCCATACAATGGTAGAAATTGCCATTCACGTACGTAGCATCA
-#=GC RFCOLX..     0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
-#=GC RFCOL.X.     0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
-#=GC RFCOL..X     1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+#      seq              ftr          ftr          ftr  alert           alert                  seq  seq       mdl  mdl  alert 
+#idx   name      model  type         name         idx  code      fail  description         coords  len    coords  len  detail
+#----  --------  -----  -----------  -----------  ---  --------  ----  ----------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-S1  toy50  CDS          protein_one   1  mutstart  yes   MUTATION_AT_START  10..12:+    3  11..13:+    3  expected start codon could not be identified [ATT]
 ```
+
+  **Alignment of `TOY50-S1` sequence to the toy50 model:** The output
+  file `va-example-start/va-example-start.vadr.toy50.align.stk`.
+  includes the alignment shown below. Looking at this alignment, or an
+  alignment of the sequence generated by a different program, allows
+  you to see the alignment of the predicted start codon and
+  surrounding sequence.  The `#=GC RF` line
+  shows the toy50 reference model sequence.  The `#=GR PP` line
+  indicates confidence estimates for each aligned nucleotide as
+  explained more [here](#pp).  This alignment is only output when the
+  `--keep` or `--out_stk` options are used with `v-annotate.pl`.
+
+```
+                           vvv
+TOY50-S1         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GR TOY50-S1 PP .*************************************************
+#=GC SS_cons     ::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF          GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.     00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X     12345678901234567890123456789012345678901234567890
+```
+
+
+  **How to interpret this alert based on the above output**: The first
+  three nucleotides of any CDS feature that is not truncated on the 5'
+  end are checked to see if they are a valid start codon, and if not,
+  the *mutstart* alert is reported. For this specific example, the CDS
+  start codon is from model (reference) positions 11 to 13, and the
+  first 3 nucleotides of the predicted CDS are positions 10 to 12.
+  The predicted invalid `ATT` start codon can be seen in the above alignment, marked
+  by the `vvv` characters at the top of the alignment. (These `vvv`
+  characters have been added here, and do not exist
+  in the actual output alignment file.)
 
 ---
 ### <a name="example-stop"></a>Example *mutend**, *cdsstop**, and *unexleng* alerts
