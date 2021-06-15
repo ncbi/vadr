@@ -154,7 +154,7 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   sequence named `TOY50-FS1` which matches best to the model named
   `toy50`. The `.alt` file contains details on the frameshift. The
   frameshifted region is sequence positions 13 to 25 (`seq coords:
-  13..25:+` in the `.alt file) which is aligned to the reference model
+  13..25:+` in the `.alt` file) which is aligned to the reference model
   positions 14 to 23 (`mdl coords: 14..23:+`).
 
   The `alert detail` field provides further information:
