@@ -152,7 +152,8 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
 
 ```
 
-  **How to interpret this alert based on the above output**: a
+  **How to interpret this alert based on the above output**: 
+  As reported in the `.alt. file shown above, a
   possible frameshift exists in the CDS named `protein one` in the
   sequence named `TOY50-FS1` which matches best to the model named
   `toy50`. The `.alt` file contains details on the frameshift. The
@@ -245,7 +246,8 @@ TOY50-I1         -AAATCACCGATGGTGATCGCTTggggggTACCATAAATGAGCATTCTACGTGCAT
 ```
 
   **How to interpret this alert based on the above output**: 
-  In the CDS feature with name `protein one`, the nucleotides 23 to 28 (length
+  As reported in the `.alt. file shown above,
+  in the CDS feature with name `protein one`, the nucleotides 23 to 28 (length
   6) on the + strand insert after reference model position 23.  This
   length exceeds the minimum allowed length of 2 (set with the
   `v-annotate.pl` option `--nmaxins 2` option for purposes of this
@@ -300,7 +302,8 @@ TOY50-D1         -AAATCACCGATGGTG---GCTTTACCATAAATGAGCATTCTACGTGCAT
 ```
 
   **How to interpret this alert based on the above output**: 
-  In the CDS feature with name `protein one`, the reference model 
+  As reported in the `.alt. file shown above,
+  in the CDS feature with name `protein one`, the reference model 
   positions 17 to 19 (length 3) are deleted in the sequence `TOY50-D1`. The
   deletion occurs after position 15 in the sequence.
   The deletion length of 3 exceeds the minimum allowed length of 2 (set with the
@@ -359,7 +362,7 @@ TOY50-S1         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
   **How to interpret this alert based on the above output**: The first
   three nucleotides of any CDS feature that is not truncated on the 5'
   end are checked to see if they are a valid start codon, and if not,
-  the *mutstart* alert is reported. For this specific example, the CDS
+  the *mutstart* alert is reported. For this specific example, as reported in the `.alt. file shown above, the CDS
   start codon is from model (reference) positions 11 to 13, and the
   first 3 nucleotides of the predicted CDS are positions 10 to 12.
   The predicted invalid `ATT` start codon can be seen in the above alignment, marked
