@@ -4764,8 +4764,8 @@ sub add_frameshift_alerts_for_one_sequence {
                                            vdr_CoordsSegmentCreate($local_rfpos, $rfpos - 1, $strand, $FH_HR) : 
                                            vdr_CoordsSegmentCreate($local_rfpos, $rfpos + 1, $strand, $FH_HR));
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                             sprintf("%s%snucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
-                                                     $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel, $local_rfpos), $FH_HR);
+                                             sprintf("%s%s%d>%d", 
+                                                     $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel), $FH_HR);
                 }
                 $cur_delete_len = 0;
               }
@@ -4824,8 +4824,8 @@ sub add_frameshift_alerts_for_one_sequence {
                                        vdr_CoordsSegmentCreate($local_rfpos, $rfpos - 1, $strand, $FH_HR) : 
                                        vdr_CoordsSegmentCreate($local_rfpos, $rfpos + 1, $strand, $FH_HR));
               alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "deletinn", $seq_name, $ftr_idx, 
-                                         sprintf("%s%snucleotide alignment delete of length %d>%d starting at reference nucleotide posn %d on strand $strand", 
-                                                 $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel, $local_rfpos), $FH_HR);
+                                         sprintf("%s%s%d>%d", 
+                                                 $alert_scoords, $alert_mcoords, $cur_delete_len, $local_nmaxdel), $FH_HR);
             }
           } # end of 'if' entered if segment has valid results 
         } # end of 'for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) {' 
@@ -6526,8 +6526,8 @@ sub add_protein_validation_alerts {
                                                                                                    $p_del_qpos_A[$del_idx], $p_del_spos_A[$del_idx], $p_del_len_A[$del_idx], 
                                                                                                    $p_blastx_feature_flag, $p_ftr_scoords, $ftr_info_AHR->[$ftr_idx]{"coords"}, $ftr_strand, $p_strand, 
                                                                                                    $seq_len_HR->{$seq_name}, $FH_HR);
-                        $alt_str_H{"deletinp"} .= sprintf("%s%sblastx predicted delete of length %d>%d starting at reference amino acid posn %d", 
-                                                          $alt_scoords, $alt_mcoords, $p_del_len_A[$del_idx], $local_xmaxdel, $p_del_spos_A[$del_idx]);
+                        $alt_str_H{"deletinp"} .= sprintf("%s%s%d>%d", 
+                                                          $alt_scoords, $alt_mcoords, $p_del_len_A[$del_idx], $local_xmaxdel);
                       }
                     }
                   }
