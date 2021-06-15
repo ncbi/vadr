@@ -8,7 +8,7 @@
 
 ---
 
-## <a name="files"></a> Output files with detailed alert and error messages
+# <a name="files"></a> Output files with detailed alert and error messages
 
 `v-annotate.pl` outputs two types of files with detailed alert/error
 messages: 
@@ -23,7 +23,7 @@ Documentation on the format of `.alt` files can be found
 This page includes examples of many of the different alerts and 
 corresponding `.alt` file output [below](#examples).
 
-## <a name="coords"></a> Explanation of sequence and model coordinate fields in `.alt` files
+# <a name="coords"></a> Explanation of sequence and model coordinate fields in `.alt` files
 
 | alert code(s) | alert desc(s) | sequence coords description | model coords explanation | link to example | 
 |---------------|---------------|-----------------------------|--------------------------|-----------------|
@@ -64,7 +64,7 @@ corresponding `.alt` file output [below](#examples).
 | *lowcovrg* | *LOW_COVERAGE* | one or more set of sequence coordinates that are **not** covered by any hit to the model on the top-scoring strand in the coverage determination stage | will be blank (`-`) | [low coverage example](#example-lowcovrg) | 
 
 
-### <a name="toy"></a>`toy50` toy model used in examples of alert messages
+# <a name="toy"></a>`toy50` toy model used in the examples of alert messages below
 
 The toy50 model is a toy example used to illustrate many of the
 problems with sequences that VADR can detect using simple examples on
