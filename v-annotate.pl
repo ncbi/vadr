@@ -4799,8 +4799,8 @@ sub add_frameshift_alerts_for_one_sequence {
                                          vdr_CoordsSegmentCreate($uapos-1, $uapos-1 - $rf2ilen_AR->[$rfpos]+1, $strand, $FH_HR));
                 $alert_mcoords = sprintf("mdl:%s;", vdr_CoordsSegmentCreate($rfpos, $rfpos, $strand, $FH_HR));
                 alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, "insertnn", $seq_name, $ftr_idx, 
-                                           sprintf("%s%snucleotide alignment insert of length %d>%d after reference nucleotide posn %d on strand %s", 
-                                                   $alert_scoords, $alert_mcoords, $rf2ilen_AR->[$rfpos], $local_nmaxins, $rfpos, $strand), $FH_HR);
+                                           sprintf("%s%s%d>%d", 
+                                                   $alert_scoords, $alert_mcoords, $rf2ilen_AR->[$rfpos], $local_nmaxins), $FH_HR);
               }
 
               # increment or decrement rfpos
@@ -6505,8 +6505,8 @@ sub add_protein_validation_alerts {
                                                                                                    $p_ins_qpos_A[$ins_idx], $p_ins_spos_A[$ins_idx], $p_ins_len_A[$ins_idx], 
                                                                                                    $p_blastx_feature_flag, $p_ftr_scoords, $ftr_info_AHR->[$ftr_idx]{"coords"}, $ftr_strand, $p_strand, 
                                                                                                    $seq_len_HR->{$seq_name}, $FH_HR);
-                        $alt_str_H{"insertnp"} .= sprintf("%s%sblastx predicted insert of length %d>%d starting at reference amino acid posn %d", 
-                                                          $alt_scoords, $alt_mcoords, $p_ins_len_A[$ins_idx], $local_xmaxins, $p_ins_spos_A[$ins_idx]);
+                        $alt_str_H{"insertnp"} .= sprintf("%s%s%d>%d", 
+                                                          $alt_scoords, $alt_mcoords, $p_ins_len_A[$ins_idx], $local_xmaxins);
                         
                       }
                     }
