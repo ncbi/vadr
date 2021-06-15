@@ -352,7 +352,7 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 |   6 | `ftr idx`             | index (in input model info file) this alert instance pertains to |
 |   7 | `alert code`          | 8 character VADR alert code |
 |   8 | `fail`                | `yes` if this alert code is fatal (automatically causes the sequence to fail), `no` if not |
-|   9 | `alert desc`          | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
+|   9 | `alert description`   | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
 | 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
 
 ---
