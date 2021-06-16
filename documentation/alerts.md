@@ -462,16 +462,11 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
   which align to model positions 23 to 25, which causes a `cdsstopn` alert with 
   description *CDS_HAS_STOP_CODON*.
 
-  The *mutendcd* alert with description *MUTATION_AT_END* is
-  reported because it has an invalid stop codon `ATA` at positions 27 to 29 which are aligned to model positions 28
-  to 30, which are the final 3 positions of the predicted `protein one` 
-  CDS feature. Unlike `TOY50-SP1`, there is an in-frame valid `TGA` stop codon 
-  3' of the expected stop position, at sequence positions 31 to 33 which 
-  align to model positions 33 to 35, which causes a `mutendex` alert with
-  description *MUTATION_AT_END* to be reported. This early stop shifts the 
-  stop codon position 6 nucleotides from where it is predicted to be based on alignment to the 
-  model (from positions 28 to 30 to positions 22 to 24) which correspond to 
-  a shift of 6 model positions (from positions 29 to 31 to positions 23 to 25). 
+  The `cdsstopn` alert is detected based on the nucleotide alignment.
+  A similar `cdsstopp` alert with description *CDS_HAS_STOP_CODON* is
+  reported when early in-frame stop codons are detected in the protein validation
+  stage by blastx. Often you will see both alerts for the same early stop codon,
+  but sometimes you will only see one or the other. 
 
 ```
                                                        vvv
