@@ -4351,7 +4351,14 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"5trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startgap"}) { 
             push(@alt_code_A,    "indf5gap");
-            push(@alt_str_A,     sprintf("RF position %d%s", $sgm_start_rfpos, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
+            my $tmp_alt_str = vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx);
+            if($tmp_alt_str eq "") { 
+              $tmp_alt_str = "VADRNULL";
+            }
+            else { 
+              $tmp_alt_str =~ s/^\,\s+//; # ", segment 1 of 2" -> "segment 1 of 2"
+            }
+            push(@alt_str_A,     $tmp_alt_str);
             push(@alt_scoords_A, sprintf("seq:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}, 
                                                                                           $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_start_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
@@ -4369,7 +4376,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             else { 
               push(@alt_code_A, "indf5lcn");
             }
-            push(@alt_str_A,     sprintf("%.2f < %.2f%s, RF position %d%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg, $sgm_start_rfpos, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
+            push(@alt_str_A,     sprintf("%.2f<%.2f%s%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"startpp"}, $ftr_pp_thresh, $ftr_pp_msg, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
             push(@alt_scoords_A, sprintf("seq:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstart"}, 
                                                                                          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_start_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
@@ -4379,7 +4386,14 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         if(! $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"3trunc"}) { 
           if($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stopgap"}) { 
             push(@alt_code_A,    "indf3gap");
-            push(@alt_str_A,     sprintf("RF position %d%s", $sgm_stop_rfpos, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
+            my $tmp_alt_str = vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx);
+            if($tmp_alt_str eq "") { 
+              $tmp_alt_str = "VADRNULL";
+            }
+            else { 
+              $tmp_alt_str =~ s/^\,\s+//; # ", segment 1 of 2" -> "segment 1 of 2"
+            }
+            push(@alt_str_A,     $tmp_alt_str);
             push(@alt_scoords_A, sprintf("seq:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}, 
                                                                                          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_stop_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
@@ -4397,7 +4411,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
             else { 
               push(@alt_code_A, "indf3lcn");
             }
-            push(@alt_str_A,     sprintf("%.2f < %.2f%s, RF position %d%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg, $sgm_stop_rfpos, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
+            push(@alt_str_A,     sprintf("%.2f<%.2f%s%s", $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"stoppp"}, $ftr_pp_thresh, $ftr_pp_msg, vdr_FeatureSummarizeSegment($ftr_info_AHR, $sgm_info_AHR, $sgm_idx)));
             push(@alt_scoords_A, sprintf("seq:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_results_HAHR->{$seq_name}[$sgm_idx]{"sstop"}, 
                                                                                          $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
             push(@alt_mcoords_A, sprintf("mdl:%s;", vdr_CoordsSinglePositionSegmentCreate($sgm_stop_rfpos, $sgm_results_HAHR->{$seq_name}[$sgm_idx]{"strand"}, $FH_HR)));
