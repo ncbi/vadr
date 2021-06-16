@@ -6527,7 +6527,7 @@ sub add_protein_validation_alerts {
                   }
                   # check for 'cdsstopp': blast predicted truncation
                   if(defined $p_trcstop) { 
-                    $alt_str_H{"cdsstopp"} = $p_trcstop . "VADRNULL";
+                    $alt_str_H{"cdsstopp"} = $p_trcstop . "VADRNULL"; # $p_trcstop is sequence and model coords ("seq:<coords>;mdl:<coords>")
                   }
                 }
               }
@@ -10784,7 +10784,6 @@ sub output_alignments {
         # swap replaced sequences back with original sequences in the alignment
         msa_replace_sequences($execs_HR, $out_rpstk_file, $out_stk_file, $in_sqfile_R, $rpn_output_HHR, $mdl_name, 
                               "stockholm", "stockholm", $to_remove_AR, $opt_HHR, $ofile_info_HHR);
-        msa_stockholm_num_rf($execs_HR, $out_rpstk_file, ".tmp", $to_remove_AR, $FH_HR);
         ofile_AddClosedFileToOutputInfo(\%ofile_info_HH, $mdl_name . "align.stk", $out_stk_file, 1, 1, sprintf("model $mdl_name full original sequence alignment (stockholm)"));
       }
       if(! $do_out_rpstk) { push(@{$to_remove_AR}, $out_rpstk_file); }
