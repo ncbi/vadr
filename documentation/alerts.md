@@ -153,7 +153,7 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
 ```
 
   **How to interpret this alert based on the above output**: 
-  As reported in the `.alt. file shown above, a
+  As reported in the `.alt` file shown above, a
   possible frameshift exists in the CDS named `protein one` in the
   sequence named `TOY50-FS1` which matches best to the model named
   `toy50`. The `.alt` file contains details on the frameshift. The
@@ -246,7 +246,7 @@ TOY50-I1         -AAATCACCGATGGTGATCGCTTggggggTACCATAAATGAGCATTCTACGTGCAT
 ```
 
   **How to interpret this alert based on the above output**: 
-  As reported in the `.alt. file shown above,
+  As reported in the `.alt` file shown above,
   in the CDS feature with name `protein one`, the nucleotides 23 to 28 (length
   6) on the + strand insert after reference model position 23.  This
   length exceeds the minimum allowed length of 2 (set with the
@@ -302,7 +302,7 @@ TOY50-D1         -AAATCACCGATGGTG---GCTTTACCATAAATGAGCATTCTACGTGCAT
 ```
 
   **How to interpret this alert based on the above output**: 
-  As reported in the `.alt. file shown above,
+  As reported in the `.alt` file shown above,
   in the CDS feature with name `protein one`, the reference model 
   positions 17 to 19 (length 3) are deleted in the sequence `TOY50-D1`. The
   deletion occurs after position 15 in the sequence.
@@ -362,72 +362,116 @@ TOY50-S1         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
   **How to interpret this alert based on the above output**: The first
   three nucleotides of any CDS feature that is not truncated on the 5'
   end are checked to see if they are a valid start codon, and if not,
-  the *mutstart* alert is reported. For this specific example, as reported in the `.alt. file shown above, the CDS
-  start codon is from model (reference) positions 11 to 13, and the
-  first 3 nucleotides of the predicted CDS are positions 10 to 12.
-  The predicted invalid `ATT` start codon can be seen in the above alignment, marked
-  by the `vvv` characters at the top of the alignment. (These `vvv`
-  characters have been added here, and do not exist
-  in the actual output alignment file.)
+  the *mutstart* alert is reported. For this specific example, as
+  reported in the `.alt. file shown above, the CDS start codon is from
+  model (reference) positions 11 to 13, and the first 3 nucleotides of
+  the predicted CDS are positions 10 to 12. The predicted invalid
+  `ATT` start codon can be seen in the above alignment, marked by the
+  `vvv` characters at the top of the alignment. (These `vvv`
+  characters have been added here, and do not exist in the actual
+  output alignment file.)
 
 ---
-### <a name="example-stop"></a>Example *mutend**, *cdsstop**, and *unexleng* alerts
+## <a name="example-start"></a>Examples of stop codon problems
 
-#### alert code: *mutendcd*, *mutendns*, *mutendex*, *cdsstopn*, *cdsstopp*, *unexleng*
+#### This example is relevant to alert code: *mutendcd*, *mutendns*, *mutendex*, *cdsstopn*, *cdsstopp*, *unexleng*
 
-#### corresponding error messages: *MUTATION_AT_END*, *UNEXPECTED_LENGTH*
+#### Corresponding alert description (GenBank error message): *MUTATION_AT_END*, *UNEXPECTED_LENGTH*
 
-#### Example lines from `.alt` file:
+  **Instructions to reproduce this example and create the files discussed below:**
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-stop.sh
+  ```
+
+  **Relevant lines from `.alt` output file (`va-example-stop/va-example-stop.vadr.alt`):**
 
 ```
-#      seq                         ftr   ftr          ftr  alert           alert                           seq     seq       mdl     mdl  alert 
-#idx   name              model     type  name         idx  code      fail  desc                         coords  length    coords  length  detail
-#----  ----------------  --------  ----  -----------  ---  --------  ----  -------------------------  --------  ------  --------  ------  ------
-2.1.1  ENTOY50A.mutend1  ENTOY50A  CDS   protein_one    1  mutendcd  yes   MUTATION_AT_END            28..30:+       3  29..31:+       3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TAC ending at sequence position 30 (model position 31) on + strand is not a valid stop]
-2.1.2  ENTOY50A.mutend1  ENTOY50A  CDS   protein_one    1  mutendns  yes   MUTATION_AT_END                   -       -         -       -  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
+#      seq               ftr          ftr              ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name       model  type         name             idx  code      fail  description                    coords  len    coords  len  detail
+#----  ---------  -----  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-SP1  toy50  CDS          protein_one        1  mutendcd  yes   MUTATION_AT_END              28..30:+    3  29..31:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TAC]
+1.1.2  TOY50-SP1  toy50  CDS          protein_one        1  mutendns  yes   MUTATION_AT_END                     -    -         -    -  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 #
-3.1.1  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  mutendcd  yes   MUTATION_AT_END            27..29:+       3  28..30:+       3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA ending at sequence position 29 (model position 30) on + strand is not a valid stop]
-3.1.2  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  mutendex  yes   MUTATION_AT_END            31..33:+       3  33..35:+       3  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [sequence positions 31 to 33 (model positions 33 to 35) on + strand]
-3.2.3  ENTOY50A.mutend2  ENTOY50A  CDS   protein_one    1  unexleng  yes   UNEXPECTED_LENGTH          10..29:+      20  11..30:+      20  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
+2.1.1  TOY50-SP2  toy50  CDS          protein_one        1  mutendcd  yes   MUTATION_AT_END              27..29:+    3  28..30:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA]
+2.1.2  TOY50-SP2  toy50  CDS          protein_one        1  mutendex  yes   MUTATION_AT_END              31..33:+    3  33..35:+    3  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TGA]
+2.1.3  TOY50-SP2  toy50  CDS          protein_one        1  unexleng  yes   UNEXPECTED_LENGTH            10..29:+   20  11..30:+   20  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
 #
-4.2.1  ENTOY50A.mutend3  ENTOY50A  CDS   protein_one    1  cdsstopn  yes   CDS_HAS_STOP_CODON         22..24:+       3  23..25:+       3  in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 10..24 (stop shifted 6 nt)]
-4.2.2  ENTOY50A.mutend3  ENTOY50A  CDS   protein_one    1  cdsstopn  yes   CDS_HAS_STOP_CODON         22..24:+       3  23..25:+       3  stop codon in protein-based alignment
+3.1.1  TOY50-SP3  toy50  CDS          protein_one        1  mutendcd  yes   MUTATION_AT_END              28..30:+    3  29..31:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TAC]
+3.1.2  TOY50-SP3  toy50  CDS          protein_one        1  cdsstopn  yes   CDS_HAS_STOP_CODON           22..24:+    3  23..25:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:6,M:6]
 ```
 
-  **Explanation**: The sequence `ENTOY50A.mutend1` has an invalid
-  `TAC` stop codon for the CDS with name `protein one` at the expected
-  position in the reference model, causing the *mutendcd* alert. There
-  are zero valid in-frame stop codons (in the same frame as the
-  predicted start codon) in the remainder of the sequence, so a
-  *mutendns* alert is also reported.
+  **Alignment of `TOY50-SP1`, `TOY50-SP2` and `TOY50-SP3` sequences to the toy50 model:** The output
+  file `va-example-stop/va-example-stop.vadr.toy50.align.stk`.
+  includes the alignment shown below. Looking at this alignment, or an
+  alignment of the sequence generated by a different program, can be 
+  helpful in understanding the stop-codon related alerts.
+  The `#=GC RF` line shows the toy50 reference model sequence.  The `#=GR PP` line
+  indicates confidence estimates for each aligned nucleotide as
+  explained more [here](#pp).  This alignment is only output when the
+  `--keep` or `--out_stk` options are used with `v-annotate.pl`.
 
-  The sequence `ENTOY50.mutend2` also has an invalid stop codon, the
-  final 3 nt in the predicted CDS are `ATA`, which are sequence
-  positions 27 to 29 and align to model reference positions 28 to 30
-  (see alignment below). There is an in-frame stop codon 3' of this
-  though, at sequence positions 31 to 33 which align to model
-  reference positions 33 to 35, which result in the *mutendex*
-  alert. Finally, the predicted CDS is length 20 (positions 10 to
-  29) and aligns to positions 11 to 30, this CDS length is not a
-  multiple of 3 so the *unexleng* alert is reported.
+```
+                                              vvv
+TOY50-SP1         -AAATCACCGATGGTGATCGCTTTACCATACATGAGCATTCTACGTGCAT
+#=GR TOY50-SP1 PP .*************************************************
+TOY50-SP2         -AAATCACCGATGGTGATCGCTTTACCATA-CTGAGCATTCTACGTGCAT
+#=GR TOY50-SP2 PP .***************************96.69*****************
+TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
+#=GR TOY50-SP3 PP .*************************************************
+#=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.      00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X      12345678901234567890123456789012345678901234567890
+```
 
-  The sequence `ENTOY50.earlystop` has a valid stop codon at the
-  expected position (reference positions 29 to 31) but also has an
-  earlier in-frame stop codon at reference positions 23 to 25, which
-  correspond to sequence positions 22 to 24. This results in
-  *cdsstopn* and *cdsstopp* alerts. The *cdsstopn* alert is reported
-  when an early stop is identified during the nucleotide-based
-  alignment stage, and the *cdsstopp* alert is reported when an
-  early stop is detected in the protein-based alignment of the
-  protein validation stage. They are often reported together but not
-  always, because some cases of predicted earlier stops are
-  detectable only in one of the two types of alignment.
 
-  The alignment of the three sequences is below, with the three positions of the 
-  stop codon in the reference model marked with `vvv`. The reference positions 
-  that align to the early stop codon in the `ENTOY50.mutend3` sequence are 
-  marked with `^^^`.
+  **How to interpret this alert based on the above output**: 
+  Several checks are made on CDS features related to stop codons and these three sequences demonstrate
+  failures of some of these checks. 
 
+  * `TOY50-SP1` sequence: 
+
+  The *mutendcd* alert with description *MUTATION_AT_END* is
+  reported because it has an invalid stop
+  codon `TAC` at positions 28 to 30 which are aligned to model positions 29
+  to 31, which are the final three positions of the predicted `protein one` 
+  CDS feature. The `mutendns` alert with description *MUTATION_AT_END* is
+  also reported because no valid in-frame stop codon (in the same frame
+  as the predicted start codon) exists in the remainder of the sequence.
+
+  * `TOY50-SP2` sequence: 
+
+  The *mutendcd* alert with description *MUTATION_AT_END* is
+  reported because it has an invalid stop codon `ATA` at positions 27 to 29 which are aligned to model positions 28
+  to 30, which are the final 3 positions of the predicted `protein one` 
+  CDS feature. Unlike `TOY50-SP1`, there is an in-frame valid `TGA` stop codon 
+  3' of the expected stop position, at sequence positions 31 to 33 which 
+  align to model positions 33 to 35, which cause a `mutendex` alert with
+  description *MUTATION_AT_END* to be reported. Finally, because the predicted CDS feature
+  is length 20, from sequence positions 10 to 29 aligned to model positions 
+  11 to 30, and 20 is not a multiple of 3, the *unexleng* alert with description
+  *UNEXPECTED_LENGTH* is reported.
+
+  * `TOY50-SP3` sequence: 
+
+  Like `TOY50-SP1`, the *mutendcd* alert with description *MUTATION_AT_END* is
+  reported because it has an invalid stop
+  codon `TAC` at positions 28 to 30 which are aligned to model positions 29
+  to 31, which are the final three positions of the predicted `protein one` 
+  CDS feature. Unlike the other two sequences, there is an in-frame valid `TAA` 
+  stop codon 5' of the expected stop position, at sequence positions 22 to 24
+  which align to model positions 23 to 25, which causes a `cdsstopn` alert with 
+  description *CDS_HAS_STOP_CODON*.
+
+  The *mutendcd* alert with description *MUTATION_AT_END* is
+  reported because it has an invalid stop codon `ATA` at positions 27 to 29 which are aligned to model positions 28
+  to 30, which are the final 3 positions of the predicted `protein one` 
+  CDS feature. Unlike `TOY50-SP1`, there is an in-frame valid `TGA` stop codon 
+  3' of the expected stop position, at sequence positions 31 to 33 which 
+  align to model positions 33 to 35, which causes a `mutendex` alert with
+  description *MUTATION_AT_END* to be reported. This early stop shifts the 
+  stop codon position 6 nucleotides from where it is predicted to be based on alignment to the 
+  model (from positions 28 to 30 to positions 22 to 24) which correspond to 
+  a shift of 6 model positions (from positions 29 to 31 to positions 23 to 25). 
 
 ```
                                                        vvv
