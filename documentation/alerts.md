@@ -471,19 +471,6 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
   stage by blastx. Often you will see both alerts for the same early stop codon,
   but sometimes you will only see one or the other. 
 
-```
-                                                       vvv
-ENTOY50A.mutend1           -AAATCACCGATGGTGATCGCTTTACCATACATGAGCAT-----------
-#=GR ENTOY50A.mutend1 PP   .**************************************...........
-ENTOY50A.mutend2           -AAATCACCGATGGTGATCGCTTTACCATA-CTGAGCAT-----------
-#=GR ENTOY50A.mutend2 PP   .***************************96.69******...........
-ENTOY50A.earlystop         -AAATCACCGATGGTGATCGCTTAACCATAAATGAGCAT-----------
-#=GR ENTOY50A.earlystop PP .**************************************...........
-#=GC RF                    GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
-#=GC RFCOLX.               00000000011111111112222222222333333333344444444445
-#=GC RFCOL.X               12345678901234567890123456789012345678901234567890
-                                                 ^^^
-```                          
 
 ---
 ### <a name="example-indf5"></a>Examples of INDEFINITE_ANNOTATION_START
