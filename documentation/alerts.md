@@ -478,6 +478,11 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
 
 #### Corresponding alert description (GenBank error message): *INDEFINITE_ANNOTATION_START*
 
+  **Instructions to reproduce this example and create the files discussed below:**
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-indefstart.sh
+  ```
+
   **Relevant lines from `.alt` output file (`va-example-indefstart/va-example-indefstart.vadr.alt`):**
 
 ```
@@ -553,7 +558,7 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
   model positions 11 to 19, uncovered by the blastx alignment. This length difference of 9
   exceeds the maximum allowed difference of 5, so the alert is reported.
   A similar `indf5plg` alert exists for when the blastx alignment extends *longer* than the 
-  predicted nucleotide alignment, but no example is shown here. 
+  predicted nucleotide alignment on the 5' end, but no example is shown here. 
 
 ```
 #      seq              ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
@@ -562,38 +567,71 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
 4.2.1  TOY50.F1  toy50  CDS   protein_one    1  indf5pst  yes   INDEFINITE_ANNOTATION_START  10..18:+    9  11..19:+    9  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9>5]
 ```
 
-### <a name="example-indf3"></a>Examples of INDEFINITE_ANNOTATION_END
+## <a name="example-indf3"></a>Examples of indefinite annotation at end
 
-#### alert codes: *indf3gap*, *indf3lcc*, *indf3pst*, *indf3lcn* (not shown), *indf3plg* (not shown)
+#### This example is relevant to alert code: *indf3gap*, *indf3lcc*, *indf3pst*, *indf3lcn* (not shown), *indf3plg* (not shown)
 
-#### corresponding error message: *INDEFINITE_ANNOTATION_END*
+#### Corresponding alert description (GenBank error message): *INDEFINITE_ANNOTATION_END*
 
-#### Example lines from `.alt` file:
+  **Instructions to reproduce this example and create the files discussed below:**
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-indefend.sh
+  ```
+
+  **Relevant lines from `.alt` output file (`va-example-indefend/va-example-indefend.vadr.alt`):**
 
 ```
-#      seq                    ftr   ftr          ftr  alert           alert                             seq     seq       mdl     mdl  alert 
-#idx   name         model     type  name         idx  code      fail  desc                           coords  length    coords  length  detail
-#----  -----------  --------  ----  -----------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
-5.2.4  ENTOY50A.3A  ENTOY50A  CDS   protein_one    1  indf3gap  yes   INDEFINITE_ANNOTATION_END    28..28:+       1  31..31:+       1  alignment to homology model is a gap at 3' boundary [RF position 31]
+#      seq               ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name       model  type  name         idx  code      fail  description                    coords  len    coords  len  detail
+#----  ---------  -----  ----  -----------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+1.1.4  TOY50-IE1  toy50  CDS   protein_one    1  indf3gap  yes   INDEFINITE_ANNOTATION_END    28..28:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary
 #
-6.2.1  ENTOY50A.3B  ENTOY50A  CDS   protein_one    1  indf3lcc  no    INDEFINITE_ANNOTATION_END    30..30:+       1  31..31:+       1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.70 < 0.80, RF position 31]
-#
-7.2.1  ENTOY50A.3C  ENTOY50A  CDS   protein_one    1  indf3pst  yes   INDEFINITE_ANNOTATION_END    22..30:+       9  23..31:+       9  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [9>8]
+2.1.1  TOY50-IE2  toy50  CDS   protein_one    1  indf3lcc  no    INDEFINITE_ANNOTATION_END    30..30:+    1  31..31:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.70<0.80]
 ```
 
-  **Explanation of `indf3gap` alert**: The sequence `ENTOY50A.3A` has a gap at the 3'
-  boundary of the CDS named `protein one` causing the `indf3gap`
-  alert. The final *non-gap* nucleotide in the predicted CDS is
-  position 28 of the sequence. The 3' boundary gap is position 31 in
-  the reference model.
 
-  **Explanation of `indf3lcc` alert**: The alignment of the sequence
-  `ENTOY50A.3B` has low confidence in the alignment of the nucleotide
-  at position 30 of the sequence to the 3' boundary of the `protein
-  one` CDS at model position 31. The `#=GR `ENTOY50A.3B PP` line in
-  the alignment shows the per position posterior probabilities for
-  each aligned nucleotide and position 30 has a value of `7`
-  indicating that the posterior probability is between 0.65 and 0.75.
+  **Alignment of `TOY50-IS1` and `TOY50-IS2` sequences to the toy50 model:** The output
+  file `va-example-indefstart/va-example-indefstart.vadr.toy50.align.stk`.
+  includes the alignment shown below. Looking at this alignment, or an
+  alignment of the sequence generated by a different program, can be 
+  helpful in understanding the alerts.
+  The `#=GC RF` line shows the toy50 reference model sequence.  The `#=GR PP` line
+  indicates confidence estimates for each aligned nucleotide as
+  explained more [here](#pp).  This alignment is only output when the
+  `--keep` or `--out_stk` options are used with `v-annotate.pl`.
+
+```
+                                                v
+TOY50-IE1         -AAATCACCGATGGTGATCGCTTTACCAT--ATGAGCAT-----------
+#=GR TOY50-IE1 PP .**************************98..59******...........
+TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
+#=GR TOY50-IE2 PP .***************************9876.9*****...........
+#=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.      00000000011111111112222222222333333333344444444445
+#=GC RFCOL.X      12345678901234567890123456789012345678901234567890
+```
+
+  **How to interpret these alerts based on the above output**: 
+  Several checks are made on the first position of all features, and these
+  two sequences demonstrate failures to some of these checks. 
+
+  * `TOY50-IE1` sequence: 
+
+  The *indf3gap* alert with description *INDEFINITE_ANNOTATION_END*
+  is reported because there is a gap at the end position (3'
+  boundary) of the CDS named `protein one`. The final
+  *non-gap* nucleotide in the predicted CDS is position 30 of the
+  sequence. The 3' boundary gap is position 31 in the model.
+
+  * `TOY50-IE2` sequence: 
+
+  The *indf3lcc* alert with description *INDEFINITE_ANNOTATION_END*
+  is reported because the posterior probability of the aligned nucleotide
+  at the end position (3' boundary) of the CDS named `protein one` is too low. 
+  In this example the value is 0.7, and the minimum value to not report an 
+  alert is 0.8 (`0.7<0.8` in 'alert detail' field). The nucleotide aligned at the 3' boundary is 
+  sequence position 30 and it aligns to position 31 in the model.
+  Posterior probabilities are explained more [here](#pp). 
 
   A similar `indf3lcn` alert exists for non-coding (non-CDS and
   non-mature peptide) features, but no example is shown here.  Having
@@ -601,45 +639,27 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
   control over whether these types of alerts in coding versus non-coding
   features cause a sequence to fail or not.
 
-  **Explanation of `indf3pst` alert**:
-  The protein validation stage for the `ENTOY50A.3C` sequence resulted in a blastx
-  alignment of the predicted nucleotide CDS to the reference protein that did not 
-  extend close enough to the 3' boundary of the predicted CDS. The blastx alignment
-  extended to sequence position 22, leaving positions 22 to 30 of the predicted CDS, which align to 
-  model positions 23 to 31, uncovered by the blastx alignment. In the alignment
-  below three nucleotide changes relative to the model in the final three codons
-  are marked with `^` at the bottom of the alignment.
+  * Related `indf3pst` and `indf3plg` alerts (not shown in example sequences above):
 
-  This alert is actually not reported by `v-annotate.pl` for this toy example because the 
-  CDS in this example is too short for constructive use with `blastx`. This alert is 
-  fabricated here for purposes of illustration. 
-
+  If the protein validation stage for a sequence results in too short of blastx
+  alignment of the predicted CDS to the reference protein that does not 
+  extend close enough to the 3' boundary of the predicted CDS, the *indf3pst*
+  alert will be reported. This alert is not possible to generate with the *toy50*
+  toy model because the CDS in this example is too short for constructive use with `blastx`. 
+  But a fabricated example `.alt` file output line is shown below, 
+  in which the blastx alignment  
+  extended only to sequence position 21, leaving positions 22 to 30 of the predicted CDS, which align to 
+  model positions 23 to 31, uncovered by the blastx alignment. This length difference of 9
+  exceeds the maximum allowed difference of 8, so the alert is reported.
   A similar `indf3plg` alert exists for when the blastx alignment extends *longer* than the 
-  predicted nucleotide alignment, but no example is shown here. 
+  predicted nucleotide alignment on the 3' end, but no example is shown here. 
 
-The alignment of the three sequences with `indf3*` alerts is
-below. The final position of the stop codon, model reference position
-31 is marked with a `v` at the top. The three positions with
-nucleotide changes at the first positions of the final 3 non-stop
-codons in the CDS are marked at the bottom with `^` characters. These
-three mutations would cause amino acid changes relative to the model
-and cause the blastx alignment to stop prior to the 3' end of the
-CDS.
-
-```                                             
-                                                  v
-ENTOY50A.3A         -AAATCACCGATGGTGATCGCTTTACCAT--ATGAGCAT-----------
-#=GR ENTOY50A.3A PP .**************************98..59******...........
-ENTOY50A.3B         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
-#=GR ENTOY50A.3B PP .****************************976.9*****...........
-ENTOY50A.3C         -AAATCACCGATGGTGATCGCTATAGCAGAAATGAGCAT-----------
-#=GR ENTOY50A.3C PP .**************************************...........
-#=GC SS_cons        :::::::::<<<____>>>:::::::::::::::::::::::::::::::
-#=GC RF             GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
-#=GC RFCOLX.        00000000011111111112222222222333333333344444444445
-#=GC RFCOL.X        12345678901234567890123456789012345678901234567890
-                                       ^  ^  ^
-```                                             
+```
+#      seq              ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name      model  type  name         idx  code      fail  description                    coords  len    coords  len  detail
+#----  --------- -----  ----  -----------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+7.2.1  TOY50-F2  toy50  CDS   protein_one    1  indf3pst  yes   INDEFINITE_ANNOTATION_END    22..30:+    9  23..31:+    9  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [9>8]
+```
 
 ### <a name="example-ambg5"></a>Examples of *N_AT_START* 
 
