@@ -421,6 +421,7 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12345678901234567890123456789012345678901234567890
+                                        ^^^
 ```
 
 
@@ -430,13 +431,14 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
 
   * `TOY50-SP1` sequence: 
 
-  The *mutendcd* alert with description *MUTATION_AT_END* is
-  reported because it has an invalid stop
-  codon `TAC` at positions 28 to 30 which are aligned to model positions 29
-  to 31, which are the final three positions of the predicted `protein one` 
-  CDS feature. The `mutendns` alert with description *MUTATION_AT_END* is
-  also reported because no valid in-frame stop codon (in the same frame
-  as the predicted start codon) exists in the remainder of the sequence.
+  The *mutendcd* alert with description *MUTATION_AT_END* is reported
+  because it has an invalid stop codon `TAC` at positions 28 to 30
+  which are aligned to model positions 29 to 31 (marked by `vvv`
+  characters in the alignment above), which are the final three
+  positions of the predicted `protein one` CDS feature. The `mutendns`
+  alert with description *MUTATION_AT_END* is also reported because no
+  valid in-frame stop codon (in the same frame as the predicted start
+  codon) exists in the remainder of the sequence.
 
   * `TOY50-SP2` sequence: 
 
@@ -459,7 +461,8 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
   to 31, which are the final three positions of the predicted `protein one` 
   CDS feature. Unlike the other two sequences, there is an in-frame valid `TAA` 
   stop codon 5' of the expected stop position, at sequence positions 22 to 24
-  which align to model positions 23 to 25, which causes a `cdsstopn` alert with 
+  which align to model positions 23 to 25 (marked by `^^^` characters at the 
+  bottom of the alignment above), which causes a `cdsstopn` alert with 
   description *CDS_HAS_STOP_CODON*.
 
   The `cdsstopn` alert is detected based on the nucleotide alignment.
