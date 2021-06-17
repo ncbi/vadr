@@ -5410,11 +5410,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? $ftr_5nlen : $ftr_len), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_final_n, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_final_n]), $ftr_strand, $FH_HR) . ";";
-        $alt_str_H{$ambg_alt} = sprintf("%s%sfirst %d positions are Ns, %s", 
-                                        $alt_scoords, $alt_mcoords, $ftr_5nlen,
-                                        (($ftr_5nlen == $ftr_len) ? 
-                                         (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
-                                         ("first non-N is position $ftr_start_non_n")));
+        $alt_str_H{$ambg_alt} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
 
       # same drill for ftr_sqstring_pv
@@ -5435,11 +5431,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? ($ftr_len - $ftr_3nlen + 1) : 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_first_n, $ftr_stop, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_first_n]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
-        $alt_str_H{$ambg_alt} = sprintf("%s%sfinal %d positions are Ns, %s", 
-                                        $alt_scoords, $alt_mcoords, $ftr_3nlen,
-                                        (($ftr_3nlen == $ftr_len) ? 
-                                         (sprintf("entire %s is Ns", ($ftr_is_cds) ? "CDS" : "feature")) : 
-                                         ("final non-N is position $ftr_stop_non_n")));
+        $alt_str_H{$ambg_alt} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
 
       # same drill for ftr_sqstring_pv
@@ -8568,11 +8560,7 @@ sub alert_add_ambgnt5s_ambgnt3s {
       my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(1, ($first_non_n-1), "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, 
-                                  sprintf("%s%sfirst %d positions are Ns, %s", 
-                                          $alt_scoords, $alt_mcoords, 
-                                          (($first_non_n == $seq_len) ? $seq_len : $first_non_n-1), 
-                                          (($first_non_n == $seq_len) ? "entire sequence is Ns" : "first non-N is position $first_non_n")), 
-                                  $FH_HR);
+                                  sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords), $FH_HR); 
     }
     if(($final_nt eq "N") || ($final_nt eq "n")) { 
       if(! defined $sqstring) { $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name); }
@@ -8580,16 +8568,13 @@ sub alert_add_ambgnt5s_ambgnt3s {
       $rev_sqstring =~ m/[^Nn]/g; 
       my $pos_retval = pos($rev_sqstring); # returns position of first non-N/n in reversed string
       # if $pos_retval is undef entire sqstring is N or n
-      my $sqlen = length($sqstring);
-      my $nlen  = (defined $pos_retval) ? $pos_retval : $seq_len;
-      my $first_non_n = $sqlen - $nlen;
+      my $nlen  = (defined $pos_retval) ? ($pos_retval-1) : $seq_len;
+      printf("HEYA nlen: $nlen\n");
+      my $first_non_n = $seq_len - $nlen;
       my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(($seq_len - $nlen + 1), $seq_len, "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, 
-                                  sprintf("%s%sfinal %d positions are Ns, %s", 
-                                          $alt_scoords, $alt_mcoords, $nlen,
-                                          (($first_non_n == 0) ? "entire sequence is Ns" : "final non-N is position $first_non_n")), 
-                                  $FH_HR);
+                                  sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords), $FH_HR);
     }
   }
 
