@@ -6041,8 +6041,8 @@ sub add_low_similarity_alerts_for_one_sequence {
                     }
                     $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
                     $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
-                    $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d), strand: %s", 
-                                       $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop, $bstrand);
+                    $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d)",
+                                       $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop);
                     if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
                       $ftr_overlap_flag = 1;
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, ($ftr_matches_coding ? "lowsim5c" : "lowsim5n"), $seq_name, $ftr_idx, $alt_msg, $FH_HR);
