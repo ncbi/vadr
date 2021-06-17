@@ -744,7 +744,9 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
   the CDS and mat_peptide are Ns like in `TOY50-AS1`, the same *ambgnt5c* and
   *ambgnt5f* alerts are reported as well.
 
-## <a name="example-ambg3"></a>Examples of ambiguous nucleotides at end of sequence or a feature
+---
+
+## <a name="example-ambg3"></a>Examples of ambiguous nucleotides at end of a sequence or a feature
 
 #### This example is relevant to alert codes: *ambgnt3s*, *ambgnt3c*, *ambgnt3f* 
 
@@ -819,111 +821,82 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
   *ambgnt3c* alert is reported. 
 
 ---
-### <a name="example-ambg3"></a>Examples of *N_AT_END* 
+## <a name="example-pep"></a>Examples of mature peptide-specific problems
 
-#### alert codes: *ambgnt3s*, *ambgnt3c*, *ambgnt3f* 
+#### This example is relevant to alert codes: *pepadjcy*, *peptrans*
 
-#### corresponding error message: *N_AT_END*, *N_AT_CDS_END*, *N_AT_FEATURE_END*
+#### Corresponding alert descriptions (GenBank error messages): *PEPTIDE_ADJACENCY_PROBLEM*, *PEPTIDE_TRANSLATION_PROBLEM*
 
-#### Example lines from `.alt` file:
+  **Instructions to reproduce this example and create the files discussed below:**
+  ```
+  > sh $VADRSCRIPTSDIR/documentation/alert-files/example-matpep.sh
+  ```
+
+  **Relevant lines from `.alt` output file (`va-example-matpep/va-example-matpep.vadr.alt`):**
 
 ```
-#      seq                     ftr   ftr          ftr  alert           alert                       seq     seq       mdl     mdl  alert 
-#idx   name          model     type  name         idx  code      fail  desc                     coords  length    coords  length  detail
-#----  ------------  --------  ----  -----------  ---  --------  ----  ---------------------  --------  ------  --------  ------  ------
-4.1.1  ENTOY50A.N3L  ENTOY50A  -     -              -  ambgnt3s  no    N_AT_END               28..38:+      11  29..39:+      11  final nucleotide of the sequence is an N [final 11 positions are Ns, final non-N is position 27]
-4.2.1  ENTOY50A.N3L  ENTOY50A  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END           29..30:+       2  30..31:+       2  final nucleotide of CDS is an N [final 2 positions are Ns, final non-N is position 28]
+#      seq               ftr          ftr              ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name       model  type         name             idx  code      fail  description                    coords  len    coords  len  detail
+#----  ---------  -----  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-MP1  toy50  mat_peptide  protein_one_mp1    2  pepadjcy  yes   PEPTIDE_ADJACENCY_PROBLEM    22..24:+    3  22..23:+    2  predictions of two mat_peptides expected to be adjacent are not adjacent
 #
-5.2.1  ENTOY50A.N3S  ENTOY50A  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END           29..30:+       2  30..31:+       2  final nucleotide of CDS is an N [final 2 positions are Ns, final non-N is position 28]
-#
-```
-  **Explanation of `ambgnt3s` alert**: The sequence `ENTOY50A.N3L` ends with 11 consecutive Ns
-  from positions 28 to 38, which align to model (reference) positions 29 to 39.
-  Any sequence that ends with 1 or consecutive Ns will cause this alert.
-  
-  **Explanation of `ambgnt3c` alert**: Both sequences `ENTOY50A.N3L`
-  and `ENTOY50A.N3S` have 2 consecutive Ns from sequence positions 29
-  to 30 that align to the final two positions of the CDS `protein
-  one`, which is model (reference) positions 30 to 31. You can 
-  see this in the alignment below.
-
-  A similar `ambgnt3f` alert exists for non-coding (non-CDS and
-  non-mature peptide) features, but no example is shown here.  Having
-  separate alerts for coding and non-coding features gives the user
-  control over whether these types of alerts in coding versus non-coding
-  features cause a sequence to fail or not.
-
-The alignment of the two sequences is below, the final two positions of the 
-CDS are marked by `v` chacacters:
-
-
-```                                             
-                                                  vv
-ENTOY50A.N3S         -AAATCACCGATGGTGATCGCTTTACCATNNATGAGCAT-----------
-#=GR ENTOY50A.N3S PP .**************************************...........
-ENTOY50A.N3L         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
-#=GR ENTOY50A.N3L PP .**************************************...........
-#=GC RF              GAAATCACCGatGGTGatCGCTTTACCATAAATGAGCATTCTACGTGCAT
-#=GC RFCOLX.         00000000011111111112222222222333333333344444444445
-#=GC RFCOL.X         12345678901234567890123456789012345678901234567890
-```                                             
-
----
-### <a name="example-pep"></a>Examples of *PEPTIDE_ADJACENCY_PROBLEM* and *PEPTIDE_TRANSLATION_PROBLEM*
-
-#### alert codes: *pepadjcy*, *peptrans*
-
-#### corresponding error message: *PEPTIDE_ADJACENCY_PROBLEM*, *PEPTIDE_TRANSLATION_PROBLEM*
-
-#### Example lines from `.alt` file:
-
-```
-#      seq                     ftr          ftr              ftr  alert           alert                             seq     seq       mdl     mdl  alert 
-#idx   name          model     type         name             idx  code      fail  desc                           coords  length    coords  length  detail
-#----  ------------  --------  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ------  --------  ------  ------
-2.1.1  ENTOY50A.MP1  ENTOY50A  mat_peptide  protein_one_mp1    2  pepadjcy  yes   PEPTIDE_ADJACENCY_PROBLEM    22..24:+       3  22..23:+       2  predictions of two mat_peptides expected to be adjacent are not adjacent [abs(21 - 25) != 1 (strand:+)]
-#
-3.1.1  ENTOY50A.MP2  ENTOY50A  CDS          protein_one        1  mutstart  yes   MUTATION_AT_START            10..12:+       3  11..13:+       3  expected start codon could not be identified [GTG starting at sequence position 10 (model position 11) on + strand is not a valid start]
-3.2.1  ENTOY50A.MP2  ENTOY50A  mat_peptide  protein_one_mp1    2  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -       -         -       -  mat_peptide may not be translated because its parent CDS has a problem
-3.3.1  ENTOY50A.MP2  ENTOY50A  mat_peptide  protein_one_mp2    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -       -         -       -  mat_peptide may not be translated because its parent CDS has a problem
+2.1.1  TOY50-MP2  toy50  CDS          protein_one        1  mutstart  yes   MUTATION_AT_START            10..12:+    3  11..13:+    3  expected start codon could not be identified [GTG]
+2.2.1  TOY50-MP2  toy50  mat_peptide  protein_one_mp1    2  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem
+2.3.1  TOY50-MP2  toy50  mat_peptide  protein_one_mp2    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem
 ```
 
-  **Explanation of `pepadjcy` alert**: The three nucleotides from
-  positions 22 to 24 in the sequence `ENTOY50A.MP1` are inserted
-  between the end of the `mat_peptide` called `protein one mp1` and
-  the second `mat_peptide` called `protein one mp2` (not shown), which
-  means that they are not annotated as adjacent as they are expected
-  to be. The `protein one mp1` mature peptide ends at model
-  (reference) position 22 and the `protein one mp2` mature peptide
-  begins at model (reference) position 23. This alert is specific to
-  only `mat_peptide` features. 
+  **Alignment of `TOY50-MP1` and `TOY50-MP2` sequences to the toy50 model:** The output
+  file `va-example-matpep/va-example-matpep.vadr.toy50.align.stk`.
+  includes the alignment shown below. Looking at this alignment, or an
+  alignment of the sequence generated by a different program, can be 
+  helpful in understanding the alerts.
+  The `#=GC RF` line shows the toy50 reference model sequence.  The `#=GR PP` line
+  indicates confidence estimates for each aligned nucleotide as
+  explained more [here](#pp).  This alignment is only output when the
+  `--keep` or `--out_stk` options are used with `v-annotate.pl`.
 
-  **Explanation of `peptrans` alert**: The CDS `protein_one` which is
-  the *parent* CDS of the `protein one mp1` and `protein one mp2`
-  mature peptides has a *MUTATION_AT_START* error, which means that
-  the children mature peptides may not be translated, so a `peptrans`
-  alert is reported. This alert is specific to only `mat_peptide`
-  features and occurs for all children mature peptides when the parent
-  CDS has any fatal alert. The parent/child relationship is defined
-  in the *modelinfo* file, an example of which is [here](formats.md#minfo).
+```
+                                       v   v
+TOY50-MP1         -AAATCACCGATGGTGATCGCTgggTTACCATAAATGAGCAT-----------
+#=GR TOY50-MP1 PP .******************99766589***************...........
+TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
+#=GR TOY50-MP2 PP .*********************...*****************...........
+#=GC RF           GAAATCACCGATGGTGATCGCT...TTACCATAAATGAGCATTCTACGTGCAT
+#=GC RFCOLX.      0000000001111111111222...2222222333333333344444444445
+#=GC RFCOL.X      1234567890123456789012...3456789012345678901234567890
+                            ^^^
+```
 
-The alignment of the two sequences is below, the three inserted `G`
-nucleotides in `ENTOY50A.MP1` are marked by `v` chacacters at the top
-of the alignment. The mutated and invalid `GTG` start codon in
-`ENTOY50A.MP2` is marked by `^` chacacters at the bottom of the
-alignment.
+  **How to interpret these alerts based on the above output**: 
 
-```                                             
-                                           vvv
-ENTOY50A.MP1         -AAATCACCGATGGTGATCGCTGGGTTACCATAAATGAGCAT-----------
-#=GR ENTOY50A.MP1 PP .********************97779****************...........
-ENTOY50A.MP2         -AAATCACCGGTGGTGATCGCT---TTACCATAAATGAGCAT-----------
-#=GR ENTOY50A.MP2 PP .*********************...*****************...........
-#=GC RF              GAAATCACCGatGGTGatCGCT...TTACCATAAATGAGCATTCTACGTGCAT
-#=GC RFCOLX.         0000000001111111111222...2222222333333333344444444445
-#=GC RFCOL.X         1234567890123456789012...3456789012345678901234567890
-                               ^^^   
-```                                             
+  * `TOY50-MP1` sequence: 
+
+  When the protein product of a CDS is cleaved into multiple mature
+  peptides the mature peptide features typically are adjacent to each
+  other like they are for the toy example `toy50` (details
+  [here](#toy)) in which `protein one mp1` which spans nucleotide
+  positions 11 to 22, is adjacent to `protein one mp2` which spans
+  positions 23 to 38. For these situations, `v-annotate.pl` checks that the predicted
+  mature peptide features in each sequence are adjacent, and if
+  not the *pepadjcy* alert is reported.
+
+  The *pepadjcy* alert with description *PEPTIDE_ADJACENCY_PROBLEM* is
+  reported for the `TOY50-MP1` sequence because the predicted CDS
+  named `protein one mp1` ends at position 21 and `protein one mp2`
+  begins at position 25, so the positions 22 to 24 lie between the two
+  mature peptide predictions. This is indicated by the `22..24:+`
+  value in the `seq coords` field.  The model position that ends
+  `protein one mp1` is 22, and that begins `protein one mp2` is 23 as
+  indicated by the `22..23:+` value in the `mdl coords` field.
+
+  * `TOY50-MP2` sequence: 
+
+  When a parent CDS of a mature peptide has a fatal alert, a
+  *peptrans* alert with description *PEPTIDE_TRANSLATION_PROBLEM* is
+  reported for all of the predicted child mature peptides. The 
+  `TOY50-MP2` sequence shows an example, which has a `mutstart` alert
+  for the CDS `protein one` which causes *peptrans* alerts for 
+  the two mature peptides.
 
 ---
 ### <a name="example-lowsim5"></a>Examples of 5' low similarity problems
