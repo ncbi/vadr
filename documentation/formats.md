@@ -337,7 +337,7 @@ that occurs at least once in the input sequence file that
 ---
 ### Explanation of `.alt`-suffixed output files<a name="alt"></a>
 
-`.alt` data lines have 10 or more fields, the names of which appear in the first two
+`.alt` data lines have 14 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
 [Example file](annotate-files/va-noro.9.vadr.alt).
@@ -353,7 +353,11 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 |   7 | `alert code`          | 8 character VADR alert code |
 |   8 | `fail`                | `yes` if this alert code is fatal (automatically causes the sequence to fail), `no` if not |
 |   9 | `alert description`   | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
-| 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
+|  10 | `seq coords`          | coordinates in the input sequence relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|  11 | `seq len`             | total length of all positions described by coordinates in `seq coords` | 
+|  12 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|  13 | `mdl len`             | total length of all positions described by coordinates in `mdl coords` | 
+| 14 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
