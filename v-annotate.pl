@@ -3031,7 +3031,7 @@ sub add_classification_alerts {
         if($scov < $lowcov_opt) { 
           $alt_scoords = "seq:" . vdr_CoordsMissing($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"}, $seq_len, $FH_HR) . ";";
           $alt_mcoords = "mdl:VADRNULL;";
-          $alt_str = sprintf("%s < %s", $scov2print, $lowcov_opt2print);
+          $alt_str = sprintf("%s<%s", $scov2print, $lowcov_opt2print);
           alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowcovrg", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
         }
 
