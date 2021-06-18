@@ -8,7 +8,7 @@
   * [Large insertion](#example-insert)
   * [Large deletion](#example-delete)
   * [Mutated start codon](#example-start)
-  * [Stop codon alert](#example-stop)
+  * [Stop codon alerts](#example-stop)
   * [Indefinite annotation at the start of a sequence or a feature](#example-indf5)
   * [Indefinite annotation at the end of a sequence or a feature](#example-indf3)
   * [Ambiguous nucleotides at the start of a sequence or a feature](#example-ambg5)
