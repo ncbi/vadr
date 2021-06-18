@@ -1374,8 +1374,6 @@ TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
   detected in the protein validation stage, but is not
   shonw. Sometimes you will see both alerts for the same sequence.
 
-```
-
 ---
 ## <a name="example-lowcovrg"></a>Example of low coverage
 
