@@ -1283,7 +1283,7 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
 ---
 ### <a name="example-indfstrn"></a>Example of indefinite strand
 
-#### This example is relevant to alert code: *indfstrn*
+#### This example is relevant to alert codes: *indfstrn*, *indfstrp* (not shown)
 
 #### Corresponding alert description (GenBank error message): *INDEFINITE_STRAND*
 
@@ -1345,6 +1345,12 @@ TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
   *after reverse complementing* these match identically to positions 26
   to 50 in the reference model, marked by '^' at the bottom of the
   alignment.
+
+  The `indftrsn` alert is detected in the coverage determination stage
+  which is based on the nucleotide sequence. A similar `indfstrp`
+  alert can be reported when blastx hits occur on both strands as
+  detected in the protein validation stage, but is not
+  shonw. Sometimes you will see both alerts for the same sequence.
 
 ```
 
