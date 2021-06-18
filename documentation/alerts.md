@@ -3,7 +3,25 @@
 * [Output fields with detailed alert and error messages](#files)
 * [Explanation of sequence and model coordinate fields in `.alt` files](#coords)
 * [`toy50` toy model used in examples of alert messages](#toy)
-* [Example `.alt` output for different alert types](#examples)
+* [Examples of different alert types and corresponding `.alt` output](#examples)
+  * [Frameshift](#example-frameshift)
+  * [Large insertion](#example-insert)
+  * [Large deletion](#example-delete)
+  * [Mutated start codon](#example-start)
+  * [Stop codon alert](#example-stop)
+  * [Indefinite annotation at the start of a sequence or a feature](#example-indf5)
+  * [Indefinite annotation at the end of a sequence or a feature](#example-indf3)
+  * [Ambiguous nucleotides at the start of a sequence or a feature](#example-ambg5)
+  * [Ambiguous nucleotides at the end of a sequence or a feature](#example-ambg3)
+  * [Mature peptide-specific alerts](#example-pep)
+  * [Low similarity at the start of a sequence of a feature](#example-lowsim5)
+  * [Low similarity at the end of a sequence of a feature](#example-lowsim3)
+  * [Low similarity internal to a sequence of a feature](#example-lowsimi)
+  * [Deleted feature](#example-delftr)
+  * [Duplicate regions](#example-dupreg)
+  * [Discontinuous similarity](#example-dupreg)
+  * [Indefinite strand](#example-indfstrn)
+  * [Low coverage](#example-lowcovrg)
 * [Posterior probability annotation in VADR output Stockholm alignments](#pp)
 
 ---
@@ -32,37 +50,38 @@ corresponding `.alt` file output [below](#examples).
 | *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [large deletion example](#example-delete) | 
 | *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon (length <= 3) | model (reference) positions that align to the predicted start codon | [mutated start codon example](#example-start) | 
 | *mutendcd* | *MUTATION_AT_END*  | sequence positions of predicted stop codon (length <= 3) | model (reference) positions that align to the predicted stop codon | [stop codon alert examples](#example-stop) | 
-| *mutendex* | *MUTATION_AT_END*  | sequence positions of 5'-most in-frame stop codon in the CDS, this stop codon will be 3' of expected stop codon position (always length 3) | model (reference) positions that align to stop codon in `sequence coords` | [mutend* alert examples](#example-stop) | 
-| *mutendns* | *MUTATION_AT_END*  | will be blank (`-`) | will be blank (`-`) | [mutend* alert examples](#example-stop) | 
-| *unexleng* | *UNEXPECTED_LENGTH* | sequence positions of the predicted CDS, the length of which is not a multiple of 3 | model (reference) positions that the predicted CDS align to, some nucleotides may be inserted *before or after* these positions | [mutend* alert examples](#example-stop) |
-| *cdsstopn* | *CDS_HAS_STOP_CODON* | sequence positions of the 5'-most in-frame stop codon in the CDS, this stop will be 5' of expected stop codong position (always length 3) | model (reference) positions that align to stop codon in `sequence coords` | [mutend* alert examples](#example-stop) | 
-| *indf5gap* | *INDEFINITE_ANNOTATION_START* | sequence position of first nucleotide aligned 3' of gap that aligns to the feature boundary (always length 1) | model (reference) position of the 5' feature boundary (always length 1) | [indf5 alert examples](#example-indf5) | 
-| *indf5lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 5' feature boundary (always length 1) | model (reference) position of the 5' feature boundary (always length 1) | [indf5 alert examples](#example-indf5) | 
-| *indf5pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 5' end of the CDS **not** covered by the protein-based alignment | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | [indf5 alert examples](#example-indf5) | 
-| *indf5plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 5' end of the CDS | model (reference) position of the 5' boundary of the CDS (always length 1) | [indf5 alert examples](#example-indf5) | 
-| *indf3gap* | *INDEFINITE_ANNOTATION_END*   | sequence position of final nucleotide aligned 5' of gap that aligns to the feature boundary (always length 1) | model (reference) position of the 3' feature boundary (always length 1) | [indf3 alert examples](#example-indf3) | 
-| *indf3lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 3' feature boundary (always length 1) | model (reference) position of the 3' feature boundary (always length 1) | [indf3 alert examples](#example-indf3) | 
-| *indf3pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 3' end of the CDS **not** covered by the protein-based alignment | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | [indf3 alert examples](#example-indf3) |   
-| *indf3plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 3' end of the CDS | model (reference) position of the 3' boundary of the CDS (always length 1) |  [indf3 alert examples](#example-indf3) | 
-| *ambgnt5f*, ambgnt5c* | *N_AT_FEATURE_START*, *N_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive Ns ending at the 3' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [ambg3* alert examples](#example-ambg5) | 
-| *ambgnt5s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns starting at position 1 of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [ambg5* alert examples](#example-ambg5) | 
-| *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [ambg3* alert examples](#example-ambg3) | 
-| *ambgnt3s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns ending at the final position of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [ambg3* alert examples](#example-ambg3) | 
-| *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide (always length 2) | [pep* alert examples](#example-pep) | 
-| *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | will be blank (`-`) | [pep* alert examples](#example-pep) | 
-| *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [lowsim5* alert examples](#example-lowsim5) | 
-| *lowsim5s* | *LOW_SIMILARITY_START* | sequence position(s) at 5' end of sequence (not overlapping with a feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [lowsim5* alert examples](#example-lowsim5) | 
-| *lowsim3c*, *lowsim3n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 3' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [lowsim3* alert examples](#example-lowsim5) | 
-| *lowsim3s* | *LOW_SIMILARITY_START* | sequence position(s) at 3' end of sequence (not overlapping with a feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [lowsim3* alert examples](#example-lowsim5) | 
-| *lowsimic*, *lowsimin* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [lowsimi* alert examples](#example-lowsimi) | 
-| *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [lowsimi* alert examples](#example-lowsimi) | 
-| *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | model (reference) positions that correspond to the feature that is deleted in the sequence | [deleted feature examples*#example-deletin) | 
-| *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | [deleted feature examples](#example-delftr) | 
-| *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | [duplicate regions examples](#example-dupregin) | 
+| *mutendex* | *MUTATION_AT_END*  | sequence positions of 5'-most in-frame stop codon in the CDS, this stop codon will be 3' of expected stop codon position (always length 3) | model (reference) positions that align to stop codon in `sequence coords` | [stop codon alert examples](#example-stop) | 
+| *mutendns* | *MUTATION_AT_END*  | will be blank (`-`) | will be blank (`-`) | [stop codon alert examples](#example-stop) | 
+| *unexleng* | *UNEXPECTED_LENGTH* | sequence positions of the predicted CDS, the length of which is not a multiple of 3 | model (reference) positions that the predicted CDS align to, some nucleotides may be inserted *before or after* these positions | [stop codon alert examples](#example-stop) |
+| *cdsstopn* | *CDS_HAS_STOP_CODON* | sequence positions of the 5'-most in-frame stop codon in the CDS, this stop will be 5' of expected stop codong position (always length 3) | model (reference) positions that align to stop codon in `sequence coords` | [stop codon alert examples](#example-stop) | 
+| *indf5gap* | *INDEFINITE_ANNOTATION_START* | sequence position of first nucleotide aligned 3' of gap that aligns to the feature boundary (always length 1) | model (reference) position of the 5' feature boundary (always length 1) | [stop codon alert examples](#example-indf5) | 
+| *indf5lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 5' feature boundary (always length 1) | model (reference) position of the 5' feature boundary (always length 1) | [examples of indefinite annotation at start](#example-indf5) | 
+| *indf5pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 5' end of the CDS **not** covered by the protein-based alignment | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | [examples of indefinite annotation at start](#example-indf5) | 
+| *indf5plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 5' end of the CDS | model (reference) position of the 5' boundary of the CDS (always length 1) | [examples of indefinite annotation at start](#example-indf5) | 
+| *indf3gap* | *INDEFINITE_ANNOTATION_END*   | sequence position of final nucleotide aligned 5' of gap that aligns to the feature boundary (always length 1) | model (reference) position of the 3' feature boundary (always length 1) | [examples of indefinite annotation at end](#example-indf3) | 
+| *indf3lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 3' feature boundary (always length 1) | model (reference) position of the 3' feature boundary (always length 1) | [examples of indefinite annotation at end](#example-indf3) | 
+| *indf3pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 3' end of the CDS **not** covered by the protein-based alignment | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | [examples of indefinite annotation at end](#example-indf3) |   
+| *indf3plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 3' end of the CDS | model (reference) position of the 3' boundary of the CDS (always length 1) |  [examples of indefinite annotation at end](#example-indf3) | 
+| *ambgnt5f*, ambgnt5c* | *N_AT_FEATURE_START*, *N_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive Ns ending at the 3' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
+| *ambgnt5s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns starting at position 1 of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
+| *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *ambgnt3s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns ending at the final position of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide (always length 2) | [mature peptide-specific alert examples](#example-pep) | 
+| *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | will be blank (`-`) | [mature peptide-specific alert examples](#example-pep) | 
+| *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at start](#example-lowsim5) | 
+| *lowsim5s* | *LOW_SIMILARITY_START* | sequence position(s) at 5' end of sequence (not overlapping with a feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at start](#example-lowsim5) | 
+| *lowsim3c*, *lowsim3n* | *LOW_FEATURE_SIMILARITY_END* | sequence position(s) at 3' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at end](#example-lowsim3) | 
+| *lowsim3s* | *LOW_SIMILARITY_END* | sequence position(s) at 3' end of sequence (not overlapping with a feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at end](#example-lowsim3) | 
+| *lowsimic*, *lowsimin* | *LOW_FEATURE_SIMILARITY* | sequence position(s) internal to a predicted feature (not including first or final position of the feature) that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of internal low similarity](#example-lowsimi) | 
+| *lowsimis* | *LOW_SIMILARITY* | sequence position(s) internal to a sequence (not including first or final position of the sequence) and not overlapping with a feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of internal low similarity](#example-lowsimi) | 
+| *deletins* | *DELETION_OF_FEATURE* | will be blank (`-`) | model (reference) positions that correspond to the feature that is deleted in the sequence | [deleted feature examples](#example-deletin) | 
+| *deletinf* | *DELETION_OF_FEATURE_SECTION* | will be blank (`-`) | model (reference) positions that correspond to the segment of the feature that is deleted in the sequence | [deleted features examples](#example-delftr) | 
+| *dupregin* | *DUPLICATE_REGIONS* | *N* sets of sequence coordinates, in pairs, each pair is two hits that overlap in model coordinates, *N* will be a factor of 2 | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | [duplicate regions example](#example-dupregin) | 
 | *discontn* | *DISCONTINUOUS_SIMILARITY* | *N* sets of sequence coordinates, one for each hit in the coverage determination stage | *N* model (reference) coordinates, one for each of the hits in the coverage determination stage that correspond to each set of sequence coordinates 1 to *N* | [discontinuous similarity example](#example-discontn) | 
 | *indfstrn* | *INDEFINITE_STRAND* | sequence coordinates of the best hit on the **opposite** strand from the overall best hit for this sequence in the coverage determination stage | model (reference) coordinates for the hit pertaining to the sequence coordinates in `sequence coords` | [indefinite strand example](#example-indfstrn) | 
 | *lowcovrg* | *LOW_COVERAGE* | one or more set of sequence coordinates that are **not** covered by any hit to the model on the top-scoring strand in the coverage determination stage | will be blank (`-`) | [low coverage example](#example-lowcovrg) | 
 
+--- 
 
 # <a name="toy"></a>`toy50` toy model used in the examples of alert messages below
 
@@ -372,7 +391,7 @@ TOY50-S1         -AAATCACCGATTGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
   output alignment file.)
 
 ---
-## <a name="example-start"></a>Examples of stop codon problems
+## <a name="example-stop"></a>Examples of stop codon problems
 
 #### This example is relevant to alert codes: *mutendcd*, *mutendns*, *mutendex*, *cdsstopn*, *cdsstopp*, *unexleng*
 
@@ -567,6 +586,7 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
 4.2.1  TOY50.F1  toy50  CDS   protein_one    1  indf5pst  yes   INDEFINITE_ANNOTATION_START  10..18:+    9  11..19:+    9  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [9>5]
 ```
 
+---
 ## <a name="example-indf3"></a>Examples of indefinite annotation at end of a feature
 
 #### This example is relevant to alert codes: *indf3gap*, *indf3lcc*, *indf3pst*, *indf3lcn* (not shown), *indf3plg* (not shown)
@@ -660,6 +680,7 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
 7.2.1  TOY50-F2  toy50  CDS   protein_one    1  indf3pst  yes   INDEFINITE_ANNOTATION_END    22..30:+    9  23..31:+    9  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [9>8]
 ```
 
+---
 ## <a name="example-ambg5"></a>Examples of ambiguous nucleotides at the start of a sequence or a feature
 
 #### This example is relevant to alert codes: *ambgnt5s*, *ambgnt5c*, *ambgnt5f* 
@@ -821,7 +842,7 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
   *ambgnt3c* alert is reported. 
 
 ---
-## <a name="example-pep"></a>Examples of mature peptide-specific problems
+## <a name="example-pep"></a>Examples of mature peptide-specific alerts
 
 #### This example is relevant to alert codes: *pepadjcy*, *peptrans*
 
