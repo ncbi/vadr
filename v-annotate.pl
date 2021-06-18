@@ -3056,11 +3056,7 @@ sub add_classification_alerts {
             vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"m_coords"}, \@ostrand_mstart_A, \@ostrand_mstop_A, \@ostrand_mstrand_A, $FH_HR);
             $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($ostrand_sstart_A[0], $ostrand_sstop_A[0], $ostrand_sstrand_A[0], $FH_HR) . ";";
             $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR) . ";";
-            $alt_str = sprintf("best hit is on %s strand, but hit on %s strand from %d to %d has score %.1f > %s", 
-                               $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"}, 
-                               $stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"bstrand"}, 
-                               $ostrand_sstart_A[0], $ostrand_sstop_A[0], $top_ostrand_score, 
-                               $indefstr_opt2print);
+            $alt_str = sprintf("score:%.1f>%s", $top_ostrand_score, $indefstr_opt2print);
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
           }
         }
