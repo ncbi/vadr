@@ -1088,6 +1088,7 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
   explained more [here](#pp).  This alignment is only output when the
   `--keep` or `--out_stk` options are used with `v-annotate.pl`.
 
+```
                                                   vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacaggca-catgacaaagcagtacaggcacatgacaaagcagtacaggcacatgacaTAAATGAGCATTCTACGTGCAT
 #=GR TOY50-LSI1 PP .**********************9875222222222222222222222222222222222222.222222222222222222222222222222222222222222222222267899*****************
