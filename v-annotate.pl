@@ -8883,9 +8883,11 @@ sub output_tabular {
       }
     }
 
+    my $all_ftr_alt_str = "";
     if($seq_mdl1 ne "-") { 
       $nftr = scalar(@{$ftr_info_HAHR->{$seq_mdl1}});
       my $ftr_info_AHR = \@{$ftr_info_HAHR->{$seq_mdl1}}; # for convenience
+      $all_ftr_alt_str = helper_output_all_feature_alert_strings($seq_name, $ftr_info_AHR, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
       for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if((defined $ftr_results_HHAHR->{$seq_mdl1}) && 
            (defined $ftr_results_HHAHR->{$seq_mdl1}{$seq_name}) && 
@@ -8922,10 +8924,10 @@ sub output_tabular {
                $seq_nftr_3trunc++; 
             }
             
-            my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 1, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
+            my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
             if($ftr_alt_str ne "") { 
               $seq_nftr_alt++; 
-              $seq_nftr_alt += $ftr_alt_str =~ tr/,//; # plus 1 for each comma
+              $seq_nftr_alt += $ftr_alt_str =~ tr/;//; # plus 1 for each semi-colon
             }
             
             my $s_coords_str   = ""; # sequence coordinate string for feature
@@ -9039,17 +9041,34 @@ sub output_tabular {
       }
     }
 
-    my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 1, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
+    my $seq_alt_str  = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
+    my $all_nftr_alt = 0;
     if($seq_alt_str ne "") { 
-      $seq_nseq_alt = 1;
-      $seq_nseq_alt += $seq_alt_str =~ tr/,//; # plus 1 for each comma
+      $seq_nseq_alt = $seq_alt_str =~ tr/;//; # plus 1 for each semi-colon
+    }
+    if($all_ftr_alt_str ne "") { 
+      $all_nftr_alt = $all_ftr_alt_str =~ tr/;//; # plus 1 for each semi-colon
     }
     my $seq_nftr_notannot = $nftr - $seq_nftr_annot;
-    if($seq_alt_str eq "")   { $seq_alt_str  = "-"; }
+
+    my $alt_str2print;
+    if(($seq_alt_str eq "") && ($all_ftr_alt_str eq "")) { 
+      $alt_str2print = "-";
+    }
+    else { 
+      $alt_str2print = "";
+      if($seq_alt_str ne "") { 
+        $alt_str2print = "*sequence*::" . $seq_alt_str;
+      }
+      if($all_ftr_alt_str ne "") { 
+        $alt_str2print .= $all_ftr_alt_str;
+      }
+    }
+    
     if($seq_annot   eq "no") { $seq_nftr_annot = $seq_nftr_notannot = $seq_nftr_5trunc = $seq_nftr_3trunc = $seq_nftr_alt = "-"; }
 
     push(@data_ant_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, $seq_grp1, $seq_subgrp1, 
-                        $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $seq_alt_str]);
+                        $seq_nftr_annot, $seq_nftr_notannot, $seq_nftr_5trunc, $seq_nftr_3trunc, $seq_nftr_alt, $alt_str2print]);
     
     push(@data_cls_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_annot, $seq_mdl1, 
                             helper_tabular_replace_spaces($seq_grp1), 
@@ -9057,7 +9076,7 @@ sub output_tabular {
                             $seq_score, $seq_scpnt, $seq_scov, $seq_mcov, $seq_bias, $seq_nhits, $seq_strand, $seq_mdl2, 
                             helper_tabular_replace_spaces($seq_grp2), 
                             helper_tabular_replace_spaces($seq_subgrp2), 
-                            $seq_scdiff, $seq_diffpnt, $seq_alt_str]);
+                            $seq_scdiff, $seq_diffpnt, $alt_str2print]);
 
     if(defined $dcr_output_HAHR->{$seq_name}) { 
       my $ndcr = scalar(@{$dcr_output_HAHR->{$seq_name}});
@@ -9523,7 +9542,7 @@ sub output_feature_table {
     my @seq_note_A  = (); # all notes for this sequence
 
     # first check for per-sequence alerts
-    my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
+    my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 1, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
     my $prevents_annot_flag = helper_ftable_process_sequence_alerts($seq_alt_str, $seq_name, $alt_info_HHR, $alt_seq_instances_HHR, \@seq_alert_A, $FH_HR);
 
     $mdl_name = helper_ftable_class_model_for_sequence($stg_results_HHHR, $seq_name);
@@ -9608,7 +9627,7 @@ sub output_feature_table {
           }
           if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely Ns
             # fill an array and strings with all alerts for this sequence/feature combo
-            my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
+            my $ftr_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 1, $alt_info_HHR, \@ftr_alt_code_A, $alt_ftr_instances_HHHR, $FH_HR);
             my ($have_fatal_alt, $have_misc_alt) = helper_ftable_process_feature_alerts($ftr_alt_str, $seq_name, $ftr_idx, $ftr_info_AHR, $alt_info_HHR, $alt_ftr_instances_HHHR, \@seq_alert_A, $FH_HR);
             # should we make this a misc_feature?
             # yes if:
@@ -10418,7 +10437,7 @@ sub helper_ftable_process_sequence_alerts {
   # create a hash of all alerts in the input $alt_str, and also verify they are all valid errors
   my %input_alt_code_H = (); # $input_err_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
-  foreach $alt_code (split(",", $alt_code_str)) { 
+  foreach $alt_code (split(";", $alt_code_str)) { 
     if(! defined $alt_info_HHR->{$alt_code}) { 
       ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", 1, $FH_HR);
     }
@@ -10516,7 +10535,7 @@ sub helper_ftable_process_feature_alerts {
   my %input_alt_code_H = (); # $input_slt_code_H{$alt_code} = 1 if $alt_code is in $alt_code_str
   my $alt_code; 
   
-  foreach $alt_code (split(",", $alt_code_str)) { 
+  foreach $alt_code (split(";", $alt_code_str)) { 
     if(! defined $alt_info_HHR->{$alt_code}) { 
       ofile_FAIL("ERROR in $sub_name, input error of $alt_code in string $alt_code_str is invalid", 1, $FH_HR);
     }
@@ -10569,6 +10588,7 @@ sub helper_ftable_process_feature_alerts {
 # Other output-related subroutines:
 # helper_output_sequence_alert_strings
 # helper_output_feature_alert_strings
+# helper_output_all_feature_alert_strings
 # output_alignments()
 # msa_replace_sequences()
 # 
@@ -10578,12 +10598,25 @@ sub helper_ftable_process_feature_alerts {
 # Subroutine:  helper_output_sequence_alert_strings()
 # Incept:      EPN, Thu Apr  4 12:37:59 2019
 #
-# Purpose:    Given a sequence name, construct a string of all
-#             per-sequence alerts for that sequence and return it. 
+# Purpose:    Given a sequence name, construct a string
+#             of all per-sequence alerts for that 
+#             sequence and return it. 
+#
+#             Two possible return string formats, depending on value of
+#             $do_alt_codes_only:
+#
+#             if (  $do_alt_codes_only): semi-colon delimited string of all alert codes for this feature
+#             for example: 
+#             "dupregin;discontn;"
+#
+#             if (! $do_alt_codes_only): double semi-colon delimited string of
+#                                        <sdesc>;<alt_code>;S:<seq_coords>;M:<mdl_coords>;
+#             for example: 
+#             "DUPLICATE_REGIONS;dupregin;S:100..102:+;M:200..202:+;;DISCONTINUOUS_SIMILARITY;discontn;S:130..132:+;M:230..232:+;;"
 #
 # Arguments: 
 #  $seq_name:              name of sequence
-#  $include_sdesc:         '1' to return a string with "sdesc", '0' not to
+#  $do_alt_codes_only:     '1' to return a string with only alert codes, else return sdesc, alt_code, seq coords and mdl coords
 #  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
 #  $alt_code_AR:           ref to alert codes in order to check
 #  $alt_seq_instances_HHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
@@ -10598,16 +10631,27 @@ sub helper_output_sequence_alert_strings {
   my $nargs_exp = 6;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $include_sdesc, $alt_info_HHR, $alt_code_AR, $alt_seq_instances_HHR, $FH_HR) = @_;
+  my ($seq_name, $do_alt_codes_only, $alt_info_HHR, $alt_code_AR, $alt_seq_instances_HHR, $FH_HR) = @_;
 
   my $ret_alt_str = "";
   if(defined $alt_seq_instances_HHR->{$seq_name}) { 
     foreach my $alt_code (@{$alt_code_AR}) { 
       if(defined $alt_seq_instances_HHR->{$seq_name}{$alt_code}) { 
-        if($ret_alt_str ne "") { $ret_alt_str .= ","; }
-        $ret_alt_str .= ($include_sdesc) ? 
-            sprintf("%s(%s)", helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), $alt_code) : 
-            $alt_code;
+        if($do_alt_codes_only) { 
+          $ret_alt_str .= $alt_code. ";";
+        }
+        else { 
+          my $alt_instance = alert_sequence_instance_fetch($alt_seq_instances_HHR, $seq_name, $alt_code);
+          my @instance_str_A = split(":VADRSEP:", $alt_instance);
+          foreach my $instance_str (@instance_str_A) { 
+            my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
+            $ret_alt_str .= sprintf("%s;%s;S:%s;M:%s;;", 
+                                    helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                    $alt_code,
+                                    ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                    ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords);
+          }
+        }
       }
     }
   }
@@ -10623,10 +10667,22 @@ sub helper_output_sequence_alert_strings {
 #             a string of all per-feature alerts for that 
 #             sequence/feature pair and return it. 
 #
+#             Two possible return string formats, depending on value of
+#             $do_alt_codes_only:
+#
+#             if (  $do_alt_codes_only): semi-colon delimited string of all alert codes for this feature
+#             for example: 
+#             "mutstart;cdsstopn;"
+#
+#             if (! $do_alt_codes_only): double semi-colon delimited string of
+#                                        <sdesc>;<alt_code>;S:<seq_coords>;M:<mdl_coords>;
+#             for example: 
+#             "MUTATION_AT_START;mutstart;S:100..102:+;M:200..202:+;;CDS_HAS_STOP_CODON;cdsstopn;S:130..132:+;M:230..232:+;;"
+#         
 # Arguments: 
 #  $seq_name:               name of sequence
 #  $ftr_idx:                feature index
-#  $include_sdesc:          '1' to return a string with "sdesc", '0' not to
+#  $do_alt_codes_only:      '1' to return a string with only alert codes, else return sdesc, alt_code, seq coords and mdl coords
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
 #  $alt_code_AR:            ref to alert codes in order to check
 #  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
@@ -10642,17 +10698,74 @@ sub helper_output_feature_alert_strings {
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $ftr_idx, $include_sdesc, $alt_info_HHR, $alt_code_AR, $alt_ftr_instances_HHHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $do_alt_codes_only, $alt_info_HHR, $alt_code_AR, $alt_ftr_instances_HHHR, $FH_HR) = @_;
 
   my $ret_alt_str = "";
   if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
      (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
     foreach my $alt_code (@{$alt_code_AR}) { 
       if(defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code}) { 
-        if($ret_alt_str ne "") { $ret_alt_str .= ","; }
-        $ret_alt_str .= ($include_sdesc) ? 
-            sprintf("%s(%s)", helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), $alt_code) : 
-            $alt_code;
+        if($do_alt_codes_only) { 
+          $ret_alt_str .= $alt_code. ";";
+        }
+        else { 
+          my $alt_instance = alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code);
+          my @instance_str_A = split(":VADRSEP:", $alt_instance);
+          foreach my $instance_str (@instance_str_A) { 
+            my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
+            $ret_alt_str .= sprintf("%s;%s;S:%s;M:%s;;", 
+                                    helper_tabular_replace_spaces($alt_info_HHR->{$alt_code}{"sdesc"}), 
+                                    $alt_code,
+                                    ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                    ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords);
+          }
+        }
+      }
+    }
+  }
+  
+  return $ret_alt_str;
+}
+
+#################################################################
+# Subroutine:  helper_output_all_feature_alert_strings()
+# Incept:      EPN, Mon Jun 21 09:41:14 2021
+#
+# Purpose:    Given a sequence name, construct a string of 
+#             all per-feature alerts for all features in the
+#             sequence and return it. 
+#
+# Arguments: 
+#  $seq_name:               name of sequence
+#  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_code_AR:            ref to alert codes in order to check
+#  $alt_ftr_instances_HHHR: REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    A string with all per-feature alt codes for this 
+#             sequence/feature combo concatenated and 
+#             separated by commas.
+#
+################################################################# 
+sub helper_output_all_feature_alert_strings { 
+  my $sub_name = "helper_output_all_feature_alert_strings";
+  my $nargs_exp = 6;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $ftr_info_AHR, $alt_info_HHR, $alt_code_AR, $alt_ftr_instances_HHHR, $FH_HR) = @_;
+
+  my $ret_alt_str = "";
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if((defined $alt_ftr_instances_HHHR->{$seq_name}) && 
+       (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+      my $tmp_alt_str = helper_output_feature_alert_strings($seq_name, $ftr_idx, 0, $alt_info_HHR, $alt_code_AR, $alt_ftr_instances_HHHR, $FH_HR);
+      if($tmp_alt_str ne "") { 
+        my $ftr_name2print = helper_tabular_replace_spaces($ftr_info_AHR->[$ftr_idx]{"outname"});
+        my $ftr_alt_str = $ftr_name2print . "::" . $tmp_alt_str;
+        $ret_alt_str .= $ftr_alt_str;
       }
     }
   }
@@ -12631,12 +12744,12 @@ sub helper_tabular_fill_header_and_justification_arrays {
   @{$clj_AR}   = ();
   
   if($ofile_key eq "ant") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "seq");
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "best",  "",    "sub", "",    "",    "",    "",    "",      "");
     @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model", "grp", "grp", "nfa", "nfn", "nf5", "nf3", "nfalt", "alerts");
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,       1,     1,     0,     0,     0,     0,     0,       1);
   }
   elsif($ofile_key eq "cls") {
-    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "seq");
+    @{$head_AAR->[0]} = ("seq", "seq",  "seq", "",    "",    "",       "",     "sub",  "",      "",      "seq", "mdl", "",     "num",  "",    "",       "",     "sub",  "score", "diff/", "");
     @{$head_AAR->[1]} = ("idx", "name", "len", "p/f", "ant", "model1", "grp1", "grp1", "score", "sc/nt", "cov", "cov", "bias", "hits", "str", "model2", "grp2", "grp2", "diff",  "nt",    "alerts");
     @{$clj_AR}        = (1,     1,      0,     1,     1,     1,        1,      1,      0,       0,       0,     0,     0,      0,      0,     1,        1,      1,      0,       0,       1);
   }
