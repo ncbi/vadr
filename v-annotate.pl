@@ -9453,7 +9453,7 @@ sub output_feature_table {
   my $fail_list_FH = $FH_HR->{"fail_list"};    # list of FAILing seqs
   my $alerts_FH    = $FH_HR->{"alerts_list"};  # list of alerts
   if($do_headers) { 
-    print $alerts_FH "#sequence\terror\tfeature\terror-description\n";
+    print $alerts_FH "#sequence\tfeature-type\tfeature-name\terror\tseq-coords\tmdl-coords\terror-description\n";
   }
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
@@ -9852,7 +9852,7 @@ sub output_feature_table {
         alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrann", $seq_name, "VADRNULL", $FH_HR);
         # set @seq_alert_A to this lone alert
         @seq_alert_A = ();
-        push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
+        push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s%s", $alt_info_HHR->{"noftrann"}{"sdesc"}, $alt_info_HHR->{"noftrann"}{"ldesc"}, ""));
       }
     }
     elsif($cur_noutftr == 0) { 
@@ -9861,7 +9861,7 @@ sub output_feature_table {
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "noftrant", $seq_name, "VADRNULL", $FH_HR);
       # set @seq_alert_A to this lone alert
       @seq_alert_A = ();
-      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"noftrant"}{"sdesc"}, $alt_info_HHR->{"noftrant"}{"ldesc"}, ""));
+      push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s%s", $alt_info_HHR->{"noftrant"}{"sdesc"}, $alt_info_HHR->{"noftrant"}{"ldesc"}, ""));
     }
 
     # determine if the sequence will pass
@@ -9879,9 +9879,9 @@ sub output_feature_table {
       # BUT at least one fatal alert for a feature NOT output to feature table (e.g. a feature that is too short to meet
       # minimum length requirements for the feature table). We throw a special alert here (ftskipfl) for this
       # so the sequence fails both in tabular and feature table output.
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "see .ftr and .alt output files for details", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "seq:VADRNULL;mdl:VADRNULL;see .ftr and .alt output files for details", $FH_HR);
       # set @seq_alert_A to this lone alert
-      push(@seq_alert_A, sprintf("%s: (*sequence*) %s%s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, " [" . $alt_seq_instances_HHR->{$seq_name}{"ftskipfl"} . "]"));
+      push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s%s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, " [" . $alt_seq_instances_HHR->{$seq_name}{"ftskipfl"} . "]"));
       $do_pass = 0; # this seq fails
     }
 
@@ -9918,8 +9918,18 @@ sub output_feature_table {
         for(my $e = 0; $e < scalar(@seq_alert_A); $e++) { 
           my $error_line = $seq_alert_A[$e];
           print $fail_ftbl_FH "ERROR: " . $error_line . "\n"; 
-          if($error_line =~ /([^\:]+)\:\s\(([^\)]+)\)\s*(.+)$/) {
-            print $alerts_FH ($seq_name . "\t" . $1 . "\t" . $2 . "\t" . $3 . "\n");
+          if($error_line =~ /(^[^\:]+)\:\s+\(([^\)]+)\)\s+S\:([^\;]+)\;\s+M\:([^\;]+)\;\s+(.+)$/) {
+            my ($tmp_sdesc, $tmp_ftr_type_and_name, $tmp_scoords, $tmp_mcoords, $tmp_edesc) = ($1, $2, $3, $4, $5);
+            my ($tmp_ftr_type, $tmp_ftr_name) = ("-", "*sequence*"); # 
+            if ($tmp_ftr_type_and_name ne "*sequence*") { 
+              if($tmp_ftr_type_and_name =~ /([^\:]+)\:(.*)$/) { 
+                ($tmp_ftr_type, $tmp_ftr_name) = ($1, $2);
+              }
+              else { 
+                ofile_FAIL("ERROR in $sub_name, unable to split ftr_type_and_name:$tmp_ftr_type_and_name for output from line $error_line", 1, $ofile_info_HHR->{"FH"});
+              }
+            }
+            print $alerts_FH ($seq_name . "\t" . $tmp_ftr_type . "\t" . $tmp_ftr_name . "\t" . $tmp_sdesc . "\t" . $tmp_scoords . "\t" . $tmp_mcoords . "\t" . $tmp_edesc . "\n");
           }
           else {
             ofile_FAIL("ERROR in $sub_name, unable to split alert_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
@@ -10446,10 +10456,14 @@ sub helper_ftable_process_sequence_alerts {
       # we could have more than one instance of this sequence/alert pair
       my @instance_str_A = split(":VADRSEP:", $alt_seq_instances_HHR->{$seq_name}{$alt_code});
       foreach my $instance_str (@instance_str_A) { 
-        my $alert_str = sprintf("%s: (*sequence*) %s%s", 
-                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
-                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                             ($instance_str ne "VADRNULL") ? " [" . $instance_str . "]" : "");
+        my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
+        # alert_instance_parse removes 'seq:' and ';', 'mdl:', and ';'
+        my $alert_str = sprintf("%s: (*sequence*) S:%s; M:%s; %s%s", 
+                                $alt_info_HHR->{$alt_code}{"sdesc"}, 
+                                ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
+                                $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                                ($instance_detail ne "VADRNULL") ? " [" . $instance_detail . "]" : "");
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
@@ -10547,11 +10561,15 @@ sub helper_ftable_process_feature_alerts {
       # we could have more than one instance of this sequence/feature/alert trio
       my @instance_str_A = split(":VADRSEP:", $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}{$alt_code});
       foreach my $instance_str (@instance_str_A) { 
-        my $alert_str = sprintf("%s: (%s) %s%s", 
-                             $alt_info_HHR->{$alt_code}{"sdesc"}, 
-                             $ftr_info_AHR->[$ftr_idx]{"outname"}, 
-                             $alt_info_HHR->{$alt_code}{"ldesc"}, 
-                             ($instance_str ne "VADRNULL") ? " [" . $instance_str . "]" : "");
+        my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($instance_str);
+        my $alert_str = sprintf("%s: (%s:%s) S:%s; M:%s; %s%s", 
+                                $alt_info_HHR->{$alt_code}{"sdesc"}, 
+                                $ftr_info_AHR->[$ftr_idx]{"type"}, 
+                                $ftr_info_AHR->[$ftr_idx]{"outname"}, 
+                                ($instance_scoords eq "VADRNULL") ? "-" : $instance_scoords, 
+                                ($instance_mcoords eq "VADRNULL") ? "-" : $instance_mcoords, 
+                                $alt_info_HHR->{$alt_code}{"ldesc"}, 
+                                ($instance_detail ne "VADRNULL") ? " [" . $instance_detail . "]" : "");
         # only add the alert, if an identical alert does not already exist in @{$ret_alert_AR}
         my $idx = utl_AFindNonNumericValue($ret_alert_AR, $alert_str, $FH_HR);
         if($idx == -1) { 
