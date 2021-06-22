@@ -342,6 +342,10 @@ comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
 [Example file](annotate-files/va-noro.9.vadr.alt).
 
+For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
+
+For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
+
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `idx`                 | index of alert instance in format `<d1>.<d2>.<d3>`, where `<d1>` is the index of the sequence this alert instance pertains to in the input sequence file, `<d2>` is the index of the feature this alert instance pertains to (range 1..`<n>`, where `<n>` is the number of features in this sequence with at least 1 alert instance) and `<d3>` is the index of the alert instance for this sequence/feature pair |
@@ -358,10 +362,6 @@ that occurs for each input sequence file that `v-annotate.pl` processed.
 |  12 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
 |  13 | `mdl len`             | total length of all positions described by coordinates in `mdl coords` | 
 | 14 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
-
-For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
-
-For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
@@ -688,6 +688,9 @@ header section.
 `.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
 lines with 7 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
 
+For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
+
+For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
@@ -698,10 +701,6 @@ lines with 7 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.
 |   5 | `seq coords`          | coordinates in the input sequence relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
 |   6 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
 |   7 | `error-description`   | longer description of the alert/error, specific to each alert/error type; *this field, unlike all others, contains whitespace* |
-
-For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
-
-For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 ---
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
