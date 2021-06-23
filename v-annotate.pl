@@ -5113,7 +5113,8 @@ sub add_frameshift_alerts_for_one_sequence {
             $comment  = "Changes from the dominant codon_start value indicate possibly frameshifted regions.";
             $cds_sgm_msa->addGF("CC", $comment);
             for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
-              $cds_sgm_msa->addGS("FS." . ($c+1), $cds_alt_str_A[$c], 0); # 0: seq idx
+              my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($cds_alt_str_A[$c]);
+              $cds_sgm_msa->addGS("FS." . ($c+1), "seq_coords:$instance_scoords; mdl_coords: $instance_mcoords; $instance_detail", 0); # 0: seq idx
             }
             # change RF to DNA
             my $cds_sgm_msa_rf = $cds_sgm_msa->get_rf();
@@ -5282,6 +5283,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     # ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f, mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn
     my $alt_scoords; # sequence coordinates related to an alert
     my $alt_mcoords; # model    coordinates related to an alert
+    my $alt_codon;   # codon string for an alert message
 
     # determine if this feature is 5' and/or 3' truncated
     # we do this outside the main loop since the logic is a bit complex:
@@ -5464,9 +5466,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
             $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[1])]), abs($ua2rf_AR->[($ftr2org_pos_A[3])]), $ftr_strand, $FH_HR) . ";";
-            $alt_str_H{"mutstart"} = sprintf("%s%s%s", 
-                                             $alt_scoords, $alt_mcoords, 
-                                             substr($ftr_sqstring_alt, 0, 3));
+            $alt_codon = substr($ftr_sqstring_alt, 0, 3);
+            $alt_codon =~ tr/a-z/A-Z/;
+            $alt_str_H{"mutstart"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
           }
         }
       }
@@ -5478,9 +5480,10 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR))) { 
             $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len-2)], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand, $FH_HR) . ";";
-            $alt_str_H{"mutendcd"} = sprintf("%s%s%s",
-                                             $alt_scoords, $alt_mcoords, 
-                                             substr($ftr_sqstring_alt, -3, 3));
+            $alt_codon = substr($ftr_sqstring_alt, -3, 3);
+            $alt_codon =~ tr/a-z/A-Z/;
+            $alt_str_H{"mutendcd"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
+                                             
           }
         }
       }      
@@ -5503,8 +5506,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
             if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
               $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len-2)], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
               $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand, $FH_HR) . ";";
-              $alt_str_H{"mutendcd"} = sprintf("%s%s%s", 
-                                             $alt_scoords, $alt_mcoords, substr($ftr_sqstring_alt, -3, 3));
+              $alt_codon = substr($ftr_sqstring_alt, -3, 3);
+              $alt_codon =~ tr/a-z/A-Z/;
+              $alt_str_H{"mutendcd"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
             }
             if($ftr_nxt_stp_A[1] != $ftr_len) { 
               # first stop codon 3' of $ftr_start is not $ftr_stop
@@ -5552,8 +5556,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
                         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
                       }
-                      $alt_str_H{"mutendex"} = sprintf("%s%s%s", 
-                                                       $alt_scoords, $alt_mcoords, substr($ext_sqstring, ($ext_nxt_stp_A[1]-3), 3));
+                      $alt_codon = substr($ext_sqstring, ($ext_nxt_stp_A[1]-3), 3);
+                      $alt_codon =~ tr/a-z/A-Z/;
+                      $alt_str_H{"mutendex"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
                     }
                   }
                 } # end of 'if($ftr_stop < $seq_len)'
@@ -5583,7 +5588,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
                   $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
                 }
-                $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, substr($ftr_sqstring_alt, $ftr_nxt_stp_A[1]-3, 3), abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
+                $alt_codon = substr($ftr_sqstring_alt, $ftr_nxt_stp_A[1]-3, 3);
+                $alt_codon =~ tr/a-z/A-Z/;
+                $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
               }
             } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
           } # end of 'if($ftr_is_cds) {' 
