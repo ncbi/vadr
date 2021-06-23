@@ -5583,7 +5583,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
                   $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
                 }
-                $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, substr($ftr_sqstring_alt, $ftr_nxt_stp_A[1]-3, 3), abs($ftr_stop-$ftr_stop_c), abs($ua2rf_AR->[$ftr_stop] - $ua2rf_AR->[$ftr_stop_c]));
+                $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, substr($ftr_sqstring_alt, $ftr_nxt_stp_A[1]-3, 3), abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
               }
             } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
           } # end of 'if($ftr_is_cds) {' 
