@@ -1,3 +1,11 @@
-#     seq          ftr   ftr   ftr  alert        alert  alert 
-#idx  name  model  type  name  idx  code   fail  desc   detail
-#---  ----  -----  ----  ----  ---  -----  ----  -----  ------
+#      seq                                         ftr   ftr            ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name                     model              type  name           idx  code      fail  description                    coords  len    coords  len  detail
+#----  -----------------------  -----------------  ----  -------------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+2.1.1  ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  gene  one              1  indf3lcc  no    INDEFINITE_ANNOTATION_END    31..31:+    1  31..31:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.60<0.80]
+2.2.1  ENTOY100A-dcr-ins-Ains1  entoy100a-dcr-ins  CDS   protein_one      2  indf3lcc  no    INDEFINITE_ANNOTATION_END    31..31:+    1  31..31:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.60<0.80]
+#
+3.1.1  ENTOY100A-dcr-ins-Ains2  entoy100a-dcr-ins  CDS   protein_two      3  indf3lcc  no    INDEFINITE_ANNOTATION_END    47..47:+    1  47..47:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.20<0.80]
+#
+4.1.1  ENTOY100A-dcr-ins-Ains3  entoy100a-dcr-ins  CDS   protein_three    4  indf5lcc  no    INDEFINITE_ANNOTATION_START  65..65:-    1  65..65:-    1  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS [0.30<0.80]
+#
+5.1.1  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  indf3lcc  no    INDEFINITE_ANNOTATION_END    52..52:-    1  51..51:-    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.30<0.80]

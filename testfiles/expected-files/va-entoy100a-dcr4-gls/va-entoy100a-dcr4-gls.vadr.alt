@@ -1,7 +1,7 @@
-#      seq                                         ftr   ftr            ftr  alert           alert                alert 
-#idx   name                     model              type  name           idx  code      fail  desc                 detail
-#----  -----------------------  -----------------  ----  -------------  ---  --------  ----  -------------------  ------
-5.1.1  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  mutendcd  yes   MUTATION_AT_END      expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAG ending at position 51 on - strand is not a valid stop]
-5.1.2  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  unexleng  yes   UNEXPECTED_LENGTH    length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
-5.1.3  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  cdsstopn  yes   CDS_HAS_STOP_CODON   in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 66..52 (stop shifted 1 nt)]
-5.1.4  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  fstukcnf  yes   POSSIBLE_FRAMESHIFT  potential frameshift in CDS [nucleotide alignment of positions 53..51 (3 nt) on - strand are inconsistent with dominant frame (-1); inserts:53; deletes:none;]
+#      seq                                         ftr   ftr            ftr  alert           alert                     seq  seq       mdl  mdl  alert 
+#idx   name                     model              type  name           idx  code      fail  description            coords  len    coords  len  detail
+#----  -----------------------  -----------------  ----  -------------  ---  --------  ----  -------------------  --------  ---  --------  ---  ------
+5.1.1  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  mutendcd  yes   MUTATION_AT_END      53..51:-    3  52..51:-    2  expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAG]
+5.1.2  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  unexleng  yes   UNEXPECTED_LENGTH    66..51:-   16  65..51:-   15  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]
+5.1.3  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  cdsstopn  yes   CDS_HAS_STOP_CODON   54..52:-    3  53..52:-    2  in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:1,M:1]
+5.1.4  ENTOY100A-dcr-ins-Tins1  entoy100a-dcr-ins  CDS   protein_three    4  fstukcf3  yes   POSSIBLE_FRAMESHIFT  53..51:-    3  52..51:-    2  possible frameshift at 3' end of CDS [inserts:S:53(1),M:53; deletes:none; frame:1, dominant:1;]
