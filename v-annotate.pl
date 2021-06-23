@@ -9453,7 +9453,7 @@ sub output_feature_table {
   my $fail_list_FH = $FH_HR->{"fail_list"};    # list of FAILing seqs
   my $alerts_FH    = $FH_HR->{"alerts_list"};  # list of alerts
   if($do_headers) { 
-    print $alerts_FH "#sequence\tfeature-type\tfeature-name\terror\tseq-coords\tmdl-coords\terror-description\n";
+    print $alerts_FH "#sequence\tmodel\tfeature-type\tfeature-name\terror\tseq-coords\tmdl-coords\terror-description\n";
   }
 
   my $ret_npass = 0;  # number of sequences that pass, returned from this subroutine
@@ -9914,6 +9914,7 @@ sub output_feature_table {
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
       }
       if((scalar(@seq_alert_A)) > 0) { 
+        my $mdl_name2print = (defined $mdl_name) ? $mdl_name : "-";
         print $fail_ftbl_FH "\nAdditional note(s) to submitter:\n"; 
         for(my $e = 0; $e < scalar(@seq_alert_A); $e++) { 
           my $error_line = $seq_alert_A[$e];
@@ -9929,7 +9930,7 @@ sub output_feature_table {
                 ofile_FAIL("ERROR in $sub_name, unable to split ftr_type_and_name:$tmp_ftr_type_and_name for output from line $error_line", 1, $ofile_info_HHR->{"FH"});
               }
             }
-            print $alerts_FH ($seq_name . "\t" . $tmp_ftr_type . "\t" . $tmp_ftr_name . "\t" . $tmp_sdesc . "\t" . $tmp_scoords . "\t" . $tmp_mcoords . "\t" . $tmp_edesc . "\n");
+            print $alerts_FH ($seq_name . "\t" . $mdl_name2print . "\t" . $tmp_ftr_type . "\t" . $tmp_ftr_name . "\t" . $tmp_sdesc . "\t" . $tmp_scoords . "\t" . $tmp_mcoords . "\t" . $tmp_edesc . "\n");
           }
           else {
             ofile_FAIL("ERROR in $sub_name, unable to split alert_line for output: $error_line", 1, $ofile_info_HHR->{"FH"});
