@@ -1504,6 +1504,7 @@ my %sgm_results_HHAH  = ();     # 1st dim: hash, keys are model names
 my %alt_ftr_instances_HHH = (); # hash of arrays of hashes
                                 # key1: sequence name, key2: feature index, key3: alert code, value: alert message
 my %mdl_unexdivg_H = ();        # key is model name, value is number of unexdivg alerts thrown for that model in alignment stage
+my %mdl_unexdivg_HA = ();       # key is model name, value is array of seqs that had unexdivg alerts thrown for that model in alignment stage
 
 my $cur_mdl_fa_file;         # fasta file with sequences to align to current model
 my $cur_mdl_align_fa_file;   # fasta file with sequences to align to current model
@@ -1664,6 +1665,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
     $mdl_unexdivg_H{$mdl_name} = scalar(@overflow_seq_A);
     if($mdl_unexdivg_H{$mdl_name} > 0) { 
       alert_add_unexdivg(\@overflow_seq_A, \@overflow_mxsize_A, \%alt_seq_instances_HH, \%alt_info_HH, \%opt_HH, \%ofile_info_HH);
+      @{$mdl_unexdivg_HA{$mdl_name}} = @overflow_seq_A; # make copy to hash of arrays for processing later
     }
   }
 }
@@ -1728,7 +1730,22 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   }
 }
 
+# For any seqs with unexdivg alerts, add low similarity alerts, these
+# were not aligned so we don't have alignment information (@ua2rf_A)
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_unexdivg_HA{$mdl_name}) { 
+    foreach my $seq_name (@{$mdl_unexdivg_HA{$mdl_name}}) { 
+      add_low_similarity_alerts_for_one_sequence($seq_name, \%seq_len_H, undef,
+                                                 \@{$ftr_info_HAH{$mdl_name}}, \@{$sgm_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                                 \%stg_results_HHH, \%{$sgm_results_HHAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, 
+                                                 \%alt_seq_instances_HH, \%alt_ftr_instances_HHH, \%opt_HH, \%ofile_info_HH);
+    }
+  }
+}
+
 ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
+
 
 #########################################################################################
 # Run BLASTX: all full length sequences and all fetched CDS features versus all proteins
@@ -1972,7 +1989,7 @@ exit 0;
 # fetch_features_and_add_cds_and_mp_alerts_for_one_sequence
 # sqstring_check_start
 # sqstring_find_stops 
-# add_low_similarity_alerts
+# add_low_similarity_alerts_for_one_sequence
 # frameshift_determine_span
 #
 # Subroutines related to protein validation (blastx or hmmer):
@@ -5921,6 +5938,7 @@ sub OLD_sqstring_find_stops {
 #                           if $ua2rf_A[$uapos] <  0, $uapos inserts *after* ref posn (-1 * $ua2rf_A[$uapos])
 #                           if $ua2rf_A[$uapos] == 0, $uapos inserts *before* ref posn 1
 #                           $ua2rf_A[0] is invalid (set to 0)
+#                           can be undef, if so, we just don't report model coords in alert instances
 #  $ftr_info_AHR:           REF to hash of arrays with information on the features, PRE-FILLED
 #  $sgm_info_AHR:           REF to hash of arrays with information on the model segments, PRE-FILLED
 #  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
@@ -6043,7 +6061,12 @@ sub add_low_similarity_alerts_for_one_sequence {
                       ofile_FAIL("ERROR, in $sub_name, unable to parse overlap region: $overlap_reg", 1, $FH_HR);
                     }
                     $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($soverlap_start, $soverlap_stop, $f_strand, $FH_HR) . ";"; 
-                    $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
+                    if(defined $ua2rf_AR) { 
+                      $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$soverlap_start]), abs($ua2rf_AR->[$soverlap_stop]), $f_strand, $FH_HR) . ";"; 
+                    }
+                    else { 
+                      $alt_mcoords = "mdl:VADRNULL;";
+                    }
                     $alt_msg = sprintf("%s%s%d nt overlap b/t low similarity region of length %d (%d..%d) and annotated feature (%d..%d)",
                                        $alt_scoords, $alt_mcoords, $noverlap, $length, $start, $stop, $f_start, $f_stop);
                     if(($is_start) && ($noverlap >= $terminal_ftr_5_min_length)) { 
@@ -6064,8 +6087,13 @@ sub add_low_similarity_alerts_for_one_sequence {
             } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++)'
             if(! $ftr_overlap_flag) { # no features overlapped above length threshold, potentially report lowsim5s, lowsim3s, or lowsimis
               $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($start, $stop, "+", $FH_HR) . ";"; 
-              $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start]), abs($ua2rf_AR->[$stop]), "+", $FH_HR) . ";"; 
-              $alt_msg = sprintf("%s%slow similarity region of length %d (%d..%d)", 
+              if(defined $ua2rf_AR) { 
+                $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$start]), abs($ua2rf_AR->[$stop]), "+", $FH_HR) . ";"; 
+              }
+              else { 
+                $alt_mcoords = "mdl:VADRNULL;";
+              }
+              $alt_msg = sprintf("%s%slow similarity region of length %d", 
                                  $alt_scoords, $alt_mcoords, $length, $start, $stop);
               if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
                 alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
@@ -6351,7 +6379,9 @@ sub add_protein_validation_alerts {
                   $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $p_strand, $FH_HR) . ";";
                   $alt_mcoords = "mdl:";
                   if((defined $p_hstart) && (defined $p_hstop)) { 
-                    $alt_mcoords .= vdr_CoordsSegmentCreate($p_hstart, $p_hstop, $p_strand, $FH_HR) . ";";
+                    # get subject nucleotide coords
+                    $alt_mcoords .= vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
+                                                                        vdr_CoordsSegmentCreate($p_hstart, $p_hstop, $p_strand, $FH_HR), $FH_HR) . ";";
                   }
                   else { 
                     $alt_mcoords .= "VADRNULL;";
@@ -6362,7 +6392,7 @@ sub add_protein_validation_alerts {
                   $alt_mcoords = "mdl:VADRNULL;";
                 }
                 # so we can just use $p_hstart/$p_hstop for model positions
-                $alt_str_H{"indfantp"} = $alt_scoords . $alt_mcoords . "$p_qstart to $p_qstop with score $p_score";
+                $alt_str_H{"indfantp"} = $alt_scoords . $alt_mcoords . "raw_score:$p_score";
               }
             }
             if(defined $n_start) { 
