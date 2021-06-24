@@ -9918,7 +9918,7 @@ sub output_feature_table {
       # so the sequence fails both in tabular and feature table output.
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ftskipfl", $seq_name, "seq:VADRNULL;mdl:VADRNULL;see .ftr and .alt output files for details", $FH_HR);
       # set @seq_alert_A to this lone alert
-      push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s %s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, "[" . $alt_seq_instances_HHR->{$seq_name}{"ftskipfl"} . "]"));
+      push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s %s", $alt_info_HHR->{"ftskipfl"}{"sdesc"}, $alt_info_HHR->{"ftskipfl"}{"ldesc"}, "[see .ftr and .alt output files for details]"));
       $do_pass = 0; # this seq fails
     }
 
