@@ -4,13 +4,16 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs13 FS.1 nucleotide alignment of positions 1..9 (9 nt, avgpp: 0.936) on + strand are inconsistent with dominant frame (+2); inserts:9; deletes:none;
+#=GS ENTOY100A-3-fs13 FS.1 seq_coords:1..9:+; mdl_coords: 32..39:+; inserts:S:9(1),M:39; deletes:none; frame:1, dominant:2; avgpp:0.936;
 
 ENTOY100A-3-fs13         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs13 PP ******************
 #=GR ENTOY100A-3-fs13 CS 222222222222222222
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -18,13 +21,16 @@ ENTOY100A-3-fs13         GCATCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs14 FS.1 nucleotide alignment of positions 1..8 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+1); inserts:8; deletes:none;
+#=GS ENTOY100A-3-fs14 FS.1 seq_coords:1..8:+; mdl_coords: 33..39:+; inserts:S:8(1),M:39; deletes:none; frame:3, dominant:1; avgpp:0.931;
 
 ENTOY100A-3-fs14         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs14 PP ******************
 #=GR ENTOY100A-3-fs14 CS 111111111111111111
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -32,13 +38,16 @@ ENTOY100A-3-fs14         GCATCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs15 FS.1 nucleotide alignment of positions 1..7 (7 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+3); inserts:7; deletes:none;
+#=GS ENTOY100A-3-fs15 FS.1 seq_coords:1..7:+; mdl_coords: 34..39:+; inserts:S:7(1),M:39; deletes:none; frame:2, dominant:3; avgpp:0.925;
 
 ENTOY100A-3-fs15         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs15 PP ******************
 #=GR ENTOY100A-3-fs15 CS 333333333333333333
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -46,13 +55,16 @@ ENTOY100A-3-fs15         GCATCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs16 FS.1 nucleotide alignment of positions 9..18 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+1); inserts:9; deletes:18(1);
+#=GS ENTOY100A-3-fs16 FS.1 seq_coords:9..18:+; mdl_coords: 40..49:+; inserts:S:9(1),M:39; deletes:S:18,M:49(1); frame:2, dominant:1; avgpp:0.922;
 
 ENTOY100A-3-fs16         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs16 PP *9.8**************
 #=GR ENTOY100A-3-fs16 CS 22d111111111111111
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -60,13 +72,16 @@ ENTOY100A-3-fs16         GC-TCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs17 FS.1 nucleotide alignment of positions 8..17 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+3); inserts:8; deletes:17(1);
+#=GS ENTOY100A-3-fs17 FS.1 seq_coords:8..17:+; mdl_coords: 40..49:+; inserts:S:8(1),M:39; deletes:S:17,M:49(1); frame:1, dominant:3; avgpp:0.922;
 
 ENTOY100A-3-fs17         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs17 PP *9.8**************
 #=GR ENTOY100A-3-fs17 CS 11d333333333333333
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -74,13 +89,16 @@ ENTOY100A-3-fs17         GC-TCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs18 FS.1 nucleotide alignment of positions 7..16 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+2); inserts:7; deletes:16(1);
+#=GS ENTOY100A-3-fs18 FS.1 seq_coords:7..16:+; mdl_coords: 40..49:+; inserts:S:7(1),M:39; deletes:S:16,M:49(1); frame:3, dominant:2; avgpp:0.922;
 
 ENTOY100A-3-fs18         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs18 PP *9.8**************
 #=GR ENTOY100A-3-fs18 CS 33d222222222222222
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -88,13 +106,16 @@ ENTOY100A-3-fs18         GC-TCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs25 FS.1 nucleotide alignment of positions 1..9 (9 nt, avgpp: 0.936) on + strand are inconsistent with dominant frame (+2); inserts:9; deletes:none;
+#=GS ENTOY100A-3-fs25 FS.1 seq_coords:1..9:+; mdl_coords: 32..39:+; inserts:S:9(1),M:39; deletes:none; frame:1, dominant:2; avgpp:0.936;
 
 ENTOY100A-3-fs25         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs25 PP ******************
 #=GR ENTOY100A-3-fs25 CS 222222222222222222
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -102,13 +123,16 @@ ENTOY100A-3-fs25         GCATCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs26 FS.1 nucleotide alignment of positions 1..8 (8 nt, avgpp: 0.931) on + strand are inconsistent with dominant frame (+1); inserts:8; deletes:none;
+#=GS ENTOY100A-3-fs26 FS.1 seq_coords:1..8:+; mdl_coords: 33..39:+; inserts:S:8(1),M:39; deletes:none; frame:3, dominant:1; avgpp:0.931;
 
 ENTOY100A-3-fs26         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs26 PP ******************
 #=GR ENTOY100A-3-fs26 CS 111111111111111111
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -116,13 +140,16 @@ ENTOY100A-3-fs26         GCATCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs27 FS.1 nucleotide alignment of positions 1..7 (7 nt, avgpp: 0.925) on + strand are inconsistent with dominant frame (+3); inserts:7; deletes:none;
+#=GS ENTOY100A-3-fs27 FS.1 seq_coords:1..7:+; mdl_coords: 34..39:+; inserts:S:7(1),M:39; deletes:none; frame:2, dominant:3; avgpp:0.925;
 
 ENTOY100A-3-fs27         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs27 PP ******************
 #=GR ENTOY100A-3-fs27 CS 333333333333333333
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -130,13 +157,16 @@ ENTOY100A-3-fs27         GCATCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs28 FS.1 nucleotide alignment of positions 9..18 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+1); inserts:9; deletes:18(1);
+#=GS ENTOY100A-3-fs28 FS.1 seq_coords:9..18:+; mdl_coords: 40..49:+; inserts:S:9(1),M:39; deletes:S:18,M:49(1); frame:2, dominant:1; avgpp:0.922;
 
 ENTOY100A-3-fs28         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs28 PP *9.8**************
 #=GR ENTOY100A-3-fs28 CS 22d111111111111111
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -144,13 +174,16 @@ ENTOY100A-3-fs28         GC-TCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs29 FS.1 nucleotide alignment of positions 8..17 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+3); inserts:8; deletes:17(1);
+#=GS ENTOY100A-3-fs29 FS.1 seq_coords:8..17:+; mdl_coords: 40..49:+; inserts:S:8(1),M:39; deletes:S:17,M:49(1); frame:1, dominant:3; avgpp:0.922;
 
 ENTOY100A-3-fs29         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs29 PP *9.8**************
 #=GR ENTOY100A-3-fs29 CS 11d333333333333333
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //
 # STOCKHOLM 1.0
 #=GF AU Infernal 1.1.4
@@ -158,11 +191,14 @@ ENTOY100A-3-fs29         GC-TCTTGCGGTGCCATA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs30 FS.1 nucleotide alignment of positions 11..20 (10 nt, avgpp: 0.922) on + strand are inconsistent with dominant frame (+1); inserts:11; deletes:20(1);
+#=GS ENTOY100A-3-fs30 FS.1 seq_coords:11..20:+; mdl_coords: 40..49:+; inserts:S:11(1),M:39; deletes:S:20,M:49(1); frame:2, dominant:1; avgpp:0.922;
 
 ENTOY100A-3-fs30         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs30 PP *9.8**************
 #=GR ENTOY100A-3-fs30 CS 22d111111111111111
 #=GC SS_cons             ::::::::::::::::::
 #=GC RF                  GCATCTTGCGGTGCCATA
+#=GC RFCOLX..            000000000000000000
+#=GC RFCOL.X.            444555555555566666
+#=GC RFCOL..X            789012345678901234
 //

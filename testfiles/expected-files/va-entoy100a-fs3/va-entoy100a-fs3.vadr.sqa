@@ -5,7 +5,7 @@
 2     ENTOY100A-3-fs1    90  PASS  yes  ENTOY100A  toy  A     11    0    3    0      0  -     
 3     ENTOY100A-3-fs2    89  PASS  yes  ENTOY100A  toy  A     11    0    5    0      0  -     
 4     ENTOY100A-3-fs3    88  PASS  yes  ENTOY100A  toy  A     11    0    5    0      0  -     
-5     ENTOY100A-3-fs4    91  FAIL  yes  ENTOY100A  toy  A     11    0    3    0      6  -     
+5     ENTOY100A-3-fs4    91  FAIL  yes  ENTOY100A  toy  A     11    0    3    0      7  -     
 6     ENTOY100A-3-fs5    90  FAIL  yes  ENTOY100A  toy  A     11    0    3    0      3  -     
 7     ENTOY100A-3-fs6    89  PASS  yes  ENTOY100A  toy  A     11    0    5    0      0  -     
 8     ENTOY100A-3-fs7    86  FAIL  yes  ENTOY100A  toy  A     11    0    5    0      4  -     
@@ -16,10 +16,10 @@
 13    ENTOY100A-3-fs12   67  PASS  yes  ENTOY100A  toy  A      5    6    1    0      0  -     
 14    ENTOY100A-3-fs13   70  FAIL  yes  ENTOY100A  toy  A      6    5    1    0      3  -     
 15    ENTOY100A-3-fs14   69  FAIL  yes  ENTOY100A  toy  A      6    5    2    0      1  -     
-16    ENTOY100A-3-fs15   68  FAIL  yes  ENTOY100A  toy  A      5    6    1    0      1  LOW_COVERAGE(lowcovrg)
+16    ENTOY100A-3-fs15   68  FAIL  yes  ENTOY100A  toy  A      5    6    1    0      2  LOW_COVERAGE(lowcovrg)
 17    ENTOY100A-3-fs16   69  FAIL  yes  ENTOY100A  toy  A      6    5    1    0      1  -     
 18    ENTOY100A-3-fs17   68  FAIL  yes  ENTOY100A  toy  A      6    5    2    0      1  -     
-19    ENTOY100A-3-fs18   67  FAIL  yes  ENTOY100A  toy  A      5    6    1    0      1  LOW_COVERAGE(lowcovrg)
+19    ENTOY100A-3-fs18   67  FAIL  yes  ENTOY100A  toy  A      5    6    1    0      2  LOW_COVERAGE(lowcovrg)
 20    ENTOY100A-3-fs19   70  PASS  yes  ENTOY100A  toy  A      9    2    0    3      0  -     
 21    ENTOY100A-3-fs20   69  PASS  yes  ENTOY100A  toy  A      9    2    0    3      0  -     
 22    ENTOY100A-3-fs21   68  PASS  yes  ENTOY100A  toy  A      9    2    0    3      0  -     

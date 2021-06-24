@@ -7,10 +7,10 @@
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 5..17 (13 nt, avgpp: 0.844) on + strand are inconsistent with dominant frame (+3); inserts:16-17; deletes:none;]
-ERROR: INDEFINITE_ANNOTATION_END: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11 > 5 (strand:+ CM:50 blastx:39, no valid stop codon in CM prediction)]
-ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [14 > 5 (strand:+ CM:5 blastx:19)]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift at 5' end of CDS [inserts:S:16..17(2),M:15; deletes:none; frame:1, dominant:3; avgpp:0.844;]; seq-coords:5..17:+; mdl-coords:5..15:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11>5, no valid stop codon in nucleotide-based prediction]; seq-coords:40..50:+; mdl-coords:5374..5374:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [14>5]; seq-coords:5..18:+; mdl-coords:5..5:+; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/30-200
 <1	>171	gene
 			gene	ORF1
@@ -20,9 +20,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated beca
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..36 (36 nt, avgpp: 0.944) on + strand are inconsistent with dominant frame (+3); inserts:36; deletes:none;]
-ERROR: INDEFINITE_ANNOTATION_START: (nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [47 > 5 (strand:+ CM:1 blastx:48)]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift at 5' end of CDS [inserts:S:36(1),M:62; deletes:none; frame:2, dominant:3; avgpp:0.944;]; seq-coords:1..36:+; mdl-coords:28..62:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [47>5]; seq-coords:1..47:+; mdl-coords:5..5:+; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/5380-6000
 <1	>621	gene
 			gene	ORF2
@@ -30,8 +30,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated beca
 			note	similar to VP1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP1) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..15 (15 nt, avgpp: 0.737) on + strand are inconsistent with dominant frame (+3); inserts:9,15; deletes:none;]
-ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [17 > 5 (strand:+ CM:1 blastx:18)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP1) high confidence possible frameshift at 5' end of CDS [inserts:S:9(1),M:5383;S:15(1),M:5388; deletes:none; frame:2, dominant:3; avgpp:0.737;]; seq-coords:1..15:+; mdl-coords:5376..5388:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [17>5]; seq-coords:1..17:+; mdl-coords:5358..5358:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/7000-7500
 <1	>501	gene
 			gene	ORF3
@@ -39,10 +39,10 @@ ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not exten
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 45..54 (10 nt, avgpp: 0.890) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:44(1),54(2);]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 229..262 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:228(1),243(1),262(1);]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 453..501 (49 nt, avgpp: 0.966) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:452(1);]
-ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [48 > 5 (strand:+ CM:501 blastx:453, no valid stop codon in CM prediction)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift at 3' end of CDS [inserts:none; deletes:S:452,M:7450(1); frame:1, dominant:1; avgpp:0.966;]; seq-coords:453..501:+; mdl-coords:7450..7499:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (internal) [inserts:none; deletes:S:44,M:7036(1);S:54,M:7047..7048(2); frame:3, dominant:1; avgpp:0.890;]; seq-coords:45..54:+; mdl-coords:7036..7048:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (internal) [inserts:none; deletes:S:228,M:7223(1);S:243,M:7239(1);S:262,M:7259(1); frame:2, dominant:1; avgpp:0.942;]; seq-coords:229..262:+; mdl-coords:7223..7259:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [48>5, no valid stop codon in nucleotide-based prediction]; seq-coords:454..501:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/7200-7655
 <1	390	gene
 			gene	ORF3
@@ -50,9 +50,9 @@ ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend 
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 29..62 (34 nt, avgpp: 0.942) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:28(1),43(1),62(1);]
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (VP2) high confidence potential frameshift in CDS [nucleotide alignment of positions 253..390 (138 nt, avgpp: 0.972) on + strand are inconsistent with dominant frame (+2); inserts:none; deletes:252(1);]
-ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137 > 8 (strand:+ CM:390 blastx:253, valid stop codon in CM prediction)]
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift at 3' end of CDS [inserts:none; deletes:S:252,M:7450(1); frame:2, dominant:2; avgpp:0.972;]; seq-coords:253..390:+; mdl-coords:7450..7588:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (internal) [inserts:none; deletes:S:28,M:7223(1);S:43,M:7239(1);S:62,M:7259(1); frame:3, dominant:2; avgpp:0.942;]; seq-coords:29..62:+; mdl-coords:7223..7259:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137>8, valid stop codon in nucleotide-based prediction]; seq-coords:254..390:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-2/30-80
 <1	>51	gene
 			gene	ORF1
@@ -62,9 +62,9 @@ ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend 
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 24..37 (14 nt, avgpp: 0.775) on + strand are inconsistent with dominant frame (+3); inserts:24-25; deletes:37(2);]
-ERROR: INDEFINITE_ANNOTATION: (nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (internal) [inserts:S:24..25(2),M:52; deletes:S:37,M:65..66(2); frame:2, dominant:3; avgpp:0.775;]; seq-coords:24..37:+; mdl-coords:53..66:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION: (CDS:nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search [-]; seq-coords:1..51:+; mdl-coords:30..80:+; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-2/1000-1500
 <1	199	misc_feature
 			note	similar to p48
@@ -76,6 +76,6 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated beca
 			note	similar to NTPase
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (nonstructural polyprotein) high confidence potential frameshift in CDS [nucleotide alignment of positions 1..13 (13 nt, avgpp: 0.898) on + strand are inconsistent with dominant frame (+2); inserts:12-13; deletes:none;]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (p48) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (NTPase) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift at 5' end of CDS [inserts:S:12..13(2),M:1012; deletes:none; frame:3, dominant:2; avgpp:0.898;]; seq-coords:1..13:+; mdl-coords:1002..1012:+; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:NTPase) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
