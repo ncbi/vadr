@@ -1,5 +1,3 @@
-#     alert     causes   short                           per    num   num  long       
-#idx  code      failure  description                    type  cases  seqs  description
-#---  --------  -------  --------------------------  -------  -----  ----  -----------
-1     lowsim3c  no       LOW_FEATURE_SIMILARITY_END  feature      4     2  region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity
-#---  --------  -------  --------------------------  -------  -----  ----  -----------
+#     alert  causes   short         per    num   num  long       
+#idx  code   failure  description  type  cases  seqs  description
+#---  -----  -------  -----------  ----  -----  ----  -----------

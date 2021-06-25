@@ -13,7 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfract 0.1 --alt_fail ambgnt5c,ambgnt3c --keep  --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r noro.roverlap.fa va-iss37-roverlap
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfracti 0.1 --r_minfract5 0.1 --r_minfract3 0.1 --alt_fail ambgnt5c,ambgnt3c --keep  --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/github-issues/iss37-roverlap/noro.roverlap.fa va-iss37-roverlap
 desc: iss37-roverlap
 out: va-iss37-roverlap/va-iss37-roverlap.vadr.pass.tbl
 out: va-iss37-roverlap/va-iss37-roverlap.vadr.fail.tbl

@@ -245,7 +245,6 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 ERROR: MUTATION_AT_END: (CDS:protein two) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAG]; seq-coords:92..94:+; mdl-coords:93..95:+; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [41]; seq-coords:32..47:+,47..64:+,66..72:+; mdl-coords:32..47:+,47..64:+,66..73:+; mdl:ENTOY100A;
 ERROR: CDS_HAS_STOP_CODON: (CDS:protein three) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAG, shifted S:22,M:22]; seq-coords:70..72:+; mdl-coords:71..73:+; mdl:ENTOY100A;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein three) high confidence possible frameshift at 5' end of CDS [inserts:none; deletes:S:68,M:69(1); frame:1, dominant:3; avgpp:0.938;]; seq-coords:67..68:+; mdl-coords:67..69:+; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein three) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [23]; seq-coords:67..78:+,84..94:+; mdl-coords:67..79:+,85..95:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (mat_peptide:protein three mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [8]; seq-coords:67..74:+; mdl-coords:67..75:+; mdl:ENTOY100A;
@@ -618,7 +617,6 @@ ERROR: PEPTIDE_ADJACENCY_PROBLEM: (mat_peptide:protein three mp1) predictions of
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (mat_peptide:protein three mp2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]; seq-coords:77..80:+,86..92:+; mdl-coords:76..79:+,85..92:+; mdl:ENTOY100A;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein four) high confidence possible frameshift at 3' end of CDS [inserts:none; deletes:S:87,M:88(1); frame:1, dominant:1; avgpp:0.750;]; seq-coords:86..85:-; mdl-coords:86..84:-; mdl:ENTOY100A;
 ERROR: MUTATION_AT_END: (CDS:protein four) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]; seq-coords:98..85:-; mdl-coords:98..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A-2-fs18
@@ -749,7 +747,6 @@ ERROR: INDEFINITE_ANNOTATION_END: (CDS:protein three) alignment to homology mode
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: INDEFINITE_ANNOTATION_END: (mat_peptide:protein three mp2) alignment to homology model is a gap at 3' boundary [segment 1 of 2]; seq-coords:78..78:+; mdl-coords:79..79:+; mdl:ENTOY100A;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein four) high confidence possible frameshift at 3' end of CDS [inserts:none; deletes:S:86,M:88..87(2); frame:1, dominant:1; avgpp:0.800;]; seq-coords:85..83:-; mdl-coords:88..84:-; mdl:ENTOY100A;
 ERROR: MUTATION_AT_END: (CDS:protein four) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein four) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]; seq-coords:95..83:-; mdl-coords:98..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A-2-fs22

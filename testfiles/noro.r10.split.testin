@@ -66,10 +66,10 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.mdl
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.stk
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.stk
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_029646.align.afa
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039476.align.afa
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-df/va-noro-df.vadr.NC_039477.align.afa
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.afa
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_029646.align.rpstk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039476.align.rpstk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-r/va-noro-r.vadr.NC_039477.align.rpstk
