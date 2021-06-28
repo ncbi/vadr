@@ -6048,7 +6048,7 @@ sub vdr_MergeAlignments {
   my $do_out_afa   = $do_keep || opt_Get("--out_afa",   $opt_HHR) ? 1 : 0;
   my $do_out_rpstk = $do_keep || opt_Get("--out_rpstk",   $opt_HHR) ? 1 : 0;
   my $do_out_rpafa = $do_keep || opt_Get("--out_rpafa",   $opt_HHR) ? 1 : 0;
-  # v-annotate.pl should have required that if --out_afa is used, --out_stk was also used
+  # NOTE: v-annotate.pl should have required that if --out_afa is used, --out_stk was also used
   # and that if --out_rpafa is used, --out_rpstk was also used. These are required because
   # we can't merge afa files (due to lack of RF annotation) so we need the stockholm equivalents
   # but we check here again to be safe.
@@ -6093,10 +6093,21 @@ sub vdr_MergeAlignments {
                                         "model " . $mdl_name . " alignment list ($stk_key)");
         utl_AToFile(\@filelist_A, $stk_list_file, 1, $FH_HR);
         sqf_EslAlimergeListRun($execs_HR->{"esl-alimerge"}, $stk_list_file, "", $stk_file, "stockholm", $opt_HHR, $FH_HR);
+
+        # remember if we are outputting afa we are also outputting stk, see 'NOTE:' in comment above
+
+        # need to use esl-alimerge and esl-alimanip to merge and add RF column numbering to the alignment
+        my $merge_and_manip_cmd  = $execs_HR->{"esl-alimerge"} . " --list --outformat stockholm --informat stockholm --dna $stk_list_file | ";
+        $merge_and_manip_cmd    .= $execs_HR->{"esl-alimanip"} . " --num-rf --outformat stockholm --informat stockholm --dna - > $stk_file";
+        utl_RunCommand($merge_and_manip_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
         ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $stk_key, $stk_file, 1, 1, $desc . "(stk)");
         if($do_afa) { 
           sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "", $stk_file, $afa_file, "stockholm", "afa", $opt_HHR, $FH_HR);
           ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $afa_key, $afa_file, 1, 1, $desc . "(afa)");
+        }
+        else {
+          
         }
       }
     }
