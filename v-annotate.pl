@@ -10797,6 +10797,7 @@ sub output_alignments {
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
       $msa->addGC_rf_column_numbers();
+      $msa->capitalize_based_on_rf();
 
       my $out_stk_file = $out_root . "." . $mdl_name . ".align.stk";
       $msa->write_msa($out_stk_file, "stockholm", 0); # 0: do not append to file if it exists
@@ -10825,6 +10826,7 @@ sub output_alignments {
       seq_SqstringDnaize(\$rna_rf);
       $msa->set_rf($rna_rf);
       $msa->addGC_rf_column_numbers();
+      $msa->capitalize_based_on_rf();
 
       my $out_rpstk_file = $out_root . "." . $mdl_name . ".align.rpstk";
       $msa->write_msa($out_rpstk_file, "stockholm", 0); # 0: do not append to file if it exists
