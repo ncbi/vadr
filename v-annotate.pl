@@ -3112,6 +3112,7 @@ sub add_classification_alerts {
                                             ($alt_mcoords eq "") ? "mdl:" : ",",
                                             vdr_CoordsSegmentCreate($m_start_A[$i], $m_stop_A[$i], $m_strand_A[$i], $FH_HR), 
                                             vdr_CoordsSegmentCreate($m_start_A[$j], $m_stop_A[$j], $m_strand_A[$j], $FH_HR));
+                    $overlap_str =~ s/\-/\.\./; # replace '-' with '..', e.g. '10-15' to '10..15'
                     $alt_str     .= sprintf("%s%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
                                             ($alt_str eq "") ? "" : ", ",
                                             $overlap_str, $noverlap, $dupregolp_opt, 
