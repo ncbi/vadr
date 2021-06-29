@@ -7,7 +7,7 @@
 4     ENTOY100A-2-fs3   101  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      9  -     
 5     ENTOY100A-2-fs4    99  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      3  -     
 6     ENTOY100A-2-fs5    99  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      3  -     
-7     ENTOY100A-2-fs6    99  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      8  -     
+7     ENTOY100A-2-fs6    99  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      9  -     
 8     ENTOY100A-2-fs7    99  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      4  -     
 9     ENTOY100A-2-fs8   100  PASS  yes  ENTOY100A  toy  A     11    0    0    0      0  -     
 10    ENTOY100A-2-fs9   103  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      1  -     
@@ -18,11 +18,11 @@
 15    ENTOY100A-2-fs14   98  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      3  -     
 16    ENTOY100A-2-fs15  101  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      3  -     
 17    ENTOY100A-2-fs16  103  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      1  -     
-18    ENTOY100A-2-fs17  100  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      9  -     
+18    ENTOY100A-2-fs17  100  FAIL  yes  ENTOY100A  toy  A     11    0    0    0     10  -     
 19    ENTOY100A-2-fs18  106  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      9  -     
 20    ENTOY100A-2-fs19   97  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      8  -     
 21    ENTOY100A-2-fs20  103  PASS  yes  ENTOY100A  toy  A     11    0    0    0      0  -     
-22    ENTOY100A-2-fs21   97  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      7  -     
+22    ENTOY100A-2-fs21   97  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      8  -     
 23    ENTOY100A-2-fs22  103  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      9  -     
 24    ENTOY100A-2-fs23  101  FAIL  yes  ENTOY100A  toy  A     11    0    0    0     11  -     
 25    ENTOY100A-2-fs24  100  FAIL  yes  ENTOY100A  toy  A     11    0    0    0      5  -     

@@ -275,6 +275,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (ncRNA:enRNA) alignment to homology model is a
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:14,M:14]; seq-coords:86..84:-; mdl-coords:86..84:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift at 5' end of CDS [inserts:none; deletes:S:88,M:90(1); frame:1, dominant:3; avgpp:0.975;]; seq-coords:89..88:-; mdl-coords:90..88:-; mdl:ENTOY100A-REV;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]; seq-coords:89..70:-; mdl-coords:90..70:-; mdl:ENTOY100A-REV;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: UNEXPECTED_LENGTH: (mat_peptide:protein one mp1) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]; seq-coords:89..79:-; mdl-coords:90..79:-; mdl:ENTOY100A-REV;
@@ -315,6 +316,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			note	stem-loop 1
 
 Additional note(s) to submitter:
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift at 5' end of CDS [inserts:none; deletes:S:87,M:88..87(2); frame:1, dominant:2; avgpp:0.975;]; seq-coords:88..87:-; mdl-coords:90..87:-; mdl:ENTOY100A-REV;
 ERROR: MUTATION_AT_END: (CDS:protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: MUTATION_AT_START: (CDS:protein one) expected start codon could not be identified [ATT]; seq-coords:88..86:-; mdl-coords:90..86:-; mdl:ENTOY100A-REV;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [19]; seq-coords:88..70:-; mdl-coords:90..70:-; mdl:ENTOY100A-REV;
