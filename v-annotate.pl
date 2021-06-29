@@ -3012,7 +3012,7 @@ sub add_classification_alerts {
           my $diff = $scpnt_H{"std.cls.1"} - $scpnt_H{"std.cls.esg"};
           my $diff2print = sprintf("%.3f", $diff);
           if($diff > $incspec_opt) { 
-            $alt_str = "$diff2print > $incspec_opt2print bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
+            $alt_str = $diff2print . ">" . $incspec_opt2print . " bits/nt diff, best model group/subgroup: " . group_subgroup_string_from_classification_results($stg_results_HHHR->{$seq_name}{"std.cls.1"});
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "incsbgrp", $seq_name, $alt_str, $FH_HR);
           }
           elsif(! $qgr_flag) {
