@@ -5,4 +5,4 @@
 			note	similar to VP1
 
 Additional note(s) to submitter:
-ERROR: INDEFINITE_ANNOTATION_START: (VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [14 > 5 (strand:+ CM:1 blastx:15)]
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [14>5]; seq-coords:1..14:+; mdl-coords:5358..5358:+; mdl:NC_001959;

@@ -90,6 +90,8 @@ my $subject_strand;         # subject strand (+ or -)
 
 my $overall_query_stop_representation = "";     #representation of stop codons in one row of query alignment
 my $one_row_query_stop_representation = "";     #representation of stop codons in one row of query alignment
+my $overall_subject_stop_representation = "";   #representation of stop codons in one row of subject alignment
+my $one_row_subject_stop_representation = "";   #representation of stop codons in one row of subject alignment
 my $overall_query_gap_representation = "";      #representation of gaps in one row of query alignment
 my $one_row_query_gap_representation = "";      #representation of gaps in one row of query alignment
 my $old_query_gap_overhang;                     #how many gaps in the query are at the end of the current line
@@ -253,7 +255,8 @@ while($keep_going) {
         # finished with previous query/target pair: 
         # output info from final HSP from previous query/target pair
         if ($overall_query_stop_representation) {
-          print "STOP\t" .$overall_query_stop_representation . "\n";
+          print "QSTOP\t" .$overall_query_stop_representation . "\n";
+          print "HSTOP\t" .$overall_subject_stop_representation . "\n";
         }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
@@ -263,14 +266,16 @@ while($keep_going) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
           print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 		
         }	    	    
-        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         # finished with previous query/target pair: re-initialize per-HSP variables
         $processing_alignment = 0;
         $query_strand = "";
         $subject_strand = "";
         $overall_query_stop_representation = "";
         $one_row_query_stop_representation = "";	    
+        $overall_subject_stop_representation = "";
+        $one_row_subject_stop_representation = "";	    
         $overall_query_gap_representation = "";
         $one_row_query_gap_representation = "";
         $overall_subject_gap_representation = "";
@@ -305,7 +310,8 @@ while($keep_going) {
         # finished with previous HSP 
         # output info from previous HSP
         if ($overall_query_stop_representation) {
-          print "STOP\t" .$overall_query_stop_representation . "\n";
+          print "QSTOP\t" .$overall_query_stop_representation . "\n";
+          print "HSTOP\t" .$overall_subject_stop_representation . "\n";
         }
         if ($overall_query_gap_representation) {
           print "DEL\t" .$overall_query_gap_representation . "\n";
@@ -315,14 +321,16 @@ while($keep_going) {
           print "INS\t" .$overall_subject_gap_representation . "\n";
           print "MAXIN\t" .$maximum_subject_gap_str ."\n"; 				
         }
-        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+        print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
         # finished with previous HSP: re-initialize per-HSP variables
         $processing_alignment = 0;
         $query_strand = "";
         $subject_strand = "";
         $overall_query_stop_representation = "";
         $one_row_query_stop_representation = "";	    
+        $overall_subject_stop_representation = "";
+        $one_row_subject_stop_representation = "";	    
         $overall_query_gap_representation = "";
         $one_row_query_gap_representation = "";
         $overall_subject_gap_representation = "";
@@ -390,19 +398,12 @@ while($keep_going) {
       else {
         updateOverallPositions($processing_alignment, $subject_start, $subject_end, \$overall_subject_start, \$overall_subject_end);
       }
-      $one_row_query_stop_representation = ($program eq "x") ? findQueryStops($query_alignment_part, $query_start, $query_end) : "";
+      ($one_row_query_stop_representation, $one_row_subject_stop_representation) = 
+          ($program eq "x") ? findQueryStops($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end) : "";
+
       if ($one_row_query_stop_representation) {
-        if ($overall_query_stop_representation) {
-          if ($query_start < $query_end) {
-            $overall_query_stop_representation = $overall_query_stop_representation . ";" . $one_row_query_stop_representation;
-          }
-          else {
-            $overall_query_stop_representation = $one_row_query_stop_representation . ";" . $overall_query_stop_representation;
-          }
-        }
-        else {
-          $overall_query_stop_representation = $one_row_query_stop_representation;
-        }
+        $overall_query_stop_representation   .= $one_row_query_stop_representation;
+        $overall_subject_stop_representation .= $one_row_subject_stop_representation;
       }
       if ($gaps > 0) {
         ($new_query_gap_overhang, $one_row_query_gap_representation, $one_line_query_gap_str, $one_line_query_gap) = findQueryGaps($query_alignment_part, $subject_alignment_part, $query_start, $query_end, $subject_start, $subject_end, $old_query_gap_overhang, $program);
@@ -496,8 +497,8 @@ while($keep_going) {
   if(! defined $overall_query_end)     { $overall_query_end   = ""; }
   if(! defined $overall_subject_start) { $overall_subject_start = ""; }
   if(! defined $overall_subject_end)   { $overall_subject_end   = ""; }
-  print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "SRANGE\t".$overall_subject_start."..".$overall_subject_end."\n"; #print SRANGE and the match range
+  print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "END_MATCH\n";  #print END_MATCH
   # finished with previous query: re-initialize per-HSP variables
   $overall_query_stop_representation = "";
@@ -1200,61 +1201,65 @@ sub findSubjectGaps {
 #              Return a list of the positions.
 # Arguments:
 #   $query_alignment_string:     a subsequence of the query, possibly containing gaps
+#   $subject_alignment_string:   a subsequence of the subject, possibly containing gaps
 #   $query_start:                query start position for current block we are processing
 #   $query_end:                  query end  position for current block we are processing
+#   $subject_start:              subject start position for current block we are processing
+#   $subject_end:                subject end  position for current block we are processing
 #
-# Returns:    1) a string of positions with stop codons or NULL. 
-#
+# Returns:    1) a string of query positions (nt coords) with stop codons or NULL. 
+#             2) a string of subject positions (AA coords) that align to stop codons or NULL
 # Dies:       Never
 #
 ##########################################################################################
 sub findQueryStops {
     my $sub_name = "findQueryStops()";
-    my $nargs_expected = 3;
+    my $nargs_expected = 6;
     if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); }
 
-    my ($query_alignment_string, $query_start, $query_end) = @_;
+    my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end) = @_;
 
     my $local_length = length($query_alignment_string);          #length of this alignment block
-    my @local_query_array = split("",$query_alignment_string);   #query line in the alignment split into an array of characters
+    my @local_query_array   = split("",$query_alignment_string);   #query line in the alignment split into an array of characters
+    my @local_subject_array = split("",$subject_alignment_string); #subject line in the alignment split into an array of characters
     my $local_i;                                                 #loop index
     my $local_QueryPositionIndex;                                #where are we in absolute query positions
     my $local_SubjectPositionIndex;                              #where are we in absolute query positions
-    my $local_OneStopString;                                     #string to represent one stop codon position
-    my $local_AllStopString = "";                                #string to represent all stop codons        
+    my $local_QueryAllStopString = "";                           #string to represent all query stop codons        
+    my $local_SubjectAllStopString = "";                         #string to represent all subject stop codons        
 
-    $local_QueryPositionIndex = $query_start;
-    $local_SubjectPositionIndex = $subject_start;
     if ($DEBUG) {
-	print "In findQueryStops: Query start is $query_start\n";
+      print "In findQueryStops: Query start is $query_start\n$query_alignment_string\n$subject_alignment_string";
     }
+    my $query_idx   = $query_start;
+    my $subject_idx = $subject_start;
     if ($query_start < $query_end) {
-	for ($local_i = 0; $local_i < $local_length; $local_i++) {
-	    if ($local_query_array[$local_i] eq "*") {
-		$local_OneStopString = $query_start + (3 * $local_i) + 2; # we want final position of stop codon
-		    if ($local_AllStopString) {
-			$local_AllStopString = $local_AllStopString . ";" . $local_OneStopString;
-		    }
-		    else {
-			$local_AllStopString = $local_OneStopString;			
-		    }
-	    }
-	    $local_QueryPositionIndex += 3;
-	}
+      for ($local_i = 0; $local_i < $local_length; $local_i++) {
+        if ($local_query_array[$local_i] eq "*") {
+          $local_QueryAllStopString   .= sprintf("%d..%d:+;", $query_idx, $query_idx + 2); # nt coords (3 positions)
+          $local_SubjectAllStopString .= sprintf("%d..%d:+;", $subject_idx, $subject_idx); # AA coords (1 position)
+        }
+        if ($local_query_array[$local_i] ne "-") { 
+          $query_idx += 3;
+        }
+        if ($local_subject_array[$local_i] ne "-") { 
+          $subject_idx++;
+        }
+      }
     }
     else {
-	for ($local_i = 0; $local_i < $local_length; $local_i++) {
-	    if ($local_query_array[$local_i] eq "*") {
-		$local_OneStopString = $query_start - (3 * $local_i) - 2; # we want final position of stop codon
-		if ($local_AllStopString) {
-		    $local_AllStopString = $local_OneStopString . ";" . $local_AllStopString;
-		}
-		else {
-		    $local_AllStopString = $local_OneStopString;			
-		}
-		$local_QueryPositionIndex -= 3;
-	    }
-	}
+      for ($local_i = 0; $local_i < $local_length; $local_i++) {
+        if ($local_query_array[$local_i] eq "*") {
+          $local_QueryAllStopString   .= sprintf("%d..%d:-;", $query_idx, $query_idx - 2); # nt coords (3 positions)
+          $local_SubjectAllStopString .= sprintf("%d..%d:+;", $subject_idx, $subject_idx); # AA coords (1 position)
+        }
+        if ($local_query_array[$local_i] ne "-") { 
+          $query_idx -= 3;
+        }
+        if ($local_subject_array[$local_i] ne "-") { 
+          $subject_idx++;
+        }
+      }
     }
-    return($local_AllStopString);
+    return($local_QueryAllStopString, $local_SubjectAllStopString);
 }

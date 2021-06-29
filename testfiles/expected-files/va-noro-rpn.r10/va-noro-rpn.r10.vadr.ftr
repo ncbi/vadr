@@ -15,8 +15,8 @@
 #
 3.1   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  gene         ORF1                        810    1   -1    +       1   810        -  5'       0    0       -     -        -     -    1    0      1..810:+  4295..5104:+  -     
 3.2   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  CDS          nonstructural_polyprotein   810    2   -1    +       1   810        -  5'       0    0       1   807        -  1419    1    0      1..810:+  4295..5104:+  -     
-3.3   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  gene         ORF2                        546    3   -1    +     791  1336        -  3'       0    0       -     -        -     -    1    0   791..1336:+  5085..5600:+  -     
-3.4   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  CDS          VP1                         546    4   -1    +     791  1336        -  3'       0    0     791  1261        -   648    1    0   791..1336:+  5085..5600:+  INSERTION_OF_NT(insertnn),INDEFINITE_ANNOTATION_END(indf3pst)
+3.3   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  gene         ORF2                        546    3   -1    +     791  1336        -  3'       0    0       -     -        -     -    1    0   791..1336:+  5085..5600:+  LOW_FEATURE_SIMILARITY_END(lowsim3c)
+3.4   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  CDS          VP1                         546    4   -1    +     791  1336        -  3'       0    0     791  1261        -   648    1    0   791..1336:+  5085..5600:+  INSERTION_OF_NT(insertnn),LOW_FEATURE_SIMILARITY_END(lowsim3c),INDEFINITE_ANNOTATION_END(indf3pst)
 3.5   gi|507309522|gb|JX439803.1|   1336  FAIL  NC_029646  mat_peptide  RdRp                        807   12    2    +       1   807        -  5'       0    0       -     -        -     -    1    0      1..807:+  4295..5101:+  -     
 #
 4.1   gi|1203184899|gb|KX722332.1|   640  PASS  NC_039477  gene         ORF2                        640    3   -1    +       1   640        -  5'&3'    0    0       -     -        -     -    1    0      1..640:+  5746..6388:+  -     
