@@ -4993,10 +4993,12 @@ sub add_frameshift_alerts_for_one_sequence {
                   my $alt_code = "fstukcfi";
                   if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
                   if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
-                  my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR) . ";";
-                  my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
+                  my $alt_scoords_tok =      vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR);
+                  my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
+                  my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                   my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
-                  $alt_str .= sprintf("inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
+                  $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
+                  $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                   $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
@@ -5022,10 +5024,12 @@ sub add_frameshift_alerts_for_one_sequence {
                     my $lo_alt_code = "fstlocfi";
                     if($is_5p) { $loc_str = "5'-most"; $hi_alt_code = "fsthicf5"; $lo_alt_code = "fstlocf5"; }
                     if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
-                    my $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR) . ";";
-                    my $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
+                    my $alt_scoords_tok =      vdr_CoordsSegmentCreate(    $span_sstart,      $span_sstop,  $ftr_strand, $FH_HR);
+                    my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($span_mstart), abs($span_mstop), $ftr_strand, $FH_HR) . ";";
+                    my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                     my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
-                    $alt_str .= sprintf("inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
+                    $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
+                    $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                     $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
                     $alt_str .= sprintf(" avgpp:%.3f;", $span_avgpp);
