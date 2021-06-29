@@ -4,7 +4,7 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 seq_coords:7452..7589:+; mdl_coords: 7450..7588:+; inserts:none; deletes:S:7451,M:7450(1); frame:1, dominant:1; avgpp:0.972;
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 seq_coords:7452..7589:+; mdl_coords: 7450..7588:+; length:138; inserts:none; deletes:S:7451,M:7450(1); frame:1, dominant:1; avgpp:0.972;
 
 NC_001959.2-manually-added-frameshifts-1         GGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGGTTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCATTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGAGATTTGGAAATCT-TCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCGG
 #=GR NC_001959.2-manually-added-frameshifts-1 PP **************************************************************************************************************************************************996.69************************************************
@@ -32,7 +32,7 @@ NC_001959.2-manually-added-frameshifts-1         TTCAACAGCCTCTTCTACACTGTCTTCTGTG
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:7438..7588:+; mdl_coords: 7437..7588:+; inserts:S:7438(1),M:7436; deletes:S:7449,M:7448..7449(2); frame:2, dominant:1; avgpp:0.960;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:7438..7588:+; mdl_coords: 7437..7588:+; length:151; inserts:S:7438(1),M:7436; deletes:S:7449,M:7448..7449(2); frame:2, dominant:1; avgpp:0.960;
 
 NC_001959.2-manually-added-frameshifts-2         GGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGGTTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCATTTCTCGAACCACTAGTTGGGTCGAGTCACAAAACTCATCGATGATTTGGAAAT--TTCTCCATACCACGCGGAGGCTCTCAATACAGTGTGGTTGACTCCACCCG
 #=GR NC_001959.2-manually-added-frameshifts-2 PP ***************************************************************************************************************************************8689999999986..7899**********************************************

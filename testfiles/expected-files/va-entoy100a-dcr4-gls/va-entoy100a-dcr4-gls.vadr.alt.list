@@ -1,4 +1,4 @@
 #sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
 ENTOY100A-dcr-ins-Tins1	entoy100a-dcr-ins	CDS	protein three	CDS_HAS_STOP_CODON	54..52:-	53..52:-	in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:1,M:1]
-ENTOY100A-dcr-ins-Tins1	entoy100a-dcr-ins	CDS	protein three	POSSIBLE_FRAMESHIFT	53..51:-	52..51:-	possible frameshift at 3' end of CDS [inserts:S:53(1),M:53; deletes:none; frame:1, dominant:1;]
+ENTOY100A-dcr-ins-Tins1	entoy100a-dcr-ins	CDS	protein three	POSSIBLE_FRAMESHIFT	53..51:-	52..51:-	possible frameshift at 3' end of CDS [length:3; inserts:S:53(1),M:53; deletes:none; frame:1, dominant:1;]
 ENTOY100A-dcr-ins-Tins1	entoy100a-dcr-ins	CDS	protein three	UNEXPECTED_LENGTH	66..51:-	65..51:-	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [16]

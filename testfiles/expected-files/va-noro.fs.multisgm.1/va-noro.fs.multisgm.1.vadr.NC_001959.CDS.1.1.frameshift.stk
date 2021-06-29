@@ -4,7 +4,7 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 seq_coords:16..65:+; mdl_coords: 16..62:+; inserts:S:16..17(2),M:15;S:65(1),M:62; deletes:none; frame:3, dominant:1; avgpp:0.928;
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 seq_coords:16..65:+; mdl_coords: 16..62:+; length:50; inserts:S:16..17(2),M:15;S:65(1),M:62; deletes:none; frame:3, dominant:1; avgpp:0.928;
 
 NC_001959.2-manually-added-frameshifts-1         ATGATGATGGCCCGTCAAAAGACGTCGTTCCTACTGCTGCTAGCAGTGAAAATGCTAACAAACAATAGTAGTATTAAGTCTCGTCTATTGGCGAGACTCAAGGGTTCAGGTGGGGCTACGTCCCCACCCAACTCGATAAAGATAACCAACCAAGATATGGCTCTGGGGCTGATTGGACAGGTCCCAGCGCCAAAGGCCAC
 #=GR NC_001959.2-manually-added-frameshifts-1 PP *********95449********************************************96369*****************************************************************************************************************************************
@@ -282,9 +282,9 @@ NC_001959.2-manually-added-frameshifts-1         AATTTTACAGAAAGATTTCCAGCAAGGTCAT
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:53..66:+; mdl_coords: 53..66:+; inserts:S:53..54(2),M:52; deletes:S:66,M:65..66(2); frame:3, dominant:1; avgpp:0.775;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:53..66:+; mdl_coords: 53..66:+; length:14; inserts:S:53..54(2),M:52; deletes:S:66,M:65..66(2); frame:3, dominant:1; avgpp:0.775;
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 seq_coords:992..1012:+; mdl_coords: 992..1012:+; inserts:S:1011..1012(2),M:1012; deletes:S:991,M:992..993(2); frame:2, dominant:1; avgpp:0.898;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 seq_coords:992..1012:+; mdl_coords: 992..1012:+; length:21; inserts:S:1011..1012(2),M:1012; deletes:S:991,M:992..993(2); frame:2, dominant:1; avgpp:0.898;
 
 NC_001959.2-manually-added-frameshifts-2         ATGATGATGGCGTCAAAAGACGTCGTTCCTACTGCTGCTAGCAGTGAAAAAATGCTAACAAC--TAGTAGTATTAAGTCTCGTCTATTGGCGAGACTCAAGGGTTCAGGTGGGGCTACGTCCCCACCCAACTCGATAAAGATAACCAACCAAGATATGGCTCTGGGGCTGATTGGACAGGTCCCAGCGCCAAAGGCCACA
 #=GR NC_001959.2-manually-added-frameshifts-2 PP *********************************************98622679******987..78**************************************************************************************************************************************
