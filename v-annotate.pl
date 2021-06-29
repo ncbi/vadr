@@ -3041,7 +3041,11 @@ sub add_classification_alerts {
       
         # reverse complement (revcompl)
         if($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bstrand"} eq "-") { 
-          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "revcompl", $seq_name, "VADRNULL", $FH_HR);
+          $alt_scoords = "seq:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"} . ";";
+          $alt_mcoords = "mdl:" . $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"} . ";";
+          my @bstrand_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
+          $alt_str = sprintf("best_hit_score:%.1f", $bstrand_score_A[0]);
+          alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "revcompl", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
         }
 
         # low coverage (lowcovrg)
