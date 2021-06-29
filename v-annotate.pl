@@ -3108,13 +3108,11 @@ sub add_classification_alerts {
                                             ($alt_mcoords eq "") ? "mdl:" : ",",
                                             vdr_CoordsSegmentCreate($m_start_A[$i], $m_stop_A[$i], $m_strand_A[$i], $FH_HR), 
                                             vdr_CoordsSegmentCreate($m_start_A[$j], $m_stop_A[$j], $m_strand_A[$j], $FH_HR));
-                    $alt_str     .= sprintf("%s%s (len %d >= %d) hits %d (%.1f bits) and %d (%.1f bits) (seq:%d..%d,%d..%d mdl:%d..%d,%d..%d)", 
-                                        ($alt_str eq "") ? "" : ", ",
-                                        $overlap_str, $noverlap, $dupregolp_opt, 
-                                        ($i+1), $dupreg_score_A[$i], 
-                                        ($j+1), $dupreg_score_A[$j], 
-                                        $s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j],
-                                        $m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j]);
+                    $alt_str     .= sprintf("%s%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
+                                            ($alt_str eq "") ? "" : ", ",
+                                            $overlap_str, $noverlap, $dupregolp_opt, 
+                                            ($i+1), $dupreg_score_A[$i], 
+                                            ($j+1), $dupreg_score_A[$j]);
                   }
                 }
               }
