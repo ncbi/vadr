@@ -6098,8 +6098,7 @@ sub vdr_MergeAlignments {
 
         # need to use esl-alimerge and esl-alimanip to merge and add RF column numbering to the alignment
         # in the future, if esl-alimerge will keep RFCOL columns in the alignment, we can fall back to 
-        # using only esl-alimerge, and then we can put back in calls to msa->capitalize_based_on_rf into 
-        # v-annotate.pl::output_alignments
+        # using only esl-alimerge
         my $merge_and_manip_cmd  = $execs_HR->{"esl-alimerge"} . " --list --outformat stockholm --informat stockholm --dna $stk_list_file | ";
         $merge_and_manip_cmd    .= $execs_HR->{"esl-alimanip"} . " --num-rf --outformat stockholm --informat stockholm --dna - > $stk_file";
         utl_RunCommand($merge_and_manip_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
