@@ -14,7 +14,7 @@
 # file, etc.
 # 
 # -r only
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn.r2 > va-noro-rpn.r2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfract5 0.5 --r_minfract3 0.5 --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn.r2 > va-noro-rpn.r2.out
 desc: annotate-noro-2-rpn
 out: va-noro-rpn.r2/va-noro-rpn.r2.vadr.pass.tbl
 out: va-noro-rpn.r2/va-noro-rpn.r2.vadr.fail.tbl
@@ -29,7 +29,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r2/va-noro-rpn.r2.vad
 rmdir: va-noro-rpn.r2
 #
 # --notrim 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --notrim --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-notrim.r2 > va-noro-rpn-notrim.r2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfract5 0.5 --r_minfract3 0.5 --notrim --alt_fail ambgnt5c,ambgnt3c --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-notrim.r2 > va-noro-rpn-notrim.r2.out
 desc: annotate-noro-2-rpn-notrim
 out: va-noro-rpn-notrim.r2/va-noro-rpn-notrim.r2.vadr.pass.tbl
 out: va-noro-rpn-notrim.r2/va-noro-rpn-notrim.r2.vadr.fail.tbl
@@ -44,7 +44,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r2/va-noro-rpn.r2.vad
 rmdir: va-noro-rpn-notrim.r2
 #
 # --r_fetchr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_fetchr --keep --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-fetchr.r2 > va-noro-rpn-fetchr.r2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfract5 0.5 --r_minfract3 0.5 --r_fetchr --keep --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-fetchr.r2 > va-noro-rpn-fetchr.r2.out
 desc: annotate-noro-2-rpn-fetchr
 out: va-noro-rpn-fetchr.r2/va-noro-rpn-fetchr.r2.vadr.pass.tbl
 out: va-noro-rpn-fetchr.r2/va-noro-rpn-fetchr.r2.vadr.fail.tbl
@@ -59,7 +59,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r2/va-noro-rpn.r2.vad
 rmdir: va-noro-rpn-fetchr.r2
 #
 # --r_cdsmpr
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_cdsmpr --keep --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-cdsmpr.r2 > va-noro-rpn-cdsmpr.r2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfract5 0.5 --r_minfract3 0.5 --r_cdsmpr --keep --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-cdsmpr.r2 > va-noro-rpn-cdsmpr.r2.out
 desc: annotate-noro-2-rpn-cdsmpr
 out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.pass.tbl
 out: va-noro-rpn-cdsmpr.r2/va-noro-rpn-cdsmpr.r2.vadr.fail.tbl
@@ -74,7 +74,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro-rpn.r2/va-noro-rpn.r2.vad
 rmdir: va-noro-rpn-cdsmpr.r2
 #
 # --r_pvorig
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_pvorig --keep --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-pvorig.r2 > va-noro-rpn-pvorig.r2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --r_minfract5 0.5 --r_minfract3 0.5 --r_pvorig --keep --alt_fail ambgnt5c,ambgnt3c --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 -r $VADRSCRIPTSDIR/testfiles/noro.r2.rpn.fa va-noro-rpn-pvorig.r2 > va-noro-rpn-pvorig.r2.out
 desc: annotate-noro-2-rpn-pvorig
 out: va-noro-rpn-pvorig.r2/va-noro-rpn-pvorig.r2.vadr.pass.tbl
 out: va-noro-rpn-pvorig.r2/va-noro-rpn-pvorig.r2.vadr.fail.tbl

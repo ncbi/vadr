@@ -7,7 +7,7 @@
 			protein_id	entoy.delcds/cds3-deleted/1-70,96-123/98-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature [stem_loop feature number 1: SL1]
+ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature [stem_loop feature number 1: SL1]; seq-coords:-; mdl-coords:51..46:-,44..42:-,39..31:-; mdl:entoy.delcds-rev;
 >Feature entoy.delcds/cds3-sgm1-deleted/1-70,79-123/115-1
 43	42	misc_feature
 39	31
@@ -20,8 +20,8 @@ ERROR: DELETION_OF_FEATURE: (*sequence*) internal deletion of a complete feature
 			protein_id	entoy.delcds/cds3-sgm1-deleted/1-70,79-123/115-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
-ERROR: INDEFINITE_ANNOTATION_START: (SL1) alignment to homology model is a gap at 5' boundary [RF position 44, segment 2 of 3]
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]; seq-coords:-; mdl-coords:51..46:-; mdl:entoy.delcds-rev;
+ERROR: INDEFINITE_ANNOTATION_START: (stem_loop:SL1) alignment to homology model is a gap at 5' boundary [segment 2 of 3]; seq-coords:43..43:-; mdl-coords:44..44:-; mdl:entoy.delcds-rev;
 >Feature entoy.delcds/cds3-sgm2-deleted/1-79,84-123/119-1
 47	42	misc_feature
 39	31
@@ -34,7 +34,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (SL1) alignment to homology model is a gap a
 			protein_id	entoy.delcds/cds3-sgm2-deleted/1-79,84-123/119-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]; seq-coords:-; mdl-coords:44..42:-; mdl:entoy.delcds-rev;
 >Feature entoy.delcds/cds3-sgm3-deleted/1-83,97-123/110-1
 38	33	misc_feature
 31	29
@@ -47,7 +47,7 @@ ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section 
 			protein_id	entoy.delcds/cds3-sgm3-deleted/1-83,97-123/110-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]; seq-coords:-; mdl-coords:39..31:-; mdl:entoy.delcds-rev;
 >Feature entoy.delcds/cds3-sgm1and2-deleted/1-65,87-123/102-1
 37	31	misc_feature
 			note	similar to SL1
@@ -59,9 +59,9 @@ ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section 
 			protein_id	entoy.delcds/cds3-sgm1and2-deleted/1-65,87-123/102-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]
-ERROR: INDEFINITE_ANNOTATION_START: (SL1) alignment to homology model is a gap at 5' boundary [RF position 39, segment 3 of 3]
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]; seq-coords:-; mdl-coords:51..46:-; mdl:entoy.delcds-rev;
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]; seq-coords:-; mdl-coords:44..42:-; mdl:entoy.delcds-rev;
+ERROR: INDEFINITE_ANNOTATION_START: (stem_loop:SL1) alignment to homology model is a gap at 5' boundary [segment 3 of 3]; seq-coords:37..37:-; mdl-coords:39..39:-; mdl:entoy.delcds-rev;
 >Feature entoy.delcds/cds3-sgm2and3-deleted/1-79,97-123/106-1
 34	29	misc_feature
 			note	similar to SL1
@@ -73,8 +73,8 @@ ERROR: INDEFINITE_ANNOTATION_START: (SL1) alignment to homology model is a gap a
 			protein_id	entoy.delcds/cds3-sgm2and3-deleted/1-79,97-123/106-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 2 of 3 deleted]; seq-coords:-; mdl-coords:44..42:-; mdl:entoy.delcds-rev;
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]; seq-coords:-; mdl-coords:39..31:-; mdl:entoy.delcds-rev;
 >Feature entoy.delcds/cds3-sgm1and3-deleted/1-70,79..84,97-123/102-1
 31	29	misc_feature
 			note	similar to SL1
@@ -86,7 +86,7 @@ ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section 
 			protein_id	entoy.delcds/cds3-sgm1and3-deleted/1-70,79..84,97-123/102-1_1
 
 Additional note(s) to submitter:
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]
-ERROR: DELETION_OF_FEATURE_SECTION: (SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]
-ERROR: INDEFINITE_ANNOTATION_END: (SL1) alignment to homology model has low confidence at 3' boundary [0.50 < 0.80, RF position 42, segment 2 of 3]
-ERROR: INDEFINITE_ANNOTATION_START: (SL1) alignment to homology model has low confidence at 5' boundary [0.50 < 0.80, RF position 44, segment 2 of 3]
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 1 of 3 deleted]; seq-coords:-; mdl-coords:51..46:-; mdl:entoy.delcds-rev;
+ERROR: DELETION_OF_FEATURE_SECTION: (stem_loop:SL1) internal deletion of complete section in multi-section feature with other section(s) annotated [segment 3 of 3 deleted]; seq-coords:-; mdl-coords:39..31:-; mdl:entoy.delcds-rev;
+ERROR: INDEFINITE_ANNOTATION_END: (stem_loop:SL1) alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS [0.50<0.80, segment 2 of 3]; seq-coords:29..29:-; mdl-coords:42..42:-; mdl:entoy.delcds-rev;
+ERROR: INDEFINITE_ANNOTATION_START: (stem_loop:SL1) alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.50<0.80, segment 2 of 3]; seq-coords:31..31:-; mdl-coords:44..44:-; mdl:entoy.delcds-rev;

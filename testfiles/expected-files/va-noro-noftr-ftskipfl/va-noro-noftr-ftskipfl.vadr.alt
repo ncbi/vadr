@@ -1,7 +1,7 @@
-#      seq                                         ftr   ftr   ftr  alert           alert                       alert 
-#idx   name                             model      type  name  idx  code      fail  desc                        detail
-#----  -------------------------------  ---------  ----  ----  ---  --------  ----  --------------------------  ------
-3.1.1  NC_001959.2/6900-6979-bad-start  NC_001959  CDS   VP2     6  mutstart  yes   MUTATION_AT_START           expected start codon could not be identified [AAG starting at position 51 on + strand is not a valid start]
+#      seq                                         ftr   ftr   ftr  alert           alert                            seq  seq           mdl  mdl  alert 
+#idx   name                             model      type  name  idx  code      fail  description                   coords  len        coords  len  detail
+#----  -------------------------------  ---------  ----  ----  ---  --------  ----  --------------------------  --------  ---  ------------  ---  ------
+3.1.1  NC_001959.2/6900-6979-bad-start  NC_001959  CDS   VP2     6  mutstart  yes   MUTATION_AT_START           51..53:+    3  6950..6952:+    3  expected start codon could not be identified [AAG]
 #
-4.1.1  NC_001959.2/6900-6978-bad-start  NC_001959  -     -       -  ftskipfl  yes   UNREPORTED_FEATURE_PROBLEM  only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
-4.2.1  NC_001959.2/6900-6978-bad-start  NC_001959  CDS   VP2     6  mutstart  yes   MUTATION_AT_START           expected start codon could not be identified [AAG starting at position 51 on + strand is not a valid start]
+4.1.1  NC_001959.2/6900-6978-bad-start  NC_001959  -     -       -  ftskipfl  yes   UNREPORTED_FEATURE_PROBLEM         -    -             -    -  only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
+4.2.1  NC_001959.2/6900-6978-bad-start  NC_001959  CDS   VP2     6  mutstart  yes   MUTATION_AT_START           51..53:+    3  6950..6952:+    3  expected start codon could not be identified [AAG]

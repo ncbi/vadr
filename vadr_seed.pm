@@ -377,25 +377,6 @@ sub parse_blastn_results {
           $cur_H{$key} = $value;
         } 
       }
-      elsif($key eq "QRANGE") { 
-        # we don't require all of QACC, HACC, HSP, BITSCORE and STRAND even though we should have them
-        # sometimes we don't (may be a bug in parse-blastn.pl), we only require QACC
-        if(! defined $cur_H{"QACC"}) { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QACC line (line: $line_idx)\n", 1, $FH_HR);
-        }
-        if($value eq "..") { # special case, no hits, silently move on
-          ;
-        }
-        elsif(! defined $cur_H{"BITSCORE"}) { # special case, no BITSCORE lines yet seen (may be a bug in parse-blastn.pl?), silently move on
-          ;
-        }
-        elsif($value =~ /^(\d+)..(\d+)$/) { 
-          ($cur_H{"QRANGESTART"}, $cur_H{"QRANGESTOP"}) = ($1, $2);
-        }
-        else { 
-          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastn summary QRANGE line $line", 1, $FH_HR);
-        }
-      }
       elsif($key eq "SRANGE") { 
         # we don't require all of QACC, HACC, HSP, BITSCORE and STRAND even though we should have them
         # sometimes we don't (may be a bug in parse-blastn.pl), we only require QACC
@@ -408,12 +389,31 @@ sub parse_blastn_results {
         elsif(! defined $cur_H{"BITSCORE"}) { # special case, no BITSCORE lines yet seen (may be a bug in parse-blastn.pl?), silently move on
           ;
         }
-        elsif(($value =~ /^(\d+)..(\d+)$/) && ($cur_H{"BITSCORE"} >= $min_bitsc)) { 
+        elsif($value =~ /^(\d+)..(\d+)$/) { 
           ($cur_H{"SRANGESTART"}, $cur_H{"SRANGESTOP"}) = ($1, $2);
+        }
+        else { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, unable to parse blastn summary QRANGE line $line", 1, $FH_HR);
+        }
+      }
+      elsif($key eq "QRANGE") { 
+        # we don't require all of QACC, HACC, HSP, BITSCORE and STRAND even though we should have them
+        # sometimes we don't (may be a bug in parse-blastn.pl), we only require QACC
+        if(! defined $cur_H{"QACC"}) { 
+          ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QACC line (line: $line_idx)\n", 1, $FH_HR);
+        }
+        if($value eq "..") { # special case, no hits, silently move on
+          ;
+        }
+        elsif(! defined $cur_H{"BITSCORE"}) { # special case, no BITSCORE lines yet seen (may be a bug in parse-blastn.pl?), silently move on
+          ;
+        }
+        elsif(($value =~ /^(\d+)..(\d+)$/) && ($cur_H{"BITSCORE"} >= $min_bitsc)) { 
+          ($cur_H{"QRANGESTART"}, $cur_H{"QRANGESTOP"}) = ($1, $2);
 
           # output data in cmscan --trmF3 format
-          if((! defined $cur_H{"QRANGESTART"}) || (! defined $cur_H{"QRANGESTOP"})) { 
-            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before QRANGE line (line: $line_idx)\n", 1, $FH_HR);
+          if((! defined $cur_H{"SRANGESTART"}) || (! defined $cur_H{"SRANGESTOP"})) { 
+            ofile_FAIL("ERROR in $sub_name, reading $blastn_summary_file, read $key line before SRANGE line (line: $line_idx)\n", 1, $FH_HR);
           }
           my $cur_seq_name  = $cur_H{"QACC"};
           my $cur_seq_len   = $seq_len_HR->{$cur_seq_name}; # we checked this is defined when we read QACC line

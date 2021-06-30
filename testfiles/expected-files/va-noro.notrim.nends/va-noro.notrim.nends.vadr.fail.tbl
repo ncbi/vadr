@@ -12,9 +12,9 @@
 			protein_id	NC_001959/6890-7500-cds-first-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (VP1) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
-ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]
-ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18 > 5 (strand:+ CM:61 blastx:79)]
+ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
+ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18>5]; seq-coords:61..78:+; mdl-coords:6950..6950:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-final-18-Ns
 <1	61	gene
 			gene	ORF2
@@ -29,8 +29,8 @@ ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not exten
 			protein_id	NC_001959/6890-7500-cds-final-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (VP2) final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
-ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17 > 5 (strand:+ CM:611 blastx:594, no valid stop codon in CM prediction)]
+ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17>5, no valid stop codon in nucleotide-based prediction]; seq-coords:595..611:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-first-and-final-18-Ns
 <1	61	gene
 			gene	ORF2
@@ -45,8 +45,8 @@ ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend 
 			protein_id	NC_001959/6890-7500-cds-first-and-final-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (VP1) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 60]
-ERROR: N_AT_CDS_END: (VP2) final nucleotide of CDS is an N [final 18 positions are Ns, final non-N is position 593]
-ERROR: N_AT_CDS_START: (VP2) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 79]
-ERROR: INDEFINITE_ANNOTATION_END: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17 > 5 (strand:+ CM:611 blastx:594, no valid stop codon in CM prediction)]
-ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18 > 5 (strand:+ CM:61 blastx:79)]
+ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
+ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
+ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17>5, no valid stop codon in nucleotide-based prediction]; seq-coords:595..611:+; mdl-coords:7588..7588:+; mdl:NC_001959;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18>5]; seq-coords:61..78:+; mdl-coords:6950..6950:+; mdl:NC_001959;
