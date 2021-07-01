@@ -5051,12 +5051,12 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
   $line = <IN>; $line_ctr++;
   chomp $line;
-  if($line =~ m/^\s+cannot read format/) { 
+  if($line =~ m/^\s+cannot read.*format/) { 
     $line = <IN>; $line_ctr++;
     chomp $line;
   }
   if($line !~ m/^Query/) { 
-    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, fourth line did not start with \"Query\"\n", 1, $FH_HR);
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, fourth line did not start with \"Query\" (nor did it contain 'cannot read.*format')\n", 1, $FH_HR);
   }
 
   my $mdl_name;    # name of single target seq
