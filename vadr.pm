@@ -5051,7 +5051,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
   $line = <IN>; $line_ctr++;
   chomp $line;
-  if($line =~ m/^\s+cannot read.*format/) { 
+  while(($line !~ m/^Query/) && ($line =~ m/^\s+cannot read.*format/)) { 
     $line = <IN>; $line_ctr++;
     chomp $line;
   }
