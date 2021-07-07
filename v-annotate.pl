@@ -6371,7 +6371,6 @@ sub add_protein_validation_alerts {
               printf("HEYA p_hstart: $p_hstart\n");
               printf("HEYA p_hstop:  $p_hstop\n");
 
-
               # determine if the query is a full length sequence, or a fetched sequence feature:
               ($p_qseq_name, $p_qftr_idx, $p_qlen, $p_ftr_scoords) = helper_protein_validation_breakdown_source($p_query, $seq_len_HR, $FH_HR); 
               if($p_qseq_name ne $seq_name) { 
@@ -6752,6 +6751,7 @@ sub parse_blastx_results {
   my $do_xnoid   = opt_Get("--xnoid", $opt_HHR);
   my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
+  my $q_coords   = undef; # coordinates of of query sequence, parsed from QACC line
   my $q_ftr_idx  = undef; # feature index query pertains to [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (subject) pertains to [0..$nftr-1]
   my %cur_H = (); # values for current hit (HSP)
@@ -6797,7 +6797,7 @@ sub parse_blastx_results {
         $cur_H{$key} = $value;
         # determine what sequence it is
         my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
-        ($seq_name, $q_ftr_type_idx, $q_len, undef) = helper_protein_validation_breakdown_source($value, $seq_len_HR, $FH_HR); 
+        ($seq_name, $q_ftr_type_idx, $q_len, $q_coords) = helper_protein_validation_breakdown_source($value, $seq_len_HR, $FH_HR); 
         # helper_protein_validation_breakdown_source() will die if $query is unparseable
         # determine what feature this query corresponds to
         $q_ftr_idx = ($q_ftr_type_idx eq "") ? -1 : $ftr_type_idx2ftr_idx_H{$q_ftr_type_idx};
@@ -7017,7 +7017,12 @@ sub parse_blastx_results {
                   my $first_qstop = $cur_H{"QSTOP"};
                   $first_qstop =~ s/\;.*$//; # remove first ';' and anything after it
                   if($q_ftr_idx != -1) { # query is a feature, not the full sequence, so we need to determine coords in full seq
-                    $first_qstop = vdr_CoordsRelativeToAbsolute("1.." . $seq_len_HR->{$seq_name} . ":+", $first_qstop, $FH_HR);
+                    if(defined $q_coords) { # $q_coords should be defined but this is just a sanity check
+                      $first_qstop = vdr_CoordsRelativeToAbsolute($q_coords, $first_qstop, $FH_HR);
+                    }
+                    else { 
+                      $first_qstop = "-"
+                    }
                   }
                   my $first_hstop = $cur_H{"HSTOP"};
                   $first_hstop =~ s/\;.*$//; # remove first ';' and anything after it
