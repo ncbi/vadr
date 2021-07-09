@@ -4,7 +4,7 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs4 FS.1 seq_coords:1..4:+; mdl_coords: 11..13:+; length:4; inserts:S:4(1),M:13; deletes:none; frame:1, dominant:2; avgpp:0.525;
+#=GS ENTOY100A-3-fs4 FS.1 seq_coords:1..4:+; mdl_coords: 11..13:+; length:4; inserts:S:4(1),M:13; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.525;
 
 ENTOY100A-3-fs4         ATGCGTGATCGCTTTACCATAA
 #=GR ENTOY100A-3-fs4 PP 6654******************
@@ -21,7 +21,7 @@ ENTOY100A-3-fs4         ATGCGTGATCGCTTTACCATAA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs7 FS.1 seq_coords:1..5:+; mdl_coords: 14..19:+; length:5; inserts:none; deletes:S:5,M:19(1); frame:1, dominant:3; avgpp:0.910;
+#=GS ENTOY100A-3-fs7 FS.1 seq_coords:1..5:+; mdl_coords: 14..19:+; length:5; inserts:none; deletes:S:5,M:19(1); shifted_frame:1; dominant_frame:3; avgpp:0.910;
 
 ENTOY100A-3-fs7         GTGAT-GCTTTACCATAA
 #=GR ENTOY100A-3-fs7 PP **998.8***********
@@ -38,7 +38,7 @@ ENTOY100A-3-fs7         GTGAT-GCTTTACCATAA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs8 FS.1 seq_coords:1..4:+; mdl_coords: 15..19:+; length:4; inserts:none; deletes:S:4,M:19(1); frame:3, dominant:2; avgpp:0.894;
+#=GS ENTOY100A-3-fs8 FS.1 seq_coords:1..4:+; mdl_coords: 15..19:+; length:4; inserts:none; deletes:S:4,M:19(1); shifted_frame:3; dominant_frame:2; avgpp:0.894;
 
 ENTOY100A-3-fs8         TGAT-GCTTTACCATAA
 #=GR ENTOY100A-3-fs8 PP *998.8***********

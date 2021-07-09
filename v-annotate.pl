@@ -1791,8 +1791,10 @@ if($do_pv_blastx) {
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
+        printf("0START\n");
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
+        printf("0DONE\n");
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
     }
@@ -4954,6 +4956,7 @@ sub add_frameshift_alerts_for_one_sequence {
               # note: if $is_3p == 1, $is_5p == 0 
               # (b/c for $is_5p to be 1, cur_frame == $dominant_frame and
               #      for $is_3p to be 1, cur_frame != $dominant_frame)
+              my $shifted_frame = undef; # will save shifted frame for alert output
 
               # determine $span_sstart: the first position of the non-dominant frame subseq
               if(defined $prv_dom_sstop) { 
@@ -4976,12 +4979,14 @@ sub add_frameshift_alerts_for_one_sequence {
                 $span_sstop = $ftr_sstop;
                 $span_mstop = $ftr_mstop;
                 $is_3p = 1; 
+                $shifted_frame = $cur_frame;
               }
               else { 
                 # (case 1) previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
                 # is 1 nt 5' of start of current frame token
                 $span_sstop = ($ftr_strand eq "+") ? $cur_sstart - 1 : $cur_sstart + 1;
                 $span_mstop = ($ftr_strand eq "+") ? $cur_mstart - 1 : $cur_mstart + 1;
+                $shifted_frame = $prv_frame;
               }
               $span_slen = abs($span_sstop - $span_sstart) + 1;
               $span_mlen = abs($span_mstop - $span_mstart) + 1;
@@ -5001,7 +5006,7 @@ sub add_frameshift_alerts_for_one_sequence {
                   $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                  $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
+                  $alt_str .= sprintf(" shifted_frame:%s; dominant_frame:%s;", $shifted_frame, $dominant_frame);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
@@ -5032,7 +5037,7 @@ sub add_frameshift_alerts_for_one_sequence {
                     $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                    $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
+                    $alt_str .= sprintf(" shifted_frame:%s; dominant_frame:%s;", $shifted_frame, $dominant_frame);
                     $alt_str .= sprintf(" avgpp:%.3f;", $span_avgpp);
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
@@ -6284,6 +6289,7 @@ sub add_protein_validation_alerts {
     for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       %{$xmaxins_exc_AH[$ftr_idx]} = ();
       %{$xmaxdel_exc_AH[$ftr_idx]} = ();
+
       vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxins_exc", \%{$xmaxins_exc_AH[$ftr_idx]}, $FH_HR);
       vdr_FeaturePositionSpecificValueBreakdown($ftr_info_AHR, $ftr_idx, "xmaxdel_exc", \%{$xmaxdel_exc_AH[$ftr_idx]}, $FH_HR);
     }
@@ -6365,6 +6371,8 @@ sub add_protein_validation_alerts {
               if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
               if(defined $ftr_results_HR->{"p_hstart"})  { $p_hstart  = $ftr_results_HR->{"p_hstart"}; }
               if(defined $ftr_results_HR->{"p_hstop"})   { $p_hstop   = $ftr_results_HR->{"p_hstop"};   }
+              printf("HEYA p_hstart: $p_hstart\n");
+              printf("HEYA p_hstop:  $p_hstop\n");
 
               # determine if the query is a full length sequence, or a fetched sequence feature:
               ($p_qseq_name, $p_qftr_idx, $p_qlen, $p_ftr_scoords) = helper_protein_validation_breakdown_source($p_query, $seq_len_HR, $FH_HR); 
@@ -6377,6 +6385,7 @@ sub add_protein_validation_alerts {
 
             # add alerts as needed:
             # check for indfantp
+            printf("1A\n");
             if((! defined $n_start) && (defined $p_qstart) && (defined $p_score))  { 
               # no nucleotide-based prediction but there is a protein-based blastx prediction
               # only add this if length meets our minimum
@@ -6387,8 +6396,15 @@ sub add_protein_validation_alerts {
                   $alt_mcoords = "mdl:";
                   if((defined $p_hstart) && (defined $p_hstop)) { 
                     # get subject nucleotide coords
-                    $alt_mcoords .= vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
-                                                                        vdr_CoordsSegmentCreate($p_hstart, $p_hstop, $p_strand, $FH_HR), $FH_HR) . ";";
+                    # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
+                    my $tmp_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"},
+                                                                              vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
+                    if($p_strand eq "+") { # just append
+                      $alt_mcoords .= $tmp_alt_mcoords . ";";
+                    }
+                    else { # append rev comp
+                      $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
+                    }
                   }
                   else { 
                     $alt_mcoords .= "VADRNULL;";
@@ -6418,6 +6434,7 @@ sub add_protein_validation_alerts {
                   $cur_3aln_tol = $aln_tol;
                 }
               }
+              printf("1B\n");
 
               # check for indfantn
               if(! defined $p_qstart) { 
@@ -6437,7 +6454,16 @@ sub add_protein_validation_alerts {
                   # first calculate model coords, this is calc'ed same way regardless of value of $p_blastx_feature_flag
                   $alt_mcoords = "mdl:";
                   if((defined $p_hstart) && (defined $p_hstop)) { 
-                    $alt_mcoords .= vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, $alt_coords_strand, $FH_HR), $FH_HR) . ";";
+                    printf("HEYA1\n");
+                    # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
+                    my $tmp_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
+                    if($alt_coords_strand eq "+") { # just append
+                      $alt_mcoords .= $tmp_alt_mcoords . ";";
+                    }
+                    else { # append rev comp
+                      $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
+                    }
+                    printf("HEYA2\n");
                   }
                   else { 
                     $alt_mcoords .= "VADRNULL;";
@@ -6456,6 +6482,7 @@ sub add_protein_validation_alerts {
                     $alt_scoords .= vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $alt_coords_strand, $FH_HR) . ";";
                   }
                   $alt_str_H{"indfstrp"} = $alt_scoords . $alt_mcoords . "VADRNULL";
+                  printf("1C\n");
                 }
                 else { 
                   # we have both $n_start and $p_qstart and predictions on the same strand
@@ -6476,6 +6503,7 @@ sub add_protein_validation_alerts {
                     $p_sstop  = $p_qstop;
                   }
                   # check for 'indf5plg': only for non-feature seqs, blastx alignment extends outside of nucleotide/CM alignment on 5' end
+                  printf("1D\n");
                   if((! $p_blastx_feature_flag) && 
                      ((($n_strand eq "+") && ($p_sstart < $n_start)) || 
                       (($n_strand eq "-") && ($p_sstart > $n_start)))) { 
@@ -6726,6 +6754,7 @@ sub parse_blastx_results {
   my $do_xnoid   = opt_Get("--xnoid", $opt_HHR);
   my $seq_name   = undef; # sequence name this hit corresponds to 
   my $q_len      = undef; # length of query sequence
+  my $q_coords   = undef; # coordinates of of query sequence, parsed from QACC line
   my $q_ftr_idx  = undef; # feature index query pertains to [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (subject) pertains to [0..$nftr-1]
   my %cur_H = (); # values for current hit (HSP)
@@ -6771,7 +6800,7 @@ sub parse_blastx_results {
         $cur_H{$key} = $value;
         # determine what sequence it is
         my $q_ftr_type_idx; # feature type and index string, from $seq_name if not a full sequence (e.g. "CDS.4")
-        ($seq_name, $q_ftr_type_idx, $q_len, undef) = helper_protein_validation_breakdown_source($value, $seq_len_HR, $FH_HR); 
+        ($seq_name, $q_ftr_type_idx, $q_len, $q_coords) = helper_protein_validation_breakdown_source($value, $seq_len_HR, $FH_HR); 
         # helper_protein_validation_breakdown_source() will die if $query is unparseable
         # determine what feature this query corresponds to
         $q_ftr_idx = ($q_ftr_type_idx eq "") ? -1 : $ftr_type_idx2ftr_idx_H{$q_ftr_type_idx};
@@ -6954,6 +6983,7 @@ sub parse_blastx_results {
                 }
               }
               if($x_true || $y_true || $z_true) { 
+                printf("HEYA cur_H{RAWSCORE}: " . $cur_H{"RAWSCORE"} . "\n");
                 # store the hit
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstart"} = $blast_qstart;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstop"}  = $blast_qstop;
@@ -6990,7 +7020,12 @@ sub parse_blastx_results {
                   my $first_qstop = $cur_H{"QSTOP"};
                   $first_qstop =~ s/\;.*$//; # remove first ';' and anything after it
                   if($q_ftr_idx != -1) { # query is a feature, not the full sequence, so we need to determine coords in full seq
-                    $first_qstop = vdr_CoordsRelativeToAbsolute("1.." . $seq_len_HR->{$seq_name} . ":+", $first_qstop, $FH_HR);
+                    if(defined $q_coords) { # $q_coords should be defined but this is just a sanity check
+                      $first_qstop = vdr_CoordsRelativeToAbsolute($q_coords, $first_qstop, $FH_HR);
+                    }
+                    else { 
+                      $first_qstop = "-"
+                    }
                   }
                   my $first_hstop = $cur_H{"HSTOP"};
                   $first_hstop =~ s/\;.*$//; # remove first ';' and anything after it
@@ -7296,8 +7331,13 @@ sub parse_hmmer_domtblout {
       #print("\t\t\thmmer_orf_nt_coords: $hmmer_orf_nt_coords (nt)\n");
 
       # convert hmmer env amino acid coordinates from relative aa coords within $hmmer_orf_nt_coords to absolute coords (1..seqlen)
-      my $env_aa_coords = sprintf("%d..%d:%s", $env_from, $env_to, ($env_from < $env_to) ? "+" : "-");
+      my $env_aa_strand = ($env_from < $env_to) ? "+" : "-";
+      # always set protein coords to +, vdr_CoordsProteinRelativeToAbsolute() requires it, we revcomp afterwards if necessary
+      my $env_aa_coords = ($env_aa_strand eq "+") ? sprintf("%d..%d:+", $env_from, $env_to) : sprintf("%d..%d:+", $env_to, $env_from);
       my $hmmer_env_nt_coords  = vdr_CoordsProteinRelativeToAbsolute($hmmer_orf_nt_coords, $env_aa_coords, $FH_HR);
+      if($env_aa_strand eq "-") { # rev comp
+        $hmmer_env_nt_coords = vdr_CoordsReverseComplement($hmmer_env_nt_coords, 0, $FH_HR); # 0: don't do carrots
+      }
 
       #print("\t\t\tseq_source_len_nt:   $seq_source_len_nt\n");
       #print("\t\t\torf_coords:          $orf_coords\n");

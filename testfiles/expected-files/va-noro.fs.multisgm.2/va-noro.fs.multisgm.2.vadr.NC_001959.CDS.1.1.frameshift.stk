@@ -4,7 +4,7 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1/1-50 FS.1 seq_coords:5..17:+; mdl_coords: 5..15:+; length:13; inserts:S:16..17(2),M:15; deletes:none; frame:1, dominant:3; avgpp:0.844;
+#=GS NC_001959.2-manually-added-frameshifts-1/1-50 FS.1 seq_coords:5..17:+; mdl_coords: 5..15:+; length:13; inserts:S:16..17(2),M:15; deletes:none; shifted_frame:1; dominant_frame:3; avgpp:0.844;
 
 NC_001959.2-manually-added-frameshifts-1/1-50         ATGATGATGGCCCGTCAAAAGACGTCGTTCCTACTGCTGCTAGCAG
 #=GR NC_001959.2-manually-added-frameshifts-1/1-50 PP *********95449********************************
@@ -22,7 +22,7 @@ NC_001959.2-manually-added-frameshifts-1/1-50         ATGATGATGGCCCGTCAAAAGACGTC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1/30-200 FS.1 seq_coords:1..36:+; mdl_coords: 28..62:+; length:36; inserts:S:36(1),M:62; deletes:none; frame:2, dominant:3; avgpp:0.944;
+#=GS NC_001959.2-manually-added-frameshifts-1/30-200 FS.1 seq_coords:1..36:+; mdl_coords: 28..62:+; length:36; inserts:S:36(1),M:62; deletes:none; shifted_frame:2; dominant_frame:3; avgpp:0.944;
 
 NC_001959.2-manually-added-frameshifts-1/30-200         CGTTCCTACTGCTGCTAGCAGTGAAAATGCTAACAAACAATAGTAGTATTAAGTCTCGTCTATTGGCGAGACTCAAGGGTTCAGGTGGGGCTACGTCCCCACCCAACTCGATAAAGATAACCAACCAAGATATGGCTCTGGGGCTGATTGGACAGGTCCCAGCGCCAAAGG
 #=GR NC_001959.2-manually-added-frameshifts-1/30-200 PP *********************************96369*************************************************************************************************************************************
@@ -40,7 +40,7 @@ NC_001959.2-manually-added-frameshifts-1/30-200         CGTTCCTACTGCTGCTAGCAGTGA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-2/30-80 FS.1 seq_coords:24..37:+; mdl_coords: 53..66:+; length:14; inserts:S:24..25(2),M:52; deletes:S:37,M:65..66(2); frame:2, dominant:3; avgpp:0.775;
+#=GS NC_001959.2-manually-added-frameshifts-2/30-80 FS.1 seq_coords:24..37:+; mdl_coords: 53..66:+; length:14; inserts:S:24..25(2),M:52; deletes:S:37,M:65..66(2); shifted_frame:2; dominant_frame:3; avgpp:0.775;
 
 NC_001959.2-manually-added-frameshifts-2/30-80         TTCCTACTGCTGCTAGCAGTGAAAAAATGCTAACAAC--TAGTAGTATTAAGT
 #=GR NC_001959.2-manually-added-frameshifts-2/30-80 PP ********************98622679******987..78************
@@ -58,7 +58,7 @@ NC_001959.2-manually-added-frameshifts-2/30-80         TTCCTACTGCTGCTAGCAGTGAAAA
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-2/1000-1500 FS.1 seq_coords:1..13:+; mdl_coords: 1002..1012:+; length:13; inserts:S:12..13(2),M:1012; deletes:none; frame:3, dominant:2; avgpp:0.898;
+#=GS NC_001959.2-manually-added-frameshifts-2/1000-1500 FS.1 seq_coords:1..13:+; mdl_coords: 1002..1012:+; length:13; inserts:S:12..13(2),M:1012; deletes:none; shifted_frame:3; dominant_frame:2; avgpp:0.898;
 
 NC_001959.2-manually-added-frameshifts-2/1000-1500         TGGTGTCGCGGAACCATTTAAAGATCTTCTGGGTAAGCTCAAACCCTTGAACGTGCTTAACTTACTTTCAAACTGTGATTGGACGTTCATGGGGGTCGTGGAGATGGTGGTCCTCCTTTTAGAACTCTTTGGAATCTTTTGGAACCCACCTGATGTTTCCAACTTTATAGCTTCACTCCTGCCAGATTTCCATCTACAGG
 #=GR NC_001959.2-manually-added-frameshifts-2/1000-1500 PP *********986689*****************************************************************************************************************************************************************************************
