@@ -4956,6 +4956,7 @@ sub add_frameshift_alerts_for_one_sequence {
               # note: if $is_3p == 1, $is_5p == 0 
               # (b/c for $is_5p to be 1, cur_frame == $dominant_frame and
               #      for $is_3p to be 1, cur_frame != $dominant_frame)
+              my $shifted_frame = undef; # will save shifted frame for alert output
 
               # determine $span_sstart: the first position of the non-dominant frame subseq
               if(defined $prv_dom_sstop) { 
@@ -4978,12 +4979,14 @@ sub add_frameshift_alerts_for_one_sequence {
                 $span_sstop = $ftr_sstop;
                 $span_mstop = $ftr_mstop;
                 $is_3p = 1; 
+                $shifted_frame = $cur_frame;
               }
               else { 
                 # (case 1) previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
                 # is 1 nt 5' of start of current frame token
                 $span_sstop = ($ftr_strand eq "+") ? $cur_sstart - 1 : $cur_sstart + 1;
                 $span_mstop = ($ftr_strand eq "+") ? $cur_mstart - 1 : $cur_mstart + 1;
+                $shifted_frame = $prv_frame;
               }
               $span_slen = abs($span_sstop - $span_sstart) + 1;
               $span_mlen = abs($span_mstop - $span_mstart) + 1;
@@ -5003,7 +5006,7 @@ sub add_frameshift_alerts_for_one_sequence {
                   $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                  $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
+                  $alt_str .= sprintf(" shifted-frame:%s,dominant-frame:%s;", $shifted_frame, $dominant_frame);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
@@ -5034,7 +5037,7 @@ sub add_frameshift_alerts_for_one_sequence {
                     $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                    $alt_str .= sprintf(" frame:%s, dominant:%s;", $prv_frame, $dominant_frame);
+                    $alt_str .= sprintf(" shifted-frame:%s,dominant-frame:%s;", $shifted_frame, $dominant_frame);
                     $alt_str .= sprintf(" avgpp:%.3f;", $span_avgpp);
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
