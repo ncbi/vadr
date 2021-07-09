@@ -649,7 +649,7 @@ if(! opt_Get("--keep", \%opt_HH)) {
   }
 }
 # index the new file
-my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file";
+my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file > /dev/null";
 utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
