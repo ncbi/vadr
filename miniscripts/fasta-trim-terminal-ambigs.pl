@@ -51,10 +51,6 @@ my $do_strict       = 0;
              "sfx=s"    => \$sfx, 
              "strict"   => \$do_strict);
 
-if(scalar(@ARGV) != 1) { 
-  die $usage;
-}
-
 if(scalar(@ARGV) != 1) { die $usage; }
 my ($fasta_file) = @ARGV;
 
