@@ -6744,7 +6744,8 @@ sub parse_blastx_results {
   if($ncds == 0) { 
     ofile_FAIL("ERROR in $sub_name, unable to find a CDS in model info, no need for blastx steps...", 1, $FH_HR);
   }
-  my $ftr_idx_lone_cds = ($ncds == 1) ? $ftr_type_idx2ftr_idx_H{"CDS.1"} : -1;
+  my $ftr_idx_lone_cds    = ($ncds == 1) ? $ftr_type_idx2ftr_idx_H{"CDS.1"} : -1;
+  my $ftr_strand_lone_cds = ($ncds == 1) ? vdr_FeatureSummaryStrand($ftr_info_AHR->[$ftr_idx_lone_cds]{"coords"}, $FH_HR) : undef;
 
   open(IN, $blastx_summary_file) || ofile_FileOpenFailure($blastx_summary_file, $sub_name, $!, "reading", $FH_HR);
   
@@ -6757,6 +6758,7 @@ sub parse_blastx_results {
   my $q_coords   = undef; # coordinates of of query sequence, parsed from QACC line
   my $q_ftr_idx  = undef; # feature index query pertains to [0..$nftr-1] OR -1: a special case meaning query is full sequence (not a fetched CDS feature)
   my $t_ftr_idx  = undef; # feature index target (subject) pertains to [0..$nftr-1]
+  my $t_strand   = undef; # summary strand of feature $t_ftr_idx
   my %cur_H = (); # values for current hit (HSP)
   
   # 
@@ -6816,11 +6818,12 @@ sub parse_blastx_results {
         # determine what feature it is, unless we only have 1 CDS in which case we assume it's that 1 CDS
         if($ftr_idx_lone_cds != -1) { 
           $t_ftr_idx = $ftr_idx_lone_cds;
+          $t_strand  = $ftr_strand_lone_cds;
         }
         elsif($value =~ /(\S+)\/(\S+)/) { 
           my ($accn, $coords) = ($1, $2);
           # find it in @{$ftr_info_AHR} (or set to lone CDS if there is only 1
-          $t_ftr_idx = helper_protein_validation_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+          ($t_ftr_idx, $t_strand) = helper_protein_validation_db_seqname_to_ftr_idx($value, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
         }
         else {
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse HACC line $line", 1, $FH_HR);
@@ -6992,6 +6995,31 @@ sub parse_blastx_results {
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_query"}  = $cur_H{"QACC"};
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_score"}  = $cur_H{"RAWSCORE"};
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"}  = $cur_H{"FRAME"};
+                # p_strand is actually complicated to set:
+                # if q_ftr_idx == -1, query is the full sequence in which case we use blast_strand from output
+                # if q_ftr_idx != -1, query is a single CDS so blast_strand will be + if same strand as target, - if opposite 
+                if($q_ftr_idx == -1) { 
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $blast_strand;
+                }
+                else { 
+                  # query is a single CDS, if blast_strand is "+" this means that it agrees with 
+                  # strand of the CDS, if blast_strand is "-" then it disagrees
+                  if(! defined $t_strand) { 
+                    ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to set strand of hit because t_strand is undef", 1, $FH_HR);
+                  }
+                  if($blast_strand eq "+") { 
+                    $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = $t_strand;
+                  } 
+                  elsif($t_strand eq "+") { # blast_strand is "-"
+                    $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = "-";
+                  }
+                  elsif($t_strand eq "-") { # blast_strand is "-"
+                    $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = "+";
+                  }
+                  else { # blast_strand is "-", t_strand is not "+" or "-", should be "?"
+                    $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_strand"} = "?";
+                  }
+                }
                 if(defined $cur_H{"INS"}) { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_ins"} = $cur_H{"INS"};
                 }
@@ -7250,7 +7278,7 @@ sub parse_hmmer_domtblout {
         utl_Swap(\$orig_seq_name, \$mdl_name);
         utl_Swap(\$orig_seq_len,  \$mdl_len);
       }
-      $mdl_ftr_idx = helper_protein_validation_db_seqname_to_ftr_idx($mdl_name, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
+      ($mdl_ftr_idx, undef) = helper_protein_validation_db_seqname_to_ftr_idx($mdl_name, $ftr_info_AHR, $FH_HR); # will die if problem parsing $target, or can't find $t_ftr_idx
 
       # further parse some of the tokens
       my ($seq_ftr_type_idx, $seq_len, $source_coords, $source_val);
@@ -7698,7 +7726,9 @@ sub helper_blastx_max_indel_token_to_alt_coords {
 #  $ftr_info_AHR:   ref to the feature info array of hashes 
 #  $FH_HR:          ref to hash of file handles
 #
-# Returns:    <$ftr_idx>
+# Returns:    Two values:
+#             <$ftr_idx>:    index of matching feature
+#             <$ftr_strand>: summary strand of feature <$ftr_idx>
 #
 # Dies:       If we find zero features that match to this sequence
 #             If we find more than 1 features that match to this sequence
@@ -7714,10 +7744,12 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
   my $nftr = scalar(@{$ftr_info_AHR});
 
   my $ret_ftr_idx = undef;
+  my $ret_strand  = undef;
 
   if($blastx_seqname =~ /(\S+)\/(\S+)/) { 
     my ($accn, $coords) = ($1, $2);
     # find it in @{$ftr_info_AHR->{"coords"}}
+    $ret_strand = vdr_FeatureSummaryStrand($coords, $FH_HR);
     for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
       if(($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS")) { 
         if($ftr_info_AHR->[$ftr_idx]{"coords"} eq $coords) { 
@@ -7736,7 +7768,7 @@ sub helper_protein_validation_db_seqname_to_ftr_idx {
     ofile_FAIL("ERROR in $sub_name, unable to parse blastx db sequence name $blastx_seqname", 1, $FH_HR); 
   }
 
-  return $ret_ftr_idx;
+  return ($ret_ftr_idx, $ret_strand);
 }
 
 #################################################################
@@ -9051,7 +9083,7 @@ sub output_tabular {
                 if($s_coords_str ne "") { $s_coords_str .= ","; }
                 if($m_coords_str ne "") { $m_coords_str .= ","; }
                 $s_coords_str .= $sgm_sstart . ".." . $sgm_sstop . ":" . $sgm_strand;
-                $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":+"; # always positive
+                $m_coords_str .= $sgm_mstart . ".." . $sgm_mstop . ":" . $sgm_strand;
                 $ftr_len_by_sgm += abs($sgm_sstart - $sgm_sstop) + 1;
                 
                 if(($sgm_nprinted == 0) && ((scalar(@data_sgm_AA) > 0) || (! $do_headers))) { 
