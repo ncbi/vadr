@@ -6063,7 +6063,6 @@ sub add_low_similarity_alerts_for_one_sequence {
                     #printf("is_start: $is_start, is_end: $is_end, length: $length\n");
                     # for 5'/3'/internal cases: only actually report an alert for non-CDS and non-MP features
                     # because CDS and MP are independently validated by blastx (unless --pv_skip)
-                    printf("HEYA overlap_reg: $overlap_reg\n");
                     my ($soverlap_start, $soverlap_stop, $alt_scoords, $alt_mcoords);
                     if($overlap_reg =~ /^(\d+)\-(\d+)$/) { 
                       $soverlap_start = ($f_strand eq "+") ? $1 : $2;
@@ -6371,8 +6370,6 @@ sub add_protein_validation_alerts {
               if(defined $ftr_results_HR->{"p_score"})   { $p_score   = $ftr_results_HR->{"p_score"};   }
               if(defined $ftr_results_HR->{"p_hstart"})  { $p_hstart  = $ftr_results_HR->{"p_hstart"}; }
               if(defined $ftr_results_HR->{"p_hstop"})   { $p_hstop   = $ftr_results_HR->{"p_hstop"};   }
-              printf("HEYA p_hstart: $p_hstart\n");
-              printf("HEYA p_hstop:  $p_hstop\n");
 
               # determine if the query is a full length sequence, or a fetched sequence feature:
               ($p_qseq_name, $p_qftr_idx, $p_qlen, $p_ftr_scoords) = helper_protein_validation_breakdown_source($p_query, $seq_len_HR, $FH_HR); 
@@ -6447,23 +6444,19 @@ sub add_protein_validation_alerts {
               else { 
                 # we have both $n_start and $p_qstart, we can compare CM and blastx predictions
 
-                # check for indfstrp: strand mismatch failure, differently depending on $p_blastx_feature_flag
-                if(((  $p_blastx_feature_flag) && ($p_strand eq "-")) || 
-                   ((! $p_blastx_feature_flag) && ($n_strand ne $p_strand))) { 
-                  my $alt_coords_strand = ($n_strand eq "+") ? "-" : "+";
+                # check for indfstrp: strand mismatch failure
+                if($n_strand ne $p_strand) { 
                   # first calculate model coords, this is calc'ed same way regardless of value of $p_blastx_feature_flag
                   $alt_mcoords = "mdl:";
                   if((defined $p_hstart) && (defined $p_hstop)) { 
-                    printf("HEYA1\n");
                     # always create in + strand first, vdr_CoordsProteinRelativeToAbsolute requires it
                     my $tmp_alt_mcoords = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$ftr_idx]{"coords"}, vdr_CoordsSegmentCreate($p_hstart, $p_hstop, "+", $FH_HR), $FH_HR);
-                    if($alt_coords_strand eq "+") { # just append
+                    if($p_strand eq "+") { # just append
                       $alt_mcoords .= $tmp_alt_mcoords . ";";
                     }
                     else { # append rev comp
                       $alt_mcoords .= vdr_CoordsReverseComplement($tmp_alt_mcoords, 0, $FH_HR) . ";"; # 0: don't do carrots
                     }
-                    printf("HEYA2\n");
                   }
                   else { 
                     $alt_mcoords .= "VADRNULL;";
@@ -6472,17 +6465,16 @@ sub add_protein_validation_alerts {
                   $alt_scoords = "seq:";
                   if($p_blastx_feature_flag) { 
                     if(defined $n_scoords) { 
-                      $alt_scoords .= vdr_CoordsRelativeToAbsolute($n_scoords, vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $alt_coords_strand, $FH_HR), $FH_HR) . ";";
+                      $alt_scoords .= vdr_CoordsRelativeToAbsolute($n_scoords, vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $p_strand, $FH_HR), $FH_HR) . ";";
                     }
                     else { 
                       $alt_scoords .= "VADRNULL;";
                     }
                   }
                   else { # $p_blastx_feature_flag is 0
-                    $alt_scoords .= vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $alt_coords_strand, $FH_HR) . ";";
+                    $alt_scoords .= vdr_CoordsSegmentCreate($p_qstart, $p_qstop, $p_strand, $FH_HR) . ";";
                   }
                   $alt_str_H{"indfstrp"} = $alt_scoords . $alt_mcoords . "VADRNULL";
-                  printf("1C\n");
                 }
                 else { 
                   # we have both $n_start and $p_qstart and predictions on the same strand
@@ -6986,7 +6978,6 @@ sub parse_blastx_results {
                 }
               }
               if($x_true || $y_true || $z_true) { 
-                printf("HEYA cur_H{RAWSCORE}: " . $cur_H{"RAWSCORE"} . "\n");
                 # store the hit
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstart"} = $blast_qstart;
                 $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_qstop"}  = $blast_qstop;
@@ -8681,7 +8672,6 @@ sub alert_add_ambgnt5s_ambgnt3s {
       my $pos_retval = pos($rev_sqstring); # returns position of first non-N/n in reversed string
       # if $pos_retval is undef entire sqstring is N or n
       my $nlen  = (defined $pos_retval) ? ($pos_retval-1) : $seq_len;
-      printf("HEYA nlen: $nlen\n");
       my $first_non_n = $seq_len - $nlen;
       my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(($seq_len - $nlen + 1), $seq_len, "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
@@ -9283,7 +9273,6 @@ sub output_tabular {
   my $sum_mdl_fail_ct    = 0;
   my $sum_mdl_noannot_ct = 0;
   foreach $mdl_name (@mdl_tbl_order_A) { 
-    printf("HEYA mdl_name: $mdl_name\n");
     if($mdl_cls_ct_HR->{$mdl_name} > 0) { 
       $mdl_tbl_idx++;
       $mdl_idx = $mdl_idx_H{$mdl_name};
@@ -11286,7 +11275,6 @@ sub parse_cdt_tblout_file_and_replace_ns {
     # replace this region. An alternative would be to replace to 
     # the end of the model, but I think that's too aggressive.
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
-      printf("HEYA in $sub_name, checking 3' end\n");
       #printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
