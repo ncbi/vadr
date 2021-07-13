@@ -5559,7 +5559,7 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
           $nline_tot++;
         }
         else { # a comment-line
-          if($seen_noncomment_line) {
+          if($seen_noncomment_line || $line eq "#") { 
             push(@data_AA, []);  # push empty array --> blank line 
             $nline++;
             $nline_tot++;
