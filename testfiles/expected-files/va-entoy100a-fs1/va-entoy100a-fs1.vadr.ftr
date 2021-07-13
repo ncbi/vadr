@@ -9,7 +9,7 @@
 1.6    ENTOY100A       100  PASS  ENTOY100A  CDS          protein_three       24    6   -1    +      67    95        -  no     0    0       -     -        -     -    2    0           67..79:+,85..95:+           67..79:+,85..95:+  -     
 1.7    ENTOY100A       100  PASS  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      67    75        -  no     0    0       -     -        -     -    1    0                    67..75:+                    67..75:+  -     
 1.8    ENTOY100A       100  PASS  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      76    92        -  no     0    0       -     -        -     -    2    0           76..79:+,85..92:+           76..79:+,85..92:+  -     
-1.9    ENTOY100A       100  PASS  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:+  -     
+1.9    ENTOY100A       100  PASS  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:-  -     
 1.10   ENTOY100A       100  PASS  ENTOY100A  ncRNA        enRNA               18   10   -1    +       5    22        -  no     0    0       -     -        -     -    1    0                     5..22:+                     5..22:+  -     
 1.11   ENTOY100A       100  PASS  ENTOY100A  stem_loop    stem_loop.1         10   11   -1    +      10    19        -  no     0    0       -     -        -     -    1    0                    10..19:+                    10..19:+  -     
 #
@@ -21,7 +21,7 @@
 2.6    ENTOY100A-fs1   101  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      68    96        -  no     0    0       -     -        -     -    2    0           68..80:+,86..96:+           67..79:+,85..95:+  -     
 2.7    ENTOY100A-fs1   101  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      68    76        -  no     0    0       -     -        -     -    1    0                    68..76:+                    67..75:+  -     
 2.8    ENTOY100A-fs1   101  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      77    93        -  no     0    0       -     -        -     -    2    0           77..80:+,86..93:+           76..79:+,85..92:+  -     
-2.9    ENTOY100A-fs1   101  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      99    85        -  no     0    0       -     -        -     -    1    0                    99..85:-                    98..84:+  -     
+2.9    ENTOY100A-fs1   101  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      99    85        -  no     0    0       -     -        -     -    1    0                    99..85:-                    98..84:-  -     
 2.10   ENTOY100A-fs1   101  FAIL  ENTOY100A  ncRNA        enRNA               19   10   -1    +       5    23        -  no     0    0       -     -        -     -    1    0                     5..23:+                     5..22:+  -     
 2.11   ENTOY100A-fs1   101  FAIL  ENTOY100A  stem_loop    stem_loop.1         11   11   -1    +      10    20        -  no     0    0       -     -        -     -    1    0                    10..20:+                    10..19:+  -     
 #
@@ -33,7 +33,7 @@
 3.6    ENTOY100A-fs2   105  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      72   100        -  no     0    0       -     -        -     -    2    0          72..84:+,90..100:+           67..79:+,85..95:+  -     
 3.7    ENTOY100A-fs2   105  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      72    80        -  no     0    0       -     -        -     -    1    0                    72..80:+                    67..75:+  -     
 3.8    ENTOY100A-fs2   105  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      81    97        -  no     0    0       -     -        -     -    2    0           81..84:+,90..97:+           76..79:+,85..92:+  -     
-3.9    ENTOY100A-fs2   105  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     103    89        -  no     0    0       -     -        -     -    1    0                   103..89:-                    98..84:+  -     
+3.9    ENTOY100A-fs2   105  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     103    89        -  no     0    0       -     -        -     -    1    0                   103..89:-                    98..84:-  -     
 3.10   ENTOY100A-fs2   105  FAIL  ENTOY100A  ncRNA        enRNA               23   10   -1    +       5    27        -  no     0    0       -     -        -     -    1    0                     5..27:+                     5..22:+  -     
 3.11   ENTOY100A-fs2   105  FAIL  ENTOY100A  stem_loop    stem_loop.1         15   11   -1    +      10    24        -  no     0    0       -     -        -     -    1    0                    10..24:+                    10..19:+  -     
 #
@@ -45,7 +45,7 @@
 4.6    ENTOY100A-fs3   103  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      70    98        -  no     0    0       -     -        -     -    2    0           70..82:+,88..98:+           67..79:+,85..95:+  -     
 4.7    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      70    78        -  no     0    0       -     -        -     -    1    0                    70..78:+                    67..75:+  -     
 4.8    ENTOY100A-fs3   103  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      79    95        -  no     0    0       -     -        -     -    2    0           79..82:+,88..95:+           76..79:+,85..92:+  -     
-4.9    ENTOY100A-fs3   103  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     101    87        -  no     0    0       -     -        -     -    1    0                   101..87:-                    98..84:+  -     
+4.9    ENTOY100A-fs3   103  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     101    87        -  no     0    0       -     -        -     -    1    0                   101..87:-                    98..84:-  -     
 4.10   ENTOY100A-fs3   103  FAIL  ENTOY100A  ncRNA        enRNA               21   10   -1    +       5    25        -  no     0    0       -     -        -     -    1    0                     5..25:+                     5..22:+  -     
 4.11   ENTOY100A-fs3   103  FAIL  ENTOY100A  stem_loop    stem_loop.1         11   11   -1    +      10    20        -  no     0    0       -     -        -     -    1    0                    10..20:+                    10..19:+  -     
 #
@@ -57,7 +57,7 @@
 5.6    ENTOY100A-fs4   106  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      73   101        -  no     0    0       -     -        -     -    2    0          73..85:+,91..101:+           67..79:+,85..95:+  -     
 5.7    ENTOY100A-fs4   106  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      73    81        -  no     0    0       -     -        -     -    1    0                    73..81:+                    67..75:+  -     
 5.8    ENTOY100A-fs4   106  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      82    98        -  no     0    0       -     -        -     -    2    0           82..85:+,91..98:+           76..79:+,85..92:+  -     
-5.9    ENTOY100A-fs4   106  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     104    90        -  no     0    0       -     -        -     -    1    0                   104..90:-                    98..84:+  -     
+5.9    ENTOY100A-fs4   106  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     104    90        -  no     0    0       -     -        -     -    1    0                   104..90:-                    98..84:-  -     
 5.10   ENTOY100A-fs4   106  FAIL  ENTOY100A  ncRNA        enRNA               24   10   -1    +       5    28        -  no     0    0       -     -        -     -    1    0                     5..28:+                     5..22:+  INDEFINITE_ANNOTATION_END(indf3lcn)
 5.11   ENTOY100A-fs4   106  FAIL  ENTOY100A  stem_loop    stem_loop.1         15   11   -1    +      10    24        -  no     0    0       -     -        -     -    1    0                    10..24:+                    10..19:+  -     
 #
@@ -69,7 +69,7 @@
 6.6    ENTOY100A-fs5   100  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      67    95        -  no     0    0       -     -        -     -    2    0           67..79:+,85..95:+           67..79:+,85..95:+  -     
 6.7    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      67    75        -  no     0    0       -     -        -     -    1    0                    67..75:+                    67..75:+  -     
 6.8    ENTOY100A-fs5   100  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      76    92        -  no     0    0       -     -        -     -    2    0           76..79:+,85..92:+           76..79:+,85..92:+  -     
-6.9    ENTOY100A-fs5   100  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:+  -     
+6.9    ENTOY100A-fs5   100  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:-  -     
 6.10   ENTOY100A-fs5   100  FAIL  ENTOY100A  ncRNA        enRNA               18   10   -1    +       5    22        -  no     0    0       -     -        -     -    1    0                     5..22:+                     5..22:+  INDEFINITE_ANNOTATION_END(indf3lcn)
 6.11   ENTOY100A-fs5   100  FAIL  ENTOY100A  stem_loop    stem_loop.1         11   11   -1    +      10    20        -  no     0    0       -     -        -     -    1    0                    10..20:+                    10..19:+  -     
 #
@@ -81,7 +81,7 @@
 7.6    ENTOY100A-fs6   103  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      70    98        -  no     0    0       -     -        -     -    2    0           70..82:+,88..98:+           67..79:+,85..95:+  -     
 7.7    ENTOY100A-fs6   103  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      70    78        -  no     0    0       -     -        -     -    1    0                    70..78:+                    67..75:+  -     
 7.8    ENTOY100A-fs6   103  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      79    95        -  no     0    0       -     -        -     -    2    0           79..82:+,88..95:+           76..79:+,85..92:+  -     
-7.9    ENTOY100A-fs6   103  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     101    87        -  no     0    0       -     -        -     -    1    0                   101..87:-                    98..84:+  -     
+7.9    ENTOY100A-fs6   103  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -     101    87        -  no     0    0       -     -        -     -    1    0                   101..87:-                    98..84:-  -     
 7.10   ENTOY100A-fs6   103  FAIL  ENTOY100A  ncRNA        enRNA               21   10   -1    +       5    25        -  no     0    0       -     -        -     -    1    0                     5..25:+                     5..20:+  INDEFINITE_ANNOTATION_END(indf3gap)
 7.11   ENTOY100A-fs6   103  FAIL  ENTOY100A  stem_loop    stem_loop.1         15   11   -1    +      10    24        -  no     0    0       -     -        -     -    1    0                    10..24:+                    10..19:+  -     
 #
@@ -93,7 +93,7 @@
 8.6    ENTOY100A-fs7    99  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      66    94        -  no     0    0       -     -        -     -    2    0           66..78:+,84..94:+           67..79:+,85..95:+  -     
 8.7    ENTOY100A-fs7    99  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      66    74        -  no     0    0       -     -        -     -    1    0                    66..74:+                    67..75:+  -     
 8.8    ENTOY100A-fs7    99  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      75    91        -  no     0    0       -     -        -     -    2    0           75..78:+,84..91:+           76..79:+,85..92:+  -     
-8.9    ENTOY100A-fs7    99  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      97    83        -  no     0    0       -     -        -     -    1    0                    97..83:-                    98..84:+  -     
+8.9    ENTOY100A-fs7    99  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      97    83        -  no     0    0       -     -        -     -    1    0                    97..83:-                    98..84:-  -     
 8.10   ENTOY100A-fs7    99  FAIL  ENTOY100A  ncRNA        enRNA               17   10   -1    +       5    21        -  no     0    0       -     -        -     -    1    0                     5..21:+                     5..22:+  -     
 8.11   ENTOY100A-fs7    99  FAIL  ENTOY100A  stem_loop    stem_loop.1          9   11   -1    +      10    18        -  no     0    0       -     -        -     -    1    0                    10..18:+                    10..19:+  -     
 #
@@ -105,7 +105,7 @@
 9.6    ENTOY100A-fs8    98  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      65    93        -  no     0    0       -     -        -     -    2    0           65..77:+,83..93:+           67..79:+,85..95:+  -     
 9.7    ENTOY100A-fs8    98  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      65    73        -  no     0    0       -     -        -     -    1    0                    65..73:+                    67..75:+  -     
 9.8    ENTOY100A-fs8    98  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      74    90        -  no     0    0       -     -        -     -    2    0           74..77:+,83..90:+           76..79:+,85..92:+  -     
-9.9    ENTOY100A-fs8    98  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      96    82        -  no     0    0       -     -        -     -    1    0                    96..82:-                    98..84:+  -     
+9.9    ENTOY100A-fs8    98  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      96    82        -  no     0    0       -     -        -     -    1    0                    96..82:-                    98..84:-  -     
 9.10   ENTOY100A-fs8    98  FAIL  ENTOY100A  ncRNA        enRNA               16   10   -1    +       5    20        -  no     0    0       -     -        -     -    1    0                     5..20:+                     5..22:+  -     
 9.11   ENTOY100A-fs8    98  FAIL  ENTOY100A  stem_loop    stem_loop.1          8   11   -1    +      10    17        -  no     0    0       -     -        -     -    1    0                    10..17:+                    10..19:+  -     
 #
@@ -117,7 +117,7 @@
 10.6   ENTOY100A-fs9    97  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      64    92        -  no     0    0       -     -        -     -    2    0           64..76:+,82..92:+           67..79:+,85..95:+  -     
 10.7   ENTOY100A-fs9    97  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      64    72        -  no     0    0       -     -        -     -    1    0                    64..72:+                    67..75:+  -     
 10.8   ENTOY100A-fs9    97  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      73    89        -  no     0    0       -     -        -     -    2    0           73..76:+,82..89:+           76..79:+,85..92:+  -     
-10.9   ENTOY100A-fs9    97  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      95    81        -  no     0    0       -     -        -     -    1    0                    95..81:-                    98..84:+  -     
+10.9   ENTOY100A-fs9    97  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      95    81        -  no     0    0       -     -        -     -    1    0                    95..81:-                    98..84:-  -     
 10.10  ENTOY100A-fs9    97  FAIL  ENTOY100A  ncRNA        enRNA               15   10   -1    +       5    19        -  no     0    0       -     -        -     -    1    0                     5..19:+                     5..20:+  INDEFINITE_ANNOTATION_END(indf3gap)
 10.11  ENTOY100A-fs9    97  FAIL  ENTOY100A  stem_loop    stem_loop.1          9   11   -1    +      10    18        -  no     0    0       -     -        -     -    1    0                    10..18:+                    10..19:+  -     
 #
@@ -129,7 +129,7 @@
 11.6   ENTOY100A-fs10   97  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      64    92        -  no     0    0       -     -        -     -    2    0           64..76:+,82..92:+           67..79:+,85..95:+  -     
 11.7   ENTOY100A-fs10   97  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      64    72        -  no     0    0       -     -        -     -    1    0                    64..72:+                    67..75:+  -     
 11.8   ENTOY100A-fs10   97  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      73    89        -  no     0    0       -     -        -     -    2    0           73..76:+,82..89:+           76..79:+,85..92:+  -     
-11.9   ENTOY100A-fs10   97  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      95    81        -  no     0    0       -     -        -     -    1    0                    95..81:-                    98..84:+  -     
+11.9   ENTOY100A-fs10   97  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      95    81        -  no     0    0       -     -        -     -    1    0                    95..81:-                    98..84:-  -     
 11.10  ENTOY100A-fs10   97  FAIL  ENTOY100A  ncRNA        enRNA               15   10   -1    +       5    19        -  no     0    0       -     -        -     -    1    0                     5..19:+                     5..22:+  INDEFINITE_ANNOTATION_END(indf3lcn)
 11.11  ENTOY100A-fs10   97  FAIL  ENTOY100A  stem_loop    stem_loop.1          8   11   -1    +      10    17        -  no     0    0       -     -        -     -    1    0                    10..17:+                    10..19:+  -     
 #
@@ -141,7 +141,7 @@
 12.6   ENTOY100A-fs11  100  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      67    95        -  no     0    0       -     -        -     -    2    0           67..79:+,85..95:+           67..79:+,85..95:+  -     
 12.7   ENTOY100A-fs11  100  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      67    75        -  no     0    0       -     -        -     -    1    0                    67..75:+                    67..75:+  -     
 12.8   ENTOY100A-fs11  100  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      76    92        -  no     0    0       -     -        -     -    2    0           76..79:+,85..92:+           76..79:+,85..92:+  -     
-12.9   ENTOY100A-fs11  100  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:+  -     
+12.9   ENTOY100A-fs11  100  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:-  -     
 12.10  ENTOY100A-fs11  100  FAIL  ENTOY100A  ncRNA        enRNA               18   10   -1    +       5    22        -  no     0    0       -     -        -     -    1    0                     5..22:+                     5..22:+  INDEFINITE_ANNOTATION_END(indf3lcn)
 12.11  ENTOY100A-fs11  100  FAIL  ENTOY100A  stem_loop    stem_loop.1          9   11   -1    +      10    18        -  no     0    0       -     -        -     -    1    0                    10..18:+                    10..19:+  -     
 #
@@ -153,6 +153,6 @@
 13.6   ENTOY100A-fs12  100  FAIL  ENTOY100A  CDS          protein_three       24    6   -1    +      67    95        -  no     0    0       -     -        -     -    2    0           67..79:+,85..95:+           67..79:+,85..95:+  -     
 13.7   ENTOY100A-fs12  100  FAIL  ENTOY100A  mat_peptide  protein_three_mp1    9    7    6    +      67    75        -  no     0    0       -     -        -     -    1    0                    67..75:+                    67..75:+  -     
 13.8   ENTOY100A-fs12  100  FAIL  ENTOY100A  mat_peptide  protein_three_mp2   12    8    6    +      76    92        -  no     0    0       -     -        -     -    2    0           76..79:+,85..92:+           76..79:+,85..92:+  -     
-13.9   ENTOY100A-fs12  100  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:+  -     
+13.9   ENTOY100A-fs12  100  FAIL  ENTOY100A  CDS          protein_four        15    9   -1    -      98    84        -  no     0    0       -     -        -     -    1    0                    98..84:-                    98..84:-  -     
 13.10  ENTOY100A-fs12  100  FAIL  ENTOY100A  ncRNA        enRNA               18   10   -1    +       5    22        -  no     0    0       -     -        -     -    1    0                     5..22:+                     5..22:+  -     
 13.11  ENTOY100A-fs12  100  FAIL  ENTOY100A  stem_loop    stem_loop.1          8   11   -1    +      10    17        -  no     0    0       -     -        -     -    1    0                    10..17:+                    10..19:+  -     
