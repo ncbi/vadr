@@ -6,11 +6,11 @@
   * adds new alerts and new options for controlling alert
     thresholds. In many cases this is by splitting existing alerts
     and/or options into multiple options for greater user control.
-    - adds separate options for controlling length thresholds for
-      lowsim{5,3,i}s vs lowsim{5,3,i}f alerts:
-      o --lowsim5term split into --lowsim5seq and --lowsim5ftr
-      o --lowsim3term split into --lowsim3seq and --lowsim3ftr
-      o --lowsimint   split into --lowsimiseq and --lowsimiftr
+     adds separate options for controlling length thresholds for
+      lowsim{5,3,i}s vs lowsim{5,3,i}f alerts (`--lowsim5term` split
+      into `--lowsim5seq` and `--lowsim5ftr`; `--lowsim3term` split into
+      `--lowsim3seq` and `--lowsim3ftr`; `--lowsimint` split into
+      `--lowsimiseq` and `--lowsimiftr`;)
     - splits alerts indf{5,3}loc alerts related to indefinite
       annotation into indf{5,3}lcc (coding) and
       indf{5,3}lcn (non-coding) for more control over these alerts
@@ -22,31 +22,30 @@
       fst{hi,lo,uk}{5,3,i}cf. Different length thresholds can be
       set for each 5', 3' and internal with options: --fstmminnt5,
       --fstminnt3 and --fstminnti.
-
     - list of new alerts in v1.3 and related alerts from v1.2 that no
       longer exist:  
 
-      new 1.3 alert | related 1.2 alert (no longer exists)
-      ------------- | ------------------------------------
-      fsthicf3      | fsthicnf
-      fsthicf5      | "
-      fsthicfi      | "
-      fstlocf3      | fstlocnf
-      fstlocf5      | "
-      fstlocfi      | " 
-      fstukcf3      | fstukcnf
-      fstukcf5      | "
-      fstukcfi      | "
-      indf3lcc      | indf3loc
-      indf3lcn      | "
-      indf5lcc      | indf5loc
-      indf5lcn      | "
-      lowsim3c      | lowsim3f
-      lowsim3n      | "
-      lowsim5c      | lowsim5f
-      lowsim5n      | "
-      lowsimic      | lowsimif
-      lowsimin      | "
+      new 1.3 alert | related 1.2 alert (no longer exists) | alert description
+      ------------- | ------------------------------------ | -----------------
+      fsthicf3      | fsthicnf | POSSIBLE_FRAMESHIFT_HIGH_CONF
+      fsthicf5      | "        | "
+      fsthicfi      | "        | " 
+      fstlocf3      | fstlocnf | POSSIBLE_FRAMESHIFT_LOW_CONF
+      fstlocf5      | "        | "
+      fstlocfi      | "        | "
+      fstukcf3      | fstukcnf | POSSIBLE_FRAMESHIFT
+      fstukcf5      | "        | "
+      fstukcfi      | "        | "
+      indf3lcc      | indf3loc | INDEFINITE_ANNOTATION_END
+      indf3lcn      | "        | "
+      indf5lcc      | indf5loc | INDEFINITE_ANNOTATION_START
+      indf5lcn      | "        | "
+      lowsim3c      | lowsim3f | LOW_FEATURE_SIMILARITY_END
+      lowsim3n      | "        | "
+      lowsim5c      | lowsim5f | LOW_FEATURE_SIMILARITY_START
+      lowsim5n      | "        | "
+      lowsimic      | lowsimif | LOW_FEATURE_SIMILARITY
+      lowsimin      | "        | "
 
   * adds information, including sequence and model coordinates, to
     output files related to alerts: 
