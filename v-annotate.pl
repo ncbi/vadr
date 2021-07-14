@@ -4866,8 +4866,8 @@ sub add_frameshift_alerts_for_one_sequence {
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
       #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-      printf("frame_stok_str: $frame_stok_str\n");
-      printf("frame_mtok_str: $frame_mtok_str\n");
+      #printf("frame_stok_str: $frame_stok_str\n");
+      #printf("frame_mtok_str: $frame_mtok_str\n");
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
@@ -8462,7 +8462,7 @@ sub alert_instance_parse {
   my $mcoords = "VADRNULL";
   my $detail  = "VADRNULL";
 
-  printf("in $sub_name, alt_instance_str: $alt_instance_str\n");
+  # printf("in $sub_name, alt_instance_str: $alt_instance_str\n");
 
   if($alt_instance_str =~ /^seq\:([^\;]+);mdl\:([^\;]+);(.*)$/) { 
     ($scoords, $mcoords, $detail) = ($1, $2, $3);
@@ -8474,7 +8474,8 @@ sub alert_instance_parse {
     $detail = $alt_instance_str;
   }
 
-  printf("returning: scoords: $scoords mcoords: $mcoords detail: $detail\n");
+  # printf("returning: scoords: $scoords mcoords: $mcoords detail: $detail\n");
+
   return ($scoords, $mcoords, $detail);
 }
 

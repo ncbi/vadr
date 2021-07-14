@@ -142,13 +142,20 @@ frameshift and an explanation of output related to the alert.
   > sh $VADRSCRIPTSDIR/documentation/alert-files/example-frameshift.sh
   ```
   
-  **Relevant line from `.alt` output file (`va-example-frameshift/va-example-frameshift.vadr.alt`):**
+  **Relevant line from `.alt` output file (`va-example-frameshift/va-example-frameshift.vadr.alt`), a similar line can be found in the `.alt.list` output file:**
 
 ```
-#      seq               ftr   ftr          ftr  alert           alert                              seq  seq       mdl  mdl  alert 
-#idx   name       model  type  name         idx  code      fail  desc                            coords  len    coords  len  detail
-#----  ---------  -----  ----  -----------  ---  --------  ----  ----------------------------  --------  ---  --------  ---  ------
-2.1.1  TOY50-FS1  toy50  CDS   protein_one    1  fstlocfi  no    POSSIBLE_FRAMESHIFT_LOW_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (internal) [inserts:S:13..17(5),M:13; deletes:S:25,M:22..23(2); frame:3, dominant:1; avgpp:0.825;]
+#      seq               ftr          ftr              ftr  alert           alert                               seq  seq       mdl  mdl  alert 
+#idx   name       model  type         name             idx  code      fail  description                      coords  len    coords  len  detail
+#----  ---------  -----  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ---  --------  ---  ------
+1.1.2  TOY50-FS1  toy50  CDS          protein_one        1  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (internal) [length:13; inserts:S:13..17(5),M:13; deletes:S:25,M:22..23(2); shifted_frame:3; dominant_frame:1; avgpp:0.825;]
+```
+
+
+#      seq               ftr          ftr              ftr  alert           alert                               seq  seq       mdl  mdl  alert 
+#idx   name       model  type         name             idx  code      fail  description                      coords  len    coords  len  detail
+#----  ---------  -----  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ---  --------  ---  ------
+1.1.2  TOY50-FS1  toy50  CDS          protein_one        1  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (internal) [length:13; inserts:S:13..17(5),M:13; deletes:S:25,M:22..23(2); shifted_frame:3; dominant_frame:1; avgpp:0.825;]
 ```
 
   **Alignment of `TOY50-FS1` sequence to the toy50 model:** The output file 
@@ -165,14 +172,14 @@ frameshift and an explanation of output related to the alert.
 ```
 TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
 #=GR TOY50-FS1 PP .**********987777789***998..59*************************
+#=GC SS_cons      :::::::::::::.....:::::::::::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATG.....GTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      0000000001111.....1111112222222222333333333344444444445
 #=GC RFCOL.X      1234567890123.....4567890123456789012345678901234567890
-
 ```
 
   **How to interpret this alert based on the above output**: 
-  As reported in the `.alt` file shown above, a
+  As reported in the `.alt` file and `.alt.list` files as shown above, a
   possible frameshift exists in the CDS named `protein one` in the
   sequence named `TOY50-FS1` which matches best to the model named
   `toy50`. The `.alt` file contains details on the frameshift. The
@@ -185,8 +192,8 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   13 to 17 after model position 13 (`inserts:S:13..17(5),M:13;`) and a
   deletion of length 2 *after* nucleotide 25 corresponding to model
   positions 22 and 23 (`deletes:S:25,M:22..23(2);`). 
-  The frameshifted region is in frame 3, while the dominant frame for the CDS
-  (frame in which the most nucleotides are in) is frame 1. 
+  The frameshifted region is in frame 3 (`shifted_frame:3`, while the dominant frame for the CDS
+  (frame in which the most nucleotides are in) is frame 1 (`dominant_frame:1`). 
   This frameshift is a high confidence
   frameshift in that the average posterior probability of the aligned
   nucleotides in the frameshifted region is `0.825` which exceeds the
@@ -198,21 +205,22 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   not calculated and so all frameshifts are reported with the
   `POSSIBLE_FRAMESHIFT` error. 
 
-  A separate alignment file showing the CDS features that include possible
-  frameshifts can be optionally output from `v-annotate.pl` using the
-  `--out_fsstk` option. An example excerpt from such an alignment file
-  for this possible frameshift is below. The `#=GR PP` shows an
-  estimate of the posterior probability of each aligned nucleotide as
-  explained more [here](#pp).
-  The `#=GR CS` line shows the implied frame of each aligned
-  nucleotide and have `i` for inserted nucleotides and `d` for deleted
-  reference positions. The `#=GC RF` line shows the reference model
-  sequence.
+  A separate alignment file showing the CDS features that include
+  possible frameshifts can be optionally output from `v-annotate.pl`
+  using the `--out_fsstk` option. An example excerpt from such an
+  alignment file for this possible frameshift is below (see
+  `va-example-frameshift/va-exammle-frameshift.vadr.toy50.CDS.1.1.frameshift.stk`). The
+  `#=GR PP` shows an estimate of the posterior probability of each
+  aligned nucleotide as explained more [here](#pp).  The `#=GR CS`
+  line shows the implied frame of each aligned nucleotide and have `i`
+  for inserted nucleotides and `d` for deleted reference
+  positions. The `#=GC RF` line shows the reference model sequence.
 
 ```
 TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
 #=GR TOY50-FS1 PP *987777789***998..59******
 #=GR TOY50-FS1 CS 111iiiii33333333dd11111111
+#=GC SS_cons      ::::::::::::::::::::::::::
 #=GC RF           ATG.....GTGATCGCTTTACCATAA
 #=GC RFCOLX.      111.....111111222222222233
 #=GC RFCOL.X      123.....456789012345678901
