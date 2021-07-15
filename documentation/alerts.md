@@ -1089,7 +1089,7 @@ TOY50-LSE2         -AAATCACCGATGGTGATCGCTTTAC.......CATAAATGAcgatacacGAACTGCACGA
 #      seq                ftr   ftr          ftr  alert           alert                         seq  seq       mdl  mdl  alert 
 #idx   name        model  type  name         idx  code      fail  description                coords  len    coords  len  detail
 #----  ----------  -----  ----  -----------  ---  --------  ----  ----------------------  ---------  ---  --------  ---  ------
-1.2.3  TOY50-LSI1  toy50  CDS   protein_one    1  lowsimic  no    LOW_FEATURE_SIMILARITY  32..107:+   76  27..28:+    2  region within annotated feature that is or matches a CDS lacks significant similarity [76 nt overlap b/t low similarity region of length 76 (32..107) and annotated feature (10..114)]
+1.2.3  TOY50-LSI1  toy50  CDS   protein_one  1    lowsimic  no    LOW_FEATURE_SIMILARITY  32..107:+   76  27..28:+    2  region within annotated feature that is or matches a CDS lacks significant similarity [76 nt overlap b/t low similarity region of length 76 (32..107) and annotated feature (10..114)]
 ```
 
   **Alignment of `TOY50-LSI1` sequence to the toy50 model:** The output
@@ -1114,11 +1114,10 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
 ```
 
   **Explanation of `lowsimic` alert**: The 76 nucleotides from
-  positions 32 to 107 in the sequence `TOY50-LSI1` occur in the middle
+  positions 32 to 107 (`seq coords:32..107:+`) in the sequence `TOY50-LSI1` occur in the middle
   of the predicted CDS `protein one` but are not similar to the reference
-  model. These 76 nucleotides align to reference model positions 27 to 28,
-  as reported in the `mdl coords` field of the `.alt` file, but in reality
-  are all inserted after those two reference positions as marked with 
+  model. These 76 nucleotides align to reference model positions 27 to 28 (`mdl coords:27..28:+`),
+  but are all actually inserted after those two reference positions as marked with 
   'v' characters in the alignment shown above.
 
   A similar `lowsimin` alert exists for non-coding (non-CDS and
@@ -1135,9 +1134,9 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
   sequence and the model, not based on the global alignment determined in the 
   alignment stage. That is why the region marked with `v` characters above
   which corresponds to the region of low similarity does not include the 
-  full insertions after reference positions 27 28. Enough similarity exists in 
+  full insertions after reference positions 27 and 28. Enough similarity exists in 
   the beginning of the insertion after position 27 and at the end of the insertion 
-  after position 28 a local alignment hit to include those regions. 
+  after position 28 for a local alignment hit to include those regions. 
 
 ---
 ## <a name="example-delftr"></a>Example of a deleted feature
@@ -1171,8 +1170,10 @@ TOY50-LSI1         -AAATCACCGATGGTGATCGCTTTACCaaagcagtacaggcacatgacaaagcagtacagg
   `--keep` or `--out_stk` options are used with `v-annotate.pl`.
 
 ```
+                                        vvvvvv
 TOY50-DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
 #=GR TOY50-DF1 PP .*****************997........79*******************
+#=GC SS_cons      ::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12345678901234567890123456789012345678901234567890
@@ -1180,8 +1181,8 @@ TOY50-DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
 
   **Explanation of `deletins` alert**: The mature peptide feature named `protein one mp2` 
   is deleted in the sequence `TOY50-DF1`, as indicated in the `alert detail` field of the
-  `.alt` file above. That mature peptide spans model positions 23 to 28 which can be
-  seen as gaps in the above alignment.
+  `.alt` file above. That mature peptide spans model positions 23 to 28 (`model coords:23..28:+`) which can be
+  seen as gaps in the above alignment, and are marked with positions `v`.
 
   A similar `deletinf` alert exists for *multi-segment* features for which
   one or more but not all segments are deleted. The associated value for this
@@ -1206,7 +1207,7 @@ TOY50-DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
 #      seq               ftr   ftr   ftr  alert           alert                           seq  seq              mdl  mdl  alert 
 #idx   name       model  type  name  idx  code      fail  description                  coords  len           coords  len  detail
 #----  ---------  -----  ----  ----  ---  --------  ----  -----------------  ----------------  ---  ---------------  ---  ------
-1.1.1  TOY50-DR1  toy50  -     -       -  dupregin  yes   DUPLICATE_REGIONS  1..49:+,50..86:+   86  2..50:+,7..43:+   86  similarity to a model region occurs more than once [7-43 (len 37 >= 20) hits 1 (39.5 bits) and 2 (27.0 bits) (seq:1..49,50..86 mdl:2..50,7..43)]
+1.1.1  TOY50-DR1  toy50  -     -       -  dupregin  yes   DUPLICATE_REGIONS  1..49:+,50..86:+   86  2..50:+,7..43:+   86  similarity to a model region occurs more than once [7..43 (len 37>=20) hits 1 (39.5 bits) and 2 (27.0 bits)]
 ```
 
   **Alignment of `TOY50-DR1` sequence to the toy50 model:** The output
@@ -1224,6 +1225,7 @@ TOY50-DF1         -AAATCACCGATGGTGATCGC--------AAATGAGCATTCTACGTGCAT
                                                                     vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 TOY50-DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCataccgatggtgatcgctttaccataaatgagcattctA-
 #=GR TOY50-DR1 PP .********************************************987444444444444444444444444444444444444446.
+#=GC SS_cons      ::::::::::::::::::::::::::::::::::::::::::::::::......................................::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGC......................................AT
 #=GC RFCOLX.      000000000111111111122222222223333333333444444444......................................45
 #=GC RFCOL.X      123456789012345678901234567890123456789012345678......................................90
@@ -1233,17 +1235,15 @@ TOY50-DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCataccgatggtgat
 
   **Explanation of `dupregin` alert**: There are two hits in the
   coverage determination stage, which overlap in model coordinates by
-  more than 20 positions. The positional information for these hits
-  are reported in the `seq coords`, `mdl coords` and `alert detail`
-  fields of the `.alt` file above.  Specifically, hit 1 is from
-  positions 1 to 49 in the sequence and 2 to 50 in the model and hit 2
-  is from positions 50 to 86 in the sequence and positions 7 to 43 in
-  the model (reported in `seq coords`, `mdl coords` and `alert
-  detail`: `(seq:1..49,50..86 mdl:2..50,7..43)`).  The hits overlap by
+  more than 20 positions which cause the `dupregin` alert to be reported.
+  Specifically, hit 1 is from
+  positions 1 to 49 in the sequence (`seq coords:1..49:+`) and 2 to 50 in the model (`mdl coords:2..50:+`) and hit 2
+  is from positions 50 to 86 in the sequence (`seq coords:50..86:+`) and positions 7 to 43 in
+  the model (`mdl coords;7..43)`).  The hits overlap by
   37 model positions from 7 to 43, which is above the minimum length
-  threshold for reporting this alert of 20 (`alert detail`: `7-43 (len
-  37 >= 20)`). The first hit has a bit score of 37.7 bits and the
-  second hit of 25.5 bits (`alert detail`: `hits 1 (39.5 bits) and 2
+  threshold for reporting this alert of 20 (`alert detail`: `7..43 (len
+  37 >= 20)`). The first hit has a bit score of 39.5 bits and the
+  second hit of 27.0 bits (`alert detail`: `hits 1 (39.5 bits) and 2
   (27.0 bits)`).
 
   In the alignment of the sequence above sequence positions 50 to 86
@@ -1287,6 +1287,7 @@ TOY50-DR1         -AAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCataccgatggtgat
                                                                     vvvvvvvvvvvvvvvvvvvvvvv
 TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatggtgatcgcttT
 #=GR TOY50-DS1 PP ........................**********************98666666667777777777777777*
+#=GC SS_cons      :::::::::::::::::::::::::::::::::::::::::::::::::.......................:
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCA.......................T
 #=GC RFCOLX.      0000000001111111111222222222233333333334444444444.......................5
 #=GC RFCOL.X      1234567890123456789012345678901234567890123456789.......................0
@@ -1299,10 +1300,10 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
   not in the same order in sequence and model coordinates. The
   positional information for these hits are reported in the `seq
   coords`, `mdl coords` and `alert detail` fields of the `.alt` file
-  above.  Specifically, hit 1 is from positions 1 to 26 in the
-  sequence and 25 to 50 in the model and hit 2 is from positions 27 to
-  49 in the sequence and positions 2 to 24 in the model (reported in
-  `seq coords` and `mdl coords`) So hit 1 comes before hit 2 in the
+  above. Specifically, hit 1 is from positions 1 to 26 in the
+  sequence (`seq coords:1..26:+`) and 25 to 50 in the model (`mdl coords:25..50:+`) and hit 2 is from positions 27 to
+  49 in the sequence (`seq coords:27..49:+`) and positions 2 to 24 in the model (`mdl coords:2..24:+`).
+  So hit 1 comes before hit 2 in the
   sequence, but hit 2 comes before hit 1 in the model. The order of
   the hits in the sequence and model is reported in the `alert detail`
   field: `seq order: 1,2, mdl order: 2,1`.
@@ -1312,7 +1313,7 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
   These sequence positions match identically to positions 2 to 24 in
   the reference model, marked by '^' at the bottom of the alignment,
   showing why the second hit is to the end of the sequence and the
-  beginning of the model.  The first hit pertains to the the beginning
+  beginning of the model. The first hit pertains to the the beginning
   of the sequence which matches well to the end of the model (the
   region with `*` values in the `PP` line).
 
@@ -1335,6 +1336,7 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
 #idx   name       model  type  name  idx  code      fail  description          coords  len    coords  len  detail
 #----  ---------  -----  ----  ----  ---  --------  ----  -----------------  --------  ---  --------  ---  ------
 1.1.2  TOY50-IS1  toy50  -     -       -  indfstrn  yes   INDEFINITE_STRAND  49..25:-   25  26..50:+   25  significant similarity detected on both strands [score:12.7>12.0]
+
 ```
 
   **Alignment of `TOY50-IS1` sequence to the toy50 model:** The output
@@ -1352,6 +1354,7 @@ TOY50-DS1         ------------------------ACCATAAATGAGCATTCTACGTGCAtaaatcaccgatg
                                            vvvvvvvvvvvvvvvvvvvvvvvvv
 TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
 #=GR TOY50-IS1 PP .**********************98544332222389999**********.....
+#=GC SS_cons      ::::::::::::::::::::::::::::::.....::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATA.....AATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      000000000111111111122222222223.....33333333344444444445
 #=GC RFCOL.X      123456789012345678901234567890.....12345678901234567890
@@ -1365,10 +1368,10 @@ TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
   positional information for these hits are reported in the `seq
   coords`, `mdl coords` and `alert detail` fields of the `.alt` file
   above. Specifically, the top-scoring hit is to the `+` strand,
-  but the second hit with a score of 12.7 bits is on the `-` strand,
-  that hit occurs from positions to 49 to 25 on the negative strand to
-  positions 26 to 50 in the reference model (reported in
-  `seq coords` and `mdl coords`). The second hit therefore
+  but the second hit with a score of 12.7 bits is on the `-` strand.
+  The second hit occurs from positions to 49 to 25 on the negative strand (`seq coords:49..25:-`) to
+  positions 26 to 50 in the reference model (`mdl coords:26..50:+`)
+  The second hit therefore
   conflicts with the top-scoring hit and so it is the one that is
   described in the `seq coords` and `mdl coords` fields. Normally, a
   *indfstrn* alert is only reported if a hit on the opposite strand
@@ -1424,6 +1427,7 @@ TOY50-IS1         -AAATCACCGATGGTGATCGCTTTAATGCAcgtagAATGCTCATTTATGG-----
                   vvvvvvvvvvvvvvvvvvvvvvvvv
 TOY50-LC1         GAtacatcgatcatcaatccgggacaAATCACCGATGGTGATCGCTTTACCATAA-------------------
 #=GR TOY50-LC1 PP *64444444444444333333333336899*************************...................
+#=GC SS_cons      ::........................::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF           GA........................AATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00........................000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12........................345678901234567890123456789012345678901234567890
@@ -1431,13 +1435,13 @@ TOY50-LC1         GAtacatcgatcatcaatccgggacaAATCACCGATGGTGATCGCTTTACCATAA-------
 
   **Explanation of `lowcovrg` alert**: For the `TOY50-LC1` sequence
   the nucleotides from 1 to 25 are not part of any hit to the model in
-  the coverage determation stage (`.alt` file, `seq coords` field: `1..25:+`). These 25 nucleotides make up 45.5\%
+  the coverage determation stage (`seq coords:1..25:+`). These 25 nucleotides make up 45.5\%
   the total length of the sequence, meaning that only 54.5\% of the
-  sequence *is covered* by hits to the model. The `lowcovrg` alert is reported 
+  sequence *is covered* by hits to the model (`alert detail:[0.545<0.900]`). The `lowcovrg` alert is reported 
   for any sequence if less than 90\% of the sequence is covered by hits to the model
   (changeable to `<x>` with the `--lowcov <x>` option).
 
-  In the alignment of the sequence above, note that positiosn 1 to 25, marked
+  In the alignment of the sequence above, note that positions 1 to 25, marked
   by `v` characters at the top of the alignment, do not match well to the model.
 
 ---
