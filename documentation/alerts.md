@@ -267,13 +267,14 @@ TOY50-I1         -AAATCACCGATGGTGATCGCTTggggggTACCATAAATGAGCATTCTACGTGCAT
 //
 ```
 
-  **How to interpret this alert based on the above output**: 
-  As reported in the `.alt` file shown above,
-  in the CDS feature with name `protein one`, the nucleotides 23 to 28 (length
-  6) on the + strand insert after reference model position 23.  This
-  length exceeds the minimum allowed length of 2 (set with the
+  **How to interpret this alert based on the above output**: As
+  reported in the `.alt` file shown above, in the CDS feature with
+  name `protein one`, the nucleotides 23 to 28, length 6, (`seq
+  coords:23..28:+`, `seq len:6`) on the + strand insert after
+  reference model position 23 (`mdl coords:23..23:+`).  This length
+  exceeds the minimum allowed length of 2 (set with the
   `v-annotate.pl` option `--nmaxins 2` option for purposes of this
-  example). You can see the `gggggg` insertion after model position 23
+  example, `alert detail:[6>2]`). You can see the `gggggg` insertion after model position 23
   in the above alignment.
 
   The `insertnn` alert is detected in the nucleotide alignment stage.
@@ -316,21 +317,21 @@ TOY50-I1         -AAATCACCGATGGTGATCGCTTggggggTACCATAAATGAGCATTCTACGTGCAT
 ```
 TOY50-D1         -AAATCACCGATGGTG---GCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GR TOY50-D1 PP .***********9987...89*****************************
+#=GC SS_cons     ::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF          GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.     00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X     12345678901234567890123456789012345678901234567890
 //
-
 ```
 
   **How to interpret this alert based on the above output**: 
   As reported in the `.alt` file shown above,
   in the CDS feature with name `protein one`, the reference model 
-  positions 17 to 19 (length 3) are deleted in the sequence `TOY50-D1`. The
-  deletion occurs after position 15 in the sequence.
+  positions 17 to 19, length 3 (`mdl coords:17..19:+`, `mdl len:3`) are deleted in the sequence `TOY50-D1`. The
+  deletion occurs after position 15 (`seq coords:15..15:+`) in the sequence.
   The deletion length of 3 exceeds the minimum allowed length of 2 (set with the
   `v-annotate.pl` option `--nmaxdel 2` option for purposes of this
-  example). You can see the three deleted positions (`---`) in model
+  example, `alert detail:[3>2]`). You can see the three deleted positions (`---`) in model
   RF positions 17 to 19 in the above alignment.
 
   The `deletinn` alert is detected in the nucleotide alignment stage.
