@@ -513,7 +513,7 @@ TOY50-SP3         -AAATCACCGATGGTGATCGCTTAACCATACATGAGCATTCTACGTGCAT
 #      seq               ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
 #idx   name       model  type  name         idx  code      fail  description                    coords  len    coords  len  detail
 #----  ---------  -----  ----  -----------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
-1.1.4  TOY50-IS1  toy50  CDS   protein_one    1  indf5gap  yes   INDEFINITE_ANNOTATION_START  10..10:+    1  11..11:+    1  alignment to homology model is a gap at 5' boundary
+1.1.4  TOY50-IS1  toy50  CDS   protein_one    1  indf5gap  yes   INDEFINITE_ANNOTATION_START  10..10:+    1  11..11:+    1  alignment to homology model is a gap at 5' boundary [-]
 #
 2.1.1  TOY50-IS2  toy50  CDS   protein_one    1  indf5lcc  no    INDEFINITE_ANNOTATION_START    8..8:+    1  11..11:+    1  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS [0.80<0.90]
 ```
@@ -534,6 +534,7 @@ TOY50-IS1         -AAATCACCG-TGGTGATCGCTTTACCATAAATGAGCAT-----------
 #=GR TOY50-IS1 PP .*******98.89**************************...........
 TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
 #=GR TOY50-IS2 PP .*****98..89***************************...........
+#=GC SS_cons      ::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12345678901234567890123456789012345678901234567890
@@ -541,15 +542,16 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
 
   **How to interpret these alerts based on the above output**: 
   Several checks are made on the first position of all features, and these
-  two sequences demonstrate failures to some of these checks. 
+  two sequences demonstrate failures due to some of these checks. 
 
   * `TOY50-IS1` sequence: 
 
   The *indf5gap* alert with description *INDEFINITE_ANNOTATION_START*
   is reported because there is a gap at the start position (5'
-  boundary) of the CDS named `protein one`. The first
-  *non-gap* nucleotide in the predicted CDS is position 10 of the
-  sequence. The 5' boundary gap is position 11 in the model.
+  boundary) of the CDS named `protein one`. The first *non-gap*
+  nucleotide in the predicted CDS is position 10 of the sequence (`seq
+  coords:10..10:+`). The 5' boundary gap is position 11 in the model
+  (`mdl coords:11..11:+`).
 
   * `TOY50-IS2` sequence: 
 
@@ -557,7 +559,7 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
   is reported because the posterior probability of the aligned nucleotide
   at the start position (5' boundary) of the CDS named `protein one` is too low. 
   In this example the value is 0.8, and the minimum value to not report an 
-  alert is 0.9 (`0.8<0.9` in 'alert detail' field). The minimum is actually
+  alert is 0.9 (`alert detail:[0.80<0.90]`). The minimum is actually
   usually 0.8, but it was changed to 0.9 for demonstration purposes in this example
   with the option `--indefann 0.9`. The nucleotide aligned at the 5' boundary is 
   sequence position 10 and it aligns to position 11 in the model.
@@ -575,12 +577,12 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
   alignment of the predicted CDS to the reference protein that does not 
   extend close enough to the 5' boundary of the predicted CDS, the *indf5pst*
   alert will be reported. This alert is not possible to generate with the *toy50*
-  toy model because the  CDS in this example is too short for constructive use with `blastx`. 
-  But a fabricated example `.alt` file output line is shown below, 
+  toy model because the  CDS in this example is too short for constructive use with `blastx`,
+  but a fabricated example `.alt` file output line is shown below, 
   in which the blastx alignment  
-  extended only to sequence position 19, leaving positions 10 to 18 of the predicted CDS, which align to 
-  model positions 11 to 19, uncovered by the blastx alignment. This length difference of 9
-  exceeds the maximum allowed difference of 5, so the alert is reported.
+  extended only to sequence position 19, leaving positions 10 to 18 of the predicted CDS (`seq coords:10..18:+`), which align to 
+  model positions 11 to 19 (`mdl coords:11..19:+`), uncovered by the blastx alignment. This length difference of 9
+  exceeds the maximum allowed difference of 5 (`alert detail:[9>5]`), so the alert is reported.
   A similar `indf5plg` alert exists for when the blastx alignment extends *longer* than the 
   predicted nucleotide alignment on the 5' end, but no example is shown here. 
 
