@@ -6105,7 +6105,7 @@ sub add_low_similarity_alerts_for_one_sequence {
                 $alt_mcoords = "mdl:VADRNULL;";
               }
               $alt_msg = sprintf("%s%slow similarity region of length %d", 
-                                 $alt_scoords, $alt_mcoords, $length, $start, $stop);
+                                 $alt_scoords, $alt_mcoords, $length);
               if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
                 alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
               }
@@ -8286,11 +8286,11 @@ sub alert_sequence_instance_update_mdl_coords {
         if($instance_ctr > 0) { $new_alt_instance .= ":VADRSEP:"; }
         $new_alt_instance .= "seq:" . $instance_scoords . ";" . $new_mcoords . $instance_detail;
       }
-      # update the alert instance somehow! maybe set it to blank and then rewrite it?
-      printf("in $sub_name\n");
-      printf("\told: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
+      # update the alert instance
+      #printf("in $sub_name\n");
+      #printf("\told: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
       $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $new_alt_instance;
-      printf("\tnew: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
+      #printf("\tnew: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
     }
   }
 

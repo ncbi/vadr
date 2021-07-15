@@ -611,7 +611,7 @@ TOY50-IS2         -AAATCAC--ATGGTGATCGCTTTACCATAAATGAGCAT-----------
 #      seq               ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
 #idx   name       model  type  name         idx  code      fail  description                    coords  len    coords  len  detail
 #----  ---------  -----  ----  -----------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
-1.1.4  TOY50-IE1  toy50  CDS   protein_one    1  indf3gap  yes   INDEFINITE_ANNOTATION_END    28..28:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary
+1.1.4  TOY50-IE1  toy50  CDS   protein_one    1  indf3gap  yes   INDEFINITE_ANNOTATION_END    28..28:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary [-]
 #
 2.1.1  TOY50-IE2  toy50  CDS   protein_one    1  indf3lcc  no    INDEFINITE_ANNOTATION_END    30..30:+    1  31..31:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.70<0.80]
 ```
@@ -632,6 +632,7 @@ TOY50-IE1         -AAATCACCGATGGTGATCGCTTTACCAT--ATGAGCAT-----------
 #=GR TOY50-IE1 PP .**************************98..59******...........
 TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
 #=GR TOY50-IE2 PP .***************************9876.9*****...........
+#=GC SS_cons      ::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12345678901234567890123456789012345678901234567890
@@ -646,8 +647,8 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
   The *indf3gap* alert with description *INDEFINITE_ANNOTATION_END*
   is reported because there is a gap at the end position (3'
   boundary) of the CDS named `protein one`. The final
-  *non-gap* nucleotide in the predicted CDS is position 30 of the
-  sequence. The 3' boundary gap is position 31 in the model.
+  *non-gap* nucleotide in the predicted CDS is position 28 (`seq coords:28..28:+`) of the
+  sequence. The 3' boundary gap is position 31 in the model (`mdl coords:31..31:+`).
 
   * `TOY50-IE2` sequence: 
 
@@ -655,8 +656,8 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
   is reported because the posterior probability of the aligned nucleotide
   at the end position (3' boundary) of the CDS named `protein one` is too low. 
   In this example the value is 0.7, and the minimum value to not report an 
-  alert is 0.8 (`0.7<0.8` in 'alert detail' field). The nucleotide aligned at the 3' boundary is 
-  sequence position 30 and it aligns to position 31 in the model.
+  alert is 0.8 (`alert detail:[0.70<0.80]`). The nucleotide aligned at the 3' boundary is 
+  sequence position 30 (`seq coords:30..30:+`) and it aligns to position 31 (`mdl coords:31..31:+`) in the model.
   Posterior probabilities are explained more [here](#pp). 
 
   A similar `indf3lcn` alert exists for non-coding (non-CDS and
@@ -674,9 +675,9 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
   toy model because the CDS in this example is too short for constructive use with `blastx`. 
   But a fabricated example `.alt` file output line is shown below, 
   in which the blastx alignment  
-  extended only to sequence position 21, leaving positions 22 to 30 of the predicted CDS, which align to 
-  model positions 23 to 31, uncovered by the blastx alignment. This length difference of 9
-  exceeds the maximum allowed difference of 8, so the alert is reported.
+  extended only to sequence position 21, leaving positions 22 to 30 of the predicted CDS (`seq coords:22..30:+`), which align to 
+  model positions 23 to 31 (`mdl coords:23..31:+`), uncovered by the blastx alignment. This length difference of 9
+  exceeds the maximum allowed difference of 8 (`alert detail:[9>8]`), so the alert is reported.
   A similar `indf3plg` alert exists for when the blastx alignment extends *longer* than the 
   predicted nucleotide alignment on the 3' end, but no example is shown here. 
 
@@ -707,12 +708,12 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
 #      seq               ftr          ftr              ftr  alert           alert                    seq  seq       mdl  mdl  alert 
 #idx   name       model  type         name             idx  code      fail  description           coords  len    coords  len  detail
 #----  ---------  -----  -----------  ---------------  ---  --------  ----  ------------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-AS1  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N
-1.2.1  TOY50-AS1  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N
+1.1.1  TOY50-AS1  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N [-]
+1.2.1  TOY50-AS1  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N [-]
 #
-2.1.1  TOY50-AS2  toy50  -            -                  -  ambgnt5s  no    N_AT_START           1..13:+   13   2..14:+   13  first nucleotide of the sequence is an N
-2.2.1  TOY50-AS2  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N
-2.3.1  TOY50-AS2  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N
+2.1.1  TOY50-AS2  toy50  -            -                  -  ambgnt5s  no    N_AT_START           1..13:+   13   2..14:+   13  first nucleotide of the sequence is an N [-]
+2.2.1  TOY50-AS2  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N [-]
+2.3.1  TOY50-AS2  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N [-]
 ```
 
   **Alignment of `TOY50-AS1` and `TOY50-AS2` sequences to the toy50 model:** The output
@@ -731,6 +732,7 @@ TOY50-AS1         -AAATCACCGNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 #=GR TOY50-AS1 PP .**************************************...........
 TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 #=GR TOY50-AS2 PP .**************************************...........
+#=GC SS_cons      ::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12345678901234567890123456789012345678901234567890
@@ -744,21 +746,21 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
   The *ambgnt5c* alert with description *N_AT_CDS_START*
   is reported because the predicted CDS named `protein one` begins
   with 4 consecutive Ns from sequence positions 10
-  to 13 that align to the model (reference) positions 11 to 14. These positions
+  to 13 (`seq coords:10..13:+`) that align to the model (reference) positions 11 to 14 (`mdl coords:11..14:+`). These positions
   are marked with `vvvv` in the alignment above. This alert is specific
   to CDS features.
 
   Similarly, the *ambgnt5f* alert with description *N_AT_FEATURE_START*
   is reported because the predicted mat_peptide named `protein one mp1` begins
   with 4 consecutive Ns from sequence positions 10
-  to 13 that align to the model (reference) positions 11 to 14. These positions
+  to 13 (`seq coords:10..13:+`) that align to the model (reference) positions 11 to 14 (`mdl coords:11..14:+`). These positions
   are marked with `vvvv` in the alignment above. This alert is only reported
   for non-CDS features.
 
   * `TOY50-AS2` sequence: 
 
   This sequence is similar to `TOY50-AS1` except the stretch of Ns begins at 
-  position 1 and extends to position 13. Because the first 4 nucleotides of
+  position 1 and extends to position 13 (`seq coords:1..13:+`). Because the first 4 nucleotides of
   the CDS and mat_peptide are Ns like in `TOY50-AS1`, the same *ambgnt5c* and
   *ambgnt5f* alerts are reported, but now with an additional *ambgnt5s* alert
   with description *N_AT_START* because the beginning of the sequence begins
@@ -793,10 +795,10 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 #      seq               ftr   ftr          ftr  alert           alert              seq  seq       mdl  mdl  alert 
 #idx   name       model  type  name         idx  code      fail  description     coords  len    coords  len  detail
 #----  ---------  -----  ----  -----------  ---  --------  ----  ------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-AE1  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N
+1.1.1  TOY50-AE1  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N [-]
 #
-2.1.1  TOY50-AE2  toy50  -     -              -  ambgnt3s  no    N_AT_END      29..38:+   10  30..39:+   10  final nucleotide of the sequence is an N
-2.2.1  TOY50-AE2  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N
+2.1.1  TOY50-AE2  toy50  -     -              -  ambgnt3s  no    N_AT_END      29..38:+   10  30..39:+   10  final nucleotide of the sequence is an N [-]
+2.2.1  TOY50-AE2  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N [-]
 ```
 
   **Alignment of `TOY50-AE1` and `TOY50-AE2` sequences to the toy50 model:** The output
@@ -815,6 +817,7 @@ TOY50-AE1         -AAATCACCGATGGTGATCGCTTTACCATNNATGAGCAT-----------
 #=GR TOY50-AE1 PP .**************************************...........
 TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
 #=GR TOY50-AE2 PP .**************************************...........
+#=GC SS_cons      ::::::::::::::::::::::::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCTTTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      00000000011111111112222222222333333333344444444445
 #=GC RFCOL.X      12345678901234567890123456789012345678901234567890
@@ -828,11 +831,11 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
   The *ambgnt3c* alert with description *N_AT_CDS_END*
   is reported because the predicted CDS named `protein one` ends
   with 2 consecutive Ns from sequence positions 29
-  to 30 that align to the model (reference) positions 30 to 31. These positions
+  to 30 (`seq coords:29..30:+`) that align to the model (reference) positions 30 to 31 (`mdl coords:30..31:+`). These positions
   are marked with `vv` in the alignment above. This alert is specific
   to CDS features.
 
-  A similar ambgnt3f alert exists for non-coding (non-CDS and
+  A similar *ambgnt3f* alert exists for non-coding (non-CDS and
   non-mature peptide) features, but no example is shown here. Having
   separate alerts for coding and non-coding features gives the user
   control over whether these types of alerts in coding versus
@@ -841,7 +844,7 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
   * `TOY50-AE2` sequence: 
 
   This sequence is similar to `TOY50-AE1` except the stretch of Ns
-  begins at position 29 and continues to the position 38 which is the final
+  begins at position 29 and continues to the position 38 (`seq coords:29..38:+`) which is the final
   position of the sequence causing the *ambgnt3s*
   alert with description *N_AT_END* to be reported because the sequence ends 
   with a stretch of 10 consecutive Ns. Because the
@@ -866,11 +869,11 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
 #      seq               ftr          ftr              ftr  alert           alert                             seq  seq       mdl  mdl  alert 
 #idx   name       model  type         name             idx  code      fail  description                    coords  len    coords  len  detail
 #----  ---------  -----  -----------  ---------------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-MP1  toy50  mat_peptide  protein_one_mp1    2  pepadjcy  yes   PEPTIDE_ADJACENCY_PROBLEM    22..24:+    3  22..23:+    2  predictions of two mat_peptides expected to be adjacent are not adjacent
+1.1.1  TOY50-MP1  toy50  mat_peptide  protein_one_mp1    2  pepadjcy  yes   PEPTIDE_ADJACENCY_PROBLEM    22..24:+    3  22..23:+    2  predictions of two mat_peptides expected to be adjacent are not adjacent [-]
 #
 2.1.1  TOY50-MP2  toy50  CDS          protein_one        1  mutstart  yes   MUTATION_AT_START            10..12:+    3  11..13:+    3  expected start codon could not be identified [GTG]
-2.2.1  TOY50-MP2  toy50  mat_peptide  protein_one_mp1    2  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem
-2.3.1  TOY50-MP2  toy50  mat_peptide  protein_one_mp2    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem
+2.2.1  TOY50-MP2  toy50  mat_peptide  protein_one_mp1    2  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem [-]
+2.3.1  TOY50-MP2  toy50  mat_peptide  protein_one_mp2    3  peptrans  yes   PEPTIDE_TRANSLATION_PROBLEM         -    -         -    -  mat_peptide may not be translated because its parent CDS has a problem [-]
 ```
 
   **Alignment of `TOY50-MP1` and `TOY50-MP2` sequences to the toy50 model:** The output
@@ -889,6 +892,7 @@ TOY50-MP1         -AAATCACCGATGGTGATCGCTgggTTACCATAAATGAGCAT-----------
 #=GR TOY50-MP1 PP .******************99766589***************...........
 TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
 #=GR TOY50-MP2 PP .*********************...*****************...........
+#=GC SS_cons      ::::::::::::::::::::::...::::::::::::::::::::::::::::
 #=GC RF           GAAATCACCGATGGTGATCGCT...TTACCATAAATGAGCATTCTACGTGCAT
 #=GC RFCOLX.      0000000001111111111222...2222222333333333344444444445
 #=GC RFCOL.X      1234567890123456789012...3456789012345678901234567890
@@ -912,10 +916,9 @@ TOY50-MP2         -AAATCACCGGTGGTGATCGCT...TTACCATAAATGAGCAT-----------
   reported for the `TOY50-MP1` sequence because the predicted CDS
   named `protein one mp1` ends at position 21 and `protein one mp2`
   begins at position 25, so the positions 22 to 24 lie between the two
-  mature peptide predictions. This is indicated by the `22..24:+`
-  value in the `seq coords` field.  The model position that ends
-  `protein one mp1` is 22, and that begins `protein one mp2` is 23 as
-  indicated by the `22..23:+` value in the `mdl coords` field.
+  mature peptide predictions (`seq coords:22..24:+`). 
+  The model position that ends
+  `protein one mp1` is 22, and that begins `protein one mp2` is 23 (`mdl coords:22..23:+`).
 
   * `TOY50-MP2` sequence: 
 
