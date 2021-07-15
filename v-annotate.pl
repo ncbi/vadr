@@ -6382,7 +6382,6 @@ sub add_protein_validation_alerts {
 
             # add alerts as needed:
             # check for indfantp
-            printf("1A\n");
             if((! defined $n_start) && (defined $p_qstart) && (defined $p_score))  { 
               # no nucleotide-based prediction but there is a protein-based blastx prediction
               # only add this if length meets our minimum
@@ -6431,7 +6430,6 @@ sub add_protein_validation_alerts {
                   $cur_3aln_tol = $aln_tol;
                 }
               }
-              printf("1B\n");
 
               # check for indfantn
               if(! defined $p_qstart) { 
@@ -6495,7 +6493,6 @@ sub add_protein_validation_alerts {
                     $p_sstop  = $p_qstop;
                   }
                   # check for 'indf5plg': only for non-feature seqs, blastx alignment extends outside of nucleotide/CM alignment on 5' end
-                  printf("1D\n");
                   if((! $p_blastx_feature_flag) && 
                      ((($n_strand eq "+") && ($p_sstart < $n_start)) || 
                       (($n_strand eq "-") && ($p_sstart > $n_start)))) { 
