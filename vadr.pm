@@ -5349,8 +5349,6 @@ sub vdr_CigarToInsertsHash {
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
 
-  close(OUT);
-
   return;
 }
 
