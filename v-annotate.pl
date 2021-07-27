@@ -623,6 +623,11 @@ if(opt_IsUsed("--split", \%opt_HH)) {
   }
 }
 
+# if--nmiscftrthr <n> is used, <n> must be >= 2
+if((opt_IsUsed("--nmiscftrthr", \%opt_HH)) && (opt_Get("--nmiscftrthr", \%opt_HH) < 2)) { 
+  die "ERROR, with --nmiscftrthr <n>, <n> must be >= 2";
+}
+
 #######################################################
 # determine if we are running blastx, hmmer, and blastn
 #######################################################
@@ -9727,7 +9732,7 @@ sub output_feature_table {
                 if(vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
-                  if(((! $have_fatal_alt) && ($have_misc_alt))) { 
+                  if((! $have_fatal_alt) && ($have_misc_alt)) { 
                     $cur_nmiscftr++; 
                   }
                 }
@@ -9954,7 +9959,7 @@ sub output_feature_table {
     my $cur_noutftr = scalar(@ftout_AH);
 
     # possibly add nmiscftr, noftrann, and noftrant alerts
-    if(($cur_nmiscftr > 0) && ($cur_nmiscftr >= $nmiscftr_thr) && (scalar(@seq_alert_A) == 0)) { 
+    if(($cur_nmiscftr > 0) && ($cur_nmiscftr >= $nmiscftr_thr)) { 
       # more than the maximum allowed number of misc_features have been created due to the misc_not_failure attributes
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nmiscftr", $seq_name, sprintf("seq:VADRNULL;mdl:VADRNULL;%d>=%d", $cur_nmiscftr, $nmiscftr_thr), $FH_HR);
       # only add to @seq_alert_A if nmiscftr is fatal
