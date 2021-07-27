@@ -258,7 +258,7 @@ opt_Add("--lowsim5ftr", "integer",   5,         $g,   undef,   undef,           
 opt_Add("--lowsim3ftr", "integer",   5,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
-opt_Add("--nmiscftrthr","integer",   2,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES max allowed number of misc_features is <n>",      "nmiscftr/TOO_MANY_MISC_FEATURES max allowed number of misc_features is <n>",      \%opt_HH, \@opt_order_A);
+opt_Add("--nmiscftrthr","integer",   3,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES max allowed number of misc_features is <n>",      "nmiscftr/TOO_MANY_MISC_FEATURES max allowed number of misc_features is <n>",      \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnt5",  "integer",    4,        $g,   undef,   undef,            "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>",   "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
@@ -9956,7 +9956,7 @@ sub output_feature_table {
     # possibly add nmiscftr, noftrann, and noftrant alerts
     if(($cur_nmiscftr > 0) && ($cur_nmiscftr >= $nmiscftr_thr) && (scalar(@seq_alert_A) == 0)) { 
       # more than the maximum allowed number of misc_features have been created due to the misc_not_failure attributes
-      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nmiscftr", $seq_name, "VADRNULL", $FH_HR);
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nmiscftr", $seq_name, sprintf("seq:VADRNULL;mdl:VADRNULL;%d>=%d", $cur_nmiscftr, $nmiscftr_thr), $FH_HR);
       # only add to @seq_alert_A if nmiscftr is fatal
       if($alt_info_HHR->{"nmiscftr"}{"causes_failure"}) { 
         push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s %s", $alt_info_HHR->{"nmiscftr"}{"sdesc"}, $alt_info_HHR->{"nmiscftr"}{"ldesc"}, sprintf("[%d>=%d]", $cur_nmiscftr, $nmiscftr_thr)));
