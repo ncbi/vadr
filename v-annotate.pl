@@ -228,7 +228,7 @@ $opt_group_desc_H{++$g} = "options related to model files";
 opt_Add("-m",           "string",  undef,      $g,    undef, undef,       "use CM file <s> instead of default",                                             "use CM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-a",           "string",  undef,      $g, "--pv_hmmer",undef,    "use protein HMM file <s> instead of default",                                    "use protein HMM file <s> instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("-i",           "string",  undef,      $g,    undef, undef,       "use model info file <s> instead of default",                                     "use model info file <s> instead of default", \%opt_HH, \@opt_order_A);
-opt_Add("-n",           "string",  undef,      $g,     "-s", undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
+opt_Add("-n",           "string",  undef,      $g,    undef, undef,       "use blastn db file <s> instead of default",                                      "use blastn db file <s> instead of default",  \%opt_HH, \@opt_order_A);
 opt_Add("-x",           "string",  undef,      $g,    undef, undef,       "blastx dbs are in dir <s>, instead of default",                                  "blastx dbs are in dir <s>, instead of default", \%opt_HH, \@opt_order_A);
 opt_Add("--mkey",       "string","calici",     $g,    undef,"-m,-i,-a",   ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'", ".cm, .minfo, blastn .fa files in \$VADRMODELDIR start with key <s>, not 'vadr'",  \%opt_HH, \@opt_order_A);
 opt_Add("--mdir",       "string",  undef,      $g,    undef, undef,       "model files are in directory <s>, not in \$VADRMODELDIR",                        "model files are in directory <s>, not in \$VADRMODELDIR",  \%opt_HH, \@opt_order_A);
@@ -4866,8 +4866,8 @@ sub add_frameshift_alerts_for_one_sequence {
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
       #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
-      printf("frame_stok_str: $frame_stok_str\n");
-      printf("frame_mtok_str: $frame_mtok_str\n");
+      #printf("frame_stok_str: $frame_stok_str\n");
+      #printf("frame_mtok_str: $frame_mtok_str\n");
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
@@ -6105,7 +6105,7 @@ sub add_low_similarity_alerts_for_one_sequence {
                 $alt_mcoords = "mdl:VADRNULL;";
               }
               $alt_msg = sprintf("%s%slow similarity region of length %d", 
-                                 $alt_scoords, $alt_mcoords, $length, $start, $stop);
+                                 $alt_scoords, $alt_mcoords, $length);
               if(($is_start) && ($length >= $terminal_seq_5_min_length)) { 
                 alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "lowsim5s", $seq_name, $alt_msg, $FH_HR);
               }
@@ -6382,7 +6382,6 @@ sub add_protein_validation_alerts {
 
             # add alerts as needed:
             # check for indfantp
-            printf("1A\n");
             if((! defined $n_start) && (defined $p_qstart) && (defined $p_score))  { 
               # no nucleotide-based prediction but there is a protein-based blastx prediction
               # only add this if length meets our minimum
@@ -6431,7 +6430,6 @@ sub add_protein_validation_alerts {
                   $cur_3aln_tol = $aln_tol;
                 }
               }
-              printf("1B\n");
 
               # check for indfantn
               if(! defined $p_qstart) { 
@@ -6495,7 +6493,6 @@ sub add_protein_validation_alerts {
                     $p_sstop  = $p_qstop;
                   }
                   # check for 'indf5plg': only for non-feature seqs, blastx alignment extends outside of nucleotide/CM alignment on 5' end
-                  printf("1D\n");
                   if((! $p_blastx_feature_flag) && 
                      ((($n_strand eq "+") && ($p_sstart < $n_start)) || 
                       (($n_strand eq "-") && ($p_sstart > $n_start)))) { 
@@ -8286,11 +8283,11 @@ sub alert_sequence_instance_update_mdl_coords {
         if($instance_ctr > 0) { $new_alt_instance .= ":VADRSEP:"; }
         $new_alt_instance .= "seq:" . $instance_scoords . ";" . $new_mcoords . $instance_detail;
       }
-      # update the alert instance somehow! maybe set it to blank and then rewrite it?
-      printf("in $sub_name\n");
-      printf("\told: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
+      # update the alert instance
+      #printf("in $sub_name\n");
+      #printf("\told: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
       $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $new_alt_instance;
-      printf("\tnew: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
+      #printf("\tnew: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
     }
   }
 
@@ -8462,7 +8459,7 @@ sub alert_instance_parse {
   my $mcoords = "VADRNULL";
   my $detail  = "VADRNULL";
 
-  printf("in $sub_name, alt_instance_str: $alt_instance_str\n");
+  # printf("in $sub_name, alt_instance_str: $alt_instance_str\n");
 
   if($alt_instance_str =~ /^seq\:([^\;]+);mdl\:([^\;]+);(.*)$/) { 
     ($scoords, $mcoords, $detail) = ($1, $2, $3);
@@ -8474,7 +8471,8 @@ sub alert_instance_parse {
     $detail = $alt_instance_str;
   }
 
-  printf("returning: scoords: $scoords mcoords: $mcoords detail: $detail\n");
+  # printf("returning: scoords: $scoords mcoords: $mcoords detail: $detail\n");
+
   return ($scoords, $mcoords, $detail);
 }
 

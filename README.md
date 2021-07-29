@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.2.1; June 2021
+#### Version 1.3; July 2021
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -45,12 +45,12 @@ with [VADR installation](documentation/install.md#top).
 ---
 ## SARS-CoV-2 annotation using VADR
 
-The `v-annotate.pl` script in VADR v1.2 has some enhancements
-specifically designed for SARs-CoV-2 annotation that increase speed
-(`-s` and `--glsearch` options) and provide better annotation for sequences with
+The `v-annotate.pl` script includes some special options specifically
+developed for SARS-CoV-2 annotation that increase speed (`-s` and
+`--glsearch` options) and provide better annotation for sequences with
 stretches of Ns (`-r` option). See [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
-for more information on using VADR to annotate SARS-CoV-2 sequences.
+page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation) for
+more information on using VADR to annotate SARS-CoV-2 sequences.
 
 ---
 ## Available VADR models <a name="models"></a>

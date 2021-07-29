@@ -1,5 +1,90 @@
 # VADR 1.x release notes 
 
+### VADR 1.3 release (July 2021): Minor update
+
+  v-annotate.pl changes:
+  * adds new alerts and new options for controlling alert
+    thresholds. In many cases this is by splitting existing alerts
+    and/or options into multiple options for greater user control.
+     adds separate options for controlling length thresholds for
+      lowsim{5,3,i}s vs lowsim{5,3,i}f alerts (`--lowsim5term` split
+      into `--lowsim5seq` and `--lowsim5ftr`; `--lowsim3term` split into
+      `--lowsim3seq` and `--lowsim3ftr`; `--lowsimint` split into
+      `--lowsimiseq` and `--lowsimiftr`;)
+    - splits alerts indf{5,3}loc alerts related to indefinite
+      annotation into indf{5,3}lcc (coding) and
+      indf{5,3}lcn (non-coding) for more control over these alerts
+      (INDEFINITE_ANNOTATION_START,END) for coding versus non-coding
+      features. Adds options to control each alert threshold
+      separately. 
+    - splits frameshift alerts into separate 5', 3' and internal
+      instances depending on where they occur in CDS. Specifically fst{hi,lo,uk}cnf split into
+      fst{hi,lo,uk}{5,3,i}cf. Different length thresholds can be
+      set for each 5', 3' and internal with options: --fstmminnt5,
+      --fstminnt3 and --fstminnti.
+    - list of new alerts in v1.3 and related alerts from v1.2 that no
+      longer exist:  
+
+      new 1.3 alert | related 1.2 alert (no longer exists) | alert description
+      ------------- | ------------------------------------ | -----------------
+      fsthicf3      | fsthicnf | POSSIBLE_FRAMESHIFT_HIGH_CONF
+      fsthicf5      | "        | "
+      fsthicfi      | "        | " 
+      fstlocf3      | fstlocnf | POSSIBLE_FRAMESHIFT_LOW_CONF
+      fstlocf5      | "        | "
+      fstlocfi      | "        | "
+      fstukcf3      | fstukcnf | POSSIBLE_FRAMESHIFT
+      fstukcf5      | "        | "
+      fstukcfi      | "        | "
+      indf3lcc      | indf3loc | INDEFINITE_ANNOTATION_END
+      indf3lcn      | "        | "
+      indf5lcc      | indf5loc | INDEFINITE_ANNOTATION_START
+      indf5lcn      | "        | "
+      lowsim3c      | lowsim3f | LOW_FEATURE_SIMILARITY_END
+      lowsim3n      | "        | "
+      lowsim5c      | lowsim5f | LOW_FEATURE_SIMILARITY_START
+      lowsim5n      | "        | "
+      lowsimic      | lowsimif | LOW_FEATURE_SIMILARITY
+      lowsimin      | "        | "
+
+  * adds information, including sequence and model coordinates, to
+    output files related to alerts: 
+    - modifies .alt file format by adding four fields: 'seq coords',
+      'seq len', 'mdl coords' and 'mdl len' 
+    - modifies .alt.list file format by adding four fields:
+      'model', 'feature type', 'seq coords' and 'mdl coords'
+    - adds feature type, sequence coords and model coords to 
+      error lines of .fail.tbl files
+    - various changes to detailed alert messages, mainly to avoid
+      redundancy with information in the new sequence and model 
+      coordinate fields
+
+  * adds markdown documentation file for "Explanations and examples of
+    v-annotate.pl detailed alert and error messages" in 
+    'documentation/alerts.md'.
+
+  * with --keep or --out_stk, output stockholm alignment files now
+    include per-column reference model position annotation
+
+  * fixes bug that sometimes caused the incorrect model strand to be
+    output in model coordinates in .ftr files 
+
+  * slightly modifies how N-replacment works with -r: 
+    - sets different minimum fraction of Ns in a region for
+      replacement for internal regions (0.5) and regions at the end of a
+      sequence (0.25). Previously both values were 0.25. The options
+      --rminfracti and --rminfract5 and --rminfract3 allow user to
+      change this. 
+    - allows some overlap in blastn hits when identifying candidate
+      regions for N replacment with -r (github issue #37)
+
+  * with --split, makes splitting of small sequence files more
+    efficient by placing a minimum of one sequence into each chunk 
+   
+  v-build.pl changes:
+  * fixes bug that allows use of blastn .fa database in model
+    directory created by v-build.pl 
+
 ### VADR 1.2.1 release (June 2021): Bug fix update
 
   * The vadr-install.sh script was updated in two ways:
