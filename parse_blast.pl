@@ -483,7 +483,8 @@ while($keep_going) {
   # finished with previous query
   # output info from final HSP from final query/target pair for previous query
   if ($overall_query_stop_representation) {
-    print "STOP\t" .$overall_query_stop_representation . "\n"; 
+    print "QSTOP\t" .$overall_query_stop_representation . "\n";
+    print "HSTOP\t" .$overall_subject_stop_representation . "\n";
   }
   if ($overall_query_gap_representation) {
     print "DEL\t" .$overall_query_gap_representation . "\n";
@@ -501,12 +502,14 @@ while($keep_going) {
   print "QRANGE\t".$overall_query_start."..".$overall_query_end."\n"; #print QRANGE and the query range
   print "END_MATCH\n";  #print END_MATCH
   # finished with previous query: re-initialize per-HSP variables
-  $overall_query_stop_representation = "";
-  $one_row_query_stop_representation = "";	    
-  $overall_query_gap_representation = "";
-  $one_row_query_gap_representation = "";
-  $overall_subject_gap_representation = "";
-  $one_row_subject_gap_representation = "";
+  $overall_query_stop_representation   = "";
+  $one_row_query_stop_representation   = "";	    
+  $overall_subject_stop_representation = "";
+  $one_row_subject_stop_representation = "";	    
+  $overall_query_gap_representation    = "";
+  $one_row_query_gap_representation    = "";
+  $overall_subject_gap_representation  = "";
+  $one_row_subject_gap_representation  = "";
   $maximum_subject_gap = 0;
   $maximum_query_gap = 0;	    
   $maximum_subject_gap_str = "";
