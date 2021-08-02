@@ -1871,6 +1871,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "nmiscftr", "sequence",
+                   "TOO_MANY_MISC_FEATURES", # short description
+                   "too many features are reported as misc_features", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
                    "UNREPORTED_FEATURE_PROBLEM", # short description
                    "only fatal alerts are for feature(s) not output to feature table", # long description

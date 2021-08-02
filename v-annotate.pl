@@ -254,10 +254,11 @@ opt_Add("--indefstr",   "real",      25,        $g,   undef,   undef,           
 opt_Add("--lowsim5seq", "integer",  15,         $g,   undef,   undef,            "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             "lowsim5s/LOW_SIMILARITY_START minimum length is <n>",                             \%opt_HH, \@opt_order_A);
 opt_Add("--lowsim3seq", "integer",  15,         $g,   undef,   undef,            "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               "lowsim3s/LOW_SIMILARITY_END minimum length is <n>",                               \%opt_HH, \@opt_order_A);
 opt_Add("--lowsimiseq", "integer",   1,         $g,   undef,   undef,            "lowsimis/LOW_SIMILARITY (internal) minimum length is <n>",                        "lowsimi/LOW_SIMILARITY (internal) minimum length is <n>",                         \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim5ftr", "integer",   5,         $g,   undef,   undef,            "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                     \%opt_HH, \@opt_order_A);
-opt_Add("--lowsim3ftr", "integer",   5,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                       \%opt_HH, \@opt_order_A);
-opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",                \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim5ftr", "integer",   5,         $g,   undef,   undef,            "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 "lowsim5{c,n}/LOW_FEATURE_SIMILARITY_START minimum length is <n>",                 \%opt_HH, \@opt_order_A);
+opt_Add("--lowsim3ftr", "integer",   5,         $g,   undef,   undef,            "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   "lowsim3{c,n}/LOW_FEATURE_SIMILARITY_END minimum length is <n>",                   \%opt_HH, \@opt_order_A);
+opt_Add("--lowsimiftr", "integer",   1,         $g,   undef,   undef,            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            "lowsimi{c,n}/LOW_FEATURE_SIMILARITY (internal) minimum length is <n>",            \%opt_HH, \@opt_order_A);
 opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            "biasdseq/BIASED_SEQUENCE fractional threshold is <x>",                            \%opt_HH, \@opt_order_A);
+opt_Add("--nmiscftrthr","integer",   3,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--fstminnt5",  "integer",    4,        $g,   undef,   undef,            "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>",   "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
@@ -421,6 +422,7 @@ my $options_okay =
                 'lowsim3ftr=s'  => \$GetOptions_H{"--lowsim3ftr"},
                 'lowsimiftr=s'  => \$GetOptions_H{"--lowsimiftr"},
                 'biasfract=s'   => \$GetOptions_H{"--biasfract"},  
+                'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
                 'fstminnt5=s'   => \$GetOptions_H{"--fstminnt5"},
@@ -619,6 +621,11 @@ if(opt_IsUsed("--split", \%opt_HH)) {
   if((opt_IsUsed("--out_rpafa", \%opt_HH)) && (! opt_IsUsed("--out_rpstk", \%opt_HH))) { 
     die "ERROR, with --split and --out_rpafa, --out_rpstk is also required";
   }
+}
+
+# if--nmiscftrthr <n> is used, <n> must be >= 2
+if((opt_IsUsed("--nmiscftrthr", \%opt_HH)) && (opt_Get("--nmiscftrthr", \%opt_HH) < 2)) { 
+  die "ERROR, with --nmiscftrthr <n>, <n> must be >= 2";
 }
 
 #######################################################
@@ -9570,6 +9577,7 @@ sub output_feature_table {
   my $do_noprotid     = opt_Get("--noprotid",     $opt_HHR); # 1 to never output protein_id qualifiers
   my $do_forceprotid  = opt_Get("--forceprotid",  $opt_HHR); # 1 to never modify sequence name for protein_id qualifiers
   my $do_noseqnamemax = opt_Get("--noseqnamemax", $opt_HHR); # 1 to allow protein_id values of any length
+  my $nmiscftr_thr    = opt_Get("--nmiscftrthr",  $opt_HHR); # max num misc_features allowed via misc_not_failure w/o nmiscftr alert
   my $max_protein_id_length = 50; # hard-coded
 
   my $do_notrim   = opt_Get("--notrim",   $opt_HHR); # 1 to never trim any features
@@ -9624,6 +9632,7 @@ sub output_feature_table {
 
     my @seq_alert_A = (); # all alerts for this sequence
     my @seq_note_A  = (); # all notes for this sequence
+    my $cur_nmiscftr = 0; # number of features turned into misc_features due to misc_not_failure attributes
 
     # first check for per-sequence alerts
     my $seq_alt_str = helper_output_sequence_alert_strings($seq_name, 0, $alt_info_HHR, \@seq_alt_code_A, $alt_seq_instances_HHR, $FH_HR);
@@ -9723,6 +9732,9 @@ sub output_feature_table {
                 if(vdr_FeatureTypeCanBecomeMiscFeature($ftr_info_AHR, $ftr_idx)) { 
                   $is_misc_feature = 1;
                   $feature_type = "misc_feature";
+                  if((! $have_fatal_alt) && ($have_misc_alt)) { 
+                    $cur_nmiscftr++; 
+                  }
                 }
               }
             }
@@ -9946,7 +9958,15 @@ sub output_feature_table {
     # done with this sequence, determine what type of output we will have 
     my $cur_noutftr = scalar(@ftout_AH);
 
-    # possibly add noftrann or noftranc alerts
+    # possibly add nmiscftr, noftrann, and noftrant alerts
+    if(($cur_nmiscftr > 0) && ($cur_nmiscftr >= $nmiscftr_thr)) { 
+      # more than the maximum allowed number of misc_features have been created due to the misc_not_failure attributes
+      alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "nmiscftr", $seq_name, sprintf("seq:VADRNULL;mdl:VADRNULL;%d>=%d", $cur_nmiscftr, $nmiscftr_thr), $FH_HR);
+      # only add to @seq_alert_A if nmiscftr is fatal
+      if($alt_info_HHR->{"nmiscftr"}{"causes_failure"}) { 
+        push(@seq_alert_A, sprintf("%s: (*sequence*) S:-; M:-; %s %s", $alt_info_HHR->{"nmiscftr"}{"sdesc"}, $alt_info_HHR->{"nmiscftr"}{"ldesc"}, sprintf("[%d>=%d]", $cur_nmiscftr, $nmiscftr_thr)));
+      }
+    }
     if($seq_ntabftr == 0) { 
       # no features annotated, even in eventual .ftr tabular file
       # first check to see if any per-sequence alerts that prevent annotation have already been reported,
@@ -10593,7 +10613,7 @@ sub helper_ftable_process_sequence_alerts {
 #             @{$ret_alert_AR}. 
 # 
 #             As of v1.1.3 this subroutine also takes into account
-#             if a feature/alert combination is has the 'misc_not_failure'
+#             if a feature/alert combination has the 'misc_not_failure'
 #             attribute. If so, we do not add it to the @{$ret_alert_AR}
 #             array, but the $ret_misc_flag (second return value)
 #             will be 1. See 'Returns' for details.
