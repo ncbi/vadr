@@ -3415,8 +3415,10 @@ sub cmalign_or_glsearch_wrapper {
   
   push(@concat_keys_A, "stdout"); 
   push(@concat_keys_A, "ifile"); 
-  if($do_parallel) { 
+  if($do_parallel || $do_glsearch) { 
     push(@concat_keys_A, "err"); 
+  }
+  if($do_parallel) { 
     push(@concat_keys_A, "sh"); 
   }
   foreach $out_key (@concat_keys_A) { 
@@ -3765,7 +3767,7 @@ sub cmalign_or_glsearch_run {
   # determine cmalign options based on command line options
   if($do_glsearch) { 
     my $gls_opts = sprintf("-r +%s/%s -f %s -g %s", opt_Get("--gls_match", $opt_HHR), opt_Get("--gls_mismatch", $opt_HHR), opt_Get("--gls_gapopen", $opt_HHR), opt_Get("--gls_gapextend", $opt_HHR));
-    $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " $gls_opts -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>&1";
+    $cmd = "cat $seq_file | " . $execs_HR->{"glsearch"} . " $gls_opts -T $ncpu -m 3,9C -z -1 -n -3 -d 1 - $mdl_file > $stdout_file 2>$err_file";
   }
   else { # running cmalign
     my $cmalign_mxsize = sprintf("%.2f", (opt_Get("--mxsize", $opt_HHR) / 4.)); # empirically cmalign can require as much as 4X the amount of memory it thinks it does, this is a problem to fix in infernal
