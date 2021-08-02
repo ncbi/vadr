@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.3 [July 2021]
+# version: 1.3 [Aug 2021]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -1869,6 +1869,12 @@ sub vdr_AlertInfoInitialize {
                    "NO_FEATURES_ANNOTATED", # short description
                    "all annotated features are too short to output to feature table", # long description
                    1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "nmiscftr", "sequence",
+                   "TOO_MANY_MISC_FEATURES", # short description
+                   "too many features are reported as misc_features", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
