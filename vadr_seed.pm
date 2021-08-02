@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.2.1 [June 2021]
+# version: 1.3 [Aug 2021]
 #
 # vadr_seed.pm
 # Eric Nawrocki
