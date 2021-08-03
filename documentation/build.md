@@ -151,47 +151,47 @@ When all steps are complete, `v-build.pl` ends by outputting a list of
 relevant output files with brief descriptions:
 
 ```
-# Output printed to screen saved in:                                           NC_039897.vadr.log
-# List of executed commands saved in:                                          NC_039897.vadr.cmd
-# List and description of all output files saved in:                           NC_039897.vadr.filelist
-# fasta file for NC_039897 saved in:                                           NC_039897.vadr.fa
-# feature table format file for NC_039897 saved in:                            NC_039897.vadr.tbl
-# feature table format file for YP_009538340.1 saved in:                       NC_039897.vadr.YP_009538340.1.tbl
-# feature table format file for YP_009538341.1 saved in:                       NC_039897.vadr.YP_009538341.1.tbl
-# feature table format file for YP_009538342.1 saved in:                       NC_039897.vadr.YP_009538342.1.tbl
-# Stockholm alignment file for NC_039897 saved in:                             NC_039897.vadr.stk
-# fasta sequence file for CDS from NC_039897 saved in:                         NC_039897.vadr.cds.fa
-# fasta sequence file for translated CDS from NC_039897 saved in:              NC_039897.vadr.protein.fa
-# BLAST db .phr file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.phr
-# BLAST db .pin file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pin
-# BLAST db .psq file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.psq
-# BLAST db .pdb file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pdb
-# BLAST db .pot file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pot
-# BLAST db .ptf file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.ptf
-# BLAST db .pto file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pto
-# HMMER model db file for NC_039897 saved in:                                  NC_039897.vadr.protein.hmm
-# hmmbuild build output (concatenated) saved in:                               NC_039897.vadr.protein.hmmbuild
-# binary HMM and p7 HMM filter file saved in:                                  NC_039897.vadr.protein.hmm.h3m
-# SSI index for binary HMM file saved in:                                      NC_039897.vadr.protein.hmm.h3i
-# optimized p7 HMM filters (MSV part) saved in:                                NC_039897.vadr.protein.hmm.h3f
-# optimized p7 HMM filters (remainder) saved in:                               NC_039897.vadr.protein.hmm.h3p
-# hmmpress output file saved in:                                               NC_039897.vadr.hmmpress
-# CM file saved in:                                                            NC_039897.vadr.cm
-# cmbuild output file saved in:                                                NC_039897.vadr.cmbuild
-# binary CM and p7 HMM filter file saved in:                                   NC_039897.vadr.cm.i1m
-# SSI index for binary CM file saved in:                                       NC_039897.vadr.cm.i1i
-# optimized p7 HMM filters (MSV part) saved in:                                NC_039897.vadr.cm.i1f
-# optimized p7 HMM filters (remainder) saved in:                               NC_039897.vadr.cm.i1p
-# cmpress output file saved in:                                                NC_039897.vadr.cmpress
-# fasta sequence file with cmemit consensus sequence for NC_039897 saved in:   NC_039897.vadr.nt.fa
-# BLAST db .nhr file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nhr
-# BLAST db .nin file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nin
-# BLAST db .nsq file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nsq
-# BLAST db .ndb file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.ndb
-# BLAST db .not file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.not
-# BLAST db .ntf file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.ntf
-# BLAST db .nto file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nto
-# VADR 'model info' format file for NC_039897 saved in:                        NC_039897.vadr.minfo
+# Output printed to screen saved in:                                 NC_039897.vadr.log
+# List of executed commands saved in:                                NC_039897.vadr.cmd
+# List and description of all output files saved in:                 NC_039897.vadr.filelist
+# fasta file for NC_039897 saved in:                                 NC_039897.vadr.fa
+# feature table format file for NC_039897 saved in:                  NC_039897.vadr.tbl
+# feature table format file for YP_009538340.1 saved in:             NC_039897.vadr.YP_009538340.1.tbl
+# feature table format file for YP_009538341.1 saved in:             NC_039897.vadr.YP_009538341.1.tbl
+# feature table format file for YP_009538342.1 saved in:             NC_039897.vadr.YP_009538342.1.tbl
+# Stockholm alignment file for NC_039897 saved in:                   NC_039897.vadr.stk
+# nucleotide blastn db fasta sequence file for NC_039897 saved in:   NC_039897.vadr.fa
+# BLAST db .nhr file for NC_039897 saved in:                         NC_039897.vadr.fa.nhr
+# BLAST db .nin file for NC_039897 saved in:                         NC_039897.vadr.fa.nin
+# BLAST db .nsq file for NC_039897 saved in:                         NC_039897.vadr.fa.nsq
+# BLAST db .ndb file for NC_039897 saved in:                         NC_039897.vadr.fa.ndb
+# BLAST db .not file for NC_039897 saved in:                         NC_039897.vadr.fa.not
+# BLAST db .ntf file for NC_039897 saved in:                         NC_039897.vadr.fa.ntf
+# BLAST db .nto file for NC_039897 saved in:                         NC_039897.vadr.fa.nto
+# fasta sequence file for CDS from NC_039897 saved in:               NC_039897.vadr.cds.fa
+# fasta sequence file for translated CDS from NC_039897 saved in:    NC_039897.vadr.protein.fa
+# BLAST db .phr file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.phr
+# BLAST db .pin file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pin
+# BLAST db .psq file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.psq
+# BLAST db .pdb file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pdb
+# BLAST db .pot file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pot
+# BLAST db .ptf file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.ptf
+# BLAST db .pto file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pto
+# HMMER model db file for NC_039897 saved in:                        NC_039897.vadr.protein.hmm
+# hmmbuild build output (concatenated) saved in:                     NC_039897.vadr.protein.hmmbuild
+# binary HMM and p7 HMM filter file saved in:                        NC_039897.vadr.protein.hmm.h3m
+# SSI index for binary HMM file saved in:                            NC_039897.vadr.protein.hmm.h3i
+# optimized p7 HMM filters (MSV part) saved in:                      NC_039897.vadr.protein.hmm.h3f
+# optimized p7 HMM filters (remainder) saved in:                     NC_039897.vadr.protein.hmm.h3p
+# hmmpress output file saved in:                                     NC_039897.vadr.hmmpress
+# CM file saved in:                                                  NC_039897.vadr.cm
+# cmbuild output file saved in:                                      NC_039897.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                         NC_039897.vadr.cm.i1m
+# SSI index for binary CM file saved in:                             NC_039897.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                      NC_039897.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                     NC_039897.vadr.cm.i1p
+# cmpress output file saved in:                                      NC_039897.vadr.cmpress
+# VADR 'model info' format file for NC_039897 saved in:              NC_039897.vadr.minfo
 #
 # All output files created in directory ./NC_039897/
 ```
