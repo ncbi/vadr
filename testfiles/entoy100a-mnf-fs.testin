@@ -45,7 +45,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-mnf2-fs1/va-entoy100
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-mnf2-fs1/va-entoy100a-mnf2-fs1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-mnf2-fs1/va-entoy100a-mnf2-fs1.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-mnf2-fs1/va-entoy100a-mnf2-fs1.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-mnf1-fs1/va-entoy100a-mnf1-fs1.vadr.alc
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-mnf2-fs1/va-entoy100a-mnf2-fs1.vadr.alc
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.ENTOY100A.CDS.1.1.frameshift.stk
 rmdir: va-entoy100a-mnf2-fs1
 # 
