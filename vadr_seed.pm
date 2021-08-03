@@ -1420,7 +1420,6 @@ sub join_alignments_and_add_unjoinbl_alerts {
       else { # include PPs
         print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
       }
-      #print OUT ("# STOCKHOLM 1.0\n$seq_name $ali_seq_line\n#=GR $seq_name PP $ali_pp_line\n#=GC RF $ali_mdl_line\n//\n");
       close(OUT);
       $out_stk_idx++;
     }      

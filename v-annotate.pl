@@ -1798,10 +1798,8 @@ if($do_pv_blastx) {
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
-        printf("0START\n");
         add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
-        printf("0DONE\n");
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
     }
@@ -7657,7 +7655,7 @@ sub helper_blastx_max_indel_token_to_alt_coords {
   
   my ($is_insert, $spos, $aa_mpos, $len, $is_feature, $ftr_scoords, $ftr_mcoords, $ftr_strand, $blastx_strand, $seq_len, $FH_HR) = (@_);
 
-  printf("in $sub_name\n\tspos: $spos\n\taa_mpos: $aa_mpos\n\tlen: $len\n\tis_feature: $is_feature\n\tftr_scoords: $ftr_scoords\n\tftr_mcoords: $ftr_mcoords\n\tblastx_strand: $blastx_strand\n\tseq_len: $seq_len\n\n");
+  #printf("in $sub_name\n\tspos: $spos\n\taa_mpos: $aa_mpos\n\tlen: $len\n\tis_feature: $is_feature\n\tftr_scoords: $ftr_scoords\n\tftr_mcoords: $ftr_mcoords\n\tblastx_strand: $blastx_strand\n\tseq_len: $seq_len\n\n");
 
   my $absolute_scoords = undef; # absolute sequence coords
   my $relative_scoords = undef; # relative sequence coords
@@ -10026,7 +10024,6 @@ sub output_feature_table {
       push(@pass_fa_A, $seq_name);
       print $pass_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
-        # print 
         print $pass_ftbl_FH $ftout_AH[$i]{"output"};
       }
     }
@@ -10035,7 +10032,6 @@ sub output_feature_table {
       push(@fail_fa_A, $seq_name);
       print $fail_ftbl_FH ">Feature $seq_name\n";
       for($i = 0; $i < scalar(@ftout_AH); $i++) { 
-        # print 
         print $fail_ftbl_FH $ftout_AH[$i]{"output"};
       }
       if((scalar(@seq_alert_A)) > 0) { 
@@ -11213,7 +11209,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
           $tblout_coords_HAH{$seq_name}[$ncoords]{"seq_stop"}  = $seq_stop;
           $tblout_coords_HAH{$seq_name}[$ncoords]{"mdl_start"} = $mdl_start;
           $tblout_coords_HAH{$seq_name}[$ncoords]{"mdl_stop"}  = $mdl_stop;
-          printf("added S:$seq_start..$seq_stop M:$mdl_start..$mdl_stop\n");
+          #printf("added S:$seq_start..$seq_stop M:$mdl_start..$mdl_stop\n");
         }
       } # end of 'if($seq_strand eq "+")'
     } # end of 'if($line !~ m/^#/)'
@@ -11253,7 +11249,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
       $seq_stop_A[$i]  = $cur_seq_tblout_coords_AH[$i]{"seq_stop"};
       $mdl_start_A[$i] = $cur_seq_tblout_coords_AH[$i]{"mdl_start"};
       $mdl_stop_A[$i]  = $cur_seq_tblout_coords_AH[$i]{"mdl_stop"};
-      #printf("HEYA set seq_stop_A[$i] to $seq_stop_A[$i]\n");
+      #printf("set seq_stop_A[$i] to $seq_stop_A[$i]\n");
     }
 
     # determine missing regions
@@ -11298,14 +11294,13 @@ sub parse_cdt_tblout_file_and_replace_ns {
       #printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
-      printf("seq_stop_A[(ncoords-1)] +1 : " . ($seq_stop_A[($ncoords-1)]+1) . "\n");
-      printf("missing_seq_len:      $missing_seq_len\n");
-      printf("mdl_stop_A[$i]:      " . $mdl_stop_A[$i] . "\n");
-      printf("cur_missing_mdl_stop: $cur_missing_mdl_stop\n");
-      printf("mdl_len:              $mdl_len\n");
+      #printf("seq_stop_A[(ncoords-1)] +1 : " . ($seq_stop_A[($ncoords-1)]+1) . "\n");
+      #printf("missing_seq_len:      $missing_seq_len\n");
+      #printf("mdl_stop_A[$i]:      " . $mdl_stop_A[$i] . "\n");
+      #printf("cur_missing_mdl_stop: $cur_missing_mdl_stop\n");
+      #printf("mdl_len:              $mdl_len\n");
       if($cur_missing_mdl_stop <= $mdl_len) { 
         # only add this missing region if it doesn't extend past end of model
-        printf("ummm adding\n");
         push(@missing_seq_start_A, $seq_stop_A[($ncoords-1)]+1);
         push(@missing_seq_stop_A,  $seq_len);
         push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
