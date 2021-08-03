@@ -753,7 +753,7 @@ foreach $cmd (@early_cmd_A) {
   print $cmd_FH $cmd . "\n";
 }
 
-my $progress_w = 87; # the width of the left hand column in our progress output, hard-coded
+my $progress_w = opt_Get("--split", \%opt_HH) ? 105 : 87; # the width of the left hand column in our progress output, hard-coded
 my $start_secs = ofile_OutputProgressPrior("Validating input", $progress_w, $log_FH, *STDOUT);
 
 my @to_remove_A   = (); # list of files to remove at end of subroutine, if --keep not used
