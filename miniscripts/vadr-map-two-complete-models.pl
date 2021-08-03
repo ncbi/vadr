@@ -11,9 +11,9 @@ require "sqp_ofile.pm";
 require "vadr.pm";
 
 my $usage;
-$usage  = "vadr-map-two-models.pl\n\n";
+$usage  = "vadr-map-two-complete-models.pl\n\n";
 $usage .= "Usage:\n\n";
-$usage .= "perl vadr-map-two-models.pl [OPTIONS]\n\t<mmap file path>\n\t<model to map positions from>\n\t<model to map positions to>\n\n";
+$usage .= "perl vadr-map-two-complete-models.pl [OPTIONS]\n\t<mmap file path>\n\t<model to map positions from>\n\t<model to map positions to>\n\n";
 
 if(scalar(@ARGV) != 3) { die $usage; }
 my ($mmap_file, $in_mfrom, $in_mto) = @ARGV;
