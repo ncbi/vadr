@@ -12,7 +12,7 @@
 			protein_id	NC_001959.2/6900-6979-bad-start_2
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_START: (VP2) expected start codon could not be identified [AAG starting at position 51 on + strand is not a valid start]
+ERROR: MUTATION_AT_START: (CDS:VP2) expected start codon could not be identified [AAG]; seq-coords:51..53:+; mdl-coords:6950..6952:+; mdl:NC_001959;
 >Feature NC_001959.2/6900-6978-bad-start
 <1	51	gene
 			gene	ORF2
@@ -22,4 +22,4 @@ ERROR: MUTATION_AT_START: (VP2) expected start codon could not be identified [AA
 			protein_id	NC_001959.2/6900-6978-bad-start_1
 
 Additional note(s) to submitter:
-ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:NC_001959;

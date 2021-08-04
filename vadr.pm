@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.2.1 [June 2021]
+# version: 1.3 [Aug 2021]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -168,6 +168,7 @@ require "sqp_utils.pm";
 # vdr_WriteCommandScript()
 # vdr_GlsearchFormat3And9CToStockholmAndInsertFile()
 # vdr_CigarToInsertsHash()
+# vdr_CigarToPositionMap()
 # vdr_ReplaceInsertTokenInInsertString()
 #
 #################################################################
@@ -1871,6 +1872,12 @@ sub vdr_AlertInfoInitialize {
                    1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "nmiscftr", "sequence",
+                   "TOO_MANY_MISC_FEATURES", # short description
+                   "too many features are reported as misc_features", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
                    "UNREPORTED_FEATURE_PROBLEM", # short description
                    "only fatal alerts are for feature(s) not output to feature table", # long description
@@ -1925,21 +1932,57 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicnf", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf5", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence potential frameshift in CDS", # long description
+                   "high confidence possible frameshift at 5' end of CDS", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocnf", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf3", "feature",
+                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
+                   "high confidence possible frameshift at 3' end of CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicfi", "feature",
+                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
+                   "high confidence possible frameshift in CDS (internal)", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf5", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence potential frameshift in CDS", # long description
+                   "low confidence possible frameshift at 5' end of CDS", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcnf", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf3", "feature",
+                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
+                   "low confidence possible frameshift at 3' end of CDS", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocfi", "feature",
+                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
+                   "low confidence possible frameshift in CDS (internal)", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf5", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "potential frameshift in CDS", # long description
+                   "possible frameshift at 5' end of CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf3", "feature",
+                   "POSSIBLE_FRAMESHIFT", # short description
+                   "possible frameshift at 3' end of CDS", # long description
+                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcfi", "feature",
+                   "POSSIBLE_FRAMESHIFT", # short description
+                   "possible frameshift in CDS (internal)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -1973,9 +2016,15 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "indf5loc", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "indf5lcc", "feature",
                    "INDEFINITE_ANNOTATION_START", # short description
-                   "alignment to homology model has low confidence at 5' boundary", # long description
+                   "alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "indf5lcn", "feature",
+                   "INDEFINITE_ANNOTATION_START", # short description
+                   "alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -1997,9 +2046,15 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "indf3loc", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "indf3lcc", "feature",
                    "INDEFINITE_ANNOTATION_END", # short description
-                   "alignment to homology model has low confidence at 3' boundary", # long description
+                   "alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS", # long description
+                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "indf3lcn", "feature",
+                   "INDEFINITE_ANNOTATION_END", # short description
+                   "alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -2051,21 +2106,39 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5f", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5c", "feature",
                    "LOW_FEATURE_SIMILARITY_START", # short description
-                   "region within annotated feature at 5' end of sequence lacks significant similarity", # long description
+                   "region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim5n", "feature",
+                   "LOW_FEATURE_SIMILARITY_START", # short description
+                   "region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3f", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3c", "feature",
                    "LOW_FEATURE_SIMILARITY_END", # short description
-                   "region within annotated feature at 3' end of sequence lacks significant similarity", # long description
+                   "region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsim3n", "feature",
+                   "LOW_FEATURE_SIMILARITY_END", # short description
+                   "region within annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "lowsimif", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsimic", "feature",
                    "LOW_FEATURE_SIMILARITY", # short description
-                   "region within annotated feature lacks significant similarity", # long description
+                   "region within annotated feature that is or matches a CDS lacks significant similarity", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "lowsimin", "feature",
+                   "LOW_FEATURE_SIMILARITY", # short description
+                   "region within annotated feature that does not match a CDS lacks significant similarity", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -2842,6 +2915,38 @@ sub vdr_CoordsSegmentCreate {
   if(($strand ne "+") && ($strand ne "-")) { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", 1, $FH_HR); }
 
   return $start . ".." . $stop . ":" . $strand;
+}
+
+#################################################################
+# Subroutine: vdr_CoordsSinglePositionSegmentCreate()
+# Incept:     EPN, Wed May 26 07:32:43 2021
+#
+# Synopsis: Create a length 1 coords token from a given position
+#           and strand. Removes any carrots in $posn.
+# 
+# Arguments:
+#  $posn:     start and stop position
+#  $strand:   strand ("+" or "-")
+#  $FH_HR:    REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    coordinate token <posn>..<posn>:<strand>
+#
+# Dies:  if $posn is invalid
+#        if $strand is not "+" or "-"
+#
+#################################################################
+sub vdr_CoordsSinglePositionSegmentCreate {
+  my $sub_name = "vdr_CoordsSinglePositionSegmentCreate";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($posn, $strand, $FH_HR) = @_;
+  if(($posn !~ /^\<?(\d+)$/) && ($posn !~ /^\>?(\d+)$/)) { ofile_FAIL("ERROR in $sub_name, posn is invalid ($posn)", 1, $FH_HR); }
+  if(($strand ne "+")        && ($strand ne "-"))        { ofile_FAIL("ERROR in $sub_name, strand is invalid ($strand)", 1, $FH_HR); }
+  $posn =~ s/^\>//;
+  $posn =~ s/^\<//;
+
+  return $posn . ".." . $posn . ":" . $strand;
 }
 
 #################################################################
@@ -4589,7 +4694,7 @@ sub vdr_SplitFastaFile {
     open(IN, $outfile) || ofile_FileOpenFailure($outfile, $sub_name, $!, "reading", $FH_HR);
     while(my $line = <IN>) { 
       #va-r400/va-r400.vadr.in.fa.1 finished (11 seqs, 325770 residues)
-      if($line =~ /^\S+\s+finished\s+\((\d+)\s+seqs,\s+\d+\s+residues\)/) { 
+      if($line =~ /^\S+\s+finished\s+\((\d+)\s+seqs/) { 
         push(@{$nseq_per_file_AR}, $1);
       }
       else { 
@@ -4953,12 +5058,12 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
   #Query: va-gls-cdc5/va-gls-cdc5.vadr.NC_045512.a.subseq.fa
   $line = <IN>; $line_ctr++;
   chomp $line;
-  if($line =~ m/^\s+cannot read format/) { 
+  while(($line !~ m/^Query/) && ($line =~ m/^\s+cannot read.*format/)) { 
     $line = <IN>; $line_ctr++;
     chomp $line;
   }
   if($line !~ m/^Query/) { 
-    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, fourth line did not start with \"Query\"\n", 1, $FH_HR);
+    ofile_FAIL("ERROR, in $sub_name, parsing $gls_file, fourth line did not start with \"Query\" (nor did it contain 'cannot read.*format')\n", 1, $FH_HR);
   }
 
   my $mdl_name;    # name of single target seq
@@ -5251,7 +5356,102 @@ sub vdr_CigarToInsertsHash {
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
 
-  close(OUT);
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_CigarToPositionMap()
+# Incept:      EPN, Mon Jul 26 12:36:38 2021
+#
+# Purpose:    Given a CIGAR string, model length <mlen> and sequence 
+#             length <slen>, fill an array <map_AR> (1..<mlen>)
+#             indicating which sequence position each model position
+#             maps to.
+#             map_AR->[mpos] = spos    indicates that sequence position 
+#                                      spos is aligned to model position mpos
+#             map_AR->[mpos] = -spos   indicates that model position mpos
+#                                      is aligned to a gap in the sequence
+#                                      and 5' most sequence position seen so
+#                                      far (5'-most prior to gap) is spos
+#             map_AR->[mpos] = 0       indicates that model position mpos
+#                                      is aligned to a gap in the sequence
+#                                      and no positions have been seen so far
+#                                      in the sequence 
+#             CIGAR string $cigar is in format (\d+[MID])+
+#             where \d+ indicates length
+#             M indicates matches (no inserts or deletes)
+#             I indicates insertion in target/model, so deletion(gap) in query/sequence
+#             D indicates deletion  in target/model, so insertion     in query/sequence (gap in target/model)
+#
+# Reference:  https://en.wikipedia.org/wiki/Sequence_alignment#Representations
+#             https://jef.works/blog/2017/03/28/CIGAR-strings-for-dummies/
+# 
+# Arguments: 
+#   $map_AR:      ref to array to fill with map, see 'Purpose' for more info
+#   $cigar:       CIGAR string
+#   $mdllen:      length of model
+#   $seqlen:      length of sequence
+#   $FH_HR:       ref to hash of file handles, including "cmd", can be undef
+#
+# Returns:     void
+# 
+# Dies:        If unable to parse $cigar string
+#              If cigar string implies model length different than $mdllen
+#              If cigar string implies sequence length different than $seqlen
+#
+################################################################# 
+sub vdr_CigarToPositionMap { 
+  my $nargs_exp = 5;
+  my $sub_name = "vdr_CigarToPositionMap";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($map_AR, $cigar, $mdllen, $seqlen, $FH_HR) = @_;
+  
+  #printf("in $sub_name, cigar: $cigar, mdllen: $mdllen, seqlen: $seqlen\n");
+
+  my $seqpos = 0;
+  my $mdlpos = 0;
+  my $orig_cigar = $cigar;
+  my $i;
+  $map_AR->[0] = -2; # irrelevant
+  while($cigar ne "") { 
+    if($cigar =~ /^(\d+)([MID])/) {
+      my ($len, $type) = ($1, $2);
+      if($type eq "M") { 
+        for($i = 1; $i <= $len; $i++) { 
+          $map_AR->[($mdlpos+$i)] = $seqpos+$i;
+        }
+        $seqpos += $len;
+        $mdlpos += $len;
+      }
+      if($type eq "I") { 
+        # gap in sequence
+        for($i = 1; $i <= $len; $i++) { 
+          if($seqpos == 0) { 
+            $map_AR->[($mdlpos+$i)] = 0;
+          }
+          else { 
+            $map_AR->[($mdlpos+$i)] = -1 * $seqpos;
+          }
+        }
+        $mdlpos += $len;
+      }
+      if($type eq "D") { 
+        # don't need to update @{$map_AR}
+        $seqpos += $len;
+      }
+      $cigar =~ s/^\d+[MID]//;
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse cigar string $orig_cigar", 1, $FH_HR);
+    }
+  }
+  if($mdlpos != $mdllen) { 
+    ofile_FAIL("ERROR, in $sub_name, model length after mapping ($mdlpos) not equal to input model length ($mdllen)", 1, $FH_HR);
+  }
+  if($seqpos != $seqlen) { 
+    ofile_FAIL("ERROR, in $sub_name, sequence length after mapping ($seqpos) not equal to input sequence length ($seqlen)", 1, $FH_HR);
+  }
 
   return;
 }
@@ -5374,6 +5574,121 @@ sub vdr_MergeOutputConcatenateOnly {
   elsif($do_check_exists) { 
     ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
   }
+  return $merged_file;
+}
+
+#################################################################
+# Subroutine:  vdr_MergeOutputConcatenatePreserveSpacing()
+# Incept:      EPN, Sat May 22 09:16:03 2021
+#
+# Purpose:    With --split, merge output files from multiple output
+#             directories in @{$chunk_outdir_AR} into a single file
+#             and preserve spacing on <$np> at least consecutive
+#             lines.
+#
+# Arguments: 
+#   $out_root_no_vadr:  root name for output file names, without '.vadr' suffix
+#   $out_sfx:           output name suffix
+#   $ofile_key:         key for %{$ofile_info_HHR}
+#   $ofile_desc:        description for %{$ofile_info_HHR}, "" to not add the file to %{$ofile_info_HHR}
+#   $do_check_exists:   '1' to check if all files to merge exist before concatenating and fail if not
+#   $np:                number of lines to preserve spacing for, -1 to preserve spacing for all lines
+#   $csep:              column separator string, often "  "
+#   $empty_flag:        '1' to output empty lines for empty arrays of data, '0'
+#                       to output empty lines as header separation lines
+#   $head_AAR:          header values
+#   $cljust_AR:         ref to '1'/'0' array of indicating if a column is left justified or not
+#   $chunk_outdir_AR:   ref to array of output directories with files we are merging
+#   $opt_HHR:           ref to 2D hash of option values, see top of sqp_opts.pm for description
+#   $ofile_info_HHR:    ref to the 2D hash of output file information
+#
+# Returns:     name of the merged file created
+# 
+# Dies: if $check_exists is 1 and a file to merge does not exist
+# 
+################################################################# 
+sub vdr_MergeOutputConcatenatePreserveSpacing { 
+  my $nargs_exp = 13;
+  my $sub_name = "vdr_MergeOutputConcatenatePreserveSpacing";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($out_root_no_vadr, $out_sfx, $ofile_key, $ofile_desc, $do_check_exists, $np, $csep, $empty_flag, $head_AAR, $cljust_AR, $chunk_outdir_AR, $opt_HHR, $ofile_info_HHR) = @_;
+
+  my $FH_HR = (defined $ofile_info_HHR->{"FH"}) ? $ofile_info_HHR->{"FH"} : undef;
+  my $ncol  = scalar(@{$cljust_AR});
+  
+  my @filelist_A = (); # array of files to concatenate to make $merged_file
+  vdr_MergeOutputGetFileList($out_root_no_vadr, $out_sfx, $do_check_exists, \@filelist_A, $chunk_outdir_AR, $FH_HR);
+
+  my $merged_file = $out_root_no_vadr . ".vadr" . $out_sfx; # merged file to create by concatenating files in chunk dirs
+  my $out_FH = undef; # output file handle
+  open($out_FH, ">", $merged_file) || ofile_FileOpenFailure($merged_file, $sub_name, $!, "writing", $FH_HR);
+
+  my $line; 
+  my $nline     = 0; # line number for current file
+  my $nline_tot = 0; # line number over all files
+  my $ncol2print = $ncol; # updated below by adding 1 if nec
+  my @data_AA = (); # [0..$i..$nline-1][0..$j..$ncol2print-1], data read from input to output again with correct spacing
+  my $seen_noncomment_line = 0; # used to skip header lines
+  my $nout = 0; # number of times we output a chunk
+  my $j;
+  
+  if(scalar(@filelist_A) > 0) { 
+    foreach my $file (@filelist_A) {
+      $seen_noncomment_line = 0; # used to skip header lines
+      open(IN, $file) || ofile_FileOpenFailure($file, $sub_name, $!, "reading", $FH_HR);
+      while($line = <IN>) { 
+        chomp $line;
+        my @el_A = split(/\s+/, $line);
+        my $nel = scalar(@el_A);
+        if($line !~ m/^\#/) { # a non-comment line
+          $seen_noncomment_line = 1;
+          @{$data_AA[$nline]} = ();
+          for($j = 0; $j < ($ncol-1); $j++) {
+            push(@{$data_AA[$nline]}, $el_A[$j]);
+          }
+          # combine all columns after $ncol into one, separated by single space
+          if($nel >= $ncol) {
+            my $toadd = "";
+            $ncol2print = $ncol + 1; 
+            for($j = ($ncol-1); $j < ($nel-1); $j++) {
+              $toadd .= $el_A[$j] . " ";
+            }
+            $toadd .= $el_A[($nel-1)];
+            push(@{$data_AA[$nline]}, $toadd);
+          }
+          $nline++;
+          $nline_tot++;
+        }
+        else { # a comment-line
+          if($seen_noncomment_line || $line eq "#") { 
+            push(@data_AA, []);  # push empty array --> blank line 
+            $nline++;
+            $nline_tot++;
+          }
+        }
+      }
+      if($nline >= $np) {
+        ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
+        undef @data_AA;
+        @data_AA = ();
+        $nline = 0;
+        $nout++;
+      }
+    }
+    # output remaining lines
+    if(($nline > 0) || ($nout == 0)) {
+      ofile_TableHumanOutput(\@data_AA, $head_AAR, $cljust_AR, undef, undef, $csep, undef, undef, undef, undef, $empty_flag, $out_FH, undef, $FH_HR);
+    }
+    close($out_FH);
+    if($ofile_desc ne "") { 
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $ofile_key, $merged_file, 1, 1, $ofile_desc);
+    }
+  }
+  elsif($do_check_exists) { 
+    ofile_FAIL("ERROR in $sub_name, zero files from chunk dir to concatenate to make $merged_file", 1, $FH_HR);
+  }
+  
   return $merged_file;
 }
 
@@ -5623,9 +5938,9 @@ sub vdr_MergeOutputAlcTabularFile {
        #---  --------  -------  ----------------------  -------  -----  ----  -----------
        #5     unexleng  yes*     UNEXPECTED_LENGTH       feature      1     1  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
        #6     cdsstopn  yes*     CDS_HAS_STOP_CODON      feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
-       #7     fstukcnf  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  potential frameshift in CDS
+       #7     fstukcfi  yes*     POSSIBLE_FRAMESHIFT     feature      1     1  possible frameshift in CDS (internal)
        #8     indfantn  yes      INDEFINITE_ANNOTATION   feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
-       #9     lowsimif  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature lacks significant similarity
+       #9     lowsimic  yes      LOW_FEATURE_SIMILARITY  feature      2     1  region within annotated feature that is or matches a CDS lacks significant similarity
        ##---  --------  -------  ----------------------  -------  -----  ----  -----------
       if($line !~ m/^\#/) { 
         chomp $line;
@@ -5835,7 +6150,7 @@ sub vdr_MergeAlignments {
   my $do_out_afa   = $do_keep || opt_Get("--out_afa",   $opt_HHR) ? 1 : 0;
   my $do_out_rpstk = $do_keep || opt_Get("--out_rpstk",   $opt_HHR) ? 1 : 0;
   my $do_out_rpafa = $do_keep || opt_Get("--out_rpafa",   $opt_HHR) ? 1 : 0;
-  # v-annotate.pl should have required that if --out_afa is used, --out_stk was also used
+  # NOTE: v-annotate.pl should have required that if --out_afa is used, --out_stk was also used
   # and that if --out_rpafa is used, --out_rpstk was also used. These are required because
   # we can't merge afa files (due to lack of RF annotation) so we need the stockholm equivalents
   # but we check here again to be safe.
@@ -5880,10 +6195,23 @@ sub vdr_MergeAlignments {
                                         "model " . $mdl_name . " alignment list ($stk_key)");
         utl_AToFile(\@filelist_A, $stk_list_file, 1, $FH_HR);
         sqf_EslAlimergeListRun($execs_HR->{"esl-alimerge"}, $stk_list_file, "", $stk_file, "stockholm", $opt_HHR, $FH_HR);
+
+        # remember if we are outputting afa we are also outputting stk, see 'NOTE:' in comment above
+
+        # need to use esl-alimerge and esl-alimanip to merge and add RF column numbering to the alignment
+        # in the future, if esl-alimerge will keep RFCOL columns in the alignment, we can fall back to 
+        # using only esl-alimerge
+        my $merge_and_manip_cmd  = $execs_HR->{"esl-alimerge"} . " --list --outformat stockholm --informat stockholm --dna $stk_list_file | ";
+        $merge_and_manip_cmd    .= $execs_HR->{"esl-alimanip"} . " --num-rf --outformat stockholm --informat stockholm --dna - > $stk_file";
+        utl_RunCommand($merge_and_manip_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
+
         ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $stk_key, $stk_file, 1, 1, $desc . "(stk)");
         if($do_afa) { 
           sqf_EslReformatRun($execs_HR->{"esl-reformat"}, "", $stk_file, $afa_file, "stockholm", "afa", $opt_HHR, $FH_HR);
           ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".align." . $afa_key, $afa_file, 1, 1, $desc . "(afa)");
+        }
+        else {
+          
         }
       }
     }

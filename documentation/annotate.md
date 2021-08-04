@@ -40,6 +40,11 @@ or more fatal alerts, they will be designated as *failing*
 sequences. Sequences with zero fatal alerts are designated as
 *passing* sequences. The types of alerts are described further below.
 
+**NOTE: the examples below are for norovirus and demonstrate the
+typical usage of vadr. For examples specific to SARS-CoV-2 see:**
+
+https://github.com/ncbi/vadr/wiki/Coronavirus-annotation
+
 To determine the command-line usage of 
 `v-annotate.pl` (or any VADR script), use the `-h` option, like this:
 
@@ -50,9 +55,9 @@ v-annotate.pl -h
 You'll see something like the following output:
 ```
 # v-annotate.pl :: classify and annotate sequences using a CM library
-# VADR 1.2 (April 2021)
+# VADR 1.3 (Aug 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Apr  5 10:31:24 2021
+# date:    Tue Aug  3 19:35:36 2021
 #
 Usage: v-annotate.pl [-options] <fasta file to annotate> <output directory to create>
 ```
@@ -85,12 +90,12 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Mon Apr  5 10:32:37 2021
+# date:              Tue Aug  3 19:36:13 2021
 # $VADRBIOEASELDIR:  /home/nawrocki/vadr-install-dir/Bio-Easel
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast/bin
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
 # $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries
-# $VADRMODELDIR:     /home/nawrocki/vadr-install-dir/vadr-models
+# $VADRMODELDIR:     /home/nawrocki/vadr-install-dir/vadr-models-calici
 # $VADRSCRIPTSDIR:   /home/nawrocki/vadr-install-dir/vadr
 #
 # sequence file:     /home/nawrocki/vadr-install-dir/vadr/documentation/annotate-files/noro.9.fa
@@ -338,10 +343,10 @@ due to reported fatal alerts. For example, at the end of
 
 ```
 Additional note(s) to submitter:
-ERROR: CDS_HAS_STOP_CODON: (VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-ERROR: CDS_HAS_STOP_CODON: (VF1) stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-ERROR: INDEFINITE_ANNOTATION_END: (VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-ERROR: INDEFINITE_ANNOTATION_START: (VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+ERROR: CDS_HAS_STOP_CODON: (CDS:VF1) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:408,M:408]; seq-coords:5275..5277:+; mdl-coords:5300..5302:+; mdl:NC_008311;
+ERROR: CDS_HAS_STOP_CODON: (CDS:VF1) stop codon in protein-based alignment [-]; seq-coords:5275..5277:+; mdl-coords:5300..5302:+; mdl:NC_008311;
+ERROR: INDEFINITE_ANNOTATION_END: (CDS:VF1) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36>5, no valid stop codon in nucleotide-based prediction]; seq-coords:5650..5685:+; mdl-coords:5710..5710:+; mdl:NC_008311;
+ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54>5]; seq-coords:6656..6709:+; mdl-coords:6681..6681:+; mdl:NC_008311;
 ```
 
 Note that this file lists only four ERRORs while the `.alt` output
@@ -367,11 +372,11 @@ line. The `.alt.list` file lists all alerts that cause errors in the
 the four alerts/errors in the `.fail.tbl` file shown above:
 
 ```
-#sequence	error	feature	error-description
-JN975492.1	CDS_HAS_STOP_CODON	VF1	in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-JN975492.1	CDS_HAS_STOP_CODON	VF1	stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-JN975492.1	INDEFINITE_ANNOTATION_END	VF1	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-JN975492.1	INDEFINITE_ANNOTATION_START	VP2	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+JN975492.1	NC_008311	CDS	VF1	CDS_HAS_STOP_CODON	5275..5277:+	5300..5302:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:408,M:408]
+JN975492.1	NC_008311	CDS	VF1	CDS_HAS_STOP_CODON	5275..5277:+	5300..5302:+	stop codon in protein-based alignment [-]
+JN975492.1	NC_008311	CDS	VF1	INDEFINITE_ANNOTATION_END	5650..5685:+	5710..5710:+	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36>5, no valid stop codon in nucleotide-based prediction]
+JN975492.1	NC_008311	CDS	VP2	INDEFINITE_ANNOTATION_START	6656..6709:+	6681..6681:+	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54>5]
 ```
 
 After that are two FASTA-formatted sequence files.
@@ -379,7 +384,7 @@ One of these files includes all
 passing sequences (`va-noro.9.vadr.pass.fa`) and the other includes all
 failing sequences (`va-noro.9.vadr.fail.fa`).
 
-After these two FASTA files are seven tabular summary files that end
+After these two FASTA files are eight tabular summary files that end
 with three letter suffixes:
 
 | suffix | description | reference | 
@@ -411,7 +416,7 @@ information on the classification of each sequence:
 6     KF475958.1   275  PASS  yes  NC_044854  Norovirus  GI     248.0  0.902  1.000  0.036     0     1    +  NC_044932  Norovirus  GII     164.0  0.596  -     
 7     AB713840.1   347  PASS  yes  NC_008311  Norovirus  GV     330.6  0.953  1.000  0.047   0.2     1    +  NC_040876  Norovirus  GII     239.5  0.690  -     
 8     JN585032.1   286  PASS  yes  NC_029645  Norovirus  GIII   242.3  0.847  0.997  0.039   0.1     1    +  NC_039897  Norovirus  GI      154.8  0.541  -     
-9     JN975492.1  7286  FAIL  yes  NC_008311  Norovirus  GV    4666.2  0.640  1.000  0.987  16.8     1    +  NC_044047  Norovirus  GVII   3382.8  0.464  -    
+9     JN975492.1  7286  FAIL  yes  NC_008311  Norovirus  GV    4666.2  0.640  1.000  0.987  16.8     1    +  NC_044047  Norovirus  GVII   3382.8  0.464  -     
 ```
 
 This file includes per-sequence information on whether each sequence
@@ -430,21 +435,21 @@ file type is [here](formats.md#sqc).
 Next, take a look at the first few lines of the `.ftr` file (`va-noro.9.vadr.ftr`):
 
 ```
-#     seq          seq                   ftr          ftr                         ftr  ftr  par                                                                                               seq         model  ftr   
-#idx  name         len  p/f   model      type         name                        len  idx  idx  str  n_from  n_to  n_instp  trc    5'N  3'N  p_from  p_to  p_instp  p_sc  nsa  nsn        coords        coords  alerts
-#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ---  ------  ----  -------  -----  ---  ---  ------  ----  -------  ----  ---  ---  ------------  ------------  ------
-1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1   -1    +       1  5083        -  5'       0    0       -     -        -     -    1    0     1..5083:+    22..5104:+  -     
-1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2   -1    +       1  5083        -  5'       0    0       2  5080        -  9094    1    0     1..5083:+    22..5104:+  -     
-1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3   -1    +    5064  6686        -  no       0    0       -     -        -     -    1    0  5064..6686:+  5085..6707:+  -     
-1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4   -1    +    5064  6686        -  no       0    0    5064  6683        -  2878    1    0  5064..6686:+  5085..6707:+  -     
-1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5   -1    +    6686  7492        -  no       0    0       -     -        -     -    1    0  6686..7492:+  6707..7513:+  -     
-1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6   -1    +    6686  7492        -  no       0    0    6686  7486        -  1393    1    0  6686..7492:+  6707..7513:+  -     
-1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    2    +       1   979        -  5'       0    0       -     -        -     -    1    0      1..979:+    22..1000:+  -     
-1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    2    +     980  2077        -  no       0    0       -     -        -     -    1    0   980..2077:+  1001..2098:+  -     
-1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    2    +    2078  2608        -  no       0    0       -     -        -     -    1    0  2078..2608:+  2099..2629:+  -     
-1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    2    +    2609  3007        -  no       0    0       -     -        -     -    1    0  2609..3007:+  2630..3028:+  -     
-1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    2    +    3008  3550        -  no       0    0       -     -        -     -    1    0  3008..3550:+  3029..3571:+  -     
-1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    2    +    3551  5080        -  no       0    0       -     -        -     -    1    0  3551..5080:+  3572..5101:+  -     
+#     seq          seq                   ftr          ftr                         ftr  ftr  par                                                                                                        seq         model  ftr   
+#idx  name         len  p/f   model      type         name                        len  idx  idx  str  n_from  n_to  n_instp  trc    5'N  3'N  p_from  p_to           p_instp  p_sc  nsa  nsn        coords        coords  alerts
+#---  ----------  ----  ----  ---------  -----------  -------------------------  ----  ---  ---  ---  ------  ----  -------  -----  ---  ---  ------  ----  ----------------  ----  ---  ---  ------------  ------------  ------
+1.1   KY887602.1  7547  PASS  NC_039477  gene         ORF1                       5083    1   -1    +       1  5083        -  5'       0    0       -     -                 -     -    1    0     1..5083:+    22..5104:+  -     
+1.2   KY887602.1  7547  PASS  NC_039477  CDS          nonstructural_polyprotein  5083    2   -1    +       1  5083        -  5'       0    0       2  5080                 -  9094    1    0     1..5083:+    22..5104:+  -     
+1.3   KY887602.1  7547  PASS  NC_039477  gene         ORF2                       1623    3   -1    +    5064  6686        -  no       0    0       -     -                 -     -    1    0  5064..6686:+  5085..6707:+  -     
+1.4   KY887602.1  7547  PASS  NC_039477  CDS          VP1                        1623    4   -1    +    5064  6686        -  no       0    0    5064  6683                 -  2878    1    0  5064..6686:+  5085..6707:+  -     
+1.5   KY887602.1  7547  PASS  NC_039477  gene         ORF3                        807    5   -1    +    6686  7492        -  no       0    0       -     -                 -     -    1    0  6686..7492:+  6707..7513:+  -     
+1.6   KY887602.1  7547  PASS  NC_039477  CDS          VP2                         807    6   -1    +    6686  7492        -  no       0    0    6686  7486                 -  1393    1    0  6686..7492:+  6707..7513:+  -     
+1.7   KY887602.1  7547  PASS  NC_039477  mat_peptide  p48                         979    7    2    +       1   979        -  5'       0    0       -     -                 -     -    1    0      1..979:+    22..1000:+  -     
+1.8   KY887602.1  7547  PASS  NC_039477  mat_peptide  NTPase                     1098    8    2    +     980  2077        -  no       0    0       -     -                 -     -    1    0   980..2077:+  1001..2098:+  -     
+1.9   KY887602.1  7547  PASS  NC_039477  mat_peptide  p22                         531    9    2    +    2078  2608        -  no       0    0       -     -                 -     -    1    0  2078..2608:+  2099..2629:+  -     
+1.10  KY887602.1  7547  PASS  NC_039477  mat_peptide  VPg                         399   10    2    +    2609  3007        -  no       0    0       -     -                 -     -    1    0  2609..3007:+  2630..3028:+  -     
+1.11  KY887602.1  7547  PASS  NC_039477  mat_peptide  Pro                         543   11    2    +    3008  3550        -  no       0    0       -     -                 -     -    1    0  3008..3550:+  3029..3571:+  -     
+1.12  KY887602.1  7547  PASS  NC_039477  mat_peptide  RdRp                       1530   12    2    +    3551  5080        -  no       0    0       -     -                 -     -    1    0  3551..5080:+  3572..5101:+  -     
 #
 ```
 
@@ -467,22 +472,26 @@ file type is [here](formats.md#ftr).
 which includes one line per alert reported:
 
 ```
-#      seq                    ftr   ftr   ftr  alert           alert                        alert 
-#idx   name        model      type  name  idx  code      fail  desc                         detail
-#----  ----------  ---------  ----  ----  ---  --------  ----  ---------------------------  ------
-9.1.1  JN975492.1  NC_008311  CDS   VF1     6  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TCA ending at position 5685 on + strand is not a valid stop]
-9.1.2  JN975492.1  NC_008311  CDS   VF1     6  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-9.1.3  JN975492.1  NC_008311  CDS   VF1     6  cdsstopp  yes   CDS_HAS_STOP_CODON           stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-9.1.4  JN975492.1  NC_008311  CDS   VF1     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-9.2.1  JN975492.1  NC_008311  CDS   VP2     8  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+#      seq                    ftr   ftr   ftr  alert           alert                                 seq  seq           mdl  mdl  alert 
+#idx   name        model      type  name  idx  code      fail  description                        coords  len        coords  len  detail
+#----  ----------  ---------  ----  ----  ---  --------  ----  ---------------------------  ------------  ---  ------------  ---  ------
+9.1.1  JN975492.1  NC_008311  CDS   VF1     6  mutendcd  yes   MUTATION_AT_END              5683..5685:+    3  5708..5710:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TCA]
+9.1.2  JN975492.1  NC_008311  CDS   VF1     6  cdsstopn  yes   CDS_HAS_STOP_CODON           5275..5277:+    3  5300..5302:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:408,M:408]
+9.1.3  JN975492.1  NC_008311  CDS   VF1     6  cdsstopp  yes   CDS_HAS_STOP_CODON           5275..5277:+    3  5300..5302:+    3  stop codon in protein-based alignment [-]
+9.1.4  JN975492.1  NC_008311  CDS   VF1     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    5650..5685:+   36  5710..5710:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36>5, no valid stop codon in nucleotide-based prediction]
+9.2.1  JN975492.1  NC_008311  CDS   VP2     8  indf5pst  yes   INDEFINITE_ANNOTATION_START  6656..6709:+   54  6681..6681:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54>5]
 ```     
 
 All alerts are for the `JN975492.1` sequence. Four are for the VF1 CDS
 and 1 is for the VP2 CDS. The alert codes are listed in the seventh
-column, along with a brief description in the eight column followed by
-a more detailed description, sometimes with positional information, at
-the end of the line. All possible alerts are listed in the [alert
+column, along with a brief description in the eigth column. 
+Then the sequence and model coordinates pertaining to the alert and
+the lengths of those regions are listed in columns 9 to 12.
+A more detailed description of the problem can be found in the final column.
+All possible alerts are listed in the [alert
 table](#alerttable).
+For some examples of different types of alerts see 
+[here](alerts.md#examples)
 
 ##  <a name="examplealtpass"></a>Example of using the `v-annotate.pl` `--alt_pass` and `--alt_fail` to change alerts from fatal to non-fatal and vice versa
 
@@ -670,13 +679,19 @@ In the table below, `<n>` represents a positive interger argument and
 | `--dupregolp <n>`   | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 20  | <a name="options-alerts-dupreg"></a>set min number of model position overlap for alert to  `<n>` positions | 
 | `--dupregsc <x>`    | [*dupregin*](#dupregin1)                             | DUPLICATE_REGIONS                      | >= 10.0| <a name="options-alerts-dupreg"></a> set min bit score of weaker overlapping hit to  `<x>` bits | 
 | `--indefstr <x>`    | [*indfstrn*](#indfstrn1)                             | INDEFINITE_STRAND                      | >= 25.0| <a name="options-alerts-indefstr"></a> set bit score of weaker strand hit for alert to `<x>` |
-| `--lowsim5term <n>` | [*lowsim5s*](#lowsim5s1), [*lowsim5f*](#lowsim5f1)   | LOW_SIMILARITY_START, LOW_FEATURE_SIMILARITY_START | >= 15  | <a name="options-alerts-lowsim5term"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsim3term <n>` | [*lowsim3s*](#lowsim3s1), [*lowsim3f*](#lowsim3f1)   | LOW_SIMILARITY_END, LOW_FEATURE_SIMILARITY_END     | >= 15  | <a name="options-alerts-lowsim3term"></a> set length (nt) threshold for alert to `<n>` |
-| `--lowsimint <n>`   | [*lowsimis*](#lowsimis1), [*lowsimif*](#lowsimif1)   | LOW_SIMILARITY, LOW_FEATURE_SIMILARITY | >= 1   | <a name="options-alerts-lowsimint"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim5seq  <n>` | [*lowsim5s*](#lowsim5s1)                             | LOW_SIMILARITY_START                   | >= 15  | <a name="options-alerts-lowsim5seq"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim3seq  <n>` | [*lowsim3s*](#lowsim3s1)                             | LOW_SIMILARITY_END                     | >= 15  | <a name="options-alerts-lowsim3seq"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsimiseq <n>`  | [*lowsimis*](#lowsimis1)                             | LOW_SIMILARITY                         | >= 1   | <a name="options-alerts-lowsimiseq"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim5ftr  <n>` | [*lowsim5f*](#lowsim5f1)                             | LOW_FEATURE_SIMILARITY_START           | >= 15  | <a name="options-alerts-lowsim5ftr"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsim3ftr  <n>` | [*lowsim3f*](#lowsim3f1)                             | LOW_FEATURE_SIMILARITY_END             | >= 15  | <a name="options-alerts-lowsim3ftr"></a> set length (nt) threshold for alert to `<n>` |
+| `--lowsimiftr <n>`  | [*lowsimif*](#lowsimif1)                             | LOW_FEATURE_SIMILARITY                 | >= 1   | <a name="options-alerts-lowsimiftr"></a> set length (nt) threshold for alert to `<n>` |
 | `--biasfrac <x>`    | [*biasdseq*](#biasdseq1)                             | BIASED_SEQUENCE                        | >= 0.25| <a name="options-alerts-biasfrac"></a>  set fractional bit score threshold for biased score/total score for alert to `<x>` |
-| `--indefann <x>`    | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
-| `--indefann_mp <x>` | [*indf5loc*](#indf5loc1), [*indf3loc*](#indf3loc1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | <a name="options-alerts-indefann_mp"></a> set posterior probability threshold for mat_peptide features for alert to `<x>` |
-| `--fstminnt <n>`    | [*fsthicnf*](#fsthicnf1), [*fstlocnf*](#fstlocnf1)   | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF | >= 6 | <a name="options-alerts-fstminnt"></a> set maximum allowed length of aligned region in different frame to `<n>` |
+| `--nmiscftrthr <n>` | [*nmiscftr*](#nmiscftr1)                             | TOO_MANY_MISC_FEATURES                 | >= 3   | <a name="options-alerts-nmiscftr"></a>  set minimum number of misc_features per sequence for alert to `<n>` |
+| `--indefann <x>`    | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.8 | <a name="options-alerts-indefann"></a> set posterior probability threshold for non-mat_peptide features for alert to `<x>` |
+| `--indefann_mp <x>` | [*indf5lcc*](#indf5lcc1), [*indf5lcn*](#indf5lcn1), [*indf3lcc*](#indf3lcc1), [*indf3lcn*](#indf3lcn1) | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | < 0.6 | <a name="options-alerts-indefann_mp"></a> set posterior probability threshold for mat_peptide features for alert to `<x>` |
+| `--fstminnt5 <n>`   | [*fsthicf5*](#fsthicf51), [*fstlocf5*](#fstlocf51), [*fstukcf5*](#fstukcf51) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIT | >= 2 | <a name="options-alerts-fstminnt5"></a> set maximum allowed length of aligned region in different frame at 5' end of CDS to `<n>` |
+| `--fstminnt3 <n>`   | [*fsthicf3*](#fsthicf31), [*fstlocf3*](#fstlocf31), [*fstukcf3*](#fstukcf31) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIT | >= 2 | <a name="options-alerts-fstminnt3"></a> set maximum allowed length of aligned region in different frame at 3' end of CDS to `<n>` |
+| `--fstminnti <n>`   | [*fsthicfi*](#fsthicfi1), [*fstlocfi*](#fstlocfi1), [*fstukcfi*](#fstukcfi1) | POSSIBLE_FRAMESHIFT_HIGH_CONF, POSSIBLE_FRAMESHIFT_LO_CONF, POSSIBLE_FRAMESHIT | >= 6 | <a name="options-alerts-fstminnti"></a> set maximum allowed length of aligned internal CDS region in different frame to `<n>` |
 | `--fsthighthr <x>`  | [*fsthicnf*](#fsthicnf1)                             | POSSIBLE_FRAMESHIFT_HIGH_CONF         | >= 0.8  | <a name="options-alerts-fsthighthr"></a> set average posterior probability threshold for potentially frameshifted region for high confidence alert to `<x>` |
 | `--fstlowthr <x>`   | [*fstlocnf*](#fstlocnf1)                             | POSSIBLE_FRAMESHIFT_LOW_CONF          | >= 0.3  | <a name="options-alerts-fstlowthr"></a> set average posterior probability threshold for potentially frameshifted region for low confidence alert to `<x>` |
 | `--xalntol <n>`     | [*indf5pst*](#indf5pst1), [*indf3pst*](#indf3pst1)   | INDEFINITE_ANNOTATION_START, INDEFINITE_ANNOTATION_END | > 5 | <a name="options-alerts-xalntol"></a> set maximum allowed difference in nucleotides between predicted blastx and CM start/end without alert to `<n>` (blastx coordinates must be internal to CM coordinates) |
@@ -790,8 +805,10 @@ are then replaced with the expected nucleotide at each corresponding position:
 * length of missing sequence region must equal length of
    missing model region
 
-* missing sequence region must be `>= 0.50` fraction Ns
-  (controllable with `--r_minfract` option)
+* missing sequence region must be `>= 0.25` fraction Ns if it includes
+  the 5' end or 3' end of the sequence, or `>= 0.50` fraction Ns if it
+  does not (controllable with `--r_minfract5`, `--r_minfract3` and
+  `--r_minfracti` options).
 
 When `-r` is used, an additional output file with suffix `.rpn` is created,
 with format described [here](formats.md#rpn).
@@ -800,7 +817,9 @@ with format described [here](formats.md#rpn).
 |---------------------|--------------------|
 | `-r`                | turn on the replace-N strategy: replace stretches of Ns with expected nucleotides, where possible |
 | `--r_minlen <n>`    | with `-r`, set minimum length subsequence to possibly replace Ns in to `<n>`, the default value for `<n>` is `5` |
-| `--r_minfract <n>`  | with `-r`, set the minimum fraction of nucleotides in a subsequence to trigger N replacement to `<x>`, the default value for `<x>` is `0.5` |
+| `--r_minfract5 <f>` | with `-r`, set the minimum fraction of nucleotides in a subsequence at the 5' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
+| `--r_minfract3 <f>` | with `-r`, set the minimum fraction of nucleotides in a subsequence at the 3' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
+| `--r_minfracti <f>` | with `-r`, set the minimum fraction of nucleotides in an internal subsequence to trigger N replacement to `<x>`, the default value for `<x>` is `0.5` |
 | `--r_fetchr`        | with `-r`, fetch features to fasta files from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_cdsmpr`        | with `-r`, identify CDS- and mat_peptide-specific alerts using subsequences fetched from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_pvorig`        | with `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
@@ -868,6 +887,7 @@ explained more [here](#memory).
 | `--xsub <s>`     | specify that file `<s>` lists blastx dbs to substitute, each line should contain two space-delimited tokens, blastx db for model listed in token 2 will substitute as blastx db for all sequences classified as the model listed in token 1 |
 | `--nodcr`        | never doctor alignments to shift gaps to correct start/stop codon annotation |
 | `--forcedcrins`  | force insert type alignment doctoring, requires `--cmindi`, mainly useful for debugging/testing |
+| `--xnoid`        | ignore blastx hits that are full length and 100% identical, mainly useful for testing |
 
 ## Information on `v-annotate.pl` alerts <a name="alerts"></a>
 
@@ -898,6 +918,7 @@ features as described more [below](#mnf).
 | [*unexdivg*](#unexdivg2)  | sequence | never | UNEXPECTED_DIVERGENCE           | <a name="unexdivg1"></a> sequence is too divergent to confidently assign nucleotide-based annotation  |
 | [*noftrann*](#noftrann2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrann1"></a> sequence similarity to homology model does not overlap with any features |
 | [*noftrant*](#noftrant2)  | sequence | never | NO_FEATURES_ANNOTATED           | <a name="noftrant1"></a> all annotated features are too short to be output to feature table |
+| [*ftskipfl*](#ftskipfl2)  | sequence | never | UNREPORTED_FEATURE_PROBLEM      | <a name="ftskipfl1"></a> only fatal alerts are for feature(s) not output to feature table |
 
 #### Description of alerts that are *fatal* by default <a name="fatal1"></a>
 | alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
@@ -919,27 +940,31 @@ features as described more [below](#mnf).
 | [*unexleng*](#unexleng2)  | feature  | yes   | UNEXPECTED_LENGTH               | <a name="unexleng1"></a> length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 | 
 | [*cdsstopn*](#cdsstopn2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopn1"></a> in-frame stop codon exists 5' of stop position predicted by homology to reference | 
 | [*cdsstopp*](#cdsstopp2)  | feature  | yes   | CDS_HAS_STOP_CODON              | <a name="cdsstopp1"></a> stop codon in protein-based alignment |
-| [*fsthicnf*](#fsthicnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicnf1"></a> high confidence potential frameshift in CDS |
-| [*fstukcnf*](#fstukcnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcnf1"></a> potential frameshift in CDS (only reported if `glsearch` |
+| [*fsthicf5*](#fsthicf52)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicf51"></a> high confidence potential frameshift at 5' end of CDS (not reported if `--glsearch`)|
+| [*fsthicf3*](#fsthicf32)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicf31"></a> high confidence potential frameshift at 3' end of CDS (not reported if `--glsearch`)|
+| [*fsthicfi*](#fsthicfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_HIGH_CONF   | <a name="fsthicfi1"></a> high confidence potential internal frameshift in CDS (not reported if `--glsearch`)|
+| [*fstukcf5*](#fstukcf52)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcf51"></a> potential frameshift at 5' end of CDS (only reported if `--glsearch`) |
+| [*fstukcf3*](#fstukcf32)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcf31"></a> potential frameshift at 3' end of CDS (only reported if `--glsearch`) |
+| [*fstukcfi*](#fstukcfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT             | <a name="fstukcfi1"></a> potential internal frameshift in CDS (only reported if `--glsearch`) |
 | [*peptrans*](#peptrans2)  | feature  | yes   | PEPTIDE_TRANSLATION_PROBLEM     | <a name="peptrans1"></a> mat_peptide may not be translated because its parent CDS has a problem |
 | [*pepadjcy*](#pepadjcy2)  | feature  | yes   | PEPTIDE_ADJACENCY_PROBLEM       | <a name="pepadjcy1"></a> predictions of two mat_peptides expected to be adjacent are not adjacent |
 | [*indfantp*](#indfantp2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantp1"></a> protein-based search identifies CDS not identified in nucleotide-based search |
 | [*indfantn*](#indfantn2)  | feature  | no    | INDEFINITE_ANNOTATION           | <a name="indfantn1"></a> nucleotide-based search identifies CDS not identified in protein-based search | 
 | [*indf5gap*](#indf5gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5gap1"></a> alignment to homology model is a gap at 5' boundary |
-| [*indf5loc*](#indf5loc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5loc1"></a> alignment to homology model has low confidence at 5' boundary |
+| [*indf5lcn*](#indf5lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcn1"></a> alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS |
 | [*indf5plg*](#indf5plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5plg1"></a> protein-based alignment extends past nucleotide-based alignment at 5' end | 
 | [*indf5pst*](#indf5pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint | 
 | [*indf3gap*](#indf3gap2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3gap1"></a> alignment to homology model is a gap at 3' boundary | 
-| [*indf3loc*](#indf3loc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3loc1"></a> alignment to homology model has low confidence at 3' boundary | 
+| [*indf3lcn*](#indf3lcn2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcn1"></a> alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS | 
 | [*indf3plg*](#indf3plg2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3plg1"></a> protein-based alignment extends past nucleotide-based alignment at 3' end | 
 | [*indf3pst*](#indf3pst2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3pst1"></a> protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint | 
 | [*indfstrp*](#indfstrp2)  | feature  | no    | INDEFINITE_STRAND               | <a name="indfstrp1"></a> strand mismatch between protein-based and nucleotide-based predictions | 
 | [*insertnp*](#insertnp2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnp1"></a> too large of an insertion in protein-based alignment | 
-| [*deletinp*](#deletinp2)  | feature  | no    | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
+| [*deletinp*](#deletinp2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinp1"></a> too large of a deletion in protein-based alignment | 
 | [*deletinf*](#deletinf2)  | feature  | no    | DELETION_OF_FEATURE_SECTION     | <a name="deletinf1"></a> internal deletion of a complete section in a multi-section feature with other section(s) annotated |
-| [*lowsim5f*](#lowsim5f2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5f1"></a> region within annotated feature at 5' end of sequence lacks significant similarity |
-| [*lowsim3f*](#lowsim3f2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3f1"></a> region within annotated feature at 3' end of sequence lacks significant similarity | 
-| [*lowsimif*](#lowsimif2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimif1"></a> region within annotated feature lacks significant similarity  |
+| [*lowsim5n*](#lowsim5n2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity |
+| [*lowsim3n*](#lowsim3n2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region within annotated feature that does not match a CDS at 3' end of sequence lacks significant similarity | 
+| [*lowsimin*](#lowsimin2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region within annotated feature that does not match a CDS lacks significant similarity  |
 
 #### Description of alerts that are *non-fatal* by default <a name="nonfatal1"></a>
 | alert code | type  | causes `misc_feature`, not failure (if in modelinfo file) |short description/error name | long description |
@@ -952,9 +977,16 @@ features as described more [below](#mnf).
 | [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
 | [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
 | [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
-| [*fstlocnf*](#fstlocnf2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocnf1"></a> low confidence potential frameshift in CDS |
+| [*fstlocf5*](#fstlocf52)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocf51"></a> low confidence potential frameshift at 5' end of CDS (not reported if `--glsearch`)|
+| [*fstlocf3*](#fstlocf32)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocf31"></a> low confidence potential frameshift at 3' end of CDS (not reported if `--glsearch`)|
+| [*fstlocfi*](#fstlocfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocfi1"></a> low confidence potential internal frameshift in CDS (not reported if `--glsearch`)|
+| [*indf5lcc*](#indf5lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcc1"></a> alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS |
+| [*indf3lcc*](#indf3lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcc1"></a> alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS | 
 | [*insertnn*](#insertnn2)  | feature  | no    | INSERTION_OF_NT                 | <a name="insertnn1"></a> too large of an insertion in nucleotide-based alignment of CDS feature | 
-| [*deletinn*](#deletinn2)  | feature  | no    | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
+| [*deletinn*](#deletinn2)  | feature  | yes   | DELETION_OF_NT                  | <a name="deletinn1"></a> too large of a deletion in nucleotide-based alignment of CDS feature | 
+| [*lowsim5c*](#lowsim5c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_START    | <a name="lowsim5n1"></a> region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity |
+| [*lowsim3c*](#lowsim3c2)  | feature  | no    | LOW_FEATURE_SIMILARITY_END      | <a name="lowsim3n1"></a> region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity | 
+| [*lowsimic*](#lowsimic2)  | feature  | no    | LOW_FEATURE_SIMILARITY          | <a name="lowsimin1"></a> region within annotated feature that is or matches a CDS lacks significant similarity  |
 | [*ambgnt5f*](#ambgnt5f2)  | feature  | no    | N_AT_FEATURE_START              | <a name="ambgnt5f1"></a> first nucleotide of non-CDS feature is an N |
 | [*ambgnt3f*](#ambgnt3f2)  | feature  | no    | N_AT_FEATURE_END                | <a name="ambgnt3f1"></a> final nucleotide of non-CDS feature is an N |
 | [*ambgnt5c*](#ambgnt5c2)  | feature  | no    | N_AT_CDS_START                  | <a name="ambgnt5c1"></a> first nucleotide of CDS is an N | 
@@ -991,8 +1023,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*dupregin*](#dupregin1)  | DUPLICATE_REGIONS               | [`--dupreg`](#options-alerts-dupreg) | - | - <a name="dupregin2"></a> | 
 | [*discontn*](#discontn1)  | DISCONTINUOUS_SIMILARITY        | none | - | - <a name="discontn2"></a> | 
 | [*indfstrn*](#indfstrn1)  | INDEFINITE_STRAND               | [`--indefstr`](#options-alerts-indefstr) | - | - <a name="indfstrn2"></a> | 
-| [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5term`](#options-alerts-lowsim5term) | - | - <a name="lowsim5s2"></a> | 
-| [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3term`](#options-alerts-lowsim3term) | - | - <a name="lowsim3s2"></a> | 
+| [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5seq`](#options-alerts-lowsim5seq) | - | - <a name="lowsim5s2"></a> | 
+| [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3seq`](#options-alerts-lowsim3seq) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
 | [*deletinf*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
@@ -1002,18 +1034,22 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*unexleng*](#unexleng1)  | UNEXPECTED_LENGTH               | none | CDS, mat_peptide | - <a name="unexleng2"></a> | 
 | [*cdsstopn*](#cdsstopn1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="2"></a> <a name="cdsstopn2"></a> | 
 | [*cdsstopp*](#cdsstopp1)  | CDS_HAS_STOP_CODON              | none | CDS | - <a name="cdsstopp2"></a> | 
-| [*fsthicnf*](#fsthicnf1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fsthicnf2"></a> |
-| [*fstukcnf*](#fstukcnf1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstukcnf2"></a> |
+| [*fsthicf5*](#fsthicf51)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt5`](#options-alerts-fstminnt5) | CDS | - <a name="fsthicf52"></a> |
+| [*fsthicf3*](#fsthicf31)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnt3`](#options-alerts-fstminnt3) | CDS | - <a name="fsthicf32"></a> |
+| [*fsthicfi*](#fsthicfi1)  | POSSIBLE_FRAMESHIFT_HIGH_CONF   | [`--fsthighthr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fsthicfi2"></a> |
+| [*fstukcf5*](#fstukcf51)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt5`](#options-alerts-fstminnt5)   | CDS | - <a name="fstukcf52"></a> |
+| [*fstukcf3*](#fstukcf31)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnt3`](#options-alerts-fstminnt3)   | CDS | - <a name="fstukcf32"></a> |
+| [*fstukcfi*](#fstukcfi1)  | POSSIBLE_FRAMESHIFT             | [`--glsearch`, `--fstminnti`](#options-alerts-fstminnti)   | CDS | - <a name="fstukcfi2"></a> |
 | [*peptrans*](#peptrans1)  | PEPTIDE_TRANSLATION_PROBLEM     | none | mat_peptide | - <a name="peptrans2"></a> | 
 | [*pepadjcy*](#pepadjcy1)  | PEPTIDE_ADJACENCY_PROBLEM       | none | mat_peptide | - <a name="pepadcy2"></a> | 
 | [*indfantp*](#indfantp1)  | INDEFINITE_ANNOTATION           | [`--xlonescore`](#options-alerts-xlonescore) | CDS | - <a name="indfantp2"></a> | 
 | [*indfantn*](#indfantn1)  | INDEFINITE_ANNOTATION           | none | CDS | - <a name="indfantn2"></a> | 
 | [*indf5gap*](#indf5gap1)  | INDEFINITE_ANNOTATION_START     | none | all | - <a name="indf5gap2"></a> | 
-| [*indf5loc*](#indf5loc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5loc2"></a> | 
+| [*indf5lcn*](#indf5lcn1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcn2"></a> | 
 | [*indf5plg*](#indf5plg1)  | INDEFINITE_ANNOTATION_START     | none | CDS | - <a name="indf5plg2"></a> | 
 | [*indf5pst*](#indf5pst1)  | INDEFINITE_ANNOTATION_START     | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf5pst2"></a> | 
 | [*indf3gap*](#indf3gap1)  | INDEFINITE_ANNOTATION_END       | none | all | - <a name="indf3gap2"></a> |  
-| [*indf3loc*](#indf3loc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene with identical stop coordinate to CDS | - <a name="indf3loc2"></a> | 
+| [*indf3lcn*](#indf3lcn1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | all except CDS and any gene with identical stop coordinate to CDS | - <a name="indf3lcn2"></a> | 
 | [*indf3plg*](#indf3plg1)  | INDEFINITE_ANNOTATION_END       | none | CDS | - <a name="indf3plg2"></a> | 
 | [*indf3pst*](#indf3pst1)  | INDEFINITE_ANNOTATION_END       | [`--xalntol`](#options-alerts-xalntol) | CDS | - <a name="indf3pst2"></a> | 
 | [*indfstrp*](#indfstrp1)  | INDEFINITE_STRAND               | none | CDS | - <a name="indfstrp2"></a> | 
@@ -1022,9 +1058,9 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*deletinp*](#deletinp1)  | DELETION_OF_NT                  | [`--xmaxdel`](#options-alerts-xmaxdel) | CDS | - <a name="deletinp2"></a> | 
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> | 
 | [*deletinf*](#deletinf1)  | DELETION_OF_FEATURE_SECTION     | none | all | - <a name="deletinf2"></a> | 
-| [*lowsim5f*](#lowsim5f1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5term`](#options-alerts-lowsim5term) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5f2"></a> | 
-| [*lowsim3f*](#lowsim3f1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3term`](#options-alerts-lowsim3term) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3f2"></a> | 
-| [*lowsimif*](#lowsimif1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimterm`](#options-alerts-lowsimterm)   | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimif2"></a> | 
+| [*lowsim5n*](#lowsim5n1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5ftr`](#options-alerts-lowsim5ftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5n2"></a> | 
+| [*lowsim3n*](#lowsim3n1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3ftr) | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3n2"></a> | 
+| [*lowsimin*](#lowsimin1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimiftr)   | all except CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimin2"></a> | 
 
 #### More information on alerts that are *non-fatal* by default <a name="nonfatal2"></a>
 | alert code | short description/error name | relevant_options | relevant feature types | omitted in `.tbl` and `.alt.list` by | 
@@ -1037,9 +1073,16 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
-| [*fstlocnf*](#fstlocnf1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt`](#options-alerts-fstminnt) | CDS | - <a name="fstlocnf2"></a> |
+| [*fstlocf5*](#fstlocf51)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt5`](#options-alerts-fstminnt5) | CDS | - <a name="fstlocf52"></a> |
+| [*fstlocf3*](#fstlocf31)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnt3`](#options-alerts-fstminnt3) | CDS | - <a name="fstlocf32"></a> |
+| [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
+| [*indf5lcc*](#indf5lcc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcc2"></a> | 
+| [*indf3lcc*](#indf3lcc1)  | INDEFINITE_ANNOTATION_END       | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene with identical stop coordinate to CDS | - <a name="indf3lcc2"></a> | 
 | [*insertnn*](#insertnn1)  | INSERTION_OF_NT                 | [`--nmaxins`](#options-alerts-nmaxins) | CDS | - <a name="insertnn2"></a> |
 | [*deletinn*](#deletinn1)  | DELETION_OF_NT                  | [`--nmaxdel`](#options-alerts-nmaxdel) | CDS | - <a name="deletinn2"></a> |
+| [*lowsim5c*](#lowsim5c1)  | LOW_FEATURE_SIMILARITY_START    | [`--lowsim5ftr`](#options-alerts-lowsim5ftr) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim5c2"></a> | 
+| [*lowsim3c*](#lowsim3c1)  | LOW_FEATURE_SIMILARITY_END      | [`--lowsim3ftr`](#options-alerts-lowsim3frt) | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsim3c2"></a> | 
+| [*lowsimic*](#lowsimic1)  | LOW_FEATURE_SIMILARITY          | [`--lowsimiftr`](#options-alerts-lowsimftr)  | CDS, mat_peptide and any feature with identical coordinates to a CDS or mat_peptide | - <a name="lowsimic2"></a> | 
 | [*ambgnt5f*](#ambgnt5s1)  | N_AT_FEATURE_START              | none | - | - <a name="ambgnt5s2"></a> | 
 | [*ambgnt3f*](#ambgnt3s1)  | N_AT_FEATURE_END                | none | - | - <a name="ambgnt3s2"></a> | 
 | [*ambgnt5c*](#ambgnt5c1)  | N_AT_CDS_START                  | none | CDS | - <a name="ambgnt5c2"></a> | 
@@ -1104,7 +1147,7 @@ in them will not cause the sequence to fail.
 To rerun the example using this new `.minfo` file, execute:
 
 ```
-v-annotate.pl -i $VADRSCRIPTSDIR/documentation/annotate-files/vadr.mnf-example.minfo $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-mnf-noro.9
+v-annotate.pl --mdir -i $VADRSCRIPTSDIR/documentation/annotate-files/vadr.mnf-example.minfo $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-mnf-noro.9
 ```
 
 The output will indicate that all sequences now pass:
@@ -1171,7 +1214,7 @@ have 16G of RAM available. For larger viruses, such as the roughly
 the `--glsearch` and `--split` options can be used to reduce the
 memory requirements.
 
-The `--glsearch` option causes the glsearch` program from the FASTA
+The `--glsearch` option causes the `glsearch` program from the FASTA
 software package to be used instead of Infernal's memory intensive
 `cmalign` program.  However, `--glsearch` has only been extensively
 tested for SARS-CoV-2 sequences, for which it is now recommended due
@@ -1196,6 +1239,9 @@ In summary, the following combination of options are recommended to
 reduce memory usage and speed-up processing for
 SARS-CoV-2 annotation, provided you are running on a machine with 8
 available cores and 16G of total RAM: `--glsearch --split --cpu 8`. 
+
+For more information on SARS-CoV-2 annotation with VADR see 
+https://github.com/ncbi/vadr/wiki/Coronavirus-annotation
 
 ---
 

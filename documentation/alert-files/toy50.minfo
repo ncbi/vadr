@@ -1,0 +1,4 @@
+MODEL toy50 cmfile:"toy50.cm" group:"toy" length:"50" subgroup:"A" blastdb:"toy50.protein.fa"
+FEATURE toy50 type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one"
+FEATURE toy50 type:"mat_peptide" coords:"11..22:+" parent_idx_str:"0" product:"protein one mp1"
+FEATURE toy50 type:"mat_peptide" coords:"23..28:+" parent_idx_str:"0" product:"protein one mp2"

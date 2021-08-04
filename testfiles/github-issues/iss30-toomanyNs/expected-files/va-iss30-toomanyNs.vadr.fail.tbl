@@ -10,7 +10,7 @@
 			protein_id	NC_001959-10extraNs-at-start_1
 
 Additional note(s) to submitter:
-ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.818<0.900]
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.818<0.900]; seq-coords:1..219:+; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959-10extraNs-at-end
 <1	510	gene
 			gene	ORF2
@@ -24,5 +24,5 @@ ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similar
 			note	similar to VP2
 
 Additional note(s) to submitter:
-ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.813<0.900]
-ERROR: UNEXPECTED_LENGTH: (VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [688]
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.813<0.900]; seq-coords:1053..1294:+; mdl-coords:-; mdl:NC_001959;
+ERROR: UNEXPECTED_LENGTH: (CDS:VP2) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [688]; seq-coords:510..1197:+; mdl-coords:6950..7588:+; mdl:NC_001959;

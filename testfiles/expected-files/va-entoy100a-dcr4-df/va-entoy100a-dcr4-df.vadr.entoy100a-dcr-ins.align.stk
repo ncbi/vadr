@@ -19,4 +19,6 @@ ENTOY100A-dcr-ins-Tins1         GAAATCACCGATGGTGATCGCTTTACCATAA.AATGGTAGAAAAATA.
 #=GR ENTOY100A-dcr-ins-Tins1 PP *******************************.***************.*9876379***********.*************
 #=GC SS_cons                    :::::::::<<<____>>>::::::::::::.:::::::::::::::.:::::.:::::::::::::.:::::::::::::
 #=GC RF                         GAAATCACCGatGGTGatCGCTTTACCATAA.AATGGTAGAAAAATA.ACCCC.TACGTACGTAGCA.TCGTACGTACGTA
+#=GC RFCOLX.                    0000000001111111111222222222233.333333334444444.44455.5555555566666.6666677777777
+#=GC RFCOL.X                    1234567890123456789012345678901.234567890123456.78901.2345678901234.5678901234567
 //

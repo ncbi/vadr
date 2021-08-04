@@ -1,5 +1,5 @@
 #seq  seq                                        seq             best                  sub                             seq   
 #idx  name                                       len  p/f   ant  model      grp        grp  nfa  nfn  nf5  nf3  nfalt  alerts
 #---  ----------------------------------------  ----  ----  ---  ---------  ---------  ---  ---  ---  ---  ---  -----  ------
-1     NC_001959.2-manually-added-frameshifts-1  7655  FAIL  yes  NC_001959  Norovirus  GI    12    0    0    0     14  -     
-2     NC_001959.2-manually-added-frameshifts-2  7654  FAIL  yes  NC_001959  Norovirus  GI    12    0    0    0     15  -     
+1     NC_001959.2-manually-added-frameshifts-1  7655  FAIL  yes  NC_001959  Norovirus  GI    12    0    0    0     15  -     
+2     NC_001959.2-manually-added-frameshifts-2  7654  FAIL  yes  NC_001959  Norovirus  GI    12    0    0    0     16  -     

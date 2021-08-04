@@ -1,2 +1,2 @@
-#sequence	error	feature	error-description
-LC312762.1	UNREPORTED_FEATURE_PROBLEM	*sequence*	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+LC312762.1	NC_001959	-	*sequence*	UNREPORTED_FEATURE_PROBLEM	-	-	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]

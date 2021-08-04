@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.2.1; June 2021
+#### Version 1.3; August 2021
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -45,12 +45,12 @@ with [VADR installation](documentation/install.md#top).
 ---
 ## SARS-CoV-2 annotation using VADR
 
-The `v-annotate.pl` script in VADR v1.2 has some enhancements
-specifically designed for SARs-CoV-2 annotation that increase speed
-(`-s` and `--glsearch` options) and provide better annotation for sequences with
+The `v-annotate.pl` script includes some special options specifically
+developed for SARS-CoV-2 annotation that increase speed (`-s` and
+`--glsearch` options) and provide better annotation for sequences with
 stretches of Ns (`-r` option). See [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
-for more information on using VADR to annotate SARS-CoV-2 sequences.
+page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation) for
+more information on using VADR to annotate SARS-CoV-2 sequences.
 
 ---
 ## Available VADR models <a name="models"></a>
@@ -85,6 +85,12 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
   * [`v-annotate.pl` command-line options](documentation/annotate.md#options)
   * [Basic Information on `v-annotate.pl` alerts](documentation/annotate.md#alerts)
   * [Additional information on `v-annotate.pl` alerts](documentation/annotate.md#alerts2)
+* [Explanations and examples of `v-annotate.pl` detailed alert and error messages](documentation/alerts.md#top)
+  * [Output fields with detailed alert and error messages](documentation/alerts.md#files)
+  * [Explanation of sequence and model coordinate fields in `.alt` files](documentation/alerts.md#coords)
+  * [`toy50` toy model used in examples of alert messages](documentation/alerts.md#toy)
+  * [Examples of different alert types and corresponding `.alt` output](documentation/alerts.md#examples)
+  * [Posterior probability annotation in VADR output Stockholm alignments](documentation/alerts.md#pp)
 * [VADR output file formats](documentation/formats.md#top)
   * [VADR output files created by all VADR scripts](documentation/formats.md#generic)
   * [`v-build.pl` output files](documentation/formats.md#build)
@@ -129,11 +135,11 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 ---
 ## Reference <a name="reference"></a>
 * The recommended citation for using VADR is:
-  Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
+  *Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
   J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
   validation and annotation of virus sequence submissions to
   GenBank. BMC Bioinformatics 21, 211
-  (2020). https://doi.org/10.1186/s12859-020-3537-3
+  (2020).* https://doi.org/10.1186/s12859-020-3537-3
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

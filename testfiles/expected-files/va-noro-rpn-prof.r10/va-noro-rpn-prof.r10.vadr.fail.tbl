@@ -5,5 +5,5 @@
 			note	similar to VP1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (VP1) final nucleotide of CDS is an N [final 3 positions are Ns, final non-N is position 1623]
-ERROR: MUTATION_AT_START: (VP1) expected start codon could not be identified [ANN starting at position 1 on + strand is not a valid start]
+ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:1624..1626:+; mdl-coords:6708..6710:+; mdl:NC_039476;
+ERROR: MUTATION_AT_START: (CDS:VP1) expected start codon could not be identified [ANN]; seq-coords:1..3:+; mdl-coords:5085..5087:+; mdl:NC_039476;

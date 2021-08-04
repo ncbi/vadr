@@ -4,11 +4,15 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.1 nucleotide alignment of positions 453..501 (49 nt, avgpp: 0.966) on + strand are inconsistent with dominant frame (+1); inserts:none; deletes:452(1);
+#=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.1 seq_coords:453..501:+; mdl_coords: 7450..7499:+; length:49; inserts:none; deletes:S:452,M:7450(1); shifted_frame:3; dominant_frame:1; avgpp:0.966;
 
 NC_001959.2-manually-added-frameshifts-1/7000-7500         GGTAGTGCT
 #=GR NC_001959.2-manually-added-frameshifts-1/7000-7500 PP *********
 #=GR NC_001959.2-manually-added-frameshifts-1/7000-7500 CS 111111111
 #=GC SS_cons                                               :::::::::
 #=GC RF                                                    GGTAGTGCT
+#=GC RFCOLX...                                             666666667
+#=GC RFCOL.X..                                             999999990
+#=GC RFCOL..X.                                             999999990
+#=GC RFCOL...X                                             234567890
 //

@@ -1,1 +1,13 @@
-#sequence	error	feature	error-description
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+ENTOY100A-fs1	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [3>=3]
+ENTOY100A-fs2	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [3>=3]
+ENTOY100A-fs3	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [3>=3]
+ENTOY100A-fs4	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [4>=3]
+ENTOY100A-fs5	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [4>=3]
+ENTOY100A-fs6	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [4>=3]
+ENTOY100A-fs7	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [3>=3]
+ENTOY100A-fs8	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [3>=3]
+ENTOY100A-fs9	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [4>=3]
+ENTOY100A-fs10	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [4>=3]
+ENTOY100A-fs11	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [4>=3]
+ENTOY100A-fs12	ENTOY100A	-	*sequence*	TOO_MANY_MISC_FEATURES	-	-	too many features are reported as misc_features [3>=3]

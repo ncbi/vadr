@@ -1,37 +1,37 @@
-#sequence	error	feature	error-description
-ENTOY100A-fs1	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs1	UNEXPECTED_LENGTH	protein one mp1	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
-ENTOY100A-fs1	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs2	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs2	UNEXPECTED_LENGTH	protein one mp1	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
-ENTOY100A-fs2	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs3	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs3	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs4	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs4	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs4	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]
-ENTOY100A-fs5	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs5	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs5	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
-ENTOY100A-fs6	INDEFINITE_ANNOTATION_END	protein one mp1	alignment to homology model is a gap at 3' boundary [RF position 22]
-ENTOY100A-fs6	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs6	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs6	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model is a gap at 3' boundary [RF position 22]
-ENTOY100A-fs7	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs7	UNEXPECTED_LENGTH	protein one mp1	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
-ENTOY100A-fs7	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs8	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs8	UNEXPECTED_LENGTH	protein one mp1	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10]
-ENTOY100A-fs8	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs9	INDEFINITE_ANNOTATION_END	protein one mp1	alignment to homology model is a gap at 3' boundary [RF position 22]
-ENTOY100A-fs9	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs9	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs9	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model is a gap at 3' boundary [RF position 22]
-ENTOY100A-fs10	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs10	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs10	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.60 < 0.80, RF position 22]
-ENTOY100A-fs11	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs11	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs11	INDEFINITE_ANNOTATION_END	enRNA	alignment to homology model has low confidence at 3' boundary [0.70 < 0.80, RF position 22]
-ENTOY100A-fs12	PEPTIDE_TRANSLATION_PROBLEM	protein one mp1	mat_peptide may not be translated because its parent CDS has a problem
-ENTOY100A-fs12	PEPTIDE_TRANSLATION_PROBLEM	protein one mp2	mat_peptide may not be translated because its parent CDS has a problem
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+ENTOY100A-fs1	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs1	ENTOY100A	mat_peptide	protein one mp1	UNEXPECTED_LENGTH	11..23:+	11..22:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [13]
+ENTOY100A-fs1	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs2	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs2	ENTOY100A	mat_peptide	protein one mp1	UNEXPECTED_LENGTH	11..27:+	11..22:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [17]
+ENTOY100A-fs2	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs3	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs3	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs4	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs4	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs4	ENTOY100A	ncRNA	enRNA	INDEFINITE_ANNOTATION_END	28..28:+	22..22:+	alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS [0.70<0.80]
+ENTOY100A-fs5	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs5	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs5	ENTOY100A	ncRNA	enRNA	INDEFINITE_ANNOTATION_END	22..22:+	22..22:+	alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS [0.60<0.80]
+ENTOY100A-fs6	ENTOY100A	mat_peptide	protein one mp1	INDEFINITE_ANNOTATION_END	25..25:+	22..22:+	alignment to homology model is a gap at 3' boundary [-]
+ENTOY100A-fs6	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs6	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs6	ENTOY100A	ncRNA	enRNA	INDEFINITE_ANNOTATION_END	25..25:+	22..22:+	alignment to homology model is a gap at 3' boundary [-]
+ENTOY100A-fs7	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs7	ENTOY100A	mat_peptide	protein one mp1	UNEXPECTED_LENGTH	11..21:+	11..22:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [11]
+ENTOY100A-fs7	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs8	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs8	ENTOY100A	mat_peptide	protein one mp1	UNEXPECTED_LENGTH	11..20:+	11..22:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [10]
+ENTOY100A-fs8	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs9	ENTOY100A	mat_peptide	protein one mp1	INDEFINITE_ANNOTATION_END	19..19:+	22..22:+	alignment to homology model is a gap at 3' boundary [-]
+ENTOY100A-fs9	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs9	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs9	ENTOY100A	ncRNA	enRNA	INDEFINITE_ANNOTATION_END	19..19:+	22..22:+	alignment to homology model is a gap at 3' boundary [-]
+ENTOY100A-fs10	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs10	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs10	ENTOY100A	ncRNA	enRNA	INDEFINITE_ANNOTATION_END	19..19:+	22..22:+	alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS [0.60<0.80]
+ENTOY100A-fs11	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs11	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs11	ENTOY100A	ncRNA	enRNA	INDEFINITE_ANNOTATION_END	22..22:+	22..22:+	alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS [0.70<0.80]
+ENTOY100A-fs12	ENTOY100A	mat_peptide	protein one mp1	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+ENTOY100A-fs12	ENTOY100A	mat_peptide	protein one mp2	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]

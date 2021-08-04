@@ -337,23 +337,31 @@ that occurs at least once in the input sequence file that
 ---
 ### Explanation of `.alt`-suffixed output files<a name="alt"></a>
 
-`.alt` data lines have 10 or more fields, the names of which appear in the first two
+`.alt` data lines have 14 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
 [Example file](annotate-files/va-noro.9.vadr.alt).
+
+For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
+
+For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `idx`                 | index of alert instance in format `<d1>.<d2>.<d3>`, where `<d1>` is the index of the sequence this alert instance pertains to in the input sequence file, `<d2>` is the index of the feature this alert instance pertains to (range 1..`<n>`, where `<n>` is the number of features in this sequence with at least 1 alert instance) and `<d3>` is the index of the alert instance for this sequence/feature pair |
 |   2 | `seq name`            | sequence name | 
-|   3 | `model`               | name of the best-matching model for this sequence |
+|   2 | `model`               | name of the best-matching reference model used to annotate this sequence, coordinates in `mdl coords` pertain to this model |
 |   4 | `ftr type`            | type of the feature this alert instance pertains to (e.g. CDS) |
 |   5 | `ftr name`            | name of the feature this alert instance pertains to |
 |   6 | `ftr idx`             | index (in input model info file) this alert instance pertains to |
 |   7 | `alert code`          | 8 character VADR alert code |
 |   8 | `fail`                | `yes` if this alert code is fatal (automatically causes the sequence to fail), `no` if not |
-|   9 | `alert desc`          | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
-| 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
+|   9 | `alert description`   | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
+|  10 | `seq coords`          | coordinates in the input sequence relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|  11 | `seq len`             | total length of all positions described by coordinates in `seq coords` | 
+|  12 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|  13 | `mdl len`             | total length of all positions described by coordinates in `mdl coords` | 
+| 14 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
@@ -678,15 +686,22 @@ header section.
 ### Explanation of `.alt.list`-suffixed output files<a name="altlist"></a>
 
 `.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
-lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
+lines with 8 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
 
+For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
+
+For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `sequence`            | name of sequence this alert pertains to |
-|   2 | `error`               | short description of the alert/error |
-|   3 | `feature`             | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
-|   4 | `error-description`   | longer description of the alert/error, specific to each alert/error type; *this field, unlike all others, contains whitespace* |
+|   2 | `model`               | name of the best-matching reference model used to annotate this sequence, coordinates in `mdl coords` pertain to this model |
+|   3 | `feature-type`        | type of feature the alert/error pertains to, or `-` if this alert is a `per-sequence` alert and not a `per-feature` alert | 
+|   4 | `feature-name`        | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
+|   5 | `error`               | short description of the alert/error |
+|   6 | `seq coords`          | coordinates in the input sequence relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|   7 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|   8 | `error-description`   | longer description of the alert/error, specific to each alert/error type; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>

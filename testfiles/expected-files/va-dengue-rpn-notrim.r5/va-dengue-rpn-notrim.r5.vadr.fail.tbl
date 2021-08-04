@@ -7,8 +7,8 @@
 			note	similar to envelope protein E
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (polyprotein) first nucleotide of CDS is an N [first 35 positions are Ns, first non-N is position 36]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (envelope protein E) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:polyprotein) first nucleotide of CDS is an N [-]; seq-coords:1..35:+; mdl-coords:935..969:+; mdl:NC_001477;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:envelope protein E) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001477;
 >Feature gi|281314094|gb|GU211727.1|
 <1	>87	gene
 			gene	POLY
@@ -18,5 +18,5 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (envelope protein E) mat_peptide may not be 
 			note	similar to RNA-dependent RNA polymerase NS5
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (polyprotein) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 86]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (CDS:polyprotein) final nucleotide of CDS is an N [-]; seq-coords:87..87:+; mdl-coords:10065..10065:+; mdl:NC_001474;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RNA-dependent RNA polymerase NS5) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001474;
