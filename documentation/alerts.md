@@ -33,10 +33,13 @@ messages:
 
   * `.alt` files
   * `.alt.list` files
+  * GenBank submission portal detailed error report `.tsv` files
 
 Documentation on the format of `.alt` files can be found
 [here](formats.md#alt) and for `.alt.list` files can be found
-[here](formats.md#altlist).
+[here](formats.md#altlist). The GenBank submission portal detailed
+error report `.tsv` files are the same format as the `.alt.list`
+files. 
 
 This page includes examples of many of the different alerts and 
 corresponding `.alt` file output [below](#examples).
