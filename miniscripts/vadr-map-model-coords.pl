@@ -117,10 +117,11 @@ while(my $line = <IN>) {
     my $new_mcoords = "";
     if($mfrom ne $in_mto) { 
       # model other than $mto, map coords
-      if(! defined $tofrom_HA{$mfrom}) { 
+      if(($mfrom ne "-") && (! defined $tofrom_HA{$mfrom})) { 
         die "ERROR: read model $mfrom for which no map existed to $mto in input model map file on line:\n$line\n";
       }
-      if($orig_mcoords eq "-") { 
+      if(($orig_mcoords eq "-") || ($mfrom eq "-")) { 
+        # no coords, or model is absent (e.g. NO_ANNOTATION)
         $new_mcoords = "-";
       }
       else { 
