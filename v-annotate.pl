@@ -3033,7 +3033,7 @@ sub add_classification_alerts {
       if($have_cdt_bs) { 
         my @bias_A   = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"bias"});
         my $bias_sum = utl_ASum(\@bias_A);
-        my $bias_fract = $bias_sum / ($score_H{"std.cdt.bs"} + $bias_sum);
+        my $bias_fract = undef;
         if(($bias_sum <= $small_value) || ($score_H{"std.cdt.bs"} < $small_value)) { 
          # (a) bias is 0 or negative OR (b) score_H{"std.cdt.bs"} is 0 
          # (note: the sum ($score_H{"std.cdt.bs"} + $bias_sum) can't be 0 or negative if a or b isn't true) 
