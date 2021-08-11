@@ -10,5 +10,5 @@
 7     fsthicfi  yes*     POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      8     8  high confidence possible frameshift in CDS (internal)
 8     peptrans  yes*     PEPTIDE_TRANSLATION_PROBLEM     feature     24    12  mat_peptide may not be translated because its parent CDS has a problem
 9     indf3gap  yes*     INDEFINITE_ANNOTATION_END       feature      4     2  alignment to homology model is a gap at 3' boundary
-10    indf3lcn  yes      INDEFINITE_ANNOTATION_END       feature      4     4  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
+10    indf3lcn  yes*     INDEFINITE_ANNOTATION_END       feature      4     4  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
 #---  --------  -------  -----------------------------  --------  -----  ----  -----------

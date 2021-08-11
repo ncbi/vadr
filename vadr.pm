@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # 
-# version: 1.2.1 [June 2021]
+# version: 1.3 [Aug 2021]
 #
 # vadr.pm
 # Eric Nawrocki
@@ -168,6 +168,7 @@ require "sqp_utils.pm";
 # vdr_WriteCommandScript()
 # vdr_GlsearchFormat3And9CToStockholmAndInsertFile()
 # vdr_CigarToInsertsHash()
+# vdr_CigarToPositionMap()
 # vdr_ReplaceInsertTokenInInsertString()
 #
 #################################################################
@@ -1869,6 +1870,12 @@ sub vdr_AlertInfoInitialize {
                    "NO_FEATURES_ANNOTATED", # short description
                    "all annotated features are too short to output to feature table", # long description
                    1, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "nmiscftr", "sequence",
+                   "TOO_MANY_MISC_FEATURES", # short description
+                   "too many features are reported as misc_features", # long description
+                   0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ftskipfl", "sequence",
@@ -5349,7 +5356,102 @@ sub vdr_CigarToInsertsHash {
   $inserts_HR->{"epos"} = $epos; 
   $inserts_HR->{"ins"} = $ins_str;
 
-  close(OUT);
+  return;
+}
+
+#################################################################
+# Subroutine:  vdr_CigarToPositionMap()
+# Incept:      EPN, Mon Jul 26 12:36:38 2021
+#
+# Purpose:    Given a CIGAR string, model length <mlen> and sequence 
+#             length <slen>, fill an array <map_AR> (1..<mlen>)
+#             indicating which sequence position each model position
+#             maps to.
+#             map_AR->[mpos] = spos    indicates that sequence position 
+#                                      spos is aligned to model position mpos
+#             map_AR->[mpos] = -spos   indicates that model position mpos
+#                                      is aligned to a gap in the sequence
+#                                      and 5' most sequence position seen so
+#                                      far (5'-most prior to gap) is spos
+#             map_AR->[mpos] = 0       indicates that model position mpos
+#                                      is aligned to a gap in the sequence
+#                                      and no positions have been seen so far
+#                                      in the sequence 
+#             CIGAR string $cigar is in format (\d+[MID])+
+#             where \d+ indicates length
+#             M indicates matches (no inserts or deletes)
+#             I indicates insertion in target/model, so deletion(gap) in query/sequence
+#             D indicates deletion  in target/model, so insertion     in query/sequence (gap in target/model)
+#
+# Reference:  https://en.wikipedia.org/wiki/Sequence_alignment#Representations
+#             https://jef.works/blog/2017/03/28/CIGAR-strings-for-dummies/
+# 
+# Arguments: 
+#   $map_AR:      ref to array to fill with map, see 'Purpose' for more info
+#   $cigar:       CIGAR string
+#   $mdllen:      length of model
+#   $seqlen:      length of sequence
+#   $FH_HR:       ref to hash of file handles, including "cmd", can be undef
+#
+# Returns:     void
+# 
+# Dies:        If unable to parse $cigar string
+#              If cigar string implies model length different than $mdllen
+#              If cigar string implies sequence length different than $seqlen
+#
+################################################################# 
+sub vdr_CigarToPositionMap { 
+  my $nargs_exp = 5;
+  my $sub_name = "vdr_CigarToPositionMap";
+  if(scalar(@_) != $nargs_exp) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_exp); exit(1); } 
+
+  my ($map_AR, $cigar, $mdllen, $seqlen, $FH_HR) = @_;
+  
+  #printf("in $sub_name, cigar: $cigar, mdllen: $mdllen, seqlen: $seqlen\n");
+
+  my $seqpos = 0;
+  my $mdlpos = 0;
+  my $orig_cigar = $cigar;
+  my $i;
+  $map_AR->[0] = -2; # irrelevant
+  while($cigar ne "") { 
+    if($cigar =~ /^(\d+)([MID])/) {
+      my ($len, $type) = ($1, $2);
+      if($type eq "M") { 
+        for($i = 1; $i <= $len; $i++) { 
+          $map_AR->[($mdlpos+$i)] = $seqpos+$i;
+        }
+        $seqpos += $len;
+        $mdlpos += $len;
+      }
+      if($type eq "I") { 
+        # gap in sequence
+        for($i = 1; $i <= $len; $i++) { 
+          if($seqpos == 0) { 
+            $map_AR->[($mdlpos+$i)] = 0;
+          }
+          else { 
+            $map_AR->[($mdlpos+$i)] = -1 * $seqpos;
+          }
+        }
+        $mdlpos += $len;
+      }
+      if($type eq "D") { 
+        # don't need to update @{$map_AR}
+        $seqpos += $len;
+      }
+      $cigar =~ s/^\d+[MID]//;
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse cigar string $orig_cigar", 1, $FH_HR);
+    }
+  }
+  if($mdlpos != $mdllen) { 
+    ofile_FAIL("ERROR, in $sub_name, model length after mapping ($mdlpos) not equal to input model length ($mdllen)", 1, $FH_HR);
+  }
+  if($seqpos != $seqlen) { 
+    ofile_FAIL("ERROR, in $sub_name, sequence length after mapping ($seqpos) not equal to input sequence length ($seqlen)", 1, $FH_HR);
+  }
 
   return;
 }
@@ -5559,7 +5661,7 @@ sub vdr_MergeOutputConcatenatePreserveSpacing {
           $nline_tot++;
         }
         else { # a comment-line
-          if($seen_noncomment_line) {
+          if($seen_noncomment_line || $line eq "#") { 
             push(@data_AA, []);  # push empty array --> blank line 
             $nline++;
             $nline_tot++;

@@ -125,7 +125,7 @@ vadr-install.sh>`)
 ```
 ********************************************************
 The final step is to update your environment variables.
-(See https://github.com/ncbi/vadr/blob/1.2/documentation/install.md for more information.)
+(See https://github.com/ncbi/vadr/blob/1.3/documentation/install.md for more information.)
 
 If you are using the bash or zsh shell (zsh is default in MacOS/X as
 of v10.15 (Catalina)), add the following lines to the end of your
@@ -256,9 +256,9 @@ Below is an example of the expected output for
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.2 (April 2021)
+# VADR 1.3 (Aug 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Apr  5 14:08:43 2021
+# date:    Tue Aug  3 18:14:36 2021
 #
 # test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
 # output directory:                                                  vt-n10-local
@@ -294,9 +294,9 @@ Below is an example of the expected output for
 # 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.2 (April 2021)
+# VADR 1.3 (Aug 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Mon Apr  5 14:09:30 2021
+# date:    Tue Aug  3 18:15:27 2021
 #
 # test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/dengue.r5.local.testin
 # output directory:                                                  vt-d5-local

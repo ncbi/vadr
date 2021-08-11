@@ -204,8 +204,8 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-build.pl";
 my $usage         = "Usage: $executable [-options] <accession> <path to output directory to create>\n";
 my $synopsis      = "$executable :: build homology model of a single sequence for feature annotation";
 my $date          = scalar localtime();
-my $version       = "1.2.2dev2";
-my $releasedate   = "June 2021";
+my $version       = "1.3";
+my $releasedate   = "Aug 2021";
 my $pkgname       = "VADR";
 
 # print help and exit if necessary
@@ -649,7 +649,7 @@ if(! opt_Get("--keep", \%opt_HH)) {
   }
 }
 # index the new file
-my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file";
+my $sfetch_cmd = $execs_H{"esl-sfetch"} . " --index $blastn_fa_file > /dev/null";
 utl_RunCommand($sfetch_cmd, opt_Get("-v", \%opt_HH), 0, $FH_HR);
 
 ofile_OutputProgressComplete($start_secs, undef,  $log_FH, *STDOUT);
