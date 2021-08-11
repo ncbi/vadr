@@ -5553,10 +5553,11 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $cds_codon_start = $ftr_results_HR->{"n_codon_start"};
         # note: ignore $cds_codon_start if not 5' truncated (it will almost always be 1 but not always)
         # make a new sqstring $ftr_sqstring_alt_stops from $ftr_sqstring_alt to search for stops in that:
-        # - is identical to $ftr_sqstring_alt                   if $cds_codon_start == 1
-        # - has the first     nt removed from $ftr_sqstring_alt if $cds_codon_start == 2
-        # - has the first two nt removed from $ftr_sqstring_alt if $cds_codon_start == 3
-        my $ftr_sqstring_alt_stops = ($ftr_is_5trunc) ? substr($ftr_sqstring_alt, ($cds_codon_start-1)) : $ftr_sqstring_alt;
+        # - is identical to $ftr_sqstring_alt                   if codon_start == 1
+        # - has the first     nt removed from $ftr_sqstring_alt if codon_start == 2
+        # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
+        my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start"} - 1) : 0;
+        my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
         if((! $ftr_is_3trunc) && ($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt_stops, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
@@ -5637,7 +5638,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
               # this shouldn't happen, it means there's a bug in sqstring_find_stops()
               ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
             }
-            $ftr_stop_c = $ftr2org_pos_A[($ftr_nxt_stp_A[1] + ($cds_codon_start - 1))];
+            $ftr_stop_c = $ftr2org_pos_A[($ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end)];
             if($ftr_strand eq "+") { 
               $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
               $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
