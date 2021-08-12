@@ -5560,16 +5560,16 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
-        if((! $ftr_is_3trunc) && ($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt_stops, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
-          $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len-2)], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
-          $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand, $FH_HR) . ";";
+        if((! $ftr_is_3trunc) && ($ftr_len_stops >= 3) && (! sqstring_check_stop($ftr_sqstring_alt_stops, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
+          $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len_stops-2)], $ftr2org_pos_A[$ftr_len_stops], $ftr_strand, $FH_HR) . ";";
+          $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len_stops-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len_stops])]), $ftr_strand, $FH_HR) . ";";
           $alt_codon = substr($ftr_sqstring_alt_stops, -3, 3);
           $alt_codon =~ tr/a-z/A-Z/;
           $alt_str_H{"mutendcd"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
         }
         my @ftr_nxt_stp_A = ();
         sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-        if($ftr_nxt_stp_A[1] != $ftr_len) { 
+        if($ftr_nxt_stp_A[1] != $ftr_len_stops) { 
           # first in-frame stop codon 3' of $ftr_start is not $ftr_stop
           # We will need to add an alert, (exactly) one of:
           # 'mutendex': no stop exists in $ftr_sqstring_alt_stops, but one does 3' of end of $ftr_sqstring_alt_stops
@@ -5651,7 +5651,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
             $alt_codon =~ tr/a-z/A-Z/;
             $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
           } # end of 'elsif($ftr_nxt_stp_A[1] != 0)'
-        } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len) {' 
+        } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len_stops) {' 
       } # end of 'if($ftr_is_cds) {' 
     
       # actually add the alerts
