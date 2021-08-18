@@ -4887,6 +4887,7 @@ sub add_frameshift_alerts_for_one_sequence {
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_firstpos"} = $F_0;
       $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
       # deconstruct $frame_stok_str, looking for potential frameshifts, 
