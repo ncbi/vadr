@@ -5548,16 +5548,16 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
       # if CDS: look for all valid in-frame stops 
       if($ftr_is_cds) { 
-        if(! defined $ftr_results_HR->{"n_codon_start_dominant"}) { 
+        if(! defined $ftr_results_HR->{"n_codon_start_firstpos"}) { 
           ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
         }
-        my $cds_codon_start = $ftr_results_HR->{"n_codon_start_dominant"};
+        my $cds_codon_start = $ftr_results_HR->{"n_codon_start_firstpos"};
         # note: ignore $cds_codon_start if not 5' truncated (it will almost always be 1 but not always)
         # make a new sqstring $ftr_sqstring_alt_stops from $ftr_sqstring_alt to search for stops in that:
         # - is identical to $ftr_sqstring_alt                   if codon_start == 1
         # - has the first     nt removed from $ftr_sqstring_alt if codon_start == 2
         # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
-        my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_dominant"} - 1) : 0;
+        my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_firstpos"} - 1) : 0;
         my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
