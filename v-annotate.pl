@@ -4887,7 +4887,7 @@ sub add_frameshift_alerts_for_one_sequence {
 
       # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"} = $dominant_frame;
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
       # deconstruct $frame_stok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the dominant frame together and
@@ -5547,16 +5547,16 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
       # if CDS: look for all valid in-frame stops 
       if($ftr_is_cds) { 
-        if(! defined $ftr_results_HR->{"n_codon_start"}) { 
+        if(! defined $ftr_results_HR->{"n_codon_start_dominant"}) { 
           ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
         }
-        my $cds_codon_start = $ftr_results_HR->{"n_codon_start"};
+        my $cds_codon_start = $ftr_results_HR->{"n_codon_start_dominant"};
         # note: ignore $cds_codon_start if not 5' truncated (it will almost always be 1 but not always)
         # make a new sqstring $ftr_sqstring_alt_stops from $ftr_sqstring_alt to search for stops in that:
         # - is identical to $ftr_sqstring_alt                   if codon_start == 1
         # - has the first     nt removed from $ftr_sqstring_alt if codon_start == 2
         # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
-        my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start"} - 1) : 0;
+        my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_dominant"} - 1) : 0;
         my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
@@ -9765,12 +9765,12 @@ sub output_feature_table {
                 $cds_codon_start = 1; # protein only prediction, codon start must be 1
               }
               else { 
-                # n_start is defined, we have a nt prediction, we should have n_codon_start
+                # n_start is defined, we have a nt prediction, we should have n_codon_start_dominant
                 # sanity check
-                if(! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"}) { 
+                if(! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"}) { 
                   ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
                 }
-                $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start"};
+                $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"};
                 # if we trimmed the CDS start due to Ns update frame for that
                 if(($ftr_is_trimmable) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
