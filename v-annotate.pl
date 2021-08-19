@@ -5551,14 +5551,14 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         if(! defined $ftr_results_HR->{"n_codon_start_firstpos"}) { 
           ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
         }
-        my $cds_codon_start = $ftr_results_HR->{"n_codon_start_firstpos"};
+        my $cds_codon_start = (defined $ftr_results_HR->{"n_codon_start_firstpos"}) ? $ftr_results_HR->{"n_codon_start_firstpos"} : 1;
         # note: ignore $cds_codon_start if not 5' truncated (it will almost always be 1 but not always)
         # make a new sqstring $ftr_sqstring_alt_stops from $ftr_sqstring_alt to search for stops in that:
         # - is identical to $ftr_sqstring_alt                   if codon_start == 1
         # - has the first     nt removed from $ftr_sqstring_alt if codon_start == 2
         # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
         #my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_firstpos"} - 1) : 0;
-        my $n_nt_skipped_at_5p_end = $ftr_results_HR->{"n_codon_start_firstpos"} - 1;
+        my $n_nt_skipped_at_5p_end = $cds_codon_start - 1;
         my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
@@ -5569,91 +5569,99 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           $alt_codon =~ tr/a-z/A-Z/;
           $alt_str_H{"mutendcd"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
         }
-        my @ftr_nxt_stp_A = ();
-        sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
-        if($ftr_nxt_stp_A[1] != $ftr_len_stops) { 
-          # first in-frame stop codon 3' of $ftr_start is not $ftr_stop
-          # We will need to add an alert, (exactly) one of:
-          # 'mutendex': no stop exists in $ftr_sqstring_alt_stops, but one does 3' of end of $ftr_sqstring_alt_stops
-          # 'mutendns': no stop exists in $ftr_sqstring_alt_stops, and none exist 3' of end of $ftr_sqstring_alt_stops either
-          # 'cdsstopn': an early stop exists in $ftr_sqstring_alt_stops
-          if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0)) { 
-            # there are no valid in-frame stops in $ftr_sqstring_alt_stops
-            # if we are not 3' truncated then we have a 'mutendns' or 'mutendex' alert, to find out which 
-            # we need to fetch the sequence ending at $fstop to the end of the sequence 
-            if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) ||
-               (($ftr_strand eq "-") && ($ftr_stop > 1))) { 
-              # we have some sequence left 3' of ftr_stop
-              # *careful* we don't always want to fetch starting at next nt after predicted 
-              # stop, because we have to make sure 1st position of $ext_sqstring is frame 1
-              # because sqstring_find_stops() expects this.
-              my $ext_sqstring = undef;
-              my $ext_sqstring_start = undef;
-              if($ftr_strand eq "+") { 
-                if   (($ftr_len_stops % 3) == 0) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at next posn
-                elsif(($ftr_len_stops % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
-                elsif(($ftr_len_stops % 3) == 2) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at prev posn
-                $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, $seq_len, 0); 
-              }
-              else { # negative strand
-                if   (($ftr_len_stops % 3) == 0) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at next posn
-                elsif(($ftr_len_stops % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
-                elsif(($ftr_len_stops % 3) == 2) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at prev posn
-                $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, 1, 1);
-              }
-              my @ext_nxt_stp_A = ();
-              sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
-              if($ext_nxt_stp_A[1] != 0) { 
-                # there is an in-frame stop codon, mutendex alert
-                # determine what position it is
-                $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
-                
+        # look for cdsstopn, mutendex and mutendns ONLY IF 
+        # CDS is NOT 5' truncated OR 
+        # n_codon_start_firstpos == n_codon_start_dominant
+        if((! $ftr_is_5trunc) || 
+           ((defined $ftr_results_HR->{"n_codon_start_firstpos"}) && 
+            (defined $ftr_results_HR->{"n_codon_start_dominant"}) && 
+            ($ftr_results_HR->{"n_codon_start_firstpos"} == $ftr_results_HR->{"n_codon_start_dominant"}))) { 
+          my @ftr_nxt_stp_A = ();
+          sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
+          if($ftr_nxt_stp_A[1] != $ftr_len_stops) { 
+            # first in-frame stop codon 3' of $ftr_start is not $ftr_stop
+            # We will need to add an alert, (exactly) one of:
+            # 'mutendex': no stop exists in $ftr_sqstring_alt_stops, but one does 3' of end of $ftr_sqstring_alt_stops
+            # 'mutendns': no stop exists in $ftr_sqstring_alt_stops, and none exist 3' of end of $ftr_sqstring_alt_stops either
+            # 'cdsstopn': an early stop exists in $ftr_sqstring_alt_stops
+            if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0)) { 
+              # there are no valid in-frame stops in $ftr_sqstring_alt_stops
+              # if we are not 3' truncated then we have a 'mutendns' or 'mutendex' alert, to find out which 
+              # we need to fetch the sequence ending at $fstop to the end of the sequence 
+              if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) ||
+                 (($ftr_strand eq "-") && ($ftr_stop > 1))) { 
+                # we have some sequence left 3' of ftr_stop
+                # *careful* we don't always want to fetch starting at next nt after predicted 
+                # stop, because we have to make sure 1st position of $ext_sqstring is frame 1
+                # because sqstring_find_stops() expects this.
+                my $ext_sqstring = undef;
+                my $ext_sqstring_start = undef;
+                if($ftr_strand eq "+") { 
+                  if   (($ftr_len_stops % 3) == 0) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at next posn
+                  elsif(($ftr_len_stops % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
+                  elsif(($ftr_len_stops % 3) == 2) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at prev posn
+                  $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, $seq_len, 0); 
+                }
+                else { # negative strand
+                  if   (($ftr_len_stops % 3) == 0) { $ext_sqstring_start = $ftr_stop-1; } # first in-frame stop can start at next posn
+                  elsif(($ftr_len_stops % 3) == 1) { $ext_sqstring_start = $ftr_stop;   } # first in-frame stop can start at final posn
+                  elsif(($ftr_len_stops % 3) == 2) { $ext_sqstring_start = $ftr_stop+1; } # first in-frame stop can start at prev posn
+                  $ext_sqstring = $sqfile_for_cds_mp_alerts->fetch_subseq_to_sqstring($seq_name, $ext_sqstring_start, 1, 1);
+                }
+                my @ext_nxt_stp_A = ();
+                sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
+                if($ext_nxt_stp_A[1] != 0) { 
+                  # there is an in-frame stop codon, mutendex alert
+                  # determine what position it is
+                  $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
+                  
+                  if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                    if($ftr_strand eq "+") { 
+                      $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                      $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                    }
+                    else {
+                      $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                      $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+                    }
+                    $alt_codon = substr($ext_sqstring, ($ext_nxt_stp_A[1]-3), 3);
+                    $alt_codon =~ tr/a-z/A-Z/;
+                    $alt_str_H{"mutendex"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
+                  }
+                }
+              } # end of 'if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) || ($ftr_strand eq "-") && ($ftr_stop > 1)))'
+              if(! defined $ftr_stop_c) { 
+                # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
+                # or we checked the sequence but didn't find any
+                # either way, we have a mutendns alert:
+                $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                 if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
-                  if($ftr_strand eq "+") { 
-                    $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
-                    $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
-                  }
-                  else {
-                    $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
-                    $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
-                  }
-                  $alt_codon = substr($ext_sqstring, ($ext_nxt_stp_A[1]-3), 3);
-                  $alt_codon =~ tr/a-z/A-Z/;
-                  $alt_str_H{"mutendex"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
+                  # we don't provide scoords or mcoords for this alert
+                  $alt_str_H{"mutendns"} = "VADRNULL";
                 }
               }
-            } # end of 'if((($ftr_strand eq "+") && ($ftr_stop < $seq_len)) || ($ftr_strand eq "-") && ($ftr_stop > 1)))'
-            if(! defined $ftr_stop_c) { 
-              # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
-              # or we checked the sequence but didn't find any
-              # either way, we have a mutendns alert:
-              $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
-              if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
-                # we don't provide scoords or mcoords for this alert
-                $alt_str_H{"mutendns"} = "VADRNULL";
+            } # end of 'if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0) {' 
+            elsif($ftr_nxt_stp_A[1] != 0) { 
+              # there is an early stop (cdsstopn) in $ftr_sqstring_alt_stops
+              if($ftr_nxt_stp_A[1] > $ftr_len_stops) { 
+                # this shouldn't happen, it means there's a bug in sqstring_find_stops()
+                ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
               }
-            }
-          } # end of 'if((! $ftr_is_3trunc) && ($ftr_nxt_stp_A[1] == 0) {' 
-          elsif($ftr_nxt_stp_A[1] != 0) { 
-            # there is an early stop (cdsstopn) in $ftr_sqstring_alt_stops
-            if($ftr_nxt_stp_A[1] > $ftr_len_stops) { 
-              # this shouldn't happen, it means there's a bug in sqstring_find_stops()
-              ofile_FAIL("ERROR, in $sub_name, problem identifying stops in feature sqstring for ftr_idx $ftr_idx, found a stop at position that exceeds feature length", 1, undef);
-            }
-            $ftr_stop_c = $ftr2org_pos_A[($ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end)];
-            if($ftr_strand eq "+") { 
-              $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
-              $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
-            }
-            else {
-              $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
-              $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
-            }
-            $alt_codon = substr($ftr_sqstring_alt_stops, $ftr_nxt_stp_A[1]-3, 3);
-            $alt_codon =~ tr/a-z/A-Z/;
-            $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
-          } # end of 'elsif($ftr_nxt_stp_A[1] != 0)'
-        } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len_stops) {' 
+              $ftr_stop_c = $ftr2org_pos_A[($ftr_nxt_stp_A[1] + $n_nt_skipped_at_5p_end)];
+              if($ftr_strand eq "+") { 
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+              }
+              else {
+                $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c+2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
+                $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c+2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
+              }
+              $alt_codon = substr($ftr_sqstring_alt_stops, $ftr_nxt_stp_A[1]-3, 3);
+              $alt_codon =~ tr/a-z/A-Z/;
+              $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
+            } # end of 'elsif($ftr_nxt_stp_A[1] != 0)'
+          } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len_stops) {' 
+        } # end of big if entered if CDS is not truncated or dominant frame and firstpos frame are identical
       } # end of 'if($ftr_is_cds) {' 
     
       # actually add the alerts
