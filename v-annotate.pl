@@ -5557,7 +5557,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         # - is identical to $ftr_sqstring_alt                   if codon_start == 1
         # - has the first     nt removed from $ftr_sqstring_alt if codon_start == 2
         # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
-        my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_firstpos"} - 1) : 0;
+        #my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_firstpos"} - 1) : 0;
+        my $n_nt_skipped_at_5p_end = $ftr_results_HR->{"n_codon_start_firstpos"} - 1;
         my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
