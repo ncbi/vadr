@@ -5612,10 +5612,9 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
                 if($ext_nxt_stp_A[1] != 0) { 
                   # there is an in-frame stop codon, mutendex alert
-                  # determine what position it is
-                  $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
-                  
                   if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                    # determine what position it is
+                    $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
                     if($ftr_strand eq "+") { 
                       $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_stop_c-2, $ftr_stop_c, $ftr_strand, $FH_HR) . ";";
                       $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr_stop_c-2)]), abs($ua2rf_AR->[$ftr_stop_c]), $ftr_strand, $FH_HR) . ";";
@@ -5634,8 +5633,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
                 # or we checked the sequence but didn't find any
                 # either way, we have a mutendns alert:
-                $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                 if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                  $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                   # we don't provide scoords or mcoords for this alert
                   $alt_str_H{"mutendns"} = "VADRNULL";
                 }
