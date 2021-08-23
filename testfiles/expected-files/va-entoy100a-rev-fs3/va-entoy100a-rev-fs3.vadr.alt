@@ -40,7 +40,8 @@
 19.1.1  ENTOY100A-REV-3-fs18  ENTOY100A-REV  -            -                  -  lowcovrg  yes   LOW_COVERAGE                                     61..67:+    7                           -    -  low sequence fraction with significant similarity to homology model [0.896<0.900]
 19.2.1  ENTOY100A-REV-3-fs18  ENTOY100A-REV  CDS          protein_two        5  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF                    61..52:-   10                    61..52:-   10  high confidence possible frameshift in CDS (internal) [length:10; inserts:S:61(1),M:62; deletes:S:52,M:54(1); shifted_frame:3; dominant_frame:2; avgpp:0.942;]
 #
-26.1.1  ENTOY100A-REV-3-fs25  ENTOY100A-REV  CDS          protein_two        5  fsthicf5  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF                    40..32:-    9                    69..62:-    8  high confidence possible frameshift at 5' end of CDS [length:9; inserts:S:32(1),M:62; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.947;]
+26.1.1  ENTOY100A-REV-3-fs25  ENTOY100A-REV  CDS          protein_two        5  cdsstopn  yes   CDS_HAS_STOP_CODON                                 7..5:-    3                    37..35:-    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:4,M:4]
+26.1.2  ENTOY100A-REV-3-fs25  ENTOY100A-REV  CDS          protein_two        5  fsthicf5  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF                    40..32:-    9                    69..62:-    8  high confidence possible frameshift at 5' end of CDS [length:9; inserts:S:32(1),M:62; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.947;]
 #
 27.1.1  ENTOY100A-REV-3-fs26  ENTOY100A-REV  CDS          protein_two        5  fsthicf5  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF                    38..31:-    8                    68..62:-    7  high confidence possible frameshift at 5' end of CDS [length:8; inserts:S:31(1),M:62; deletes:none; shifted_frame:3; dominant_frame:1; avgpp:0.944;]
 #

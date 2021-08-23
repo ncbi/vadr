@@ -13,6 +13,6 @@
 			protein_id	LC312762.1_1
 
 Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:1,M:1]; seq-coords:12..14:+; mdl-coords:5372..5373:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search [-]; seq-coords:1..15:+; mdl-coords:5361..5374:+; mdl:NC_001959;
-ERROR: MUTATION_AT_END: (CDS:nonstructural polyprotein) expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAA]; seq-coords:13..15:+; mdl-coords:5373..5374:+; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;

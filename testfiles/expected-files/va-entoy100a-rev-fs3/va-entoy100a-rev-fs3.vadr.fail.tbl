@@ -308,6 +308,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			protein_id	ENTOY100A-REV-3-fs25_1
 
 Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:4,M:4]; seq-coords:7..5:-; mdl-coords:37..35:-; mdl:ENTOY100A-REV;
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift at 5' end of CDS [length:9; inserts:S:32(1),M:62; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.947;]; seq-coords:40..32:-; mdl-coords:69..62:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs26
 <38	23	misc_feature

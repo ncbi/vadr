@@ -1,4 +1,4 @@
 #sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+LC312762.1	NC_001959	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	12..14:+	5372..5373:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:1,M:1]
 LC312762.1	NC_001959	CDS	nonstructural polyprotein	INDEFINITE_ANNOTATION	1..15:+	5361..5374:+	nucleotide-based search identifies CDS not identified in protein-based search [-]
-LC312762.1	NC_001959	CDS	nonstructural polyprotein	MUTATION_AT_END	13..15:+	5373..5374:+	expected stop codon could not be identified, predicted CDS stop by homology is invalid [AAA]
 LC312762.1	NC_001959	mat_peptide	RdRp	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
