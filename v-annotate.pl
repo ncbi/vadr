@@ -6628,7 +6628,7 @@ sub add_protein_validation_alerts {
                   }
                   # check for 'cdsstopp': blast predicted truncation
                   if(defined $p_trcstop) { 
-                    $alt_str_H{"cdsstopp"} = $p_trcstop . "VADRNULL"; # $p_trcstop is sequence and model coords ("seq:<coords>;mdl:<coords>")
+                    $alt_str_H{"cdsstopp"} = $p_trcstop; # $p_trcstop is sequence, model coords and detail ("seq:<coords>;mdl:<coords>;mdl_coords_wrt:<s>")
                   }
                 }
               }
@@ -7084,7 +7084,11 @@ sub parse_blastx_results {
                   my $first_hstop = $cur_H{"HSTOP"};
                   $first_hstop =~ s/\;.*$//; # remove first ';' and anything after it
                   $first_hstop = vdr_CoordsProteinRelativeToAbsolute($ftr_info_AHR->[$t_ftr_idx]{"coords"}, $first_hstop, $FH_HR);
-                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_hstop . ";";
+                  my $hacc_accn = $cur_H{"HACC"};
+                  if($hacc_accn =~ /(\S+)\/\S+/) { 
+                    $hacc_accn = $1;
+                  }
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_hstop . ";" . "mdl_coords_wrt:" . $hacc_accn;
                 }
                 else { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = undef;
