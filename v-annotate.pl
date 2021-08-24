@@ -6639,7 +6639,7 @@ sub add_protein_validation_alerts {
                       $cdsstopp_detail = "VADRNULL"; 
                     }
                     elsif($beginning_of_detail ne "VADRNULL") { 
-                      $cdsstopp_detail = "mdl_coords_wrt:" . $cdsstopp_detail;
+                      $cdsstopp_detail = "mdl-coords_wrt:" . $cdsstopp_detail;
                     }
                     $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
                   }
