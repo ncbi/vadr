@@ -1798,7 +1798,7 @@ if($do_pv_blastx) {
         parse_blastx_results($ofile_info_HH{"fullpath"}{($mdl_name . ".blastx-summary")}, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                              $ftr_info_blastx_HR, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
         
-        add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+        add_protein_validation_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
       }
@@ -1825,7 +1825,7 @@ if($do_pv_hmmer) {
                                         $do_separate_cds_fa_files_for_protein_validation, \%opt_HH, \%ofile_info_HH);
         parse_hmmer_domtblout($ofile_info_HH{"fullpath"}{($mdl_name . ".domtblout")}, 0, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
                                   \@{$ftr_info_HAH{$mdl_name}}, \%{$ftr_results_HHAH{$mdl_name}}, \%opt_HH, \%ofile_info_HH);
-        add_protein_validation_alerts(\@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+        add_protein_validation_alerts($mdl_name, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                       \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, \%opt_HH, \%{$ofile_info_HH{"FH"}});
         ofile_OutputProgressComplete($start_secs, undef, $log_FH, *STDOUT);
         push(@to_remove_A, 
@@ -6274,6 +6274,7 @@ sub make_protein_validation_fasta_file {
 #                         if blastx used
 #
 # Arguments: 
+#  $mdl_name:               name of model we are adding alerts for
 #  $seq_name_AR:            REF to array of sequence names, PRE-FILLED
 #  $seq_len_HR:             REF to hash of of sequence lengths, PRE-FILLED
 #  $ftr_info_AHR:           REF to array of hashes with information on the features, PRE-FILLED
@@ -6288,10 +6289,10 @@ sub make_protein_validation_fasta_file {
 ################################################################# 
 sub add_protein_validation_alerts { 
   my $sub_name = "add_protein_validation_alerts";
-  my $nargs_expected = 8;
+  my $nargs_expected = 9;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
   
-  my ($seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
+  my ($mdl_name, $seq_name_AR, $seq_len_HR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, $opt_HHR, $FH_HR) = @_;
   
   my $do_pv_hmmer = opt_Get("--pv_hmmer", $opt_HHR) ? 1 : 0;
 
@@ -6628,7 +6629,19 @@ sub add_protein_validation_alerts {
                   }
                   # check for 'cdsstopp': blast predicted truncation
                   if(defined $p_trcstop) { 
-                    $alt_str_H{"cdsstopp"} = $p_trcstop; # $p_trcstop is sequence, model coords and detail ("seq:<coords>;mdl:<coords>;mdl_coords_wrt:<s>")
+                    my $cdsstopp_alt_str = $p_trcstop; # $p_trcstop is sequence, model coords and detail ("seq:<coords>;mdl:<coords>;<blastx_target>")
+                    # laboriously change detail to '-' if it matches model name, idea being including model name in these cases
+                    # is redundant and could needlessly confuse user, but for models built from multiple sequences (e.g. cox1)
+                    # we want to keep it in there because model coords pertain to the specific blastx query
+                    my ($cdsstopp_scoords, $cdsstopp_mcoords, $cdsstopp_detail) = alert_instance_parse($cdsstopp_alt_str);
+                    my $beginning_of_detail = ($cdsstopp_detail eq "VADRNULL") ? "VADRNULL" : substr($cdsstopp_detail, 0, length($mdl_name));
+                    if($beginning_of_detail eq $mdl_name) { 
+                      $cdsstopp_detail = "VADRNULL"; 
+                    }
+                    elsif($beginning_of_detail ne "VADRNULL") { 
+                      $cdsstopp_detail = "mdl_coords_wrt:" . $cdsstopp_detail;
+                    }
+                    $alt_str_H{"cdsstopp"} = "seq:" . $cdsstopp_scoords . ";mdl:" . $cdsstopp_mcoords . ";" . $cdsstopp_detail;
                   }
                 }
               }
@@ -7088,7 +7101,7 @@ sub parse_blastx_results {
                   if($hacc_accn =~ /(\S+)\/\S+/) { 
                     $hacc_accn = $1;
                   }
-                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_hstop . ";" . "mdl_coords_wrt:" . $hacc_accn;
+                  $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = "seq:" . $first_qstop . ";mdl:" . $first_hstop . ";" . $hacc_accn;
                 }
                 else { 
                   $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_trcstop"} = undef;
