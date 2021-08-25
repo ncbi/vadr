@@ -14,39 +14,51 @@
 # file, etc.
 # 
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim3term 20 --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim1 > va-entoy100a-lowsim1.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 15 --lowsim3seq 20 --lowsim5ftr 15 --lowsim3ftr 20 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim1 > va-entoy100a-lowsim1.out
 desc: annotate-entoy100a-lowsim1
 out: va-entoy100a-lowsim1/va-entoy100a-lowsim1.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim1/va-entoy100a-lowsim1.vadr.alt
 rmdir: va-entoy100a-lowsim1
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim3term 10 --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim2 > va-entoy100a-lowsim2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 15 --lowsim3seq 10 --lowsim5ftr 15 --lowsim3ftr 10 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim2 > va-entoy100a-lowsim2.out
 desc: annotate-entoy100a-lowsim2
 out: va-entoy100a-lowsim2/va-entoy100a-lowsim2.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim2/va-entoy100a-lowsim2.vadr.alt
 rmdir: va-entoy100a-lowsim2
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim3 > va-entoy100a-lowsim3.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 15 --lowsim3seq 15 --lowsim5ftr 15 --lowsim3ftr 15 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim3 > va-entoy100a-lowsim3.out
 desc: annotate-entoy100a-lowsim3
 out: va-entoy100a-lowsim3/va-entoy100a-lowsim3.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim3/va-entoy100a-lowsim3.vadr.alt
 rmdir: va-entoy100a-lowsim3
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim3term 20 --lowsim5term 5 --skip_pv --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim4 > va-entoy100a-lowsim4.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 5 --lowsim3seq 20 --lowsim5ftr 5 --lowsim3ftr 20 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim4 > va-entoy100a-lowsim4.out
 desc: annotate-entoy100a-lowsim4
 out: va-entoy100a-lowsim4/va-entoy100a-lowsim4.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim4/va-entoy100a-lowsim4.vadr.alt
 rmdir: va-entoy100a-lowsim4
 #
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 15 --lowsim3seq 15 --lowsim5ftr 15 --lowsim3ftr 3 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim5 > va-entoy100a-lowsim5.out
+desc: annotate-entoy100a-lowsim5
+out: va-entoy100a-lowsim5/va-entoy100a-lowsim5.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim5/va-entoy100a-lowsim5.vadr.alt
+rmdir: va-entoy100a-lowsim5
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 15 --lowsim3seq 15 --lowsim5ftr 2 --lowsim3ftr 3 --pv_skip --mdir $VADRSCRIPTSDIR/testfiles/models --mkey entoy100a $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim6 > va-entoy100a-lowsim6.out
+desc: annotate-entoy100a-lowsim6
+out: va-entoy100a-lowsim6/va-entoy100a-lowsim6.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim6/va-entoy100a-lowsim6.vadr.alt
+rmdir: va-entoy100a-lowsim6
+#
 # modelinfo file with zero features
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5term 6 --lowsim3term 20 --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-nofeatures.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim-noftr1 > va-entoy100a-lowsim-noftr1.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 6 --lowsim3seq 20 --lowsim5ftr 3 --lowsim3ftr 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-nofeatures.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim-noftr1 > va-entoy100a-lowsim-noftr1.out
 desc: annotate-entoy100a-lowsim-noftr1
 out: va-entoy100a-lowsim-noftr1/va-entoy100a-lowsim-noftr1.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim-noftr1/va-entoy100a-lowsim-noftr1.vadr.alt
 rmdir: va-entoy100a-lowsim-noftr1
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5term 10 --lowsim3term 10 --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-nofeatures.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim-noftr2 > va-entoy100a-lowsim-noftr2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -f --lowsim5seq 10 --lowsim3seq 10 --lowsim5ftr 3 --lowsim3ftr 3 --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-nofeatures.minfo $VADRSCRIPTSDIR/testfiles/entoy100a-lowsim.fa va-entoy100a-lowsim-noftr2 > va-entoy100a-lowsim-noftr2.out
 desc: annotate-entoy100a-lowsim-noftr2
 out: va-entoy100a-lowsim-noftr2/va-entoy100a-lowsim-noftr2.vadr.alt
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-lowsim-noftr2/va-entoy100a-lowsim-noftr2.vadr.alt

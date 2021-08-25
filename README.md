@@ -1,5 +1,5 @@
 # VADR - Viral Annotation DefineR <a name="top"></a>
-#### Version 1.1.3; Feb 2021
+#### Version 1.3; August 2021
 #### https://github.com/ncbi/vadr.git
 
 VADR is a suite of tools for classifying and analyzing sequences
@@ -38,38 +38,32 @@ Submitted Norovirus and Dengue virus sequences that pass
 `v-annotate.pl` are accepted into GenBank.
 
 The homology search and alignment components of VADR scripts, the most
-computationally expensive steps, are performed by the Infernal and
-BLAST software packages, which are downloaded and installed with [VADR
-installation](documentation/install.md#top).
+computationally expensive steps, are performed by the Infernal, HMMER,
+FASTA and BLAST software packages, which are downloaded and installed
+with [VADR installation](documentation/install.md#top).
 
 ---
 ## SARS-CoV-2 annotation using VADR
 
-The `v-annotate.pl` script in VADR v1.1x has some enhancements
-specifically designed for SARs-CoV-2 annotation that increase speed
-(`-s` option) and provide better annotation for sequences with
+The `v-annotate.pl` script includes some special options specifically
+developed for SARS-CoV-2 annotation that increase speed (`-s` and
+`--glsearch` options) and provide better annotation for sequences with
 stretches of Ns (`-r` option). See [this
-page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation)
-for more information on using VADR to annotate SARS-CoV-2 sequences.
+page](https://github.com/ncbi/vadr/wiki/Coronavirus-annotation) for
+more information on using VADR to annotate SARS-CoV-2 sequences.
 
 ---
 ## Available VADR models <a name="models"></a>
 
-VADR installation includes a default set of *Flaviviridae* and
-*Caliciviridae* models including Norovirus and Dengue virus.  You can
-download additional pre-built models to use to validate and
-annotate viruses, including SARS-CoV-2, or cox1 genes as listed
-below. Importantly, to use a set of models other than the default set
-that is installed with VADR, you will need to use either the `--mdir`
-and `--mkey` options, or the the `-m`, `-i`, `-x` and possibly `-n`
-options as described [here](documentation/annotate.md#options).
-
-Pre-built models are available for:
-  * SARS-CoV-2 [(NC_045512)](https://www.ncbi.nlm.nih.gov/nuccore/NC_045512.2/) and other *Coronaviridae* RefSeqs
-  * Norovirus and Dengue virus RefSeqs, along with other
-    *Flaviviridae* and *Caliciviridae* RefSeqs (**this is the "default"
-    set of models that is installed with VADR**)
-  * metazoan Cytochrome c oxidase I (COX1)
+VADR installation includes a default set of *Caliciviridae* models
+including Norovirus virus. The installation also includes a set of
+*Flaviviridae* models including Dengue virus.  You can download
+additional pre-built models to use to validate and annotate viruses,
+including SARS-CoV-2, or cox1 genes. Importantly, to
+use a set of models other than the default *Caliciviridae* set, you
+will need to use either the `--mdir` and `--mkey` options, or the the
+`-m`, `-i`, `-x` and possibly `-n` options as described
+[here](documentation/annotate.md#options).
 
 See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) for more information
 
@@ -91,6 +85,12 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
   * [`v-annotate.pl` command-line options](documentation/annotate.md#options)
   * [Basic Information on `v-annotate.pl` alerts](documentation/annotate.md#alerts)
   * [Additional information on `v-annotate.pl` alerts](documentation/annotate.md#alerts2)
+* [Explanations and examples of `v-annotate.pl` detailed alert and error messages](documentation/alerts.md#top)
+  * [Output fields with detailed alert and error messages](documentation/alerts.md#files)
+  * [Explanation of sequence and model coordinate fields in `.alt` files](documentation/alerts.md#coords)
+  * [`toy50` toy model used in examples of alert messages](documentation/alerts.md#toy)
+  * [Examples of different alert types and corresponding `.alt` output](documentation/alerts.md#examples)
+  * [Posterior probability annotation in VADR output Stockholm alignments](documentation/alerts.md#pp)
 * [VADR output file formats](documentation/formats.md#top)
   * [VADR output files created by all VADR scripts](documentation/formats.md#generic)
   * [`v-build.pl` output files](documentation/formats.md#build)
@@ -102,13 +102,44 @@ See [this page](https://github.com/ncbi/vadr/wiki/Available-VADR-model-files) fo
 * [Development notes and instructions (github wiki)](https://github.com/ncbi/vadr/wiki/Development-notes-and-instructions)
 
 ---
+## Contributors <a name="contributors"></a>
+* VADR includes contributions and input from current and former
+  colleagues at NCBI, including:
+
+  Rodney Brister
+  
+  Vince Calhoun
+  
+  Sergiy Gotvyanskyy
+  
+  Eneida Hatcher
+  
+  Sophia Hu
+  
+  Ilene Karsch-Mizrachi
+  
+  Rich McVeigh
+  
+  Susan Schafer
+  
+  Alejandro Schäffer
+  
+  Lara Shonkwiler
+  
+  Beverly Underwood
+  
+  Yuri Wolf
+  
+  Linda Yankie
+
+---
 ## Reference <a name="reference"></a>
 * The recommended citation for using VADR is:
-  Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
+  *Alejandro A Schäffer, Eneida L Hatcher, Linda Yankie, Lara Shonkwiler,
   J Rodney Brister, Ilene Karsch-Mizrachi, Eric P Nawrocki; VADR:
   validation and annotation of virus sequence submissions to
   GenBank. BMC Bioinformatics 21, 211
-  (2020). https://doi.org/10.1186/s12859-020-3537-3
+  (2020).* https://doi.org/10.1186/s12859-020-3537-3
 
 ---
 #### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.

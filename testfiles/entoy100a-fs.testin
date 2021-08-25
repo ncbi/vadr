@@ -15,7 +15,7 @@
 # 
 # set 1, single segment CDS, positive strand
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-fs1 > va-entoy100a-fs1.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-fs1 > va-entoy100a-fs1.out
 desc: annotate-entoy100a-fs1
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.tbl 
 out: va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.tbl
@@ -45,7 +45,7 @@ rmdir: va-entoy100a-fs1
 # 
 # set 2, multi-segment CDS, positive strand
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2 > va-entoy100a-fs2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs2.fa va-entoy100a-fs2 > va-entoy100a-fs2.out
 desc: annotate-entoy100a-fs2
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.pass.tbl 
 out: va-entoy100a-fs2/va-entoy100a-fs2.vadr.fail.tbl
@@ -81,7 +81,7 @@ rmdir: va-entoy100a-fs2
 # 
 # set 3, partial sequence, single and multi-segment CDS, positive strand
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicnf --fsthighthr 0.300001 --fstminnt 1 --minpvlen 3 --keep -v --skip_pv -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs3.fa va-entoy100a-fs3 > va-entoy100a-fs3.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs3.fa va-entoy100a-fs3 > va-entoy100a-fs3.out
 desc: annotate-entoy100a-fs3
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.pass.tbl 
 out: va-entoy100a-fs3/va-entoy100a-fs3.vadr.fail.tbl

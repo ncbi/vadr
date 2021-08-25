@@ -17,6 +17,7 @@
   * [`.sqc` files](#sqc)
   * [`.sda` files](#sda)
   * [`.rpn` files](#rpn)
+  * [`.dcr` files](#dcr)
   * [`.alt.list` files](#altlist)
   * [extra output files saved with the `--keep` option](#annotate-keep)
 * [VADR `coords` coordinate string format](#coords)
@@ -284,7 +285,7 @@ references on the file type/format.
 
 ---
 
-There are also nine types of `v-annotate.pl` tabular output files with fields separated by 
+There are also ten types of `v-annotate.pl` tabular output files with fields separated by 
 one or more spaces, that are designed to be easily parseable with simple unix tools or scripts.
 These files are listed in the table below
 
@@ -336,28 +337,36 @@ that occurs at least once in the input sequence file that
 ---
 ### Explanation of `.alt`-suffixed output files<a name="alt"></a>
 
-`.alt` data lines have 10 or more fields, the names of which appear in the first two
+`.alt` data lines have 14 or more fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each **alert instance**
 that occurs for each input sequence file that `v-annotate.pl` processed.
 [Example file](annotate-files/va-noro.9.vadr.alt).
+
+For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
+
+For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `idx`                 | index of alert instance in format `<d1>.<d2>.<d3>`, where `<d1>` is the index of the sequence this alert instance pertains to in the input sequence file, `<d2>` is the index of the feature this alert instance pertains to (range 1..`<n>`, where `<n>` is the number of features in this sequence with at least 1 alert instance) and `<d3>` is the index of the alert instance for this sequence/feature pair |
 |   2 | `seq name`            | sequence name | 
-|   3 | `model`               | name of the best-matching model for this sequence |
+|   2 | `model`               | name of the best-matching reference model used to annotate this sequence, coordinates in `mdl coords` pertain to this model |
 |   4 | `ftr type`            | type of the feature this alert instance pertains to (e.g. CDS) |
 |   5 | `ftr name`            | name of the feature this alert instance pertains to |
 |   6 | `ftr idx`             | index (in input model info file) this alert instance pertains to |
 |   7 | `alert code`          | 8 character VADR alert code |
 |   8 | `fail`                | `yes` if this alert code is fatal (automatically causes the sequence to fail), `no` if not |
-|   9 | `alert desc`          | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
-| 10 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
+|   9 | `alert description`   | short description of the alert code that often maps to error message from NCBI's submission system, multiple alert codes can have the same short description |
+|  10 | `seq coords`          | coordinates in the input sequence relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|  11 | `seq len`             | total length of all positions described by coordinates in `seq coords` | 
+|  12 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|  13 | `mdl len`             | total length of all positions described by coordinates in `mdl coords` | 
+| 14 to end | `alert detail`  | detailed description of the alert instance, possibly with sequence position information; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Explanation of `.ftr`-suffixed output files<a name="ftr"></a>
 
-`.ftr` data lines have 25 fields, the names of which appear in the first two
+`.ftr` data lines have 26 fields, the names of which appear in the first two
 comment lines in each file. There is one data line for each
 **feature** that is annotated for each input sequence file that
 `v-annotate.pl` processed. The set of possible features for each
@@ -376,22 +385,23 @@ the model info file.
 |   7 | `ftr name`            | name of the feature |
 |   8 | `ftr len`             | length of the annotated feature in nucleotides in input sequence |
 |   9 | `ftr idx`             | index (in input model info file) of this feature |
-|  10 | `str`                 | strand on which the feature is annotated: `+` for positive/forward/Watson strand, `-` for negative/reverse/Crick strand |
-|  11 | `n_from`              | nucleotide start position for this feature in input sequence |
-|  12 | `n_to`                | nucleotide end position for this feature in input sequence, for CDS features this is typically the final position of a stop codon if CDS is not 3' truncated |
-|  13 | `n_instp`             | nucleotide position of stop codon not at `n_to`, or `-` if none, will be 5' of `n_to` if early stop (`cdsstopn` alert), or 3' of `n_to` if first stop is 3' of `n_to` (`mutendex` or `ambgnt3c` alert), or `?` if no in-frame stop exists 3' of `n_from`; will always be `-` if `trunc` is not `no`; |
-|  14 | `trc`                 | indicates whether the feature is truncated or not, where one or both ends of the feature are missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
-|  15 | `5'N`                 | number of consecutive N ambiguous nucleotide characters at 5' end, starting at `n_from`, `0` for none |
-|  16 | `3'N`                 | number of consecutive N ambiguous nucleotide characters at 3' end, ending at `n_to`, `0` for none |
-|  17 | `p_from`              | if a CDS feature, the nucleotide start position for this feature based on the blastx protein-validation step, this will always be the first position of a codon in the blastx-predicted translated region| 
-|  18 | `p_to`                | if a CDS feature, nucleotide stop position for this feature based on the blastx protein-validation step, this will always be the final position of a codon in the blastx-predicted translated region, typically the final position of the codon *immediately upstream (prior)* of the stop codon if CDS is not 3' truncated | 
-|  19 | `p_instp`             | nucleotide position of stop codon 5' of `p_to` if an in-frame stop exists before `p_to` |
-|  20 | `p_sc`                | raw score of best blastx alignment |
-|  21 | `nsa`                 | number of segments annotated for this feature |
-|  22 | `nsn`                 | number of segments not annotated for this feature |
-|  23 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings](#coords) |
-|  24 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings](#coords) |
-|  25 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
+|  10 | `par idx`             | index (in input model info file) of parent of this feature, `-1` if none |
+|  11 | `str`                 | strand on which the feature is annotated: `+` for positive/forward/Watson strand, `-` for negative/reverse/Crick strand |
+|  12 | `n_from`              | nucleotide start position for this feature in input sequence |
+|  13 | `n_to`                | nucleotide end position for this feature in input sequence, for CDS features this is typically the final position of a stop codon if CDS is not 3' truncated |
+|  14 | `n_instp`             | nucleotide position of stop codon not at `n_to`, or `-` if none, will be 5' of `n_to` if early stop (`cdsstopn` alert), or 3' of `n_to` if first stop is 3' of `n_to` (`mutendex` or `ambgnt3c` alert), or `?` if no in-frame stop exists 3' of `n_from`; will always be `-` if `trunc` is not `no`; |
+|  15 | `trc`                 | indicates whether the feature is truncated or not, where one or both ends of the feature are missing due to a premature end to the sequence; possible values are `no` for not truncated; `5'` for truncated on the 5' end; `3'` for truncated on the 3' end; and `5'&3'` for truncated on both the 5' and 3' ends; |
+|  16 | `5'N`                 | number of consecutive N ambiguous nucleotide characters at 5' end, starting at `n_from`, `0` for none |
+|  17 | `3'N`                 | number of consecutive N ambiguous nucleotide characters at 3' end, ending at `n_to`, `0` for none |
+|  18 | `p_from`              | if a CDS feature, the nucleotide start position for this feature based on the blastx protein-validation step, this will always be the first position of a codon in the blastx-predicted translated region| 
+|  19 | `p_to`                | if a CDS feature, nucleotide stop position for this feature based on the blastx protein-validation step, this will always be the final position of a codon in the blastx-predicted translated region, typically the final position of the codon *immediately upstream (prior)* of the stop codon if CDS is not 3' truncated | 
+|  20 | `p_instp`             | nucleotide position of stop codon 5' of `p_to` if an in-frame stop exists before `p_to` |
+|  21 | `p_sc`                | raw score of best blastx alignment |
+|  22 | `nsa`                 | number of segments annotated for this feature |
+|  23 | `nsn`                 | number of segments not annotated for this feature |
+|  24 | `seq coords`          | sequence coordinates of feature, see [format of coordinate strings](#coords) |
+|  25 | `mdl coords`          | model coordinates of feature, see [format of coordinate strings](#coords) |
+|  26 | `ftr alerts`          | alerts that pertain to this feature, listed in format `SHORT_DESCRIPTION(alertcode)`, separated by commas if more than one, `-` if none |
 
 ---
 ### Explanation of `.mdl`-suffixed output files<a name="mdl"></a>
@@ -591,23 +601,114 @@ va-noro-r.9`.
 
 ---
 
+### Explanation of `.dcr`-suffixed output files<a name="dcr"></a>
+
+`.dcr` data lines have 17 fields, the names of which appear in the
+first two comment lines in each file. There is one data line for each
+**alignment doctoring** that was performed. An alignment doctoring
+occurs only in rare cases. There are two types of alignment
+doctorings: *insert* type and *delete* types. 
+
+An insert type alignment doctoring occurs when the following criteria
+are met:
+
+1. the initial alignment returned by cmalign or glsearch includes a
+  single nucleotide insertion after the first position of a start
+  codon or a before the final position of a stop codon
+
+2. at least one adjacent nucleotide in the input sequence exists 5' of insert
+   (start codon case) or 3' of insert (stop codon case)
+
+3. the adjacent nucleotide is aligned to a reference position (is not
+  an insertion)
+
+4. making the adjacent nucleotide an insertion instead of the 
+   inserted position in the start/stop codon with the
+   will result in a valid start or stop codon
+   aligned to the reference start or stop codon
+
+A delete type alignment doctoring occurs when the following criteria
+are met:
+
+1. the initial alignment returned by cmalign or glsearch includes a gap
+  at the first position of a start codon of a CDS in the reference
+  model, or at the final position of a stop codon of a CDS 
+
+2. at least one adjacent nucleotide in the input sequence exists 5' of gap
+  (start codon case) or 3' of gap (stop codon case)
+
+3. the adjacent nucleotide is aligned to a reference position (is not
+  an insertion)
+
+4. swapping the gapped position in the start/stop codon with the
+  adjacent nucleotide will result in a valid start or stop codon
+  aligned to the reference start or stop codon
+
+For every situation where criteria 1 to 3 above are met for either
+insert or delete types, a line of
+information will be output to the `.dcr` file. If criteria 4 is also
+met, then field 17 will be `yes`, otherwise it will be `no`.
+
+For any doctoring that causes an existing valid start or stop codon in
+a nearby CDS to become invalid (even more rare), a second doctoring
+takes place to undo the first, and an additional line for this
+undoctoring will appear in the `.dcr` file.
+
+The relevant code is in the `parse_stk_and_add_alignment_alerts()`
+and `doctoring_check_new_codon_validity()` subroutines in `v-annotate.pl`.
+The latter subroutine includes simple examples in the comments of its
+header section. 
+
+[Example file](../testfiles/expected-files/va-entoy100a-dcr-gls/va-entoy100a-dcr-gls.vadr.dcr)
+
+| idx | field                 | description |
+|-----|-----------------------|-------------|
+|   1 | `idx`                 | index of doctoring instance in format `<d1>.<d2>`, where `<d1>` is the index of the sequence this doctoring instance pertains to in the input sequence file, `<d2>` is the index of the doctoring instance for this sequence |
+|   2 | `seq name`            | sequence name | 
+|   3 | `mdl name`            | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage, and is the model used to align the sequence |
+|   4 | `ftr type`            | type of the feature (will always be `CDS`) |
+|   5 | `ftr name`            | name of the CDS feature |
+|   6 | `ftr idx`             | index (in input model info file) this doctoring instance pertains to |
+|   7 | `dcr type`            | 'delete' or 'insert' indicating type of doctoring |
+|   8 | `model pos`           | reference model position, either first position of start codon, or final position of stop codon |
+|   9 | `indel apos`          | alignment position of the insertion (insert type) or deletion (delete type) |
+|  10 | `orig seq-uapos`      | unaligned sequence position of the first start or final stop position *before* swap |
+|  11 | `new seq-uapos`       | unaligned sequence position of the first start or final stop position *after* swap (if performed) |
+|  12 | `codon type`          | `start` if start codon, `stop` if stop codon |
+|  13 | `codon coords`        | unaligned sequence coordinates of start or stop codon after potential swap, in vadr coords [format](#coords) |
+|  14 | `orig codon`          | start or stop codon before potential doctoring (swap) | 
+|  15 | `new codon`           | start or stop codon after potential doctoring (swap) | 
+|  16 | `dcr iter`            | doctoring iteration, `1` if first time the gap and nucleotide may be swapped, `2` if second (swapping back because first swap invalidated previously valid start/stop codon), cannot exceed `2` |
+|  17 | `did swap`            | `yes` if doctoring (swap) took place because it created a valid start or stop codon, `no` if doctoring (swap) did not occur because it would not have created a valid start or stop codon |
+
+---
+
 ### Explanation of `.alt.list`-suffixed output files<a name="altlist"></a>
 
 `.alt.list` files begin with a comment line that names the fields, followed by 0 or more 
-lines with 4 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
+lines with 8 tab-delimited fields. [Example file](annotate-files/va-noro.9.vadr.alt.list).
 
+For more information on the `seq coords` and `mdl coords` fields, which have different meanings for different alerts, see [here](alerts.md#coords).
+
+For examples using a toy model of different types of alerts, see [here](alerts.md#examples).
 
 | idx | field                 | description |
 |-----|-----------------------|-------------|
 |   1 | `sequence`            | name of sequence this alert pertains to |
-|   2 | `error`               | short description of the alert/error |
-|   3 | `feature`             | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
-|   4 | `error-description`   | longer description of the alert/error, specific to each alert/error type; *this field, unlike all others, contains whitespace* |
+|   2 | `model`               | name of the best-matching reference model used to annotate this sequence, coordinates in `mdl coords` pertain to this model |
+|   3 | `feature-type`        | type of feature the alert/error pertains to, or `-` if this alert is a `per-sequence` alert and not a `per-feature` alert | 
+|   4 | `feature-name`        | name of the feature this alert/error pertains to, of `*sequence*` if this alert is a `per-sequence` alert and not a `per-feature` alert |
+|   5 | `error`               | short description of the alert/error |
+|   6 | `seq coords`          | coordinates in the input sequence relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|   7 | `mdl coords`          | coordinates in the reference model relevant to the alert, precise meaning differs per alert, more details are [here](alerts.md#coords) |
+|   8 | `error-description`   | longer description of the alert/error, specific to each alert/error type; *this field, unlike all others, contains whitespace* |
 
 ---
 ### Additional files created by `v-annotate.pl` when the `--keep` option is used <a name="annotate-keep"></a>
 
 When run with the `--keep` option, `v-annotate.pl` will create additional files, some of these may change based on command-line options, in particular `-s` and `-r`:
+There are additional options that begin with `--out_` which specify that a subset of these
+files be output. For example the `--out_stk` option specifies that stockholm alignment files be output.
 
 | suffix | description | reference | 
 |--------|-------------|-----------|
@@ -620,6 +721,7 @@ When run with the `--keep` option, `v-annotate.pl` will create additional files,
 | `.cdt.<model_name>.stdout` | standard output (usually from `cmsearch`) from coverage determination stage for model `<model_name>` | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmsearch` in coverage determination stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.a.fa` | fasta file of sequences classified to `<model_name>`, used as input to `cmalign` in alignment stage | https://en.wikipedia.org/wiki/FASTA_format | 
+| `.<model_name>.<ftr_type>.<ftr_idx>.fa` | fasta file of predicted feature subsequences for feature type `<ftr_type>` number `<ftr_idx>` for sequences classified to `<model_name>`, for CDS, used as input to `blastx` in protein validation stage | https://en.wikipedia.org/wiki/FASTA_format | 
 | `.<model_name>.align.*.stk` | Stockholm alignment file output from `cmalign` with 1 or more sequences classified to `<model_name>` | <a name="stockholmformat"></a> https://en.wikipedia.org/wiki/Stockholm_format, http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.<model_name>.align.*.ifile` | `cmalign` insert output file, created with `--ifile` option for 1 or more sequences classified to `<model_name>` | description of fields at top of file, no further documentation |
 | `.<model_name>.align.*.stdout` | `cmalign` standard output for 1 or more sequences classified to `<model_name>` | no further documentation |

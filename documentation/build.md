@@ -26,8 +26,8 @@
 `v-build.pl` creates the VADR model files for a specified reference
 GenBank (typically RefSeq) sequence necessary for running
 `v-annotate.pl` to validate and annotate sequences similar to that
-reference sequence. `v-build.pl` should only be used on sequences of
-length 25Kb (25,000 nucleotides) or less due to the prohibitively
+reference sequence. It is recommended to run `v-build.pl` only on sequences 
+of length 25Kb (25,000 nucleotides) or less due to the prohibitively
 large memory requirements of `v-annotate.pl` for larger models. To
 determine the command-line usage of `v-build.pl` (or any VADR script),
 use the `-h` option, like this:
@@ -39,9 +39,9 @@ v-build.pl -h
 You'll see something like the following output:
 ```
 # v-build.pl :: build homology model of a single sequence for feature annotation
-# VADR 1.1 (May 2020)
+# VADR 1.3 (Aug 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed May  6 13:47:59 2020
+# date:    Tue Aug  3 14:49:35 2021
 #
 Usage: v-build.pl [-options] <accession> <path to output directory to create>
 ```
@@ -80,7 +80,7 @@ variables, the command line arguments used and any command line
 options used:
 
 ```
-# date:              Wed May  6 15:01:34 2020
+# date:              Tue Aug  3 16:23:48 2021
 # $VADRBLASTDIR:     /home/nawrocki/vadr-install-dir/ncbi-blast
 # $VADREASELDIR:     /home/nawrocki/vadr-install-dir/infernal/binaries
 # $VADRINFERNALDIR:  /home/nawrocki/vadr-install-dir/infernal/binaries
@@ -118,13 +118,15 @@ not be stored in the VADR model files:
 ```
 
 The fetched FASTA file is then reformatted to Stockholm for input to
-`cmbuild` to create the model CM file, feature information read from
-the feature tables is finalized internally, and CDS features are
-translated and used to create the BLAST database with `makeblastdb`,
-and the HMMER protein HMM database with `hmmbuild`. 
+`cmbuild` to create the model CM file, the BLAST nucleotide database
+is construced, feature information read from the feature tables is
+finalized internally, and CDS features are translated and used to
+create the BLAST database with `makeblastdb`, and the HMMER protein
+HMM database with `hmmbuild`.
 
 ```
 # Reformatting FASTA file to Stockholm file                    ... done. [    0.3 seconds]
+# Building BLAST nucleotide database                           ... done. [    1.2 seconds]
 # Finalizing feature information                               ... done. [    0.0 seconds]
 # Translating CDS                                              ... done. [    0.1 seconds]
 # Building BLAST protein database                              ... done. [    0.2 seconds]
@@ -149,47 +151,47 @@ When all steps are complete, `v-build.pl` ends by outputting a list of
 relevant output files with brief descriptions:
 
 ```
-# Output printed to screen saved in:                                           NC_039897.vadr.log
-# List of executed commands saved in:                                          NC_039897.vadr.cmd
-# List and description of all output files saved in:                           NC_039897.vadr.filelist
-# fasta file for NC_039897 saved in:                                           NC_039897.vadr.fa
-# feature table format file for NC_039897 saved in:                            NC_039897.vadr.tbl
-# feature table format file for YP_009538340.1 saved in:                       NC_039897.vadr.YP_009538340.1.tbl
-# feature table format file for YP_009538341.1 saved in:                       NC_039897.vadr.YP_009538341.1.tbl
-# feature table format file for YP_009538342.1 saved in:                       NC_039897.vadr.YP_009538342.1.tbl
-# Stockholm alignment file for NC_039897 saved in:                             NC_039897.vadr.stk
-# fasta sequence file for CDS from NC_039897 saved in:                         NC_039897.vadr.cds.fa
-# fasta sequence file for translated CDS from NC_039897 saved in:              NC_039897.vadr.protein.fa
-# BLAST db .phr file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.phr
-# BLAST db .pin file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pin
-# BLAST db .psq file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.psq
-# BLAST db .pdb file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pdb
-# BLAST db .pot file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pot
-# BLAST db .ptf file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.ptf
-# BLAST db .pto file for NC_039897 saved in:                                   NC_039897.vadr.protein.fa.pto
-# HMMER model db file for NC_039897 saved in:                                  NC_039897.vadr.protein.hmm
-# hmmbuild build output (concatenated) saved in:                               NC_039897.vadr.protein.hmmbuild
-# binary HMM and p7 HMM filter file saved in:                                  NC_039897.vadr.protein.hmm.h3m
-# SSI index for binary HMM file saved in:                                      NC_039897.vadr.protein.hmm.h3i
-# optimized p7 HMM filters (MSV part) saved in:                                NC_039897.vadr.protein.hmm.h3f
-# optimized p7 HMM filters (remainder) saved in:                               NC_039897.vadr.protein.hmm.h3p
-# hmmpress output file saved in:                                               NC_039897.vadr.hmmpress
-# CM file saved in:                                                            NC_039897.vadr.cm
-# cmbuild output file saved in:                                                NC_039897.vadr.cmbuild
-# binary CM and p7 HMM filter file saved in:                                   NC_039897.vadr.cm.i1m
-# SSI index for binary CM file saved in:                                       NC_039897.vadr.cm.i1i
-# optimized p7 HMM filters (MSV part) saved in:                                NC_039897.vadr.cm.i1f
-# optimized p7 HMM filters (remainder) saved in:                               NC_039897.vadr.cm.i1p
-# cmpress output file saved in:                                                NC_039897.vadr.cmpress
-# fasta sequence file with cmemit consensus sequence for NC_039897 saved in:   NC_039897.vadr.nt.fa
-# BLAST db .nhr file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nhr
-# BLAST db .nin file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nin
-# BLAST db .nsq file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nsq
-# BLAST db .ndb file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.ndb
-# BLAST db .not file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.not
-# BLAST db .ntf file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.ntf
-# BLAST db .nto file for NC_039897 saved in:                                   NC_039897.vadr.nt.fa.nto
-# VADR 'model info' format file for NC_039897 saved in:                        NC_039897.vadr.minfo
+# Output printed to screen saved in:                                 NC_039897.vadr.log
+# List of executed commands saved in:                                NC_039897.vadr.cmd
+# List and description of all output files saved in:                 NC_039897.vadr.filelist
+# fasta file for NC_039897 saved in:                                 NC_039897.vadr.fa
+# feature table format file for NC_039897 saved in:                  NC_039897.vadr.tbl
+# feature table format file for YP_009538340.1 saved in:             NC_039897.vadr.YP_009538340.1.tbl
+# feature table format file for YP_009538341.1 saved in:             NC_039897.vadr.YP_009538341.1.tbl
+# feature table format file for YP_009538342.1 saved in:             NC_039897.vadr.YP_009538342.1.tbl
+# Stockholm alignment file for NC_039897 saved in:                   NC_039897.vadr.stk
+# nucleotide blastn db fasta sequence file for NC_039897 saved in:   NC_039897.vadr.fa
+# BLAST db .nhr file for NC_039897 saved in:                         NC_039897.vadr.fa.nhr
+# BLAST db .nin file for NC_039897 saved in:                         NC_039897.vadr.fa.nin
+# BLAST db .nsq file for NC_039897 saved in:                         NC_039897.vadr.fa.nsq
+# BLAST db .ndb file for NC_039897 saved in:                         NC_039897.vadr.fa.ndb
+# BLAST db .not file for NC_039897 saved in:                         NC_039897.vadr.fa.not
+# BLAST db .ntf file for NC_039897 saved in:                         NC_039897.vadr.fa.ntf
+# BLAST db .nto file for NC_039897 saved in:                         NC_039897.vadr.fa.nto
+# fasta sequence file for CDS from NC_039897 saved in:               NC_039897.vadr.cds.fa
+# fasta sequence file for translated CDS from NC_039897 saved in:    NC_039897.vadr.protein.fa
+# BLAST db .phr file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.phr
+# BLAST db .pin file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pin
+# BLAST db .psq file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.psq
+# BLAST db .pdb file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pdb
+# BLAST db .pot file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pot
+# BLAST db .ptf file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.ptf
+# BLAST db .pto file for NC_039897 saved in:                         NC_039897.vadr.protein.fa.pto
+# HMMER model db file for NC_039897 saved in:                        NC_039897.vadr.protein.hmm
+# hmmbuild build output (concatenated) saved in:                     NC_039897.vadr.protein.hmmbuild
+# binary HMM and p7 HMM filter file saved in:                        NC_039897.vadr.protein.hmm.h3m
+# SSI index for binary HMM file saved in:                            NC_039897.vadr.protein.hmm.h3i
+# optimized p7 HMM filters (MSV part) saved in:                      NC_039897.vadr.protein.hmm.h3f
+# optimized p7 HMM filters (remainder) saved in:                     NC_039897.vadr.protein.hmm.h3p
+# hmmpress output file saved in:                                     NC_039897.vadr.hmmpress
+# CM file saved in:                                                  NC_039897.vadr.cm
+# cmbuild output file saved in:                                      NC_039897.vadr.cmbuild
+# binary CM and p7 HMM filter file saved in:                         NC_039897.vadr.cm.i1m
+# SSI index for binary CM file saved in:                             NC_039897.vadr.cm.i1i
+# optimized p7 HMM filters (MSV part) saved in:                      NC_039897.vadr.cm.i1f
+# optimized p7 HMM filters (remainder) saved in:                     NC_039897.vadr.cm.i1p
+# cmpress output file saved in:                                      NC_039897.vadr.cmpress
+# VADR 'model info' format file for NC_039897 saved in:              NC_039897.vadr.minfo
 #
 # All output files created in directory ./NC_039897/
 ```
@@ -200,12 +202,10 @@ These files include the FASTA and and their formats are described more
 Only some of these files will be used by `v-annotate.pl`. These are
 the files with the following suffixes:
 
-
 | file suffix | description | reference |
 |--------|-----------------------|-------------|
 | `.protein.fa.p{hr,in,sq,db,ot,tf,to}` | BLAST protein database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.nt.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
-| `.fa.n{hr,in,sq}` | BLAST database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
+| `.fa.n{hr,in,sq,db,ot,tf,to}` | BLAST nucleotide database index files, created by `makeblastdb` | binary files, not meant to be human-readable |
 | `.cm` | Infernal 1.1x covariance model file | http://eddylab.org/infernal/Userguide.pdf (section 9: "File and output formats") |
 | `.cm.i1{m,i,f,p}` | Infernal 1.1x covariance model index files, created by `cmpress` | binary files, not meant to be human-readable |
 | `.hmm` | HMMER 3.x HMM file | http://eddylab.org/software/hmmer/Userguide.pdf ("HMMER profile HMM files" section) |
@@ -332,6 +332,7 @@ User's Guide manual page for `cmbuild` (section 8 of http://eddylab.org/infernal
 | `--cmn <n>` | set the number of seqs for glocal forward profile HMM filter calibration to `<n>` (sets the `cmbuild --EgfN` option), default is to use default `cmbuild` value | 
 | `--cmp7ml` | set CM's filter profile HMM as the maximum likelihood profile HMM (sets the `cmbuild --p7ml` option) |
 | `--cmere` | set CM relative entropy target bits to position to `<x>` (sets the `cmbuild --ere <x>` option), default is to use default `cmbuild` value |
+| `--cmeset` | set CM effective sequence number to '<x>` (sets the `cmbuild --eset <x>` option), default is to use default `cmbuild` value | 
 | `--cmemaxseq` | set CM maximum allowed effective sequence # for CM to `<x>` (sets the `cmbuild --emaxseq <x>` option) | 
 | `--cminfile` | read `cmbuild` options from an input file `<s>`, the contents of the file (after removing newlines) will be supplied directly to `cmbuild` as an options string (possibly with more than one option separated by whitespace) |
 
@@ -376,7 +377,7 @@ call it `my.vadr.cm`, for example, and move it to the
 call it `my.vadr.hmm`, for example, and move it to the
 `my-vadr-model-dir` directory.
 
-6. Concatenate all resulting `N` `.vadr.nt.fa` files into a single file,
+6. Concatenate all resulting `N` `.vadr.fa` files into a single file,
 call it `my.vadr.fa`, for example, and move it to the
 `my-vadr-model-dir` directory, and then create a BLAST nucleotide 
 database from it with the command:
@@ -448,6 +449,13 @@ file in the directory pointed to by your `$VADRMODELDIR` environment
 variable after installing VADR. To reproduce the construction of the
 1.1 library, you would run similar steps to those below but also
 adding the additional models listed in the `RELEASE-NOTES.txt` file.
+
+Additionally, as of version 1.2, the *Caliciviridae* models and
+*Flaviviridae* models have been split up into two different model
+sets, but both are installed by the VADR install script
+`vadr-install.sh`. The *Caliciviridae* models are used by default with
+`v-annotate.pl`. To use the *Flaviviridae* models, use the options `--mkey
+flavi --mdir $VADRMODELDIR/vadr-models-flavi`.
 
 ### Models in the VADR 1.0 library
 

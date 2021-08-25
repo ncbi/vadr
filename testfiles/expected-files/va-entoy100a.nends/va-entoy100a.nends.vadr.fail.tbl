@@ -38,9 +38,9 @@
 			protein_id	ENTOY100A/one-4Ns-start-11-14_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 15]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..14:+; mdl-coords:11..14:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-4Ns-end-28-31
 5	22	ncRNA
 			product	enRNA
@@ -80,9 +80,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-4Ns-end-28-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (protein one) final nucleotide of CDS is an N [final 4 positions are Ns, final non-N is position 27]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an N [-]; seq-coords:28..31:+; mdl-coords:28..31:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31
 5	22	ncRNA
 			product	enRNA
@@ -123,10 +123,10 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-4Ns-start-4Ns-end-11-14,28-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (protein one) final nucleotide of CDS is an N [final 4 positions are Ns, final non-N is position 27]
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 4 positions are Ns, first non-N is position 15]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an N [-]; seq-coords:28..31:+; mdl-coords:28..31:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..14:+; mdl-coords:11..14:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-second-posn-N-12
 5	22	ncRNA
 			product	enRNA
@@ -166,9 +166,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-second-posn-N-12_4
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_START: (protein one) expected start codon could not be identified [ANG starting at position 11 on + strand is not a valid start]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: MUTATION_AT_START: (CDS:protein one) expected start codon could not be identified [ANG]; seq-coords:11..13:+; mdl-coords:11..13:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-second-to-final-posn-N-30
 5	22	ncRNA
 			product	enRNA
@@ -208,9 +208,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-second-to-final-posn-N-30_4
 
 Additional note(s) to submitter:
-ERROR: MUTATION_AT_END: (protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [73]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: MUTATION_AT_END: (CDS:protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAG]; seq-coords:71..73:+; mdl-coords:71..73:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-first-position-N-11
 5	22	ncRNA
 			product	enRNA
@@ -251,9 +251,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-first-position-N-11_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 1 positions are Ns, first non-N is position 12]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..11:+; mdl-coords:11..11:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-final-position-N
 5	22	ncRNA
 			product	enRNA
@@ -293,9 +293,9 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-final-position-N_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (protein one) final nucleotide of CDS is an N [final 1 positions are Ns, final non-N is position 30]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (CDS:protein one) final nucleotide of CDS is an N [-]; seq-coords:31..31:+; mdl-coords:31..31:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A-one-12Ns-start
 5	>10	ncRNA
 			product	enRNA
@@ -333,8 +333,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A-one-12Ns-start_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 12 positions are Ns, first non-N is position 23]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..22:+; mdl-coords:11..22:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-two-codons-len6-26-31
 5	>10	ncRNA
 			product	enRNA
@@ -372,8 +372,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A/one-cds-two-codons-len6-26-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 26]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..25:+; mdl-coords:11..25:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-only-stop-len5-27-31
 5	>10	ncRNA
 			product	enRNA
@@ -404,8 +404,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A/one-cds-only-stop-len5-27-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 16 positions are Ns, first non-N is position 27]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..26:+; mdl-coords:11..26:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-only-stop-len4-28-31
 5	>10	ncRNA
 			product	enRNA
@@ -436,8 +436,8 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A/one-cds-only-stop-len4-28-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 17 positions are Ns, first non-N is position 28]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..27:+; mdl-coords:11..27:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/one-cds-only-stop-len3-29-31
 5	>10	ncRNA
 			product	enRNA
@@ -468,7 +468,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein one mp2) mat_peptide may not be tra
 			protein_id	ENTOY100A/one-cds-only-stop-len3-29-31_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 29]
+ERROR: N_AT_CDS_START: (CDS:protein one) first nucleotide of CDS is an N [-]; seq-coords:11..28:+; mdl-coords:11..28:+; mdl:ENTOY100A;
 >Feature ENTOY100A/two-cds-all-Ns-but-47-and-48
 5	22	ncRNA
 			product	enRNA
@@ -506,11 +506,11 @@ ERROR: N_AT_CDS_START: (protein one) first nucleotide of CDS is an N [first 18 p
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47-and-48_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 24 positions are Ns, final non-N is position 48]
-ERROR: N_AT_CDS_START: (protein two) first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 47]
-ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 7 positions are Ns, first non-N is position 74]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:49..73:+; mdl-coords:49..73:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein two) first nucleotide of CDS is an N [-]; seq-coords:32..46:+; mdl-coords:32..46:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/two-cds-all-Ns-but-47
 5	22	ncRNA
 			product	enRNA
@@ -543,11 +543,11 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			protein_id	ENTOY100A/two-cds-all-Ns-but-47_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 25 positions are Ns, final non-N is position 47]
-ERROR: N_AT_CDS_START: (protein two) first nucleotide of CDS is an N [first 15 positions are Ns, first non-N is position 47]
-ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 7 positions are Ns, first non-N is position 74]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp1) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
+ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:48..73:+; mdl-coords:48..73:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein two) first nucleotide of CDS is an N [-]; seq-coords:32..46:+; mdl-coords:32..46:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-two-codons-len6-90-95
 5	22	ncRNA
 			product	enRNA
@@ -583,10 +583,10 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be t
 			protein_id	ENTOY100A/three-cds-two-codons-len6-90-95_4
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
-ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 18 positions are Ns, first non-N is position 90]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 6 positions are Ns, final non-N is position 90]
+ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..89:+; mdl-coords:67..89:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:89..84:-; mdl-coords:89..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-only-stop-len5-91-95
 5	22	ncRNA
 			product	enRNA
@@ -615,13 +615,11 @@ ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 6 pos
 			protein_id	ENTOY100A/three-cds-only-stop-len5-91-95_4
 
 Additional note(s) to submitter:
-ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.740<0.900]
-ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
-ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 19 positions are Ns, first non-N is position 91]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein three) region within annotated feature at 3' end of sequence lacks significant similarity [21 nt overlap b/t low similarity region of length 26 (75..100) and annotated feature (67..95), strand: +]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein three mp2) region within annotated feature at 3' end of sequence lacks significant similarity [17 nt overlap b/t low similarity region of length 26 (75..100) and annotated feature (76..92), strand: +]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 91]
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.740<0.900]; seq-coords:75..100:+; mdl-coords:-; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..90:+; mdl-coords:67..90:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:90..84:-; mdl-coords:90..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-only-stop-len4-92-95
 5	22	ncRNA
 			product	enRNA
@@ -650,14 +648,11 @@ ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 7 pos
 			protein_id	ENTOY100A/three-cds-only-stop-len4-92-95_4
 
 Additional note(s) to submitter:
-ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.690<0.900]
-ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein two) region within annotated feature at 3' end of sequence lacks significant similarity [4 nt overlap b/t low similarity region of length 31 (70..100) and annotated feature (32..73), strand: +]
-ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 20 positions are Ns, first non-N is position 92]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein three) region within annotated feature at 3' end of sequence lacks significant similarity [26 nt overlap b/t low similarity region of length 31 (70..100) and annotated feature (67..95), strand: +]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein three mp2) region within annotated feature at 3' end of sequence lacks significant similarity [17 nt overlap b/t low similarity region of length 31 (70..100) and annotated feature (76..92), strand: +]
-ERROR: PEPTIDE_TRANSLATION_PROBLEM: (protein three mp2) mat_peptide may not be translated because its parent CDS has a problem
-ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 8 positions are Ns, final non-N is position 92]
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.690<0.900]; seq-coords:70..100:+; mdl-coords:-; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..91:+; mdl-coords:67..91:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein three mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:91..84:-; mdl-coords:91..84:-; mdl:ENTOY100A;
 >Feature ENTOY100A/three-cds-only-stop-len3-93-95
 5	22	ncRNA
 			product	enRNA
@@ -686,9 +681,7 @@ ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 8 pos
 			protein_id	ENTOY100A/three-cds-only-stop-len3-93-95_4
 
 Additional note(s) to submitter:
-ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.680<0.900]
-ERROR: N_AT_CDS_END: (protein two) final nucleotide of CDS is an N [final 7 positions are Ns, final non-N is position 66]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein two) region within annotated feature at 3' end of sequence lacks significant similarity [5 nt overlap b/t low similarity region of length 32 (69..100) and annotated feature (32..73), strand: +]
-ERROR: N_AT_CDS_START: (protein three) first nucleotide of CDS is an N [first 21 positions are Ns, first non-N is position 93]
-ERROR: LOW_FEATURE_SIMILARITY_END: (protein three) region within annotated feature at 3' end of sequence lacks significant similarity [27 nt overlap b/t low similarity region of length 32 (69..100) and annotated feature (67..95), strand: +]
-ERROR: N_AT_CDS_END: (protein four) final nucleotide of CDS is an N [final 9 positions are Ns, final non-N is position 93]
+ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.680<0.900]; seq-coords:69..100:+; mdl-coords:-; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an N [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an N [-]; seq-coords:67..92:+; mdl-coords:67..92:+; mdl:ENTOY100A;
+ERROR: N_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an N [-]; seq-coords:92..84:-; mdl-coords:92..84:-; mdl:ENTOY100A;

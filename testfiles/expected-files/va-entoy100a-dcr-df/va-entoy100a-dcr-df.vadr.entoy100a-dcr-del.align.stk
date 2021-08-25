@@ -1,0 +1,22 @@
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.4
+
+#=GS ENTOY100A-dcr        DE reference seq
+#=GS ENTOY100A-dcr-Adel   DE 1A before CDS deleted
+#=GS ENTOY100A-dcr-AAdel  DE 2A before CDS deleted
+#=GS ENTOY100A-dcr-AAAdel DE 3A before CDS deleted
+
+ENTOY100A-dcr                GAAATCACCGATGGTGATCGCTTTACCATAAAATGGTAGAAAAATAACCCCTACGTACGTAGCATTTTTGG-----------------------------
+#=GR ENTOY100A-dcr        PP ***********************************************************************.............................
+ENTOY100A-dcr-Adel           GAAATCACCGATGGTGATCGCTTTACCATAA-ATGGTAGAAAAATAACCCCTACGTACGTAGCATTTTTGG-----------------------------
+#=GR ENTOY100A-dcr-Adel   PP ****************************975.79*************************************.............................
+ENTOY100A-dcr-AAdel          GAAATCACCGATGGTGATCGCTTTACCATA--ATGGTAGAAAAATAACCCCTACGTACGTAGCATTTTTGG-----------------------------
+#=GR ENTOY100A-dcr-AAdel  PP ***************************996..09*************************************.............................
+ENTOY100A-dcr-AAAdel         GAAATCACCGATGGTGATCGCTTTACCAT---ATGGTAGAAAAATAACCCCTACGTACGTAGCATTTTTGG-----------------------------
+#=GR ENTOY100A-dcr-AAAdel PP ***************************98...59*************************************.............................
+#=GC SS_cons                 :::::::::<<<____>>>:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#=GC RF                      GAAATCACCGatGGTGatCGCTTTACCATAAAATGGTAGAAAAATAACCCCTACGTACGTAGCATTTTTGGGAAATCGATCTACGGTCTACGGTTTCGGT
+#=GC RFCOLX..                0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+#=GC RFCOL.X.                0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
+#=GC RFCOL..X                1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
+//

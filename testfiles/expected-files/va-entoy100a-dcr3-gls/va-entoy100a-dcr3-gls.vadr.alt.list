@@ -1,0 +1,8 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+ENTOY100A-dcr-rev-CCCCdel-near-stop	entoy100a-dcr-del	CDS	protein three	INDEFINITE_ANNOTATION_END	48..48:-	51..51:-	alignment to homology model is a gap at 3' boundary [-]
+ENTOY100A-dcr-rev-CCCCdel-near-stop	entoy100a-dcr-del	CDS	protein three	MUTATION_AT_END	25..23:-	25..23:-	expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAA]
+ENTOY100A-dcr-rev-CCCCdel-near-stop	entoy100a-dcr-del	CDS	protein three	UNEXPECTED_LENGTH	61..48:-	65..52:-	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
+ENTOY100A-dcr-rev-TTTTdel-near-start	entoy100a-dcr-del	CDS	protein three	INDEFINITE_ANNOTATION_START	64..64:-	65..65:-	alignment to homology model is a gap at 5' boundary [-]
+ENTOY100A-dcr-rev-TTTTdel-near-start	entoy100a-dcr-del	CDS	protein three	MUTATION_AT_END	25..23:-	25..23:-	expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAA]
+ENTOY100A-dcr-rev-TTTTdel-near-start	entoy100a-dcr-del	CDS	protein three	MUTATION_AT_START	64..62:-	64..62:-	expected start codon could not be identified [TGC]
+ENTOY100A-dcr-rev-TTTTdel-near-start	entoy100a-dcr-del	CDS	protein three	UNEXPECTED_LENGTH	64..51:-	64..51:-	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]

@@ -1,0 +1,8 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+gi|507309522|gb|JX439803.1|	NC_029646	CDS	VP1	INDEFINITE_ANNOTATION_END	1262..1336:+	6692..6692:+	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [75>5, no valid stop codon in nucleotide-based prediction]
+gi|1203184899|gb|KX722332.1|	NC_039477	-	*sequence*	LOW_COVERAGE	1..69:+	-	low sequence fraction with significant similarity to homology model [0.892<0.900]
+gi|1203184899|gb|KX722332.1|	NC_039477	CDS	VP1	INDEFINITE_ANNOTATION_START	1..71:+	5085..5085:+	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [71>5]
+gi|959141925|gb|KR107577.1|	NC_039477	CDS	VP1	INDEFINITE_ANNOTATION_END	350..387:+	6707..6707:+	protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [38>5, no valid stop codon in nucleotide-based prediction]
+gi|1150565489|gb|KX514171.1|	NC_039477	-	*sequence*	LOW_COVERAGE	769..910:+,1262..1399:+,1617..1620:+	-	low sequence fraction with significant similarity to homology model [0.825<0.900]
+gi|1339273835|gb|MG746117.1|	NC_039476	CDS	VP1	N_AT_CDS_END	1624..1626:+	6708..6710:+	final nucleotide of CDS is an N [-]
+gi|1339273835|gb|MG746117.1|	NC_039476	CDS	VP1	MUTATION_AT_START	1..3:+	5085..5087:+	expected start codon could not be identified [ANN]

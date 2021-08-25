@@ -1,17 +1,19 @@
 #  <a name="top"></a> VADR installation instructions
 
-* [Installation using `vadr-install.sh`](#install.sh)
+* [Installation using `vadr-install.sh`](#install)
+  * [Alternative two step installation](#alt-install)
   * [Installing Inline and LWP if installation fails](#inline)
 * [Setting environment variables](#environment)
 * [Verifying successful installation](#tests)
 * [Further information](#further)
 
 ---
-## VADR installation using the `vadr-install.sh` script <a name="install"></a>
+##<a name="install"></a> VADR installation using the `vadr-install.sh` script
 
-The file `vadr-install.sh` is an executable file for installing VADR
-and its dependencies. That file is located online at github.
-To install the latest version of VADR download this file:
+The file `vadr-install.sh` is an executable file for downloading
+and/or installing VADR and its dependencies. That file is located
+online at github. To install the latest version of VADR download this
+file:
 
 https://raw.githubusercontent.com/ncbi/vadr/master/vadr-install.sh
 
@@ -44,9 +46,9 @@ The `vadr-install.sh` command will create several directories in the
 current directory.  It will download and install VADR and the required
 module libraries [sequip](https://github.com/nawrockie/sequip),
 [Bio-Easel](https://github.com/nawrockie/Bio-Easel), as well as the
-binary executables of [Infernal](http://eddylab.org/infernal/), the src
-distribution of [HMMER](http://hmmer.org), and the
-NCBI BLAST package (for either Linux or Mac/OSX).
+binary executables of [Infernal](http://eddylab.org/infernal/), the
+src distribution of [HMMER](http://hmmer.org), the NCBI BLAST package
+and William Pearson's FASTA package (for either Linux or Mac/OSX).
 
 The installation requires that you have the perl Inline module
 installed on your system. If not, the installation script may
@@ -55,6 +57,22 @@ fail. If this happens, read [this](#inline).
 When `vadr-install.sh` is finished running it will print important
 instructions to the screen that explain how to modify your environment
 variables so that you can run the VADR scripts, as discussed next.
+
+###<a name="alt-install"></a> Alternative two step method for installation: download first, then build
+Alternatively, you can install VADR in two steps, downloading the
+dependencies and source code files in step 1, and building packages in
+step 2. This alternative approach, using the following two commands, may be more convenient for some
+users. The build step must be run from the same directory
+that the download step was run in:
+
+```
+sh ./vadr-install.sh linux download
+sh ./vadr-install.sh build
+```
+
+The download command should have `macosx` instead of `linux` if you are
+installing on Mac/OSX. The build command will work on either Linux or
+Mac/OSX without the need to specify. 
 
 ---
 ### <a name="inline"></a> If installation or `do-install-tests-local.sh` fails because the `Inline` or `LWP` perl modules are not installed...
@@ -107,7 +125,7 @@ vadr-install.sh>`)
 ```
 ********************************************************
 The final step is to update your environment variables.
-(See https://github.com/ncbi/vadr/blob/1.1/documentation/install.md for more information.)
+(See https://github.com/ncbi/vadr/blob/1.3/documentation/install.md for more information.)
 
 If you are using the bash or zsh shell (zsh is default in MacOS/X as
 of v10.15 (Catalina)), add the following lines to the end of your
@@ -115,13 +133,14 @@ of v10.15 (Catalina)), add the following lines to the end of your
 
 export VADRINSTALLDIR=<full path to directory in which you ran vadr-install.sh>
 export VADRSCRIPTSDIR="$VADRINSTALLDIR/vadr"
-export VADRMODELDIR="$VADRINSTALLDIR/vadr-models"
+export VADRMODELDIR="$VADRINSTALLDIR/vadr-models-calici"
 export VADRINFERNALDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADREASELDIR="$VADRINSTALLDIR/infernal/binaries"
 export VADRHMMERDIR="$VADRINSTALLDIR/hmmer/binaries"
 export VADRBIOEASELDIR="$VADRINSTALLDIR/Bio-Easel"
 export VADRSEQUIPDIR="$VADRINSTALLDIR/sequip"
 export VADRBLASTDIR="$VADRINSTALLDIR/ncbi-blast/bin"
+export VADRFASTADIR="$VADRINSTALLDIR/fasta/bin"
 export PERL5LIB="$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 export PATH="$VADRSCRIPTSDIR":"$PATH"
 
@@ -141,13 +160,14 @@ directory:
 
 setenv VADRINSTALLDIR "<full path to directory in which you ran vadr-install.sh>"
 setenv VADRSCRIPTSDIR "$VADRINSTALLDIR/vadr"
-setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models"
+setenv VADRMODELDIR "$VADRINSTALLDIR/vadr-models-calici"
 setenv VADRINFERNALDIR "$VADRINSTALLDIR/infernal/binaries"
-setenv VADRHMMERDIR "$VADRHMMERDIR/hmmer/binaries"
+setenv VADRHMMERDIR "$VADRINSTALLDIR/hmmer/binaries"
 setenv VADREASELDIR "$VADRINSTALLDIR/infernal/binaries"
 setenv VADRBIOEASELDIR "$VADRINSTALLDIR/Bio-Easel"
 setenv VADRSEQUIPDIR "$VADRINSTALLDIR/sequip"
 setenv VADRBLASTDIR "$VADRINSTALLDIR/ncbi-blast/bin"
+setenv VADRFASTADIR "$VADRINSTALLDIR/fasta/bin"
 setenv PERL5LIB "$VADRSCRIPTSDIR":"$VADRSEQUIPDIR":"$VADRBIOEASELDIR/blib/lib":"$VADRBIOEASELDIR/blib/arch":"$PERL5LIB"
 setenv PATH "$VADRSCRIPTSDIR":"$PATH"
 
@@ -203,8 +223,7 @@ should pass.
 There is also special test script `do-install-tests-parallel.sh` that you
 should run if you want to test if you can use the `-p` option to
 `v-annotate.pl` for parallelization on a cluster.  But this test will
-likely only work internally at NCBI or if you happen to have a compute
-farm set-up in a similar way at NCBI. See this
+likely only work internally at NCBI.  See this
 [example](annotate.md#exampleparallel) for more information.
 `do-install-tests-parallel.sh` is **not** run as part of `do-all-tests.sh`.
 
@@ -237,9 +256,9 @@ Below is an example of the expected output for
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.1 (May 2020)
+# VADR 1.3 (Aug 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed May  6 11:58:08 2020
+# date:    Tue Aug  3 18:14:36 2021
 #
 # test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
 # output directory:                                                  vt-n10-local
@@ -248,17 +267,17 @@ Below is an example of the expected output for
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parsing test file                                  ... done. [    0.0 seconds]
 ##teamcity[testStarted name='annotate-noro-10-local' captureStandardOutput='true']
-# Running command  1 [annotate-noro-10-local]        ... done. [   20.0 seconds]
-#       checking va-noro.r10/va-noro.r10.vadr.pass.tbl                                                                ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.fail.tbl                                                                ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.sqa                                                                     ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.sqc                                                                     ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.ftr                                                                     ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.sgm                                                                     ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.mdl                                                                     ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.alt                                                                     ... pass
-#       checking va-noro.r10/va-noro.r10.vadr.alc                                                                     ... pass
-#       removing directory va-noro.r10                               ... done
+# Running command  1 [annotate-noro-10-local]        ... done. [   44.9 seconds]
+#	checking va-noro.r10/va-noro.r10.vadr.pass.tbl                                                                ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.fail.tbl                                                                ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.sqa                                                                     ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.sqc                                                                     ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.ftr                                                                     ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.sgm                                                                     ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.mdl                                                                     ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.alt                                                                     ... pass
+#	checking va-noro.r10/va-noro.r10.vadr.alc                                                                     ... pass
+#	removing directory va-noro.r10                               ... done
 ##teamcity[testFinished name='annotate-noro-10-local']
 #
 #
@@ -270,33 +289,33 @@ Below is an example of the expected output for
 #
 # All output files created in directory ./vt-n10-local/
 #
-# Elapsed time:  00:00:20.13
+# Elapsed time:  00:00:45.41
 #                hh:mm:ss
-#
+# 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.1 (May 2020)
+# VADR 1.3 (Aug 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Wed May  6 11:58:28 2020
+# date:    Tue Aug  3 18:15:27 2021
 #
-# test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
+# test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/dengue.r5.local.testin
 # output directory:                                                  vt-d5-local
 # forcing directory overwrite:                                       yes [-f]
 # if output files listed in testin file already exist, remove them:  yes [--rmout]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parsing test file                                  ... done. [    0.0 seconds]
 ##teamcity[testStarted name='annotate-dengue-5-local' captureStandardOutput='true']
-# Running command  1 [annotate-dengue-5-local]       ... done. [   28.4 seconds]
-#       checking va-dengue.r5/va-dengue.r5.vadr.pass.tbl                                                              ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.fail.tbl                                                              ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.sqa                                                                   ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.sqc                                                                   ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.ftr                                                                   ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.sgm                                                                   ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.mdl                                                                   ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.alt                                                                   ... pass
-#       checking va-dengue.r5/va-dengue.r5.vadr.alc                                                                   ... pass
-#       removing directory va-dengue.r5                              ... done
+# Running command  1 [annotate-dengue-5-local]       ... done. [  101.2 seconds]
+#	checking va-dengue.r5/va-dengue.r5.vadr.pass.tbl                                                              ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.fail.tbl                                                              ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.sqa                                                                   ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.sqc                                                                   ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.ftr                                                                   ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.sgm                                                                   ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.mdl                                                                   ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.alt                                                                   ... pass
+#	checking va-dengue.r5/va-dengue.r5.vadr.alc                                                                   ... pass
+#	removing directory va-dengue.r5                              ... done
 ##teamcity[testFinished name='annotate-dengue-5-local']
 #
 #
@@ -308,16 +327,16 @@ Below is an example of the expected output for
 #
 # All output files created in directory ./vt-d5-local/
 #
-# Elapsed time:  00:00:28.52
+# Elapsed time:  00:01:41.72
 #                hh:mm:ss
-#
+# 
 [ok]
-Success: all tests passed
+Success: all tests passed [do-install-tests-local.sh]
 ```
 The most important line is the final line:
 
 ```
-Success: all tests passed
+Success: all tests passed [do-install-tests-local.sh]
 ```
 
 This means that the test has passed. You should see similar 

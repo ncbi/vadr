@@ -1,0 +1,6 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+NC_029646.1-N2	NC_029646	CDS	nonstructural polyprotein	N_AT_CDS_END	796..865:+	1191..1260:+	final nucleotide of CDS is an N [-]
+NC_029646.1-N2	NC_029646	CDS	nonstructural polyprotein	DELETION_OF_NT	644..644:+	995..1039:+	too large of a deletion in protein-based alignment [45>27]
+NC_029646.1-N2	NC_029646	mat_peptide	p48	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_029646.1-N2	NC_029646	mat_peptide	NTPase	INDEFINITE_ANNOTATION_START	645..645:+	995..995:+	alignment to homology model has low confidence at 5' boundary for feature that does not match a CDS [0.50<0.60 (mat_peptide feature)]
+NC_029646.1-N2	NC_029646	mat_peptide	NTPase	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]

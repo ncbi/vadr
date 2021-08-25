@@ -1,0 +1,24 @@
+# STOCKHOLM 1.0
+#=GF AU Infernal 1.1.4
+
+#=GS ENTOY100A-dcr-ins       DE reference seq
+#=GS ENTOY100A-dcr-ins-Ains1 DE 1 A before CDS2 inserted (tests pos strand start insert type doctoring code)
+#=GS ENTOY100A-dcr-ins-Ains2 DE 1 A after CDS2 inserted (tests pos strand stop insert type doctoring code)
+#=GS ENTOY100A-dcr-ins-Ains3 DE 1 A before CDS3 inserted, also changed one T to an A (tests neg strand start insert type doctoring code)
+#=GS ENTOY100A-dcr-ins-Tins1 DE 1 T after CDS3 inserted (tests neg strand stop insert type doctoring code)
+
+ENTOY100A-dcr-ins               GAAATCACCGATGGTGATCGCTTTACCATAA.AATGGTAGAAAAATA.ACCCC.TACGTACGTAGCA.TCGTACGTACGTA
+#=GR ENTOY100A-dcr-ins       PP *******************************.***************.*****.*************.*************
+ENTOY100A-dcr-ins-Ains1         GAAATCACCGATGGTGATCGCTTTACCATAAaAATGGTAGAAAAATA.ACCCC.TACGTACGTAGCA.TCGTACGTACGTA
+#=GR ENTOY100A-dcr-ins-Ains1 PP ****************************9862689************.*****.*************.*************
+ENTOY100A-dcr-ins-Ains2         GAAATCACCGATGGTGATCGCTTTACCATAA.AATGGTAGAAAAATAaACCCC.TACGTACGTAGCA.TCGTACGTACGTA
+#=GR ENTOY100A-dcr-ins-Ains2 PP *******************************.*************97258899.*************.*************
+ENTOY100A-dcr-ins-Ains3         GAAATCACCGATGGTGATCGCTTTACCATAA.AATGGTAGAAAAATA.ACCCC.TACGTACGTAGCAaACGTACGTACGTA
+#=GR ENTOY100A-dcr-ins-Ains3 PP *******************************.***************.*****.***********96369***********
+ENTOY100A-dcr-ins-Tins1         GAAATCACCGATGGTGATCGCTTTACCATAA.AATGGTAGAAAAATA.ACCCCtTACGTACGTAGCA.TCGTACGTACGTA
+#=GR ENTOY100A-dcr-ins-Tins1 PP *******************************.***************.*9876379***********.*************
+#=GC SS_cons                    :::::::::<<<____>>>::::::::::::.:::::::::::::::.:::::.:::::::::::::.:::::::::::::
+#=GC RF                         GAAATCACCGatGGTGatCGCTTTACCATAA.AATGGTAGAAAAATA.ACCCC.TACGTACGTAGCA.TCGTACGTACGTA
+#=GC RFCOLX.                    0000000001111111111222222222233.333333334444444.44455.5555555566666.6666677777777
+#=GC RFCOL.X                    1234567890123456789012345678901.234567890123456.78901.2345678901234.5678901234567
+//

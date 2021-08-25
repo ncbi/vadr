@@ -1,8 +1,7 @@
-#      seq                    ftr   ftr   ftr  alert           alert                        alert 
-#idx   name        model      type  name  idx  code      fail  desc                         detail
-#----  ----------  ---------  ----  ----  ---  --------  ----  ---------------------------  ------
-9.1.1  JN975492.1  NC_008311  CDS   VF1     6  mutendcd  yes   MUTATION_AT_END              expected stop codon could not be identified, predicted CDS stop by homology is invalid [TCA ending at position 5685 on + strand is not a valid stop]
-9.1.2  JN975492.1  NC_008311  CDS   VF1     6  cdsstopn  yes   CDS_HAS_STOP_CODON           in-frame stop codon exists 5' of stop position predicted by homology to reference [revised to 5044..5277 (stop shifted 408 nt)]
-9.1.3  JN975492.1  NC_008311  CDS   VF1     6  cdsstopp  yes   CDS_HAS_STOP_CODON           stop codon in protein-based alignment [stop codon(s) end at position(s) 5277]
-9.1.4  JN975492.1  NC_008311  CDS   VF1     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36 > 5 (strand:+ CM:5685 blastx:5649, no valid stop codon in CM prediction)]
-9.2.1  JN975492.1  NC_008311  CDS   VP2     8  indf5pst  yes   INDEFINITE_ANNOTATION_START  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54 > 5 (strand:+ CM:6656 blastx:6710)]
+#      seq                    ftr   ftr   ftr  alert           alert                                 seq  seq           mdl  mdl  alert 
+#idx   name        model      type  name  idx  code      fail  description                        coords  len        coords  len  detail
+#----  ----------  ---------  ----  ----  ---  --------  ----  ---------------------------  ------------  ---  ------------  ---  ------
+9.1.1  JN975492.1  NC_008311  CDS   VF1     6  mutendcd  yes   MUTATION_AT_END              5683..5685:+    3  5708..5710:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [TCA]
+9.1.2  JN975492.1  NC_008311  CDS   VF1     6  cdsstopn  yes   CDS_HAS_STOP_CODON           5275..5277:+    3  5300..5302:+    3  in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:408,M:408]
+9.1.3  JN975492.1  NC_008311  CDS   VF1     6  indf3pst  yes   INDEFINITE_ANNOTATION_END    5650..5685:+   36  5710..5710:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [36>5, no valid stop codon in nucleotide-based prediction]
+9.2.1  JN975492.1  NC_008311  CDS   VP2     8  indf5pst  yes   INDEFINITE_ANNOTATION_START  6656..6709:+   54  6681..6681:+    1  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [54>5]

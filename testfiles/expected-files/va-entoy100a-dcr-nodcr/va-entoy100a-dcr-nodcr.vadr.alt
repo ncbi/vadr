@@ -1,0 +1,20 @@
+#      seq                                      ftr   ftr          ftr  alert           alert                             seq  seq       mdl  mdl  alert 
+#idx   name                  model              type  name         idx  code      fail  description                    coords  len    coords  len  detail
+#----  --------------------  -----------------  ----  -----------  ---  --------  ----  ---------------------------  --------  ---  --------  ---  ------
+2.1.1  ENTOY100A-dcr-Adel    entoy100a-dcr-del  gene  one            1  indf3lcc  no    INDEFINITE_ANNOTATION_END    31..31:+    1  31..31:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.50<0.80]
+2.2.1  ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_one    2  indf3lcc  no    INDEFINITE_ANNOTATION_END    31..31:+    1  31..31:+    1  alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS [0.50<0.80]
+2.3.1  ENTOY100A-dcr-Adel    entoy100a-dcr-del  CDS   protein_two    3  indf5lcc  no    INDEFINITE_ANNOTATION_START  32..32:+    1  33..33:+    1  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS [0.70<0.80]
+#
+3.1.1  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  gene  one            1  indf3gap  yes   INDEFINITE_ANNOTATION_END    30..30:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary [-]
+3.2.1  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_one    2  mutendcd  yes   MUTATION_AT_END              28..30:+    3  28..30:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [ATA]
+3.2.2  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_one    2  mutendex  yes   MUTATION_AT_END              29..31:+    3  29..33:+    5  expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAA]
+3.2.3  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_one    2  unexleng  yes   UNEXPECTED_LENGTH            11..30:+   20  11..30:+   20  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [20]
+3.2.4  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_one    2  indf3gap  yes   INDEFINITE_ANNOTATION_END    30..30:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary [-]
+3.3.1  ENTOY100A-dcr-AAdel   entoy100a-dcr-del  CDS   protein_two    3  indf5lcc  no    INDEFINITE_ANNOTATION_START  31..31:+    1  33..33:+    1  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS [0.70<0.80]
+#
+4.1.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  gene  one            1  indf3gap  yes   INDEFINITE_ANNOTATION_END    29..29:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary [-]
+4.2.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  mutendcd  yes   MUTATION_AT_END              27..29:+    3  27..29:+    3  expected stop codon could not be identified, predicted CDS stop by homology is invalid [CAT]
+4.2.2  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  mutendns  yes   MUTATION_AT_END                     -    -         -    -  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]
+4.2.3  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  unexleng  yes   UNEXPECTED_LENGTH            11..29:+   19  11..29:+   19  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [19]
+4.2.4  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_one    2  indf3gap  yes   INDEFINITE_ANNOTATION_END    29..29:+    1  31..31:+    1  alignment to homology model is a gap at 3' boundary [-]
+4.3.1  ENTOY100A-dcr-AAAdel  entoy100a-dcr-del  CDS   protein_two    3  indf5lcc  no    INDEFINITE_ANNOTATION_START  30..30:+    1  33..33:+    1  alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS [0.50<0.80]
