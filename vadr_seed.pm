@@ -1103,20 +1103,40 @@ sub join_alignments_and_add_unjoinbl_alerts {
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
   my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
-  my $mdl_consensus_sqstring;
+  my $mdl_consensus_sqstring = undef;
+  # We may already have mdl_consensus_sqstring cseq from the blastn -r alignment, but even
+  # if we do if we are outputting an alignment eventually then we
+  # want to recreate it from cmemit because we are going to
+  # eventually merge the alignments in which case we need all RF
+  # annotation to be identical (equal to cmemit seq)
+  if(! (opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR))) { 
+    $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
+  }
+  if(! defined $mdl_consensus_sqstring) { 
+    if(! $do_glsearch) { 
+      my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
+      $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
+      $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
+    }
+    else { 
+      $mdl_consensus_sqstring = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($mdl_name);
+    }
+  }
+  printf("mdl_consensus_sqstring len: " . length($mdl_consensus_sqstring) . "\n");
+
   if(opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR)) { 
     # We may already have cseq from the blastn -r alignment, but even
     # if we do if we are outputting an alignment eventually then we
     # want to recreate it from cmemit because we are going to
     # eventually merge the alignments in which case we need all RF
-    # annotation to be identical (equal to cmemit seq) Open all of the
-    # input stk files and fetch the aligned sequence strings for all
-    # sequences
+    # annotation to be identical (equal to cmemit seq)
     $mdl_consensus_sqstring = undef;
   }
   else { # if we're not going to output, then use it if we already have it
-    $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
   }
+  
+
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq
@@ -1375,9 +1395,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
     if($seq_case == 3) {
       $seq_inserts_HH{$seq_name}{"spos"} = $ugp_mdl_start;
       $seq_inserts_HH{$seq_name}{"epos"} = $ugp_mdl_stop;
-
-      
-      $seq_inserts_HH{$seq_name}{"ins"} .= $subseq_mdl_pos . ":" . ($subseq_uapos + $ali_3p_seq_start - 1) . ":" . $subseq_inslen . ";";
+      $seq_inserts_HH{$seq_name}{"ins"}  = $ugp_inserts_str;
     }
     
     # sanity check, only way we should have the aligned sequence is case 1
@@ -1397,17 +1415,6 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # in case 3, it will return the blastn alignment and construct the
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
-      if(! defined $mdl_consensus_sqstring) { 
-        if(! $do_glsearch) { 
-          my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-          $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
-          $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
-        }
-        else { 
-          $mdl_consensus_sqstring = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($mdl_name);
-        }
-      }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
           join_alignments_helper($do_glsearch,
                                  $ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
@@ -1548,7 +1555,7 @@ sub join_alignments_helper {
 
   my ($have_5p)  = ((defined $ali_5p_seq_coords) && (defined $ali_5p_mdl_coords) && (defined $ali_5p_seq) && (defined $ali_5p_mdl) && ((defined $ali_5p_pp) || $do_glsearch)) ? 1 : 0;
   my ($have_3p)  = ((defined $ali_3p_seq_coords) && (defined $ali_3p_mdl_coords) && (defined $ali_3p_seq) && (defined $ali_3p_mdl) && ((defined $ali_3p_pp) || $do_glsearch)) ? 1 : 0;
-  my ($have_ugp) = ((defined $ugp_seq_coords) && (defined $ugp_seq)) ? 1 : 0;
+  my ($have_ugp) = ((defined $ugp_seq_start) && (defined $ugp_seq)) ? 1 : 0;
 
   my ($ali_5p_seq_start, $ali_5p_seq_stop, $ali_5p_seq_strand) = ($have_5p) ?
       vdr_CoordsSegmentParse($ali_5p_seq_coords, $FH_HR) :
@@ -1648,7 +1655,7 @@ sub join_alignments_helper {
       $fetch_ugp_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
     }
     else {
-      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:" . $ugp_mdl_start . ".." . $ugp_mdl_stop . ", seq:" . $ugp_seq_start . ".." . $ugp_seq_stop . ")";
     }
   }
   else { # $have_5p == 0
@@ -1663,7 +1670,7 @@ sub join_alignments_helper {
       $fetch_ugp_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
     }
     else {
-      $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+      $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:" . $ugp_mdl_start . ".." . $ugp_mdl_stop . ", seq:" . $ugp_seq_start . ".." . $ugp_seq_stop . ")";
     }
   }
   else { # $have_3p == 0
@@ -1883,11 +1890,12 @@ sub process_seed_seq_and_mdl_coords {
   my $prv_seq_stop = $seq_stop_A[0];
   my $prv_mdl_stop = $mdl_stop_A[0];
 
-  my $aln_seq_sqstring = substr($seq_sqstring, $seq_start_A[0], ($seq_stop_A[0] - $seq_start_A[0] + 1));
+  my $aln_seq_sqstring = "";
   my $aln_mdl_sqstring = "";
 
   # create insert string
   my $ins_len = 0;
+  my $del_len = 0;
   my $seq_sgm_len = 0;
   my $mdl_sgm_len = 0;
   for($s = 0; $s < $nsgm; $s++) { 
@@ -1898,6 +1906,9 @@ sub process_seed_seq_and_mdl_coords {
     }
     $seq_sgm_len = $seq_stop_A[$s] - $seq_start_A[$s] + 1;
     $mdl_sgm_len = $mdl_stop_A[$s] - $mdl_start_A[$s] + 1;
+    printf("in $sub_name, s: $s\n");
+    printf("\tseq: " . $seq_start_A[$s] . ".." . $seq_stop_A[$s] . " len: $seq_sgm_len\n");
+    printf("\tmdl: " . $mdl_start_A[$s] . ".." . $mdl_stop_A[$s] . " len: $mdl_sgm_len\n");
 
     # deal with gaps in sequence (deletions) and model (insertions)
     if($s > 0) { 
@@ -1907,20 +1918,26 @@ sub process_seed_seq_and_mdl_coords {
         ofile_FAIL("ERROR in $sub_name, sequence segments out of order or overlap in seq coords string $seq_coords");
       }
       if($ins_len > 0) { 
+        printf("\tins_len: $ins_len, appending from " . $seq_stop_A[($s-1)] . ", " . substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len) . "\n");
         $aln_seq_sqstring .= substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len);
+        $aln_mdl_sqstring .= utl_StringMonoChar($ins_len, ".", $FH_HR);
         $inserts_str .= $prv_mdl_stop . ":" . $prv_seq_stop . ":" . $ins_len . ";";
       }
       if($del_len > 0) { 
+        printf("\tdel_len: $del_len, appending from " . $mdl_stop_A[($s-1)] . ", " . substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len) . "\n");
+        $aln_seq_sqstring .= utl_StringMonoChar($del_len, "-", $FH_HR);
         $aln_mdl_sqstring .= substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len);
       }
     }
     # append ungapped region
+    printf("\tappending seq from " . ($seq_start_A[$s]-1) . ", len: $seq_sgm_len\n");
+    printf("\tappending mdl from " . ($mdl_start_A[$s]-1) . ", len: $mdl_sgm_len\n");
     $aln_seq_sqstring .= substr($seq_sqstring, ($seq_start_A[$s]-1), $seq_sgm_len);
     $aln_mdl_sqstring .= substr($mdl_sqstring, ($mdl_start_A[$s]-1), $mdl_sgm_len);
   }
-
-  return ($ugp_seq_start_A[0], $ugp_seq_stop_A[($nsgm-1)], 
-          $ugp_mdl_start_A[0], $ugp_mdl_stop_A[($nsgm-1)], 
+  exit 0;
+  return ($seq_start_A[0], $seq_stop_A[($nsgm-1)], 
+          $mdl_start_A[0], $mdl_stop_A[($nsgm-1)], 
           $aln_seq_sqstring, $aln_mdl_sqstring, $inserts_str);
 }
 
