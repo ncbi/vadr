@@ -954,19 +954,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
                                                                            $ins_str, $del_str, $FH_HR);
 
-        # seed-with-gaps: get rid of max ungapped region, take entire HSP, gaps and all
-        printf("\nHEYA ugp_mdl_coords: $ugp_mdl_coords\n");
-        printf("HEYA ugp_seq_coords: $ugp_seq_coords\n\n");
-        ##my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
-        ##my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
-        # sanity check: these should be the same length
-        #if($max_ugp_mdl_sgm_len != $max_ugp_seq_sgm_len) {
-        #ofile_FAIL("ERROR in $sub_name, max ungapped model segment length and ungapped sequence length differ ($max_ugp_mdl_sgm_len != $max_ugp_seq_sgm_len)", 1, $FH_HR);
-        #}
-
         # determine subseq info
-        #$ugp_mdl_HR->{$seq_name} = $argmax_ugp_mdl_sgm;
-        #$ugp_seq_HR->{$seq_name} = $argmax_ugp_seq_sgm;
         $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
         $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
         my @ugp_seq_start_A  = ();
@@ -982,7 +970,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
           # length ungapped blast hit, no need to fetch or align with cmalign
         }
         else {
-          # normal case: full seq not covered, fetch 5' end and/or 3' end
+          # full seq not covered, fetch 5' end and/or 3' end
           my $start_5p = 1;
           my $stop_5p  = $ugp_seq_start + $nt_overhang - 1;
           my $start_3p = $ugp_seq_stop  - $nt_overhang + 1;
@@ -1877,9 +1865,6 @@ sub process_seed_seq_and_mdl_coords {
     ofile_FAIL("ERROR in $sub_name, not all strands are positive", 1, $FH_HR);
   }
 
-  my $prv_seq_stop = $seq_stop_A[0];
-  my $prv_mdl_stop = $mdl_stop_A[0];
-
   my $aln_seq_sqstring = "";
   my $aln_mdl_sqstring = "";
 
@@ -1911,7 +1896,7 @@ sub process_seed_seq_and_mdl_coords {
         printf("\tins_len: $ins_len, appending from " . $seq_stop_A[($s-1)] . ", " . substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len) . "\n");
         $aln_seq_sqstring .= substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len);
         $aln_mdl_sqstring .= utl_StringMonoChar($ins_len, ".", $FH_HR);
-        $inserts_str .= $prv_mdl_stop . ":" . $prv_seq_stop . ":" . $ins_len . ";";
+        $inserts_str .= $mdl_stop_A[($s-1)] . ":" . ($seq_stop_A[($s-1)]+1) . ":" . $ins_len . ";";
       }
       if($del_len > 0) { 
         printf("\tdel_len: $del_len, appending from " . $mdl_stop_A[($s-1)] . ", " . substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len) . "\n");
