@@ -1051,9 +1051,9 @@ sub parse_blastn_indel_file_to_get_subseq_info {
             $ugp_seq_stop  = $ugp_seq_stop_A[($ugp_nsgm-1)];
           }
           printf("\tnew coords: seq: $ugp_seq_coords mdl: $ugp_mdl_coords\n");
-          $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
-          $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
         }
+        $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
+        $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
 
         if(($ugp_seq_start == 1) && ($ugp_seq_stop == $seq_len)) {
           ; # do nothing, full sequence is covered by the max
