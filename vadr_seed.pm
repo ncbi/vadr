@@ -1125,18 +1125,6 @@ sub join_alignments_and_add_unjoinbl_alerts {
   }
   printf("mdl_consensus_sqstring len: " . length($mdl_consensus_sqstring) . "\n");
 
-  if(opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR)) { 
-    # We may already have cseq from the blastn -r alignment, but even
-    # if we do if we are outputting an alignment eventually then we
-    # want to recreate it from cmemit because we are going to
-    # eventually merge the alignments in which case we need all RF
-    # annotation to be identical (equal to cmemit seq)
-    $mdl_consensus_sqstring = undef;
-  }
-  else { # if we're not going to output, then use it if we already have it
-  }
-  
-
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq
@@ -1877,6 +1865,8 @@ sub process_seed_seq_and_mdl_coords {
   my $nsgm = 0;
   my $inserts_str = "";
 
+  printf("in $sub_name, mdl_sqstring len: " . length($mdl_sqstring) . "\n");
+
   vdr_FeatureStartStopStrandArrays($seq_coords, \@seq_start_A, \@seq_stop_A, \@seq_strand_A, $FH_HR);
   vdr_FeatureStartStopStrandArrays($mdl_coords, \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A, $FH_HR);
   $nsgm = scalar(@seq_start_A);
@@ -1935,7 +1925,7 @@ sub process_seed_seq_and_mdl_coords {
     $aln_seq_sqstring .= substr($seq_sqstring, ($seq_start_A[$s]-1), $seq_sgm_len);
     $aln_mdl_sqstring .= substr($mdl_sqstring, ($mdl_start_A[$s]-1), $mdl_sgm_len);
   }
-  exit 0;
+
   return ($seq_start_A[0], $seq_stop_A[($nsgm-1)], 
           $mdl_start_A[0], $mdl_stop_A[($nsgm-1)], 
           $aln_seq_sqstring, $aln_mdl_sqstring, $inserts_str);
