@@ -954,17 +954,107 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
                                                                            $ins_str, $del_str, $FH_HR);
 
-        # determine subseq info
-        $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
-        $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
+        # determine start/stop position of seed region
         my @ugp_seq_start_A  = ();
         my @ugp_seq_stop_A   = ();
         my @ugp_seq_strand_A = ();
+        my @ugp_mdl_start_A  = ();
+        my @ugp_mdl_stop_A   = ();
+        my @ugp_mdl_strand_A = ();
         vdr_FeatureStartStopStrandArrays($ugp_seq_coords, \@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A, $FH_HR);
+        vdr_FeatureStartStopStrandArrays($ugp_mdl_coords, \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A, $FH_HR);
         my $ugp_nsgm = scalar(@ugp_seq_start_A);
         my $ugp_seq_start  = $ugp_seq_start_A[0];
         my $ugp_seq_stop   = $ugp_seq_stop_A[($ugp_nsgm-1)];
         my $ugp_seq_strand = $ugp_seq_strand_A[0];
+
+        # Remove any terminal segments that do not include the
+        # sequence terminus (position 1 on 5' end, position $seq_len
+        # on 3' end) and have length less than $nt_overhang. If we didn't
+        # we would almost certainly have an 'unjoinable' alignment
+        # because this means there's a gap in the overhang region.
+        my $rewrite_coords_flag = 0; # set to '1' if >= 1 segment needs to be removed
+                                     # as determined in the two if statements below 
+        my $s = 0;
+        if($ugp_seq_start > 1) { 
+          my $nremove = 0; # number of elements to remove at 5' end
+          for($s = 0; $s < $ugp_nsgm; $s++) { 
+            my $sgm_len = $ugp_seq_stop_A[$s] - $ugp_seq_start_A[$s] + 1;
+            if($sgm_len < $nt_overhang) { 
+              $nremove++;
+            }
+            else { 
+              $s = $ugp_nsgm; # breaks loop
+            }
+          }
+          printf("5' nremove: $nremove\n");
+          if($nremove > 0) { 
+            $rewrite_coords_flag = 1;
+            for($s = 0; $s < $nremove; $s++) { 
+              splice(@ugp_seq_start_A,  0, 1);
+              splice(@ugp_seq_stop_A,   0, 1);
+              splice(@ugp_seq_strand_A, 0, 1);
+              splice(@ugp_mdl_start_A,  0, 1);
+              splice(@ugp_mdl_stop_A,   0, 1);
+              splice(@ugp_mdl_strand_A, 0, 1);
+            }
+            $ugp_nsgm -= $nremove;
+          }
+        }
+        if($ugp_seq_stop < $seq_len) { 
+          my $nremove = 0; # number of elements to remove at 3' end
+          for($s = ($ugp_nsgm-1); $s >= 0; $s--) { 
+            my $sgm_len = $ugp_seq_stop_A[$s] - $ugp_seq_start_A[$s] + 1;
+            if($sgm_len < $nt_overhang) { 
+              $nremove++;
+            }
+            else { 
+              $s = -1; # breaks loop
+            }
+          }
+          printf("3' nremove: $nremove\n");
+          if($nremove > 0) { 
+            $rewrite_coords_flag = 1;
+            for($s = 0; $s < $nremove; $s++) { 
+              splice(@ugp_seq_start_A,  -1, 1);
+              splice(@ugp_seq_stop_A,   -1, 1);
+              splice(@ugp_seq_strand_A, -1, 1);
+              splice(@ugp_mdl_start_A,  -1, 1);
+              splice(@ugp_mdl_stop_A,   -1, 1);
+              splice(@ugp_mdl_strand_A, -1, 1);
+            }
+            $ugp_nsgm -= $nremove;
+          }
+        }
+        if($rewrite_coords_flag) { 
+          printf("HEYA! in $sub_name, rewriting coords\n");
+          printf("\torig coords: seq: $ugp_seq_coords mdl: $ugp_mdl_coords\n");
+          if($ugp_nsgm == 0) { # no segments left, take maximum length segment from original
+            my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
+            my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
+            $ugp_seq_coords = $argmax_ugp_seq_sgm;
+            $ugp_mdl_coords = $argmax_ugp_mdl_sgm;
+            ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($argmax_ugp_seq_sgm, $FH_HR);
+          }
+          else { # at least one segment left, recreate $ugp_seq_coords and $ugp_mdl_coords:
+            $ugp_seq_coords = "";
+            $ugp_mdl_coords = "";
+            for($s = 0; $s < $ugp_nsgm; $s++) { 
+              if($s > 0) { 
+                $ugp_seq_coords .= ","; 
+                $ugp_mdl_coords .= ","; 
+              }
+              $ugp_seq_coords .= vdr_CoordsSegmentCreate($ugp_seq_start_A[$s], $ugp_seq_stop_A[$s], $ugp_seq_strand_A[$s], $FH_HR);
+              $ugp_mdl_coords .= vdr_CoordsSegmentCreate($ugp_mdl_start_A[$s], $ugp_mdl_stop_A[$s], $ugp_mdl_strand_A[$s], $FH_HR);
+            }
+            $ugp_seq_start = $ugp_seq_start_A[0];
+            $ugp_seq_stop  = $ugp_seq_stop_A[($ugp_nsgm-1)];
+          }
+          printf("\tnew coords: seq: $ugp_seq_coords mdl: $ugp_mdl_coords\n");
+          $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
+          $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
+        }
+
         if(($ugp_seq_start == 1) && ($ugp_seq_stop == $seq_len)) {
           ; # do nothing, full sequence is covered by the max
           # length ungapped blast hit, no need to fetch or align with cmalign
