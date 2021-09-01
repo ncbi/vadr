@@ -6061,7 +6061,7 @@ sub add_low_similarity_alerts_for_one_sequence {
               # determine if this feature qualifies as a 'coding' feature for purposes of the alert
               # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
               # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
-              my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
+              my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop($ftr_info_AHR, $ftr_idx);
               my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
               if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
                 my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_qstart"};
