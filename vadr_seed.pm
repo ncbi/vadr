@@ -113,7 +113,15 @@ sub run_blastn_and_summarize_output {
       sprintf("Classifying sequences with blastn ($nseq seq%s)", (($nseq > 1) ? "s" : ""));
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
-  my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
+  my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file";
+  $opt_str .= " -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
+  $opt_str .= " -reward " . opt_Get("--s_blastnrw", $opt_HHR); 
+  $opt_str .= " -penalty " . opt_Get("--s_blastnpn", $opt_HHR); 
+  $opt_str .= " -gapopen " . opt_Get("--s_blastngo", $opt_HHR); 
+  $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
+  if(opt_IsUsed("--s_blastntk", $opt_HHR)) { 
+    $opt_str .= " -task blastn";
+  }
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);

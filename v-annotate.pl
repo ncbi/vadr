@@ -308,7 +308,12 @@ $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment ac
 #        option               type   default group   requires  incompat  preamble-output                                                     help-output    
 opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnrw",   "integer",      1,   $g,       "-s", undef,    "for -s, set blastn -reward <n> to <n>",                            "for -s, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnpn",   "integer",     -2,   $g,       "-s", undef,    "for -s, set blastn -penalty <n> to <n>",                           "for -s, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastngo",   "integer",      3,   $g,       "-s", undef,    "for -s, set blastn -gapopen <n> to <n>",                           "for -s, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnge",   "integer",      1,   $g,       "-s", undef,    "for -s, set blastn -gapextend <n> to <n>",                         "for -s, set blastn -gapextend <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,    "for -s, set blastn option -task blastn",                           "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
@@ -462,7 +467,12 @@ my $options_okay =
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
+                's_blastnrw=s'  => \$GetOptions_H{"--s_blastnrw"},
+                's_blastnpn=s'  => \$GetOptions_H{"--s_blastnpn"},
+                's_blastngo=s'  => \$GetOptions_H{"--s_blastngo"},
+                's_blastnge=s'  => \$GetOptions_H{"--s_blastnge"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
+                's_blastntk'    => \$GetOptions_H{"--s_blastntk"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
 # options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
