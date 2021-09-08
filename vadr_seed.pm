@@ -933,6 +933,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
+  my $min_sgm_len = opt_Get("--s_minsgmlen", $opt_HHR);
 
   my %processed_H = (); # key: sequence name we want indel info for, 
                         # value: 0 if we have not processed an HSP for this sequence
@@ -975,70 +976,55 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         my @ugp_mdl_strand_A = ();
         vdr_FeatureStartStopStrandArrays($ugp_seq_coords, \@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A, $FH_HR);
         vdr_FeatureStartStopStrandArrays($ugp_mdl_coords, \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A, $FH_HR);
-        my $ugp_nsgm = scalar(@ugp_seq_start_A);
+        my $orig_ugp_nsgm = scalar(@ugp_seq_start_A);
         my $ugp_seq_start  = $ugp_seq_start_A[0];
-        my $ugp_seq_stop   = $ugp_seq_stop_A[($ugp_nsgm-1)];
+        my $ugp_seq_stop   = $ugp_seq_stop_A[($orig_ugp_nsgm-1)];
         my $ugp_seq_strand = $ugp_seq_strand_A[0];
 
-        # Remove any terminal segments that do not include the
-        # sequence terminus (position 1 on 5' end, position $seq_len
-        # on 3' end) and have length less than $nt_overhang. If we didn't
-        # we would almost certainly have an 'unjoinable' alignment
-        # because this means there's a gap in the overhang region.
-        my $rewrite_coords_flag = 0; # set to '1' if >= 1 segment needs to be removed
-                                     # as determined in the two if statements below 
-        my $s = 0;
-        if($ugp_seq_start > 1) { 
-          my $nremove = 0; # number of elements to remove at 5' end
-          for($s = 0; $s < $ugp_nsgm; $s++) { 
-            my $sgm_len = $ugp_seq_stop_A[$s] - $ugp_seq_start_A[$s] + 1;
-            if($sgm_len < $nt_overhang) { 
-              $nremove++;
-            }
-            else { 
-              $s = $ugp_nsgm; # breaks loop
-            }
-          }
-          printf("5' nremove: $nremove\n");
-          if($nremove > 0) { 
-            $rewrite_coords_flag = 1;
-            for($s = 0; $s < $nremove; $s++) { 
-              splice(@ugp_seq_start_A,  0, 1);
-              splice(@ugp_seq_stop_A,   0, 1);
-              splice(@ugp_seq_strand_A, 0, 1);
-              splice(@ugp_mdl_start_A,  0, 1);
-              splice(@ugp_mdl_stop_A,   0, 1);
-              splice(@ugp_mdl_strand_A, 0, 1);
-            }
-            $ugp_nsgm -= $nremove;
-          }
-        }
-        if($ugp_seq_stop < $seq_len) { 
-          my $nremove = 0; # number of elements to remove at 3' end
-          for($s = ($ugp_nsgm-1); $s >= 0; $s--) { 
-            my $sgm_len = $ugp_seq_stop_A[$s] - $ugp_seq_start_A[$s] + 1;
-            if($sgm_len < $nt_overhang) { 
-              $nremove++;
-            }
-            else { 
-              $s = -1; # breaks loop
-            }
-          }
-          printf("3' nremove: $nremove\n");
-          if($nremove > 0) { 
-            $rewrite_coords_flag = 1;
-            for($s = 0; $s < $nremove; $s++) { 
-              splice(@ugp_seq_start_A,  -1, 1);
-              splice(@ugp_seq_stop_A,   -1, 1);
-              splice(@ugp_seq_strand_A, -1, 1);
-              splice(@ugp_mdl_start_A,  -1, 1);
-              splice(@ugp_mdl_stop_A,   -1, 1);
-              splice(@ugp_mdl_strand_A, -1, 1);
-            }
-            $ugp_nsgm -= $nremove;
-          }
-        }
-        if($rewrite_coords_flag) { 
+        # Remove any terminal segments such that the final set of 
+        # segments satisfies the following 2 criteria:
+        # 1. terminal segments either include the sequence terminus
+        #    (position 1 on 5' end, position $seq_len
+        #    on 3' end) OR have length of at least $nt_overhang
+        #    (from --s_overhang).
+        # 2. *all* segments have length at least $min_sgm_len
+        #    (from --s_minsgmlen).
+        # 
+        # We enforce criteria 1 because any terminal segment with
+        # length < $nt_overhang means there will almost certainly
+        # be a gap in the overhang region leading to an 'unjoinable'
+        # alignment which results in the full sequence being aligned
+        # by either cmalign or glsearch.
+        #
+        # We enforce criteria 2 because blastn tends to introduce
+        # a lot separate gaps, like this:
+        #
+        #       CGAGG--AC----AGT--GAAC-A----A---TG-----T--TAGGGAGAGC
+        #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
+        #
+        # instead of:
+        # 
+        #       CGAGG-----------------------ACAGTGAACAATGTTAGGGAGAGC
+        #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
+        # 
+        # due to its default scoring parameters (gap open 0, gap extend -2.5)
+        # I experimented with changing the blastn gap parameters but 
+        # that led to other complications (see notebook dir: 21_0825_vadr_seed_with_gaps/)
+        # so I went with the solution of removing any segment that is
+        # less than length 10, because it had the attractive 
+        # feature that it did not change how blastn had been
+        # used previously (v1.1 to 1.3) whereas changing the blastn
+        # gap parameters would have.
+        printf("HEYA 0\n\tugp_seq_coords: $ugp_seq_coords\n\tugp_mdl_coords: $ugp_mdl_coords\n");
+        prune_seed_given_minimum_length_segment(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A,
+                                                \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A,
+                                                $min_sgm_len);
+        prune_seed_of_terminal_short_segments(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A,
+                                              \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A,
+                                              $nt_overhang, $seq_len);
+        my $ugp_nsgm = scalar(@ugp_seq_start_A);
+        
+        if($orig_ugp_nsgm != $ugp_nsgm) { 
           printf("HEYA! in $sub_name, rewriting coords\n");
           printf("\torig coords: seq: $ugp_seq_coords mdl: $ugp_mdl_coords\n");
           if($ugp_nsgm == 0) { # no segments left, take maximum length segment from original
@@ -1051,7 +1037,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
           else { # at least one segment left, recreate $ugp_seq_coords and $ugp_mdl_coords:
             $ugp_seq_coords = "";
             $ugp_mdl_coords = "";
-            for($s = 0; $s < $ugp_nsgm; $s++) { 
+            for(my $s = 0; $s < $ugp_nsgm; $s++) { 
               if($s > 0) { 
                 $ugp_seq_coords .= ","; 
                 $ugp_mdl_coords .= ","; 
@@ -1066,6 +1052,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         }
         $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
         $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
+        printf("HEYA 1\n\tugp_seq_coords: $ugp_seq_coords\n\tugp_mdl_coords: $ugp_mdl_coords\n");
 
         if(($ugp_seq_start == 1) && ($ugp_seq_stop == $seq_len)) {
           ; # do nothing, full sequence is covered by the max
@@ -2016,6 +2003,210 @@ sub process_seed_seq_and_mdl_coords {
   return ($seq_start_A[0], $seq_stop_A[($nsgm-1)], 
           $mdl_start_A[0], $mdl_stop_A[($nsgm-1)], 
           $aln_seq_sqstring, $aln_mdl_sqstring, $inserts_str);
+}
+
+#################################################################
+# Subroutine: prune_seed_given_minimum_length_segment
+# Incept:     EPN, Wed Sep  8 13:45:10 2021
+# Purpose:    Given two sets of start/stop/strand arrays that describe
+#             coordinate segments in sequence and model
+#             coords string, one each for model and sequence, potentially
+#             remove segments that have length less than $min_sgm_len.
+#            
+#             Instead of finding the contiguous segment of segments that
+#             has the the maximum length and does not contain any segment 
+#             less than $min_sgm_len (which I couldn't figure out how to 
+#             do simply and efficiently), if any segments are too short
+#             keep the maximum length segment (even if it is shorter 
+#             than $min_sgm_len) and all adjacent segments
+#             both 5' and 3' with length at least $min_sgm_len.
+#
+# Arguments:
+#  $seq_start_AR:     ref to array of seq start coordinates, potentially modified here
+#  $seq_stop_AR:      ref to array of seq stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of seq strands, potentially modified here
+#  $mdl_start_AR:     ref to array of mdl start coordinates, potentially modified here
+#  $mdl_stop_AR:      ref to array of mdl stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of mdl strands, potentially modified here
+#  $min_sgm_len:      minimum allowed segment length
+# 
+# Returns:  void
+#
+# Dies:    Never
+#
+#################################################################
+sub prune_seed_given_minimum_length_segment { 
+  my $sub_name = "prune_seed_given_minimum_length_segment";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($seq_start_AR, $seq_stop_AR, $seq_strand_AR, 
+      $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
+      $min_sgm_len) = @_;
+
+  my $orig_nsgm = scalar(@{$seq_start_AR});
+  my $s = 0;
+  my $nshort = 0; # number of segments that are too short
+
+  my $max_sgm_len = 0;
+  my @too_short_A = ();
+  my $argmax_sgm_len = -1;
+  for($s = 0; $s < $orig_nsgm; $s++) { 
+    my $sgm_len = $seq_stop_AR->[$s] - $seq_start_AR->[$s] + 1;
+    if($sgm_len > $max_sgm_len) { 
+      $max_sgm_len = $sgm_len;
+      $argmax_sgm_len = $s;
+    }
+    if($sgm_len < $min_sgm_len) { 
+      $nshort++;
+      $too_short_A[$s] = 1;
+    }
+    else { 
+      $too_short_A[$s] = 0;
+    }
+  }
+
+  if($nshort > 0) { 
+    # need to remove at least one segment
+    # start with maximum length segment, and add all adjacent segments until you see one that is too short
+    # add segments 5' until you see one that is too short
+    my $first_to_keep = $argmax_sgm_len;
+    my $final_to_keep = $argmax_sgm_len;
+    for($s = ($argmax_sgm_len-1); $s >= 0; $s--) { 
+      if($too_short_A[$s]) { 
+        $s = -1; # breaks loop
+      }
+      else { # long enough
+        $first_to_keep = $s;
+      }
+    }
+    # add segments 3' until you see one that is too short
+    for($s = ($argmax_sgm_len+1); $s < $orig_nsgm; $s++) { 
+      if($too_short_A[$s]) { 
+        $s = $orig_nsgm; # breaks loop
+      }
+      else { # long enough
+        $final_to_keep = $s;
+      }
+    }
+    my @new_seq_start_A  = ();
+    my @new_seq_stop_A   = ();
+    my @new_seq_strand_A = ();
+    my @new_mdl_start_A  = ();
+    my @new_mdl_stop_A   = ();
+    my @new_mdl_strand_A = ();
+    for($s = $first_to_keep; $s <= $final_to_keep; $s++) { 
+      push(@new_seq_start_A,  $seq_start_AR->[$s]);
+      push(@new_seq_stop_A,   $seq_stop_AR->[$s]);
+      push(@new_seq_strand_A, $seq_strand_AR->[$s]);
+      push(@new_mdl_start_A,  $mdl_start_AR->[$s]);
+      push(@new_mdl_stop_A,   $mdl_stop_AR->[$s]);
+      push(@new_mdl_strand_A, $mdl_strand_AR->[$s]);
+    }
+    @{$seq_start_AR}  = @new_seq_start_A;
+    @{$seq_stop_AR}   = @new_seq_stop_A;
+    @{$seq_strand_AR} = @new_seq_strand_A;
+    @{$mdl_start_AR}  = @new_mdl_start_A;
+    @{$mdl_stop_AR}   = @new_mdl_stop_A;
+    @{$mdl_strand_AR} = @new_mdl_strand_A;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: prune_seed_of_terminal_short_segments
+# Incept:     EPN, Wed Sep  8 16:05:37 2021
+# Purpose:    Given two sets of start/stop/strand arrays that describe
+#             coordinate segments in sequence and model
+#             coords string, remove any terminal segments that
+#             have length less than $min_term_sgm_len.
+#             If $seq_start_AR->[0] is 1 then do not remove any
+#             5' segments. 
+#             If $seq_stop_AR->[($nsgm-1)] is $seq_len then do not
+#             remove any 3' segments.
+#
+# Arguments:
+#  $seq_start_AR:     ref to array of seq start coordinates, potentially modified here
+#  $seq_stop_AR:      ref to array of seq stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of seq strands, potentially modified here
+#  $mdl_start_AR:     ref to array of mdl start coordinates, potentially modified here
+#  $mdl_stop_AR:      ref to array of mdl stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of mdl strands, potentially modified here
+#  $min_term_sgm_len: minimum allowed terminal segment length
+#  $seq_len:          length of complete sequence
+# 
+# Returns:  void
+#
+# Dies:     Never
+#
+#################################################################
+sub prune_seed_of_terminal_short_segments { 
+  my $sub_name = "prune_seed_of_terminal_short_segments";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($seq_start_AR, $seq_stop_AR, $seq_strand_AR, 
+      $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
+      $min_term_sgm_len, $seq_len) = @_;
+
+  my $nsgm = scalar(@{$seq_start_AR});
+  my $seq_start = $seq_start_AR->[0];
+  my $seq_stop  = $seq_stop_AR->[($nsgm-1)];
+
+  my $s;
+  my $rewrite_coords_flag = 0;
+  if($seq_start > 1) { 
+    my $nremove = 0; # number of elements to remove at 5' end
+    for($s = 0; $s < $nsgm; $s++) { 
+      my $sgm_len = $seq_stop_AR->[$s] - $seq_start_AR->[$s] + 1;
+      if($sgm_len < $min_term_sgm_len) { 
+        $nremove++;
+      }
+      else { 
+        $s = $nsgm; # breaks loop
+      }
+    }
+    if($nremove > 0) { 
+      $rewrite_coords_flag = 1;
+      for($s = 0; $s < $nremove; $s++) { 
+        splice(@{$seq_start_AR},  0, 1);
+        splice(@{$seq_stop_AR},   0, 1);
+        splice(@{$seq_strand_AR}, 0, 1);
+        splice(@{$mdl_start_AR},  0, 1);
+        splice(@{$mdl_stop_AR},   0, 1);
+        splice(@{$mdl_strand_AR}, 0, 1);
+      }
+      $nsgm -= $nremove;
+    }
+  }
+  if($seq_stop < $seq_len) { 
+    my $nremove = 0; # number of elements to remove at 3' end
+    for($s = ($nsgm-1); $s >= 0; $s--) { 
+      my $sgm_len = $seq_stop_AR->[$s] - $seq_start_AR->[$s] + 1;
+      if($sgm_len < $min_term_sgm_len) { 
+        $nremove++;
+      }
+      else { 
+        $s = -1; # breaks loop
+      }
+    }
+    printf("3' nremove: $nremove\n");
+    if($nremove > 0) { 
+      $rewrite_coords_flag = 1;
+      for($s = 0; $s < $nremove; $s++) { 
+        splice(@{$seq_start_AR},  -1, 1);
+        splice(@{$seq_stop_AR},   -1, 1);
+        splice(@{$seq_strand_AR}, -1, 1);
+        splice(@{$mdl_start_AR},  -1, 1);
+        splice(@{$mdl_stop_AR},   -1, 1);
+        splice(@{$mdl_strand_AR}, -1, 1);
+      }
+      $nsgm -= $nremove;
+    }
+  }
+
+  return;
 }
 
 ###########################################################################
