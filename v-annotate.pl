@@ -314,6 +314,7 @@ opt_Add("--s_blastngo",   "integer",      0,   $g,       "-s", undef,    "for -s
 opt_Add("--s_blastnge",   "real",      -2.5,   $g,       "-s", undef,    "for -s, set blastn -gapextend <x> to <x>",                         "for -s, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,    "for -s, set blastn option -task blastn",                           "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
+opt_Add("--s_minsgmlen",   "integer",    10,   $g,       "-s", undef,    "for -s, set minimum length of ungapped region in seed to <n>",     "for -s, set minimum length of ungapped region in seed to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
@@ -473,6 +474,7 @@ my $options_okay =
                 's_blastnge=s'  => \$GetOptions_H{"--s_blastnge"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_blastntk'    => \$GetOptions_H{"--s_blastntk"},
+                's_minsgmlen=s' => \$GetOptions_H{"--s_minsgmlen"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
 # options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
