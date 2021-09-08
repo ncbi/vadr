@@ -117,8 +117,12 @@ sub run_blastn_and_summarize_output {
   $opt_str .= " -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
   $opt_str .= " -reward " . opt_Get("--s_blastnrw", $opt_HHR); 
   $opt_str .= " -penalty " . opt_Get("--s_blastnpn", $opt_HHR); 
-  $opt_str .= " -gapopen " . opt_Get("--s_blastngo", $opt_HHR); 
-  $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
+  if(opt_IsUsed("--s_blastngo", $opt_HHR)) { 
+    $opt_str .= " -gapopen " . opt_Get("--s_blastngo", $opt_HHR); 
+  }
+  if(opt_IsUsed("--s_blastnge", $opt_HHR)) { 
+    $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
+  }
   if(opt_IsUsed("--s_blastntk", $opt_HHR)) { 
     $opt_str .= " -task blastn";
   }
