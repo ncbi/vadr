@@ -1035,25 +1035,20 @@ sub parse_blastn_indel_file_to_get_subseq_info {
             ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($argmax_ugp_seq_sgm, $FH_HR);
           }
           else { # at least one segment left, recreate $ugp_seq_coords and $ugp_mdl_coords:
-            $ugp_seq_coords = "";
-            $ugp_mdl_coords = "";
-            for(my $s = 0; $s < $ugp_nsgm; $s++) { 
-              if($s > 0) { 
-                $ugp_seq_coords .= ","; 
-                $ugp_mdl_coords .= ","; 
-              }
-              $ugp_seq_coords .= vdr_CoordsSegmentCreate($ugp_seq_start_A[$s], $ugp_seq_stop_A[$s], $ugp_seq_strand_A[$s], $FH_HR);
-              $ugp_mdl_coords .= vdr_CoordsSegmentCreate($ugp_mdl_start_A[$s], $ugp_mdl_stop_A[$s], $ugp_mdl_strand_A[$s], $FH_HR);
-            }
+            $ugp_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A, $FH_HR);
+            $ugp_mdl_coords = vdr_CoordsFromStartStopStrandArrays(\@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A, $FH_HR);
             $ugp_seq_start = $ugp_seq_start_A[0];
             $ugp_seq_stop  = $ugp_seq_stop_A[($ugp_nsgm-1)];
           }
-          printf("\tnew coords: seq: $ugp_seq_coords mdl: $ugp_mdl_coords\n");
         }
         $ugp_seq_HR->{$seq_name} = $ugp_seq_coords;
         $ugp_mdl_HR->{$seq_name} = $ugp_mdl_coords;
         printf("HEYA 1\n\tugp_seq_coords: $ugp_seq_coords\n\tugp_mdl_coords: $ugp_mdl_coords\n");
+        # finished setting ugp_seq_coords and ugp_mdl_coords
+        ##########
 
+        ##########
+        # determine subsequences outside of (and overlapping with) the seed region to align with cmalign or glsearch
         if(($ugp_seq_start == 1) && ($ugp_seq_stop == $seq_len)) {
           ; # do nothing, full sequence is covered by the max
           # length ungapped blast hit, no need to fetch or align with cmalign
