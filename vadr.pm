@@ -138,6 +138,7 @@ require "sqp_utils.pm";
 # vdr_CoordsMergeAllAdjacentSegments()
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
 # vdr_CoordsMaxLengthSegment()
+# vdr_CoordsFromStartStopStrandArrays()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -4062,6 +4063,48 @@ sub vdr_CoordsMaxLengthSegment {
     }
   }
   return ($argmax_sgm, $max_sgm_len);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsFromStartStopStrandArrays()
+#
+# Incept:     EPN, Wed Sep  8 18:32:20 2021
+#
+# Synopsis: Given references to arrays of start, stop and strand
+#           values for 1 or more segments, combine them to 
+#           create a coords string with 1 or more segments.
+#
+# Arguments:
+#  $start_AR:  reference to array of start positions
+#  $stop_AR:   reference to array of stop positions
+#  $strand_AR: reference to array of strand values
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  coords string with all segments combined
+#
+# Dies: If unable to parse any segment 
+#
+#################################################################
+sub vdr_CoordsFromStartStopStrandArrays {
+  my $sub_name = "vdr_CoordsFromStartStopStrandArrays";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+
+  my $coords = "";
+  my $nsgm = scalar(@{$start_AR});
+  if($nsgm != scalar(@{$stop_AR}))   { ofile_FAIL("ERROR in $sub_name, different number of start and stop elements",   1, $FH_HR); }
+  if($nsgm != scalar(@{$strand_AR})) { ofile_FAIL("ERROR in $sub_name, different number of start and strand elements", 1, $FH_HR); }
+
+  for(my $s = 0; $s < $nsgm; $s++) { 
+    if($s > 0) { 
+      $coords .= ","; 
+    }
+    $coords .= vdr_CoordsSegmentCreate($start_AR->[$s], $stop_AR->[$s], $strand_AR->[$s], $FH_HR);
+  }
+
+  return $coords;
 }
 
 #################################################################
