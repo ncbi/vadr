@@ -1,9 +1,10 @@
 use strict;
 use warnings FATAL => 'all';
-use Test::More tests => 443;
+use Test::More tests => 445;
 
 BEGIN {
-    use_ok( 'vadr' ) || print "Bail out!\n";
+    use_ok( 'vadr' )      || print "Bail out!\n";
+    use_ok( 'vadr_seed' ) || print "Bail out!\n";
 }
 
 my @desc_A     = ();  # array of descriptions for each test
@@ -800,3 +801,37 @@ $ret_frame1 = vdr_FrameAdjust(3,        -901,        undef);
 $ret_frame2 = vdr_FrameAdjust(3,        -902,        undef);
 is($ret_frame1, 1, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:-2");
 is($ret_frame2, 2, "vdr_FrameAdjust(): orig_frame:3, nt_diff%3:-1");
+
+#############################################
+# vadr_seed.pm:prune_seed_of_terminal_short_segments()
+#############################################
+@desc_A                = ();
+@exp_val_A             = ();
+my @orig_seq_coords_A  = ();  # this will double as mdl coords
+my @min_term_sgm_len_A = ();
+my @seq_len_A          = ();
+my @seq_start_A        = ();
+my @seq_stop_A         = ();
+my @seq_strand_A       = ();
+my @mdl_start_A        = ();
+my @mdl_stop_A         = ();
+my @mdl_strand_A       = ();
+my $seq_coords         = undef;
+my $mdl_coords         = undef;
+
+push(@desc_A,             "no change");
+push(@orig_seq_coords_A,  "1..101:+,102..205:+,206..400:+");
+push(@exp_val_A,          "1..101:+,102..205:+,206..400:+");
+push(@min_term_sgm_len_A, "100");
+push(@seq_len_A,          "400");
+
+$ntests = scalar(@desc_A);
+for($i = 0; $i < $ntests; $i++) { 
+  vdr_FeatureStartStopStrandArrays($orig_seq_coords_A[$i], \@seq_start_A, \@seq_stop_A, \@seq_strand_A, undef);
+  vdr_FeatureStartStopStrandArrays($orig_seq_coords_A[$i], \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A, undef);
+  prune_seed_of_terminal_short_segments(\@seq_start_A, \@seq_stop_A, \@seq_strand_A,
+                                        \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A,
+                                        $min_term_sgm_len_A[$i], $seq_len_A[$i]);
+  $cur_val = vdr_CoordsFromStartStopStrandArrays(\@seq_start_A, \@seq_stop_A, \@seq_strand_A, undef);
+  is($cur_val, $exp_val_A[$i], "prune_seed_of_terminal_short_segments(): $desc_A[$i]");
+}
