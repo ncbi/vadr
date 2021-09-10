@@ -1963,8 +1963,8 @@ sub process_seed_seq_and_mdl_coords {
        ($mdl_strand_A[$s] ne "+")) { 
       ofile_FAIL("ERROR in $sub_name, not all strands are positive", 1, $FH_HR);
     }
-    $seq_sgm_len = $seq_stop_A[$s] - $seq_start_A[$s] + 1;
-    $mdl_sgm_len = $mdl_stop_A[$s] - $mdl_start_A[$s] + 1;
+    $seq_sgm_len = abs($seq_stop_A[$s] - $seq_start_A[$s]) + 1;
+    $mdl_sgm_len = abs($mdl_stop_A[$s] - $mdl_start_A[$s]) + 1;
     printf("in $sub_name, s: $s\n");
     printf("\tseq: " . $seq_start_A[$s] . ".." . $seq_stop_A[$s] . " len: $seq_sgm_len\n");
     printf("\tmdl: " . $mdl_start_A[$s] . ".." . $mdl_stop_A[$s] . " len: $mdl_sgm_len\n");
@@ -2047,7 +2047,7 @@ sub prune_seed_given_minimum_length_segment {
   my @too_short_A = ();
   my $argmax_sgm_len = -1;
   for($s = 0; $s < $orig_nsgm; $s++) { 
-    my $sgm_len = $seq_stop_AR->[$s] - $seq_start_AR->[$s] + 1;
+    my $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
     if($sgm_len > $max_sgm_len) { 
       $max_sgm_len = $sgm_len;
       $argmax_sgm_len = $s;
@@ -2145,16 +2145,19 @@ sub prune_seed_of_terminal_short_segments {
       $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
       $min_term_sgm_len, $seq_len) = @_;
 
+  printf("in $sub_name, min_term_sgm_len: $min_term_sgm_len\n");
+
   my $nsgm = scalar(@{$seq_start_AR});
   my $seq_start = $seq_start_AR->[0];
   my $seq_stop  = $seq_stop_AR->[($nsgm-1)];
 
   my $s;
+  my $sgm_len;
   my $rewrite_coords_flag = 0;
   if($seq_start > 1) { 
     my $nremove = 0; # number of elements to remove at 5' end
     for($s = 0; $s < $nsgm; $s++) { 
-      my $sgm_len = $seq_stop_AR->[$s] - $seq_start_AR->[$s] + 1;
+      $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
       if($sgm_len < $min_term_sgm_len) { 
         $nremove++;
       }
@@ -2178,7 +2181,7 @@ sub prune_seed_of_terminal_short_segments {
   if($seq_stop < $seq_len) { 
     my $nremove = 0; # number of elements to remove at 3' end
     for($s = ($nsgm-1); $s >= 0; $s--) { 
-      my $sgm_len = $seq_stop_AR->[$s] - $seq_start_AR->[$s] + 1;
+      $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
       if($sgm_len < $min_term_sgm_len) { 
         $nremove++;
       }
