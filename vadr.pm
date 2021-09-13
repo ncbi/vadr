@@ -84,6 +84,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCdsOrGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
+# vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureTypeCanBecomeMiscFeature()
 # vdr_FeatureNumSegments()
@@ -137,6 +138,7 @@ require "sqp_utils.pm";
 # vdr_CoordsMergeAllAdjacentSegments()
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
 # vdr_CoordsMaxLengthSegment()
+# vdr_CoordsFromStartStopStrandArrays()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -1207,6 +1209,50 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords {
       if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
          ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
         return 1; 
+      }
+    }
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
+# Incept:     EPN, Wed Sep  1 15:42:19 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or mature peptide
+#             or does it have same start/stop coords as another feature
+#             that is a CDS or mature peptide?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    my $start1 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    my $stop1  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) { 
+        my $start2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        my $stop2  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        if(($start1 == $start2) && ($stop1 == $stop2)) { 
+          return 1; 
+        }
       }
     }
   }
@@ -4017,6 +4063,48 @@ sub vdr_CoordsMaxLengthSegment {
     }
   }
   return ($argmax_sgm, $max_sgm_len);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsFromStartStopStrandArrays()
+#
+# Incept:     EPN, Wed Sep  8 18:32:20 2021
+#
+# Synopsis: Given references to arrays of start, stop and strand
+#           values for 1 or more segments, combine them to 
+#           create a coords string with 1 or more segments.
+#
+# Arguments:
+#  $start_AR:  reference to array of start positions
+#  $stop_AR:   reference to array of stop positions
+#  $strand_AR: reference to array of strand values
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  coords string with all segments combined
+#
+# Dies: If unable to parse any segment 
+#
+#################################################################
+sub vdr_CoordsFromStartStopStrandArrays {
+  my $sub_name = "vdr_CoordsFromStartStopStrandArrays";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+
+  my $coords = "";
+  my $nsgm = scalar(@{$start_AR});
+  if($nsgm != scalar(@{$stop_AR}))   { ofile_FAIL("ERROR in $sub_name, different number of start and stop elements",   1, $FH_HR); }
+  if($nsgm != scalar(@{$strand_AR})) { ofile_FAIL("ERROR in $sub_name, different number of start and strand elements", 1, $FH_HR); }
+
+  for(my $s = 0; $s < $nsgm; $s++) { 
+    if($s > 0) { 
+      $coords .= ","; 
+    }
+    $coords .= vdr_CoordsSegmentCreate($start_AR->[$s], $stop_AR->[$s], $strand_AR->[$s], $FH_HR);
+  }
+
+  return $coords;
 }
 
 #################################################################
