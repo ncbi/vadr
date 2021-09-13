@@ -934,6 +934,8 @@ sub parse_blastn_indel_file_to_get_subseq_info {
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
   my $min_sgm_len = opt_Get("--s_minsgmlen", $opt_HHR);
+  my $do_allsgm   = opt_Get("--s_allsgm", $opt_HHR);
+  my $do_ungapsgm = opt_Get("--s_ungapsgm", $opt_HHR);
 
   my %processed_H = (); # key: sequence name we want indel info for, 
                         # value: 0 if we have not processed an HSP for this sequence
@@ -988,7 +990,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         #    on 3' end) OR have length of at least $nt_overhang
         #    (from --s_overhang).
         # 2. *all* segments have length at least $min_sgm_len
-        #    (from --s_minsgmlen).
+        #    (from --s_minsgmlen), *UNLESS* $do_allsgm (--s_allsgm enabled)
         # 
         # We enforce criteria 1 because any terminal segment with
         # length < $nt_overhang means there will almost certainly
@@ -1016,23 +1018,28 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         # used previously (v1.1 to 1.3) whereas changing the blastn
         # gap parameters would have.
         printf("HEYA 0\n\tugp_seq_coords: $ugp_seq_coords\n\tugp_mdl_coords: $ugp_mdl_coords\n");
-        prune_seed_given_minimum_length_segment(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A,
+        if(! $do_ungapsgm) { # if --s_ungapsgm: only keep max length segment
+          if(! $do_allsgm) { 
+            prune_seed_given_minimum_length_segment(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A,
+                                                    \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A,
+                                                    $min_sgm_len);
+          }
+          prune_seed_of_terminal_short_segments(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A,
                                                 \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A,
-                                                $min_sgm_len);
-        prune_seed_of_terminal_short_segments(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A,
-                                              \@ugp_mdl_start_A, \@ugp_mdl_stop_A, \@ugp_mdl_strand_A,
-                                              $nt_overhang, $seq_len);
+                                                $nt_overhang, $seq_len);
+        }
         my $ugp_nsgm = scalar(@ugp_seq_start_A);
         
-        if($orig_ugp_nsgm != $ugp_nsgm) { 
+        if(($orig_ugp_nsgm != $ugp_nsgm) || ($do_ungapsgm)) { # if --s_ungapsgm: only keep max length segment
           printf("HEYA! in $sub_name, rewriting coords\n");
           printf("\torig coords: seq: $ugp_seq_coords mdl: $ugp_mdl_coords\n");
-          if($ugp_nsgm == 0) { # no segments left, take maximum length segment from original
+          if(($ugp_nsgm == 0) || ($do_ungapsgm)) { # no segments left (or --s_ungapsgm), take maximum length segment from original
             my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
             my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
             $ugp_seq_coords = $argmax_ugp_seq_sgm;
             $ugp_mdl_coords = $argmax_ugp_mdl_sgm;
             ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($argmax_ugp_seq_sgm, $FH_HR);
+            $ugp_nsgm = 1;
           }
           else { # at least one segment left, recreate $ugp_seq_coords and $ugp_mdl_coords:
             $ugp_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@ugp_seq_start_A, \@ugp_seq_stop_A, \@ugp_seq_strand_A, $FH_HR);
