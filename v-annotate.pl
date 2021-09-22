@@ -317,6 +317,7 @@ opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,          "
 opt_Add("--s_minsgmlen",  "integer",     10,   $g,       "-s", undef,          "for -s, set minimum length of ungapped region in HSP seed to <n>",  "for -s, set minimum length of ungapped region in HSP seed to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", "for -s, keep full HSP seed, do not enforce minimum segment length", "for -s, keep full HSP seed, do not enforce minimum segment length", \%opt_HH, \@opt_order_A);
 opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",   "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
+opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "for -s, allow seed to include gaps in start/stop codons",           "for -s, allow seed to include gaps in start/stop codons", \%opt_HH, \@opt_order_A);
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",     "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
@@ -479,6 +480,7 @@ my $options_okay =
                 's_minsgmlen=s' => \$GetOptions_H{"--s_minsgmlen"},
                 's_allsgm'      => \$GetOptions_H{"--s_allsgm"},
                 's_ungapsgm'    => \$GetOptions_H{"--s_ungapsgm"},
+                's_startstop'   => \$GetOptions_H{"--s_startstop"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
 # options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
@@ -1588,8 +1590,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $indel_file = $ofile_info_HH{"fullpath"}{"std.cdt.$mdl_name.indel"};
       my @subseq_AA = ();
       $cur_mdl_align_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
+      my ($start_codon_coords, $stop_codon_coords) = vdr_FeatureInfoCdsStartStopCodonCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
       parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                                 $mdl_name, \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
+                                                 $mdl_name, $start_codon_coords, $stop_codon_coords, 
+                                                 \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
                                                  \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
                                                  \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
