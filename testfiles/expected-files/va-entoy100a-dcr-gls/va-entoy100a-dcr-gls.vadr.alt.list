@@ -1,5 +1,4 @@
 #sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
-ENTOY100A-dcr-AAdel	entoy100a-dcr-del	CDS	protein two	CDS_HAS_STOP_CODON	35..37:+	37..39:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TAG, shifted S:8,M:8]
 ENTOY100A-dcr-AAdel	entoy100a-dcr-del	CDS	protein two	INDEFINITE_ANNOTATION_START	32..32:+	33..33:+	alignment to homology model is a gap at 5' boundary [-]
 ENTOY100A-dcr-AAdel	entoy100a-dcr-del	CDS	protein two	MUTATION_AT_START	32..34:+	34..36:+	expected start codon could not be identified [TGG]
 ENTOY100A-dcr-AAdel	entoy100a-dcr-del	CDS	protein two	UNEXPECTED_LENGTH	32..45:+	34..47:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [14]
