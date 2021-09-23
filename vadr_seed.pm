@@ -899,24 +899,26 @@ sub parse_blastn_indel_token {
 #              <source>:  name of source sequence to fetch subseq from 
 #
 # Arguments: 
-#  $indel_file:      blastn indel file to parse, created by 
-#                    parse_blastn_results() for a single model 
-#  $seq_name_AR:     REF to array of sequences we want to parse indel info for
-#  $seq_len_HR:      REF to hash of sequence lengths
-#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
-#  $subseq_AAR:      REF to 2D array with subseq info, FILLED HERE
-#  $sda_mdl_HR:      REF to hash, key is <seq_name>, value is mdl coords
-#                    segment of max ungapped blast aln, FILLED HERE
-#  $sda_seq_HR:      REF to hash, key is <seq_name>, value is seq coords
-#                    segment of max ungapped blast aln, FILLED HERE
-#  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
-#                    value is array of names of subsequences pertaining to
-#                    <seq_name>, FILLED HERE
-#  $subseq2seq_HR:   REF to hash, key is subseq name, value is <seq_name>
-#                    it derives from, FILLED HERE
-#  $subseq_len_HR:   REF to hash of lengths of subsequences, FILLED HERE
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#  $indel_file:         blastn indel file to parse, created by 
+#                       parse_blastn_results() for a single model 
+#  $seq_name_AR:        REF to array of sequences we want to parse indel info for
+#  $seq_len_HR:         REF to hash of sequence lengths
+#  $exp_mdl_name:       name of model we expect on all lines of $indel_file
+#  $start_codon_coords: string of start codon coords for all CDS
+#  $stop_codon_coords:  string of stop codon coords for all CDS
+#  $subseq_AAR:         REF to 2D array with subseq info, FILLED HERE
+#  $sda_mdl_HR:         REF to hash, key is <seq_name>, value is mdl coords
+#                       segment of max ungapped blast aln, FILLED HERE
+#  $sda_seq_HR:         REF to hash, key is <seq_name>, value is seq coords
+#                       segment of max ungapped blast aln, FILLED HERE
+#  $seq2subseq_HAR:     REF to hash of arrays, key is <seq_name>,
+#                       value is array of names of subsequences pertaining to
+#                       <seq_name>, FILLED HERE
+#  $subseq2seq_HR:      REF to hash, key is subseq name, value is <seq_name>
+#                       it derives from, FILLED HERE
+#  $subseq_len_HR:      REF to hash of lengths of subsequences, FILLED HERE
+#  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
 #                         
 # Returns:    void
 #
@@ -925,17 +927,19 @@ sub parse_blastn_indel_token {
 ################################################################# 
 sub parse_blastn_indel_file_to_get_subseq_info { 
   my $sub_name = "parse_blastn_indel_file_to_get_subseq_info";
-  my $nargs_exp = 12;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($indel_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $subseq_AAR, $sda_mdl_HR, $sda_seq_HR,
-      $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($indel_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $start_codon_coords, $stop_codon_coords,
+      $subseq_AAR, $sda_mdl_HR, $sda_seq_HR, $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $FH_HR  = $ofile_info_HHR->{"FH"};
+  my $FH_HR = $ofile_info_HHR->{"FH"};
   my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
   my $min_sgm_len = opt_Get("--s_minsgmlen", $opt_HHR);
   my $do_allsgm   = opt_Get("--s_allsgm", $opt_HHR);
   my $do_ungapsgm = opt_Get("--s_ungapsgm", $opt_HHR);
+  my $do_realign_startstop = ($do_allsgm || opt_Get("--s_startstop", $opt_HHR)) ? 0 : 1;
 
   my %processed_H = (); # key: sequence name we want indel info for, 
                         # value: 0 if we have not processed an HSP for this sequence
@@ -944,6 +948,17 @@ sub parse_blastn_indel_file_to_get_subseq_info {
     $processed_H{$seq_name} = 0; 
   }
   my $nprocessed = 0;
+
+  # process $start_codon_coords and $stop_codon_coords strings into arrays
+  my $start_and_stop_codon_coords = $start_codon_coords;
+  my @codon_start_A  = ();
+  my @codon_stop_A   = ();
+  my @codon_strand_A = ();
+  if(($start_and_stop_codon_coords ne "") && ($start_and_stop_codon_coords !~ m/\,$/)) { 
+    $start_and_stop_codon_coords .= ",";
+  }
+  $start_and_stop_codon_coords .= $stop_codon_coords;
+  vdr_FeatureStartStopStrandArrays($start_and_stop_codon_coords, \@codon_start_A, \@codon_stop_A, \@codon_strand_A, $FH_HR);
 
   open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
@@ -983,8 +998,44 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         my $sda_seq_stop   = $sda_seq_stop_A[($orig_sda_nsgm-1)];
         my $sda_seq_strand = $sda_seq_strand_A[0];
 
-        # Remove any terminal segments such that the final set of 
-        # segments satisfies the following 2 criteria:
+        # Now potentially manipulate the seed region so that we don't
+        # rely on the blastn alignment in regions where we know it
+        # is not optimal for our purposes.
+        # 
+        # First, check to see if any of the gaps in the model positions
+        # occur within a CDS start or stop codon. If so we just take
+        # the maximum length ungapped segment and remove all the rest.
+        # This is because blastn tends to place gaps within TAA 
+        # stop codons in some situations that lead to downstream alerts
+        # in ways we can't fix with the current alignment doctoring 
+        # strategies. 
+        #
+        # For example: 
+        #
+        # blastn align this way (leads to stop codon problem):
+        #
+        #             stp
+        # seq AGACTTATT-AACCAG
+        # mdl AGACTTATTAAACCAG
+        #
+        # desired alignment (glsearch does this, no stop codon problem):
+        #
+        #             stp
+        # seq AGACTTATTAA-CCAG
+        # mdl AGACTTATTAAACCAG
+        # 
+        # We could try to save as much as the seed as possible
+        # losing only those segments 5' of the affected start or
+        # 3' of the affected stop but I think the code required to 
+        # deal with this (especially in the case of multiple affected
+        # start and/or stop codons) is too complex to warrant the 
+        # speed-up. I expect this case to be rare and suffering
+        # the minor speed hit when it occurs is better than adding
+        # that extra, complicated code.
+        # 
+        # If the seed does not have any gaps in any start or stop
+        # codes, then we remove any terminal segments such that the
+        # final set of segments satisfies the following 2 criteria:
         # 1. terminal segments either include the sequence terminus
         #    (position 1 on 5' end, position $seq_len
         #    on 3' end) OR have length of at least $nt_overhang
@@ -1017,8 +1068,15 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         # feature that it did not change how blastn had been
         # used previously (v1.1 to 1.3) whereas changing the blastn
         # gap parameters would have.
-        printf("HEYA 0\n\tsda_seq_coords: $sda_seq_coords\n\tsda_mdl_coords: $sda_mdl_coords\n");
-        if(! $do_ungapsgm) { # if --s_ungapsgm: only keep max length segment
+        my $only_keep_max_ungap_sgm = $do_ungapsgm; # if --s_ungapsgm: only keep max length (ungapped) segment
+        # if any gaps in the model overlap with start or stop codons, only keep max length (ungapped) segment
+        if((! $only_keep_max_ungap_sgm) && ($do_realign_startstop)) { 
+          $only_keep_max_ungap_sgm = check_seed_overlap_with_start_stop_codons(\@sda_mdl_start_A, \@sda_mdl_stop_A, 
+                                                                               \@codon_start_A, \@codon_stop_A, $FH_HR);
+        }
+
+        # if we are not just keeping the max ungap sgm
+        if(! $only_keep_max_ungap_sgm) { 
           if(! $do_allsgm) { 
             prune_seed_given_minimum_length_segment(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
                                                     \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
@@ -1030,10 +1088,10 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         }
         my $sda_nsgm = scalar(@sda_seq_start_A);
         
-        if(($orig_sda_nsgm != $sda_nsgm) || ($do_ungapsgm)) { # if --s_ungapsgm: only keep max length segment
+        if(($orig_sda_nsgm != $sda_nsgm) || ($only_keep_max_ungap_sgm)) { 
           printf("HEYA! in $sub_name, rewriting coords\n");
           printf("\torig coords: seq: $sda_seq_coords mdl: $sda_mdl_coords\n");
-          if(($sda_nsgm == 0) || ($do_ungapsgm)) { # no segments left (or --s_ungapsgm), take maximum length segment from original
+          if(($sda_nsgm == 0) || ($only_keep_max_ungap_sgm)) { # take maximum length segment from original
             my ($argmax_sda_seq_sgm, $max_sda_seq_sgm_len) = vdr_CoordsMaxLengthSegment($sda_seq_coords, $FH_HR);
             my ($argmax_sda_mdl_sgm, $max_sda_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($sda_mdl_coords, $FH_HR);
             $sda_seq_coords = $argmax_sda_seq_sgm;
@@ -1041,7 +1099,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
             ($sda_seq_start, $sda_seq_stop, $sda_seq_strand) = vdr_CoordsSegmentParse($argmax_sda_seq_sgm, $FH_HR);
             $sda_nsgm = 1;
           }
-          else { # at least one segment left, recreate $sda_seq_coords and $sda_mdl_coords:
+          else { # at least one segment left, and ! $only_keep_max_ungap_sgm, recreate $sda_seq_coords and $sda_mdl_coords:
             $sda_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
             $sda_mdl_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
             $sda_seq_start = $sda_seq_start_A[0];
@@ -2212,6 +2270,64 @@ sub prune_seed_of_terminal_short_segments {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: check_seed_overlap_with_start_stop_codons
+# Incept:     EPN, Tue Sep 14 10:04:42 2021
+# Purpose:    Given the start/stop/strand arrays that 
+#             describe the coordinate segments in the model 
+#             coords string for the seeded alignment region, 
+#             and the coords strings for all start and stop
+#             codons, determine if any of the gaps in the
+#             seed overlap with any of the start or stop
+#             codons and return '1' if so, else return '0'.
+#
+# Arguments:
+#  $sda_mdl_start_AR:   ref to array of mdl start coordinates for the seed region
+#  $sda_mdl_stop_AR:    ref to array of mdl stop  coordinates for the seed region
+#  $codon_start_AR:     ref to array of start  coordinates of CDS start and stop codons
+#  $codon_stop_AR:      ref to array of stop   coordinates of CDS start and stop codons
+#  $FH_HR:              ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:  void
+#
+# Dies:     Never
+#
+#################################################################
+sub check_seed_overlap_with_start_stop_codons { 
+  my $sub_name = "check_seed_overlap_with_start_stop_codons";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($sda_mdl_start_AR, $sda_mdl_stop_AR, $codon_start_AR, $codon_stop_AR, $FH_HR) = @_;
+  
+  my $nsgm_sda   = scalar(@{$sda_mdl_start_AR});
+  my $nsgm_codon = scalar(@{$codon_start_AR});
+
+  for(my $s = 1; $s < $nsgm_sda; $s++) { 
+    my $mdl_gap_start = $sda_mdl_stop_AR->[($s-1)] + 1;
+    my $mdl_gap_stop  = $sda_mdl_start_AR->[$s]    - 1;
+    my $mdl_gap_len   = $mdl_gap_stop - $mdl_gap_start + 1;
+    # we know that model coords must be + strand, this was checked for already in 'process_seed_seq_and_mdl_coords()'
+    if($mdl_gap_len >= 1) { 
+      for(my $c = 0; $c < $nsgm_codon; $c++) { 
+        my $nres_overlap = 0;
+        if($codon_start_AR->[$c] <= $codon_stop_AR->[$c]) { 
+          ($nres_overlap, undef) = seq_Overlap($mdl_gap_start, $mdl_gap_stop, $codon_start_AR->[$c], $codon_stop_AR->[$c], $FH_HR);
+        }
+        else { 
+          ($nres_overlap, undef) = seq_Overlap($mdl_gap_start, $mdl_gap_stop, $codon_stop_AR->[$c], $codon_start_AR->[$c], $FH_HR);
+        }
+        if($nres_overlap > 0) { 
+          printf("in sub_name, found overlap between mdl gap: $mdl_gap_start..$mdl_gap_stop and codon " . $codon_start_AR->[$c] . ".." . $codon_stop_AR->[$c] . ", returning 1\n");
+          return 1; 
+        }
+      }
+    }
+  }
+
+  return 0;
 }
 
 ###########################################################################

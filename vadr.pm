@@ -73,6 +73,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoChildrenArrayOfArrays()
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
 # vdr_FeatureInfoMerge()
+# vdr_FeatureInfoCdsStartStopCodonCoords()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -849,10 +850,9 @@ sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
 # 
 # Arguments:
 #  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
-#                       add to $
-#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
-#                    on the features to add to  $ftr_info1_HAHR
-#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#                       add to $dst_ftr_info_AHR
+#  $dst_ftr_info_AHR:   REF to hash of array of hashes we are adding to
+#  $FH_HR:              REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
@@ -906,6 +906,59 @@ sub vdr_FeatureInfoMerge {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoCdsStartStopCodonCoords()
+# Incept:     EPN, Mon Sep 13 17:55:41 2021
+#
+# Synopsis: Return coords strings of for start and stop codon
+#           coordinates for all CDS. Start/stop codon coords will be
+#           concatenated into long coords strings with multiple
+#           segments. If a single start or stop codon is actually
+#           N>1 segments, it will contribute N segments to the 
+#           returned string.
+# 
+# Arguments:
+#  $ftr_info_AHR: REF to array of hashes with information on the features, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Two values:
+#             $start_codon_coords: >= 1 segment coords string with coordinates of all start codons,
+#                                  "" if no CDS exist in @{$ftr_info_AHR}
+#             $stop_codon_coords:  >= 1 segment coords string with coordinates of all stop codons
+#                                  "" if no CDS exist in @{$ftr_info_AHR}
+#
+# Dies:       If a CDS has length < 6
+#################################################################
+sub vdr_FeatureInfoCdsStartStopCodonCoords {
+  my $sub_name = "vdr_FeatureInfoCdsStartStopCodonCoords";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+
+  my $ret_start_codon_coords = "";
+  my $ret_stop_codon_coords = "";
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      my $coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+      my $length = vdr_CoordsLength($coords, $FH_HR);
+      if($length < 6) { 
+        ofile_FAIL("ERROR in $sub_name, CDS (ftr_idx: $ftr_idx) coords length is below 6", 1, $FH_HR); 
+      }
+      if($ret_start_codon_coords ne "") { 
+        $ret_start_codon_coords .= ",";
+        $ret_stop_codon_coords  .= ",";
+      }
+      $ret_start_codon_coords .= vdr_CoordsRelativeToAbsolute($coords, "1..3:+", $FH_HR);
+      $ret_stop_codon_coords  .= vdr_CoordsRelativeToAbsolute($coords, ($length-2) . ".." . $length . ":+", $FH_HR);
+    }
+  }
+
+  return($ret_start_codon_coords, $ret_stop_codon_coords);
 }
 
 #################################################################
