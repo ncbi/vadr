@@ -31,7 +31,6 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be tra
 			note	similar to VP1
 
 Additional note(s) to submitter:
-ERROR: LOW_FEATURE_SIMILARITY_START: (gene:ORF2) region within annotated feature that does not match a CDS at 5' end of sequence lacks significant similarity [8 nt overlap b/t low similarity region of length 8 (1..8) and annotated feature (1..621)]; seq-coords:1..8:+; mdl-coords:5376..5383:+; mdl:NC_001959;
 ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP1) high confidence possible frameshift at 5' end of CDS [length:15; inserts:S:9(1),M:5383;S:15(1),M:5388; deletes:none; shifted_frame:2; dominant_frame:3; avgpp:0.737;]; seq-coords:1..15:+; mdl-coords:5376..5388:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [17>5]; seq-coords:1..17:+; mdl-coords:5358..5358:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/7000-7500
