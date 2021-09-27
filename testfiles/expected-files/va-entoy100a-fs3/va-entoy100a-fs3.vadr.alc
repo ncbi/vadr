@@ -8,7 +8,7 @@
 4     mutstart  yes      MUTATION_AT_START               feature      1     1  expected start codon could not be identified
 5     mutendns  yes      MUTATION_AT_END                 feature      1     1  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 6     unexleng  yes      UNEXPECTED_LENGTH               feature      3     2  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
-7     cdsstopn  yes      CDS_HAS_STOP_CODON              feature      1     1  in-frame stop codon exists 5' of stop position predicted by homology to reference
+7     cdsstopn  yes      CDS_HAS_STOP_CODON              feature      2     2  in-frame stop codon exists 5' of stop position predicted by homology to reference
 8     fsthicf5  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      9     9  high confidence possible frameshift at 5' end of CDS
 9     fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF   feature      6     6  high confidence possible frameshift in CDS (internal)
 10    peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM     feature      8     4  mat_peptide may not be translated because its parent CDS has a problem
