@@ -69,10 +69,12 @@ my $bitscore;               #bit score for one alignment
 my $rawscore;               #raw score for one alignment
 my $hdef;                   #defline for matching sequence
 my $nmatches;               #number of matching sequences
-my $subject_start;          # first aligned position in one block of the subject sequence
-my $subject_end;            # last aligned position in one block of the subject sequence
-my $query_start;            # first aligned position in one block of the query sequence
-my $query_end;              # last aligned position in one block of the query  sequence
+my $subject_start = 0;      # first aligned position in one block of the subject sequence
+my $subject_end = 0;        # last aligned position in one block of the subject sequence
+my $old_subject_end = 0;    # last aligned position in previous block of the subject sequence
+my $query_start = 0;        # first aligned position in one block of the query sequence
+my $query_end = 0;          # last aligned position in one block of the query  sequence
+my $old_query_end = 0;      # last aligned position in previous block of the query  sequence
 my $query_alignment_part;   # string representing the query part of the alignment       
 my $subject_alignment_part; # string representing the subject part of the alignment       
 my $processing_alignment;   # are we possibly in the middle of processing an alignment
@@ -98,8 +100,8 @@ my $old_query_gap_overhang;                     #how many gaps in the query are 
 my $new_query_gap_overhang;                     #how many gaps in the query are at the end of the current line
 my $overall_subject_gap_representation = "";    #representation of gaps in one row of subject alignment
 my $one_row_subject_gap_representation = "";    #representation of gaps in one row of subject alignment
-my $old_subject_gap_overhang;                   #how many gaps in the subject are at the end of the current line
-my $new_subject_gap_overhang;                   #how many gaps in the subject are at the end of the current line
+my $old_subject_gap_overhang = 0;               #how many gaps in the subject are at the end of the current line
+my $new_subject_gap_overhang = 0;               #how many gaps in the subject are at the end of the current line
 my $maximum_query_gap       = 0;                #largest gap in the query
 my $maximum_subject_gap     = 0;                #largest gap in the subject
 my $maximum_query_gap_str   = "";               #string representing largest gap in the query, format Q<d1>:S<d2>:-<d3>
@@ -280,10 +282,16 @@ while($keep_going) {
         $one_row_query_gap_representation = "";
         $overall_subject_gap_representation = "";
         $one_row_subject_gap_representation = "";
-        $maximum_subject_gap = 0;
         $maximum_query_gap = 0;	    
-        $maximum_subject_gap_str = "";
+        $maximum_subject_gap = 0;
         $maximum_query_gap_str = "";	    
+        $maximum_subject_gap_str = "";
+        $query_start     = 0;
+        $query_end       = 0;
+        $old_query_end   = 0;
+        $subject_start   = 0;
+        $subject_end     = 0;
+        $old_subject_end = 0;
       }	
     }
     if (($state == $State_SeenDefline) && ($Linetype_length == $linetype)) {
@@ -339,6 +347,12 @@ while($keep_going) {
         $maximum_subject_gap = 0;
         $maximum_query_gap_str = "";
         $maximum_subject_gap_str = "";
+        $query_start     = 0;
+        $query_end       = 0;
+        $old_query_end   = 0;
+        $subject_start   = 0;
+        $subject_end     = 0;
+        $old_subject_end = 0;
       }
       print "HSP\t".$nhsp."\n";          #print HSP and the number of the hsp
       print "BITSCORE\t".$bitscore."\n"; #print SCORE and the bit score
@@ -377,7 +391,8 @@ while($keep_going) {
         $processing_alignment = 1;
       }
       # Query alignment line:line that begins with "Query "including a segment of the query in an alignment
-      ($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline);
+      ($query_start, $query_end, $query_alignment_part) = getAlignmentPositions($nextline, $old_query_end);
+      $old_query_end = $query_end;
       if ($first_line_query) {
         $overall_query_start = $query_start;
         $overall_query_end = $query_end;
@@ -389,7 +404,8 @@ while($keep_going) {
     }
     if($linetype == $Linetype_subject_aln) {
       # Subject alignment line: line that begins with "Sbjct "  including a segment of the vector (subject) in an alignment
-      ($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline);
+      ($subject_start, $subject_end, $subject_alignment_part) = getAlignmentPositions($nextline, $old_subject_end);
+      $old_subject_end = $subject_end;
       if ($first_line_subject) {
         $overall_subject_start = $subject_start;
         $overall_subject_end = $subject_end;
@@ -510,10 +526,14 @@ while($keep_going) {
   $one_row_query_gap_representation    = "";
   $overall_subject_gap_representation  = "";
   $one_row_subject_gap_representation  = "";
-  $maximum_subject_gap = 0;
   $maximum_query_gap = 0;	    
-  $maximum_subject_gap_str = "";
+  $maximum_subject_gap = 0;
   $maximum_query_gap_str = "";
+  $maximum_subject_gap_str = "";
+  $query_start = 0;
+  $query_end   = 0;
+  $subject_start = 0;
+  $subject_end   = 0;
 }
 ################################################
 # List of subroutines:
@@ -581,7 +601,9 @@ sub determineLineType {
       { return $Linetype_score;       }
     if($line =~ m/^\s*Identities\s*=\s+\S+/)             { return $Linetype_identities;  }    
     if($line =~ m/^Query\s+\d+\s+\D+\d+/)                { return $Linetype_query_aln;   }
-    if($line =~ m/^Sbjct\s+\d+\s+\D+\d+/)                { return $Linetype_subject_aln; }
+    if($line =~ m/^Query\s+\-+\s*$/)                     { return $Linetype_query_aln;   } # all gaps in query
+    if($line =~ m/^Sbjct\s+\d+\s+\D+\d+/)                { return $Linetype_subject_aln; } 
+    if($line =~ m/^Sbjct\s+\-+\s*$/)                     { return $Linetype_subject_aln; } # all gaps in subject
     if($line =~ m/^\s*Frame\s*=\s+\S+/)                  { return $Linetype_frame;       }        
     if($line =~ m/^\s*Strand\s*=\S+/)                    { return $Linetype_strand;      }        
     if($line =~ m/^Effective search space used/)         { return $Linetype_searchspace; }        
@@ -730,34 +752,54 @@ sub getStrand {
 
 ##########################################################################################
 # Subroutine: getAlignmentPositions()
-# Synopsis:   Extracts two numerical positions from
+# Synopsis:   Extracts two numerical positions and
+#             the alignment string from
 #             a query or subject alignment line.
+#             In rare cases, the alignment string can
+#             be all gaps in which case no numerical positions
+#             are included. This function can deal with that
+#             by returning $prv_end as return values for both 
+#             $start and $end.
 #
 # Args: $line: query alignment or vector alignment line of
 #              input file
-#
-# Returns: TWO values:
+#       $prv_end: end position of previous alignment string
+#      
+# Returns: Three values:
 #          $start: the start position
 #          $end:   the end position
+#          $aln:   alignment string
 #
 # Dies: if $line is not a query or vector alignment line;
 #       does not match either of
-#       /Query\s+(\d+)\s+\D+(\d+)/ or
-#       /Sbjct\s+(\d+)\s+\D+(\d+)/
+#       /Query\s+(\d+)\s+(\S+)\s+(\d+)/ or
+#       /Sbjct\s+(\d+)\s+(\S+)\s+(\d+)/ or
+#       /Query\s+(\-+)\s* or (all gaps in query)
+#       /Sbjct\s+(\-+)\s* or (all gaps in subject)
 #
 ##########################################################################################
 sub getAlignmentPositions {
     my $sub_name = "getAlignmentPositions()";
-    my $nargs_exp = 1;
+    my $nargs_exp = 2;
     if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-    my ($line) = @_;
+    my ($line, $prv_end) = @_;
+
+    if($DEBUG) { 
+      printf("in getAlignmentPositions(), line: $line, prv_end: $prv_end\n");
+    }
 
     if($line =~ m/^Query\s+(\d+)\s+(\S+)\s+(\d+)/) {
-	return ($1, $3, $2);
+      return ($1, $3, $2);
     }
     elsif($line =~ m/^Sbjct\s+(\d+)\s+(\S+)\s+(\d+)/) {
-	return ($1, $3, $2);
+      return ($1, $3, $2);
+    }
+    elsif($line =~ m/^Query\s+(\-+)\s*/) {
+      return ($prv_end, $prv_end, $1);
+    }
+    elsif($line =~ m/^Sbjct\s+(\-+)\s*/) {
+      return ($prv_end, $prv_end, $1);
     }
     else {
 	die "in $sub_name(), unexpected format for input line: $line\n";
@@ -843,6 +885,10 @@ sub findQueryGaps {
 
   my ($query_alignment_string, $subject_alignment_string, $query_start, $query_end, $subject_start, $subject_end, $old_gap_overhang, $program) = @_;
 
+  if($DEBUG) { 
+    print("in $sub_name,\n\tquery_alignment_string: $query_alignment_string\n\tsubject_alignment_string: $subject_alignment_string\n");
+  }
+
   my $local_residue_qlen = ($program eq "x") ? 3 : 1; # length of one query position in nt in query (3 if blastx, else 1 (blast))
   my $local_length = length($query_alignment_string);  #length of this alignment block
   my @local_query_array = split("",$query_alignment_string);
@@ -866,7 +912,7 @@ sub findQueryGaps {
   $local_QueryPositionIndex = $query_start;
   $local_SubjectPositionIndex = $subject_start;
   if ($DEBUG) {
-    print "In findQueryGaps: Subject start is $subject_start\n";
+    print "In findQueryGaps: Subject start is $subject_start, old_gap_overhang is: $old_gap_overhang\n";
   }
   if ($query_start < $query_end) {
     if ($old_gap_overhang) {

@@ -113,7 +113,19 @@ sub run_blastn_and_summarize_output {
       sprintf("Classifying sequences with blastn ($nseq seq%s)", (($nseq > 1) ? "s" : ""));
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
-  my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
+  my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file";
+  $opt_str .= " -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
+  $opt_str .= " -reward " . opt_Get("--s_blastnrw", $opt_HHR); 
+  $opt_str .= " -penalty " . opt_Get("--s_blastnpn", $opt_HHR); 
+  if(opt_IsUsed("--s_blastngo", $opt_HHR)) { 
+    $opt_str .= " -gapopen " . opt_Get("--s_blastngo", $opt_HHR); 
+  }
+  if(opt_IsUsed("--s_blastnge", $opt_HHR)) { 
+    $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
+  }
+  if(opt_IsUsed("--s_blastntk", $opt_HHR)) { 
+    $opt_str .= " -task blastn";
+  }
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
@@ -649,10 +661,10 @@ sub blastn_pretblout_to_tblout {
 #  $ofile_info_HHR:      REF to 2D hash of output file information, ADDED TO HERE
 #
 # Returns:    Two values:
-#             $ugp_mdl_coords: vadr coords string with all segments of ungapped alignments between
+#             $sda_mdl_coords: vadr coords string with all segments of ungapped alignments between
 #                              query and subject in model (subject) coords, between model coords
 #                              in $in_mdl_coords_sgm.
-#             $ugp_seq_coords: vadr coords string with all segments of ungapped alignments between
+#             $sda_seq_coords: vadr coords string with all segments of ungapped alignments between
 #                              query and subject in sequence (query) coords, between sequence coords
 #                              in $in_seq_coords_sgm.
 #
@@ -688,8 +700,8 @@ sub parse_blastn_indel_strings {
   if($seq_strand ne "+") { ofile_FAIL("ERROR in $sub_name, sequence (query) strand in model coords: $in_seq_coords_sgm is not +", 1, $FH_HR); }
   
   # construct a vadr coords string of ungapped aligned segments, segment by segment
-  my $ugp_mdl_coords = "";
-  my $ugp_seq_coords = "";
+  my $sda_mdl_coords = "";
+  my $sda_seq_coords = "";
   my $cur_mdl_start = $mdl_start;
   my $cur_seq_start = $seq_start;
 
@@ -764,13 +776,13 @@ sub parse_blastn_indel_strings {
       # sanity check that the segments we are about to add to mdl and seq
       # coords are the same length (they represent a chunk of ungapped alignment)
       if(($ins_mdl_pos - $cur_mdl_start + 1) != ($ins_seq_pos - $cur_seq_start + 1)) {
-        # print("\t\tugp_mdl_coords: $ugp_mdl_coords\n");
-        # print("\t\tugp_seq_coords: $ugp_seq_coords\n");
+        # print("\t\tsda_mdl_coords: $sda_mdl_coords\n");
+        # print("\t\tsda_seq_coords: $sda_seq_coords\n");
         ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments before next insert, but lengths don't match up: mdl: $cur_mdl_start .. $ins_mdl_pos, seq: $cur_seq_start .. $ins_seq_pos", 1, $FH_HR);
       }
-      $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+", $FH_HR));
+      $sda_mdl_coords = vdr_CoordsAppendSegment($sda_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $ins_mdl_pos, "+", $FH_HR));
       $cur_mdl_start  = $ins_mdl_pos + 1;
-      $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $ins_seq_pos, "+", $FH_HR));
+      $sda_seq_coords = vdr_CoordsAppendSegment($sda_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $ins_seq_pos, "+", $FH_HR));
       $cur_seq_start  = $ins_seq_pos + $ins_len + 1;
       $update_ins = 1;
       $ii++;
@@ -781,9 +793,9 @@ sub parse_blastn_indel_strings {
       if(($del_mdl_pos - $cur_mdl_start + 1) != ($del_seq_pos - $cur_seq_start + 1)) {
         ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments before next delete, but lengths don't match up: mdl: $cur_mdl_start .. $del_mdl_pos, seq: $cur_seq_start .. $del_seq_pos", 1, $FH_HR);
       }
-      $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $del_mdl_pos, "+", $FH_HR));
+      $sda_mdl_coords = vdr_CoordsAppendSegment($sda_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $del_mdl_pos, "+", $FH_HR));
       $cur_mdl_start  = $del_mdl_pos + $del_len + 1;
-      $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $del_seq_pos, "+", $FH_HR));
+      $sda_seq_coords = vdr_CoordsAppendSegment($sda_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $del_seq_pos, "+", $FH_HR));
       $cur_seq_start  = $del_seq_pos + 1;
       $update_del = 1;
       $di++;
@@ -795,22 +807,22 @@ sub parse_blastn_indel_strings {
   } # end of 'while(($ii < $nins) && ($di < $ndel))'
   # add the final segment
   if($cur_mdl_start > $mdl_stop) {
-    ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of model (subject) positions, trying to add $cur_mdl_start..$mdl_stop:+ to $ugp_mdl_coords", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of model (subject) positions, trying to add $cur_mdl_start..$mdl_stop:+ to $sda_mdl_coords", 1, $FH_HR);
   }
   if($cur_seq_start > $seq_stop) {
-    ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of sequence (query) positions, trying to add $cur_seq_start..$seq_stop:+ to $ugp_seq_coords", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, trying to append final ungapped segment but out of sequence (query) positions, trying to add $cur_seq_start..$seq_stop:+ to $sda_seq_coords", 1, $FH_HR);
   }
   # sanity check that the segments we are about to add to mdl and seq
   # coords are the same length (they represent a chunk of ungapped alignment)
   if(($mdl_stop - $cur_mdl_start + 1) != ($seq_stop - $cur_seq_start + 1)) {
     ofile_FAIL("ERROR in $sub_name, trying to add ungapped segments as final segment, but lengths don't match up: mdl: $cur_mdl_start .. $mdl_stop, seq: $cur_seq_start .. $seq_stop", 1, $FH_HR);
   }
-  $ugp_mdl_coords = vdr_CoordsAppendSegment($ugp_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+", $FH_HR));
-  $ugp_seq_coords = vdr_CoordsAppendSegment($ugp_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+", $FH_HR));
+  $sda_mdl_coords = vdr_CoordsAppendSegment($sda_mdl_coords, vdr_CoordsSegmentCreate($cur_mdl_start, $mdl_stop, "+", $FH_HR));
+  $sda_seq_coords = vdr_CoordsAppendSegment($sda_seq_coords, vdr_CoordsSegmentCreate($cur_seq_start, $seq_stop, "+", $FH_HR));
 
-  # print("in $sub_name, returning mdl: $ugp_mdl_coords, seq: $ugp_seq_coords\n");
+  # print("in $sub_name, returning mdl: $sda_mdl_coords, seq: $sda_seq_coords\n");
   
-  return ($ugp_mdl_coords, $ugp_seq_coords);
+  return ($sda_mdl_coords, $sda_seq_coords);
 }
   
 #################################################################
@@ -887,24 +899,26 @@ sub parse_blastn_indel_token {
 #              <source>:  name of source sequence to fetch subseq from 
 #
 # Arguments: 
-#  $indel_file:      blastn indel file to parse, created by 
-#                    parse_blastn_results() for a single model 
-#  $seq_name_AR:     REF to array of sequences we want to parse indel info for
-#  $seq_len_HR:      REF to hash of sequence lengths
-#  $exp_mdl_name:    name of model we expect on all lines of $indel_file
-#  $subseq_AAR:      REF to 2D array with subseq info, FILLED HERE
-#  $ugp_mdl_HR:      REF to hash, key is <seq_name>, value is mdl coords
-#                    segment of max ungapped blast aln, FILLED HERE
-#  $ugp_seq_HR:      REF to hash, key is <seq_name>, value is seq coords
-#                    segment of max ungapped blast aln, FILLED HERE
-#  $seq2subseq_HAR:  REF to hash of arrays, key is <seq_name>,
-#                    value is array of names of subsequences pertaining to
-#                    <seq_name>, FILLED HERE
-#  $subseq2seq_HR:   REF to hash, key is subseq name, value is <seq_name>
-#                    it derives from, FILLED HERE
-#  $subseq_len_HR:   REF to hash of lengths of subsequences, FILLED HERE
-#  $opt_HHR:         REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $ofile_info_HHR:  REF to 2D hash of output file information, ADDED TO HERE
+#  $indel_file:         blastn indel file to parse, created by 
+#                       parse_blastn_results() for a single model 
+#  $seq_name_AR:        REF to array of sequences we want to parse indel info for
+#  $seq_len_HR:         REF to hash of sequence lengths
+#  $exp_mdl_name:       name of model we expect on all lines of $indel_file
+#  $start_codon_coords: string of start codon coords for all CDS
+#  $stop_codon_coords:  string of stop codon coords for all CDS
+#  $subseq_AAR:         REF to 2D array with subseq info, FILLED HERE
+#  $sda_mdl_HR:         REF to hash, key is <seq_name>, value is mdl coords
+#                       segment of max ungapped blast aln, FILLED HERE
+#  $sda_seq_HR:         REF to hash, key is <seq_name>, value is seq coords
+#                       segment of max ungapped blast aln, FILLED HERE
+#  $seq2subseq_HAR:     REF to hash of arrays, key is <seq_name>,
+#                       value is array of names of subsequences pertaining to
+#                       <seq_name>, FILLED HERE
+#  $subseq2seq_HR:      REF to hash, key is subseq name, value is <seq_name>
+#                       it derives from, FILLED HERE
+#  $subseq_len_HR:      REF to hash of lengths of subsequences, FILLED HERE
+#  $opt_HHR:            REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $ofile_info_HHR:     REF to 2D hash of output file information, ADDED TO HERE
 #                         
 # Returns:    void
 #
@@ -913,14 +927,19 @@ sub parse_blastn_indel_token {
 ################################################################# 
 sub parse_blastn_indel_file_to_get_subseq_info { 
   my $sub_name = "parse_blastn_indel_file_to_get_subseq_info";
-  my $nargs_exp = 12;
+  my $nargs_exp = 14;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
-  my ($indel_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $subseq_AAR, $ugp_mdl_HR, $ugp_seq_HR,
-      $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, $opt_HHR, $ofile_info_HHR) = @_;
+  my ($indel_file, $seq_name_AR, $seq_len_HR, $exp_mdl_name, $start_codon_coords, $stop_codon_coords,
+      $subseq_AAR, $sda_mdl_HR, $sda_seq_HR, $seq2subseq_HAR, $subseq2seq_HR, $subseq_len_HR, 
+      $opt_HHR, $ofile_info_HHR) = @_;
 
-  my $FH_HR  = $ofile_info_HHR->{"FH"};
+  my $FH_HR = $ofile_info_HHR->{"FH"};
   my $nt_overhang = opt_Get("--s_overhang", $opt_HHR);
+  my $min_sgm_len = opt_Get("--s_minsgmlen", $opt_HHR);
+  my $do_allsgm   = opt_Get("--s_allsgm", $opt_HHR);
+  my $do_ungapsgm = opt_Get("--s_ungapsgm", $opt_HHR);
+  my $do_realign_startstop = ($do_allsgm || opt_Get("--s_startstop", $opt_HHR)) ? 0 : 1;
 
   my %processed_H = (); # key: sequence name we want indel info for, 
                         # value: 0 if we have not processed an HSP for this sequence
@@ -929,6 +948,17 @@ sub parse_blastn_indel_file_to_get_subseq_info {
     $processed_H{$seq_name} = 0; 
   }
   my $nprocessed = 0;
+
+  # process $start_codon_coords and $stop_codon_coords strings into arrays
+  my $start_and_stop_codon_coords = $start_codon_coords;
+  my @codon_start_A  = ();
+  my @codon_stop_A   = ();
+  my @codon_strand_A = ();
+  if(($start_and_stop_codon_coords ne "") && ($start_and_stop_codon_coords !~ m/\,$/)) { 
+    $start_and_stop_codon_coords .= ",";
+  }
+  $start_and_stop_codon_coords .= $stop_codon_coords;
+  vdr_FeatureStartStopStrandArrays($start_and_stop_codon_coords, \@codon_start_A, \@codon_stop_A, \@codon_strand_A, $FH_HR);
 
   open(IN, $indel_file) || ofile_FileOpenFailure($indel_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
@@ -951,28 +981,148 @@ sub parse_blastn_indel_file_to_get_subseq_info {
       if((defined $processed_H{$seq_name}) && ($processed_H{$seq_name} == 0)) {
         # top hit for this sequence
         my $seq_len = $seq_len_HR->{$seq_name};
-        my ($ugp_mdl_coords, $ugp_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
+        my ($sda_mdl_coords, $sda_seq_coords) = parse_blastn_indel_strings($mdl_coords, $seq_coords,
                                                                            $ins_str, $del_str, $FH_HR);
-        my ($argmax_ugp_mdl_sgm, $max_ugp_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_mdl_coords, $FH_HR);
-        my ($argmax_ugp_seq_sgm, $max_ugp_seq_sgm_len) = vdr_CoordsMaxLengthSegment($ugp_seq_coords, $FH_HR);
-        # sanity check: these should be the same length
-        if($max_ugp_mdl_sgm_len != $max_ugp_seq_sgm_len) {
-          ofile_FAIL("ERROR in $sub_name, max ungapped model segment length and ungapped sequence length differ ($max_ugp_mdl_sgm_len != $max_ugp_seq_sgm_len)", 1, $FH_HR);
+
+        # determine start/stop position of seed region
+        my @sda_seq_start_A  = ();
+        my @sda_seq_stop_A   = ();
+        my @sda_seq_strand_A = ();
+        my @sda_mdl_start_A  = ();
+        my @sda_mdl_stop_A   = ();
+        my @sda_mdl_strand_A = ();
+        vdr_FeatureStartStopStrandArrays($sda_seq_coords, \@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
+        vdr_FeatureStartStopStrandArrays($sda_mdl_coords, \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
+        my $orig_sda_nsgm = scalar(@sda_seq_start_A);
+        my $sda_seq_start  = $sda_seq_start_A[0];
+        my $sda_seq_stop   = $sda_seq_stop_A[($orig_sda_nsgm-1)];
+        my $sda_seq_strand = $sda_seq_strand_A[0];
+
+        # Now potentially manipulate the seed region so that we don't
+        # rely on the blastn alignment in regions where we know it
+        # is not optimal for our purposes.
+        # 
+        # First, check to see if any of the gaps in the model positions
+        # occur within a CDS start or stop codon. If so we just take
+        # the maximum length ungapped segment and remove all the rest.
+        # This is because blastn tends to place gaps within TAA 
+        # stop codons in some situations that lead to downstream alerts
+        # in ways we can't fix with the current alignment doctoring 
+        # strategies. 
+        #
+        # For example: 
+        #
+        # blastn align this way (leads to stop codon problem):
+        #
+        #             stp
+        # seq AGACTTATT-AACCAG
+        # mdl AGACTTATTAAACCAG
+        #
+        # desired alignment (glsearch does this, no stop codon problem):
+        #
+        #             stp
+        # seq AGACTTATTAA-CCAG
+        # mdl AGACTTATTAAACCAG
+        # 
+        # We could try to save as much as the seed as possible
+        # losing only those segments 5' of the affected start or
+        # 3' of the affected stop but I think the code required to 
+        # deal with this (especially in the case of multiple affected
+        # start and/or stop codons) is too complex to warrant the 
+        # speed-up. I expect this case to be rare and suffering
+        # the minor speed hit when it occurs is better than adding
+        # that extra, complicated code.
+        # 
+        # If the seed does not have any gaps in any start or stop
+        # codes, then we remove any terminal segments such that the
+        # final set of segments satisfies the following 2 criteria:
+        # 1. terminal segments either include the sequence terminus
+        #    (position 1 on 5' end, position $seq_len
+        #    on 3' end) OR have length of at least $nt_overhang
+        #    (from --s_overhang).
+        # 2. *all* segments have length at least $min_sgm_len
+        #    (from --s_minsgmlen), *UNLESS* $do_allsgm (--s_allsgm enabled)
+        # 
+        # We enforce criteria 1 because any terminal segment with
+        # length < $nt_overhang means there will almost certainly
+        # be a gap in the overhang region leading to an 'unjoinable'
+        # alignment which results in the full sequence being aligned
+        # by either cmalign or glsearch.
+        #
+        # We enforce criteria 2 because blastn tends to introduce
+        # a lot separate gaps, like this:
+        #
+        #       CGAGG--AC----AGT--GAAC-A----A---TG-----T--TAGGGAGAGC
+        #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
+        #
+        # instead of:
+        # 
+        #       CGAGG-----------------------ACAGTGAACAATGTTAGGGAGAGC
+        #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
+        # 
+        # due to its default scoring parameters (gap open 0, gap extend -2.5)
+        # I experimented with changing the blastn gap parameters but 
+        # that led to other complications (see notebook dir: 21_0825_vadr_seed_with_gaps/)
+        # so I went with the solution of removing any segment that is
+        # less than length 10, because it had the attractive 
+        # feature that it did not change how blastn had been
+        # used previously (v1.1 to 1.3) whereas changing the blastn
+        # gap parameters would have.
+        my $only_keep_max_ungap_sgm = $do_ungapsgm; # if --s_ungapsgm: only keep max length (ungapped) segment
+        # if any gaps in the model overlap with start or stop codons, only keep max length (ungapped) segment
+        if((! $only_keep_max_ungap_sgm) && ($do_realign_startstop)) { 
+          $only_keep_max_ungap_sgm = check_seed_overlap_with_start_stop_codons(\@sda_mdl_start_A, \@sda_mdl_stop_A, 
+                                                                               \@codon_start_A, \@codon_stop_A, $FH_HR);
         }
 
-        # determine subseq info
-        $ugp_mdl_HR->{$seq_name} = $argmax_ugp_mdl_sgm;
-        $ugp_seq_HR->{$seq_name} = $argmax_ugp_seq_sgm;
-        my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($argmax_ugp_seq_sgm, $FH_HR);
-        if(($ugp_seq_start == 1) && ($ugp_seq_stop == $seq_len)) {
+        # if we are not just keeping the max ungap sgm
+        if(! $only_keep_max_ungap_sgm) { 
+          if(! $do_allsgm) { 
+            prune_seed_given_minimum_length_segment(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
+                                                    \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
+                                                    $min_sgm_len);
+          }
+          prune_seed_of_terminal_short_segments(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A,
+                                                \@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A,
+                                                $nt_overhang, $seq_len);
+        }
+        my $sda_nsgm = scalar(@sda_seq_start_A);
+        
+        if(($orig_sda_nsgm != $sda_nsgm) || ($only_keep_max_ungap_sgm)) { 
+          printf("HEYA! in $sub_name, rewriting coords\n");
+          printf("\torig coords: seq: $sda_seq_coords mdl: $sda_mdl_coords\n");
+          if(($sda_nsgm == 0) || ($only_keep_max_ungap_sgm)) { # take maximum length segment from original
+            my ($argmax_sda_seq_sgm, $max_sda_seq_sgm_len) = vdr_CoordsMaxLengthSegment($sda_seq_coords, $FH_HR);
+            my ($argmax_sda_mdl_sgm, $max_sda_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($sda_mdl_coords, $FH_HR);
+            $sda_seq_coords = $argmax_sda_seq_sgm;
+            $sda_mdl_coords = $argmax_sda_mdl_sgm;
+            ($sda_seq_start, $sda_seq_stop, $sda_seq_strand) = vdr_CoordsSegmentParse($argmax_sda_seq_sgm, $FH_HR);
+            $sda_nsgm = 1;
+          }
+          else { # at least one segment left, and ! $only_keep_max_ungap_sgm, recreate $sda_seq_coords and $sda_mdl_coords:
+            $sda_seq_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_seq_start_A, \@sda_seq_stop_A, \@sda_seq_strand_A, $FH_HR);
+            $sda_mdl_coords = vdr_CoordsFromStartStopStrandArrays(\@sda_mdl_start_A, \@sda_mdl_stop_A, \@sda_mdl_strand_A, $FH_HR);
+            $sda_seq_start = $sda_seq_start_A[0];
+            $sda_seq_stop  = $sda_seq_stop_A[($sda_nsgm-1)];
+          }
+        }
+        $sda_seq_HR->{$seq_name} = $sda_seq_coords;
+        $sda_mdl_HR->{$seq_name} = $sda_mdl_coords;
+        printf("HEYA 1\n\tsda_seq_coords: $sda_seq_coords\n\tsda_mdl_coords: $sda_mdl_coords\n");
+        # finished setting sda_seq_coords and sda_mdl_coords
+        ##########
+
+        ##########
+        # determine subsequences outside of (and overlapping with) the seed region to align with cmalign or glsearch
+        if(($sda_seq_start == 1) && ($sda_seq_stop == $seq_len)) {
           ; # do nothing, full sequence is covered by the max
           # length ungapped blast hit, no need to fetch or align with cmalign
         }
         else {
-          # normal case: full seq not covered, fetch 5' end and/or 3' end
+          # full seq not covered, fetch 5' end and/or 3' end
           my $start_5p = 1;
-          my $stop_5p  = $ugp_seq_start + $nt_overhang - 1;
-          my $start_3p = $ugp_seq_stop  - $nt_overhang + 1;
+          my $stop_5p  = $sda_seq_start + $nt_overhang - 1;
+          my $start_3p = $sda_seq_stop  - $nt_overhang + 1;
           my $stop_3p  = $seq_len;
           my $subseq_name = undef;
           if($stop_5p >= $start_3p) { # the two regions overlap, just fetch the full sequence
@@ -985,14 +1135,14 @@ sub parse_blastn_indel_file_to_get_subseq_info {
           else { # two regions do not overlap, fetch 5' and/or 3' ends
             @{$seq2subseq_HAR->{$seq_name}} = ();
 
-            if($ugp_seq_start != 1) { 
+            if($sda_seq_start != 1) { 
               $subseq_name = $seq_name . "/" . $start_5p . "-" . $stop_5p; 
               push(@{$subseq_AAR}, [ $subseq_name, $start_5p, $stop_5p, $seq_name ]);
               push(@{$seq2subseq_HAR->{$seq_name}}, $subseq_name);
               $subseq2seq_HR->{$subseq_name} = $seq_name;
               $subseq_len_HR->{$subseq_name} = $stop_5p;
             }
-            if($ugp_seq_stop != $seq_len) { 
+            if($sda_seq_stop != $seq_len) { 
               $subseq_name = $seq_name . "/" . $start_3p . "-" . $stop_3p; 
               push(@{$subseq_AAR}, [ $subseq_name, $start_3p, $stop_3p, $seq_name ]);
               push(@{$seq2subseq_HAR->{$seq_name}}, $subseq_name);
@@ -1050,9 +1200,9 @@ sub parse_blastn_indel_file_to_get_subseq_info {
 #  $seq_len_HR:            REF to hash of sequence lengths
 #  $mdl_info_AHR:          REF to model info array of hashes, possibly added to here 
 #  $mdl_idx:               index of model in @{mdl_info_AHR} these sequences were assigned to
-#  $ugp_mdl_HR:            REF to hash, key is <seq_name>, value is mdl coords
+#  $sda_mdl_HR:            REF to hash, key is <seq_name>, value is mdl coords
 #                          segment of max ungapped blast aln, already filled
-#  $ugp_seq_HR:            REF to hash, key is <seq_name>, value is mdl coords
+#  $sda_seq_HR:            REF to hash, key is <seq_name>, value is mdl coords
 #                          segment of max ungapped blast aln, already filled
 #  $seq2subseq_HAR:        REF to hash of arrays, key is <seq_name>,
 #                          value is array of names of subsequences pertaining to
@@ -1080,32 +1230,38 @@ sub join_alignments_and_add_unjoinbl_alerts {
   
   my ($sqfile_R, $blastn_db_sqfile_R, $execs_HR, $do_glsearch, $cm_file, 
       $seq_name_AR, $seq_len_HR, 
-      $mdl_info_AHR, $mdl_idx, $ugp_mdl_HR, $ugp_seq_HR, 
+      $mdl_info_AHR, $mdl_idx, $sda_mdl_HR, $sda_seq_HR, 
       $seq2subseq_HAR, $subseq_len_HR, $in_stk_file_AR, 
       $out_stk_file_AR, $sda_output_HHR, 
       $alt_seq_instances_HHR, $alt_info_HHR, $unjoinbl_seq_name_AR,
       $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
-  # printf("in $sub_name for mdl $mdl_name\n");
-  
   my $FH_HR  = $ofile_info_HHR->{"FH"};
   my $do_keep = opt_Get("--keep", $opt_HHR);
   my $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
   my $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
-  my $mdl_consensus_sqstring;
-  if(opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR)) { 
-    # We may already have cseq from the blastn -r alignment, but even
-    # if we do if we are outputting an alignment eventually then we
-    # want to recreate it from cmemit because we are going to
-    # eventually merge the alignments in which case we need all RF
-    # annotation to be identical (equal to cmemit seq) Open all of the
-    # input stk files and fetch the aligned sequence strings for all
-    # sequences
-    $mdl_consensus_sqstring = undef;
-  }
-  else { # if we're not going to output, then use it if we already have it
+  my $mdl_consensus_sqstring = undef;
+  # We may already have mdl_consensus_sqstring cseq from the blastn -r alignment, but even
+  # if we do if we are outputting an alignment eventually then we
+  # want to recreate it from cmemit because we are going to
+  # eventually merge the alignments in which case we need all RF
+  # annotation to be identical (equal to cmemit seq)
+  if(! (opt_Get("--keep", $opt_HHR) || opt_Get("--out_stk", $opt_HHR) || opt_Get("--out_afa", $opt_HHR) || opt_Get("--out_rpstk", $opt_HHR) || opt_Get("--out_rpafa", $opt_HHR))) { 
     $mdl_consensus_sqstring = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
   }
+  if(! defined $mdl_consensus_sqstring) { 
+    if(! $do_glsearch) { 
+      my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
+      $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
+      $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+      ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
+    }
+    else { 
+      $mdl_consensus_sqstring = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($mdl_name);
+    }
+  }
+  printf("mdl_consensus_sqstring len: " . length($mdl_consensus_sqstring) . "\n");
+
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
   my %ali_subseq_H = ();     # key is subseq name, value is aligned sqstring for that subseq
@@ -1152,7 +1308,6 @@ sub join_alignments_and_add_unjoinbl_alerts {
     vdr_CmalignParseInsertFile($in_ifile, \%subseq_inserts_HH, undef, undef, undef, undef, $FH_HR);
   }
 
-
   # define variables for the output insert file we will create
   my $out_ifile = $out_root . "." . $mdl_name . ".jalign.ifile";
   my $out_ifile_key = $mdl_name . ".jalign.ifile";
@@ -1170,8 +1325,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
   foreach my $seq_name (@{$seq_name_AR}) {
     # sanity checks
     if(! defined $seq_len_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no seq_len entry for sequence $seq_name", 1, $FH_HR); }
-    if(! defined $ugp_mdl_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no ugp_mdl entry for sequence $seq_name", 1, $FH_HR); }
-    if(! defined $ugp_seq_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no ugp_seq entry for sequence $seq_name", 1, $FH_HR); }
+    if(! defined $sda_mdl_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no sda_mdl entry for sequence $seq_name", 1, $FH_HR); }
+    if(! defined $sda_seq_HR->{$seq_name}) { ofile_FAIL("ERROR in $sub_name, no sda_seq entry for sequence $seq_name", 1, $FH_HR); }
 
     my $seq_len = $seq_len_HR->{$seq_name};
     my $ali_seq_line = ""; # aligned full sequence string 
@@ -1200,13 +1355,16 @@ sub join_alignments_and_add_unjoinbl_alerts {
     $seq_inserts_HH{$seq_name}{"ins"}  = ""; # initialize
 
     # ungapped blastn region variables
-    my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = (undef, undef, undef);
-    my ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = (undef, undef, undef);
-    my $ugp_seq = undef;
-    if(defined $ugp_seq_HR->{$seq_name}) {
-      ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_HR->{$seq_name}, $FH_HR);
-      ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = vdr_CoordsSegmentParse($ugp_mdl_HR->{$seq_name}, $FH_HR);
-      $ugp_seq = $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $ugp_seq_start, $ugp_seq_stop);
+    my ($sda_seq_start, $sda_seq_stop) = (undef, undef);
+    my ($sda_mdl_start, $sda_mdl_stop) = (undef, undef);
+    my $sda_seq = "";
+    my $sda_mdl = "";
+    my $sda_inserts_str = "";
+    if(defined $sda_seq_HR->{$seq_name}) {
+      my $full_sqstring = $$sqfile_R->fetch_seq_to_sqstring($seq_name);
+      ($sda_seq_start, $sda_seq_stop, $sda_mdl_start, $sda_mdl_stop, 
+       $sda_seq, $sda_mdl, $sda_inserts_str) = process_seed_seq_and_mdl_coords($sda_seq_HR->{$seq_name}, $sda_mdl_HR->{$seq_name}, 
+                                                                               $full_sqstring, $mdl_consensus_sqstring, $FH_HR);
     }
     
     my $full_seq_idx = undef; # set to subseq idx if we have a alignment of the full sequence (case 1)
@@ -1218,8 +1376,11 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # so either case 1 or 2
       $seq_case = 2; # set to 1 below if nec
       my $nsubseq = scalar(@{$seq2subseq_HAR->{$seq_name}});
+      printf("seq2subseq_HAR->{$seq_name} is defined\n");
+      printf("nsubseq: $nsubseq\n");
       for(my $s = 0; $s < $nsubseq; $s++) { 
         my $subseq_name = $seq2subseq_HAR->{$seq_name}[$s];
+        printf("subseq_name: $subseq_name\n");
         if($subseq_name =~ /^(\S+)\/(\d+)\-(\d+)$/) {
           my ($orig_seq_name, $subseq_start, $subseq_stop) = ($1, $2, $3);
           if($orig_seq_name ne $seq_name) {
@@ -1263,6 +1424,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
       } # end of 'for(my $s = 0; $s < $nsubseq; $s++) {' over subseqs
 
       # we know which case, and which aligned (sub)sequences pertain to this sequence (if case 2 or 3)
+      printf("seq_case: $seq_case\n");
       my $stk_idx = undef;
       my $subseq_name = undef;
       if($seq_case == 1) { 
@@ -1312,10 +1474,14 @@ sub join_alignments_and_add_unjoinbl_alerts {
           # printf("ali_5p_idx defined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
         }
         else {
-          $seq_inserts_HH{$seq_name}{"spos"} = $ugp_mdl_start;
-          # $seq_inserts_HH{$seq_name}{"ins"} is not affected - no inserts in ungapped region
+          $seq_inserts_HH{$seq_name}{"spos"} = $sda_mdl_start;
           # printf("ali_5p_idx undefined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . "\n");
         }
+
+        # seed-with-gaps
+        # add in inserts from seed
+        $seq_inserts_HH{$seq_name}{"ins"} .= $sda_inserts_str;
+
         if(defined $ali_3p_idx) {
           $subseq_name  = $seq2subseq_HAR->{$seq_name}[$ali_3p_idx];
           $stk_idx      = $subseq2stk_idx_H{$subseq_name};
@@ -1341,8 +1507,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
           # printf("ali_3p_idx defined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
         }
         else {
-          $seq_inserts_HH{$seq_name}{"epos"} = $ugp_mdl_stop;
-          # $seq_inserts_HH{$seq_name}{"ins"} is not affected - no inserts in ungapped region
+          $seq_inserts_HH{$seq_name}{"epos"} = $sda_mdl_stop;
           # printf("ali_3p_idx undefined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . "\n");
         }
       }
@@ -1353,8 +1518,9 @@ sub join_alignments_and_add_unjoinbl_alerts {
 
     # finally if the ungapped region aligned by blastn was the full sequence, set spos and epos accordingly
     if($seq_case == 3) {
-      $seq_inserts_HH{$seq_name}{"spos"} = $ugp_mdl_start;
-      $seq_inserts_HH{$seq_name}{"epos"} = $ugp_mdl_stop;
+      $seq_inserts_HH{$seq_name}{"spos"} = $sda_mdl_start;
+      $seq_inserts_HH{$seq_name}{"epos"} = $sda_mdl_stop;
+      $seq_inserts_HH{$seq_name}{"ins"}  = $sda_inserts_str;
     }
     
     # sanity check, only way we should have the aligned sequence is case 1
@@ -1374,22 +1540,12 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # in case 3, it will return the blastn alignment and construct the
       #            ungapped model/RF alignment
       # first, fetch the ungapped region of the sequence
-      if(! defined $mdl_consensus_sqstring) { 
-        if(! $do_glsearch) { 
-          my $cseq_fa_file = $out_root . "." . $mdl_name . ".cseq.fa";
-          $mdl_info_AHR->[$mdl_idx]{"cseq"} = vdr_CmemitConsensus($execs_HR, $cm_file, $mdl_name, $cseq_fa_file, $opt_HHR, $ofile_info_HHR);
-          $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-          ofile_AddClosedFileToOutputInfo($ofile_info_HHR, $mdl_name . ".cseq.fa", $cseq_fa_file, 0, opt_Get("--keep", $opt_HHR), "fasta with consensus sequence for model $mdl_name");
-        }
-        else { 
-          $mdl_consensus_sqstring = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($mdl_name);
-        }
-      }
       ($ali_seq_line, $ali_mdl_line, $ali_pp_line) =
           join_alignments_helper($do_glsearch,
                                  $ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
                                  $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp,
-                                 $ugp_seq_HR->{$seq_name}, $ugp_mdl_HR->{$seq_name}, $ugp_seq, $mdl_consensus_sqstring, 
+                                 $sda_seq_start, $sda_seq_stop, $sda_mdl_start, $sda_mdl_stop, 
+                                 $sda_seq, $sda_mdl, $mdl_consensus_sqstring, 
                                  $seq_len, $mdl_len, $ofile_info_HHR);
       if(! defined $ali_seq_line) {
         # this means something went wrong when we tried to join the alignments,
@@ -1426,8 +1582,8 @@ sub join_alignments_and_add_unjoinbl_alerts {
 
     # fill sda_output_HHR, to output later to .sda file in output_tabular
     # do this even if we didn't create the alignment (if $alt_msg ne "")
-    $sda_output_HHR->{$seq_name}{"ugp_seq"} = $ugp_seq_HR->{$seq_name};
-    $sda_output_HHR->{$seq_name}{"ugp_mdl"} = $ugp_mdl_HR->{$seq_name};
+    $sda_output_HHR->{$seq_name}{"sda_seq"} = $sda_seq_HR->{$seq_name};
+    $sda_output_HHR->{$seq_name}{"sda_mdl"} = $sda_mdl_HR->{$seq_name};
     $sda_output_HHR->{$seq_name}{"5p_seq"}  = (defined $ali_5p_seq_coords) ? $ali_5p_seq_coords : undef;
     $sda_output_HHR->{$seq_name}{"3p_seq"}  = (defined $ali_3p_seq_coords) ? $ali_3p_seq_coords : undef;
     $sda_output_HHR->{$seq_name}{"3p_mdl"}  = (defined $ali_3p_mdl_coords) ? $ali_3p_mdl_coords : undef;
@@ -1465,28 +1621,31 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #  $do_glsearch:            '1' if we used glsearch to create alignment in this
 #                           case we do not have PP info
 #  $ali_5p_seq_coords:      aligned 5' region sequence coords string
-#                           undef if none, ugp_seq_start must be 1 in this case 
+#                           undef if none, sda_seq_start must be 1 in this case 
 #  $ali_5p_mdl_coords:      aligned 5' region model coords string
-#                           undef if none, ugp_seq_start must be 1 in this case 
+#                           undef if none, sda_seq_start must be 1 in this case 
 #  $ali_5p_seq:             aligned 5' end of sequence from cmalign, 
-#                           undef if none, ugp_seq_start must be 1 in this case 
+#                           undef if none, sda_seq_start must be 1 in this case 
 #  $ali_5p_mdl:             aligned 5' end of model (RF) from cmalign, 
-#                           undef if none, ugp_seq_start must be 1 in this case 
+#                           undef if none, sda_seq_start must be 1 in this case 
 #  $ali_5p_pp:              aligned 5' end of posterior probability annotation from cmalign, 
-#                           undef if none, ugp_seq_start must be 1 or $do_glsearch must be 1, in this case
+#                           undef if none, sda_seq_start must be 1 or $do_glsearch must be 1, in this case
 #  $ali_3p_seq_coords:      aligned 3' region sequence coords string
-#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#                           undef if none, sda_seq_stop must be $seq_len in this case 
 #  $ali_3p_mdl_coords:      aligned 3' region model coords string
-#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#                           undef if none, sda_seq_stop must be $seq_len in this case 
 #  $ali_3p_pp:              aligned 3' end of posterior probability annotation from cmalign, 
-#                           undef if none, ugp_seq_stop must be $seq_len or $do_glsearch must be 1, in this case
+#                           undef if none, sda_seq_stop must be $seq_len or $do_glsearch must be 1, in this case
 #  $ali_3p_seq:             aligned 3' end of sequence from cmalign, 
-#                           undef if none, ugp_seq_stop must be $seq_len in this case 
+#                           undef if none, sda_seq_stop must be $seq_len in this case 
 #  $ali_3p_mdl:             aligned 3' end of model (RF) from cmalign, 
-#                           undef if none, ugp_seq_stop must be $seq_len in this case 
-#  $ugp_seq_coords:         ungapped region sequence coords string
-#  $ugp_mdl_coords:         ungapped region model coords string
-#  $ugp_seq:                ungapped region sequence string
+#                           undef if none, sda_seq_stop must be $seq_len in this case 
+#  $sda_seq_start:          ungapped region sequence start
+#  $sda_seq_stop:           ungapped region sequence stop
+#  $sda_mdl_start:          ungapped region model start
+#  $sda_mdl_stop:           ungapped region model stop
+#  $sda_seq:                ungapped region sequence string
+#  $sda_mdl:                ungapped region sequence string
 #  $mdl_consensus_sqstring: the model consensus sequence, as a string
 #  $seq_len:                total sequence length
 #  $mdl_len:                total model length
@@ -1504,28 +1663,25 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #             undef,
 #             $alert_msg: string describing the unjoinbl alert with coordinates
 #    
-# Dies:       if $ali_{5p,3p}_{coords,seq,mdl,pp} is undef but $ugp_seq_coords indicates it should be defined
+# Dies:       if $ali_{5p,3p}_{coords,seq,mdl,pp} is undef but $sda_seq_coords indicates it should be defined
 #
 ################################################################# 
 sub join_alignments_helper { 
   my $sub_name = "join_alignments_helper";
-  my $nargs_exp = 18;
+  my $nargs_exp = 21;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($do_glsearch, $ali_5p_seq_coords, $ali_5p_mdl_coords, $ali_5p_seq, $ali_5p_mdl, $ali_5p_pp,
       $ali_3p_seq_coords, $ali_3p_mdl_coords, $ali_3p_seq, $ali_3p_mdl, $ali_3p_pp, 
-      $ugp_seq_coords, $ugp_mdl_coords, $ugp_seq, $mdl_consensus_sqstring, 
+      $sda_seq_start, $sda_seq_stop, $sda_mdl_start, $sda_mdl_stop, $sda_seq, $sda_mdl, $mdl_consensus_sqstring, 
       $seq_len, $mdl_len, $ofile_info_HHR) = @_;
 
   my $FH_HR  = (defined $ofile_info_HHR) ? $ofile_info_HHR->{"FH"} : undef;
 
   my ($have_5p)  = ((defined $ali_5p_seq_coords) && (defined $ali_5p_mdl_coords) && (defined $ali_5p_seq) && (defined $ali_5p_mdl) && ((defined $ali_5p_pp) || $do_glsearch)) ? 1 : 0;
   my ($have_3p)  = ((defined $ali_3p_seq_coords) && (defined $ali_3p_mdl_coords) && (defined $ali_3p_seq) && (defined $ali_3p_mdl) && ((defined $ali_3p_pp) || $do_glsearch)) ? 1 : 0;
-  my ($have_ugp) = ((defined $ugp_seq_coords) && (defined $ugp_seq)) ? 1 : 0;
+  my ($have_sda) = ((defined $sda_seq_start) && (defined $sda_seq)) ? 1 : 0;
 
-  # parse coords
-  my ($ugp_seq_start, $ugp_seq_stop, $ugp_seq_strand) = vdr_CoordsSegmentParse($ugp_seq_coords, $FH_HR);
-  my ($ugp_mdl_start, $ugp_mdl_stop, $ugp_mdl_strand) = vdr_CoordsSegmentParse($ugp_mdl_coords, $FH_HR);
   my ($ali_5p_seq_start, $ali_5p_seq_stop, $ali_5p_seq_strand) = ($have_5p) ?
       vdr_CoordsSegmentParse($ali_5p_seq_coords, $FH_HR) :
       (undef, undef, undef);
@@ -1540,27 +1696,25 @@ sub join_alignments_helper {
       (undef, undef, undef);
   
   # sanity checks
-  if(($have_5p)   && ($ugp_seq_start == 1)) {
-    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords include 1st position but we have 5p segment info", 1, $FH_HR);
+  if(($have_5p)   && ($sda_seq_start == 1)) {
+    ofile_FAIL("ERROR in $sub_name, sda_seq_coords include 1st position but we have 5p segment info", 1, $FH_HR);
   }
-  if((! $have_5p) && ($ugp_seq_start != 1)) {
-    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords do not include 1st position but we don't have 5p segment info", 1, $FH_HR);
+  if((! $have_5p) && ($sda_seq_start != 1)) {
+    ofile_FAIL("ERROR in $sub_name, sda_seq_coords do not include 1st position but we don't have 5p segment info", 1, $FH_HR);
   }
-  if(($have_3p)   && ($ugp_seq_stop == $seq_len)) {
-    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords include final position but we have 3p segment info", 1, $FH_HR);
+  if(($have_3p)   && ($sda_seq_stop == $seq_len)) {
+    ofile_FAIL("ERROR in $sub_name, sda_seq_coords include final position but we have 3p segment info", 1, $FH_HR);
   }
-  if((! $have_3p) && ($ugp_seq_stop != $seq_len)) {
-    ofile_FAIL("ERROR in $sub_name, ugp_seq_coords do not include final position but we don't have 3p segment info", 1, $FH_HR);
+  if((! $have_3p) && ($sda_seq_stop != $seq_len)) {
+    ofile_FAIL("ERROR in $sub_name, sda_seq_coords do not include final position but we don't have 3p segment info", 1, $FH_HR);
   }
 
   # strand sanity checks
-  if(($ugp_seq_strand ne "+") ||
-     ($ugp_mdl_strand ne "+") || 
-     ((defined $ali_5p_seq_strand) && ($ali_5p_seq_strand ne "+")) ||
+  if(((defined $ali_5p_seq_strand) && ($ali_5p_seq_strand ne "+")) ||
      ((defined $ali_3p_seq_strand) && ($ali_3p_seq_strand ne "+"))) { 
     ofile_FAIL("ERROR in $sub_name, not all strands are positive", 1, $FH_HR);
   }
-
+  # caller already checked that all sda_seq and sda_mdl segment coords were +
   # more sanity checks
   if(($have_5p) && ($ali_5p_mdl_start != 1)) {
     ofile_FAIL("ERROR in $sub_name, 5' model start is not 1 but $ali_5p_mdl_start", 1, $FH_HR);
@@ -1568,12 +1722,12 @@ sub join_alignments_helper {
   if(($have_3p) && ($ali_3p_mdl_stop != $mdl_len)) {
     ofile_FAIL("ERROR in $sub_name, 3' model stop is not mdl_len ($mdl_len) but $ali_3p_mdl_stop", 1, $FH_HR);
   }
-  # another sanity check: there must be some overhang between 5p and ugp and ugp and 3p
-  if(($have_5p) && ($ali_5p_seq_stop < $ugp_seq_start)) {
-    ofile_FAIL("ERROR in $sub_name, no overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 5p region ($ali_5p_seq_start .. $ali_5p_seq_stop)", 1, $FH_HR);
+  # another sanity check: there must be some overhang between 5p and sda and sda and 3p
+  if(($have_5p) && ($ali_5p_seq_stop < $sda_seq_start)) {
+    ofile_FAIL("ERROR in $sub_name, no overhang between sda region ($sda_seq_start .. $sda_seq_stop) and 5p region ($ali_5p_seq_start .. $ali_5p_seq_stop)", 1, $FH_HR);
   }
-  if(($have_3p) && ($ali_3p_seq_start > $ugp_seq_stop)) {
-    ofile_FAIL("ERROR in $sub_name, no overhang between ugp region ($ugp_seq_start .. $ugp_seq_stop) and 3p region ($ali_3p_seq_start .. $ali_3p_seq_stop)", 1, $FH_HR);
+  if(($have_3p) && ($ali_3p_seq_start > $sda_seq_stop)) {
+    ofile_FAIL("ERROR in $sub_name, no overhang between sda region ($sda_seq_start .. $sda_seq_stop) and 3p region ($ali_3p_seq_start .. $ali_3p_seq_stop)", 1, $FH_HR);
   }
 
   # debugging print statements
@@ -1583,70 +1737,70 @@ sub join_alignments_helper {
   # if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
   # if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
 
-  # print("ugp_seq: $ugp_seq_start .. $ugp_seq_stop\n");
-  # print("ugp_mdl: $ugp_mdl_start .. $ugp_mdl_stop\n");
+  # print("sda_seq: $sda_seq_start .. $sda_seq_stop\n");
+  # print("sda_mdl: $sda_mdl_start .. $sda_mdl_stop\n");
 
   ################################################
   # Check to make sure aligned overlapping (overhang) regions
   # were aligned as expected. More specifically ensure that:
   # 
-  # ($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)):
+  # ($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff)):
   # If so, this means offset between model stop and sequence stop is
-  # same as offset between model start and sequence stooo which means
-  # the overlapping ('overhang' region between the 5' region and the
+  # same as offset between model start and sequence stop which means
+  # the overlapping 'overhang' region between the 5' region and the
   # ungapped region was aligned as expected and ended with the final
   # overhanging position in the sequence aligned to the final overhanging
   # position in the model.
   #
   # Also make sure the inverse is true on the 3' end, if nec:
   # That is, that:
-  # ($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff))
+  # ($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff))
   # 
   # variables starting with 'fetch' are in relative coordinate space for whatever they pertain to:
-  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or ugp_seq
-  my $ugp_seq_mdl_diff = $ugp_mdl_start - $ugp_seq_start; # offset between model start and sequence start
-  # printf("ugp_seq_mdl_diff: $ugp_seq_mdl_diff\n");
+  # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or sda_seq
+  my $sda_seq_mdl_diff = $sda_mdl_start - $sda_seq_start; # offset between model start and sequence start
+  # printf("sda_seq_mdl_diff: $sda_seq_mdl_diff\n");
   my $fetch_ali_5p_seq_start = 1;                    
   my $fetch_ali_5p_seq_stop  = length($ali_5p_seq);
   my $fetch_ali_3p_seq_start = 1;                   
   my $fetch_ali_3p_seq_stop  = length($ali_3p_seq);
-  my $fetch_ugp_seq_start    = undef;
-  my $fetch_ugp_seq_stop     = undef;
-  my $fetch_ugp_mdl_start    = undef;
-  my $fetch_ugp_mdl_stop     = undef;
-  my $ugp_seq_len = ($ugp_seq_stop - $ugp_seq_start + 1);
-  my $ugp_mdl_len = ($ugp_mdl_stop - $ugp_mdl_start + 1);
+  my $fetch_sda_seq_start    = undef;
+  my $fetch_sda_seq_stop     = undef;
+  my $fetch_sda_mdl_start    = undef;
+  my $fetch_sda_mdl_stop     = undef;
+  #my $sda_seq_len = ($sda_seq_stop - $sda_seq_start + 1);
+  my $sda_seq_len = length($sda_seq);
 
   my $alt_msg = ""; # added to if we can't join on 5' and/or 3' end
   if($have_5p) { 
     # usual case, final position of aligned 5' region is just 1 sequence position
     # *and* 1 model position prior to ungapped region
-    if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $ugp_seq_mdl_diff)) {
-      $fetch_ugp_seq_start = ($ali_5p_seq_stop - $ugp_seq_start + 1) + 1; # one position past 5' overhang
-      $fetch_ugp_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
+    if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff)) {
+      $fetch_sda_seq_start = ($ali_5p_seq_stop - $sda_seq_start + 1) + 1; # one position past 5' overhang
+      $fetch_sda_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
     }
     else {
-      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+      $alt_msg .= "5' aligned region (mdl:$ali_5p_mdl_coords, seq:$ali_5p_seq_coords) unjoinable with seed (mdl:" . $sda_mdl_start . ".." . $sda_mdl_stop . ", seq:" . $sda_seq_start . ".." . $sda_seq_stop . ")";
     }
   }
   else { # $have_5p == 0
-    $fetch_ugp_seq_start = 1;
-    $fetch_ugp_mdl_start = $ugp_mdl_start; # because mdl_consensus_sqstring is always length of model, and length of sequence is not
+    $fetch_sda_seq_start = 1;
+    $fetch_sda_mdl_start = $sda_mdl_start; # because mdl_consensus_sqstring is always length of model, and length of sequence is not
   }
   if($have_3p) {
     # usual case, first position of aligned 3' region is just 1 sequence position
     # *and* 1 model position after ungapped region
-    if($ali_3p_seq_start == ($ali_3p_mdl_start - $ugp_seq_mdl_diff)) {
-      $fetch_ugp_seq_stop = $ugp_seq_len - ($ugp_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
-      $fetch_ugp_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
+    if($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff)) {
+      $fetch_sda_seq_stop = $sda_seq_len - ($sda_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
+      $fetch_sda_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
     }
     else {
-      $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:$ugp_mdl_coords; seq:$ugp_seq_coords);";
+      $alt_msg .= "3' aligned region (mdl:$ali_3p_mdl_coords, seq:$ali_3p_seq_coords) unjoinable with seed (mdl:" . $sda_mdl_start . ".." . $sda_mdl_stop . ", seq:" . $sda_seq_start . ".." . $sda_seq_stop . ")";
     }
   }
   else { # $have_3p == 0
-    $fetch_ugp_seq_stop = $ugp_seq_len;
-    $fetch_ugp_mdl_stop = $ugp_mdl_stop; # because mdl_consensus string is always length of model, and length of sequence is not
+    $fetch_sda_seq_stop = $sda_seq_len;
+    $fetch_sda_mdl_stop = $sda_mdl_stop; # because mdl_consensus string is always length of model, and length of sequence is not
   }
 
   if($alt_msg ne "") {
@@ -1660,22 +1814,22 @@ sub join_alignments_helper {
   # But in practice it's probably not necessary with 
   # long enough overhangs (50-100nt)
   # 
-  # below, let ugp_seq_mdl_diff is ugp_mdl_start - ugp_seq_start
+  # below, let sda_seq_mdl_diff is sda_mdl_start - sda_seq_start
   # 
   # 5' end:
   # find X = max position <= ali_5p_stop where
-  # c1: seqpos == mdlpos - ugp_seq_mdl_diff
+  # c1: seqpos == mdlpos - sda_seq_mdl_diff
   # where seqpos = ali_5p_seq_stop - number of nongap seq positions seen since ali_5p_seq_stop
   # where mdlpos = ali_5p_mdl_stop - number of nongap mdl positions seen since ali_5p_mdl_stop
   #
   # then
   # end ali_5p_seq at position X
   # end ali_5p_mdl at position X
-  # start ungapped seq at position X+1 (chop off first X-ugp_start positions)
+  # start ungapped seq at position X+1 (chop off first X-sda_start positions)
   #
   # 3' end:
   # find Y = min position >= ali_3p_start where
-  # c2: seqpos == mdlpos - ugp_seq_mdl_diff
+  # c2: seqpos == mdlpos - sda_seq_mdl_diff
   # where seqpos = ali_3p_seq_start - number of nongap seq positions seen since ali_3p_seq_start
   # where mdlpos = ali_3p_mdl_start - number of nongap mdl positions seen since ali_3p_mdl_start
   # 
@@ -1701,25 +1855,31 @@ sub join_alignments_helper {
   else {
     # we did not align the 5' end with cmalign, add all gap 5' chunk
     # of seq and model up to the start of ungapped blast alignment
-    if($ugp_mdl_start != 1) {
-      $joined_seq .= utl_StringMonoChar(($ugp_mdl_start - 1), "-", $FH_HR);
-      #$joined_mdl .= utl_StringMonoChar(($ugp_mdl_start - 1), "x", $FH_HR);
-      $joined_mdl .= substr($mdl_consensus_sqstring, 0, ($ugp_mdl_start - 1));
+    if($sda_mdl_start != 1) {
+      # seed-with-gaps need this to know about gaps in HSP - reparse blastn indel string?
+      $joined_seq .= utl_StringMonoChar(($sda_mdl_start - 1), "-", $FH_HR);
+      #$joined_mdl .= utl_StringMonoChar(($sda_mdl_start - 1), "x", $FH_HR);
+      $joined_mdl .= substr($mdl_consensus_sqstring, 0, ($sda_mdl_start - 1));
       if(! $do_glsearch) { 
-        $joined_pp  .= utl_StringMonoChar(($ugp_mdl_start - 1), ".", $FH_HR);
+        $joined_pp  .= utl_StringMonoChar(($sda_mdl_start - 1), ".", $FH_HR);
       }
     }
   }
   
-  # printf("fetching ugp seq %d to %d from %s\n", $fetch_ugp_seq_start, $fetch_ugp_seq_stop, $ugp_seq_coords);
-  # printf("fetching ugp mdl %d to %d from %s\n", $fetch_ugp_mdl_start, $fetch_ugp_mdl_stop, $ugp_mdl_coords);
-  my $fetch_ugp_seq_len = ($fetch_ugp_seq_stop - $fetch_ugp_seq_start + 1);
-  my $fetch_ugp_mdl_len = ($fetch_ugp_mdl_stop - $fetch_ugp_mdl_start + 1);
-  $joined_seq .= substr($ugp_seq, $fetch_ugp_seq_start - 1, $fetch_ugp_seq_len);
-  #$joined_mdl .= utl_StringMonoChar($fetch_ugp_seq_len, "x", $FH_HR);
-  $joined_mdl .= substr($mdl_consensus_sqstring, $fetch_ugp_mdl_start - 1, $fetch_ugp_mdl_len);
+  # seed-with-gaps: the one main code block that needs to be updated
+  # instead of fetching just one chunk of seq and model, fetch >= 1 
+  # chunks, correctly accounting for gaps in both seq and mdl.
+  # printf("fetching sda seq %d to %d from %s\n", $fetch_sda_seq_start, $fetch_sda_seq_stop, $sda_seq_coords);
+  # printf("fetching sda mdl %d to %d from %s\n", $fetch_sda_mdl_start, $fetch_sda_mdl_stop, $sda_mdl_coords);
+  my $fetch_sda_seq_len = ($fetch_sda_seq_stop - $fetch_sda_seq_start + 1);
+  my $fetch_sda_mdl_len = ($fetch_sda_mdl_stop - $fetch_sda_mdl_start + 1);
+
+  $joined_seq .= substr($sda_seq, $fetch_sda_seq_start - 1, $fetch_sda_seq_len);
+  ##$joined_mdl .= utl_StringMonoChar($fetch_sda_seq_len, "x", $FH_HR);
+  #$joined_mdl .= substr($mdl_consensus_sqstring, $fetch_sda_mdl_start - 1, $fetch_sda_mdl_len);
+  $joined_mdl .= substr($sda_mdl, $fetch_sda_seq_start - 1, $fetch_sda_seq_len);
   if(! $do_glsearch) { 
-    $joined_pp  .= utl_StringMonoChar($fetch_ugp_seq_len, "*", $FH_HR);
+    $joined_pp  .= utl_StringMonoChar($fetch_sda_seq_len, "*", $FH_HR);
   }
 
   if($have_3p) {
@@ -1733,12 +1893,12 @@ sub join_alignments_helper {
   else { 
     # we did not align the 3' end with cmalign, add all gap 3' chunk
     # of seq and model after the end of the ungapped blast alignment
-    if($ugp_mdl_stop != $mdl_len) {
-      $joined_seq .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "-", $FH_HR);
-      #$joined_mdl .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), "x", $FH_HR);
-      $joined_mdl .= substr($mdl_consensus_sqstring, $ugp_mdl_stop);
+    if($sda_mdl_stop != $mdl_len) {
+      $joined_seq .= utl_StringMonoChar(($mdl_len - $sda_mdl_stop), "-", $FH_HR);
+      #$joined_mdl .= utl_StringMonoChar(($mdl_len - $sda_mdl_stop), "x", $FH_HR);
+      $joined_mdl .= substr($mdl_consensus_sqstring, $sda_mdl_stop);
       if(! $do_glsearch) { 
-        $joined_pp  .= utl_StringMonoChar(($mdl_len - $ugp_mdl_stop), ".", $FH_HR);
+        $joined_pp  .= utl_StringMonoChar(($mdl_len - $sda_mdl_stop), ".", $FH_HR);
       }
     }
   }
@@ -1787,6 +1947,387 @@ sub update_overflow_info_for_joined_alignments {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: process_seed_seq_and_mdl_coords
+# Incept:     EPN, Thu Aug 26 09:19:19 2021
+# Purpose:    Given a model/sequence alignment in the form of a pair of
+#             coords string, one each for model and sequence, determine
+#             the start position of the first segment, stop position of
+#             the final segment, number of segments, and any inserts in
+#             the sequence w.r.t. the model and return that info. 
+#             The inserts are returned in the form of an inserts string in the format
+#               <mdlpos_1>:<uapos_1>:<inslen_1>;...<mdlpos_n>:<uapos_n>:<inslen_n>;
+#               for n inserts, where insert x is defined by:
+#               <mdlpos_x> is model position after which insert occurs 0..mdl_len (0=before first pos)
+#               <uapos_x> is unaligned sequence position of the first aligned nt
+#               <inslen_x> is length of the insert
+#
+# Arguments:
+#  $seq_coords:       sequence coords string
+#  $mdl_coords:       model coords string
+#  $seq_sqstring:     the full length sequence 
+#  $mdl_sqstring:     the full model 'sequence'
+#  $FH_HR:            REF to hash of file handles, including "log" and "cmd"
+# 
+# Returns:  7 values:
+#           $seq_start:        start position of full seed region in sequence
+#           $seq_stop:         stop  position of full seed region in sequence
+#           $mdl_start:        start position of full seed region in model
+#           $mdl_stop:         stop  position of full seed region in model
+#           $aln_seq_sqstring: aligned sqstring of the sequence, possibly with gaps, created here
+#           $aln_mdl_sqstring: aligned sqstring of the model,    possibly with gaps, created here
+#           $inserts_str:      inserts string of all inserts in seq w.r.t the model
+#
+# Dies:     If not all strands are positive. 
+#
+#################################################################
+sub process_seed_seq_and_mdl_coords { 
+  my $sub_name = "process_seed_seq_and_mdl_coords";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($seq_coords, $mdl_coords, $seq_sqstring, $mdl_sqstring, $FH_HR) = (@_);
+
+  # ungapped blastn region variables
+  my ($mdl_start, $mdl_stop, $mdl_strand) = (undef, undef, undef);
+  my @seq_start_A  = ();
+  my @seq_stop_A   = ();
+  my @seq_strand_A = ();
+  my @mdl_start_A  = ();
+  my @mdl_stop_A   = ();
+  my @mdl_strand_A = ();
+  my $s; # counter over ungapped segments
+  my $nsgm = 0;
+  my $inserts_str = "";
+
+  printf("in $sub_name, mdl_sqstring len: " . length($mdl_sqstring) . "\n");
+
+  vdr_FeatureStartStopStrandArrays($seq_coords, \@seq_start_A, \@seq_stop_A, \@seq_strand_A, $FH_HR);
+  vdr_FeatureStartStopStrandArrays($mdl_coords, \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A, $FH_HR);
+  $nsgm = scalar(@seq_start_A);
+
+  # sanity check
+  if(($seq_strand_A[0] ne "+") || 
+     ($mdl_strand_A[0] ne "+")) { 
+    ofile_FAIL("ERROR in $sub_name, not all strands are positive", 1, $FH_HR);
+  }
+
+  my $aln_seq_sqstring = "";
+  my $aln_mdl_sqstring = "";
+
+  # create insert string
+  my $ins_len = 0;
+  my $del_len = 0;
+  my $seq_sgm_len = 0;
+  my $mdl_sgm_len = 0;
+  for($s = 0; $s < $nsgm; $s++) { 
+    # sanity check
+    if(($seq_strand_A[$s] ne "+") || 
+       ($mdl_strand_A[$s] ne "+")) { 
+      ofile_FAIL("ERROR in $sub_name, not all strands are positive", 1, $FH_HR);
+    }
+    $seq_sgm_len = abs($seq_stop_A[$s] - $seq_start_A[$s]) + 1;
+    $mdl_sgm_len = abs($mdl_stop_A[$s] - $mdl_start_A[$s]) + 1;
+    printf("in $sub_name, s: $s\n");
+    printf("\tseq: " . $seq_start_A[$s] . ".." . $seq_stop_A[$s] . " len: $seq_sgm_len\n");
+    printf("\tmdl: " . $mdl_start_A[$s] . ".." . $mdl_stop_A[$s] . " len: $mdl_sgm_len\n");
+
+    # deal with gaps in sequence (deletions) and model (insertions)
+    if($s > 0) { 
+      $ins_len = ($seq_start_A[$s] - $seq_stop_A[($s-1)]) - 1; 
+      $del_len = ($mdl_start_A[$s] - $mdl_stop_A[($s-1)]) - 1; 
+      if(($ins_len < 0) || ($del_len < 0)) { 
+        ofile_FAIL("ERROR in $sub_name, sequence segments out of order or overlap in seq coords string $seq_coords");
+      }
+      if($ins_len > 0) { 
+        printf("\tins_len: $ins_len, appending from " . $seq_stop_A[($s-1)] . ", " . substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len) . "\n");
+        $aln_seq_sqstring .= substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len);
+        $aln_mdl_sqstring .= utl_StringMonoChar($ins_len, ".", $FH_HR);
+        $inserts_str .= $mdl_stop_A[($s-1)] . ":" . ($seq_stop_A[($s-1)]+1) . ":" . $ins_len . ";";
+      }
+      if($del_len > 0) { 
+        printf("\tdel_len: $del_len, appending from " . $mdl_stop_A[($s-1)] . ", " . substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len) . "\n");
+        $aln_seq_sqstring .= utl_StringMonoChar($del_len, "-", $FH_HR);
+        $aln_mdl_sqstring .= substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len);
+      }
+    }
+    # append ungapped region
+    printf("\tappending seq from " . ($seq_start_A[$s]-1) . ", len: $seq_sgm_len\n");
+    printf("\tappending mdl from " . ($mdl_start_A[$s]-1) . ", len: $mdl_sgm_len\n");
+    $aln_seq_sqstring .= substr($seq_sqstring, ($seq_start_A[$s]-1), $seq_sgm_len);
+    $aln_mdl_sqstring .= substr($mdl_sqstring, ($mdl_start_A[$s]-1), $mdl_sgm_len);
+  }
+
+  return ($seq_start_A[0], $seq_stop_A[($nsgm-1)], 
+          $mdl_start_A[0], $mdl_stop_A[($nsgm-1)], 
+          $aln_seq_sqstring, $aln_mdl_sqstring, $inserts_str);
+}
+
+#################################################################
+# Subroutine: prune_seed_given_minimum_length_segment
+# Incept:     EPN, Wed Sep  8 13:45:10 2021
+# Purpose:    Given two sets of start/stop/strand arrays that describe
+#             coordinate segments in sequence and model
+#             coords string, one each for model and sequence, potentially
+#             remove segments that have length less than $min_sgm_len.
+#            
+#             Instead of finding the contiguous segment of segments that
+#             has the the maximum length and does not contain any segment 
+#             less than $min_sgm_len (which I couldn't figure out how to 
+#             do simply and efficiently), if any segments are too short
+#             keep the maximum length segment (even if it is shorter 
+#             than $min_sgm_len) and all adjacent segments
+#             both 5' and 3' with length at least $min_sgm_len.
+#
+# Arguments:
+#  $seq_start_AR:     ref to array of seq start coordinates, potentially modified here
+#  $seq_stop_AR:      ref to array of seq stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of seq strands, potentially modified here
+#  $mdl_start_AR:     ref to array of mdl start coordinates, potentially modified here
+#  $mdl_stop_AR:      ref to array of mdl stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of mdl strands, potentially modified here
+#  $min_sgm_len:      minimum allowed segment length
+# 
+# Returns:  void
+#
+# Dies:    Never
+#
+#################################################################
+sub prune_seed_given_minimum_length_segment { 
+  my $sub_name = "prune_seed_given_minimum_length_segment";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($seq_start_AR, $seq_stop_AR, $seq_strand_AR, 
+      $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
+      $min_sgm_len) = @_;
+
+  my $orig_nsgm = scalar(@{$seq_start_AR});
+  my $s = 0;
+  my $nshort = 0; # number of segments that are too short
+
+  my $max_sgm_len = 0;
+  my @too_short_A = ();
+  my $argmax_sgm_len = -1;
+  for($s = 0; $s < $orig_nsgm; $s++) { 
+    my $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
+    if($sgm_len > $max_sgm_len) { 
+      $max_sgm_len = $sgm_len;
+      $argmax_sgm_len = $s;
+    }
+    if($sgm_len < $min_sgm_len) { 
+      $nshort++;
+      $too_short_A[$s] = 1;
+    }
+    else { 
+      $too_short_A[$s] = 0;
+    }
+  }
+
+  if($nshort > 0) { 
+    # need to remove at least one segment
+    # start with maximum length segment, and add all adjacent segments until you see one that is too short
+    # add segments 5' until you see one that is too short
+    my $first_to_keep = $argmax_sgm_len;
+    my $final_to_keep = $argmax_sgm_len;
+    for($s = ($argmax_sgm_len-1); $s >= 0; $s--) { 
+      if($too_short_A[$s]) { 
+        $s = -1; # breaks loop
+      }
+      else { # long enough
+        $first_to_keep = $s;
+      }
+    }
+    # add segments 3' until you see one that is too short
+    for($s = ($argmax_sgm_len+1); $s < $orig_nsgm; $s++) { 
+      if($too_short_A[$s]) { 
+        $s = $orig_nsgm; # breaks loop
+      }
+      else { # long enough
+        $final_to_keep = $s;
+      }
+    }
+    my @new_seq_start_A  = ();
+    my @new_seq_stop_A   = ();
+    my @new_seq_strand_A = ();
+    my @new_mdl_start_A  = ();
+    my @new_mdl_stop_A   = ();
+    my @new_mdl_strand_A = ();
+    for($s = $first_to_keep; $s <= $final_to_keep; $s++) { 
+      push(@new_seq_start_A,  $seq_start_AR->[$s]);
+      push(@new_seq_stop_A,   $seq_stop_AR->[$s]);
+      push(@new_seq_strand_A, $seq_strand_AR->[$s]);
+      push(@new_mdl_start_A,  $mdl_start_AR->[$s]);
+      push(@new_mdl_stop_A,   $mdl_stop_AR->[$s]);
+      push(@new_mdl_strand_A, $mdl_strand_AR->[$s]);
+    }
+    @{$seq_start_AR}  = @new_seq_start_A;
+    @{$seq_stop_AR}   = @new_seq_stop_A;
+    @{$seq_strand_AR} = @new_seq_strand_A;
+    @{$mdl_start_AR}  = @new_mdl_start_A;
+    @{$mdl_stop_AR}   = @new_mdl_stop_A;
+    @{$mdl_strand_AR} = @new_mdl_strand_A;
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: prune_seed_of_terminal_short_segments
+# Incept:     EPN, Wed Sep  8 16:05:37 2021
+# Purpose:    Given two sets of start/stop/strand arrays that describe
+#             coordinate segments in sequence and model
+#             coords string, remove any terminal segments that
+#             have length less than $min_term_sgm_len.
+#             If $seq_start_AR->[0] is 1 then do not remove any
+#             5' segments. 
+#             If $seq_stop_AR->[($nsgm-1)] is $seq_len then do not
+#             remove any 3' segments.
+#
+# Arguments:
+#  $seq_start_AR:     ref to array of seq start coordinates, potentially modified here
+#  $seq_stop_AR:      ref to array of seq stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of seq strands, potentially modified here
+#  $mdl_start_AR:     ref to array of mdl start coordinates, potentially modified here
+#  $mdl_stop_AR:      ref to array of mdl stop  coordinates, potentially modified here
+#  $seq_strand_AR:    ref to array of mdl strands, potentially modified here
+#  $min_term_sgm_len: minimum allowed terminal segment length
+#  $seq_len:          length of complete sequence
+# 
+# Returns:  void
+#
+# Dies:     Never
+#
+#################################################################
+sub prune_seed_of_terminal_short_segments { 
+  my $sub_name = "prune_seed_of_terminal_short_segments";
+  my $nargs_exp = 8;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($seq_start_AR, $seq_stop_AR, $seq_strand_AR, 
+      $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
+      $min_term_sgm_len, $seq_len) = @_;
+
+  printf("in $sub_name, min_term_sgm_len: $min_term_sgm_len\n");
+
+  my $nsgm = scalar(@{$seq_start_AR});
+  my $seq_start = $seq_start_AR->[0];
+  my $seq_stop  = $seq_stop_AR->[($nsgm-1)];
+
+  my $s;
+  my $sgm_len;
+  my $rewrite_coords_flag = 0;
+  if($seq_start > 1) { 
+    my $nremove = 0; # number of elements to remove at 5' end
+    for($s = 0; $s < $nsgm; $s++) { 
+      $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
+      if($sgm_len < $min_term_sgm_len) { 
+        $nremove++;
+      }
+      else { 
+        $s = $nsgm; # breaks loop
+      }
+    }
+    if($nremove > 0) { 
+      $rewrite_coords_flag = 1;
+      for($s = 0; $s < $nremove; $s++) { 
+        splice(@{$seq_start_AR},  0, 1);
+        splice(@{$seq_stop_AR},   0, 1);
+        splice(@{$seq_strand_AR}, 0, 1);
+        splice(@{$mdl_start_AR},  0, 1);
+        splice(@{$mdl_stop_AR},   0, 1);
+        splice(@{$mdl_strand_AR}, 0, 1);
+      }
+      $nsgm -= $nremove;
+    }
+  }
+  if($seq_stop < $seq_len) { 
+    my $nremove = 0; # number of elements to remove at 3' end
+    for($s = ($nsgm-1); $s >= 0; $s--) { 
+      $sgm_len = abs($seq_stop_AR->[$s] - $seq_start_AR->[$s]) + 1;
+      if($sgm_len < $min_term_sgm_len) { 
+        $nremove++;
+      }
+      else { 
+        $s = -1; # breaks loop
+      }
+    }
+    printf("3' nremove: $nremove\n");
+    if($nremove > 0) { 
+      $rewrite_coords_flag = 1;
+      for($s = 0; $s < $nremove; $s++) { 
+        splice(@{$seq_start_AR},  -1, 1);
+        splice(@{$seq_stop_AR},   -1, 1);
+        splice(@{$seq_strand_AR}, -1, 1);
+        splice(@{$mdl_start_AR},  -1, 1);
+        splice(@{$mdl_stop_AR},   -1, 1);
+        splice(@{$mdl_strand_AR}, -1, 1);
+      }
+      $nsgm -= $nremove;
+    }
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: check_seed_overlap_with_start_stop_codons
+# Incept:     EPN, Tue Sep 14 10:04:42 2021
+# Purpose:    Given the start/stop/strand arrays that 
+#             describe the coordinate segments in the model 
+#             coords string for the seeded alignment region, 
+#             and the coords strings for all start and stop
+#             codons, determine if any of the gaps in the
+#             seed overlap with any of the start or stop
+#             codons and return '1' if so, else return '0'.
+#
+# Arguments:
+#  $sda_mdl_start_AR:   ref to array of mdl start coordinates for the seed region
+#  $sda_mdl_stop_AR:    ref to array of mdl stop  coordinates for the seed region
+#  $codon_start_AR:     ref to array of start  coordinates of CDS start and stop codons
+#  $codon_stop_AR:      ref to array of stop   coordinates of CDS start and stop codons
+#  $FH_HR:              ref to hash of file handles, including "log" and "cmd"
+# 
+# Returns:  void
+#
+# Dies:     Never
+#
+#################################################################
+sub check_seed_overlap_with_start_stop_codons { 
+  my $sub_name = "check_seed_overlap_with_start_stop_codons";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($sda_mdl_start_AR, $sda_mdl_stop_AR, $codon_start_AR, $codon_stop_AR, $FH_HR) = @_;
+  
+  my $nsgm_sda   = scalar(@{$sda_mdl_start_AR});
+  my $nsgm_codon = scalar(@{$codon_start_AR});
+
+  for(my $s = 1; $s < $nsgm_sda; $s++) { 
+    my $mdl_gap_start = $sda_mdl_stop_AR->[($s-1)] + 1;
+    my $mdl_gap_stop  = $sda_mdl_start_AR->[$s]    - 1;
+    my $mdl_gap_len   = $mdl_gap_stop - $mdl_gap_start + 1;
+    # we know that model coords must be + strand, this was checked for already in 'process_seed_seq_and_mdl_coords()'
+    if($mdl_gap_len >= 1) { 
+      for(my $c = 0; $c < $nsgm_codon; $c++) { 
+        my $nres_overlap = 0;
+        if($codon_start_AR->[$c] <= $codon_stop_AR->[$c]) { 
+          ($nres_overlap, undef) = seq_Overlap($mdl_gap_start, $mdl_gap_stop, $codon_start_AR->[$c], $codon_stop_AR->[$c], $FH_HR);
+        }
+        else { 
+          ($nres_overlap, undef) = seq_Overlap($mdl_gap_start, $mdl_gap_stop, $codon_stop_AR->[$c], $codon_start_AR->[$c], $FH_HR);
+        }
+        if($nres_overlap > 0) { 
+          printf("in sub_name, found overlap between mdl gap: $mdl_gap_start..$mdl_gap_stop and codon " . $codon_start_AR->[$c] . ".." . $codon_stop_AR->[$c] . ", returning 1\n");
+          return 1; 
+        }
+      }
+    }
+  }
+
+  return 0;
 }
 
 ###########################################################################

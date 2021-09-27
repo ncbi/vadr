@@ -73,6 +73,7 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoChildrenArrayOfArrays()
 # vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices()
 # vdr_FeatureInfoMerge()
+# vdr_FeatureInfoCdsStartStopCodonCoords()
 #
 # vdr_SegmentInfoPopulate()
 # 
@@ -84,6 +85,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeIsCdsOrGene()
 # vdr_FeatureTypeIsCdsOrMatPeptide()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords()
+# vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
 # vdr_FeatureTypeIsCdsOrMatPeptideOrGene()
 # vdr_FeatureTypeCanBecomeMiscFeature()
 # vdr_FeatureNumSegments()
@@ -137,6 +139,7 @@ require "sqp_utils.pm";
 # vdr_CoordsMergeAllAdjacentSegments()
 # vdr_CoordsMergeTwoSegmentsIfAdjacent()
 # vdr_CoordsMaxLengthSegment()
+# vdr_CoordsFromStartStopStrandArrays()
 #
 # Subroutines related to eutils:
 # vdr_EutilsFetchToFile()
@@ -847,10 +850,9 @@ sub vdr_FeatureInfoMapFtrTypeIndicesToFtrIndices {
 # 
 # Arguments:
 #  $src_ftr_info_AHR:   REF to source feature info array of hashes to 
-#                       add to $
-#  $dst_ftr_info2_AHR:   REF to hash of array of hashes with information 
-#                    on the features to add to  $ftr_info1_HAHR
-#  $FH_HR:           REF to hash of file handles, including "log" and "cmd"
+#                       add to $dst_ftr_info_AHR
+#  $dst_ftr_info_AHR:   REF to hash of array of hashes we are adding to
+#  $FH_HR:              REF to hash of file handles, including "log" and "cmd"
 #
 # Returns:    void
 #
@@ -904,6 +906,59 @@ sub vdr_FeatureInfoMerge {
   }
 
   return;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoCdsStartStopCodonCoords()
+# Incept:     EPN, Mon Sep 13 17:55:41 2021
+#
+# Synopsis: Return coords strings of for start and stop codon
+#           coordinates for all CDS. Start/stop codon coords will be
+#           concatenated into long coords strings with multiple
+#           segments. If a single start or stop codon is actually
+#           N>1 segments, it will contribute N segments to the 
+#           returned string.
+# 
+# Arguments:
+#  $ftr_info_AHR: REF to array of hashes with information on the features, PRE-FILLED
+#  $FH_HR:        REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    Two values:
+#             $start_codon_coords: >= 1 segment coords string with coordinates of all start codons,
+#                                  "" if no CDS exist in @{$ftr_info_AHR}
+#             $stop_codon_coords:  >= 1 segment coords string with coordinates of all stop codons
+#                                  "" if no CDS exist in @{$ftr_info_AHR}
+#
+# Dies:       If a CDS has length < 6
+#################################################################
+sub vdr_FeatureInfoCdsStartStopCodonCoords {
+  my $sub_name = "vdr_FeatureInfoCdsStartStopCodonCoords";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+
+  my $ret_start_codon_coords = "";
+  my $ret_stop_codon_coords = "";
+  # for each feature in src_ftr_info_AHR, find the single consistent feature in dst_ftr_info_AHR
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") { 
+      my $coords = $ftr_info_AHR->[$ftr_idx]{"coords"};
+      my $length = vdr_CoordsLength($coords, $FH_HR);
+      if($length < 6) { 
+        ofile_FAIL("ERROR in $sub_name, CDS (ftr_idx: $ftr_idx) coords length is below 6", 1, $FH_HR); 
+      }
+      if($ret_start_codon_coords ne "") { 
+        $ret_start_codon_coords .= ",";
+        $ret_stop_codon_coords  .= ",";
+      }
+      $ret_start_codon_coords .= vdr_CoordsRelativeToAbsolute($coords, "1..3:+", $FH_HR);
+      $ret_stop_codon_coords  .= vdr_CoordsRelativeToAbsolute($coords, ($length-2) . ".." . $length . ":+", $FH_HR);
+    }
+  }
+
+  return($ret_start_codon_coords, $ret_stop_codon_coords);
 }
 
 #################################################################
@@ -1207,6 +1262,50 @@ sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords {
       if((vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) && 
          ($ftr_info_AHR->[$ftr_idx]{"coords"} eq $ftr_info_AHR->[$ftr_idx2]{"coords"})) { 
         return 1; 
+      }
+    }
+  }
+  return 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop()
+# Incept:     EPN, Wed Sep  1 15:42:19 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or mature peptide
+#             or does it have same start/stop coords as another feature
+#             that is a CDS or mature peptide?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    my $start1 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    my $stop1  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if(vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx2)) { 
+        my $start2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        my $stop2  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        if(($start1 == $start2) && ($stop1 == $stop2)) { 
+          return 1; 
+        }
       }
     }
   }
@@ -4017,6 +4116,48 @@ sub vdr_CoordsMaxLengthSegment {
     }
   }
   return ($argmax_sgm, $max_sgm_len);
+}
+
+#################################################################
+# Subroutine: vdr_CoordsFromStartStopStrandArrays()
+#
+# Incept:     EPN, Wed Sep  8 18:32:20 2021
+#
+# Synopsis: Given references to arrays of start, stop and strand
+#           values for 1 or more segments, combine them to 
+#           create a coords string with 1 or more segments.
+#
+# Arguments:
+#  $start_AR:  reference to array of start positions
+#  $stop_AR:   reference to array of stop positions
+#  $strand_AR: reference to array of strand values
+#  $FH_HR:     REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:  coords string with all segments combined
+#
+# Dies: If unable to parse any segment 
+#
+#################################################################
+sub vdr_CoordsFromStartStopStrandArrays {
+  my $sub_name = "vdr_CoordsFromStartStopStrandArrays";
+  my $nargs_expected = 4;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($start_AR, $stop_AR, $strand_AR, $FH_HR) = @_;
+
+  my $coords = "";
+  my $nsgm = scalar(@{$start_AR});
+  if($nsgm != scalar(@{$stop_AR}))   { ofile_FAIL("ERROR in $sub_name, different number of start and stop elements",   1, $FH_HR); }
+  if($nsgm != scalar(@{$strand_AR})) { ofile_FAIL("ERROR in $sub_name, different number of start and strand elements", 1, $FH_HR); }
+
+  for(my $s = 0; $s < $nsgm; $s++) { 
+    if($s > 0) { 
+      $coords .= ","; 
+    }
+    $coords .= vdr_CoordsSegmentCreate($start_AR->[$s], $stop_AR->[$s], $strand_AR->[$s], $FH_HR);
+  }
+
+  return $coords;
 }
 
 #################################################################

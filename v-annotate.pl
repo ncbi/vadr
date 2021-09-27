@@ -305,11 +305,20 @@ opt_Add("--h_max",    "boolean", 0,        $g, "--pv_hmmer",  "--pv_skip", "use 
 opt_Add("--h_minbit", "real",    -10,      $g, "--pv_hmmer",  "--pv_skip", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration";
-#        option               type   default group   requires  incompat  preamble-output                                                     help-output    
-opt_Add("-s",             "boolean",      0,   $g,      undef, undef,    "use max length ungapped region from blastn to seed the alignment", "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,    "for -s, set blastn -word_size <n> to <n>",                         "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnsc",      "real",   50.0,   $g,       "-s", undef,    "for -s, set blastn minimum HSP score to consider to <x>",          "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,    "for -s, set length of nt overhang for subseqs to align to <n>",    "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+#        option               type   default group   requires  incompat        preamble-output                                                      help-output    
+opt_Add("-s",             "boolean",      0,   $g,      undef, undef,          "use max length ungapped region from blastn to seed the alignment",  "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,          "for -s, set blastn -word_size <n> to <n>",                          "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnrw",   "integer",      1,   $g,       "-s", undef,          "for -s, set blastn -reward <n> to <n>",                             "for -s, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnpn",   "integer",     -2,   $g,       "-s", undef,          "for -s, set blastn -penalty <n> to <n>",                            "for -s, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastngo",   "integer",      0,   $g,       "-s", undef,          "for -s, set blastn -gapopen <n> to <n>",                            "for -s, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnge",   "real",      -2.5,   $g,       "-s", undef,          "for -s, set blastn -gapextend <x> to <x>",                          "for -s, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnsc",   "real",      50.0,   $g,       "-s", undef,          "for -s, set blastn minimum HSP score to consider to <x>",           "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,          "for -s, set blastn option -task blastn",                            "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
+opt_Add("--s_minsgmlen",  "integer",     10,   $g,       "-s", undef,          "for -s, set minimum length of ungapped region in HSP seed to <n>",  "for -s, set minimum length of ungapped region in HSP seed to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", "for -s, keep full HSP seed, do not enforce minimum segment length", "for -s, keep full HSP seed, do not enforce minimum segment length", \%opt_HH, \@opt_order_A);
+opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",   "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
+opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "for -s, allow seed to include gaps in start/stop codons",           "for -s, allow seed to include gaps in start/stop codons", \%opt_HH, \@opt_order_A);
+opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",     "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
@@ -462,7 +471,16 @@ my $options_okay =
 # options related to blastn-based acceleration
                 's'             => \$GetOptions_H{"-s"},
                 's_blastnws=s'  => \$GetOptions_H{"--s_blastnws"},
+                's_blastnrw=s'  => \$GetOptions_H{"--s_blastnrw"},
+                's_blastnpn=s'  => \$GetOptions_H{"--s_blastnpn"},
+                's_blastngo=s'  => \$GetOptions_H{"--s_blastngo"},
+                's_blastnge=s'  => \$GetOptions_H{"--s_blastnge"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
+                's_blastntk'    => \$GetOptions_H{"--s_blastntk"},
+                's_minsgmlen=s' => \$GetOptions_H{"--s_minsgmlen"},
+                's_allsgm'      => \$GetOptions_H{"--s_allsgm"},
+                's_ungapsgm'    => \$GetOptions_H{"--s_ungapsgm"},
+                's_startstop'   => \$GetOptions_H{"--s_startstop"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
 # options related to replacing Ns with expected nucleotides
                 'r'             => \$GetOptions_H{"-r"},
@@ -1524,8 +1542,8 @@ my %dcr_output_HAH = ();     # hash of array of hashes with info to output relat
 # -s related output for .sda file
 my %sda_output_HH = (); # 2D key with info to output related to the -s option
 # per-model variables only used if -s used
-my %ugp_mdl_H     = ();  # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
-my %ugp_seq_H     = ();  # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
+my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
+my %sda_seq_H     = ();  # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it derives from
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
@@ -1537,8 +1555,8 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
 
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    %ugp_mdl_H     = ();
-    %ugp_seq_H     = ();
+    %sda_mdl_H     = ();
+    %sda_seq_H     = ();
     %seq2subseq_HA = ();
     %subseq2seq_H  = ();
     %subseq_len_H  = ();
@@ -1572,8 +1590,10 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $indel_file = $ofile_info_HH{"fullpath"}{"std.cdt.$mdl_name.indel"};
       my @subseq_AA = ();
       $cur_mdl_align_fa_file = $out_root . "." . $mdl_name . ".a.subseq.fa";
+      my ($start_codon_coords, $stop_codon_coords) = vdr_FeatureInfoCdsStartStopCodonCoords(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
       parse_blastn_indel_file_to_get_subseq_info($indel_file, \@{$mdl_seq_name_HA{$mdl_name}}, \%seq_len_H, 
-                                                 $mdl_name, \@subseq_AA, \%ugp_mdl_H, \%ugp_seq_H, 
+                                                 $mdl_name, $start_codon_coords, $stop_codon_coords, 
+                                                 \@subseq_AA, \%sda_mdl_H, \%sda_seq_H, 
                                                  \%seq2subseq_HA, \%subseq2seq_H, \%subseq_len_H, 
                                                  \%opt_HH, \%ofile_info_HH);
       $cur_mdl_nalign = scalar(@subseq_AA);
@@ -1634,7 +1654,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
         join_alignments_and_add_unjoinbl_alerts($sqfile_for_analysis_R, \$blastn_db_sqfile, \%execs_H, 
                                                 $do_glsearch, $cm_file,
                                                 \@join_seq_name_A, \%seq_len_H, 
-                                                \@mdl_info_AH, $mdl_idx, \%ugp_mdl_H, \%ugp_seq_H, 
+                                                \@mdl_info_AH, $mdl_idx, \%sda_mdl_H, \%sda_seq_H, 
                                                 \%seq2subseq_HA, \%subseq_len_H, \@{$stk_file_HA{$mdl_name}}, 
                                                 \@joined_stk_file_A, \%sda_output_HH,
                                                 \%alt_seq_instances_HH, \%alt_info_HH,
@@ -6083,7 +6103,7 @@ sub add_low_similarity_alerts_for_one_sequence {
               # determine if this feature qualifies as a 'coding' feature for purposes of the alert
               # it does if it is a CDS, mat_peptide or has identical coords to a CDS or mat_peptide
               # - feature is a CDS or mat_peptide OR has identical coordinates to a CDS or mat_peptide
-              my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdCoords($ftr_info_AHR, $ftr_idx);
+              my $ftr_matches_coding = vdr_FeatureTypeIsCdsOrMatPeptideOrIdStartAndStop($ftr_info_AHR, $ftr_idx);
               my $ftr_results_HR = $ftr_results_HAHR->{$seq_name}[$ftr_idx]; # for convenience
               if((defined $ftr_results_HR->{"n_start"}) || (defined $ftr_results_HR->{"p_qstart"})) { 
                 my $f_start  = (defined $ftr_results_HR->{"n_start"}) ? $ftr_results_HR->{"n_start"}  : $ftr_results_HR->{"p_qstart"};
@@ -8959,9 +8979,9 @@ sub output_tabular {
     my $seq_mdl_rpn = ((defined $cls_output_HR) && (defined $cls_output_HR->{"rpn.model1"})) ? $cls_output_HR->{"rpn.model1"} : "-";
 
     my $sda_output_HR = (($do_sda) && (defined $sda_output_HHR->{$seq_name})) ? \%{$sda_output_HHR->{$seq_name}} : undef;
-    my $sda_ugp_seq   = (($do_sda) && (defined $sda_output_HR->{"ugp_seq"}))  ? $sda_output_HR->{"ugp_seq"} : "-";
-    my $sda_ugp_mdl   = (($do_sda) && (defined $sda_output_HR->{"ugp_mdl"}))  ? $sda_output_HR->{"ugp_mdl"} : "-";
-    my $sda_ugp_fract = (($do_sda) && (defined $sda_output_HR->{"ugp_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"ugp_seq"}, $FH_HR) / $seq_len : "-";
+    my $sda_seq       = (($do_sda) && (defined $sda_output_HR->{"sda_seq"}))  ? $sda_output_HR->{"sda_seq"} : "-";
+    my $sda_mdl       = (($do_sda) && (defined $sda_output_HR->{"sda_mdl"}))  ? $sda_output_HR->{"sda_mdl"} : "-";
+    my $sda_fract     = (($do_sda) && (defined $sda_output_HR->{"sda_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"sda_seq"}, $FH_HR) / $seq_len : "-";
     my $sda_5p_seq    = (($do_sda) && (defined $sda_output_HR->{"5p_seq"}))  ? $sda_output_HR->{"5p_seq"} : "-";
     my $sda_5p_mdl    = (($do_sda) && (defined $sda_output_HR->{"5p_mdl"}))  ? $sda_output_HR->{"5p_mdl"} : "-";
     my $sda_5p_fract  = (($do_sda) && (defined $sda_output_HR->{"5p_seq"}))  ? vdr_CoordsLength($sda_output_HR->{"5p_seq"}, $FH_HR) / $seq_len : "-";
@@ -9245,11 +9265,11 @@ sub output_tabular {
     }
 
     if($do_sda) {
-      my $sda_ugp_fract2print = ($sda_ugp_fract ne "-") ? sprintf("%.3f", $sda_ugp_fract) : "-";
+      my $sda_fract2print = ($sda_fract ne "-") ? sprintf("%.3f", $sda_fract) : "-";
       my $sda_5p_fract2print  = ($sda_5p_fract  ne "-") ? sprintf("%.3f", $sda_5p_fract)  : "-";
       my $sda_3p_fract2print  = ($sda_3p_fract  ne "-") ? sprintf("%.3f", $sda_3p_fract)  : "-";
       push(@data_sda_AA, [$seq_idx2print, $seq_name, $seq_len, $seq_mdl1, $seq_pass_fail,
-                          $sda_ugp_seq, $sda_ugp_mdl, $sda_ugp_fract2print, 
+                          $sda_seq, $sda_mdl, $sda_fract2print, 
                           $sda_5p_seq, $sda_5p_mdl, $sda_5p_fract2print, 
                           $sda_3p_seq, $sda_3p_mdl, $sda_3p_fract2print]);
     }
