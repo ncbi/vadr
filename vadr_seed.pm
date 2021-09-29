@@ -1089,8 +1089,8 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         my $sda_nsgm = scalar(@sda_seq_start_A);
         
         if(($orig_sda_nsgm != $sda_nsgm) || ($only_keep_max_ungap_sgm)) { 
-          printf("HEYA! in $sub_name, rewriting coords\n");
-          printf("\torig coords: seq: $sda_seq_coords mdl: $sda_mdl_coords\n");
+          # printf("in $sub_name, rewriting coords\n");
+          # printf("\torig coords: seq: $sda_seq_coords mdl: $sda_mdl_coords\n");
           if(($sda_nsgm == 0) || ($only_keep_max_ungap_sgm)) { # take maximum length segment from original
             my ($argmax_sda_seq_sgm, $max_sda_seq_sgm_len) = vdr_CoordsMaxLengthSegment($sda_seq_coords, $FH_HR);
             my ($argmax_sda_mdl_sgm, $max_sda_mdl_sgm_len) = vdr_CoordsMaxLengthSegment($sda_mdl_coords, $FH_HR);
@@ -1108,7 +1108,7 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         }
         $sda_seq_HR->{$seq_name} = $sda_seq_coords;
         $sda_mdl_HR->{$seq_name} = $sda_mdl_coords;
-        printf("HEYA 1\n\tsda_seq_coords: $sda_seq_coords\n\tsda_mdl_coords: $sda_mdl_coords\n");
+        # printf("\n\tsda_seq_coords: $sda_seq_coords\n\tsda_mdl_coords: $sda_mdl_coords\n");
         # finished setting sda_seq_coords and sda_mdl_coords
         ##########
 
@@ -1260,7 +1260,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
       $mdl_consensus_sqstring = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($mdl_name);
     }
   }
-  printf("mdl_consensus_sqstring len: " . length($mdl_consensus_sqstring) . "\n");
+  # printf("mdl_consensus_sqstring len: " . length($mdl_consensus_sqstring) . "\n");
 
   my $ninstk = scalar(@{$in_stk_file_AR});
   my %subseq2stk_idx_H = (); # key is subseq name, value is index of stockholm file name in @{$in_stk_file_AR}
@@ -1376,11 +1376,11 @@ sub join_alignments_and_add_unjoinbl_alerts {
       # so either case 1 or 2
       $seq_case = 2; # set to 1 below if nec
       my $nsubseq = scalar(@{$seq2subseq_HAR->{$seq_name}});
-      printf("seq2subseq_HAR->{$seq_name} is defined\n");
-      printf("nsubseq: $nsubseq\n");
+      # printf("seq2subseq_HAR->{$seq_name} is defined\n");
+      # printf("nsubseq: $nsubseq\n");
       for(my $s = 0; $s < $nsubseq; $s++) { 
         my $subseq_name = $seq2subseq_HAR->{$seq_name}[$s];
-        printf("subseq_name: $subseq_name\n");
+        # printf("subseq_name: $subseq_name\n");
         if($subseq_name =~ /^(\S+)\/(\d+)\-(\d+)$/) {
           my ($orig_seq_name, $subseq_start, $subseq_stop) = ($1, $2, $3);
           if($orig_seq_name ne $seq_name) {
@@ -1424,7 +1424,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
       } # end of 'for(my $s = 0; $s < $nsubseq; $s++) {' over subseqs
 
       # we know which case, and which aligned (sub)sequences pertain to this sequence (if case 2 or 3)
-      printf("seq_case: $seq_case\n");
+      # printf("seq_case: $seq_case\n");
       my $stk_idx = undef;
       my $subseq_name = undef;
       if($seq_case == 1) { 
@@ -1471,11 +1471,11 @@ sub join_alignments_and_add_unjoinbl_alerts {
           if(defined $subseq_inserts_HH{$subseq_name}{"ins"}) { 
             $seq_inserts_HH{$seq_name}{"ins"} .= $subseq_inserts_HH{$subseq_name}{"ins"};
           }
-          printf("ali_5p_idx defined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
+          # printf("ali_5p_idx defined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
         }
         else {
           $seq_inserts_HH{$seq_name}{"spos"} = $sda_mdl_start;
-          printf("ali_5p_idx undefined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . "\n");
+          # printf("ali_5p_idx undefined $seq_name updated seq_inserts_HH to spos:" . $seq_inserts_HH{$seq_name}{"spos"} . "\n");
         }
 
         # seed-with-gaps
@@ -1504,11 +1504,11 @@ sub join_alignments_and_add_unjoinbl_alerts {
               $seq_inserts_HH{$seq_name}{"ins"} .= $subseq_mdl_pos . ":" . ($subseq_uapos + $ali_3p_seq_start - 1) . ":" . $subseq_inslen . ";";
             }
           }
-          printf("ali_3p_idx defined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
+          #printf("ali_3p_idx defined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . " ins:" . $seq_inserts_HH{$seq_name}{"ins"} . "\n");
         }
         else {
           $seq_inserts_HH{$seq_name}{"epos"} = $sda_mdl_stop;
-          printf("ali_3p_idx undefined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . "\n");
+          #printf("ali_3p_idx undefined $seq_name updated seq_inserts_HH to epos:" . $seq_inserts_HH{$seq_name}{"epos"} . "\n");
         }
       }
       else {
@@ -1731,14 +1731,14 @@ sub join_alignments_helper {
   }
 
   # debugging print statements
-  if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
-  if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
+  # if($have_5p) { print("ali_5p_seq: $ali_5p_seq_start .. $ali_5p_seq_stop\nali_5p_seq: $ali_5p_seq\n"); }
+  # if($have_3p) { print("ali_3p_seq: $ali_3p_seq_start .. $ali_3p_seq_stop\nali_3p_seq: $ali_3p_seq\n"); }
 
-  if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
-  if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
+  # if($have_5p) { print("ali_5p_mdl: $ali_5p_mdl_start .. $ali_5p_mdl_stop\n"); }
+  # if($have_3p) { print("ali_3p_mdl: $ali_3p_mdl_start .. $ali_3p_mdl_stop\n"); }
 
-  print("sda_seq: $sda_seq_start .. $sda_seq_stop\n");
-  print("sda_mdl: $sda_mdl_start .. $sda_mdl_stop\n");
+  # print("sda_seq: $sda_seq_start .. $sda_seq_stop\n");
+  # print("sda_mdl: $sda_mdl_start .. $sda_mdl_stop\n");
 
   ################################################
   # Check to make sure aligned overlapping (overhang) regions
@@ -1792,7 +1792,6 @@ sub join_alignments_helper {
   if($have_3p) {
     # usual case, first position of aligned 3' region is just 1 sequence position
     # *and* 1 model position after seed region
-    printf("HEYA checking if ali_3p_seq_start: $ali_3p_seq_start == ali_3p_mdl_start - sda_seq_mdl_diff_3p ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p): %d\n", ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p));
     if($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p)) {
       $fetch_sda_seq_stop = $sda_seq_len - ($sda_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
       $fetch_sda_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
@@ -2006,7 +2005,7 @@ sub process_seed_seq_and_mdl_coords {
   my $nsgm = 0;
   my $inserts_str = "";
 
-  printf("in $sub_name, mdl_sqstring len: " . length($mdl_sqstring) . "\n");
+  # printf("in $sub_name, mdl_sqstring len: " . length($mdl_sqstring) . "\n");
 
   vdr_FeatureStartStopStrandArrays($seq_coords, \@seq_start_A, \@seq_stop_A, \@seq_strand_A, $FH_HR);
   vdr_FeatureStartStopStrandArrays($mdl_coords, \@mdl_start_A, \@mdl_stop_A, \@mdl_strand_A, $FH_HR);
@@ -2034,9 +2033,9 @@ sub process_seed_seq_and_mdl_coords {
     }
     $seq_sgm_len = abs($seq_stop_A[$s] - $seq_start_A[$s]) + 1;
     $mdl_sgm_len = abs($mdl_stop_A[$s] - $mdl_start_A[$s]) + 1;
-    printf("in $sub_name, s: $s\n");
-    printf("\tseq: " . $seq_start_A[$s] . ".." . $seq_stop_A[$s] . " len: $seq_sgm_len\n");
-    printf("\tmdl: " . $mdl_start_A[$s] . ".." . $mdl_stop_A[$s] . " len: $mdl_sgm_len\n");
+    # printf("in $sub_name, s: $s\n");
+    # printf("\tseq: " . $seq_start_A[$s] . ".." . $seq_stop_A[$s] . " len: $seq_sgm_len\n");
+    # printf("\tmdl: " . $mdl_start_A[$s] . ".." . $mdl_stop_A[$s] . " len: $mdl_sgm_len\n");
 
     # deal with gaps in sequence (deletions) and model (insertions)
     if($s > 0) { 
@@ -2046,20 +2045,20 @@ sub process_seed_seq_and_mdl_coords {
         ofile_FAIL("ERROR in $sub_name, sequence segments out of order or overlap in seq coords string $seq_coords");
       }
       if($ins_len > 0) { 
-        printf("\tins_len: $ins_len, appending from " . $seq_stop_A[($s-1)] . ", " . substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len) . "\n");
+        # printf("\tins_len: $ins_len, appending from " . $seq_stop_A[($s-1)] . ", " . substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len) . "\n");
         $aln_seq_sqstring .= substr($seq_sqstring, $seq_stop_A[($s-1)], $ins_len);
         $aln_mdl_sqstring .= utl_StringMonoChar($ins_len, ".", $FH_HR);
         $inserts_str .= $mdl_stop_A[($s-1)] . ":" . ($seq_stop_A[($s-1)]+1) . ":" . $ins_len . ";";
       }
       if($del_len > 0) { 
-        printf("\tdel_len: $del_len, appending from " . $mdl_stop_A[($s-1)] . ", " . substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len) . "\n");
+        # printf("\tdel_len: $del_len, appending from " . $mdl_stop_A[($s-1)] . ", " . substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len) . "\n");
         $aln_seq_sqstring .= utl_StringMonoChar($del_len, "-", $FH_HR);
         $aln_mdl_sqstring .= substr($mdl_sqstring, $mdl_stop_A[($s-1)], $del_len);
       }
     }
     # append ungapped region
-    printf("\tappending seq from " . ($seq_start_A[$s]-1) . ", len: $seq_sgm_len\n");
-    printf("\tappending mdl from " . ($mdl_start_A[$s]-1) . ", len: $mdl_sgm_len\n");
+    # printf("\tappending seq from " . ($seq_start_A[$s]-1) . ", len: $seq_sgm_len\n");
+    # printf("\tappending mdl from " . ($mdl_start_A[$s]-1) . ", len: $mdl_sgm_len\n");
     $aln_seq_sqstring .= substr($seq_sqstring, ($seq_start_A[$s]-1), $seq_sgm_len);
     $aln_mdl_sqstring .= substr($mdl_sqstring, ($mdl_start_A[$s]-1), $mdl_sgm_len);
   }
@@ -2214,7 +2213,7 @@ sub prune_seed_of_terminal_short_segments {
       $mdl_start_AR, $mdl_stop_AR, $mdl_strand_AR, 
       $min_term_sgm_len, $seq_len) = @_;
 
-  printf("in $sub_name, min_term_sgm_len: $min_term_sgm_len\n");
+  # printf("in $sub_name, min_term_sgm_len: $min_term_sgm_len\n");
 
   my $nsgm = scalar(@{$seq_start_AR});
   my $seq_start = $seq_start_AR->[0];
@@ -2258,7 +2257,6 @@ sub prune_seed_of_terminal_short_segments {
         $s = -1; # breaks loop
       }
     }
-    printf("3' nremove: $nremove\n");
     if($nremove > 0) { 
       $rewrite_coords_flag = 1;
       for($s = 0; $s < $nremove; $s++) { 
