@@ -1744,7 +1744,7 @@ sub join_alignments_helper {
   # Check to make sure aligned overlapping (overhang) regions
   # were aligned as expected. More specifically ensure that:
   # 
-  # ($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff)):
+  # ($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff_5p)):
   # If so, this means offset between model stop and sequence stop is
   # same as offset between model start and sequence stop which means
   # the overlapping 'overhang' region between the 5' region and the
@@ -1754,12 +1754,14 @@ sub join_alignments_helper {
   #
   # Also make sure the inverse is true on the 3' end, if nec:
   # That is, that:
-  # ($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff))
+  # ($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p))
   # 
   # variables starting with 'fetch' are in relative coordinate space for whatever they pertain to:
   # either ali_5p_{seq,mdl}, ali_3p_{seq,mdl} or sda_seq
-  my $sda_seq_mdl_diff = $sda_mdl_start - $sda_seq_start; # offset between model start and sequence start
-  # printf("sda_seq_mdl_diff: $sda_seq_mdl_diff\n");
+  my $sda_seq_mdl_diff_5p = $sda_mdl_start - $sda_seq_start; # offset between model start and sequence start
+  my $sda_seq_mdl_diff_3p = $sda_mdl_stop  - $sda_seq_stop;  # offset between model stop  and sequence stop
+  # printf("sda_seq_mdl_diff_5p: $sda_seq_mdl_diff_3p\n");
+  # printf("sda_seq_mdl_diff_3p: $sda_seq_mdl_diff_5p\n");
   my $fetch_ali_5p_seq_start = 1;                    
   my $fetch_ali_5p_seq_stop  = length($ali_5p_seq);
   my $fetch_ali_3p_seq_start = 1;                   
@@ -1775,7 +1777,7 @@ sub join_alignments_helper {
   if($have_5p) { 
     # usual case, final position of aligned 5' region is just 1 sequence position
     # *and* 1 model position prior to seed region
-    if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff)) {
+    if($ali_5p_seq_stop == ($ali_5p_mdl_stop - $sda_seq_mdl_diff_5p)) {
       $fetch_sda_seq_start = ($ali_5p_seq_stop - $sda_seq_start + 1) + 1; # one position past 5' overhang
       $fetch_sda_mdl_start = $ali_5p_mdl_stop + 1; # one position past 5' overhang
     }
@@ -1790,8 +1792,8 @@ sub join_alignments_helper {
   if($have_3p) {
     # usual case, first position of aligned 3' region is just 1 sequence position
     # *and* 1 model position after seed region
-    printf("HEYA checking if ali_3p_seq_start: $ali_3p_seq_start == ali_3p_mdl_start - sda_seq_mdl_diff ($ali_3p_mdl_start - $sda_seq_mdl_diff): %d\n", ($ali_3p_mdl_start - $sda_seq_mdl_diff));
-    if($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff)) {
+    printf("HEYA checking if ali_3p_seq_start: $ali_3p_seq_start == ali_3p_mdl_start - sda_seq_mdl_diff_3p ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p): %d\n", ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p));
+    if($ali_3p_seq_start == ($ali_3p_mdl_start - $sda_seq_mdl_diff_3p)) {
       $fetch_sda_seq_stop = $sda_seq_len - ($sda_seq_stop - $ali_3p_seq_start + 1); # one position prior to 3' overhang
       $fetch_sda_mdl_stop = $ali_3p_mdl_start - 1; # one position prior to 3' overhang
     }
@@ -1815,11 +1817,12 @@ sub join_alignments_helper {
   # But in practice it's probably not necessary with 
   # long enough overhangs (50-100nt)
   # 
-  # below, let sda_seq_mdl_diff is sda_mdl_start - sda_seq_start
+  # below, let sda_seq_mdl_diff_5p is sda_mdl_start - sda_seq_start
+  #        let sda_seq_mdl_diff_3p is sda_mdl_stop  - sda_seq_stop
   # 
   # 5' end:
   # find X = max position <= ali_5p_stop where
-  # c1: seqpos == mdlpos - sda_seq_mdl_diff
+  # c1: seqpos == mdlpos - sda_seq_mdl_diff_5p
   # where seqpos = ali_5p_seq_stop - number of nongap seq positions seen since ali_5p_seq_stop
   # where mdlpos = ali_5p_mdl_stop - number of nongap mdl positions seen since ali_5p_mdl_stop
   #
@@ -1830,7 +1833,7 @@ sub join_alignments_helper {
   #
   # 3' end:
   # find Y = min position >= ali_3p_start where
-  # c2: seqpos == mdlpos - sda_seq_mdl_diff
+  # c2: seqpos == mdlpos - sda_seq_mdl_diff_3p
   # where seqpos = ali_3p_seq_start - number of nongap seq positions seen since ali_3p_seq_start
   # where mdlpos = ali_3p_mdl_start - number of nongap mdl positions seen since ali_3p_mdl_start
   # 
