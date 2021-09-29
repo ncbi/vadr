@@ -65,7 +65,9 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoImpute3paFtrIdx()
 # vdr_FeatureInfoImputeByOverlap()
 # vdr_FeatureInfoInitializeMiscNotFailure()
+# vdr_FeatureInfoInitializeIsDeletable()
 # vdr_FeatureInfoValidateMiscNotFailure()
+# vdr_FeatureInfoValidateIsDeletable()
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
@@ -522,6 +524,42 @@ sub vdr_FeatureInfoInitializeMiscNotFailure {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoInitializeIsDeletable
+# Incept:     EPN, Tue Sep 28 21:09:22 2021
+# 
+# Purpose:    Set "is_deletable" value to 0 for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_zero, set all values to 0 even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_zero:    '1' to set values to '0' for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeIsDeletable {
+  my $sub_name = "vdr_FeatureInfoInitializeIsDeletable";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_zero, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_zero) || (! defined $ftr_info_AHR->[$ftr_idx]{"is_deletable"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"is_deletable"} = 0;
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureInfoValidateMiscNotFailure
 # Incept:     EPN, Fri Feb  5 11:45:29 2021
 # 
@@ -568,6 +606,48 @@ sub vdr_FeatureInfoValidateMiscNotFailure {
   
   if($fail_str ne "") { 
     ofile_FAIL("ERROR in $sub_name, some misc_not_failure values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
+  
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateIsDeletable
+# Incept:     EPN, Tue Sep 28 21:09:10 2021
+# 
+# Purpose:    Validate "is_deletable" values are either 0 or 1.
+#             Should probably be called after vdr_FeatureInfoInitializeIsDeletable()
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoValidateIsDeletable {
+  my $sub_name = "vdr_FeatureInfoValidateIsDeletable";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"is_deletable"}) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif(($ftr_info_AHR->[$ftr_idx]{"is_deletable"} != 1) && ($ftr_info_AHR->[$ftr_idx]{"is_deletable"} != 0)) { 
+      $fail_str .= "ftr_idx: $ftr_idx, " . $ftr_info_AHR->[$ftr_idx]{"is_deletable"} . " != 0 and != 1\n"; 
+    }
+  }
+  
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some is_deletable values are invalid or don't make sense:\n$fail_str\n", 1, $FH_HR);
   }
 
   return;
@@ -1987,6 +2067,12 @@ sub vdr_AlertInfoInitialize {
                    "DELETION_OF_FEATURE", # short description
                    "internal deletion of a complete feature", # long description
                    0, 1, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR);
+
+  vdr_AlertInfoAdd($alt_info_HHR, "deletina", "sequence",
+                   "DELETION_OF_FEATURE", # short description
+                   "allowed internal deletion of a complete feature", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
