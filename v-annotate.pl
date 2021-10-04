@@ -114,7 +114,7 @@ require "sqp_utils.pm";
 #     unexdivg (1)
 #
 #  4. parse_stk_and_add_alignment_cds_and_mp_alerts()
-#     indf5gap, indf5lcc, indf5lcn, indf3gap, indf3lcc, indf3lcn, deletinf, deletins (8)
+#     indf5gap, indf5lcc, indf5lcn, indf3gap, indf3lcc, indf3lcn, deletinf, deletins, deletina (9)
 #
 #  5. fetch_features_and_add_cds_and_mp_alerts_for_one_sequence()
 #     mutstart, unexleng, mutendcd, mutendex, mutendns, cdsstopn, ambgnt5c, ambgnt3c, ambgnt5f, ambgnt3f (10)
@@ -222,6 +222,7 @@ opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,         "
 opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_mnf",   "boolean",  0,         $g,     undef, undef,         "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_isdel",  "boolean",  0,         $g,     undef, undef,         "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -311,7 +312,7 @@ opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,          "
 opt_Add("--s_blastnrw",   "integer",      1,   $g,       "-s", undef,          "for -s, set blastn -reward <n> to <n>",                             "for -s, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnpn",   "integer",     -2,   $g,       "-s", undef,          "for -s, set blastn -penalty <n> to <n>",                            "for -s, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastngo",   "integer",      0,   $g,       "-s", undef,          "for -s, set blastn -gapopen <n> to <n>",                            "for -s, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnge",   "real",      -2.5,   $g,       "-s", undef,          "for -s, set blastn -gapextend <x> to <x>",                          "for -s, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnge",   "real",       2.5,   $g,       "-s", undef,          "for -s, set blastn -gapextend <x> to <x>",                          "for -s, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",   "real",      50.0,   $g,       "-s", undef,          "for -s, set blastn minimum HSP score to consider to <x>",           "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,          "for -s, set blastn option -task blastn",                            "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
 opt_Add("--s_minsgmlen",  "integer",     10,   $g,       "-s", undef,          "for -s, set minimum length of ungapped region in HSP seed to <n>",  "for -s, set minimum length of ungapped region in HSP seed to <n>", \%opt_HH, \@opt_order_A);
@@ -401,6 +402,7 @@ my $options_okay =
                 "alt_mnf_yes=s" => \$GetOptions_H{"--alt_mnf_yes"},
                 "alt_mnf_no=s"  => \$GetOptions_H{"--alt_mnf_no"},
                 "ignore_mnf"    => \$GetOptions_H{"--ignore_mnf"},
+                "ignore_isdel"  => \$GetOptions_H{"--ignore_isdel"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -985,7 +987,9 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoImpute3paFtrIdx(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_mnf", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -4236,7 +4240,7 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
         # keep track that this segment is completely deleted, by constructing its 
         # alert message for a possible deletinf alert. However we can't report it yet
         # because if all segments for this feature are deleted we will report a 
-        # deletins (per-sequence) alert instead. So we just store the possible
+        # deletins or deletina (per-sequence) alert instead. So we just store the possible
         # deletinf alert here in %ftr_deletinf_alt_msg_HA and then deal with it after
         # the 'for($sgm_idx=0..$nsgm-1)' block below
         my $ftr_nsgm = ($ftr_info_AHR->[$ftr_idx]{"3p_sgm_idx"} - $ftr_info_AHR->[$ftr_idx]{"5p_sgm_idx"}) + 1;
@@ -4553,18 +4557,21 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
                                    $FH_HR);
       }
       
-      # report any deletinf/deletins alerts
+      # report any deletinf/deletins/deletina alerts
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(defined $ftr_deletinf_alt_msg_HA{$ftr_idx}) { 
           my $nsgm_alt = scalar(@{$ftr_deletinf_alt_msg_HA{$ftr_idx}});
           my $nsgm_tot = vdr_FeatureNumSegments($ftr_info_AHR, $ftr_idx);
           if($nsgm_alt == $nsgm_tot) { 
-            # all segments are deleted, report deletins (per-sequence) alert, 
-            # we do NOT report any deletinf alerts, one reason is there is no 
-            # feature annotation for $ftr_idx in this case
+            # all segments are deleted, report either deletins or
+            # deletina (per-sequence) alert, we do NOT report any
+            # deletinf alerts, one reason is there is no feature
+            # annotation for $ftr_idx in this case
             my $alt_scoords = "seq:VADRNULL;"; # feature is deleted, no sequence info available
             my $alt_mcoords = "mdl:" . $ftr_info_AHR->[$ftr_idx]{"coords"} . ";";
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "deletins", $seq_name, 
+            # determine which code to use depending on is_deletable value from ftr_info
+            my $alt_code    = $ftr_info_AHR->[$ftr_idx]{"is_deletable"} ? "deletina" : "deletins";
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, $alt_code, $seq_name, 
                                         sprintf("%s%s%s feature number %s: %s",
                                                 $alt_scoords, $alt_mcoords,
                                                 $ftr_info_AHR->[$ftr_idx]{"type"}, 
