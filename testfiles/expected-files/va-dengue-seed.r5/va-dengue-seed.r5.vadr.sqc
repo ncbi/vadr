@@ -1,8 +1,8 @@
 #seq  seq                            seq                                sub                    seq    mdl         num                          sub    score  diff/  seq   
 #idx  name                           len  p/f   ant  model1     grp1    grp1   score  sc/nt    cov    cov  bias  hits  str  model2     grp2    grp2    diff     nt  alerts
 #---  ----------------------------  ----  ----  ---  ---------  ------  ----  ------  -----  -----  -----  ----  ----  ---  ---------  ------  ----  ------  -----  ------
-1     gi|770146038|gb|KM031079.1|    515  PASS  yes  NC_001474  Dengue  2      813.0  1.579  1.000  0.048     0     1    +  NC_001477  Dengue  1      515.3  0.930  -     
-2     gi|1126644957|gb|KX577695.1|  2325  PASS  yes  NC_001474  Dengue  2     3428.0  1.475  1.000  0.217     0     1    +  NC_001477  Dengue  1     3108.6  1.291  -     
-3     gi|1044891200|gb|KU550333.1|  2325  PASS  yes  NC_001474  Dengue  2     3428.0  1.475  1.000  0.217     0     1    +  NC_001477  Dengue  1     3108.6  1.291  -     
-4     gi|1447973732|gb|MH680297.1|  1485  PASS  yes  NC_001477  Dengue  1     2106.0  1.418  1.000  0.138     0     1    +  NC_001474  Dengue  2     1947.0  1.311  -     
-5     gi|281314094|gb|GU211727.1|     87  PASS  yes  NC_001474  Dengue  2      139.0  1.598  1.000  0.008     0     1    +  NC_001477  Dengue  1       69.6  0.685  -     
+1     gi|770146038|gb|KM031079.1|    515  PASS  yes  NC_001474  Dengue  2      819.0  1.590  1.000  0.048     0     1    +  NC_001477  Dengue  1      526.9  0.935  -     
+2     gi|1126644957|gb|KX577695.1|  2325  PASS  yes  NC_001474  Dengue  2     3455.0  1.487  1.000  0.217     0     1    +  NC_001477  Dengue  1     3211.0  1.278  -     
+3     gi|1044891200|gb|KU550333.1|  2325  PASS  yes  NC_001474  Dengue  2     3455.0  1.487  1.000  0.217     0     1    +  NC_001477  Dengue  1     3211.0  1.278  -     
+4     gi|1447973732|gb|MH680297.1|  1485  PASS  yes  NC_001477  Dengue  1     2122.0  1.429  1.000  0.138     0     1    +  NC_001474  Dengue  2     1952.0  1.314  -     
+5     gi|281314094|gb|GU211727.1|     87  PASS  yes  NC_001474  Dengue  2      140.0  1.609  1.000  0.008     0     1    +  NC_001477  Dengue  1       70.1  0.689  -     
