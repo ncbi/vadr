@@ -4701,9 +4701,9 @@ sub add_frameshift_alerts_for_one_sequence {
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
 
   my $do_output_frameshift_stk = ((opt_Get("--keep", $opt_HHR)) || (opt_Get("--out_fsstk", $opt_HHR))) ? 1 : 0;
-  my $fst_min_nt5    = opt_Get("--fstminnt5",   $opt_HHR); # maximum allowed nt length of non-dominant frame at 5' end without a frameshift alert 
-  my $fst_min_nt3    = opt_Get("--fstminnt3",   $opt_HHR); # maximum allowed nt length of non-dominant frame at 3' end without a frameshift alert 
-  my $fst_min_nti    = opt_Get("--fstminnti",   $opt_HHR); # maximum allowed nt length of internal region non-dominant frame without a frameshift alert 
+  my $fst_min_nt5    = opt_Get("--fstminnt5",   $opt_HHR); # maximum allowed nt length of unexpected frame at 5' end without a frameshift alert 
+  my $fst_min_nt3    = opt_Get("--fstminnt3",   $opt_HHR); # maximum allowed nt length of unexpected frame at 3' end without a frameshift alert 
+  my $fst_min_nti    = opt_Get("--fstminnti",   $opt_HHR); # maximum allowed nt length of internal region unexpected frame without a frameshift alert 
   my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert  
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
   my $nmaxins        = opt_Get("--nmaxins",     $opt_HHR); # maximum allowed insertion length in nucleotide alignment
@@ -4779,6 +4779,7 @@ sub add_frameshift_alerts_for_one_sequence {
               $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
               # $F_0 is frame of initial nongap RF position for this CDS 
             } 
+            printf("HEYA F_0: $F_0\n");
 
             # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
@@ -4905,21 +4906,22 @@ sub add_frameshift_alerts_for_one_sequence {
           } # end of 'if' entered if segment has valid results 
         } # end of 'for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) {' 
       } # end of 'if($first_sgm_idx != -1)'
-
+    
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
       #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
       #printf("frame_stok_str: $frame_stok_str\n");
       #printf("frame_mtok_str: $frame_mtok_str\n");
 
-      # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
+      # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0, and expected frame
       my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_firstpos"} = $F_0;
+      my $expected_frame = $F_0;
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $F_0;
       $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
       # deconstruct $frame_stok_str, looking for potential frameshifts, 
-      # we combine any subseqs not in the dominant frame together and
-      # then check if any (possibly joined) non-dominant frame subseqs
+      # we combine any subseqs not in the expected frame together and
+      # then check if any (possibly joined) unexpected frame subseqs
       # are long enough to trigger an alert
       my @frame_stok_A = split(";", $frame_stok_str);
       my @frame_mtok_A = split(";", $frame_mtok_str);
@@ -4932,14 +4934,14 @@ sub add_frameshift_alerts_for_one_sequence {
         my $prv_sstop   = undef; # last sequence position in the previous frame token
         my $prv_mstop   = undef; # last model    position in the previous frame token
         my $prv_frame  = undef; # frame of previous frame token 
-        my $prv_dom_sstop = undef; # last sequence position in the previous dominant frame token
-        my $prv_dom_mstop = undef; # last model    position in the previous dominant frame token
-        my $span_sstart = undef; # first sequence position of a non-dominant frame subseq 
-        my $span_sstop  = undef; # final sequence position of a non-dominant frame subseq 
-        my $span_slen   = undef; # length in sequence of a non-dominant frame subseq
-        my $span_mstart = undef; # first model    position of a non-dominant frame subseq
-        my $span_mstop  = undef; # final model    position of a non-dominant frame subseq
-        my $span_mlen   = undef; # length in model of a non-dominant frame subseq
+        my $prv_exp_sstop = undef; # last sequence position in the previous expected frame token
+        my $prv_exp_mstop = undef; # last model    position in the previous expected frame token
+        my $span_sstart = undef; # first sequence position of a unexpected frame subseq 
+        my $span_sstop  = undef; # final sequence position of a unexpected frame subseq 
+        my $span_slen   = undef; # length in sequence of a unexpected frame subseq
+        my $span_mstart = undef; # first model    position of a unexpected frame subseq
+        my $span_mstop  = undef; # final model    position of a unexpected frame subseq
+        my $span_mlen   = undef; # length in model of a unexpected frame subseq
         my $insert_str = "";    # string of inserts to put in alert string
         my $delete_str = "";    # string of deletes to put in alert string
         my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
@@ -4991,42 +4993,42 @@ sub add_frameshift_alerts_for_one_sequence {
 
             # Determine if we may have a frameshift alert
             # Two possible cases:
-            # Case 1: this subseq is in dominant frame, but previous was not (that is, it's not the first frame_stok ($f != 0))
-            # Case 2: this subseq is not in dominant frame and it's the final one ($f == ($nframe_stok - 1))
-            if((($cur_frame == $dominant_frame) && ($f > 0) && ($prv_frame != $dominant_frame)) ||  # Case 1
-               (($cur_frame != $dominant_frame) && ($f == ($nframe_stok-1)))) {  # Case 2
+            # Case 1: this subseq is in expected frame, but previous was not (that is, it's not the first frame_stok ($f != 0))
+            # Case 2: this subseq is not in expected frame and it's the final one ($f == ($nframe_stok - 1))
+            if((($cur_frame == $expected_frame) && ($f > 0) && ($prv_frame != $expected_frame)) ||  # Case 1
+               (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1)))) {  # Case 2
               $is_5p = 0; # set to '1' below if frameshift region includes 5'-most nt of CDS feature
               $is_3p = 0; # set to '1' below if frameshift region includes 3'-most nt of CDS feature
               # note: if $is_3p == 1, $is_5p == 0 
-              # (b/c for $is_5p to be 1, cur_frame == $dominant_frame and
-              #      for $is_3p to be 1, cur_frame != $dominant_frame)
+              # (b/c for $is_5p to be 1, cur_frame == $expected_frame and
+              #      for $is_3p to be 1, cur_frame != $expected_frame)
               my $shifted_frame = undef; # will save shifted frame for alert output
 
-              # determine $span_sstart: the first position of the non-dominant frame subseq
-              if(defined $prv_dom_sstop) { 
-                # we've seen at least one dominant frame segment,
-                # start of the non-dominant stretch is 1 nt 3' of that
-                $span_sstart = ($ftr_strand eq "+") ? $prv_dom_sstop + 1 : $prv_dom_sstop - 1;
-                $span_mstart = ($ftr_strand eq "+") ? $prv_dom_mstop + 1 : $prv_dom_mstop - 1;
+              # determine $span_sstart: the first position of the unexpected frame subseq
+              if(defined $prv_exp_sstop) { 
+                # we've seen at least one expected frame segment,
+                # start of the unexpected stretch is 1 nt 3' of that
+                $span_sstart = ($ftr_strand eq "+") ? $prv_exp_sstop + 1 : $prv_exp_sstop - 1;
+                $span_mstart = ($ftr_strand eq "+") ? $prv_exp_mstop + 1 : $prv_exp_mstop - 1;
               }
               else { 
-                # we haven't seen a dominant frame segment yet, 
+                # we haven't seen a expected frame segment yet, 
                 # span start is first nt of CDS ($ftr_sstart)
                 $span_sstart = $ftr_sstart; 
                 $span_mstart = $ftr_mstart; 
                 $is_5p = 1; 
               }
-              # determine $span_sstop: the final position of the non-dominant frame subseq
-              if(($cur_frame != $dominant_frame) && ($f == ($nframe_stok-1))) { 
-                # (case 2) this subseq is not in dominant frame and it's the final one ($f == ($nframe_stok - 1))
-                # so final nt of the non-dominant stretch is the final nt of the CDS ($ftr_sstop) 
+              # determine $span_sstop: the final position of the unexpected frame subseq
+              if(($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) { 
+                # (case 2) this subseq is not in expected frame and it's the final one ($f == ($nframe_stok - 1))
+                # so final nt of the unexpected stretch is the final nt of the CDS ($ftr_sstop) 
                 $span_sstop = $ftr_sstop;
                 $span_mstop = $ftr_mstop;
                 $is_3p = 1; 
                 $shifted_frame = $cur_frame;
               }
               else { 
-                # (case 1) previous frame token was a non-dominant frame, so final nt of that non-dominant stretch
+                # (case 1) previous frame token was a unexpected frame, so final nt of that unexpected stretch
                 # is 1 nt 5' of start of current frame token
                 $span_sstop = ($ftr_strand eq "+") ? $cur_sstart - 1 : $cur_sstart + 1;
                 $span_mstop = ($ftr_strand eq "+") ? $cur_mstart - 1 : $cur_mstart + 1;
@@ -5050,7 +5052,7 @@ sub add_frameshift_alerts_for_one_sequence {
                   $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
                   $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                   $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                  $alt_str .= sprintf(" shifted_frame:%s; dominant_frame:%s;", $shifted_frame, $dominant_frame);
+                  $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
                   alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                   $insert_str = "";
                   $delete_str = "";
@@ -5058,7 +5060,7 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
                 else { # $do_glsearch is 0 so we have PP values and we examine them to determine type of frameshift
                   # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
-                  # determine average posterior probability of non-dominant frame subseq
+                  # determine average posterior probability of unexpected frame subseq
                   if(! defined $full_ppstr) { 
                     $full_ppstr = $msa->get_ppstring_aligned($seq_idx); 
                     $full_ppstr =~ s/[^0123456789\*]//g; # remove gaps, so we have 1 character in $full_ppstr per nt in the sequence
@@ -5081,7 +5083,7 @@ sub add_frameshift_alerts_for_one_sequence {
                     $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
                     $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                     $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                    $alt_str .= sprintf(" shifted_frame:%s; dominant_frame:%s;", $shifted_frame, $dominant_frame);
+                    $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
                     $alt_str .= sprintf(" avgpp:%.3f;", $span_avgpp);
                     my $is_hicnf = ($span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                     alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
@@ -5113,9 +5115,9 @@ sub add_frameshift_alerts_for_one_sequence {
             }
 
             # keep track of previous values we may need in next loop iteration
-            if($cur_frame == $dominant_frame) { 
-              $prv_dom_sstop = $cur_sstop; 
-              $prv_dom_mstop = $cur_mstop; 
+            if($cur_frame == $expected_frame) { 
+              $prv_exp_sstop = $cur_sstop; 
+              $prv_exp_mstop = $cur_mstop; 
             }
             $prv_sstop = $cur_sstop;
             $prv_mstop = $cur_mstop;
@@ -5183,7 +5185,7 @@ sub add_frameshift_alerts_for_one_sequence {
             $cds_sgm_msa->addGF("CC", $comment);
             $comment  = "GR CS annotation indicates the codon_start value each nongap RF position implies.";
             $cds_sgm_msa->addGF("CC", $comment);
-            $comment  = "Changes from the dominant codon_start value indicate possibly frameshifted regions.";
+            $comment  = "Changes from the expected codon_start value indicate possibly frameshifted regions.";
             $cds_sgm_msa->addGF("CC", $comment);
             for(my $c = 0; $c < scalar(@cds_alt_str_A); $c++) { 
               my ($instance_scoords, $instance_mcoords, $instance_detail) = alert_instance_parse($cds_alt_str_A[$c]);
@@ -5575,15 +5577,15 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
       # if CDS: look for all valid in-frame stops 
       if($ftr_is_cds) { 
-        if(! defined $ftr_results_HR->{"n_codon_start_firstpos"}) { 
+        if(! defined $ftr_results_HR->{"n_codon_start_expected"}) { 
           ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
         }
-        my $cds_codon_start = (defined $ftr_results_HR->{"n_codon_start_firstpos"}) ? $ftr_results_HR->{"n_codon_start_firstpos"} : 1;
+        my $cds_codon_start = (defined $ftr_results_HR->{"n_codon_start_expected"}) ? $ftr_results_HR->{"n_codon_start_expected"} : 1;
         # make a new sqstring $ftr_sqstring_alt_stops from $ftr_sqstring_alt to search for stops in that:
         # - is identical to $ftr_sqstring_alt                   if codon_start == 1
         # - has the first     nt removed from $ftr_sqstring_alt if codon_start == 2
         # - has the first two nt removed from $ftr_sqstring_alt if codon_start == 3
-        #my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_firstpos"} - 1) : 0;
+        #my $n_nt_skipped_at_5p_end = ($ftr_is_5trunc) ? ($ftr_results_HR->{"n_codon_start_expected"} - 1) : 0;
         my $n_nt_skipped_at_5p_end = $cds_codon_start - 1;
         my $ftr_sqstring_alt_stops = substr($ftr_sqstring_alt, $n_nt_skipped_at_5p_end);
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
@@ -5598,11 +5600,11 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
           }
           # look for cdsstopn, mutendex and mutendns ONLY IF 
           # CDS is NOT 5' truncated OR 
-          # n_codon_start_firstpos == n_codon_start_dominant
+          # n_codon_start_expected == n_codon_start_dominant
           if((! $ftr_is_5trunc) || 
-             ((defined $ftr_results_HR->{"n_codon_start_firstpos"}) && 
+             ((defined $ftr_results_HR->{"n_codon_start_expected"}) && 
               (defined $ftr_results_HR->{"n_codon_start_dominant"}) && 
-              ($ftr_results_HR->{"n_codon_start_firstpos"} == $ftr_results_HR->{"n_codon_start_dominant"}))) { 
+              ($ftr_results_HR->{"n_codon_start_expected"} == $ftr_results_HR->{"n_codon_start_dominant"}))) { 
             my @ftr_nxt_stp_A = ();
             sqstring_find_stops($ftr_sqstring_alt_stops, $mdl_tt, \@ftr_nxt_stp_A, $FH_HR);
             if($ftr_nxt_stp_A[1] != $ftr_len_stops) { 
@@ -5687,7 +5689,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                 $alt_str_H{"cdsstopn"} = sprintf("%s%s%s, shifted S:%d,M:%d", $alt_scoords, $alt_mcoords, $alt_codon, abs($ftr_stop-$ftr_stop_c), abs(abs($ua2rf_AR->[$ftr_stop]) - abs($ua2rf_AR->[$ftr_stop_c])));
               } # end of 'elsif($ftr_nxt_stp_A[1] != 0)'
             } # end of 'if($ftr_nxt_stp_A[1] != $ftr_len_stops) {' 
-          } # end of big if entered if CDS is not truncated or dominant frame and firstpos frame are identical
+          } # end of big if entered if CDS is not truncated or dominant frame and expected frame are identical
         } # end of 'if($ftr_len_stops >= 3)'
       } # end of 'if($ftr_is_cds) {' 
     
@@ -9819,12 +9821,12 @@ sub output_feature_table {
                 $cds_codon_start = 1; # protein only prediction, codon start must be 1
               }
               else { 
-                # n_start is defined, we have a nt prediction, we should have n_codon_start_dominant
+                # n_start is defined, we have a nt prediction, we should have n_codon_start_expected
                 # sanity check
-                if(! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"}) { 
+                if(! defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"}) { 
                   ofile_FAIL("ERROR in $sub_name, sequence $seq_name CDS feature (ftr_idx: $ftr_idx) has no codon_start info", 1, $FH_HR);
                 }
-                $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"};
+                $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"};
                 # if we trimmed the CDS start due to Ns update frame for that
                 if(($ftr_is_trimmable) &&
                    (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
