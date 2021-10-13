@@ -222,7 +222,8 @@ opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,         "
 opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_mnf",   "boolean",  0,         $g,     undef, undef,         "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_isdel",  "boolean",  0,         $g,     undef, undef,         "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_isdel",  "boolean", 0,         $g,     undef, undef,         "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_altftr", "boolean", 0,         $g,     undef, undef,         "ignore 'alt_feature_set' values in .minfo file, set to \"\" for all features/models",        "ignore 'alt_feature_set' values in .minfo file, set to \"\" for all features/models", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -403,6 +404,7 @@ my $options_okay =
                 "alt_mnf_no=s"  => \$GetOptions_H{"--alt_mnf_no"},
                 "ignore_mnf"    => \$GetOptions_H{"--ignore_mnf"},
                 "ignore_isdel"  => \$GetOptions_H{"--ignore_isdel"},
+                "ignore_altftr" => \$GetOptions_H{"--ignore_altftr"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -988,8 +990,10 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_mnf", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeAltFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_altftr", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateAltFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -1877,6 +1881,38 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   if(defined $mdl_seq_name_HA{$mdl_name}) { 
     alert_add_parent_based(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, \%{$ftr_results_HHAH{$mdl_name}}, 
                            \%alt_ftr_instances_HHH, "CDS", "mat_peptide", "peptrans", "VADRNULL", \%opt_HH, \%{$ofile_info_HH{"FH"}});
+  }
+}
+
+##############################################################
+# Potentially remove annotation and alerts for some features
+# if we have 'alt_feature_set' information in the mdl info
+##############################################################
+for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+  $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
+  if(defined $mdl_seq_name_HA{$mdl_name}) { 
+    if(vdr_FeatureInfoValidateAltFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR)) { 
+      # we'll enter this 'if' if any features have non-empty alt_feature_set
+      
+      # get children info for all features, we'll need this when picking features
+      my @i_am_child_A = ();
+      my @children_AA  = ();
+      my $nchildren = vdr_FeatureInfoChildrenArrayOfArrays(\@{$ftr_info_HAH{$mdl_name}}, undef, \@i_am_child_A, \@children_AA, $FH_HR);
+                                                           
+      # first pick features from sets that are not composed of any children
+      # this will remove features in alt_feature_sets that are not picked *and* their children
+      pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                          \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                          0, \@i_am_child_A, \@children_AA, 
+                                          \%opt_HH, \%{$ofile_info_HH{"FH"}});
+      # now pick features from sets that are not composed of any children (that we have left)
+      if($nchildren > 0) { 
+        pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
+                                            \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
+                                            1, \@i_am_child_A, \@children_AA,
+                                            \%opt_HH, \%{$ofile_info_HH{"FH"}});
+      }
+    }
   }
 }
 
@@ -3877,7 +3913,7 @@ sub cmalign_or_glsearch_run {
 #             a different valid start/stop.
 #
 #             Detects and adds the following alerts to 
-#             @{$alt_ftr_instances_AAHR}:
+#             @{$alt_ftr_instances_HHHR}:
 #             indf5gap: gap at 5' boundary of model span for a feature segment
 #             indf3gap: gap at 5' boundary of model span for a feature segment
 #             indf5lcc: low posterior prob at 5' boundary of model span for a coding feature segment
@@ -3898,7 +3934,7 @@ sub cmalign_or_glsearch_run {
 #  $sgm_results_HAHR:          REF to results HAH, FILLED HERE
 #  $ftr_results_HAHR:          REF to feature results HAH, possibly ADDED TO HERE
 #  $alt_seq_instances_HHR:     REF to array of hash with per-sequence alerts, ADDED TO HERE
-#  $alt_ftr_instances_HHHR:    REF to error instances HAH, ADDED TO HERE
+#  $alt_ftr_instances_HHHR:    REF to error instances HHH, ADDED TO HERE
 #  $dcr_output_HAHR:           REF to hash of array of hashes with info on doctored seqs to output, ADDED TO HERE
 #  $mdl_name:                  model name this alignment pertains to
 #  $ftr_fileroot_AR:           REF to array of per-feature file root values, pre-calc'ed and passed in so we don't need to do it per-seq
@@ -8595,14 +8631,16 @@ sub alert_add_parent_based {
 
   # get children info for all features, we'll use this in the loop below
   my @children_AA = ();
-  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, $child_type, \@children_AA, $FH_HR);
+  vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, $child_type, undef, \@children_AA, $FH_HR);
+
+  printf("nchildren: %d\n", scalar(@children_AA));
 
   # get array of feature indices that are of type $parent_type
   my @parent_ftr_idx_A = ();
   my $ftr_idx; 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     if(($ftr_info_AHR->[$ftr_idx]{"type"} eq $parent_type) && # feature $ftr_idx is of type $parent_type
-       (scalar(@{$children_AA[$ftr_idx]}) > 0)) {             # feature $ftr_idx has at least one childe of type $child_type
+       (scalar(@{$children_AA[$ftr_idx]}) > 0)) {             # feature $ftr_idx has at least one child of type $child_type
       push(@parent_ftr_idx_A, $ftr_idx);
     }
   }
@@ -8778,8 +8816,8 @@ sub alert_add_ambgnt5s_ambgnt3s {
 #  $alt_seq_instances_HHR: REF to 2D hashes with per-sequence alerts, PRE-FILLED
 #  $FH_HR:                 REF to hash of file handles
 #
-# Returns:    A string with all per-sequence err codes for this sequence 
-#             concatenated and separated by commas.
+# Returns:    '1' if >=1 alerts prevent annotation
+#             '0' if 0   alerts prevent annotation
 #
 ################################################################# 
 sub alert_instances_check_prevents_annot { 
@@ -8799,6 +8837,48 @@ sub alert_instances_check_prevents_annot {
   }
   
   return 0;
+}
+
+#################################################################
+# Subroutine:  alert_feature_instances_count_fatal()
+# Incept:      EPN, Wed Oct 13 12:13:15 2021
+#
+
+# Purpose:    Given a sequence name and feature index, count the
+#             number of fatal alerts stored in %{$alt_ftr_instances_HHHR}
+#             and return that number.
+#
+# Arguments: 
+#  $seq_name:               name of sequence
+#  $ftr_idx:                feature index
+#  $alt_info_HHR:           REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_ftr_instances_HHHR: REF to 3D hashes with per-feature alerts, PRE-FILLED
+#  $FH_HR:                  REF to hash of file handles
+#
+# Returns:    Number of fatal alerts for this sequence and feature
+#
+################################################################# 
+sub alert_feature_instances_count_fatal {
+  my $sub_name = "alert_feature_instances_count_fatal";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name, $ftr_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR) = @_;
+
+  my $nfatal = 0;
+  if(defined $alt_ftr_instances_HHHR->{$seq_name}) { 
+    if(defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}) { 
+      foreach my $alt_code (keys (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}})) { 
+        if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
+          my @instance_str_A = split(":VADRSEP:", alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code));
+          $nfatal += scalar(@instance_str_A);
+        }
+      }
+    }
+  }
+  
+  printf("in $sub_name, seq_name: $seq_name ftr_idx: $ftr_idx returning nfatal: $nfatal\n");
+  return $nfatal;
 }
 
 #################################################################
@@ -12896,6 +12976,124 @@ sub helper_tabular_fill_header_and_justification_arrays {
   }  
   else {
     ofile_FAIL("ERROR in $sub_name, unrecognized ofile_key $ofile_key", 1, $FH_HR);
+  }
+  return;
+}
+
+#################################################################
+# Subroutine: pick_features_from_all_alternatives()
+# Incept:     EPN, Wed Oct 13 12:00:26 2021
+# Purpose:    For features that have a non-empty 'alt_feature_set'
+#             value, choose one representative from all alternatives
+#             and delete annotation and alerts from all other alternatives.
+#             This subroutine should be called twice, first with the
+#             $only_children_flag set as '0' to only pick features from 
+#             sets that are not children, then again with $only_children_flag 
+#             set as '1' to only pick features from sets that *are* children.
+#             This is important because when we remove results/alerts for
+#             parents we also remove results/alerts for their children.
+#             This only works because we validate (in vdr_FeatureInfoValidateAltFeatureSet)
+#             - that for any alt_feature_set set that includes >= 1 feature
+#               child, all members of that set are children, with the same parent.
+#             And in vdr_FeatureInfoParentIndexStrings we validate that
+#             all features that are parents are not themselves children
+#             of any feature.
+#
+# Arguments:
+#  $seq_name_AR:             REF to array of sequence names, PRE-FILLED
+#  $ftr_info_AHR:            REF to array of hashes with information on the features, PRE-FILLED
+#  $alt_info_HHR:            REF to array of hashes with information on the alerts, PRE-FILLED
+#  $ftr_results_HAHR:        REF to feature results HAH, PRE-FILLED
+#  $alt_ftr_instances_HHHR:  REF to array of 2D hashes with per-feature alerts, PRE-FILLED
+#  $only_children_flag:      '1' to only remove sets that are all children, '0' to remove sets that
+#                            are not all children, see 'Purpose'
+#  $i_am_child_AR:           REF [0..$nftr-1] to array of 1/0 values on whether each feature is a child, PRE-FILLED
+#  $children_AAR:            REF to array of arrays of children feature indices, FILLED HERE, can be undef, PRE-FILLED
+#  $opt_HHR:                 REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:                   REF to hash of file handles, including 'log'
+#             
+# Returns:  void
+# 
+# Dies:     never
+#
+#################################################################
+sub pick_features_from_all_alternatives { 
+  my $sub_name = "pick_features_from_all_alternatives";
+  my $nargs_exp = 10;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($seq_name_AR, $ftr_info_AHR, $alt_info_HHR, $ftr_results_HAHR, $alt_ftr_instances_HHHR, 
+      $only_children_flag, $i_am_child_AR, $children_AAR, $opt_HHR, $FH_HR) = @_;
+
+  my $nseq = scalar(@{$seq_name_AR});
+  my $nftr = scalar(@{$ftr_info_AHR});
+
+  my $ftr_idx; 
+  my $ftr_idx2; 
+  my %sets_completed_H = (); # key is name of a set, value is '1' if we've already completed that set
+  foreach my $seq_name (@{$seq_name_AR}) { 
+    if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
+      for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+        if((defined $ftr_results_HAHR->{$seq_name} && $ftr_results_HAHR->{$seq_name}[$ftr_idx]) || 
+           (defined $alt_ftr_instances_HHHR->{$seq_name} && $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx})) { 
+          # if(  only_children_flag), we only pick from a set for children
+          # if(! only_children_flag), we only pick from a set for non-children
+          if(((  $only_children_flag) && (  $i_am_child_AR->[$ftr_idx])) || 
+             ((! $only_children_flag) && (! $i_am_child_AR->[$ftr_idx]))) { 
+            my $set = $ftr_info_AHR->[$ftr_idx]{"alt_feature_set"};
+            if(($set ne "") && (! defined $sets_completed_H{$set})) { 
+              my @ftr_set_A = ($ftr_idx);
+              for($ftr_idx2 = $ftr_idx+1; $ftr_idx2 < $nftr; $ftr_idx2++) { # can start at $ftr_idx+1 b/c we've already covered earlier ftr_idx values  
+                if($ftr_info_AHR->[$ftr_idx2]{"alt_feature_set"} eq $set) { 
+                  push(@ftr_set_A, $ftr_idx2);
+                }
+              }
+              # find 'winner' out of all possible features in @ftr_set_A
+              my $nset = scalar(@ftr_set_A);
+              if($nset == 1) { 
+                ofile_FAIL("ERROR in $sub_name, alt feature set with value $set only has 1 member post-validation", 1, $FH_HR);
+              }
+              my $nfatal         = undef;
+              my $winner_nfatal  = undef;
+              my $winner_set_idx = undef;
+              my $ftr_set_idx    = undef;
+              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
+                $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                my $nfatal = alert_feature_instances_count_fatal($seq_name, $ftr_idx2, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
+                if($nfatal == 0) { 
+                  # no fatal alerts, this is our winner, break the loop          
+                  $winner_nfatal  = $nfatal;
+                  $winner_set_idx = $ftr_set_idx; 
+                  $ftr_set_idx    = $nset; # breaks loop
+                }
+                elsif((! defined $winner_nfatal) || ($nfatal < $winner_nfatal)) { 
+                  # >= 1 fatal alerts, but minimum yet seen, this is our current winner but keep looking
+                  $winner_nfatal  = $nfatal;
+                  $winner_set_idx = $ftr_set_idx; 
+                }
+              }
+              # go through and remove results and alerts for all non-winners in this set and their children
+              for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
+                if($ftr_set_idx != $winner_set_idx) { 
+                  $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                  %{$ftr_results_HAHR->{$seq_name}[$ftr_idx2]} = ();
+                  %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2}} = ();
+                  my $nchildren = scalar(@{$children_AAR->[$ftr_idx2]}); 
+                  # nchildren will always be '0' if $only_children_flag is '1' because 
+                  # children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings()
+                  for(my $child_idx = 0; $child_idx < $nchildren; $child_idx++) { 
+                    my $child_ftr_idx = $children_AAR->[$ftr_idx][$child_idx];
+                    %{$ftr_results_HAHR->{$seq_name}[$child_ftr_idx]} = ();
+                    %{$alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}} = ();
+                  }
+                }
+              }
+              $sets_completed_H{$set} = 1;
+            }
+          }
+        }
+      }
+    }
   }
   return;
 }
