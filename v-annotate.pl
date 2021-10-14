@@ -13092,12 +13092,6 @@ sub pick_features_from_all_alternatives {
                   %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2}} = ();
                   undef $ftr_results_HAHR->{$seq_name}[$ftr_idx2];
                   undef $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2};
-                  if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]) { 
-                    printf("CHECK defined\n");
-                  }
-                  else { 
-                    printf("CHECK NOT defined\n");
-                  }
                   my $nchildren = scalar(@{$children_AAR->[$ftr_idx2]}); 
                   # nchildren will always be '0' if $only_children_flag is '1' because 
                   # children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings()
