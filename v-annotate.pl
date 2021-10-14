@@ -13090,6 +13090,14 @@ sub pick_features_from_all_alternatives {
                   $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
                   %{$ftr_results_HAHR->{$seq_name}[$ftr_idx2]} = ();
                   %{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2}} = ();
+                  undef $ftr_results_HAHR->{$seq_name}[$ftr_idx2];
+                  undef $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx2};
+                  if(defined $ftr_results_HAHR->{$seq_name}[$ftr_idx2]) { 
+                    printf("CHECK defined\n");
+                  }
+                  else { 
+                    printf("CHECK NOT defined\n");
+                  }
                   my $nchildren = scalar(@{$children_AAR->[$ftr_idx2]}); 
                   # nchildren will always be '0' if $only_children_flag is '1' because 
                   # children can't have children, enforced in vdr_FeatureInfoValidateParentIndexStrings()
@@ -13097,6 +13105,8 @@ sub pick_features_from_all_alternatives {
                     my $child_ftr_idx = $children_AAR->[$ftr_idx2][$child_idx];
                     %{$ftr_results_HAHR->{$seq_name}[$child_ftr_idx]} = ();
                     %{$alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx}} = ();
+                    undef $ftr_results_HAHR->{$seq_name}[$child_ftr_idx];
+                    undef $alt_ftr_instances_HHHR->{$seq_name}{$child_ftr_idx};
                   }
                 }
               }
