@@ -1,0 +1,4 @@
+#      seq            seq                   ftr   ftr          ftr  num  sgm   seq  seq   mdl  mdl  sgm               5'     3'  5'   3' 
+#idx   name           len  p/f   model      type  name         idx  sgm  idx  from   to  from   to  len  str  trc     pp     pp  gap  gap
+#----  -------------  ---  ----  ---------  ----  -----------  ---  ---  ---  ----  ---  ----  ---  ---  ---  ---  -----  -----  ---  ---
+1.1.1  ENTOY100A-af3  100  PASS  ENTOY100A  CDS   protein_one    1    1    1    14   31    14   31   18    +  no   0.975  0.975  no   no 
