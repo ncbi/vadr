@@ -1,0 +1,8 @@
+MODEL ENTOY100A cmfile:"entoy100a.cm" group:"toy" length:"100" subgroup:"A"
+FEATURE ENTOY100A type:"gene" coords:"8..33:+" parent_idx_str:"GBNULL" gene:"one"
+FEATURE ENTOY100A type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one" alt_feature_set:"one"
+FEATURE ENTOY100A type:"mat_peptide" coords:"11..22:+" parent_idx_str:"1" product:"protein one mp1"
+FEATURE ENTOY100A type:"mat_peptide" coords:"23..28:+" parent_idx_str:"1" product:"protein one mp2"
+FEATURE ENTOY100A type:"CDS" coords:"11..28:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one" alt_feature_set:"one"
+FEATURE ENTOY100A type:"mat_peptide" coords:"11..22:+" parent_idx_str:"4" product:"protein one mp1"
+FEATURE ENTOY100A type:"mat_peptide" coords:"23..25:+" parent_idx_str:"4" product:"protein one mp2"
