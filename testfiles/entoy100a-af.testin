@@ -26,3 +26,45 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af1/va-entoy100a-af1
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af1/va-entoy100a-af1.vadr.sgm
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af1/va-entoy100a-af1.vadr.alt
 rmdir: va-entoy100a-af1
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --ignore_altftr --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.af1.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-af1.fa va-entoy100a-af2 > va-entoy100a-af2.out
+desc: annotate-entoy100a-af2
+out: va-entoy100a-af2/va-entoy100a-af2.vadr.pass.tbl 
+out: va-entoy100a-af2/va-entoy100a-af2.vadr.fail.tbl
+out: va-entoy100a-af2/va-entoy100a-af2.vadr.ftr
+out: va-entoy100a-af2/va-entoy100a-af2.vadr.sgm
+out: va-entoy100a-af2/va-entoy100a-af2.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af2/va-entoy100a-af2.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af2/va-entoy100a-af2.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af2/va-entoy100a-af2.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af2/va-entoy100a-af2.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af2/va-entoy100a-af2.vadr.alt
+rmdir: va-entoy100a-af2
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.af3.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-af3.fa va-entoy100a-af3 > va-entoy100a-af3.out
+desc: annotate-entoy100a-af3
+out: va-entoy100a-af3/va-entoy100a-af3.vadr.pass.tbl 
+out: va-entoy100a-af3/va-entoy100a-af3.vadr.fail.tbl
+out: va-entoy100a-af3/va-entoy100a-af3.vadr.ftr
+out: va-entoy100a-af3/va-entoy100a-af3.vadr.sgm
+out: va-entoy100a-af3/va-entoy100a-af3.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3/va-entoy100a-af3.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3/va-entoy100a-af3.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3/va-entoy100a-af3.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3/va-entoy100a-af3.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3/va-entoy100a-af3.vadr.alt
+rmdir: va-entoy100a-af3
+#
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.af3swap.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-af3.fa va-entoy100a-af3swap > va-entoy100a-af3swap.out
+desc: annotate-entoy100a-af3swap
+out: va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.pass.tbl 
+out: va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.fail.tbl
+out: va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.ftr
+out: va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.sgm
+out: va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3swap/va-entoy100a-af3swap.vadr.alt
+rmdir: va-entoy100a-af3swap
