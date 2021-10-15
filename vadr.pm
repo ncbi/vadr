@@ -67,9 +67,11 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoInitializeMiscNotFailure()
 # vdr_FeatureInfoInitializeIsDeletable()
 # vdr_FeatureInfoInitializeAlternativeFeatureSet()
+# vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution()
 # vdr_FeatureInfoValidateMiscNotFailure()
 # vdr_FeatureInfoValidateIsDeletable()
 # vdr_FeatureInfoValidateAlternativeFeatureSet()
+# vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution()
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
@@ -598,6 +600,42 @@ sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution
+# Incept:     EPN, Thu Oct 14 21:22:20 2021
+# 
+# Purpose:    Set "alternative_ftr_set_subn" value to "" for any feature 
+#             in which it is not already defined in @{$ftr_info_AHR}.
+#             If $force_empty, set all values to "" even if they are
+#             already defined.
+# 
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $force_empty:   '1' to set values to "" for all features, even if already defined
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#
+#################################################################
+sub vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution";
+  my $nargs_expected = 3;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+ 
+  my ($ftr_info_AHR, $force_empty, $FH_HR) = @_;
+
+  my $nftr = scalar(@{$ftr_info_AHR});
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"} = "";
+    }
+  }
+
+  return;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureInfoValidateMiscNotFailure
 # Incept:     EPN, Fri Feb  5 11:45:29 2021
 # 
@@ -700,7 +738,7 @@ sub vdr_FeatureInfoValidateIsDeletable {
 # Purpose:    Validate "alternative_ftr_set" values are either "" or another
 #             string. If another string, each other string must be the
 #             value for "alternative_ftr_set" in more than one
-#             feature. Also sensure that for any sets that have >= 1
+#             feature. Also ensure that for any sets that have >= 1
 #             children, all the features in that set are all the
 #             children of the same parent.
 #           
@@ -717,7 +755,7 @@ sub vdr_FeatureInfoValidateIsDeletable {
 #             '0' if all 'alternative_ftr_set' values are ""
 # 
 # Dies:       if $ftr_info_AHR is invalid upon entry
-#             if any alternative_ftr_set keys are undefined
+#             if any alternative_ftr_set values are undefined
 #             if any alternative_ftr_set values exist only once 
 #
 #################################################################
@@ -785,6 +823,69 @@ sub vdr_FeatureInfoValidateAlternativeFeatureSet {
 
   return $ret_val;
   
+}
+
+#################################################################
+# Subroutine: vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution
+# Incept:     EPN, Fri Oct 15 10:07:54 2021
+# 
+
+# Purpose:    Validate "alternative_ftr_set_subn" values are either "" 
+#             or a valid feature index (other than self idx).
+#             value for "alternative_ftr_set" in more than one
+#             feature.
+
+#             Should probably be called after
+#             vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution() 
+#
+# Arguments:
+#   $ftr_info_AHR:  REF to feature information, added to here
+#   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+# 
+# Dies:       if $ftr_info_AHR is invalid upon entry
+#             if any alternative_ftr_set_subn values are undefined
+#             if any alternative_ftr_set_subn values are invalid
+#
+#################################################################
+sub vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution {
+  my $sub_name = "vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution";
+  my $nargs_expected = 2;
+  if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
+  
+  my ($ftr_info_AHR, $FH_HR) = @_;
+  
+  my $nftr     = scalar(@{$ftr_info_AHR});
+  my $fail_str = ""; # added to if any elements are out of range
+
+  for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
+    my $subn_idx = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set_subn"};
+    if(! defined $subn_idx) { 
+      $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
+    }
+    elsif($subn_idx ne "") { 
+      if($subn_idx !~ /^\d+$/) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " not an integer\n"; 
+      }
+      elsif($subn_idx < 0) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " < 0\n"; 
+      }
+      elsif($subn_idx >= $nftr) { 
+        $fail_str .= "ftr_idx: $ftr_idx, " . $subn_idx . " >= $nftr (num features, should be 0.." . ($nftr-1) . ")\n";
+      }
+      elsif($subn_idx == $ftr_idx) { 
+        $fail_str .= "ftr_idx: $ftr_idx, is its own substitute, this is not allowed\n";
+      }
+      # else valid feature index
+    }
+  }
+
+  if($fail_str ne "") { 
+    ofile_FAIL("ERROR in $sub_name, some alternative_ftr_set_subn index strings are undefined or don't make sense:\n$fail_str\n", 1, $FH_HR);
+  }
+
+  return;
 }
 
 #################################################################

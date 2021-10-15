@@ -221,9 +221,13 @@ opt_Add("--alt_pass",      "string",  undef,     $g,     undef, undef,         "
 opt_Add("--alt_fail",      "string",  undef,     $g,     undef, undef,         "specify that alert codes in <s> cause FAILure",                                              "specify that alert codes in comma-separated <s> do cause FAILure",     \%opt_HH, \@opt_order_A);
 opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", "alert codes in <s> for 'misc_not_failure' features cause misc_feature-ization, not failure", \%opt_HH, \@opt_order_A);
 opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_mnf",   "boolean",  0,         $g,     undef, undef,         "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_isdel",  "boolean", 0,         $g,     undef, undef,         "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_afset", "boolean", 0,          $g,     undef, undef,         "ignore 'alternative_ftr_set' values in .minfo file, set to \"\" for all features/models",    "ignore 'alternative_ftr_set' values in .minfo file, set to \"\" for all features/models", \%opt_HH, \@opt_order_A);
+
+$opt_group_desc_H{++$g} = "options for ignoring specific keys in the input model info (.minfo) file";
+#        option               type        default  group requires incompat  preamble-output                                                                               help-output    
+opt_Add("--ignore_mnf",       "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_isdel",     "boolean",  0,       $g,     undef, undef,    "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_afset",     "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file",          "ignore 'alternative_ftr_set' and 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_afsetsubn", "boolean",  0,       $g,     undef, undef,    "ignore 'alternative_ftr_set_subn' values in .minfo file",                                    "ignore 'alternative_ftr_set_subn' values in .minfo file", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -397,14 +401,15 @@ my $options_okay =
                 'group=s'       => \$GetOptions_H{"--group"},
                 'subgroup=s'    => \$GetOptions_H{"--subgroup"},
 # options for controlling which alerts cause failure
-                "alt_list"      => \$GetOptions_H{"--alt_list"},
-                "alt_pass=s"    => \$GetOptions_H{"--alt_pass"},
-                "alt_fail=s"    => \$GetOptions_H{"--alt_fail"},
-                "alt_mnf_yes=s" => \$GetOptions_H{"--alt_mnf_yes"},
-                "alt_mnf_no=s"  => \$GetOptions_H{"--alt_mnf_no"},
-                "ignore_mnf"    => \$GetOptions_H{"--ignore_mnf"},
-                "ignore_isdel"  => \$GetOptions_H{"--ignore_isdel"},
-                "ignore_afset"  => \$GetOptions_H{"--ignore_afset"},
+                "alt_list"         => \$GetOptions_H{"--alt_list"},
+                "alt_pass=s"       => \$GetOptions_H{"--alt_pass"},
+                "alt_fail=s"       => \$GetOptions_H{"--alt_fail"},
+                "alt_mnf_yes=s"    => \$GetOptions_H{"--alt_mnf_yes"},
+                "alt_mnf_no=s"     => \$GetOptions_H{"--alt_mnf_no"},
+                "ignore_mnf"       => \$GetOptions_H{"--ignore_mnf"},
+                "ignore_isdel"     => \$GetOptions_H{"--ignore_isdel"},
+                "ignore_afset"     => \$GetOptions_H{"--ignore_afset"},
+                "ignore_afsetsubn" => \$GetOptions_H{"--ignore_afsetsubn"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -991,9 +996,11 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_mnf", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, (opt_Get("--ignore_afset", \%opt_HH) || opt_Get("--ignore_afsetsubn", \%opt_HH)), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateAlternativeFeatureSetSubstitution(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -13069,7 +13076,13 @@ sub pick_features_from_all_alternatives {
               my $ftr_set_idx    = undef;
               for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
                 $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
+                # count fatal alerts for substitute if we have one
                 printf("\tftr_set_idx: $ftr_set_idx, ftr_idx2: $ftr_idx2\n");
+                if((defined $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"}) && 
+                   $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"} ne "") {
+                  $ftr_idx2 = $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"};
+                  printf("\tactually just substituted $ftr_idx2 due to alternative_ftr_set_subn values\n");
+                }
                 my $nfatal = alert_feature_instances_count_fatal($seq_name, $ftr_idx2, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
                 if($nfatal == 0) { 
                   # no fatal alerts, this is our winner, break the loop          

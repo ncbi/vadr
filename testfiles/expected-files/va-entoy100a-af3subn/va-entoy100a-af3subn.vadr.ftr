@@ -1,0 +1,14 @@
+#     seq                                       seq                   ftr   ftr          ftr  ftr  par                                                                                         seq     model  ftr   
+#idx  name                                      len  p/f   model      type  name         len  idx  idx  str  n_from  n_to  n_instp  trc  5'N  3'N  p_from  p_to  p_instp  p_sc  nsa  nsn    coords    coords  alerts
+#---  ----------------------------------------  ---  ----  ---------  ----  -----------  ---  ---  ---  ---  ------  ----  -------  ---  ---  ---  ------  ----  -------  ----  ---  ---  --------  --------  ------
+1.1   ENTOY100A-af3                             100  PASS  ENTOY100A  gene  one           21    1   -1    +      11    31        -  no     0    0       -     -        -     -    1    0  11..31:+  11..31:+  -     
+1.2   ENTOY100A-af3                             100  PASS  ENTOY100A  CDS   protein_one   21    2   -1    +      11    31        -  no     0    0       -     -        -     -    1    0  11..31:+  11..31:+  -     
+#
+2.1   ENTOY100A-af3-earlystop                   100  FAIL  ENTOY100A  gene  one           21    1   -1    +      11    31        -  no     0    0       -     -        -     -    1    0  11..31:+  11..31:+  -     
+2.2   ENTOY100A-af3-earlystop                   100  FAIL  ENTOY100A  CDS   protein_one   21    2   -1    +      11    31       25  no     0    0       -     -        -     -    1    0  11..31:+  11..31:+  CDS_HAS_STOP_CODON(cdsstopn)
+#
+3.1   ENTOY100A-af3-earlystop-mut-first-start   100  FAIL  ENTOY100A  gene  one           18    3   -1    +      14    31        -  no     0    0       -     -        -     -    1    0  14..31:+  14..31:+  -     
+3.2   ENTOY100A-af3-earlystop-mut-first-start   100  FAIL  ENTOY100A  CDS   protein_one   18    4   -1    +      14    31       25  no     0    0       -     -        -     -    1    0  14..31:+  14..31:+  CDS_HAS_STOP_CODON(cdsstopn)
+#
+4.1   ENTOY100A-af3-earlystop-mut-second-start  100  FAIL  ENTOY100A  gene  one           21    1   -1    +      11    31        -  no     0    0       -     -        -     -    1    0  11..31:+  11..31:+  -     
+4.2   ENTOY100A-af3-earlystop-mut-second-start  100  FAIL  ENTOY100A  CDS   protein_one   21    2   -1    +      11    31       25  no     0    0       -     -        -     -    1    0  11..31:+  11..31:+  CDS_HAS_STOP_CODON(cdsstopn)
