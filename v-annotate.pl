@@ -223,7 +223,7 @@ opt_Add("--alt_mnf_yes",   "string",  undef,     $g,     undef,"--ignore_mnf", "
 opt_Add("--alt_mnf_no",    "string",  undef,     $g,     undef,"--ignore_mnf", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc_feature-ization", "alert codes in <s> for 'misc_not_failure' features cause failure, not misc-feature-ization", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_mnf",   "boolean",  0,         $g,     undef, undef,         "ignore non-zero 'misc_not_failure' values in .minfo file, set to 0 for all features/models", "ignore non-zero 'misc_not_feature' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
 opt_Add("--ignore_isdel",  "boolean", 0,         $g,     undef, undef,         "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models",     "ignore non-zero 'is_deletable' values in .minfo file, set to 0 for all features/models", \%opt_HH, \@opt_order_A);
-opt_Add("--ignore_altftr", "boolean", 0,         $g,     undef, undef,         "ignore 'alt_feature_set' values in .minfo file, set to \"\" for all features/models",        "ignore 'alt_feature_set' values in .minfo file, set to \"\" for all features/models", \%opt_HH, \@opt_order_A);
+opt_Add("--ignore_afset", "boolean", 0,          $g,     undef, undef,         "ignore 'alternative_ftr_set' values in .minfo file, set to \"\" for all features/models",    "ignore 'alternative_ftr_set' values in .minfo file, set to \"\" for all features/models", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to model files";
 #        option               type default  group  requires incompat   preamble-output                                                                   help-output    
@@ -404,7 +404,7 @@ my $options_okay =
                 "alt_mnf_no=s"  => \$GetOptions_H{"--alt_mnf_no"},
                 "ignore_mnf"    => \$GetOptions_H{"--ignore_mnf"},
                 "ignore_isdel"  => \$GetOptions_H{"--ignore_isdel"},
-                "ignore_altftr" => \$GetOptions_H{"--ignore_altftr"},
+                "ignore_afset"  => \$GetOptions_H{"--ignore_afset"},
 # options related to model files
                 'm=s'           => \$GetOptions_H{"-m"}, 
                 'a=s'           => \$GetOptions_H{"-a"}, 
@@ -990,10 +990,10 @@ for(my $mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
   vdr_FeatureInfoImputeOutname(\@{$ftr_info_HAH{$mdl_name}});
   vdr_FeatureInfoInitializeMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_mnf", \%opt_HH), $FH_HR);
   vdr_FeatureInfoInitializeIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_isdel", \%opt_HH), $FH_HR);
-  vdr_FeatureInfoInitializeAltFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_altftr", \%opt_HH), $FH_HR);
+  vdr_FeatureInfoInitializeAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, opt_Get("--ignore_afset", \%opt_HH), $FH_HR);
   vdr_FeatureInfoValidateMiscNotFailure(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_FeatureInfoValidateIsDeletable(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
-  vdr_FeatureInfoValidateAltFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
+  vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
   vdr_SegmentInfoPopulate(\@{$sgm_info_HAH{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, $FH_HR);
 }
 
@@ -1886,14 +1886,14 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
 
 ##############################################################
 # Potentially remove annotation and alerts for some features
-# if we have 'alt_feature_set' information in the mdl info
+# if we have 'alternative_ftr_set' information in the mdl info
 ##############################################################
 for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
   $mdl_name = $mdl_info_AH[$mdl_idx]{"name"};
 #  if((0) && (defined $mdl_seq_name_HA{$mdl_name})) { 
  if(defined $mdl_seq_name_HA{$mdl_name}) { 
-    if(vdr_FeatureInfoValidateAltFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR)) { 
-      # we'll enter this 'if' if any features have non-empty alt_feature_set
+    if(vdr_FeatureInfoValidateAlternativeFeatureSet(\@{$ftr_info_HAH{$mdl_name}}, $FH_HR)) { 
+      # we'll enter this 'if' if any features have non-empty alternative_ftr_set
       
       # get children info for all features, we'll need this when picking features
       my @i_am_child_A = ();
@@ -1901,7 +1901,7 @@ for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) {
       my $nchildren = vdr_FeatureInfoChildrenArrayOfArrays(\@{$ftr_info_HAH{$mdl_name}}, undef, \@i_am_child_A, \@children_AA, $FH_HR);
                                                            
       # first pick features from sets that are not composed of any children
-      # this will remove features in alt_feature_sets that are not picked *and* their children
+      # this will remove features in alternative_ftr_sets that are not picked *and* their children
       pick_features_from_all_alternatives(\@{$mdl_seq_name_HA{$mdl_name}}, \@{$ftr_info_HAH{$mdl_name}}, \%alt_info_HH, 
                                           \%{$ftr_results_HHAH{$mdl_name}}, \%alt_ftr_instances_HHH, 
                                           0, \@i_am_child_A, \@children_AA, 
@@ -12988,7 +12988,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
 #################################################################
 # Subroutine: pick_features_from_all_alternatives()
 # Incept:     EPN, Wed Oct 13 12:00:26 2021
-# Purpose:    For features that have a non-empty 'alt_feature_set'
+# Purpose:    For features that have a non-empty 'alternative_ftr_set'
 #             value, choose one representative from all alternatives
 #             and delete annotation and alerts from all other alternatives.
 #             This subroutine should be called twice, first with the
@@ -12997,8 +12997,8 @@ sub helper_tabular_fill_header_and_justification_arrays {
 #             set as '1' to only pick features from sets that *are* children.
 #             This is important because when we remove results/alerts for
 #             parents we also remove results/alerts for their children.
-#             This only works because we validate (in vdr_FeatureInfoValidateAltFeatureSet)
-#             - that for any alt_feature_set set that includes >= 1 feature
+#             This only works because we validate (in vdr_FeatureInfoValidateAlternativeFeatureSet)
+#             - that for any alternative_ftr_set set that includes >= 1 feature
 #               child, all members of that set are children, with the same parent.
 #             And in vdr_FeatureInfoParentIndexStrings we validate that
 #             all features that are parents are not themselves children
@@ -13048,12 +13048,12 @@ sub pick_features_from_all_alternatives {
           printf("ftr_results or alt_ftr_instances for ftr defined\n");
           if(((  $only_children_flag) && (  $i_am_child_AR->[$ftr_idx])) || 
              ((! $only_children_flag) && (! $i_am_child_AR->[$ftr_idx]))) { 
-            my $set = $ftr_info_AHR->[$ftr_idx]{"alt_feature_set"};
+            my $set = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
             printf("ftr_idx: $ftr_idx past child check, set: (%s)\n", $set);
             if(($set ne "") && (! defined $sets_completed_H{$set})) { 
               my @ftr_set_A = ($ftr_idx);
               for($ftr_idx2 = $ftr_idx+1; $ftr_idx2 < $nftr; $ftr_idx2++) { # can start at $ftr_idx+1 b/c we've already covered earlier ftr_idx values  
-                if($ftr_info_AHR->[$ftr_idx2]{"alt_feature_set"} eq $set) { 
+                if($ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set"} eq $set) { 
                   push(@ftr_set_A, $ftr_idx2);
                 }
               }

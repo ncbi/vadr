@@ -66,10 +66,10 @@ require "sqp_utils.pm";
 # vdr_FeatureInfoImputeByOverlap()
 # vdr_FeatureInfoInitializeMiscNotFailure()
 # vdr_FeatureInfoInitializeIsDeletable()
-# vdr_FeatureInfoInitializeAltFeatureSet()
+# vdr_FeatureInfoInitializeAlternativeFeatureSet()
 # vdr_FeatureInfoValidateMiscNotFailure()
 # vdr_FeatureInfoValidateIsDeletable()
-# vdr_FeatureInfoValidateAltFeatureSet()
+# vdr_FeatureInfoValidateAlternativeFeatureSet()
 # vdr_FeatureInfoStartStopStrandArrays()
 # vdr_FeatureInfoCountType()
 # vdr_FeatureInfoValidateCoords()
@@ -562,10 +562,10 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoInitializeAltFeatureSet
+# Subroutine: vdr_FeatureInfoInitializeAlternativeFeatureSet
 # Incept:     EPN, Tue Oct 12 19:43:46 2021
 # 
-# Purpose:    Set "alt_feature_set" value to "" for any feature 
+# Purpose:    Set "alternative_ftr_set" value to "" for any feature 
 #             in which it is not already defined in @{$ftr_info_AHR}.
 #             If $force_empty, set all values to "" even if they are
 #             already defined.
@@ -580,8 +580,8 @@ sub vdr_FeatureInfoInitializeIsDeletable {
 # Dies:       if $ftr_info_AHR is invalid upon entry
 #
 #################################################################
-sub vdr_FeatureInfoInitializeAltFeatureSet {
-  my $sub_name = "vdr_FeatureInfoInitializeAltFeatureSet";
+sub vdr_FeatureInfoInitializeAlternativeFeatureSet {
+  my $sub_name = "vdr_FeatureInfoInitializeAlternativeFeatureSet";
   my $nargs_expected = 3;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
  
@@ -589,8 +589,8 @@ sub vdr_FeatureInfoInitializeAltFeatureSet {
 
   my $nftr = scalar(@{$ftr_info_AHR});
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alt_feature_set"})) { 
-      $ftr_info_AHR->[$ftr_idx]{"alt_feature_set"} = "";
+    if(($force_empty) || (! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"})) { 
+      $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"} = "";
     }
   }
 
@@ -693,19 +693,19 @@ sub vdr_FeatureInfoValidateIsDeletable {
 }
 
 #################################################################
-# Subroutine: vdr_FeatureInfoValidateAltFeatureSet
+# Subroutine: vdr_FeatureInfoValidateAlternativeFeatureSet
 # Incept:     EPN, Tue Sep 28 21:09:10 2021
 # 
 
-# Purpose:    Validate "alt_feature_set" values are either "" or another
+# Purpose:    Validate "alternative_ftr_set" values are either "" or another
 #             string. If another string, each other string must be the
-#             value for "alt_feature_set" in more than one
+#             value for "alternative_ftr_set" in more than one
 #             feature. Also sensure that for any sets that have >= 1
 #             children, all the features in that set are all the
 #             children of the same parent.
 #           
 #             Should probably be called after
-#             vdr_FeatureInfoInitializeAltFeatureSet() 
+#             vdr_FeatureInfoInitializeAlternativeFeatureSet() 
 #             and 
 #             vdr_FeatureInfoValidateParentIndexStrings()
 #
@@ -713,16 +713,16 @@ sub vdr_FeatureInfoValidateIsDeletable {
 #   $ftr_info_AHR:  REF to feature information, added to here
 #   $FH_HR:         REF to hash of file handles, including "log" and "cmd"
 #
-# Returns:    '1' if there are any 'alt_feature_set' values ne ""
-#             '0' if all 'alt_feature_set' values are ""
+# Returns:    '1' if there are any 'alternative_ftr_set' values ne ""
+#             '0' if all 'alternative_ftr_set' values are ""
 # 
 # Dies:       if $ftr_info_AHR is invalid upon entry
-#             if any alt_feature_set keys are undefined
-#             if any alt_feature_set values exist only once 
+#             if any alternative_ftr_set keys are undefined
+#             if any alternative_ftr_set values exist only once 
 #
 #################################################################
-sub vdr_FeatureInfoValidateAltFeatureSet {
-  my $sub_name = "vdr_FeatureInfoValidateAltFeatureSet";
+sub vdr_FeatureInfoValidateAlternativeFeatureSet {
+  my $sub_name = "vdr_FeatureInfoValidateAlternativeFeatureSet";
   my $nargs_expected = 2;
   if(scalar(@_) != $nargs_expected) { die "ERROR $sub_name entered with wrong number of input args" }
   
@@ -735,11 +735,11 @@ sub vdr_FeatureInfoValidateAltFeatureSet {
   my $ftr_idx = undef;
 
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
-    if(! defined $ftr_info_AHR->[$ftr_idx]{"alt_feature_set"}) {
+    if(! defined $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"}) {
       $fail_str .= "ftr_idx: $ftr_idx, undefined\n"; 
     }
     else { 
-      my $value = $ftr_info_AHR->[$ftr_idx]{"alt_feature_set"};
+      my $value = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
       if($value ne "") { 
         $ret_val = 1;
         if(! defined $set_HA{$value}) { 
@@ -750,12 +750,12 @@ sub vdr_FeatureInfoValidateAltFeatureSet {
     }    
   }
 
-  # make sure that each alt_feature_set has >= 2 members
+  # make sure that each alternative_ftr_set has >= 2 members
   # and that for any set that has >= 1 children, all members are children with the same parent
   foreach my $key (sort keys (%set_HA)) { 
     my $nset = scalar(@{$set_HA{$key}});
     if($nset == 1) { 
-      $fail_str .= "alt_feature_set value: $key exists only once, each value must exist at least twice\n"; 
+      $fail_str .= "alternative_ftr_set value: $key exists only once, each value must exist at least twice\n"; 
     }
     else { 
       my $nchildren = 0;
@@ -774,7 +774,7 @@ sub vdr_FeatureInfoValidateAltFeatureSet {
       }
       # make sure if any members are children, then all members are children
       if(($nchildren != 0) && ($nchildren != $nset)) { 
-        $fail_str .= "for alt_feature_set with key $key, some but not all members are children of $common_parent_idx\n";
+        $fail_str .= "for alternative_ftr_set with key $key, some but not all members are children of $common_parent_idx\n";
       }        
     }
   }

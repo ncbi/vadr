@@ -27,7 +27,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af1/va-entoy100a-af1
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af1/va-entoy100a-af1.vadr.alt
 rmdir: va-entoy100a-af1
 #
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --ignore_altftr --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.af1.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-af1.fa va-entoy100a-af2 > va-entoy100a-af2.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --ignore_afset --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.af1.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-af1.fa va-entoy100a-af2 > va-entoy100a-af2.out
 desc: annotate-entoy100a-af2
 out: va-entoy100a-af2/va-entoy100a-af2.vadr.pass.tbl 
 out: va-entoy100a-af2/va-entoy100a-af2.vadr.fail.tbl
