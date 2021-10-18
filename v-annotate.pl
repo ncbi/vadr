@@ -8665,8 +8665,6 @@ sub alert_add_parent_based {
   my @children_AA = ();
   vdr_FeatureInfoChildrenArrayOfArrays($ftr_info_AHR, $child_type, undef, \@children_AA, $FH_HR);
 
-  printf("nchildren: %d\n", scalar(@children_AA));
-
   # get array of feature indices that are of type $parent_type
   my @parent_ftr_idx_A = ();
   my $ftr_idx; 
@@ -8898,14 +8896,10 @@ sub alert_feature_instances_count_fatal {
   my ($seq_name, $ftr_idx, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR) = @_;
 
   my $nfatal = 0;
-  printf("in $sub_name, seq_name $seq_name, ftr_idx: $ftr_idx\n");
   if(defined $alt_ftr_instances_HHHR->{$seq_name}) { 
-    printf("alt_ftr_instances_HHHR->{$seq_name} defined\n");
     if(defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}) { 
-      printf("\tchecking alt_codes\n");
       foreach my $alt_code (keys (%{$alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}})) { 
         if($alt_info_HHR->{$alt_code}{"causes_failure"}) { 
-          printf("\tfetching instances for $alt_code\n");
           my @instance_str_A = split(":VADRSEP:", alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, $alt_code));
           $nfatal += scalar(@instance_str_A);
         }
@@ -8913,7 +8907,7 @@ sub alert_feature_instances_count_fatal {
     }
   }
   
-  printf("in $sub_name, seq_name: $seq_name ftr_idx: $ftr_idx returning nfatal: $nfatal\n");
+  # printf("in $sub_name, seq_name: $seq_name ftr_idx: $ftr_idx returning nfatal: $nfatal\n");
   return $nfatal;
 }
 
@@ -13067,20 +13061,16 @@ sub pick_features_from_all_alternatives {
   my $ftr_idx; 
   my $ftr_idx2; 
   foreach my $seq_name (@{$seq_name_AR}) { 
-    printf("\nseq_name: $seq_name\n");
     my %sets_completed_H = (); # key is name of a set, value is '1' if we've already completed that set
     if((defined $ftr_results_HAHR->{$seq_name}) || (defined $alt_ftr_instances_HHHR->{$seq_name})) { 
-      printf("ftr_results or alt_ftr_instances for seq defined\n");
       for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
         if(((defined $ftr_results_HAHR->{$seq_name})       && (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx])) || 
            ((defined $alt_ftr_instances_HHHR->{$seq_name}) && (defined $alt_ftr_instances_HHHR->{$seq_name}{$ftr_idx}))) { 
           # if(  only_children_flag), we only pick from a set for children
           # if(! only_children_flag), we only pick from a set for non-children
-          printf("ftr_results or alt_ftr_instances for ftr defined\n");
           if(((  $only_children_flag) && (  $i_am_child_AR->[$ftr_idx])) || 
              ((! $only_children_flag) && (! $i_am_child_AR->[$ftr_idx]))) { 
             my $set = $ftr_info_AHR->[$ftr_idx]{"alternative_ftr_set"};
-            printf("ftr_idx: $ftr_idx past child check, set: (%s)\n", $set);
             if(($set ne "") && (! defined $sets_completed_H{$set})) { 
               my @ftr_set_A = ($ftr_idx);
               for($ftr_idx2 = $ftr_idx+1; $ftr_idx2 < $nftr; $ftr_idx2++) { # can start at $ftr_idx+1 b/c we've already covered earlier ftr_idx values  
@@ -13089,7 +13079,6 @@ sub pick_features_from_all_alternatives {
                 }
               }
               # find 'winner' out of all possible features in @ftr_set_A
-              printf("in $sub_name, looking for winner\n");
               my $nset = scalar(@ftr_set_A);
               if($nset == 1) { 
                 ofile_FAIL("ERROR in $sub_name, alt feature set with value $set only has 1 member post-validation", 1, $FH_HR);
@@ -13101,11 +13090,11 @@ sub pick_features_from_all_alternatives {
               for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
                 $ftr_idx2 = $ftr_set_A[$ftr_set_idx];
                 # count fatal alerts for substitute if we have one
-                printf("\tftr_set_idx: $ftr_set_idx, ftr_idx2: $ftr_idx2\n");
+                # printf("\tftr_set_idx: $ftr_set_idx, ftr_idx2: $ftr_idx2\n");
                 if((defined $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"}) && 
                    $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"} ne "") {
                   $ftr_idx2 = $ftr_info_AHR->[$ftr_idx2]{"alternative_ftr_set_subn"};
-                  printf("\tactually just substituted $ftr_idx2 due to alternative_ftr_set_subn values\n");
+                  # printf("\tsubstituted $ftr_idx2 due to alternative_ftr_set_subn values\n");
                 }
                 my $nfatal = alert_feature_instances_count_fatal($seq_name, $ftr_idx2, $alt_info_HHR, $alt_ftr_instances_HHHR, $FH_HR);
                 if($nfatal == 0) { 
@@ -13121,7 +13110,7 @@ sub pick_features_from_all_alternatives {
                 }
               }
               # go through and remove results and alerts for all non-winners in this set and their children
-              printf("winner_set_idx is $winner_set_idx, ftr_idx: $ftr_set_A[$winner_set_idx]\n");
+              # printf("winner_set_idx is $winner_set_idx, ftr_idx: $ftr_set_A[$winner_set_idx]\n");
               for($ftr_set_idx = 0; $ftr_set_idx < $nset; $ftr_set_idx++) { 
                 if($ftr_set_idx != $winner_set_idx) { 
                   $ftr_idx2 = $ftr_set_A[$ftr_set_idx];

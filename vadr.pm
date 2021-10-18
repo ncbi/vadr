@@ -1147,7 +1147,6 @@ sub vdr_FeatureInfoChildrenArrayOfArrays {
     @{$i_am_child_AR} = (@i_am_child_A);
   }
   if(defined $children_AAR) { 
-    printf("setting children_AAR\n");
     @{$children_AAR} = (@children_AA);
   }
 
