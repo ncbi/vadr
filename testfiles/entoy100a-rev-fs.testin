@@ -106,3 +106,15 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs3/va-entoy100a
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs3/va-entoy100a-rev-fs3.vadr.ENTOY100A-REV.CDS.2.2.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fs3/va-entoy100a-rev-fs3.vadr.ENTOY100A-REV.CDS.2.3.frameshift.stk
 rmdir: va-entoy100a-rev-fs3
+# 
+# set 1, single segment CDS, positive strand, frameshift exception 87..80:-
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a-rev.fsexc.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-rev-fs1.fa va-entoy100a-rev-fsexc > va-entoy100a-rev-fsexc.out
+desc: annotate-entoy100a-rev-fsexc
+out: va-entoy100a-rev-fsexc/va-entoy100a-rev-fsexc.vadr.pass.tbl 
+out: va-entoy100a-rev-fsexc/va-entoy100a-rev-fsexc.vadr.fail.tbl
+out: va-entoy100a-rev-fsexc/va-entoy100a-rev-fsexc.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fsexc/va-entoy100a-rev-fsexc.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fsexc/va-entoy100a-rev-fsexc.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-rev-fsexc/va-entoy100a-rev-fsexc.vadr.alt
+rmdir: va-entoy100a-rev-fsexc
