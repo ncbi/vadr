@@ -1,0 +1,24 @@
+>Feature ENTOY100A
+8	33	gene
+			gene	one
+11	31	CDS
+			product	protein one
+			protein_id	ENTOY100A_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A_1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A_1
+>Feature ENTOY100A-af1
+8	33	gene
+			gene	one
+11	28	CDS
+			product	protein one
+			protein_id	ENTOY100A-af1_1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-af1_1
+23	25	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-af1_1

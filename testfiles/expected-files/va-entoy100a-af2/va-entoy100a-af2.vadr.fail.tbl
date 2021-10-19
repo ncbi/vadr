@@ -1,0 +1,46 @@
+>Feature ENTOY100A
+8	33	gene
+			gene	one
+11	31	CDS
+			product	protein one
+			protein_id	ENTOY100A_1
+11	28	misc_feature
+			note	similar to protein one
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A_1
+11	22	misc_feature
+			note	similar to protein one mp1
+23	28	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A_1
+23	25	misc_feature
+			note	similar to protein one mp2
+
+Additional note(s) to submitter:
+ERROR: MUTATION_AT_END: (CDS:protein one) expected stop codon could not be identified, first in-frame stop codon exists 3' of predicted stop position [TAA]; seq-coords:29..31:+; mdl-coords:29..31:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A-af1
+8	33	gene
+			gene	one
+11	31	misc_feature
+			note	similar to protein one
+11	28	CDS
+			product	protein one
+			protein_id	ENTOY100A-af1_1
+11	22	misc_feature
+			note	similar to protein one mp1
+11	22	mat_peptide
+			product	protein one mp1
+			protein_id	ENTOY100A-af1_1
+23	28	misc_feature
+			note	similar to protein one mp2
+23	25	mat_peptide
+			product	protein one mp2
+			protein_id	ENTOY100A-af1_1
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:protein one) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:3,M:3]; seq-coords:26..28:+; mdl-coords:26..28:+; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
