@@ -1,0 +1,14 @@
+#      seq                                       seq                   ftr   ftr          ftr  num  sgm   seq  seq   mdl  mdl  sgm               5'     3'  5'   3' 
+#idx   name                                      len  p/f   model      type  name         idx  sgm  idx  from   to  from   to  len  str  trc     pp     pp  gap  gap
+#----  ----------------------------------------  ---  ----  ---------  ----  -----------  ---  ---  ---  ----  ---  ----  ---  ---  ---  ---  -----  -----  ---  ---
+1.1.1  ENTOY100A-af3                             100  PASS  ENTOY100A  gene  one            1    1    1    11   31    11   31   21    +  no   0.975  0.975  no   no 
+1.2.1  ENTOY100A-af3                             100  PASS  ENTOY100A  CDS   protein_one    2    1    1    11   31    11   31   21    +  no   0.975  0.975  no   no 
+#
+2.1.1  ENTOY100A-af3-earlystop                   100  FAIL  ENTOY100A  gene  one            1    1    1    11   31    11   31   21    +  no   0.975  0.975  no   no 
+2.2.1  ENTOY100A-af3-earlystop                   100  FAIL  ENTOY100A  CDS   protein_one    2    1    1    11   31    11   31   21    +  no   0.975  0.975  no   no 
+#
+3.1.1  ENTOY100A-af3-earlystop-mut-first-start   100  FAIL  ENTOY100A  gene  one            3    1    1    14   31    14   31   18    +  no   0.975  0.975  no   no 
+3.2.1  ENTOY100A-af3-earlystop-mut-first-start   100  FAIL  ENTOY100A  CDS   protein_one    4    1    1    14   31    14   31   18    +  no   0.975  0.975  no   no 
+#
+4.1.1  ENTOY100A-af3-earlystop-mut-second-start  100  FAIL  ENTOY100A  gene  one            1    1    1    11   31    11   31   21    +  no   0.975  0.975  no   no 
+4.2.1  ENTOY100A-af3-earlystop-mut-second-start  100  FAIL  ENTOY100A  CDS   protein_one    2    1    1    11   31    11   31   21    +  no   0.975  0.975  no   no 

@@ -110,3 +110,27 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.2.frameshift.stk
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs3/va-entoy100a-fs3.vadr.ENTOY100A.CDS.2.3.frameshift.stk
 rmdir: va-entoy100a-fs3
+#
+# set 1, single segment CDS, positive strand, frameshift exception 14..21:+
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.fsexc.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-fsexc > va-entoy100a-fsexc.out
+desc: annotate-entoy100a-fsexc
+out: va-entoy100a-fsexc/va-entoy100a-fsexc.vadr.pass.tbl 
+out: va-entoy100a-fsexc/va-entoy100a-fsexc.vadr.fail.tbl
+out: va-entoy100a-fsexc/va-entoy100a-fsexc.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fsexc/va-entoy100a-fsexc.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fsexc/va-entoy100a-fsexc.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fsexc/va-entoy100a-fsexc.vadr.alt
+rmdir: va-entoy100a-fsexc
+#
+# set 1, single segment CDS, positive strand, frameshift exception 14..21:-
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.fsexc.neg.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-fs1.fa va-entoy100a-fsexcneg > va-entoy100a-fsexcneg.out
+desc: annotate-entoy100a-fsexcneg
+out: va-entoy100a-fsexcneg/va-entoy100a-fsexcneg.vadr.pass.tbl 
+out: va-entoy100a-fsexcneg/va-entoy100a-fsexcneg.vadr.fail.tbl
+out: va-entoy100a-fsexcneg/va-entoy100a-fsexcneg.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-fs1/va-entoy100a-fs1.vadr.alt
+rmdir: va-entoy100a-fsexcneg
