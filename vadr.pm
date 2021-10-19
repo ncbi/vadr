@@ -1068,7 +1068,7 @@ sub vdr_FeatureInfoValidateParentIndexStrings {
         $fail_str .= "ftr_idx: $ftr_idx, is its own parent, this is not allowed\n";
       }
       else { # valid feature index
-        printf("in $sub_name, adding $parent_idx_str to parent_idx_A\n");
+        # printf("in $sub_name, adding $parent_idx_str to parent_idx_A\n");
         if(! defined $parent_idx_H{$parent_idx_str}) { 
           push(@parent_idx_A, $parent_idx_str);
           $parent_idx_H{$parent_idx_str} = 1;

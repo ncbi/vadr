@@ -311,20 +311,21 @@ opt_Add("--h_max",    "boolean", 0,        $g, "--pv_hmmer",  "--pv_skip", "use 
 opt_Add("--h_minbit", "real",    -10,      $g, "--pv_hmmer",  "--pv_skip", "set minimum hmmsearch bit score threshold to <x>", "set minimum hmmsearch bit score threshold to <x>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration";
-#        option               type   default group   requires  incompat        preamble-output                                                      help-output    
-opt_Add("-s",             "boolean",      0,   $g,      undef, undef,          "use max length ungapped region from blastn to seed the alignment",  "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,          "for -s, set blastn -word_size <n> to <n>",                          "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnrw",   "integer",      1,   $g,       "-s", undef,          "for -s, set blastn -reward <n> to <n>",                             "for -s, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnpn",   "integer",     -2,   $g,       "-s", undef,          "for -s, set blastn -penalty <n> to <n>",                            "for -s, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastngo",   "integer",      2,   $g,       "-s", undef,          "for -s, set blastn -gapopen <n> to <n>",                            "for -s, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnge",   "real",         1,   $g,       "-s", undef,          "for -s, set blastn -gapextend <x> to <x>",                          "for -s, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastnsc",   "real",      50.0,   $g,       "-s", undef,          "for -s, set blastn minimum HSP score to consider to <x>",           "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,          "for -s, set blastn option -task blastn",                            "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
-opt_Add("--s_minsgmlen",  "integer",     10,   $g,       "-s", undef,          "for -s, set minimum length of ungapped region in HSP seed to <n>",  "for -s, set minimum length of ungapped region in HSP seed to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", "for -s, keep full HSP seed, do not enforce minimum segment length", "for -s, keep full HSP seed, do not enforce minimum segment length", \%opt_HH, \@opt_order_A);
-opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",   "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
-opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "for -s, allow seed to include gaps in start/stop codons",           "for -s, allow seed to include gaps in start/stop codons", \%opt_HH, \@opt_order_A);
-opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",     "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
+#        option               type   default group   requires  incompat        preamble-output                                                        help-output    
+opt_Add("-s",             "boolean",      0,   $g,      undef, undef,          "use max length ungapped region from blastn to seed the alignment",    "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,          "for -s, set blastn -word_size <n> to <n>",                            "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnrw",   "integer",      1,   $g,       "-s", undef,          "for -s, set blastn -reward <n> to <n>",                               "for -s, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnpn",   "integer",     -2,   $g,       "-s", undef,          "for -s, set blastn -penalty <n> to <n>",                              "for -s, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastngo",   "integer",      2,   $g,       "-s","--s_blastngdf", "for -s, set blastn -gapopen <n> to <n>",                              "for -s, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnge",   "real",         1,   $g,       "-s","--s_blastngdf", "for -s, set blastn -gapextend <x> to <x>",                            "for -s, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastngdf",  "boolean",      0,   $g,       "-s", undef,          "for -s, don't use -gapopen/-gapextend w/blastn (use default values)", "for -s, don't use -gapopen/-gapextend w/blastn (use default values)", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnsc",   "real",      50.0,   $g,       "-s", undef,          "for -s, set blastn minimum HSP score to consider to <x>",             "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,          "for -s, set blastn option -task blastn",                              "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
+opt_Add("--s_minsgmlen",  "integer",     10,   $g,       "-s", undef,          "for -s, set minimum length of ungapped region in HSP seed to <n>",    "for -s, set minimum length of ungapped region in HSP seed to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", "for -s, keep full HSP seed, do not enforce minimum segment length",  "for -s, keep full HSP seed, do not enforce minimum segment length", \%opt_HH, \@opt_order_A);
+opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",    "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
+opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "for -s, allow seed to include gaps in start/stop codons",             "for -s, allow seed to include gaps in start/stop codons", \%opt_HH, \@opt_order_A);
+opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",       "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
 #        option               type   default group requires incompat  preamble-output                                                              help-output    
@@ -484,6 +485,7 @@ my $options_okay =
                 's_blastnpn=s'  => \$GetOptions_H{"--s_blastnpn"},
                 's_blastngo=s'  => \$GetOptions_H{"--s_blastngo"},
                 's_blastnge=s'  => \$GetOptions_H{"--s_blastnge"},
+                's_blastngdf'   => \$GetOptions_H{"--s_blastngdf"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_blastntk'    => \$GetOptions_H{"--s_blastntk"},
                 's_minsgmlen=s' => \$GetOptions_H{"--s_minsgmlen"},
