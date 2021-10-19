@@ -1,0 +1,5 @@
+MODEL ENTOY100A cmfile:"entoy100a.cm" group:"toy" length:"100" subgroup:"A"
+FEATURE ENTOY100A type:"gene" coords:"14..31:+" parent_idx_str:"GBNULL" gene:"one" alternative_ftr_set:"one(gene)" alternative_ftr_set_subn:"1"
+FEATURE ENTOY100A type:"CDS" coords:"14..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one" alternative_ftr_set:"one(cds)"
+FEATURE ENTOY100A type:"gene" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" alternative_ftr_set:"one(gene)" alternative_ftr_set_subn:"3"
+FEATURE ENTOY100A type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one" alternative_ftr_set:"one(cds)"
