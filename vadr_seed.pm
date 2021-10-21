@@ -1067,15 +1067,10 @@ sub parse_blastn_indel_file_to_get_subseq_info {
         #       CGAGG-----------------------ACAGTGAACAATGTTAGGGAGAGC
         #       CGAGGCCACGCGGAGTACGATCGAGTGTACAGTGAACAATGCTAGGGAGAGC
         # 
-        # due to its default scoring parameters (gap open 0, gap extend -2.5)
-        # I experimented with changing the blastn gap parameters but 
-        # that led to other complications (see notebook dir: 21_0825_vadr_seed_with_gaps/)
-        # so I went with the solution of removing any segment that is
-        # less than length 10, because it had the attractive 
-        # feature that it did not change how blastn had been
-        # used previously (v1.1 to 1.3) whereas changing the blastn
-        # gap parameters would have.
+        # if used with its default scoring parameters (gap open 0, gap extend -2.5)
+        #
         my $only_keep_max_ungap_sgm = $do_ungapsgm; # if --s_ungapsgm: only keep max length (ungapped) segment
+
         # if any gaps in the model overlap with start or stop codons, only keep max length (ungapped) segment
         if((! $only_keep_max_ungap_sgm) && ($do_realign_startstop)) { 
           $only_keep_max_ungap_sgm = check_seed_overlap_with_start_stop_codons(\@sda_mdl_start_A, \@sda_mdl_stop_A, 
