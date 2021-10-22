@@ -3180,16 +3180,16 @@ sub add_classification_alerts {
           $alt_scoords = "";
           $alt_mcoords = "";
           vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"m_coords"}, \@m_start_A, \@m_stop_A, \@m_strand_A, $FH_HR);
+          vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, \@s_strand_A, $FH_HR);
           my @dupreg_score_A = split(",", $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"score"});
           for(my $i = 0; $i < $nhits; $i++) { 
             if($dupreg_score_A[$i] > $dupregsc_opt) { 
               for(my $j = $i+1; $j < $nhits; $j++) { 
                 if($dupreg_score_A[$j] > $dupregsc_opt) { 
-                  my ($noverlap, $overlap_str) = seq_Overlap($m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], $FH_HR);
+                  my ($mdl_noverlap, $mdl_overlap_str) = seq_Overlap($m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], $FH_HR);
+                  my ($seq_noverlap, $seq_overlap_str) = seq_Overlap($s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j], $FH_HR);
+                  my $noverlap = $mdl_noverlap - $seq_noverlap;
                   if($noverlap >= $dupregolp_opt) { 
-                    if(scalar(@s_start_A) == 0) { # first overlap above threshold, fill seq start/stop arrays:
-                      vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"s_coords"}, \@s_start_A, \@s_stop_A, \@s_strand_A, $FH_HR);
-                    }
                     $alt_scoords .= sprintf("%s%s,%s", 
                                             ($alt_scoords eq "") ? "seq:" : ",",
                                             vdr_CoordsSegmentCreate($s_start_A[$i], $s_stop_A[$i], $s_strand_A[$i], $FH_HR), 
@@ -3198,10 +3198,10 @@ sub add_classification_alerts {
                                             ($alt_mcoords eq "") ? "mdl:" : ",",
                                             vdr_CoordsSegmentCreate($m_start_A[$i], $m_stop_A[$i], $m_strand_A[$i], $FH_HR), 
                                             vdr_CoordsSegmentCreate($m_start_A[$j], $m_stop_A[$j], $m_strand_A[$j], $FH_HR));
-                    $overlap_str =~ s/\-/\.\./; # replace '-' with '..', e.g. '10-15' to '10..15'
+                    $mdl_overlap_str =~ s/\-/\.\./; # replace '-' with '..', e.g. '10-15' to '10..15'
                     $alt_str     .= sprintf("%s%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
                                             ($alt_str eq "") ? "" : ", ",
-                                            $overlap_str, $noverlap, $dupregolp_opt, 
+                                            $mdl_overlap_str, $noverlap, $dupregolp_opt, 
                                             ($i+1), $dupreg_score_A[$i], 
                                             ($j+1), $dupreg_score_A[$j]);
                   }
