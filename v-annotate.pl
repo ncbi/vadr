@@ -65,11 +65,11 @@ require "sqp_utils.pm";
 # Stage 1 and 2 are performed by a single blastn search instead of two
 # rounds of cmsearch.  The top scoring HSP is identified and used
 # (after potentially trimming) to 'seed' the alignment of that
-# sequence by cmalign. The ungapped alignment of this seed blastn
-# region is considered fixed and only the sequence before and after it
-# (plus 100nt of overlap on each side, controllable with --s_overhang)
-# is aligned separately by cmalign. The up to three alignments are
-# then joined to get the final alignment.
+# sequence by cmalign. This blastn alignmetn seed region is considered
+# fixed and only the sequence before and after it (plus 100nt of
+# overlap on each side, controllable with --s_overhang) is aligned
+# separately by cmalign. The up to three alignments are then joined to
+# get the final alignment.
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 
@@ -546,7 +546,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.3dev2";
+my $version       = "1.3dev3";
 my $releasedate   = "Oct 2021";
 my $pkgname       = "VADR";
 
