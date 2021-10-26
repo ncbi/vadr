@@ -2324,7 +2324,7 @@ sub check_seed_overlap_with_start_stop_codons {
           ($nres_overlap, undef) = seq_Overlap($mdl_gap_start, $mdl_gap_stop, $codon_stop_AR->[$c], $codon_start_AR->[$c], $FH_HR);
         }
         if($nres_overlap > 0) { 
-          printf("in sub_name, found overlap between mdl gap: $mdl_gap_start..$mdl_gap_stop and codon " . $codon_start_AR->[$c] . ".." . $codon_stop_AR->[$c] . ", returning 1\n");
+          # printf("in sub_name, found overlap between mdl gap: $mdl_gap_start..$mdl_gap_stop and codon " . $codon_start_AR->[$c] . ".." . $codon_stop_AR->[$c] . ", returning 1\n");
           return 1; 
         }
       }
