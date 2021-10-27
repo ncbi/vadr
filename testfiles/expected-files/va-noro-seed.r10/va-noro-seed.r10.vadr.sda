@@ -1,4 +1,4 @@
-#seq  seq                            seq                    ungapped      ungapped  ungapped   5'unaln       5'unaln   5'unaln      3'unaln       3'unaln   3'unaln
+#seq  seq                            seq                        seed          seed      seed   5'unaln       5'unaln   5'unaln      3'unaln       3'unaln   3'unaln
 #idx  name                           len  model      p/f         seq           mdl  fraction       seq           mdl  fraction          seq           mdl  fraction
 #---  ----------------------------  ----  ---------  ----  ---------  ------------  --------  --------  ------------  --------  -----------  ------------  --------
 1     gi|307574518|dbj|AB525810.1|   338  NC_029646  PASS   8..338:+  5036..5366:+     0.979  1..107:+  5029..5135:+     0.317            -             -         -
