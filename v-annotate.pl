@@ -62,15 +62,14 @@ require "sqp_utils.pm";
 # Seeded alignment for faster processing (originally developed for
 # SARS-CoV-2 sequences), enabled with the -s option:
 #
-# Stage 1 and 2 are performed by a single blastn search instead of
-# two rounds of cmsearch. The maximum lengthed ungapped region
-# from the top blast hit per sequence is identified and used to 'seed'
-# the alignment of that sequence by cmalign. The ungapped alignment of
-# this seed blastn region is considered fixed and only the sequence
-# before and after it (plus 100nt of overlap on each side,
-# controllable with --s_overhang) is aligned separately by
-# cmalign. The up to three alignments are then joined to get the final
-# alignment.
+# Stage 1 and 2 are performed by a single blastn search instead of two
+# rounds of cmsearch.  The top scoring HSP is identified and used
+# (after potentially trimming) to 'seed' the alignment of that
+# sequence by cmalign. This blastn alignmetn seed region is considered
+# fixed and only the sequence before and after it (plus 100nt of
+# overlap on each side, controllable with --s_overhang) is aligned
+# separately by cmalign. The up to three alignments are then joined to
+# get the final alignment.
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # 
@@ -312,7 +311,7 @@ opt_Add("--h_minbit", "real",    -10,      $g, "--pv_hmmer",  "--pv_skip", "set 
 
 $opt_group_desc_H{++$g} = "options related to blastn-derived seeded alignment acceleration";
 #        option               type   default group   requires  incompat        preamble-output                                                        help-output    
-opt_Add("-s",             "boolean",      0,   $g,      undef, undef,          "use max length ungapped region from blastn to seed the alignment",    "use the max length ungapped region from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
+opt_Add("-s",             "boolean",      0,   $g,      undef, undef,          "use top-scoring HSP from blastn to seed the alignment",               "use top-scoring HSP from blastn to seed the alignment", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnws",   "integer",      7,   $g,       "-s", undef,          "for -s, set blastn -word_size <n> to <n>",                            "for -s, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnrw",   "integer",      1,   $g,       "-s", undef,          "for -s, set blastn -reward <n> to <n>",                               "for -s, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnpn",   "integer",     -2,   $g,       "-s", undef,          "for -s, set blastn -penalty <n> to <n>",                              "for -s, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
@@ -547,7 +546,7 @@ my $executable    = (defined $execname_opt) ? $execname_opt : "v-annotate.pl";
 my $usage         = "Usage: $executable [-options] <fasta file to annotate> <output directory to create>\n";
 my $synopsis      = "$executable :: classify and annotate sequences using a model library";
 my $date          = scalar localtime();
-my $version       = "1.3dev2";
+my $version       = "1.3dev3";
 my $releasedate   = "Oct 2021";
 my $pkgname       = "VADR";
 
@@ -1265,7 +1264,7 @@ if($do_split) {
 
   if($do_blastn_ali) {
     helper_tabular_fill_header_and_justification_arrays("sda", \@head_AA, \@cljust_A, $FH_HR);
-    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sda", "sda", "ungapped seed alignment summary file (-s)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
+    vdr_MergeOutputConcatenatePreserveSpacing($out_root_no_vadr, ".sda", "sda", "seed alignment summary file (-s)", $do_check_exists, $nlines_preserve_spacing, "  ", 1, \@head_AA, \@cljust_A, \@chunk_outdir_A, \%opt_HH, \%ofile_info_HH);
   }
   if($do_replace_ns) { 
     helper_tabular_fill_header_and_justification_arrays("rpn", \@head_AA, \@cljust_A, $FH_HR);
@@ -1559,8 +1558,8 @@ my %dcr_output_HAH = ();     # hash of array of hashes with info to output relat
 # -s related output for .sda file
 my %sda_output_HH = (); # 2D key with info to output related to the -s option
 # per-model variables only used if -s used
-my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of max length ungapped segment from blastn alignment
-my %sda_seq_H     = ();  # key is sequence name, value is seq coords of max length ungapped segment from blastn alignment
+my %sda_mdl_H     = ();  # key is sequence name, value is mdl coords of seed from blastn alignment
+my %sda_seq_H     = ();  # key is sequence name, value is seq coords of seed from blastn alignment
 my %seq2subseq_HA = ();  # hash of arrays, key 1: sequence name, array is list of subsequences fetched for this sequence
 my %subseq2seq_H  = ();  # hash, key: subsequence name, value is sequence it derives from
 my %subseq_len_H  = ();  # key is name of subsequence, value is length of that subsequence
@@ -1967,7 +1966,7 @@ ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alt",      $out_root . ".alt"
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "alc",      $out_root . ".alc", 1, 1, "alert count tabular summary file");
 ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "dcr",      $out_root . ".dcr", 1, 1, "alignment doctoring tabular summary file");
 if($do_blastn_ali) {
-  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "ungapped seed alignment summary file (-s)");
+  ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "sda",    $out_root . ".sda", 1, 1, "seed alignment summary file (-s)");
 }
 if($do_replace_ns) { 
   ofile_OpenAndAddFileToOutputInfo(\%ofile_info_HH, "rpn",    $out_root . ".rpn", 1, 1, "replaced stretches of Ns summary file (-r)");
@@ -12997,7 +12996,7 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,      1,      1,      1,       0,     1,       0,       0,       0,           0,           1,       0,        0,       0,        0,      1);
   }
   elsif($ofile_key eq "sda") {
-    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "ungapped",  "ungapped", "ungapped", "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
+    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "seed",      "seed",     "seed",     "5'unaln", "5'unaln", "5'unaln",  "3'unaln", "3'unaln", "3'unaln");
     @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "seq",       "mdl",      "fraction", "seq",     "mdl",     "fraction", "seq",     "mdl",     "fraction");
     @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
   }  

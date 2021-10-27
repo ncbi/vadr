@@ -1659,7 +1659,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #             $joined_pp:  joined PP as a string, undef if $do_glsearch
 #
 #             If we can't join the sequence because 3' endpoint of the 5' cmalign alignment
-#             of the 5' endpoint of the cmalign alignment are inconsistent with the ungapped
+#             of the 5' endpoint of the cmalign alignment are inconsistent with the aligned
 #             seed region, then caller will add a unjoinbl alert, return:
 #             undef,
 #             undef,

@@ -2359,7 +2359,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "unjoinbl", "sequence",
                    "UNJOINABLE_SUBSEQ_ALIGNMENTS", # short description
-                   "inconsistent alignment of overlapping region between ungapped seed and flanking region", # long description
+                   "inconsistent alignment of overlapping region between seed and flanking region", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 

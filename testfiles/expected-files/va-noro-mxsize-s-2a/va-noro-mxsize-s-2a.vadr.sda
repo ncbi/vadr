@@ -1,4 +1,4 @@
-#seq  seq                           seq                    ungapped      ungapped  ungapped  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln
+#seq  seq                           seq                        seed          seed      seed  5'unaln  5'unaln   5'unaln  3'unaln  3'unaln   3'unaln
 #idx  name                          len  model      p/f         seq           mdl  fraction      seq      mdl  fraction      seq      mdl  fraction
 #---  ---------------------------  ----  ---------  ----  ---------  ------------  --------  -------  -------  --------  -------  -------  --------
 1     NC_001959.2/3000-4000        1001  NC_001959  PASS  1..1001:+  3000..4000:+     1.000        -        -         -        -        -         -
