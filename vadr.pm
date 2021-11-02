@@ -155,6 +155,7 @@ require "sqp_utils.pm";
 # Subroutines related to model info files:
 # vdr_ModelInfoFileWrite()
 # vdr_ModelInfoFileParse()
+# vdr_ModelInfoCoordListValueBreakdown()
 #
 # Subroutines related to cmalign output:
 # vdr_CmalignCheckStdOutput()
@@ -4892,6 +4893,56 @@ sub vdr_ModelInfoFileParse {
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
     $mdl_name = $mdl_info_AHR->[$mdl_idx]{"name"};
     utl_AHValidate($ftr_info_HAHR->{$mdl_name}, $reqd_ftr_keys_AR, "ERROR in $sub_name, problem parsing $in_file, required MODEL key missing for model " . $mdl_info_AHR->[$mdl_idx]{"name"}, $FH_HR);
+  }
+
+  return;
+}
+
+#################################################################
+# Subroutine: vdr_ModelInfoCoordsListValueBreakdown()
+# Incept:     EPN, Tue Nov  2 14:33:10 2021
+#
+# Purpose:    Breakdown a list of coords values 
+#             from a string in %{$mdl_info_AHR->[$mdl_idx]}
+#             and fill @{$AR} with key/value pairs.
+# 
+#             String must be in format of one or more single
+#             segment coords tokens, "<d>..<d>:[+-]" separated 
+#             by ";" if more than one.
+#
+#             If $mdl_info_AHR->[$mdl_idx]{$key} does not exist just
+#             return.
+#
+# Arguments: 
+#  $mdl_info_AHR:   ref to the feature info array of hashes 
+#  $mdl_idx:        model index
+#  $key:            key in $mdl_info_AHR->[$mdl_idx]
+#  $AR:             ref to array to fill
+#  $FH_HR:          ref to hash of file handles, including "log" and "cmd"
+#
+# Returns:    void
+#
+# Dies:       if $mdl_info_AHR->[$mdl_idx] exists but cannot
+#             be parsed.
+#
+################################################################# 
+sub vdr_ModelInfoCoordsListValueBreakdown { 
+  my $sub_name = "vdr_ModelInfoCoordsListValueBreakdown";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($mdl_info_AHR, $mdl_idx, $key, $AR, $FH_HR) = @_;
+ 
+  if(defined $mdl_info_AHR->[$mdl_idx]{$key}) { 
+    my @tok_A = split(";", $mdl_info_AHR->[$mdl_idx]{$key});
+    foreach my $tok (@tok_A) { 
+      if($tok =~ /^\d+\.\.\d+\:[\+\-]$/) { 
+        push(@{$AR}, $tok);
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, unable to parse coords token $tok parsed out of " . $mdl_info_AHR->[$mdl_idx]{$key}, 1, $FH_HR);
+      }
+    }
   }
 
   return;

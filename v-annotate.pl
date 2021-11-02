@@ -2946,6 +2946,14 @@ sub add_classification_alerts {
   my $incspec_opt2print    = sprintf("%.3f", opt_Get("--incspec",    $opt_HHR));
   my $dupregsc_opt2print   = sprintf("%.1f", opt_Get("--dupregsc",   $opt_HHR));
 
+  # get info on position-specific indfstrn exceptions, if any
+  my @indfstrn_exc_AA = ();
+  my $nmdl = scalar(@{$mdl_info_AHR});
+  for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    @{$indfstrn_exc_AA[$mdl_idx]} = ();
+    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, "indfstrn_exc", \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
+  }
+
   my $alt_scoords; # sequence coordinates related to an alert
   my $alt_mcoords; # model    coordinates related to an alert
 
@@ -2957,6 +2965,7 @@ sub add_classification_alerts {
   foreach my $seq_name (sort keys(%{$seq_len_HR})) { 
     my $seq_len  = $seq_len_HR->{$seq_name};
     my $mdl_name = undef;
+    my $mdl_idx  = undef;
     my $mdl_len  = undef;
     my %score_H  = (); # key is $stg_results_HHHR 2D key (search category), value is summed score
     my %scpnt_H  = (); # key is $stg_results_HHHR 2D key (search category), value is summed length
@@ -2982,7 +2991,8 @@ sub add_classification_alerts {
       }
       # determine model name and length
       $mdl_name = $stg_results_HHHR->{$seq_name}{"std.cdt.bs"}{"model"};
-      $mdl_len  = $mdl_info_AHR->[$mdl_idx_H{$mdl_name}]{"length"};
+      $mdl_idx  = $mdl_idx_H{$mdl_name};
+      $mdl_len  = $mdl_info_AHR->[$mdl_idx]{"length"};
       foreach my $rkey (keys (%{$stg_results_HHHR->{$seq_name}})) { 
         my @score_A = split(",", $stg_results_HHHR->{$seq_name}{$rkey}{"score"});
         $score_H{$rkey} = utl_ASum(\@score_A);
@@ -3160,10 +3170,30 @@ sub add_classification_alerts {
             my @ostrand_mstrand_A = ();
             vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"s_coords"}, \@ostrand_sstart_A, \@ostrand_sstop_A, \@ostrand_sstrand_A, $FH_HR);
             vdr_FeatureStartStopStrandArrays($stg_results_HHHR->{$seq_name}{"std.cdt.os"}{"m_coords"}, \@ostrand_mstart_A, \@ostrand_mstop_A, \@ostrand_mstrand_A, $FH_HR);
-            $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($ostrand_sstart_A[0], $ostrand_sstop_A[0], $ostrand_sstrand_A[0], $FH_HR) . ";";
-            $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR) . ";";
-            $alt_str = sprintf("score:%.1f>%s", $top_ostrand_score, $indefstr_opt2print);
-            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
+            # check if this is an exempted region
+            my $exempted_region = 0;
+            foreach my $exc_coords (@{$indfstrn_exc_AA[$mdl_idx]}) { 
+              my ($exc_start, $exc_stop, $exc_strand) = vdr_CoordsSegmentParse($exc_coords, $FH_HR);
+              if($ostrand_mstrand_A[0] eq $exc_strand) { 
+                # seq_Overlap() requires start <= stop
+                my $indfstrn_mstart = ($ostrand_mstart_A[0] < $ostrand_mstop_A[0]) ? $ostrand_mstart_A[0] : $ostrand_mstop_A[0];
+                my $indfstrn_mstop  = ($ostrand_mstart_A[0] < $ostrand_mstop_A[0]) ? $ostrand_mstop_A[0]  : $ostrand_mstart_A[0];
+                my $indfstrn_mlen   = abs($indfstrn_mstart - $indfstrn_mstop) + 1;
+                my $exc_start2      = ($exc_start           < $exc_stop)           ? $exc_start           : $exc_stop;
+                my $exc_stop2       = ($exc_start           < $exc_stop)           ? $exc_stop            : $exc_start;
+                my $noverlap;
+                ($noverlap, undef) = seq_Overlap($indfstrn_mstart, $indfstrn_mstop, $exc_start2, $exc_stop2, $FH_HR);
+                if($noverlap == $indfstrn_mlen) { 
+                  $exempted_region = 1;
+                }
+              }
+            }
+            if(! $exempted_region) { 
+              $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($ostrand_sstart_A[0], $ostrand_sstop_A[0], $ostrand_sstrand_A[0], $FH_HR) . ";";
+              $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR) . ";";
+              $alt_str = sprintf("score:%.1f>%s", $top_ostrand_score, $indefstr_opt2print);
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "indfstrn", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
+            }
           }
         }
 
@@ -4761,9 +4791,9 @@ sub add_frameshift_alerts_for_one_sequence {
   my $alert_mcoords = undef; # model coords string for an alert
 
   # get info on position-specific insert and delete maximum exceptions, and frameshift regions, if there are any
-  my @nmaxins_exc_AH = ();
-  my @nmaxdel_exc_AH = ();
-  my @fs_exc_AA = ();
+  my @nmaxins_exc_AH  = ();
+  my @nmaxdel_exc_AH  = ();
+  my @fs_exc_AA       = ();
   for($ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     %{$nmaxins_exc_AH[$ftr_idx]} = ();
     %{$nmaxdel_exc_AH[$ftr_idx]} = ();
@@ -5089,10 +5119,10 @@ sub add_frameshift_alerts_for_one_sequence {
                 my ($exc_start, $exc_stop, $exc_strand) = vdr_CoordsSegmentParse($exc_coords, $FH_HR);
                 if($ftr_strand eq $exc_strand) { 
                   # seq_Overlap() requires start <= stop
-                  my $fs_start   = ($span_mstart <  $span_mstop) ? $span_mstart : $span_mstop;
-                  my $fs_stop    = ($span_mstart >= $span_mstop) ? $span_mstart : $span_mstop;
-                  my $exc_start2 = ($exc_start   <  $exc_stop)   ? $exc_start   : $exc_stop;
-                  my $exc_stop2  = ($exc_start   >= $exc_stop)   ? $exc_start   : $exc_stop;
+                  my $fs_start   = ($span_mstart < $span_mstop) ? $span_mstart : $span_mstop;
+                  my $fs_stop    = ($span_mstart < $span_mstop) ? $span_mstop  : $span_mstart;
+                  my $exc_start2 = ($exc_start   < $exc_stop)   ? $exc_start   : $exc_stop;
+                  my $exc_stop2  = ($exc_start   < $exc_stop)   ? $exc_stop    : $exc_start;
                   my $noverlap;
                   ($noverlap, undef) = seq_Overlap($fs_start, $fs_stop, $exc_start2, $exc_stop2, $FH_HR);
                   if($noverlap == $span_mlen) { 
