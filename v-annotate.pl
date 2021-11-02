@@ -320,6 +320,7 @@ opt_Add("--s_blastnge",   "real",         1,   $g,       "-s","--s_blastngdf", "
 opt_Add("--s_blastngdf",  "boolean",      0,   $g,       "-s", undef,          "for -s, don't use -gapopen/-gapextend w/blastn (use default values)", "for -s, don't use -gapopen/-gapextend w/blastn (use default values)", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastnsc",   "real",      50.0,   $g,       "-s", undef,          "for -s, set blastn minimum HSP score to consider to <x>",             "for -s, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_blastntk",   "boolean",      0,   $g,       "-s", undef,          "for -s, set blastn option -task blastn",                              "for -s, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
+opt_Add("--s_blastnxd",   "integer",    100,   $g,       "-s", undef,          "for -s, set blastn option -xdrop_gap_final <n> to <n>",               "for -s, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_minsgmlen",  "integer",     10,   $g,       "-s", undef,          "for -s, set minimum length of ungapped region in HSP seed to <n>",    "for -s, set minimum length of ungapped region in HSP seed to <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--s_allsgm",     "boolean",      0,   $g,       "-s", "--s_minsgmlen", "for -s, keep full HSP seed, do not enforce minimum segment length",  "for -s, keep full HSP seed, do not enforce minimum segment length", \%opt_HH, \@opt_order_A);
 opt_Add("--s_ungapsgm",   "boolean",      0,   $g,       "-s", "--s_minsgmlen,--s_allsgm", "for -s, only keep max length ungapped segment of HSP",    "for -s, only keep max length ungapped segment of HSP", \%opt_HH, \@opt_order_A);
@@ -487,6 +488,7 @@ my $options_okay =
                 's_blastngdf'   => \$GetOptions_H{"--s_blastngdf"},
                 's_blastnsc=s'  => \$GetOptions_H{"--s_blastnsc"},
                 's_blastntk'    => \$GetOptions_H{"--s_blastntk"},
+                's_blastnxd=s'  => \$GetOptions_H{"--s_blastnxd"},
                 's_minsgmlen=s' => \$GetOptions_H{"--s_minsgmlen"},
                 's_allsgm'      => \$GetOptions_H{"--s_allsgm"},
                 's_ungapsgm'    => \$GetOptions_H{"--s_ungapsgm"},
