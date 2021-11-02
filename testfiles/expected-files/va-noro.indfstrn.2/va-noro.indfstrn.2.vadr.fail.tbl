@@ -1,0 +1,38 @@
+>Feature NC_001959.2-700-rc-1400
+5	5443	gene
+			gene	ORF1
+5	5443	misc_feature
+			note	similar to nonstructural polyprotein
+5	1198	misc_feature
+			note	similar to p48
+1199	2356	misc_feature
+			note	similar to NTPase
+2357	2959	misc_feature
+			note	similar to p22
+2960	3373	misc_feature
+			note	similar to VPg
+3374	3916	misc_feature
+			note	similar to Pro
+3917	5440	misc_feature
+			note	similar to RdRp
+5427	7019	gene
+			gene	ORF2
+5427	7019	CDS
+			product	VP1
+			protein_id	NC_001959.2-700-rc-1400_1
+7019	7657	gene
+			gene	ORF3
+7019	7657	CDS
+			product	VP2
+			protein_id	NC_001959.2-700-rc-1400_2
+
+Additional note(s) to submitter:
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:3915,M:3904]; seq-coords:1526..1528:+; mdl-coords:1470..1470:+; mdl:NC_001959;
+ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) stop codon in protein-based alignment [-]; seq-coords:1526..1528:+; mdl-coords:1475..1477:+; mdl:NC_001959;
+ERROR: INSERTION_OF_NT: (CDS:nonstructural polyprotein) too large of an insertion in protein-based alignment [69>27]; seq-coords:1474..1542:+; mdl-coords:1474..1474:+; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:NTPase) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p22) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:VPg) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:Pro) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
+ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:RdRp) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
