@@ -5122,21 +5122,10 @@ sub add_frameshift_alerts_for_one_sequence {
               # check if this is an exempted region
               my $exempted_region = 0;
               foreach my $exc_coords (@{$fs_exc_AA[$ftr_idx]}) { 
-                my ($exc_start, $exc_stop, $exc_strand) = vdr_CoordsSegmentParse($exc_coords, $FH_HR);
-                if($ftr_strand eq $exc_strand) { 
-                  # seq_Overlap() requires start <= stop
-                  my $fs_start   = ($span_mstart < $span_mstop) ? $span_mstart : $span_mstop;
-                  my $fs_stop    = ($span_mstart < $span_mstop) ? $span_mstop  : $span_mstart;
-                  my $exc_start2 = ($exc_start   < $exc_stop)   ? $exc_start   : $exc_stop;
-                  my $exc_stop2  = ($exc_start   < $exc_stop)   ? $exc_stop    : $exc_start;
-                  my $noverlap;
-                  ($noverlap, undef) = seq_Overlap($fs_start, $fs_stop, $exc_start2, $exc_stop2, $FH_HR);
-                  if($noverlap == $span_mlen) { 
-                    $exempted_region = 1;
-                  }
+                if(vdr_CoordsCheckIfSpans($exc_coords, vdr_CoordsSegmentCreate($span_mstart, $span_mstop, $ftr_strand, $FH_HR), $FH_HR)) { 
+                  $exempted_region = 1;
                 }
               }
-              
               if(! $exempted_region) { 
                 if((($is_5p) && ($span_slen >= $fst_min_nt5)) || 
                    (($is_3p) && ($span_slen >= $fst_min_nt3)) || 
