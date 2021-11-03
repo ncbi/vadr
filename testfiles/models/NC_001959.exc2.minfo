@@ -1,4 +1,4 @@
-MODEL NC_001959 blastdb:"NC_001959.vadr.protein.fa" cmfile:"NC_001959.vadr.cm" group:"Norovirus" length:"7654" subgroup:"GI" indfstrn_exc:"700..780:+"
+MODEL NC_001959 blastdb:"NC_001959.vadr.protein.fa" cmfile:"NC_001959.vadr.cm" group:"Norovirus" length:"7654" subgroup:"GI" indfstrn_exc:"700..780:+" dupregin_exc:"700..820:+"
 FEATURE NC_001959 type:"gene" coords:"5..5374:+" parent_idx_str:"GBNULL" gene:"ORF1"
 FEATURE NC_001959 type:"CDS" coords:"5..5374:+" parent_idx_str:"GBNULL" gene:"ORF1" product:"nonstructural polyprotein"
 FEATURE NC_001959 type:"gene" coords:"5358..6950:+" parent_idx_str:"GBNULL" gene:"ORF2"

@@ -20,7 +20,7 @@ out: va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.alt.list
-#rmdir: va-noro.indfstrn.1
+rmdir: va-noro.indfstrn.1
 ## 
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.exc.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.indfstrn.fa va-noro.indfstrn.2 > va-noro.indfstrn.2.out
 desc: annotate-noro-indfstrn.2
@@ -30,7 +30,7 @@ out: va-noro.indfstrn.2/va-noro.indfstrn.2.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.2/va-noro.indfstrn.2.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.2/va-noro.indfstrn.2.vadr.alt.list
-#rmdir: va-noro.indfstrn.2
+rmdir: va-noro.indfstrn.2
 ## 
 ## 
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.exc2.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.indfstrn.fa va-noro.indfstrn.3 > va-noro.indfstrn.3.out
@@ -41,5 +41,5 @@ out: va-noro.indfstrn.3/va-noro.indfstrn.3.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.indfstrn.1/va-noro.indfstrn.1.vadr.alt.list
-#rmdir: va-noro.indfstrn.3
+rmdir: va-noro.indfstrn.3
 ## 

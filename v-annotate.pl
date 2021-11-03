@@ -2947,10 +2947,13 @@ sub add_classification_alerts {
   my $dupregsc_opt2print   = sprintf("%.1f", opt_Get("--dupregsc",   $opt_HHR));
 
   # get info on position-specific indfstrn exceptions, if any
+  my @dupregin_exc_AA = ();
   my @indfstrn_exc_AA = ();
   my $nmdl = scalar(@{$mdl_info_AHR});
   for($mdl_idx = 0; $mdl_idx < $nmdl; $mdl_idx++) { 
+    @{$dupregin_exc_AA[$mdl_idx]} = ();
     @{$indfstrn_exc_AA[$mdl_idx]} = ();
+    vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, "dupregin_exc", \@{$dupregin_exc_AA[$mdl_idx]}, $FH_HR);
     vdr_ModelInfoCoordsListValueBreakdown($mdl_info_AHR, $mdl_idx, "indfstrn_exc", \@{$indfstrn_exc_AA[$mdl_idx]}, $FH_HR);
   }
 
@@ -3173,19 +3176,8 @@ sub add_classification_alerts {
             # check if this is an exempted region
             my $exempted_region = 0;
             foreach my $exc_coords (@{$indfstrn_exc_AA[$mdl_idx]}) { 
-              my ($exc_start, $exc_stop, $exc_strand) = vdr_CoordsSegmentParse($exc_coords, $FH_HR);
-              if($ostrand_mstrand_A[0] eq $exc_strand) { 
-                # seq_Overlap() requires start <= stop
-                my $indfstrn_mstart = ($ostrand_mstart_A[0] < $ostrand_mstop_A[0]) ? $ostrand_mstart_A[0] : $ostrand_mstop_A[0];
-                my $indfstrn_mstop  = ($ostrand_mstart_A[0] < $ostrand_mstop_A[0]) ? $ostrand_mstop_A[0]  : $ostrand_mstart_A[0];
-                my $indfstrn_mlen   = abs($indfstrn_mstart - $indfstrn_mstop) + 1;
-                my $exc_start2      = ($exc_start           < $exc_stop)           ? $exc_start           : $exc_stop;
-                my $exc_stop2       = ($exc_start           < $exc_stop)           ? $exc_stop            : $exc_start;
-                my $noverlap;
-                ($noverlap, undef) = seq_Overlap($indfstrn_mstart, $indfstrn_mstop, $exc_start2, $exc_stop2, $FH_HR);
-                if($noverlap == $indfstrn_mlen) { 
-                  $exempted_region = 1;
-                }
+              if(vdr_CoordsCheckIfSpans($exc_coords, vdr_CoordsSegmentCreate($ostrand_mstart_A[0], $ostrand_mstop_A[0], $ostrand_mstrand_A[0], $FH_HR), $FH_HR)) { 
+                $exempted_region = 1;
               }
             }
             if(! $exempted_region) { 
@@ -3215,8 +3207,12 @@ sub add_classification_alerts {
             if($dupreg_score_A[$i] > $dupregsc_opt) { 
               for(my $j = $i+1; $j < $nhits; $j++) { 
                 if($dupreg_score_A[$j] > $dupregsc_opt) { 
-                  my ($mdl_noverlap, $mdl_overlap_str) = seq_Overlap($m_start_A[$i], $m_stop_A[$i], $m_start_A[$j], $m_stop_A[$j], $FH_HR);
-                  my ($seq_noverlap, $seq_overlap_str) = seq_Overlap($s_start_A[$i], $s_stop_A[$i], $s_start_A[$j], $s_stop_A[$j], $FH_HR);
+                  my ($mdl_noverlap, $mdl_overlap_str) = vdr_CoordsSegmentOverlap(
+                    vdr_CoordsSegmentCreate($m_start_A[$i], $m_stop_A[$i], $m_strand_A[$i], $FH_HR), 
+                    vdr_CoordsSegmentCreate($m_start_A[$j], $m_stop_A[$j], $m_strand_A[$j], $FH_HR), $FH_HR);
+                  my ($seq_noverlap, $seq_overlap_str) = vdr_CoordsSegmentOverlap(
+                    vdr_CoordsSegmentCreate($s_start_A[$i], $s_stop_A[$i], $s_strand_A[$i], $FH_HR), 
+                    vdr_CoordsSegmentCreate($s_start_A[$j], $s_stop_A[$j], $s_strand_A[$j], $FH_HR), $FH_HR);
                   my $noverlap = $mdl_noverlap - $seq_noverlap;
                   if($noverlap >= $dupregolp_opt) { 
                     $alt_scoords .= sprintf("%s%s,%s", 
@@ -3228,11 +3224,21 @@ sub add_classification_alerts {
                                             vdr_CoordsSegmentCreate($m_start_A[$i], $m_stop_A[$i], $m_strand_A[$i], $FH_HR), 
                                             vdr_CoordsSegmentCreate($m_start_A[$j], $m_stop_A[$j], $m_strand_A[$j], $FH_HR));
                     $mdl_overlap_str =~ s/\-/\.\./; # replace '-' with '..', e.g. '10-15' to '10..15'
-                    $alt_str     .= sprintf("%s%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
-                                            ($alt_str eq "") ? "" : ", ",
-                                            $mdl_overlap_str, $noverlap, $dupregolp_opt, 
-                                            ($i+1), $dupreg_score_A[$i], 
-                                            ($j+1), $dupreg_score_A[$j]);
+                    $mdl_overlap_str .= ":" . $m_strand_A[$i]; # both $i and $j are same strand
+                    # check if this is an exempted region
+                    my $exempted_region = 0;
+                    foreach my $exc_coords (@{$dupregin_exc_AA[$mdl_idx]}) { 
+                      if(vdr_CoordsCheckIfSpans($exc_coords, $mdl_overlap_str, $FH_HR)) { 
+                        $exempted_region = 1;
+                      }
+                    }
+                    if(! $exempted_region) { # only report if not exempted
+                      $alt_str .= sprintf("%s%s (len %d>=%d) hits %d (%.1f bits) and %d (%.1f bits)",
+                                          ($alt_str eq "") ? "" : ", ",
+                                          $mdl_overlap_str, $noverlap, $dupregolp_opt, 
+                                          ($i+1), $dupreg_score_A[$i], 
+                                          ($j+1), $dupreg_score_A[$j]);
+                    }
                   }
                 }
               }
