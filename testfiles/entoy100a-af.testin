@@ -104,11 +104,11 @@ out: va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.fail.tbl
 out: va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.ftr
 out: va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.sgm
 out: va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subn/va-entoy100a-af3subn.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subn/va-entoy100a-af3subn.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subn/va-entoy100a-af3subn.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subn/va-entoy100a-af3subn.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subn/va-entoy100a-af3subn.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3subnswap/va-entoy100a-af3subnswap.vadr.alt
 rmdir: va-entoy100a-af3subnswap
 #
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --ignore_afsetsubn --alicheck --minpvlen 3 --keep --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.af3subnswap.minfo -f $VADRSCRIPTSDIR/testfiles/entoy100a-af3.fa va-entoy100a-af3igsubnswap > va-entoy100a-af3igsubnswap.out
@@ -118,9 +118,9 @@ out: va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.fail.tbl
 out: va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.ftr
 out: va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.sgm
 out: va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.alt
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubn/va-entoy100a-af3igsubn.vadr.pass.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubn/va-entoy100a-af3igsubn.vadr.fail.tbl 
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubn/va-entoy100a-af3igsubn.vadr.ftr
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubn/va-entoy100a-af3igsubn.vadr.sgm
-exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubn/va-entoy100a-af3igsubn.vadr.alt
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.pass.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.fail.tbl 
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.ftr
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.sgm
+exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-entoy100a-af3igsubnswap/va-entoy100a-af3igsubnswap.vadr.alt
 rmdir: va-entoy100a-af3igsubn

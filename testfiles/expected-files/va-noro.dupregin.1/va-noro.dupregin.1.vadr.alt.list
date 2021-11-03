@@ -1,0 +1,13 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+NC_001959.2-dupregion-700	NC_001959	-	*sequence*	DUPLICATE_REGIONS	841..7794:+,1..840:+	701..7654:+,1..840:+	similarity to a model region occurs more than once [701..840:+ (len 140>=20) hits 1 (7602.4 bits) and 2 (890.0 bits)]
+NC_001959.2-dupregion-700	NC_001959	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	839..841:+	769..769:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:4673,M:4605]
+NC_001959.2-dupregion-700	NC_001959	CDS	nonstructural polyprotein	POSSIBLE_FRAMESHIFT_HIGH_CONF	5..909:+	5..769:+	high confidence possible frameshift at 5' end of CDS [length:905; inserts:S:770..909(140),M:769; deletes:none; shifted_frame:1; dominant_frame:3; avgpp:0.810;]
+NC_001959.2-dupregion-700	NC_001959	CDS	nonstructural polyprotein	INDEFINITE_ANNOTATION_START	5..834:+	5..5:+	protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [830>5]
+NC_001959.2-dupregion-700	NC_001959	CDS	nonstructural polyprotein	UNEXPECTED_LENGTH	5..5514:+	5..5374:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [5510]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	p48	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	p48	UNEXPECTED_LENGTH	5..1338:+	5..1198:+	length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [1334]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	NTPase	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	p22	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	VPg	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	Pro	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-dupregion-700	NC_001959	mat_peptide	RdRp	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
