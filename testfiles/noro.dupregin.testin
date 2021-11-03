@@ -20,10 +20,9 @@ out: va-noro.dupregin.1/va-noro.dupregin.1.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.alt.list
-#rmdir: va-noro.dupregin.1
+rmdir: va-noro.dupregin.1
 ## 
-#command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.exc.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.dupregin.fa va-noro.dupregin.2 > va-noro.dupregin.2.out
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.exc.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.dupregin.fa va-noro.dupregin.2
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.exc.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.dupregin.fa va-noro.dupregin.2 > va-noro.dupregin.2.out
 desc: annotate-noro-dupregin.2
 out: va-noro.dupregin.2/va-noro.dupregin.2.vadr.pass.tbl 
 out: va-noro.dupregin.2/va-noro.dupregin.2.vadr.fail.tbl
@@ -31,7 +30,7 @@ out: va-noro.dupregin.2/va-noro.dupregin.2.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.2/va-noro.dupregin.2.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.2/va-noro.dupregin.2.vadr.alt.list
-#rmdir: va-noro.dupregin.2
+rmdir: va-noro.dupregin.2
 ## 
 ## 
 command: perl $VADRSCRIPTSDIR/v-annotate.pl --keep -f -m $VADRSCRIPTSDIR/testfiles/models/NC_001959.cm -i $VADRSCRIPTSDIR/testfiles/models/NC_001959.exc2.minfo -x $VADRSCRIPTSDIR/testfiles/models $VADRSCRIPTSDIR/testfiles/noro.dupregin.fa va-noro.dupregin.3 > va-noro.dupregin.3.out
@@ -42,5 +41,5 @@ out: va-noro.dupregin.3/va-noro.dupregin.3.vadr.alt.list
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.pass.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.dupregin.1/va-noro.dupregin.1.vadr.alt.list
-#rmdir: va-noro.dupregin.3
+rmdir: va-noro.dupregin.3
 ## 
