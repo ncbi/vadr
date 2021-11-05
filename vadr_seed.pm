@@ -114,9 +114,10 @@ sub run_blastn_and_summarize_output {
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
   my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file";
-  $opt_str .= " -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
-  $opt_str .= " -reward "    . opt_Get("--s_blastnrw", $opt_HHR); 
-  $opt_str .= " -penalty "   . opt_Get("--s_blastnpn", $opt_HHR); 
+  $opt_str .= " -word_size "        . opt_Get("--s_blastnws", $opt_HHR); 
+  $opt_str .= " -reward "           . opt_Get("--s_blastnrw", $opt_HHR); 
+  $opt_str .= " -penalty "          . opt_Get("--s_blastnpn", $opt_HHR); 
+  $opt_str .= " -xdrop_gap_final "  . opt_Get("--s_blastnxd", $opt_HHR); 
   if(! opt_Get("--s_blastngdf", $opt_HHR)) { 
     $opt_str .= " -gapopen "   . opt_Get("--s_blastngo", $opt_HHR); 
     $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
