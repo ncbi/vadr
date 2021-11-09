@@ -114,9 +114,10 @@ sub run_blastn_and_summarize_output {
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
   my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file";
-  $opt_str .= " -word_size " . opt_Get("--s_blastnws", $opt_HHR); 
-  $opt_str .= " -reward "    . opt_Get("--s_blastnrw", $opt_HHR); 
-  $opt_str .= " -penalty "   . opt_Get("--s_blastnpn", $opt_HHR); 
+  $opt_str .= " -word_size "        . opt_Get("--s_blastnws", $opt_HHR); 
+  $opt_str .= " -reward "           . opt_Get("--s_blastnrw", $opt_HHR); 
+  $opt_str .= " -penalty "          . opt_Get("--s_blastnpn", $opt_HHR); 
+  $opt_str .= " -xdrop_gap_final "  . opt_Get("--s_blastnxd", $opt_HHR); 
   if(! opt_Get("--s_blastngdf", $opt_HHR)) { 
     $opt_str .= " -gapopen "   . opt_Get("--s_blastngo", $opt_HHR); 
     $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
@@ -1659,7 +1660,7 @@ sub join_alignments_and_add_unjoinbl_alerts {
 #             $joined_pp:  joined PP as a string, undef if $do_glsearch
 #
 #             If we can't join the sequence because 3' endpoint of the 5' cmalign alignment
-#             of the 5' endpoint of the cmalign alignment are inconsistent with the ungapped
+#             of the 5' endpoint of the cmalign alignment are inconsistent with the aligned
 #             seed region, then caller will add a unjoinbl alert, return:
 #             undef,
 #             undef,
@@ -2324,7 +2325,7 @@ sub check_seed_overlap_with_start_stop_codons {
           ($nres_overlap, undef) = seq_Overlap($mdl_gap_start, $mdl_gap_stop, $codon_stop_AR->[$c], $codon_start_AR->[$c], $FH_HR);
         }
         if($nres_overlap > 0) { 
-          printf("in sub_name, found overlap between mdl gap: $mdl_gap_start..$mdl_gap_stop and codon " . $codon_start_AR->[$c] . ".." . $codon_stop_AR->[$c] . ", returning 1\n");
+          # printf("in sub_name, found overlap between mdl gap: $mdl_gap_start..$mdl_gap_stop and codon " . $codon_start_AR->[$c] . ".." . $codon_stop_AR->[$c] . ", returning 1\n");
           return 1; 
         }
       }

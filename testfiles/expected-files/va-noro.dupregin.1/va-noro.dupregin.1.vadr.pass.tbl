@@ -1,0 +1,34 @@
+>Feature NC_001959.2
+5	5374	gene
+			gene	ORF1
+5	5374	CDS
+			product	nonstructural polyprotein
+			protein_id	NC_001959.2_1
+5	1198	mat_peptide
+			product	p48
+			protein_id	NC_001959.2_1
+1199	2287	mat_peptide
+			product	NTPase
+			protein_id	NC_001959.2_1
+2288	2890	mat_peptide
+			product	p22
+			protein_id	NC_001959.2_1
+2891	3304	mat_peptide
+			product	VPg
+			protein_id	NC_001959.2_1
+3305	3847	mat_peptide
+			product	Pro
+			protein_id	NC_001959.2_1
+3848	5371	mat_peptide
+			product	RdRp
+			protein_id	NC_001959.2_1
+5358	6950	gene
+			gene	ORF2
+5358	6950	CDS
+			product	VP1
+			protein_id	NC_001959.2_2
+6950	7588	gene
+			gene	ORF3
+6950	7588	CDS
+			product	VP2
+			protein_id	NC_001959.2_3

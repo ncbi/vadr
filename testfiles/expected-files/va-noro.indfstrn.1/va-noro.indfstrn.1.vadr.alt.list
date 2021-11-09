@@ -1,0 +1,11 @@
+#sequence	model	feature-type	feature-name	error	seq-coords	mdl-coords	error-description
+NC_001959.2-700-rc-1400	NC_001959	-	*sequence*	INDEFINITE_STRAND	1541..1448:-	700..789:+	significant similarity detected on both strands [score:49.1>25.0]
+NC_001959.2-700-rc-1400	NC_001959	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	1526..1528:+	1470..1470:+	in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:3915,M:3904]
+NC_001959.2-700-rc-1400	NC_001959	CDS	nonstructural polyprotein	CDS_HAS_STOP_CODON	1526..1528:+	1475..1477:+	stop codon in protein-based alignment [-]
+NC_001959.2-700-rc-1400	NC_001959	CDS	nonstructural polyprotein	INSERTION_OF_NT	1474..1542:+	1474..1474:+	too large of an insertion in protein-based alignment [69>27]
+NC_001959.2-700-rc-1400	NC_001959	mat_peptide	p48	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-700-rc-1400	NC_001959	mat_peptide	NTPase	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-700-rc-1400	NC_001959	mat_peptide	p22	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-700-rc-1400	NC_001959	mat_peptide	VPg	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-700-rc-1400	NC_001959	mat_peptide	Pro	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]
+NC_001959.2-700-rc-1400	NC_001959	mat_peptide	RdRp	PEPTIDE_TRANSLATION_PROBLEM	-	-	mat_peptide may not be translated because its parent CDS has a problem [-]

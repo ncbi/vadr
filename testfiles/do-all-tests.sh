@@ -46,6 +46,9 @@ for t in \
     do-dcr-tests.sh \
     do-glsearch-tests.sh \
     do-split-tests.sh \
+    do-af-tests.sh \
+    do-indfstrn-tests.sh \
+    do-dupregin-tests.sh \
     github-issues/do-issue-tests.sh \
     ; do
     sh $VADRSCRIPTSDIR/testfiles/$t
