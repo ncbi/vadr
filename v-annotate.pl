@@ -4865,7 +4865,6 @@ sub add_frameshift_alerts_for_one_sequence {
               $F_0 = vdr_FrameAdjust(1, abs($mstart - $sgm_start_rfpos), $FH_HR);
               # $F_0 is frame of initial nongap RF position for this CDS 
             } 
-            printf("HEYA F_0: $F_0\n");
 
             # sanity checks about strand
             if((defined $ftr_strand) && ($ftr_strand ne $strand)) { 
@@ -4999,12 +4998,6 @@ sub add_frameshift_alerts_for_one_sequence {
       #printf("frame_stok_str: $frame_stok_str\n");
       #printf("frame_mtok_str: $frame_mtok_str\n");
 
-      # store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0, and expected frame
-      my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-      my $expected_frame = $F_0;
-      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $F_0;
-      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
-
       # deconstruct $frame_stok_str, looking for potential frameshifts, 
       # we combine any subseqs not in the expected frame together and
       # then check if any (possibly joined) unexpected frame subseqs
@@ -5016,6 +5009,27 @@ sub add_frameshift_alerts_for_one_sequence {
       if($nframe_stok != $nframe_mtok) { 
         ofile_FAIL("ERROR, in $sub_name, different numbers of sequence and model frame tokens, internal coding error: frame_stok_str: $frame_stok_str, frame_mtok_str: $frame_mtok_str", 1, $FH_HR);
       }
+
+      # determine and store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
+      # determine and store expected frame, the expected frame of the CDS
+      # expected_frame is the predicted frame of the first position unless
+      # the CDS is 5' truncated AND the length of the first region is less than $fst_min_nt5 length,
+      # in which case we set expected_frame to dominant frame. This avoids frameshift calls
+      # when first region is very short and we're 5' truncated (which means we're as confident of 
+      # expected frame as when we are not 5' truncated b/c we don't have a start codon)
+      my $first_span_slen = undef;
+      if($frame_stok_A[0] =~ /[123]\:(\d+)\-(\d+)\[\d+\]\!*/) { 
+        my ($first_sstart, $first_sstop) = ($1, $2); 
+        $first_span_slen = abs($first_sstop - $first_sstart) + 1;
+      }
+      else { 
+        ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: $frame_mtok_A[0]", 1, $FH_HR);
+      }
+      my $dominant_frame = utl_AArgMax(\@frame_ct_A);
+      my $expected_frame = (($is_5p) && ($first_span_slen < $fst_min_nt5)) ? $dominant_frame : $F_0;
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $expected_frame;
+      $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
+
       if($nframe_stok > 1) { # if there's only one frame_stok, we can't have a frameshift
         my $prv_sstop   = undef; # last sequence position in the previous frame token
         my $prv_mstop   = undef; # last model    position in the previous frame token
