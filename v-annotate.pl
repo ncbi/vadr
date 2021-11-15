@@ -5051,37 +5051,10 @@ sub add_frameshift_alerts_for_one_sequence {
           my $insert_str = "";    # string of inserts to put in alert string
           my $delete_str = "";    # string of deletes to put in alert string
           my @cur_indel_str_A = (); # array of indel mutations related to a frameshift
-          my @frame_str_A = ();   # [0..$nframe_stok-1] precalc'ed string representing frames of all regions, 
-                                  # examples: non-truncated CDS w/internal frameshift in frame 2:      "[1(2)1]"
-                                  #           5' truncated CDS that starts in frame 2 and shifts to 3: "~2(3)]"
-                                  #           same as above but also 3' truncated:                     "~2(3)~"
           my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
           my $is_5p      = 0;     # set to 1 if the frameshifted region includes 5'-most nt of CDS feature, else 0, must be 0 if $is_3p == 1
           my $is_3p      = 0;     # set to 1 if the frameshifted region includes 3'-most nt of CDS feature, else 0, must be 0 if $is_5p == 1
-
           my $f;
-          # precalculate all strings of frame_str_A, we'll only use some of them
-          for($f = 0; $f < $nframe_stok; $f++) { 
-            $frame_str_A[$f] = ($is_5p_trunc) ? "<" : "[";
-            for(my $f2 = 0; $f2 < $nframe_stok; $f2++) { 
-              my $cur_frame;
-              if($frame_stok_A[$f2] =~ /^([123])\:/) { 
-                $cur_frame = $1;
-                if($f2 == ($f-1)) { 
-                  $frame_str_A[$f] .= "("; 
-                }
-                $frame_str_A[$f] .= $cur_frame;
-                if(($f2 >= ($f-1)) && ($cur_frame != $expected_frame)) { 
-                  $frame_str_A[$f] .= ")"; 
-                }
-              }
-              else { 
-                ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[$f]", 1, $FH_HR);
-              }
-            } # end of 'for($f2 ...' loop
-            $frame_str_A[$f] .= ($is_3p_trunc) ? ">" : "]";
-            printf("HEYA frame_str_A[$f]: $frame_str_A[$f]\n");
-          }
 
           # now step through each subseq that has a different frame and report frameshift alerts when necessary
           for($f = 0; $f < $nframe_stok; $f++) { 
@@ -5257,6 +5230,11 @@ sub add_frameshift_alerts_for_one_sequence {
                     if(! defined $intermediate_indel_str) { $intermediate_indel_str = "-"; }
                     if(! defined $restorative_indel_str)  { $restorative_indel_str  = "-"; }
 
+                    # determine frame summary string 
+                    my $frame_sum_str = determine_frame_summary_string(\@frame_mtok_A, 
+                                                                       (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) ? $f : ($f-1),
+                                                                       $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR);
+
                     if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
                       my $loc_str  = "internal";
                       my $alt_code = "fstukcfi";
@@ -5270,7 +5248,7 @@ sub add_frameshift_alerts_for_one_sequence {
                       $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                       $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                       $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
-                      $alt_str .= sprintf(" frame:%s;", $frame_str_A[$f]);
+                      $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                       $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
                       if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
                       if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
@@ -5314,7 +5292,7 @@ sub add_frameshift_alerts_for_one_sequence {
                         $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
                         $alt_str .= sprintf(" avgpp:%.3f;", $shifted_span_avgpp);
                         $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
-                        $alt_str .= sprintf(" frame:%s;", $frame_str_A[$f]);
+                        $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                         $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
                         if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
                         if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
@@ -5458,6 +5436,70 @@ sub add_frameshift_alerts_for_one_sequence {
 
   return;
 }
+
+#################################################################
+# Subroutine:  determine_frame_summary_string()
+# Incept:      EPN, Mon Nov 15 12:54:06 2021
+#
+# Purpose:     Determine a string that summarizes a frameshift 
+#              within the context of frames of all subseqs in a
+#              CDS.
+#
+#              Examples: 
+#              non-truncated CDS w/internal frameshift in frame 2:      "[1(2)1]"
+                                     #           5' truncated CDS that starts in frame 2 and shifts to 3: "<2(3)]"
+                                     #           same as above but also 3' truncated:                     "<2(3)>"
+
+# Arguments: 
+#  $frame_mtok_AR:      reference to array of tokens of model subregions in different frames
+#  $idx:                index of frameshifted subregion in $frame_mtok_AR
+#  $expected_frame:     expected frame, shifted regions are not in this frame
+#  $is_5p_trunc:        '1' if the relevant CDS is truncated on 5' end, 0 if not
+#  $is_3p_trunc:        '1' if the relevant CDS is truncated on 3' end, 0 if not
+#  $FH_HR:              ref to file handle hash
+# 
+# Returns:     string describing frameshifted region in context of full CDS
+#
+# Dies: if unable to parse a token of @{$frame_mtok_AR}
+#
+################################################################# 
+sub determine_frame_summary_string {
+  my $sub_name = "determine_frame_summary_string";
+  my $nargs_expected = 6;
+  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
+
+  my ($frame_mtok_AR, $idx, $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR) = @_;
+
+  my $nframe_mtok = scalar(@{$frame_mtok_AR});
+  my $ret_str = ($is_3p_trunc) ? ">" : "]";
+  my $cur_frame = undef;
+  my $prv_frame = undef;
+  my $open_flag = 0; # set to '1' when we open the frameshifted region with ')'
+  # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
+  for(my $f = ($nframe_mtok-1); $f >= 0; $f--) { 
+    if($frame_mtok_AR->[$f] =~ /^([123])\:\d+\-\d+\!*/) { 
+      my ($cur_frame) = ($1);
+      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
+        # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
+        if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
+          $ret_str = "(" . $ret_str;
+        }
+        if($f == $idx) { 
+          $ret_str = ")" . $ret_str;
+          $open_flag = 1;
+        }
+        $ret_str = $cur_frame . $ret_str;
+      }
+    }
+    else { 
+      ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: " . $frame_mtok_AR->[$f], 1, $FH_HR);
+    }
+  }
+  $ret_str = ($is_5p_trunc) ? "<" . $ret_str : "[" . $ret_str;    
+
+  return $ret_str;
+}
+
 #################################################################
 # Subroutine:  cmalign_store_overflow()
 # Incept:      EPN, Wed Feb 13 16:04:53 2019
