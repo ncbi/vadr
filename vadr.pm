@@ -2442,15 +2442,9 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicft", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift at 5' end of CDS", # long description
-                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf3", "feature",
-                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift at 3' end of CDS", # long description
+                   "high confidence possible frameshift in CDS (terminal)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -2460,15 +2454,9 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocft", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift at 5' end of CDS", # long description
-                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf3", "feature",
-                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift at 3' end of CDS", # long description
+                   "low confidence possible frameshift in CDS (terminal)", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -2478,15 +2466,9 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcft", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift at 5' end of CDS", # long description
-                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf3", "feature",
-                   "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift at 3' end of CDS", # long description
+                   "possible frameshift in CDS (terminal)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 

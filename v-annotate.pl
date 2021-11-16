@@ -128,7 +128,7 @@ require "sqp_utils.pm";
 #     lowsim5c, lowsim3c, lowsimic, lowsim5n, lowsim3n, lowsimin, lowsim5s, lowsim3s, lowsimis (9)
 # 
 #  9. add_frameshift_alerts_for_one_sequence()
-#     fsthicf5, fsthicf3, fsthicfi, fstlof5, fstlocf3, fstlocfi, fstukcf5, fstukcf3, fstukcfi (9)
+#     fsthicft, fsthicfi, fstloft, fstlocfi, fstukcft, fstukcfi (6)
 #
 # 10. join_alignments_and_add_unjoinbl_alerts()
 #     unjoinbl (1)
@@ -266,11 +266,10 @@ opt_Add("--biasfract",  "real",      0.25,      $g,   undef,   undef,           
 opt_Add("--nmiscftrthr","integer",   3,         $g,   undef,   undef,            "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           "nmiscftr/TOO_MANY_MISC_FEATURES reported if <n> or more misc_features",           \%opt_HH, \@opt_order_A);
 opt_Add("--indefann",   "real",      0.8,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>",         "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} non-mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--indefann_mp","real",      0.6,       $g,   undef,   undef,            "indf{5,3}lc{c,n}/INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>",             "indf{5,3}lc{c,n}/'INDEFINITE_ANNOTATION_{START,END} mat_peptide min allowed post probability is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstminnt5",  "integer",    4,        $g,   undef,   undef,            "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>",   "fst{hi,lo,uk}cf5/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 5' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstminnt3",  "integer",    4,        $g,   undef,   undef,            "fst{hi,lo,uk}cf3/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 3' end w/o alert is <n>",   "fst{hi,lo,uk}cf3/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed nt length at 3' end w/o alert is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstminnti",  "integer",    6,        $g,   undef,   undef,            "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length  w/o alert is <n>",   "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--glsearch",        "fsthicf{5,3,i}/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",                  "fsthicf{5,3,i}/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--fstlowthr",  "real",      0.0,       $g,   undef,"--glsearch",        "fstlocf{5,3,i}/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",                   "fstlocf{5,3,i}/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminntt",  "integer",    4,        $g,   undef,   undef,            "fst{hi,lo,uk}cft/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed terminal nt length w/o alert is <n>",   "fst{hi,lo,uk}cft/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed terminal nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstminnti",  "integer",    6,        $g,   undef,   undef,            "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length w/o alert is <n>",   "fst{hi,lo,uk}cfi/POSSIBLE_FRAMESHIFT{_{HIGH,LOW}_CONF,} max allowed internal nt length w/o alert is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--fsthighthr", "real",      0.8,       $g,   undef,"--glsearch",        "fsthicf{t,i}/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>",                  "fsthicf{t,i}/POSSIBLE_FRAMESHIFT_HIGH_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--fstlowthr",  "real",      0.0,       $g,   undef,"--glsearch",        "fstlocf{t,i}/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>",                   "fstlocf{t,i}/POSSIBLE_FRAMESHIFT_LOW_CONF minimum average probability for alert is <x>", \%opt_HH, \@opt_order_A);
 opt_Add("--xalntol",    "integer",   5,         $g,   undef,   undef,            "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>",   "indf{5,3}{st,lg}/INDEFINITE_ANNOTATION_{START,END} max allowed nt diff blastx start/end is <n>", \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxins",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",     "insertnp/INSERTION_OF_NT max allowed nucleotide insertion length in blastx validation is <n>",   \%opt_HH, \@opt_order_A);
 opt_Add("--xmaxdel",    "integer",   27,        $g,   undef,"--pv_skip,--pv_hmmer", "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",       "deletinp/DELETION_OF_NT max allowed nucleotide deletion length in blastx validation is <n>",     \%opt_HH, \@opt_order_A);
@@ -444,8 +443,7 @@ my $options_okay =
                 'nmiscftrthr=s' => \$GetOptions_H{"--nmiscftrthr"},  
                 'indefann=s'    => \$GetOptions_H{"--indefann"},  
                 'indefann_mp=s' => \$GetOptions_H{"--indefann_mp"},  
-                'fstminnt5=s'   => \$GetOptions_H{"--fstminnt5"},
-                'fstminnt3=s'   => \$GetOptions_H{"--fstminnt3"},
+                'fstminntt=s'   => \$GetOptions_H{"--fstminntt"},
                 'fstminnti=s'   => \$GetOptions_H{"--fstminnti"},
                 'fsthighthr=s'  => \$GetOptions_H{"--fsthighthr"},
                 'fstlowthr=s'   => \$GetOptions_H{"--fstlowthr"},
@@ -4727,17 +4725,14 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
 #             @{$alt_ftr_instances_AAHR}:
 #
 #             If --glsearch NOT used:
-#             fsthicf5: CDS has a possible frameshift at 5' end, high confidence
-#             fsthicf3: CDS has a possible frameshift at 3' end, high confidence
-#             fsthicfi: CDS has a possible internal frameshift,  high confidence
-#             fstlocf5: CDS has a possible frameshift at 5' end, low confidence
-#             fstlocf3: CDS has a possible frameshift at 3' end, low confidence
-#             fstlocfi: CDS has a possible internal frameshift,  low confidence
+#             fsthicft: CDS has a possible terminal frameshift, high confidence
+#             fsthicfi: CDS has a possible internal frameshift, high confidence
+#             fstlocft: CDS has a possible terminal frameshift, low confidence
+#             fstlocfi: CDS has a possible internal frameshift, low confidence
 #
 #             If --glsearch IS used:
-#             fstukcf5: CDS has a possible frameshift at 5' end, unknown confidence
-#             fstukcf3: CDS has a possible frameshift at 3' end, unknown confidence
-#             fstukcfi: CDS has a possible internal frameshift,  unknown confidence
+#             fstukcft: CDS has a possible terminal frameshift, unknown confidence
+#             fstukcfi: CDS has a possible internal frameshift, unknown confidence
 #
 # Arguments: 
 #  $msa:                    the ESL_MSA alignment object
@@ -4784,8 +4779,7 @@ sub add_frameshift_alerts_for_one_sequence {
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
 
   my $do_output_frameshift_stk = ((opt_Get("--keep", $opt_HHR)) || (opt_Get("--out_fsstk", $opt_HHR))) ? 1 : 0;
-  my $fst_min_nt5    = opt_Get("--fstminnt5",   $opt_HHR); # maximum allowed nt length of unexpected frame at 5' end without a frameshift alert 
-  my $fst_min_nt3    = opt_Get("--fstminnt3",   $opt_HHR); # maximum allowed nt length of unexpected frame at 3' end without a frameshift alert 
+  my $fst_min_ntt    = opt_Get("--fstminntt",   $opt_HHR); # maximum allowed nt length of unexpected frame at 5' end without a frameshift alert 
   my $fst_min_nti    = opt_Get("--fstminnti",   $opt_HHR); # maximum allowed nt length of internal region unexpected frame without a frameshift alert 
   my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert  
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
@@ -5022,10 +5016,10 @@ sub add_frameshift_alerts_for_one_sequence {
         # determine and store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         # determine and store expected frame, the expected frame of the CDS
         # expected_frame is the predicted frame of the first position unless
-        # the CDS is 5' truncated AND the length of the first region is less than $fst_min_nt5 length,
+        # the CDS is 5' truncated AND the length of the first region is less than $fst_min_ntt length,
         # in which case we set expected_frame to dominant frame. This avoids frameshift calls
-        # when first region is very short and we're 5' truncated (which means we're as confident of 
-        # expected frame as when we are not 5' truncated b/c we don't have a start codon)
+        # when first region is very short and we're 5' truncated (when we are 5' truncated we are not 
+        # as confident about what the expected frame is b/c we don't have a start codon)
         my $first_span_slen = undef;
         if($frame_stok_A[0] =~ /[123]\:(\d+)\-(\d+)\[\d+\]\!*/) { 
           my ($first_sstart, $first_sstop) = ($1, $2); 
@@ -5037,7 +5031,7 @@ sub add_frameshift_alerts_for_one_sequence {
         my $is_5p_trunc = $sgm_results_HAHR->{$seq_name}[$first_sgm_idx]{"5trunc"};
         my $is_3p_trunc = $sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"};
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-        my $expected_frame = (($is_5p_trunc) && ($first_span_slen < $fst_min_nt5)) ? $dominant_frame : $F_0;
+        my $expected_frame = (($is_5p_trunc) && ($first_span_slen < $fst_min_ntt)) ? $dominant_frame : $F_0;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $expected_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
@@ -5045,22 +5039,22 @@ sub add_frameshift_alerts_for_one_sequence {
           my $prv_sstop   = undef; # last sequence position in the previous frame token
           my $prv_mstop   = undef; # last model    position in the previous frame token
           my $prv_frame  = undef; # frame of previous frame token 
-          my $prv_exp_span_sstart = undef; # last sequence position in the previous expected frame token
-          my $prv_exp_span_mstart = undef; # last model    position in the previous expected frame token
-          my $prv_exp_span_sstop  = undef; # last sequence position in the previous expected frame token
-          my $prv_exp_span_mstop  = undef; # last model    position in the previous expected frame token
-          my $shifted_span_sstart = undef; # first sequence position of a unexpected frame subseq 
-          my $shifted_span_sstop  = undef; # final sequence position of a unexpected frame subseq 
-          my $shifted_span_slen   = undef; # length in sequence of a unexpected frame subseq
-          my $shifted_span_mstart = undef; # first model    position of a unexpected frame subseq
-          my $shifted_span_mstop  = undef; # final model    position of a unexpected frame subseq
-          my $shifted_span_mlen   = undef; # length in model of a unexpected frame subseq
-          my $exp_span_slen       = undef; # length in sequence of an expected frame subseq
-          my @cur_indel_str_A = (); # array of indel mutations related to a frameshift
-          my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
-          my $is_5p      = 0;     # set to 1 if the frameshifted region includes 5'-most nt of CDS feature, else 0, must be 0 if $is_3p == 1
-          my $is_3p      = 0;     # set to 1 if the frameshifted region includes 3'-most nt of CDS feature, else 0, must be 0 if $is_5p == 1
-          my $f;
+          my $prv_exp_span_sstart  = undef; # last sequence position in the previous expected frame token
+          my $prv_exp_span_mstart  = undef; # last model    position in the previous expected frame token
+          my $prv_exp_span_sstop   = undef; # last sequence position in the previous expected frame token
+          my $prv_exp_span_mstop   = undef; # last model    position in the previous expected frame token
+          my $shifted_span_sstart  = undef; # first sequence position of a unexpected frame subseq 
+          my $shifted_span_sstop   = undef; # final sequence position of a unexpected frame subseq 
+          my $shifted_span_slen    = undef; # length in sequence of a unexpected frame subseq
+          my $shifted_span_mstart  = undef; # first model    position of a unexpected frame subseq
+          my $shifted_span_mstop   = undef; # final model    position of a unexpected frame subseq
+          my $shifted_span_mlen    = undef; # length in model of a unexpected frame subseq
+          my $shifted_frame        = undef; # frame of shifted frame token 
+          my $exp_span_slen        = undef; # length in sequence of an expected frame subseq
+          my @cur_indel_str_A      = ();    # array of indel mutations related to a frameshift
+          my $prv_tok_sgm_end_flag = 0;     # flag for previous token being special token indicating end of a segment
+          my $is_terminal          = 0;     # set to 1 if the frameshifted region includes 3'-most (final) nt of CDS feature, else 0
+          my $f;                            # counter over frame tokens
 
           # now step through each subseq that has a different frame and report frameshift alerts when necessary
           for($f = 0; $f < $nframe_stok; $f++) { 
@@ -5126,12 +5120,8 @@ sub add_frameshift_alerts_for_one_sequence {
               # frame at the end of the CDS. 
               if((($cur_frame == $expected_frame) && ($f > 0) && ($prv_frame != $expected_frame)) ||  # Case 1
                  (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1)))) {  # Case 2
-                $is_5p = 0; # set to '1' below if frameshift region includes 5'-most nt of CDS feature
-                $is_3p = 0; # set to '1' below if frameshift region includes 3'-most nt of CDS feature
-                # note: if $is_3p == 1, $is_5p == 0 
-                # (b/c for $is_5p to be 1, cur_frame == $expected_frame and
-                #      for $is_3p to be 1, cur_frame != $expected_frame)
-                my $shifted_frame = undef; # will save shifted frame for alert output
+                $is_terminal   = 0; # set to '1' below if frameshift region includes 3'-most nt of CDS feature
+                $shifted_frame = undef; # will save shifted frame for alert output
                 
                 # determine $shifted_span_sstart: the first position of the unexpected frame subseq
                 if(defined $prv_exp_span_sstop) { 
@@ -5145,7 +5135,6 @@ sub add_frameshift_alerts_for_one_sequence {
                   # span start is first nt of CDS ($ftr_sstart)
                   $shifted_span_sstart = $ftr_sstart; 
                   $shifted_span_mstart = $ftr_mstart; 
-                  $is_5p = 1; 
                 }
                 # determine $shifted_span_sstop: the final position of the unexpected frame subseq
                 if(($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) { 
@@ -5153,7 +5142,7 @@ sub add_frameshift_alerts_for_one_sequence {
                   # so final nt of the unexpected stretch is the final nt of the CDS ($ftr_sstop) 
                   $shifted_span_sstop = $ftr_sstop;
                   $shifted_span_mstop = $ftr_mstop;
-                  $is_3p = 1; 
+                  $is_terminal = 1; 
                   $shifted_frame = $cur_frame;
                 }
                 else { 
@@ -5175,9 +5164,8 @@ sub add_frameshift_alerts_for_one_sequence {
                   }
                 }
                 if(! $exempted_region) { 
-                  if((($is_5p) && ($shifted_span_slen >= $fst_min_nt5)) || 
-                     (($is_3p) && ($shifted_span_slen >= $fst_min_nt3)) || 
-                     ((! $is_5p) && (! $is_3p) && ($shifted_span_slen >= $fst_min_nti))) { 
+                  if(((  $is_terminal) && ($shifted_span_slen >= $fst_min_ntt)) || 
+                     ((! $is_terminal) && ($shifted_span_slen >= $fst_min_nti))) { 
                     # above our length threshold, if $do_glsearch, we always report this, if not it depends on the avg PP value
 
                     # determine causative, restorative and intermediate strings
@@ -5212,10 +5200,7 @@ sub add_frameshift_alerts_for_one_sequence {
                                                                        $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR);
 
                     if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
-                      my $loc_str  = "internal";
-                      my $alt_code = "fstukcfi";
-                      if($is_5p) { $loc_str = "5'-most"; $alt_code = "fstukcf5"; }
-                      if($is_3p) { $loc_str = "3'-most"; $alt_code = "fstukcf3"; }
+                      my $alt_code = ($is_terminal) ? "fstukcft" : "fstukcfi";
                       my $alt_scoords_tok =      vdr_CoordsSegmentCreate(    $shifted_span_sstart,      $shifted_span_sstop,  $ftr_strand, $FH_HR);
                       my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($shifted_span_mstart), abs($shifted_span_mstop), $ftr_strand, $FH_HR) . ";";
                       my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
@@ -5229,7 +5214,7 @@ sub add_frameshift_alerts_for_one_sequence {
                       push(@cds_alt_str_A, $alt_str);
                     }
                     else { # $do_glsearch is 0 so we have PP values and we examine them to determine type of frameshift
-                      # this *may* be a fstlocnf or fsthicnf alert, depending on the average PP of the shifted region
+                      # this *may* be a fstlocf{t,i} or fsthicf{t,i} alert, depending on the average PP of the shifted region
                       # determine average posterior probability of unexpected frame subseq
                       if(! defined $full_ppstr) { 
                         $full_ppstr = $msa->get_ppstring_aligned($seq_idx); 
@@ -5249,11 +5234,8 @@ sub add_frameshift_alerts_for_one_sequence {
                       printf("exp_span: $prv_exp_span_sstart..$prv_exp_span_sstop $exp_span_avgpp, $exp_span_ppstr\n");
                       my $min_span_avgpp = utl_Min($shifted_span_avgpp, $exp_span_avgpp);
                       if($min_span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
-                        my $loc_str     = "internal";
-                        my $hi_alt_code = "fsthicfi";
-                        my $lo_alt_code = "fstlocfi";
-                        if($is_5p) { $loc_str = "5'-most"; $hi_alt_code = "fsthicf5"; $lo_alt_code = "fstlocf5"; }
-                        if($is_3p) { $loc_str = "3'-most"; $hi_alt_code = "fsthicf3"; $lo_alt_code = "fstlocf3"; }
+                        my $hi_alt_code = ($is_terminal) ? "fsthicft" : "fsthicfi";
+                        my $lo_alt_code = ($is_terminal) ? "fstlocft" : "fstlocfi";
                         my $alt_scoords_tok =      vdr_CoordsSegmentCreate(    $shifted_span_sstart,      $shifted_span_sstop,  $ftr_strand, $FH_HR);
                         my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($shifted_span_mstart), abs($shifted_span_mstop), $ftr_strand, $FH_HR) . ";";
                         my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
