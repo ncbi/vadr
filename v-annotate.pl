@@ -4970,14 +4970,14 @@ sub add_frameshift_alerts_for_one_sequence {
             }
             # complete final frame token
             ########## ORIG
-            $frame_stok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-            $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? $rfpos-1 : $rfpos+1)); # we already incremented/decremented rfpos for next segment
+            #$frame_stok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            #$frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? $rfpos-1 : $rfpos+1)); # we already incremented/decremented rfpos for next segment
             ########## ORIG
 
-            #my $nterm_del = (abs($rfpos - $rfpos_prv) - 1);
-            #$frame_stok_str .= $uapos . "[" . $nterm_del . "]!;"; # the '!' indicates the end of a segment
-            #printf("HEYAA rfpos: $rfpos, rfpos_prv: $rfpos_prv\n");
-            #$frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? ($rfpos - $nterm_del - 1) : ($rfpos + $nterm_del + 1))); # we already incremented/decremented rfpos for next segment
+            my $nterm_del = (abs($rfpos - $rfpos_prv) - 1);
+            $frame_stok_str .= $uapos . "[" . $nterm_del . "]!;"; # the '!' indicates the end of a segment
+            printf("HEYAA rfpos: $rfpos, rfpos_prv: $rfpos_prv\n");
+            $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? ($rfpos - $nterm_del - 1) : ($rfpos + $nterm_del + 1))); # we already incremented/decremented rfpos for next segment
 
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
