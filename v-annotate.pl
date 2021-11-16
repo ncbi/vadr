@@ -4969,8 +4969,14 @@ sub add_frameshift_alerts_for_one_sequence {
               else               { $rfpos--; }
             }
             # complete final frame token
-            $frame_stok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-            $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? $rfpos-1 : $rfpos+1)); # we already incremented/decremented rfpos for next segment
+            # ORIG $frame_stok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
+            # ORIG $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? $rfpos-1 : $rfpos+1)); # we already incremented/decremented rfpos for next segment
+
+            my $nterm_del = (abs($rfpos - $rfpos_prv) - 1);
+            $frame_stok_str .= $uapos . "[" . $nterm_del . "]!;"; # the '!' indicates the end of a segment
+            printf("HEYAA rfpos: $rfpos, rfpos_prv: $rfpos_prv\n");
+            $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? ($rfpos - $nterm_del - 1) : ($rfpos + $nterm_del + 1))); # we already incremented/decremented rfpos for next segment
+
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
             # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
@@ -5048,8 +5054,6 @@ sub add_frameshift_alerts_for_one_sequence {
           my $shifted_span_mstop  = undef; # final model    position of a unexpected frame subseq
           my $shifted_span_mlen   = undef; # length in model of a unexpected frame subseq
           my $exp_span_slen       = undef; # length in sequence of an expected frame subseq
-          my $insert_str = "";    # string of inserts to put in alert string
-          my $delete_str = "";    # string of deletes to put in alert string
           my @cur_indel_str_A = (); # array of indel mutations related to a frameshift
           my $prv_tok_sgm_end_flag = 0; # flag for previous token being special token indicating end of a segment
           my $is_5p      = 0;     # set to 1 if the frameshifted region includes 5'-most nt of CDS feature, else 0, must be 0 if $is_3p == 1
@@ -5059,6 +5063,7 @@ sub add_frameshift_alerts_for_one_sequence {
           # now step through each subseq that has a different frame and report frameshift alerts when necessary
           for($f = 0; $f < $nframe_stok; $f++) { 
             printf("f: $f frame_stok: %s\n", $frame_stok_A[$f]);
+            printf("f: $f frame_mtok: %s\n", $frame_mtok_A[$f]);
             if($frame_stok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
               my ($cur_frame,  $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
               my ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend);
@@ -5085,11 +5090,9 @@ sub add_frameshift_alerts_for_one_sequence {
                 if($ftr_strand eq "+") { 
                   if((($prv_sstop + 1) < ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                     if(($prv_sstop + 1) == ($cur_sstart - 1)) { # exactly one inserted nt
-                      $insert_str .= sprintf("S:%d(%d),M:%d;", ($prv_sstop + 1), 1, $prv_mstop);
                       $cur_insert_str = sprintf("insert[S:%d(%d),M:%d]", ($prv_sstop + 1), 1, $prv_mstop); 
                     }
                     else { # more than one inserted nt, specify the range
-                      $insert_str .= sprintf("S:%d..%d(%d),M:%d;", $prv_sstop+1, $cur_sstart-1, (abs(($prv_sstop+1) - ($cur_sstart-1))+1), $prv_mstop);
                       $cur_insert_str = sprintf("insert[S:%d..%d(%d),M:%d]", $prv_sstop+1, $cur_sstart-1, (abs(($prv_sstop+1) - ($cur_sstart-1))+1), $prv_mstop); 
                     }
                   }
@@ -5097,11 +5100,9 @@ sub add_frameshift_alerts_for_one_sequence {
                 else { # negative strand
                   if((($prv_sstop - 1) > ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                     if(($prv_sstop - 1) == ($cur_sstart + 1)) { # exactly one inserted nt
-                      $insert_str .= sprintf("S:%d(%d),M:%d;", ($prv_sstop - 1), 1, $prv_mstop);
                       $cur_insert_str = sprintf("insert[S:%d(%d),M:%d]", ($prv_sstop - 1), 1, $prv_mstop); 
                     }
                     else { # more than one inserted nt, specify the range
-                      $insert_str .= sprintf("S:%d..%d(%d),M:%d;", $prv_sstop-1, $cur_sstart+1, (abs(($prv_sstop-1) - ($cur_sstart+1))+1), $prv_mstop);
                       $cur_insert_str = sprintf("insert[S:%d..%d(%d),M:%d]", $prv_sstop-1, $cur_sstart+1, (abs(($prv_sstop-1) - ($cur_sstart+1))+1), $prv_mstop); 
                     }
                   }
@@ -5245,16 +5246,11 @@ sub add_frameshift_alerts_for_one_sequence {
                       my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                       my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
                       $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
-                      $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
-                      $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                      $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
-                      #$alt_str .= sprintf(" frame:%s;", $frame_sum_str);
-                      #$alt_str .= sprintf(" cause:%s;", $causative_indel_str);
-                      #if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
-                      #if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
+                      $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
+                      if($restorative_indel_str ne "-")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
+                      $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
+                      if($intermediate_indel_str ne "-") { $alt_str .= sprintf(" intermediate:%s;",   $intermediate_indel_str); }
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
-                      $insert_str = "";
-                      $delete_str = "";
                       push(@cds_alt_str_A, $alt_str);
                     }
                     else { # $do_glsearch is 0 so we have PP values and we examine them to determine type of frameshift
@@ -5287,21 +5283,16 @@ sub add_frameshift_alerts_for_one_sequence {
                         my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                         my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
                         $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
-                        $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
-                        $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
-                        $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
-                        $alt_str .= sprintf(" avgpp:%.3f;", $shifted_span_avgpp);
-                        #$alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
-                        #$alt_str .= sprintf(" frame:%s;", $frame_sum_str);
-                        #$alt_str .= sprintf(" cause:%s;", $causative_indel_str);
-                        #if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
-                        #if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
+                        $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
+                        if($restorative_indel_str ne "-")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
+                        $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
+                        $alt_str .= sprintf(" shifted_avgpp:%.3f;", $shifted_span_avgpp);
+                        $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
+                        if($intermediate_indel_str ne "-") { $alt_str .= sprintf(" intermediate:%s;",   $intermediate_indel_str); }
                         my $is_hicnf = ($shifted_span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                    ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
                                                    $seq_name, $ftr_idx, $alt_str, $FH_HR);
-                        $insert_str = "";
-                        $delete_str = "";
                         push(@cds_alt_str_A, $alt_str);
                       }
                     }
@@ -5310,29 +5301,6 @@ sub add_frameshift_alerts_for_one_sequence {
                 printf("clearing cur_indel_str_A\n");
                 @cur_indel_str_A = (); # reset this so we can start storing indels relevant to next fs (if we have one)
               } # end of 2 case if entered if we have a frameshift alert
-
-              # CAN DELETE THIS ONCE WE GET CAUSATIVE, INTERMEDIATE, RESTORATIVE MUTS COMPLETED
-              # add to growing list of deletes, if nec
-              if($f != ($nframe_stok-1)) { 
-                if($cur_ndelete > 0) { 
-                  if($cur_ndelete == 1) { 
-                    if($ftr_strand eq "+") { 
-                      $delete_str .= sprintf("S:%d,M:%d(%d);", $cur_sstop, ($cur_mstop+1), $cur_ndelete);
-                    }
-                    else { 
-                      $delete_str .= sprintf("S:%d,M:%d(%d);", $cur_sstop, ($cur_mstop-1), $cur_ndelete);
-                    }
-                  } # end of 'if($cur_ndelete == 1)'
-                  else { 
-                    if($ftr_strand eq "+") { 
-                      $delete_str .= sprintf("S:%d,M:%d..%d(%d);", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
-                    }
-                    else { 
-                      $delete_str .= sprintf("S:%d,M:%d..%d(%d);", $cur_sstop, ($cur_mstop-1), ($cur_mstop-$cur_ndelete), $cur_ndelete);
-                    }
-                  }
-                }
-              }
 
               # keep track of previous values we may need in next loop iteration
               if($cur_frame == $expected_frame) { 
@@ -5490,6 +5458,7 @@ sub determine_frame_summary_string {
         }
         $ret_str = $cur_frame . $ret_str;
       }
+      $prv_frame = $cur_frame;
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: " . $frame_mtok_AR->[$f], 1, $FH_HR);
@@ -13360,3 +13329,4 @@ sub pick_features_from_all_alternatives {
   }
   return;
 }
+
