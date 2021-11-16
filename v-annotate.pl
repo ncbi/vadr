@@ -5247,7 +5247,8 @@ sub add_frameshift_alerts_for_one_sequence {
                       ($exp_span_avgpp,     undef) = Bio::Easel::MSA->get_ppstr_avg($exp_span_ppstr);
                       printf("shifted_span: $shifted_span_sstart..$shifted_span_sstop $shifted_span_avgpp, $shifted_span_ppstr\n");
                       printf("exp_span: $prv_exp_span_sstart..$prv_exp_span_sstop $exp_span_avgpp, $exp_span_ppstr\n");
-                      if($shifted_span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
+                      my $min_span_avgpp = utl_Min($shifted_span_avgpp, $exp_span_avgpp);
+                      if($min_span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
                         my $loc_str     = "internal";
                         my $hi_alt_code = "fsthicfi";
                         my $lo_alt_code = "fstlocfi";
@@ -5264,7 +5265,7 @@ sub add_frameshift_alerts_for_one_sequence {
                         $alt_str .= sprintf(" shifted_avgpp:%.3f;", $shifted_span_avgpp);
                         $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
                         if($intermediate_indel_str ne "-") { $alt_str .= sprintf(" intermediate:%s;",   $intermediate_indel_str); }
-                        my $is_hicnf = ($shifted_span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
+                        my $is_hicnf = ($min_span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                    ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
                                                    $seq_name, $ftr_idx, $alt_str, $FH_HR);
