@@ -5114,33 +5114,6 @@ sub add_frameshift_alerts_for_one_sequence {
                 push(@cur_indel_str_A, $cur_insert_str);
                 printf("\npushing insert str $cur_insert_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
               }
-              # deal with deleted positions, using an array, when we report a FS we determine which is 
-              # causative, intermediate and restorative.
-              my $cur_delete_str = undef;
-              if($f != ($nframe_stok-1)) { 
-                if($cur_ndelete > 0) { 
-                  if($ftr_strand eq "+") { 
-                    if($cur_ndelete == 1) { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop+1), $cur_ndelete);
-                    }
-                    else { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
-                    }
-                  }
-                  else { # negative strand
-                    if($cur_ndelete == 1) { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop-1), $cur_ndelete);
-                    }
-                    else { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop-1), ($cur_mstop-$cur_ndelete), $cur_ndelete);
-                    }
-                  }
-                }
-              }
-              if(defined $cur_delete_str) { 
-                push(@cur_indel_str_A, $cur_delete_str);
-                printf("\npushing delete str $cur_delete_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
-              }
                 
               # Determine if we may have a frameshift alert
               # Two possible cases:
@@ -5304,6 +5277,34 @@ sub add_frameshift_alerts_for_one_sequence {
                 @cur_indel_str_A = (); # reset this so we can start storing indels relevant to next fs (if we have one)
               } # end of 2 case if entered if we have a frameshift alert
 
+              # deal with deleted positions, using an array, when we report a FS we determine which is 
+              # causative, intermediate and restorative.
+              my $cur_delete_str = undef;
+              if($f != ($nframe_stok-1)) { 
+                if($cur_ndelete > 0) { 
+                  if($ftr_strand eq "+") { 
+                    if($cur_ndelete == 1) { 
+                      $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop+1), $cur_ndelete);
+                    }
+                    else { 
+                      $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
+                    }
+                  }
+                  else { # negative strand
+                    if($cur_ndelete == 1) { 
+                      $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop-1), $cur_ndelete);
+                    }
+                    else { 
+                      $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop-1), ($cur_mstop-$cur_ndelete), $cur_ndelete);
+                    }
+                  }
+                }
+              }
+              if(defined $cur_delete_str) { 
+                push(@cur_indel_str_A, $cur_delete_str);
+                printf("\npushing delete str $cur_delete_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
+              }
+
               # keep track of previous values we may need in next loop iteration
               if($cur_frame == $expected_frame) { 
                 $prv_exp_span_sstart = $cur_sstart; 
@@ -5453,6 +5454,7 @@ sub determine_frame_summary_string {
         # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
         if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
           $ret_str = "(" . $ret_str;
+          #$open_flag = 0;
         }
         if($f == $idx) { 
           $ret_str = ")" . $ret_str;
