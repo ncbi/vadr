@@ -284,7 +284,7 @@ NC_001959.2-manually-added-frameshifts-1         AATTTTACAGAAAGATTTCCAGCAAGGTCAT
 
 #=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:53..66:+; mdl_coords: 53..66:+; length:14; cause:insert[S:53..54(2),M:52]; restore:delete[S:66,M:65..66(2)]; frame:[1(3)121]; shifted_avgpp:0.775; exp_avgpp:0.962;
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 seq_coords:992..1012:+; mdl_coords: 992..1012:+; length:21; cause:delete[S:991,M:992..993(2)]; restore:insert[S:1011..1012(2),M:1012]; frame:[1(31(2)1]; shifted_avgpp:0.898; exp_avgpp:0.974;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 seq_coords:992..1012:+; mdl_coords: 992..1012:+; length:21; cause:delete[S:991,M:992..993(2)]; restore:insert[S:1011..1012(2),M:1012]; frame:[131(2)1]; shifted_avgpp:0.898; exp_avgpp:0.974;
 
 NC_001959.2-manually-added-frameshifts-2         ATGATGATGGCGTCAAAAGACGTCGTTCCTACTGCTGCTAGCAGTGAAAAAATGCTAACAAC--TAGTAGTATTAAGTCTCGTCTATTGGCGAGACTCAAGGGTTCAGGTGGGGCTACGTCCCCACCCAACTCGATAAAGATAACCAACCAAGATATGGCTCTGGGGCTGATTGGACAGGTCCCAGCGCCAAAGGCCACA
 #=GR NC_001959.2-manually-added-frameshifts-2 PP *********************************************98622679******987..78**************************************************************************************************************************************

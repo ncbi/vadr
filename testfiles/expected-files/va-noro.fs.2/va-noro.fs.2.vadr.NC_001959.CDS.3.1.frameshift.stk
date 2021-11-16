@@ -6,9 +6,9 @@
 
 #=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.1 seq_coords:45..54:+; mdl_coords: 7036..7048:+; length:10; cause:delete[S:44,M:7036(1)]; restore:delete[S:54,M:7047..7048(2)]; frame:<1(3)13213>; shifted_avgpp:0.890; exp_avgpp:0.963;
 
-#=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.2 seq_coords:229..262:+; mdl_coords: 7223..7259:+; length:34; cause:delete[S:228,M:7223(1)]; restore:delete[S:262,M:7259(1)]; frame:<1(31(32)13>; shifted_avgpp:0.942; exp_avgpp:0.970; intermediate:delete[S:243,M:7239(1)];
+#=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.2 seq_coords:229..262:+; mdl_coords: 7223..7259:+; length:34; cause:delete[S:228,M:7223(1)]; restore:delete[S:262,M:7259(1)]; frame:<131(32)13>; shifted_avgpp:0.942; exp_avgpp:0.970; intermediate:delete[S:243,M:7239(1)];
 
-#=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.3 seq_coords:453..501:+; mdl_coords: 7450..7499:+; length:49; cause:delete[S:452,M:7450(1)]; frame:<1(31(321(3)>; shifted_avgpp:0.966; exp_avgpp:0.971;
+#=GS NC_001959.2-manually-added-frameshifts-1/7000-7500 FS.3 seq_coords:453..501:+; mdl_coords: 7450..7499:+; length:49; cause:delete[S:452,M:7450(1)]; frame:<131321(3)>; shifted_avgpp:0.966; exp_avgpp:0.971;
 
 NC_001959.2-manually-added-frameshifts-1/7000-7500         GGTAGTGCTCTGGGAGCGGGCATACAGGTTGGTGGCGAAGCGGC-CTCCAAAGCC--AGGTATCAACAAAATTTGCAACTGCAAGAAAATTCTTTTAAACATGACAGGGAAATGATTGGGTATCAGGTTGAAGCTTCAAATCAATTATTGGCTAAAAATTTGGCAACTAGATATTCACTCCTCCGTGCTGGGGGTTTGAC
 #=GR NC_001959.2-manually-added-frameshifts-1/7000-7500 PP *****************************************996.6899****99..59*********************************************************************************************************************************************
@@ -48,7 +48,7 @@ NC_001959.2-manually-added-frameshifts-1/7000-7500         CCATTTCTCGAACCACTAGTT
 
 #=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.1 seq_coords:29..62:+; mdl_coords: 7223..7259:+; length:34; cause:delete[S:28,M:7223(1)]; restore:delete[S:62,M:7259(1)]; frame:<2(13)21]; shifted_avgpp:0.942; exp_avgpp:0.966; intermediate:delete[S:43,M:7239(1)];
 
-#=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.2 seq_coords:253..390:+; mdl_coords: 7450..7588:+; length:138; cause:delete[S:252,M:7450(1)]; frame:<2(132(1)]; shifted_avgpp:0.972; exp_avgpp:0.971;
+#=GS NC_001959.2-manually-added-frameshifts-1/7200-7655 FS.2 seq_coords:253..390:+; mdl_coords: 7450..7588:+; length:138; cause:delete[S:252,M:7450(1)]; frame:<2132(1)]; shifted_avgpp:0.972; exp_avgpp:0.971;
 
 NC_001959.2-manually-added-frameshifts-1/7200-7655         TGCTGATGCAGCAAGATCTGTGGCAGGA-CTCCAGTCACCCGCA-TGTAGATTGGAATGGCGTG-GAGTGTCTGCTCCCGAGTCCTCTGCTACCACATTGAGATCCGGTGGCTTCATGTCAGTTCCCATACCATTTGCCTCTAAGCAAAAACAGGTTCAATCATCTGGTATTAGTAATCCAAATTATTCCCCTTCATCCA
 #=GR NC_001959.2-manually-added-frameshifts-1/7200-7655 PP **************************98.89************9.59***************98.89*************************************************************************************************************************************
