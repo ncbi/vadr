@@ -120,7 +120,7 @@ ENTOY100A-REV-2-fs6         CACGTAGAATGCTCAT
 
 #=GS ENTOY100A-REV-2-fs7 DE multi-segment, segment 2, 1nt deletion that breaks frame at end of segment, not fixed (CDS2, RFPOS37-)
 
-#=GS ENTOY100A-REV-2-fs7 FS.1 seq_coords:36..28:-; mdl_coords: 36..28:-; length:9; cause:-; frame:[1(3)]; shifted_avgpp:0.967; exp_avgpp:0.965;
+#=GS ENTOY100A-REV-2-fs7 FS.1 seq_coords:36..28:-; mdl_coords: 37..28:-; length:9; cause:delete[S:37,M:37(1)]; frame:[1(3)]; shifted_avgpp:0.967; exp_avgpp:0.965;
 
 ENTOY100A-REV-2-fs7         CACGTAGAATGCTCAT
 #=GR ENTOY100A-REV-2-fs7 PP ****************
@@ -196,7 +196,7 @@ ENTOY100A-REV-2-fs12         CACGTAGAATGCTCAT
 
 #=GS ENTOY100A-REV-2-fs13 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, not fixed (CDS2, RFPOS54-)
 
-#=GS ENTOY100A-REV-2-fs13 FS.1 seq_coords:53..28:-; mdl_coords: 53..28:-; length:26; cause:-; frame:[1(2)]; shifted_avgpp:0.972; exp_avgpp:0.963;
+#=GS ENTOY100A-REV-2-fs13 FS.1 seq_coords:53..28:-; mdl_coords: 54..28:-; length:26; cause:delete[S:54,M:54(1)]; frame:[1(2)]; shifted_avgpp:0.972; exp_avgpp:0.963;
 
 ENTOY100A-REV-2-fs13         -ACGTAGAATGCTCAT
 #=GR ENTOY100A-REV-2-fs13 PP .8**************
@@ -215,7 +215,7 @@ ENTOY100A-REV-2-fs13         -ACGTAGAATGCTCAT
 
 #=GS ENTOY100A-REV-2-fs14 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, fixed by 1nt deletion (CDS2, RFPOS54-,46-)
 
-#=GS ENTOY100A-REV-2-fs14 FS.1 seq_coords:52..46:-; mdl_coords: 53..46:-; length:7; cause:delete[S:46,M:46(1)]; frame:[1(2)1]; shifted_avgpp:0.943; exp_avgpp:0.963;
+#=GS ENTOY100A-REV-2-fs14 FS.1 seq_coords:52..46:-; mdl_coords: 54..46:-; length:7; cause:delete[S:53,M:54(1)]; restore:delete[S:46,M:46(1)]; frame:[1(2)1]; shifted_avgpp:0.943; exp_avgpp:0.963;
 
 ENTOY100A-REV-2-fs14         -ACGTAGAATGCTCAT
 #=GR ENTOY100A-REV-2-fs14 PP .8**************
