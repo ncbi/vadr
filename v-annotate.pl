@@ -5454,7 +5454,7 @@ sub determine_frame_summary_string {
         # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
         if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
           $ret_str = "(" . $ret_str;
-          #$open_flag = 0;
+          $open_flag = 0;
         }
         if($f == $idx) { 
           $ret_str = ")" . $ret_str;
