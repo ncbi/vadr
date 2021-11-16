@@ -5109,7 +5109,7 @@ sub add_frameshift_alerts_for_one_sequence {
               }
               if(defined $cur_insert_str) { 
                 push(@cur_indel_str_A, $cur_insert_str);
-                printf("\npushing delete str $cur_insert_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
+                printf("\npushing insert str $cur_insert_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
               }
               # deal with deleted positions, using an array, when we report a FS we determine which is 
               # causative, intermediate and restorative.
@@ -5124,7 +5124,7 @@ sub add_frameshift_alerts_for_one_sequence {
                       $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
                     }
                   }
-                  else { 
+                  else { # negative strand
                     if($cur_ndelete == 1) { 
                       $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop-1), $cur_ndelete);
                     }
@@ -5189,7 +5189,7 @@ sub add_frameshift_alerts_for_one_sequence {
                 }
                 $shifted_span_slen = abs($shifted_span_sstop - $shifted_span_sstart) + 1;
                 $shifted_span_mlen = abs($shifted_span_mstop - $shifted_span_mstart) + 1;
-                $exp_span_slen     = abs($prv_exp_span_sstop      - $prv_exp_span_sstart) + 1;
+                $exp_span_slen     = abs($prv_exp_span_sstop - $prv_exp_span_sstart) + 1;
                 
                 # check if this is an exempted region
                 my $exempted_region = 0;
@@ -5248,10 +5248,10 @@ sub add_frameshift_alerts_for_one_sequence {
                       $alt_str .= sprintf(" inserts:%s", ($insert_str eq "") ? "none;" : $insert_str);
                       $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                       $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
-                      $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
-                      $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
-                      if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
-                      if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
+                      #$alt_str .= sprintf(" frame:%s;", $frame_sum_str);
+                      #$alt_str .= sprintf(" cause:%s;", $causative_indel_str);
+                      #if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
+                      #if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                       $insert_str = "";
                       $delete_str = "";
@@ -5291,11 +5291,11 @@ sub add_frameshift_alerts_for_one_sequence {
                         $alt_str .= sprintf(" deletes:%s", ($delete_str eq "") ? "none;" : $delete_str);
                         $alt_str .= sprintf(" shifted_frame:%s; expected_frame:%s;", $shifted_frame, $expected_frame);
                         $alt_str .= sprintf(" avgpp:%.3f;", $shifted_span_avgpp);
-                        $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
-                        $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
-                        $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
-                        if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
-                        if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
+                        #$alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
+                        #$alt_str .= sprintf(" frame:%s;", $frame_sum_str);
+                        #$alt_str .= sprintf(" cause:%s;", $causative_indel_str);
+                        #if($restorative_indel_str ne "")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
+                        #if($intermediate_indel_str ne "") { $alt_str .= sprintf(" inter:%s;",   $intermediate_indel_str); }
                         my $is_hicnf = ($shifted_span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                    ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
