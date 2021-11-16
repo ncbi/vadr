@@ -6,7 +6,7 @@
 
 #=GS ENTOY100A-REV-2-fs17 DE multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 1nt deletion different segment (CDS3, RFPOS27+1,15-)
 
-#=GS ENTOY100A-REV-2-fs17 FS.1 seq_coords:15..16:+; mdl_coords: 15..17:+; length:2; inserts:none; deletes:S:14,M:15(1); shifted_frame:3; expected_frame:1; avgpp:0.850;
+#=GS ENTOY100A-REV-2-fs17 FS.1 seq_coords:15..16:+; mdl_coords: 15..17:+; length:2; cause:delete[S:14,M:15(1)]; frame:[1(3)]; shifted_avgpp:0.850; exp_avgpp:0.969;
 
 ENTOY100A-REV-2-fs17         ATGCTACGTACG-GA
 #=GR ENTOY100A-REV-2-fs17 PP ***********9.89
@@ -25,7 +25,7 @@ ENTOY100A-REV-2-fs17         ATGCTACGTACG-GA
 
 #=GS ENTOY100A-REV-2-fs18 DE multi-segment, segment 3, 1nt insertion that breaks frame, fixed by 5nt insertion different segment (CDS3, RFPOS27+1,14+5)
 
-#=GS ENTOY100A-REV-2-fs18 FS.1 seq_coords:15..22:+; mdl_coords: 15..17:+; length:8; inserts:S:15..19(5),M:14; deletes:none; shifted_frame:3; expected_frame:1; avgpp:0.700;
+#=GS ENTOY100A-REV-2-fs18 FS.1 seq_coords:15..22:+; mdl_coords: 15..17:+; length:8; cause:insert[S:15..19(5),M:14]; frame:[1(3)]; shifted_avgpp:0.700; exp_avgpp:0.954;
 
 ENTOY100A-REV-2-fs18         ATGCTACGTACGAAAAATGA
 #=GR ENTOY100A-REV-2-fs18 PP **********9866666899
@@ -44,7 +44,7 @@ ENTOY100A-REV-2-fs18         ATGCTACGTACGAAAAATGA
 
 #=GS ENTOY100A-REV-2-fs21 DE multi-segment, segment 3, 3nt deletion that spans segments that does not break frame (CDS3, RFPOS22-,14-,13-)
 
-#=GS ENTOY100A-REV-2-fs21 FS.1 seq_coords:13..15:+; mdl_coords: 13..17:+; length:3; inserts:none; deletes:S:12,M:13..14(2); shifted_frame:2; expected_frame:1; avgpp:0.733;
+#=GS ENTOY100A-REV-2-fs21 FS.1 seq_coords:13..15:+; mdl_coords: 13..17:+; length:3; cause:delete[S:12,M:13..14(2)]; frame:[1(2)]; shifted_avgpp:0.733; exp_avgpp:0.967;
 
 ENTOY100A-REV-2-fs21         ATGCTACGTA--TGA
 #=GR ENTOY100A-REV-2-fs21 PP *********9..679
@@ -63,7 +63,7 @@ ENTOY100A-REV-2-fs21         ATGCTACGTA--TGA
 
 #=GS ENTOY100A-REV-2-fs22 DE multi-segment, segment 3, 3nt insertions that spans segments that does not break frame (CDS3, RFPOS21+2,14+1)
 
-#=GS ENTOY100A-REV-2-fs22 FS.1 seq_coords:15..18:+; mdl_coords: 15..17:+; length:4; inserts:S:15(1),M:14; deletes:none; shifted_frame:2; expected_frame:1; avgpp:0.819;
+#=GS ENTOY100A-REV-2-fs22 FS.1 seq_coords:15..18:+; mdl_coords: 15..17:+; length:4; cause:insert[S:15(1),M:14]; frame:[1(2)]; shifted_avgpp:0.819; exp_avgpp:0.960;
 
 ENTOY100A-REV-2-fs22         ATGCTACGTACGATGA
 #=GR ENTOY100A-REV-2-fs22 PP ***********8689*
@@ -82,7 +82,7 @@ ENTOY100A-REV-2-fs22         ATGCTACGTACGATGA
 
 #=GS ENTOY100A-REV-2-fs23 DE multi-segment, segment 3, two frameshifts, 1nt insertion fixed by 1nt deletion, then 1nt deletion that is not fixed (CDS3, RFPOS31-,27+1,14+1)
 
-#=GS ENTOY100A-REV-2-fs23 FS.1 seq_coords:15..18:+; mdl_coords: 15..17:+; length:4; inserts:S:15(1),M:14; deletes:none; shifted_frame:2; expected_frame:1; avgpp:0.838;
+#=GS ENTOY100A-REV-2-fs23 FS.1 seq_coords:15..18:+; mdl_coords: 15..17:+; length:4; cause:insert[S:15(1),M:14]; frame:[1(2)]; shifted_avgpp:0.838; exp_avgpp:0.960;
 
 ENTOY100A-REV-2-fs23         ATGCTACGTACGATGA
 #=GR ENTOY100A-REV-2-fs23 PP ***********868**
