@@ -2,11 +2,11 @@
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 1 of 3 for sequence NC_001959.2-manually-added-frameshifts-1 to model NC_001959 with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 seq_coords:5380..5394:+; mdl_coords: 5377..5388:+; length:15; inserts:S:5380(1),M:5376;S:5388(1),M:5383;S:5394(1),M:5388; deletes:none; shifted_frame:3; dominant_frame:1; avgpp:0.627;
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.1 seq_coords:5380..5394:+; mdl_coords: 5377..5388:+; length:15; inserts:S:5380(1),M:5376;S:5388(1),M:5383;S:5394(1),M:5388; deletes:none; shifted_frame:3; expected_frame:1; avgpp:0.627;
 
-#=GS NC_001959.2-manually-added-frameshifts-1 FS.2 seq_coords:6951..6958:+; mdl_coords: 6945..6950:+; length:8; inserts:S:6951..6952(2),M:6944; deletes:none; shifted_frame:3; dominant_frame:1; avgpp:0.762;
+#=GS NC_001959.2-manually-added-frameshifts-1 FS.2 seq_coords:6951..6958:+; mdl_coords: 6945..6950:+; length:8; inserts:S:6951..6952(2),M:6944; deletes:none; shifted_frame:3; expected_frame:1; avgpp:0.762;
 
 NC_001959.2-manually-added-frameshifts-1         ATGATGATGGCGTCTAAGGAACGCTACCATCAAGGCGTGGATGGCGCTAGTGGCGCTGGTCAGTTGGTACCGGAGGTTAATGCTTCTGACCCTCTTGCAATGGATCCTGTAGCAGGTTCTTCGACAGCAGTCGCGACTGCTGGACAAGTTAATCCTATTGATCCCTGGATAATTAATAATTTTGTGCAAGCCCCCCAAGG
 #=GR NC_001959.2-manually-added-frameshifts-1 PP *****************9835899986367765379********************************************************************************************************************************************************************
@@ -42,13 +42,13 @@ NC_001959.2-manually-added-frameshifts-1         GTTCACATAATCTTACTATAGCACAAGCAAC
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 1 of 3 for sequence NC_001959.2-manually-added-frameshifts-2 to model NC_001959 with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:5396..5425:+; mdl_coords: 5396..5422:+; length:30; inserts:S:5408..5409(2),M:5408;S:5424..5425(2),M:5422; deletes:S:5395,M:5396(1); shifted_frame:2; dominant_frame:1; avgpp:0.858;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.1 seq_coords:5396..5425:+; mdl_coords: 5396..5422:+; length:30; inserts:S:5408..5409(2),M:5408;S:5424..5425(2),M:5422; deletes:S:5395,M:5396(1); shifted_frame:2; expected_frame:1; avgpp:0.858;
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 seq_coords:5448..5458:+; mdl_coords: 5445..5458:+; length:11; inserts:none; deletes:S:5447,M:5445..5446(2);S:5458,M:5458(1); shifted_frame:2; dominant_frame:1; avgpp:0.845;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.2 seq_coords:5448..5458:+; mdl_coords: 5445..5458:+; length:11; inserts:none; deletes:S:5447,M:5445..5446(2);S:5458,M:5458(1); shifted_frame:2; expected_frame:1; avgpp:0.845;
 
-#=GS NC_001959.2-manually-added-frameshifts-2 FS.3 seq_coords:6877..6951:+; mdl_coords: 6877..6950:+; length:75; inserts:S:6891..6895(5),M:6894; deletes:S:6876,M:6877..6880(4); shifted_frame:2; dominant_frame:1; avgpp:0.913;
+#=GS NC_001959.2-manually-added-frameshifts-2 FS.3 seq_coords:6877..6951:+; mdl_coords: 6877..6950:+; length:75; inserts:S:6891..6895(5),M:6894; deletes:S:6876,M:6877..6880(4); shifted_frame:2; expected_frame:1; avgpp:0.913;
 
 NC_001959.2-manually-added-frameshifts-2         ATGATGATGGCGTCTAAGGACGCTACATCAAGCGTGGA-GGCGCTAGTGGCCCGCTGGTCAGTTGGTAAACCGGAGGTTAATGCTTCTGAC--TCTTGCAATGG-TCCTGTAGCAGGTTCTTCGACAGCAGTCGCGACTGCTGGACAAGTTAATCCTATTGATCCCTGGATAATTAATAATTTTGTGCAAGCCCCCCAAG
 #=GR NC_001959.2-manually-added-frameshifts-2 PP ************************************98.79********954489***********94459******************96..6789****987.899********************************************************************************************
