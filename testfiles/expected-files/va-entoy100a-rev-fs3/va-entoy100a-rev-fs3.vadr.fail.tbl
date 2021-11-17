@@ -34,7 +34,7 @@
 			note	stem-loop 1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift in CDS (terminal) [length:19; cause:insert[S:88(1),M:88]; frame:[1(2)]; shifted_avgpp:0.941; exp_avgpp:0.533;]; seq-coords:88..70:-; mdl-coords:87..70:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift in CDS (terminal) [length:19; cause:insert,S:88(1),M:88; frame:1(2); shifted_avgpp:0.941; exp_avgpp:0.533;]; seq-coords:88..70:-; mdl-coords:87..70:-; mdl:ENTOY100A-REV;
 ERROR: MUTATION_AT_END: (CDS:protein one) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein one) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]; seq-coords:91..70:-; mdl-coords:90..70:-; mdl:ENTOY100A-REV;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
@@ -115,7 +115,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide ma
 			note	similar to stem_loop.1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift in CDS (terminal) [length:12; cause:delete[S:82,M:82(1)]; frame:<1(3)]; shifted_avgpp:0.960; exp_avgpp:0.945;]; seq-coords:81..70:-; mdl-coords:82..70:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift in CDS (terminal) [length:12; cause:delete,S:82,M:82(1); frame:<1(3); shifted_avgpp:0.960; exp_avgpp:0.945;]; seq-coords:81..70:-; mdl-coords:82..70:-; mdl:ENTOY100A-REV;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: INDEFINITE_ANNOTATION_END: (stem_loop:stem_loop.1) alignment to homology model is a gap at 3' boundary [-]; seq-coords:82..82:-; mdl-coords:82..82:-; mdl:ENTOY100A-REV;
@@ -155,7 +155,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (stem_loop:stem_loop.1) alignment to homology 
 			note	similar to stem_loop.1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift in CDS (terminal) [length:12; cause:delete[S:82,M:82(1)]; frame:<3(2)]; shifted_avgpp:0.960; exp_avgpp:0.938;]; seq-coords:81..70:-; mdl-coords:82..70:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one) high confidence possible frameshift in CDS (terminal) [length:12; cause:delete,S:82,M:82(1); frame:<3(2); shifted_avgpp:0.960; exp_avgpp:0.938;]; seq-coords:81..70:-; mdl-coords:82..70:-; mdl:ENTOY100A-REV;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp1) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:protein one mp2) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A-REV;
 ERROR: INDEFINITE_ANNOTATION_END: (stem_loop:stem_loop.1) alignment to homology model is a gap at 3' boundary [-]; seq-coords:82..82:-; mdl-coords:82..82:-; mdl:ENTOY100A-REV;
@@ -181,7 +181,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (stem_loop:stem_loop.1) alignment to homology 
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:7,M:7]; seq-coords:37..35:-; mdl-coords:37..35:-; mdl:ENTOY100A-REV;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert[S:62(1),M:62]; frame:[1(2)]; shifted_avgpp:0.968; exp_avgpp:0.966;]; seq-coords:62..28:-; mdl-coords:61..28:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert,S:62(1),M:62; frame:1(2); shifted_avgpp:0.968; exp_avgpp:0.966;]; seq-coords:62..28:-; mdl-coords:61..28:-; mdl:ENTOY100A-REV;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein two) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [43]; seq-coords:70..54:-,54..37:-,35..28:-; mdl-coords:69..54:-,54..37:-,35..28:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs14
 3	17	CDS
@@ -204,7 +204,7 @@ ERROR: UNEXPECTED_LENGTH: (CDS:protein two) length of complete coding (CDS or ma
 			note	similar to protein two
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert[S:62(1),M:62]; frame:<3(1)]; shifted_avgpp:0.968; exp_avgpp:0.964;]; seq-coords:62..28:-; mdl-coords:61..28:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert,S:62(1),M:62; frame:<3(1); shifted_avgpp:0.968; exp_avgpp:0.964;]; seq-coords:62..28:-; mdl-coords:61..28:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs15
 3	17	CDS
 			product	protein four
@@ -227,7 +227,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.897<0.900]; seq-coords:62..68:+; mdl-coords:-; mdl:ENTOY100A-REV;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert[S:62(1),M:62]; frame:<2(3)]; shifted_avgpp:0.968; exp_avgpp:0.962;]; seq-coords:62..28:-; mdl-coords:61..28:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert,S:62(1),M:62; frame:<2(3); shifted_avgpp:0.968; exp_avgpp:0.962;]; seq-coords:62..28:-; mdl-coords:61..28:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs16
 3	17	CDS
 			product	protein four
@@ -249,7 +249,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			note	similar to protein two
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert[S:61(1),M:62]; restore:delete[S:52,M:52(1)]; frame:[1(2)1]; shifted_avgpp:0.942; exp_avgpp:0.966;]; seq-coords:61..52:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert,S:61(1),M:62; restore:delete,S:52,M:52(1); frame:1(2)1; shifted_avgpp:0.942; exp_avgpp:0.966;]; seq-coords:61..52:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs17
 3	17	CDS
 			product	protein four
@@ -271,7 +271,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			note	similar to protein two
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert[S:61(1),M:62]; restore:delete[S:52,M:52(1)]; frame:<3(1)3]; shifted_avgpp:0.942; exp_avgpp:0.964;]; seq-coords:61..52:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert,S:61(1),M:62; restore:delete,S:52,M:52(1); frame:<3(1)3; shifted_avgpp:0.942; exp_avgpp:0.964;]; seq-coords:61..52:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs18
 3	17	CDS
 			product	protein four
@@ -294,7 +294,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.896<0.900]; seq-coords:61..67:+; mdl-coords:-; mdl:ENTOY100A-REV;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert[S:61(1),M:62]; restore:delete[S:52,M:52(1)]; frame:<2(3)2]; shifted_avgpp:0.942; exp_avgpp:0.962;]; seq-coords:61..52:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert,S:61(1),M:62; restore:delete,S:52,M:52(1); frame:<2(3)2; shifted_avgpp:0.942; exp_avgpp:0.962;]; seq-coords:61..52:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs25
 40	24	misc_feature
 24	7
@@ -309,7 +309,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:protein two) in-frame stop codon exists 5' of stop position predicted by homology to reference [TAA, shifted S:4,M:4]; seq-coords:7..5:-; mdl-coords:37..35:-; mdl:ENTOY100A-REV;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:32; cause:insert[S:32(1),M:62]; frame:[1(2)>; shifted_avgpp:0.967; exp_avgpp:0.966;]; seq-coords:32..1:-; mdl-coords:61..31:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:32; cause:insert,S:32(1),M:62; frame:1(2)>; shifted_avgpp:0.967; exp_avgpp:0.966;]; seq-coords:32..1:-; mdl-coords:61..31:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs26
 <38	23	misc_feature
 23	6
@@ -323,7 +323,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			protein_id	ENTOY100A-REV-3-fs26_1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:31; cause:insert[S:31(1),M:62]; frame:<3(1)>; shifted_avgpp:0.967; exp_avgpp:0.964;]; seq-coords:31..1:-; mdl-coords:61..32:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:31; cause:insert,S:31(1),M:62; frame:<3(1)>; shifted_avgpp:0.967; exp_avgpp:0.964;]; seq-coords:31..1:-; mdl-coords:61..32:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs27
 <36	22	misc_feature
 22	5
@@ -332,7 +332,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 
 Additional note(s) to submitter:
 ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similarity to homology model [0.806<0.900]; seq-coords:30..36:+; mdl-coords:-; mdl:ENTOY100A-REV;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:30; cause:insert[S:30(1),M:62]; frame:<2(3)>; shifted_avgpp:0.967; exp_avgpp:0.962;]; seq-coords:30..1:-; mdl-coords:61..33:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (terminal) [length:30; cause:insert,S:30(1),M:62; frame:<2(3)>; shifted_avgpp:0.967; exp_avgpp:0.962;]; seq-coords:30..1:-; mdl-coords:61..33:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs28
 39	23	misc_feature
 23	7
@@ -346,7 +346,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			protein_id	ENTOY100A-REV-3-fs28_1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert[S:31(1),M:62]; restore:delete[S:22,M:52(1)]; frame:[1(2)1>; shifted_avgpp:0.942; exp_avgpp:0.966;]; seq-coords:31..22:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert,S:31(1),M:62; restore:delete,S:22,M:52(1); frame:1(2)1>; shifted_avgpp:0.942; exp_avgpp:0.966;]; seq-coords:31..22:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs29
 <37	22	misc_feature
 22	6
@@ -360,7 +360,7 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			protein_id	ENTOY100A-REV-3-fs29_1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert[S:30(1),M:62]; restore:delete[S:21,M:52(1)]; frame:<3(1)3>; shifted_avgpp:0.942; exp_avgpp:0.964;]; seq-coords:30..21:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert,S:30(1),M:62; restore:delete,S:21,M:52(1); frame:<3(1)3>; shifted_avgpp:0.942; exp_avgpp:0.964;]; seq-coords:30..21:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
 >Feature ENTOY100A-REV-3-fs30
 37	21	misc_feature
 21	5
@@ -370,4 +370,4 @@ ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible
 			gene	one
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert[S:29(1),M:62]; restore:delete[S:20,M:52(1)]; frame:[1(2)1>; shifted_avgpp:0.942; exp_avgpp:0.966;]; seq-coords:29..20:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein two) high confidence possible frameshift in CDS (internal) [length:10; cause:insert,S:29(1),M:62; restore:delete,S:20,M:52(1); frame:1(2)1>; shifted_avgpp:0.942; exp_avgpp:0.966;]; seq-coords:29..20:-; mdl-coords:61..52:-; mdl:ENTOY100A-REV;

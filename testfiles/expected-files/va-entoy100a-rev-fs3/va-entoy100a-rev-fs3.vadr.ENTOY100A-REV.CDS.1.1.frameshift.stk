@@ -4,7 +4,7 @@
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs4 FS.1 seq_coords:88..70:-; mdl_coords: 87..70:-; length:19; cause:insert[S:88(1),M:88]; frame:[1(2)]; shifted_avgpp:0.941; exp_avgpp:0.533;
+#=GS ENTOY100A-REV-3-fs4 FS.1 seq_coords:88..70:-; mdl_coords: 87..70:-; length:19; cause:insert,S:88(1),M:88; frame:1(2); shifted_avgpp:0.941; exp_avgpp:0.533;
 
 ENTOY100A-REV-3-fs4         TTATGGTAAAGCGATCACGCAT
 #=GR ENTOY100A-REV-3-fs4 PP *****************94565
@@ -21,7 +21,7 @@ ENTOY100A-REV-3-fs4         TTATGGTAAAGCGATCACGCAT
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs7 FS.1 seq_coords:81..70:-; mdl_coords: 82..70:-; length:12; cause:delete[S:82,M:82(1)]; frame:<1(3)]; shifted_avgpp:0.960; exp_avgpp:0.945;
+#=GS ENTOY100A-REV-3-fs7 FS.1 seq_coords:81..70:-; mdl_coords: 82..70:-; length:12; cause:delete,S:82,M:82(1); frame:<1(3); shifted_avgpp:0.960; exp_avgpp:0.945;
 
 ENTOY100A-REV-3-fs7         TTATGGTAAAGC-ATCAC
 #=GR ENTOY100A-REV-3-fs7 PP ***********8.99***
@@ -38,7 +38,7 @@ ENTOY100A-REV-3-fs7         TTATGGTAAAGC-ATCAC
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
 #=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-REV-3-fs8 FS.1 seq_coords:81..70:-; mdl_coords: 82..70:-; length:12; cause:delete[S:82,M:82(1)]; frame:<3(2)]; shifted_avgpp:0.960; exp_avgpp:0.938;
+#=GS ENTOY100A-REV-3-fs8 FS.1 seq_coords:81..70:-; mdl_coords: 82..70:-; length:12; cause:delete,S:82,M:82(1); frame:<3(2); shifted_avgpp:0.960; exp_avgpp:0.938;
 
 ENTOY100A-REV-3-fs8         TTATGGTAAAGC-ATCA
 #=GR ENTOY100A-REV-3-fs8 PP ***********8.99**

@@ -7,7 +7,7 @@
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert[S:16..17(2),M:15]; frame:[1(3)>; shifted_avgpp:0.940; exp_avgpp:0.925;]; seq-coords:16..50:+; mdl-coords:16..48:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (terminal) [length:35; cause:insert,S:16..17(2),M:15; frame:1(3)>; shifted_avgpp:0.940; exp_avgpp:0.925;]; seq-coords:16..50:+; mdl-coords:16..48:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [11>5, no valid stop codon in nucleotide-based prediction]; seq-coords:40..50:+; mdl-coords:5374..5374:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [14>5]; seq-coords:5..18:+; mdl-coords:5..5:+; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
@@ -20,7 +20,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be tra
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (terminal) [length:136; cause:insert[S:36(1),M:62]; frame:<2(3)>; shifted_avgpp:0.967; exp_avgpp:0.962;]; seq-coords:36..171:+; mdl-coords:63..197:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (terminal) [length:136; cause:insert,S:36(1),M:62; frame:<2(3)>; shifted_avgpp:0.967; exp_avgpp:0.962;]; seq-coords:36..171:+; mdl-coords:63..197:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [47>5]; seq-coords:1..47:+; mdl-coords:5..5:+; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/5380-6000
@@ -31,7 +31,7 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be tra
 			note	similar to VP1
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP1) high confidence possible frameshift in CDS (terminal) [length:613; cause:insert[S:9(1),M:5383]; frame:<1(23)>; shifted_avgpp:0.969; exp_avgpp:0.919; intermediate:insert[S:15(1),M:5388];]; seq-coords:9..621:+; mdl-coords:5384..5994:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP1) high confidence possible frameshift in CDS (terminal) [length:613; cause:insert,S:9(1),M:5383; frame:<1(23)>; shifted_avgpp:0.969; exp_avgpp:0.919; intermediate:insert,S:15(1),M:5388;]; seq-coords:9..621:+; mdl-coords:5384..5994:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP1) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [17>5]; seq-coords:1..17:+; mdl-coords:5358..5358:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/7000-7500
 <1	>501	gene
@@ -42,7 +42,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP1) protein-based alignment does not e
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:9,M:9]; seq-coords:490..492:+; mdl-coords:7488..7490:+; mdl:NC_001959;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (terminal) [length:49; cause:delete[S:452,M:7450(1)]; frame:<1(3)>; shifted_avgpp:0.966; exp_avgpp:0.971;]; seq-coords:453..501:+; mdl-coords:7450..7499:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (terminal) [length:49; cause:delete,S:452,M:7450(1); frame:<1(3)>; shifted_avgpp:0.966; exp_avgpp:0.971;]; seq-coords:453..501:+; mdl-coords:7450..7499:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [48>5, no valid stop codon in nucleotide-based prediction]; seq-coords:454..501:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-1/7200-7655
 <1	390	gene
@@ -52,7 +52,7 @@ ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not ext
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:VP2) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:98,M:98]; seq-coords:290..292:+; mdl-coords:7488..7490:+; mdl:NC_001959;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (terminal) [length:138; cause:delete[S:252,M:7450(1)]; frame:[1(3)]; shifted_avgpp:0.972; exp_avgpp:0.971;]; seq-coords:253..390:+; mdl-coords:7450..7588:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:VP2) high confidence possible frameshift in CDS (terminal) [length:138; cause:delete,S:252,M:7450(1); frame:1(3); shifted_avgpp:0.972; exp_avgpp:0.971;]; seq-coords:253..390:+; mdl-coords:7450..7588:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [137>8, valid stop codon in nucleotide-based prediction]; seq-coords:254..390:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment extends past nucleotide-based alignment at 5' end [-]; seq-coords:101..103:+; mdl-coords:6950..6950:+; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-2/30-80
@@ -64,7 +64,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment extends pa
 			note	similar to p48
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (internal) [length:14; cause:insert[S:24..25(2),M:52]; restore:delete[S:37,M:65..66(2)]; frame:<3(2)3>; shifted_avgpp:0.775; exp_avgpp:0.948;]; seq-coords:24..37:+; mdl-coords:53..66:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (internal) [length:14; cause:insert,S:24..25(2),M:52; restore:delete,S:37,M:65..66(2); frame:<3(2)3>; shifted_avgpp:0.775; exp_avgpp:0.948;]; seq-coords:24..37:+; mdl-coords:53..66:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION: (CDS:nonstructural polyprotein) nucleotide-based search identifies CDS not identified in protein-based search [-]; seq-coords:1..51:+; mdl-coords:30..80:+; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 >Feature NC_001959.2-manually-added-frameshifts-2/1000-1500
@@ -78,6 +78,6 @@ ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be tra
 			note	similar to NTPase
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (terminal) [length:490; cause:insert[S:12..13(2),M:1012]; frame:<3(2)>; shifted_avgpp:0.973; exp_avgpp:0.952;]; seq-coords:12..501:+; mdl-coords:1013..1500:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (terminal) [length:490; cause:insert,S:12..13(2),M:1012; frame:<3(2)>; shifted_avgpp:0.973; exp_avgpp:0.952;]; seq-coords:12..501:+; mdl-coords:1013..1500:+; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:NTPase) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;
