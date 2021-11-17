@@ -5086,20 +5086,20 @@ sub add_frameshift_alerts_for_one_sequence {
                 if($ftr_strand eq "+") { 
                   if((($prv_sstop + 1) < ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                     if(($prv_sstop + 1) == ($cur_sstart - 1)) { # exactly one inserted nt
-                      $cur_insert_str = sprintf("insert[S:%d(%d),M:%d]", ($prv_sstop + 1), 1, $prv_mstop); 
+                      $cur_insert_str = sprintf("insert,S:%d(%d),M:%d;", ($prv_sstop + 1), 1, $prv_mstop); 
                     }
                     else { # more than one inserted nt, specify the range
-                      $cur_insert_str = sprintf("insert[S:%d..%d(%d),M:%d]", $prv_sstop+1, $cur_sstart-1, (abs(($prv_sstop+1) - ($cur_sstart-1))+1), $prv_mstop); 
+                      $cur_insert_str = sprintf("insert,S:%d..%d(%d),M:%d;", $prv_sstop+1, $cur_sstart-1, (abs(($prv_sstop+1) - ($cur_sstart-1))+1), $prv_mstop); 
                     }
                   }
                 }
                 else { # negative strand
                   if((($prv_sstop - 1) > ($cur_sstart)) && (! $prv_tok_sgm_end_flag)) { # at least one inserted nt and previous token was not a segment end
                     if(($prv_sstop - 1) == ($cur_sstart + 1)) { # exactly one inserted nt
-                      $cur_insert_str = sprintf("insert[S:%d(%d),M:%d]", ($prv_sstop - 1), 1, $prv_mstop); 
+                      $cur_insert_str = sprintf("insert,S:%d(%d),M:%d;", ($prv_sstop - 1), 1, $prv_mstop); 
                     }
                     else { # more than one inserted nt, specify the range
-                      $cur_insert_str = sprintf("insert[S:%d..%d(%d),M:%d]", $prv_sstop-1, $cur_sstart+1, (abs(($prv_sstop-1) - ($cur_sstart+1))+1), $prv_mstop); 
+                      $cur_insert_str = sprintf("insert,S:%d..%d(%d),M:%d;", $prv_sstop-1, $cur_sstart+1, (abs(($prv_sstop-1) - ($cur_sstart+1))+1), $prv_mstop); 
                     }
                   }
                 }
@@ -5180,19 +5180,13 @@ sub add_frameshift_alerts_for_one_sequence {
                         }
                         $nindel_final_intermediate = $nindel_str-2; # if this is < 1 we have zero intermediate mutations
                       }
-                      else { 
+                      else { # case 2: we got to end of CDS and did not restore frame
                         $nindel_final_intermediate = $nindel_str-1; # if this is < 1 we have zero intermediate mutations
                       }
                       for(my $z = 1; $z <= $nindel_final_intermediate; $z++) { 
-                        if(defined $intermediate_indel_str) { 
-                          $intermediate_indel_str .= ",";
-                        }
                         $intermediate_indel_str .= $cur_indel_str_A[$z];
                       }
                     }
-                    if(! defined $causative_indel_str)    { $causative_indel_str    = "-"; }
-                    if(! defined $intermediate_indel_str) { $intermediate_indel_str = "-"; }
-                    if(! defined $restorative_indel_str)  { $restorative_indel_str  = "-"; }
 
                     # determine frame summary string 
                     my $frame_sum_str = determine_frame_summary_string(\@frame_mtok_A, 
@@ -5206,10 +5200,10 @@ sub add_frameshift_alerts_for_one_sequence {
                       my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                       my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
                       $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
-                      $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
-                      if($restorative_indel_str ne "-")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
+                      $alt_str .= sprintf(" cause:%s", $causative_indel_str);
+                      if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                       $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
-                      if($intermediate_indel_str ne "-") { $alt_str .= sprintf(" intermediate:%s;",   $intermediate_indel_str); }
+                      if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                       push(@cds_alt_str_A, $alt_str);
                     }
@@ -5241,12 +5235,12 @@ sub add_frameshift_alerts_for_one_sequence {
                         my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                         my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
                         $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
-                        $alt_str .= sprintf(" cause:%s;", $causative_indel_str);
-                        if($restorative_indel_str ne "-")  { $alt_str .= sprintf(" restore:%s;", $restorative_indel_str); }
+                        $alt_str .= sprintf(" cause:%s", $causative_indel_str);
+                        if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                         $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                         $alt_str .= sprintf(" shifted_avgpp:%.3f;", $shifted_span_avgpp);
                         $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
-                        if($intermediate_indel_str ne "-") { $alt_str .= sprintf(" intermediate:%s;",   $intermediate_indel_str); }
+                        if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
                         my $is_hicnf = ($min_span_avgpp > ($fst_high_ppthr - $small_value)) ? 1 : 0;
                         alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, 
                                                    ($is_hicnf) ? $hi_alt_code : $lo_alt_code,
@@ -5267,18 +5261,18 @@ sub add_frameshift_alerts_for_one_sequence {
                 if($cur_ndelete > 0) { 
                   if($ftr_strand eq "+") { 
                     if($cur_ndelete == 1) { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop+1), $cur_ndelete);
+                      $cur_delete_str = sprintf("delete,S:%d,M:%d(%d);", $cur_sstop, ($cur_mstop+1), $cur_ndelete);
                     }
                     else { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
+                      $cur_delete_str = sprintf("delete,S:%d,M:%d..%d(%d);", $cur_sstop, ($cur_mstop+1), ($cur_mstop+$cur_ndelete), $cur_ndelete);
                     }
                   }
                   else { # negative strand
                     if($cur_ndelete == 1) { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d(%d)]", $cur_sstop, ($cur_mstop-1), $cur_ndelete);
+                      $cur_delete_str = sprintf("delete,S:%d,M:%d(%d);", $cur_sstop, ($cur_mstop-1), $cur_ndelete);
                     }
                     else { 
-                      $cur_delete_str = sprintf("delete[S:%d,M:%d..%d(%d)]", $cur_sstop, ($cur_mstop-1), ($cur_mstop-$cur_ndelete), $cur_ndelete);
+                      $cur_delete_str = sprintf("delete,S:%d,M:%d..%d(%d);", $cur_sstop, ($cur_mstop-1), ($cur_mstop-$cur_ndelete), $cur_ndelete);
                     }
                   }
                 }
@@ -5400,10 +5394,10 @@ sub add_frameshift_alerts_for_one_sequence {
 #              CDS.
 #
 #              Examples: 
-#              non-truncated CDS w/internal frameshift in frame 2:      "[1(2)1]"
-                                     #           5' truncated CDS that starts in frame 2 and shifts to 3: "<2(3)]"
-                                     #           same as above but also 3' truncated:                     "<2(3)>"
-
+#              non-truncated CDS w/internal frameshift in frame 2:      "1(2)1"
+#              5' truncated CDS that starts in frame 2 and shifts to 3: "<2(3)"
+#              same as above but also 3' truncated:                     "<2(3)>"
+#
 # Arguments: 
 #  $frame_mtok_AR:      reference to array of tokens of model subregions in different frames
 #  $idx:                index of frameshifted subregion in $frame_mtok_AR
@@ -5425,7 +5419,8 @@ sub determine_frame_summary_string {
   my ($frame_mtok_AR, $idx, $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR) = @_;
 
   my $nframe_mtok = scalar(@{$frame_mtok_AR});
-  my $ret_str = ($is_3p_trunc) ? ">" : "]";
+  # start with '>' if 5' truncated
+  my $ret_str = ($is_3p_trunc) ? ">" : "";
   my $cur_frame = undef;
   my $prv_frame = undef;
   my $open_flag = 0; # set to '1' when we open the frameshifted region with ')'
@@ -5451,7 +5446,10 @@ sub determine_frame_summary_string {
       ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: " . $frame_mtok_AR->[$f], 1, $FH_HR);
     }
   }
-  $ret_str = ($is_5p_trunc) ? "<" . $ret_str : "[" . $ret_str;    
+  # prepend '<' if 5' truncated
+  if($is_5p_trunc) { 
+    $ret_str = "<" . $ret_str;
+  }
 
   return $ret_str;
 }
