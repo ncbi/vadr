@@ -4779,7 +4779,7 @@ sub add_frameshift_alerts_for_one_sequence {
   my $FH_HR = \%{$ofile_info_HHR->{"FH"}};
 
   my $do_output_frameshift_stk = ((opt_Get("--keep", $opt_HHR)) || (opt_Get("--out_fsstk", $opt_HHR))) ? 1 : 0;
-  my $fst_min_ntt    = opt_Get("--fstminntt",   $opt_HHR); # maximum allowed nt length of unexpected frame at 5' end without a frameshift alert 
+  my $fst_min_ntt    = opt_Get("--fstminntt",   $opt_HHR); # maximum allowed nt length of unexpected frame at 3' end without a frameshift alert 
   my $fst_min_nti    = opt_Get("--fstminnti",   $opt_HHR); # maximum allowed nt length of internal region unexpected frame without a frameshift alert 
   my $fst_high_ppthr = opt_Get("--fsthighthr",  $opt_HHR); # minimum average probability for fsthicnf frameshift alert  
   my $fst_low_ppthr  = opt_Get("--fstlowthr",   $opt_HHR); # minimum average probability for fslowcnf frameshift alert 
@@ -5016,7 +5016,7 @@ sub add_frameshift_alerts_for_one_sequence {
         # determine and store dominant frame, the frame with maximum count in @frame_ct_A, frame_ct_A[0] will be 0
         # determine and store expected frame, the expected frame of the CDS
         # expected_frame is the predicted frame of the first position unless
-        # the CDS is 5' truncated AND the length of the first region is less than $fst_min_ntt length,
+        # the CDS is 5' truncated AND the length of the first region is less than $fst_min_nti length,
         # in which case we set expected_frame to dominant frame. This avoids frameshift calls
         # when first region is very short and we're 5' truncated (when we are 5' truncated we are not 
         # as confident about what the expected frame is b/c we don't have a start codon)
@@ -5031,7 +5031,7 @@ sub add_frameshift_alerts_for_one_sequence {
         my $is_5p_trunc = $sgm_results_HAHR->{$seq_name}[$first_sgm_idx]{"5trunc"};
         my $is_3p_trunc = $sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"};
         my $dominant_frame = utl_AArgMax(\@frame_ct_A);
-        my $expected_frame = (($is_5p_trunc) && ($first_span_slen < $fst_min_ntt)) ? $dominant_frame : $F_0;
+        my $expected_frame = (($is_5p_trunc) && ($first_span_slen < $fst_min_nti)) ? $dominant_frame : $F_0;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_expected"} = $expected_frame;
         $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"} = $dominant_frame;
 
