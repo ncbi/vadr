@@ -5438,9 +5438,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
     # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
     my $ftr_5nlen     = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
-    my $ftr_5nstar    = 0; # '1' if first codon has ambiguity in it that may impact effective number of Ns at 5' end
     my $ftr_3nlen     = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
-    my $ftr_3nstar    = 0; # '1' if final codon has ambiguity in it that may impact effective number of Ns at 3' end
     my $ftr_5nlen_pv  = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
     my $ftr_3nlen_pv  = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
     my $ftr_start_non_n    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
@@ -5569,7 +5567,6 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # we use ftr_sqstring_alt values for alerts
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
       $ftr_5nlen  = count_terminal_Ns_in_sqstring($ftr_sqstring_alt);
-      $ftr_5nstar = 0;
       if($ftr_5nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
         my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $ftr_5nlen, $FH_HR);
@@ -5583,11 +5580,13 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen < 3) && ($ftr_5nlen != $ftr_len) && 
          (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring_alt, 0, 3)))) { 
         printf("HEYA 5' alt loop entered, ftr_5nlen initially $ftr_5nlen ");
-        $ftr_5nlen = 
-            utl_Min(3, $ftr_len) + 
-            count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
+        my $codon_len = utl_Min(3, $ftr_len);
+        $ftr_5nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
         printf("set to $ftr_5nlen\n");
-        $ftr_5nstar = 1;
+        my $ftr_codon_end = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $codon_len, $FH_HR);
+        $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_codon_end, $ftr_strand, $FH_HR) . ";";
+        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_codon_end]), $ftr_strand, $FH_HR) . ";";
+        $alt_str_H{"ambgcd5c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
       $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
 
@@ -5605,7 +5604,6 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
       $ftr_3nlen  = count_terminal_Ns_in_sqstring($rev_ftr_sqstring_alt);
-      $ftr_3nstar = 0;
       if($ftr_3nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt3c" : "ambgnt3f";
         my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen + 1), $FH_HR);
@@ -5618,10 +5616,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3nlen < 3) && ($ftr_3nlen != $ftr_len) && 
          (check_for_ambiguous_nts_in_sqstring(substr($rev_ftr_sqstring_alt, 0, 3)))) { 
         printf("HEYA 3' alt loop entered, ftr_3nlen initially $ftr_3nlen ");
-        $ftr_3nlen = 
-            utl_Min(3, $ftr_len) + 
-            count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_alt, 3));
-        $ftr_3nstar = 1;
+        my $codon_len = utl_Min(3, $ftr_len);
+        $ftr_3nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_alt, 3));
+        my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);
+        $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_codon_start, $ftr_stop, $ftr_strand, $FH_HR) . ";";
+        $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_codon_start]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
+        $alt_str_H{"ambgcd3c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
         printf("set to $ftr_3nlen\n");
       }
       $ftr_stop_non_n = ($ftr_3nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
@@ -5662,8 +5662,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # deal with mutstart for all CDS that are not 5' truncated
       if(! $ftr_is_5trunc) {
         # feature is not 5' truncated, look for a start codon if it's a CDS
-        # and no ambgnt5c alert already reported
-        if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt5c"})) { 
+        # and no ambgnt5c or ambgcd5c alert already reported
+        if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt5c"}) && (! defined $alt_str_H{"ambgcd5c"})) { 
           if(($ftr_len >= 3) && (! sqstring_check_start($ftr_sqstring_alt, $mdl_tt, $atg_only, $FH_HR))) { 
             $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[1], $ftr2org_pos_A[3], $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[1])]), abs($ua2rf_AR->[($ftr2org_pos_A[3])]), $ftr_strand, $FH_HR) . ";";
@@ -5676,15 +5676,14 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # deal with mutendcd for all CDS that are not 3' truncated BUT are 5' truncated
       if((! $ftr_is_3trunc) && ($ftr_is_5trunc)) { 
         # feature is not 3' truncated, but it is 5' truncated, look for a stop codon if it's a CDS
-        # and no ambgnt3c already reported
-        if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt3c"})) { 
+        # and no ambgnt3c or ambgcd3c alert already reported
+        if(($ftr_is_cds) && (! defined $alt_str_H{"ambgnt3c"}) && (! defined $alt_str_H{"ambgcd3c"})) {
           if(($ftr_len >= 3) && (! sqstring_check_stop($ftr_sqstring_alt, $mdl_tt, $FH_HR))) { 
             $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len-2)], $ftr2org_pos_A[$ftr_len], $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len-2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len])]), $ftr_strand, $FH_HR) . ";";
             $alt_codon = substr($ftr_sqstring_alt, -3, 3);
             $alt_codon =~ tr/a-z/A-Z/;
             $alt_str_H{"mutendcd"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $alt_codon);
-                                             
           }
         }
       }      
@@ -5717,7 +5716,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
         my $ftr_len_stops = length($ftr_sqstring_alt_stops);
         if($ftr_len_stops >= 3) { 
           # check for mutendcd alert (final 3 nt are a valid stop) if ! 3' truncated
-          if((! $ftr_is_3trunc) && (! sqstring_check_stop($ftr_sqstring_alt_stops, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"})) { 
+          if((! $ftr_is_3trunc) && (! sqstring_check_stop($ftr_sqstring_alt_stops, $mdl_tt, $FH_HR)) && (! defined $alt_str_H{"ambgnt3c"}) && (! defined $alt_str_H{"ambgcd3c"})) { 
             $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr2org_pos_A[($ftr_len_stops + $n_nt_skipped_at_5p_end - 2)], $ftr2org_pos_A[($ftr_len_stops + $n_nt_skipped_at_5p_end)], $ftr_strand, $FH_HR) . ";";
             $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[($ftr2org_pos_A[($ftr_len_stops + $n_nt_skipped_at_5p_end - 2)])]), abs($ua2rf_AR->[($ftr2org_pos_A[$ftr_len_stops + $n_nt_skipped_at_5p_end])]), $ftr_strand, $FH_HR) . ";";
             $alt_codon = substr($ftr_sqstring_alt_stops, -3, 3);
@@ -5767,7 +5766,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   sqstring_find_stops($ext_sqstring, $mdl_tt, \@ext_nxt_stp_A, $FH_HR);
                   if($ext_nxt_stp_A[1] != 0) { 
                     # there is an in-frame stop codon, mutendex alert
-                    if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                    if((! defined $alt_str_H{"ambgnt3c"}) && (! defined $alt_str_H{"ambgcd3c"})) { # report it only if !ambgnt3c and !ambgcd3c
                       # determine what position it is
                       $ftr_stop_c = ($ftr_strand eq "+") ? ($ext_sqstring_start + ($ext_nxt_stp_A[1] - 1)) : ($ext_sqstring_start - ($ext_nxt_stp_A[1] - 1));
                       if($ftr_strand eq "+") { 
@@ -5788,7 +5787,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
                   # if we get here, either $ftr_stop == $seq_len (and there was no more seq to check for a stop codon)
                   # or we checked the sequence but didn't find any
                   # either way, we have a mutendns alert:
-                  if(! defined $alt_str_H{"ambgnt3c"}) { # report it only if !ambgnt3c
+                  if((! defined $alt_str_H{"ambgnt3c"}) && (! defined $alt_str_H{"ambgcd3c"})) { # report it only if !ambgnt3c and !ambgcd3c
                     $ftr_stop_c = "?"; # special case, we don't know where the stop is, but we know it's not $ftr_stop;
                     # we don't provide scoords or mcoords for this alert
                     $alt_str_H{"mutendns"} = "VADRNULL";
@@ -5881,7 +5880,6 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $ftr_results_HR->{"n_5trunc"}         = $ftr_is_5trunc;
       $ftr_results_HR->{"n_3trunc"}         = $ftr_is_3trunc;
       $ftr_results_HR->{"n_5nlen"}          = $ftr_5nlen;
-      $ftr_results_HR->{"n_5nstar"}         = $ftr_5nstar;
       $ftr_results_HR->{"n_3nlen"}          = $ftr_3nlen;
       $ftr_results_HR->{"n_5nlen_pv"}       = $ftr_5nlen_pv;
       $ftr_results_HR->{"n_3nlen_pv"}       = $ftr_3nlen_pv;
@@ -6720,7 +6718,8 @@ sub add_protein_validation_alerts {
                   my $n_has_stop_codon = 1;
                   if(($ftr_results_HR->{"n_3trunc"}) || 
                      (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "mutendcd"))) ||
-                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "ambgnt3c")))) {
+                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "ambgnt3c"))) || 
+                     (defined (alert_feature_instance_fetch($alt_ftr_instances_HHHR, $seq_name, $ftr_idx, "ambgcd3c")))) { 
                     $n_has_stop_codon = 0; 
                   }                    
                   if($n_has_stop_codon) { 
