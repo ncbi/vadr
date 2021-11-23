@@ -5570,57 +5570,76 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
       $ftr_5nlen  = count_terminal_Ns_in_sqstring($ftr_sqstring_alt);
       $ftr_5nstar = 0;
-      my $pos_retval = undef;
-      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen < 3) && ($ftr_5nlen != $ftr_len)) { 
-        my $ftr_sqstring_alt_start = substr($ftr_sqstring_alt, 0, 3);
-        $ftr_sqstring_alt_start =~ m/[^ACGTUacgtu]/g; 
-        $pos_retval = pos($ftr_sqstring_alt_start); # returns position of first ambiguity (non-ACGTU/acgtu)
-        # if $pos_retval is undef, entire start codon is ACGTU/acgtu (no ambiguities)
-        if(defined $pos_retval) { # we have an ambiguity in the start codon
-          printf("HEYA ambiguity in start codon, ftr_5nlen was $ftr_5nlen\n");
-          $ftr_5nlen  = count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
-          $ftr_5nlen += length($ftr_sqstring_alt_start);
-          printf("ftr_5nlen is now $ftr_5nlen\n");
-          $ftr_5nstar = 1;
-        }
-      }
-      $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
       if($ftr_5nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
-        my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? $ftr_5nlen : $ftr_len), $FH_HR);
+        my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $ftr_5nlen, $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_final_n, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_final_n]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
 
+      # Exception: if CDS is complete on 5' end, and has ambiguities in start codon, count the start codon as 3 Ns, 
+      # and find first non-N after the start codon
+      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen < 3) && ($ftr_5nlen != $ftr_len) && 
+         (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring_alt, 0, 3)))) { 
+        printf("HEYA 5' alt loop entered, ftr_5nlen initially $ftr_5nlen ");
+        $ftr_5nlen = 
+            utl_Min(3, $ftr_len) + 
+            count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
+        printf("set to $ftr_5nlen\n");
+        $ftr_5nstar = 1;
+      }
+      $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
+
       # same drill for ftr_sqstring_pv
-      $ftr_sqstring_pv =~ m/[^Nn]/g; 
-      $pos_retval = pos($ftr_sqstring_pv); # returns position of first non-N/n
-      # if $pos_retval is undef entire sqstring is N or n
-      $ftr_5nlen_pv       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_start_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
+      $ftr_5nlen_pv = count_terminal_Ns_in_sqstring($ftr_sqstring_pv);
+      # Exception: if CDS is complete on 5' end, and has ambiguities in start codon, count the start codon as 3 Ns, 
+      # and find first non-N after the start codon
+      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen_pv < 3) && ($ftr_5nlen_pv != $ftr_len) && 
+         (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring_pv, 0, 3)))) { 
+        $ftr_5nlen_pv = 
+            utl_Min(3, $ftr_len) + 
+            count_terminal_Ns_in_sqstring(substr($ftr_sqstring_pv, 3));
+      }
+      $ftr_start_non_n_pv = ($ftr_5nlen_pv != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
-      $rev_ftr_sqstring_alt =~ m/[^Nn]/g; 
-      $pos_retval = pos($rev_ftr_sqstring_alt); # returns position of first non-N/n in reversed string
-      # if $pos_retval is undef entire sqstring is N or n
-      $ftr_3nlen      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_stop_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
+      $ftr_3nlen  = count_terminal_Ns_in_sqstring($rev_ftr_sqstring_alt);
+      $ftr_3nstar = 0;
       if($ftr_3nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt3c" : "ambgnt3f";
-        my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? ($ftr_len - $ftr_3nlen + 1) : 1), $FH_HR);
+        my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen + 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_first_n, $ftr_stop, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_first_n]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
+      # Exception: if CDS is complete on 3' end, and has ambiguities in stop codon, count the stop codon as 3 Ns, 
+      # and find final non-N before the stop codon
+      if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3nlen < 3) && ($ftr_3nlen != $ftr_len) && 
+         (check_for_ambiguous_nts_in_sqstring(substr($rev_ftr_sqstring_alt, 0, 3)))) { 
+        printf("HEYA 3' alt loop entered, ftr_3nlen initially $ftr_3nlen ");
+        $ftr_3nlen = 
+            utl_Min(3, $ftr_len) + 
+            count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_alt, 3));
+        $ftr_3nstar = 1;
+        printf("set to $ftr_3nlen\n");
+      }
+      $ftr_stop_non_n = ($ftr_3nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
-      $rev_ftr_sqstring_pv =~ m/[^Nn]/g; 
-      $pos_retval = pos($rev_ftr_sqstring_pv); # returns position of first non-N/n in reversed string
-      # if $pos_retval is undef entire sqstring is N or n
-      $ftr_3nlen_pv      = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_stop_non_n_pv = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
+      $ftr_3nlen_pv = count_terminal_Ns_in_sqstring($rev_ftr_sqstring_pv);
+      # Exception: if CDS is complete on 3' end, and has ambiguities in stop codon, count the stop codon as 3 Ns, 
+      # and find final non-N before the stop codon
+      if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3nlen_pv < 3) && ($ftr_3nlen_pv != $ftr_len) && 
+         (check_for_ambiguous_nts_in_sqstring(substr($rev_ftr_sqstring_pv, 0, 3)))) { 
+        printf("HEYA 3' pv loop entered, ftr_3nlen_pv initially $ftr_3nlen_pv ");
+        $ftr_3nlen_pv = 
+            utl_Min(3, $ftr_len) + 
+            count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_pv, 3));
+        printf("set to $ftr_3nlen_pv\n");
+      }
+      $ftr_stop_non_n_pv = ($ftr_3nlen_pv != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
 
       # output the sequence
       if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -13209,4 +13228,27 @@ sub count_terminal_Ns_in_sqstring {
     $ret_val = length($sqstring); 
   }
   return $ret_val;
+}
+
+#################################################################
+# Subroutine: check_for_ambiguous_nts_in_sqstring
+# Incept:     EPN, Tue Nov 23 13:00:16 2021
+# Purpose:    Return 1 if there are any characters except canonical
+#             upper or lowercase ACGTU in the input string, else
+#             return 0;
+#
+# Arguments:
+#  $sqstring:       sqstring to check
+#             
+# Returns:  '1' if any nts are ambiguous, '0' if not
+#
+#################################################################
+sub check_for_ambiguous_nts_in_sqstring {
+  my $sub_name = "check_for_ambiguous_nts_in_sqstring";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring) = (@_);
+
+  return ($sqstring =~ m/[^ACGTUacgtu]/) ? 1 : 0
 }
