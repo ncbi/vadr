@@ -5438,6 +5438,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
     # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
     my $ftr_5nlen    = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
+    my $ftr_5nstar   = 0; # '1' if first codon has ambiguity in it that may impact effective number of Ns at 5' end
     my $ftr_3nlen    = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
     my $ftr_5nlen_pv = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
     my $ftr_3nlen_pv = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
@@ -5566,12 +5567,23 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # determine the position of the first and final N or n in ftr_sqstring_alt and ftr_sqstring_pv
       # we use ftr_sqstring_alt values for alerts
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
+      $ftr_5nlen  = count_terminal_Ns_in_sqstring($ftr_sqstring_alt);
+      $ftr_5nstar = 0;
       my $pos_retval = undef;
-      $ftr_sqstring_alt =~ m/[^Nn]/g; 
-      $pos_retval = pos($ftr_sqstring_alt); # returns position of first non-N/n
-      # if $pos_retval is undef entire sqstring is N or n
-      $ftr_5nlen       = (defined $pos_retval) ? $pos_retval - 1 : $ftr_len;
-      $ftr_start_non_n = (defined $pos_retval) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
+      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen < 3) && ($ftr_5nlen != $ftr_len)) { 
+        my $ftr_sqstring_alt_start = substr($ftr_sqstring_alt, 0, 3);
+        $ftr_sqstring_alt_start =~ m/[^ACGTUacgtu]/g; 
+        $pos_retval = pos($ftr_sqstring_alt_start); # returns position of first ambiguity (non-ACGTU/acgtu)
+        # if $pos_retval is undef, entire start codon is ACGTU/acgtu (no ambiguities)
+        if(defined $pos_retval) { # we have an ambiguity in the start codon
+          printf("HEYA ambiguity in start codon, ftr_5nlen was $ftr_5nlen\n");
+          $ftr_5nlen  = count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
+          $ftr_5nlen += length($ftr_sqstring_alt_start);
+          printf("ftr_5nlen is now $ftr_5nlen\n");
+          $ftr_5nstar = 1;
+        }
+      }
+      $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
       if($ftr_5nlen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
         my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ((defined $pos_retval) ? $ftr_5nlen : $ftr_len), $FH_HR);
@@ -5849,6 +5861,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       $ftr_results_HR->{"n_5trunc"}         = $ftr_is_5trunc;
       $ftr_results_HR->{"n_3trunc"}         = $ftr_is_3trunc;
       $ftr_results_HR->{"n_5nlen"}          = $ftr_5nlen;
+      $ftr_results_HR->{"n_5nstar"}         = $ftr_5nstar;
       $ftr_results_HR->{"n_3nlen"}          = $ftr_3nlen;
       $ftr_results_HR->{"n_5nlen_pv"}       = $ftr_5nlen_pv;
       $ftr_results_HR->{"n_3nlen_pv"}       = $ftr_3nlen_pv;
@@ -13166,4 +13179,40 @@ sub pick_features_from_all_alternatives {
     }
   }
   return;
+}
+
+#################################################################
+# Subroutine: count_terminal_Ns_in_sqstring
+# Incept:     EPN, Tue Nov 23 11:21:38 2021
+# Purpose:    Count the number of terminal Ns at the beginning 
+#             of a sqstring and return it.
+#
+# Arguments:
+#  $sqstring:       sqstring to count Ns in
+#             
+# Returns:  number of Ns at beginning of $sqstring
+#
+#################################################################
+sub count_terminal_Ns_in_sqstring {
+  my $sub_name = "count_terminal_Ns_in_sqstring";
+  my $nargs_exp = 1;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($sqstring) = (@_);
+
+  #printf("in $sub_name, sqstring: $sqstring\n");
+
+  my $pos_retval = undef;
+  $sqstring =~ m/[^Nn]/g; 
+  $pos_retval = pos($sqstring); # returns position of first non-N/n or non-X/x
+
+  # if $pos_retval is undef entire sqstring is N/n
+  my $ret_val = undef;
+  if(defined $pos_retval) { 
+    $ret_val = ($pos_retval - 1);
+  }
+  else { 
+    $ret_val = length($sqstring); 
+  }
+  return $ret_val;
 }
