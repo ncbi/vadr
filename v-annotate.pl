@@ -5437,11 +5437,12 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
     my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
     # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
-    my $ftr_5nlen    = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
-    my $ftr_5nstar   = 0; # '1' if first codon has ambiguity in it that may impact effective number of Ns at 5' end
-    my $ftr_3nlen    = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
-    my $ftr_5nlen_pv = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
-    my $ftr_3nlen_pv = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
+    my $ftr_5nlen     = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
+    my $ftr_5nstar    = 0; # '1' if first codon has ambiguity in it that may impact effective number of Ns at 5' end
+    my $ftr_3nlen     = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
+    my $ftr_3nstar    = 0; # '1' if final codon has ambiguity in it that may impact effective number of Ns at 3' end
+    my $ftr_5nlen_pv  = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
+    my $ftr_3nlen_pv  = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
     my $ftr_start_non_n    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
     my $ftr_stop_non_n     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
     my $ftr_start_non_n_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is Ns
@@ -8845,11 +8846,8 @@ sub alert_add_ambgnt5s_ambgnt3s {
     if(($first_nt eq "N") || ($first_nt eq "n")) { 
       # determine first non-N
       $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name);  
-      $sqstring =~ m/[^Nn]/g; # returns position of first non-N/n
-      my $pos_retval = pos($sqstring);
-      # if $pos_retval is undef entire sqstring is N or n
-      my $first_non_n = (defined $pos_retval) ? $pos_retval : $seq_len;
-      my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(1, ($first_non_n-1), "+", $FH_HR) . ";";
+      my $nlen = count_terminal_Ns_in_sqstring($sqstring);
+      my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(1, $nlen, "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, 
                                   sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords), $FH_HR); 
@@ -8857,11 +8855,7 @@ sub alert_add_ambgnt5s_ambgnt3s {
     if(($final_nt eq "N") || ($final_nt eq "n")) { 
       if(! defined $sqstring) { $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name); }
       my $rev_sqstring = reverse($sqstring);
-      $rev_sqstring =~ m/[^Nn]/g; 
-      my $pos_retval = pos($rev_sqstring); # returns position of first non-N/n in reversed string
-      # if $pos_retval is undef entire sqstring is N or n
-      my $nlen  = (defined $pos_retval) ? ($pos_retval-1) : $seq_len;
-      my $first_non_n = $seq_len - $nlen;
+      my $nlen = count_terminal_Ns_in_sqstring($rev_sqstring);
       my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(($seq_len - $nlen + 1), $seq_len, "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, 
