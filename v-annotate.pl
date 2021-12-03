@@ -5581,6 +5581,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
          (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring_alt, 0, 3)))) { 
         printf("HEYA 5' alt loop entered, ftr_5nlen initially $ftr_5nlen ");
         my $codon_len = utl_Min(3, $ftr_len);
+        printf("ftr_sqstring_alt:            $ftr_sqstring_alt\n");
+        printf("substr(ftr_sqstring_alt, 3): " . substr($ftr_sqstring_alt, 3) . "\n");
         $ftr_5nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
         printf("set to $ftr_5nlen\n");
         my $ftr_codon_end = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $codon_len, $FH_HR);
@@ -5617,6 +5619,8 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
          (check_for_ambiguous_nts_in_sqstring(substr($rev_ftr_sqstring_alt, 0, 3)))) { 
         printf("HEYA 3' alt loop entered, ftr_3nlen initially $ftr_3nlen ");
         my $codon_len = utl_Min(3, $ftr_len);
+        printf("rev_ftr_sqstring_alt:            $rev_ftr_sqstring_alt\n");
+        printf("substr(rev_ftr_sqstring_alt, 3): " . substr($rev_ftr_sqstring_alt, 3) . "\n");
         $ftr_3nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_alt, 3));
         my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_codon_start, $ftr_stop, $ftr_strand, $FH_HR) . ";";
