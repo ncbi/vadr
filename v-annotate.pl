@@ -5431,12 +5431,16 @@ sub determine_frame_and_length_summary_strings {
   my $cur_length    = 0;
   my $save_ninsert  = 0; # number of inserts seen since last unexpected frame region
   my $ntok_added    = 0; # number of tokens added to return strings
+  my $ntok_added_open = 0; # number of tokens added since paranthesis was opened
 
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
   for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
     if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
       my ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
       printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
+      if($cur_frame != $prv_frame) { 
+        $cur_length = 0;
+      }
 
       $cur_length += abs($cur_sstop - $cur_sstart) + 1;
       if($cur_frame != $expected_frame) { 
@@ -5454,26 +5458,30 @@ sub determine_frame_and_length_summary_strings {
           $ret_frame_str  = "(" . $ret_frame_str;
           $ret_length_str = "(" . $ret_length_str;
           $open_flag = 0;
+          $ntok_added_open = 0;
         }
         if($f == $idx) { 
           $ret_frame_str  = ")" . $ret_frame_str;
           if($ntok_added > 0) { 
-            $ret_length_str = ")" . "," . $ret_length_str;
+            $ret_length_str = ")" . ":" . $ret_length_str;
           }
           else { 
             $ret_length_str = ")";
           }
           $open_flag = 1;
+          $ntok_added_open = 0;
         }
         $ret_frame_str = $cur_frame  . $ret_frame_str;
-        if((! $open_flag) && ($ntok_added > 0)) { 
-          $ret_length_str = $cur_length . "," . $ret_length_str;
+        if(((! $open_flag) || ($ntok_added_open > 0)) && ($ntok_added > 0)) { 
+          $ret_length_str = $cur_length . ":" . $ret_length_str;
         }
         else { 
           $ret_length_str = $cur_length . $ret_length_str;
         }
         $ntok_added++;
-        $cur_length = 0;
+        if($open_flag) { 
+          $ntok_added_open++;
+        }
       }
       $prv_frame = $cur_frame;
     }
