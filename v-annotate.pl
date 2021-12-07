@@ -5189,9 +5189,10 @@ sub add_frameshift_alerts_for_one_sequence {
                     }
 
                     # determine frame summary string 
-                    my $frame_sum_str = determine_frame_summary_string(\@frame_mtok_A, 
-                                                                       (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) ? $f : ($f-1),
-                                                                       $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR);
+                    my ($frame_sum_str, $length_sum_str) = 
+                        determine_frame_and_length_summary_strings(\@frame_stok_A, 
+                                                                   (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) ? $f : ($f-1),
+                                                                   $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR);
 
                     if($do_glsearch) { # we don't have PP values, so all frameshifts are treated equally
                       my $alt_code = ($is_terminal) ? "fstukcft" : "fstukcfi";
@@ -5199,10 +5200,10 @@ sub add_frameshift_alerts_for_one_sequence {
                       my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($shifted_span_mstart), abs($shifted_span_mstop), $ftr_strand, $FH_HR) . ";";
                       my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                       my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
-                      $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
-                      $alt_str .= sprintf(" cause:%s", $causative_indel_str);
+                      $alt_str .= sprintf("cause:%s", $causative_indel_str);
                       if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                       $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
+                      $alt_str .= sprintf(" length:%s;", $length_sum_str);
                       if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                       push(@cds_alt_str_A, $alt_str);
@@ -5234,10 +5235,10 @@ sub add_frameshift_alerts_for_one_sequence {
                         my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate(abs($shifted_span_mstart), abs($shifted_span_mstop), $ftr_strand, $FH_HR) . ";";
                         my $alt_scoords = "seq:" . $alt_scoords_tok . ";";
                         my $alt_str  = sprintf("%s%s", $alt_scoords, $alt_mcoords);
-                        $alt_str .= sprintf("length:%d;", vdr_CoordsLength($alt_scoords_tok, $FH_HR));
-                        $alt_str .= sprintf(" cause:%s", $causative_indel_str);
+                        $alt_str .= sprintf("cause:%s", $causative_indel_str);
                         if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                         $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
+                        $alt_str .= sprintf(" length:%s;", $length_sum_str);
                         $alt_str .= sprintf(" shifted_avgpp:%.3f;", $shifted_span_avgpp);
                         $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
                         if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
@@ -5386,72 +5387,139 @@ sub add_frameshift_alerts_for_one_sequence {
 }
 
 #################################################################
-# Subroutine:  determine_frame_summary_string()
+# Subroutine:  determine_frame_and_length_summary_strings()
 # Incept:      EPN, Mon Nov 15 12:54:06 2021
 #
-# Purpose:     Determine a string that summarizes a frameshift 
-#              within the context of frames of all subseqs in a
-#              CDS.
+# Purpose:     Determine a string (<$frame_str>) that summarizes a
+#              frameshift within the context of frames of all subseqs
+#              in a CDS, and another string (<$length_str>) that
+#              summarizes the lengths of each region in a different
+#              frame
 #
-#              Examples: 
-#              non-truncated CDS w/internal frameshift in frame 2:      "1(2)1"
-#              5' truncated CDS that starts in frame 2 and shifts to 3: "<2(3)"
-#              same as above but also 3' truncated:                     "<2(3)>"
+#              Examples:                                                frame_str  length_str
+#              non-truncated CDS w/internal frameshift in frame 2:      "1(2)1"    "21,(13),102"
+#              5' truncated CDS that starts in frame 2 and shifts to 3: "<2(3)"    "<102,(43)"
+#              same as above but also 3' truncated:                     "<2(3)>"   "<102,(43)>"
 #
 # Arguments: 
-#  $frame_mtok_AR:      reference to array of tokens of model subregions in different frames
-#  $idx:                index of frameshifted subregion in $frame_mtok_AR
+#  $frame_stok_AR:      reference to array of tokens of sequence subregions in different frames
+#  $idx:                index of frameshifted subregion in $frame_stok_AR
 #  $expected_frame:     expected frame, shifted regions are not in this frame
 #  $is_5p_trunc:        '1' if the relevant CDS is truncated on 5' end, 0 if not
 #  $is_3p_trunc:        '1' if the relevant CDS is truncated on 3' end, 0 if not
 #  $FH_HR:              ref to file handle hash
 # 
-# Returns:     string describing frameshifted region in context of full CDS
+# Returns:     Two values:
+#              $frame_str:  string describing frameshifted region in context of full CDS
+#              $length_str: string describing length of frameshifted region in context of full CDS
 #
-# Dies: if unable to parse a token of @{$frame_mtok_AR}
+# Dies: if unable to parse a token of @{$frame_stok_AR}
 #
 ################################################################# 
-sub determine_frame_summary_string {
-  my $sub_name = "determine_frame_summary_string";
+sub determine_frame_and_length_summary_strings {
+  my $sub_name = "determine_frame_and_length_summary_strings";
   my $nargs_expected = 6;
   if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
 
-  my ($frame_mtok_AR, $idx, $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR) = @_;
+  my ($frame_stok_AR, $idx, $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR) = @_;
 
-  my $nframe_mtok = scalar(@{$frame_mtok_AR});
+  my $nframe_stok = scalar(@{$frame_stok_AR});
   # start with '>' if 5' truncated
-  my $ret_str = ($is_3p_trunc) ? ">" : "";
-  my $cur_frame = undef;
-  my $prv_frame = undef;
-  my $open_flag = 0; # set to '1' when we open the frameshifted region with ')'
+  my $ret_frame_str = ($is_3p_trunc) ? ">" : "";
+  my $cur_frame     = undef;
+  my $prv_frame     = undef;
+  my $open_flag     = 0; # set to '1' when we open the frameshifted region with ')'
+  my $length_flag   = 0; # set to '1' when we next length added to @length_str_A should be in ()
+  my $ntok_added    = 0;
+  my $cur_length    = 0;
+  my $prv_sstart    = undef;
+
+  my @length_str_A = ();
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
-  for(my $f = ($nframe_mtok-1); $f >= 0; $f--) { 
-    if($frame_mtok_AR->[$f] =~ /^([123])\:\d+\-\d+\!*/) { 
-      my ($cur_frame) = ($1);
+  for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
+    if($frame_stok_AR->[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
+      my ($cur_frame, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
+      printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
+      
+      if((defined $prv_frame) && ($prv_frame != $expected_frame) && ($cur_frame != $prv_frame)) { 
+        # add inserts between this region and prv region (which is 3' of this region bc we are going backwards)
+        $cur_length += abs($cur_sstop - $prv_sstart) - 1;
+        printf("1 adding to cur_length, now $cur_length\n");
+      }
+      if($f != ($nframe_stok-1)) { 
+        printf("pushing to length_str_A, $cur_length\n");
+        if($length_flag) { 
+          push(@length_str_A, "(" . $cur_length . ")");
+          $length_flag = 0;
+        }
+        else { 
+          push(@length_str_A, $cur_length);
+        }
+      }
+      
+      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
+        if(($cur_frame != $expected_frame) && (defined $prv_sstart)) { 
+          $cur_length = abs($cur_sstop - $prv_sstart) - 1;
+        }
+        else { 
+          $cur_length = 0; 
+        }
+        printf("cur_length set to $cur_length\n");
+        # add inserts prior to this region if we are expected frame only
+        # otherwise we added them to previous region length above
+      }
+         
+      $cur_length += abs($cur_sstop - $cur_sstart) + 1;
+      printf("2 adding to cur_length, now $cur_length\n");
       if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
         # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
         if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
-          $ret_str = "(" . $ret_str;
+          $ret_frame_str  = "(" . $ret_frame_str;
           $open_flag = 0;
         }
         if($f == $idx) { 
-          $ret_str = ")" . $ret_str;
+          $ret_frame_str  = ")" . $ret_frame_str;
           $open_flag = 1;
+          $length_flag = 1;
         }
-        $ret_str = $cur_frame . $ret_str;
+        $ret_frame_str  = $cur_frame . $ret_frame_str;
+        $ntok_added++;
       }
-      $prv_frame = $cur_frame;
+      $prv_frame  = $cur_frame;
+      $prv_sstart = $cur_sstart;
     }
     else { 
-      ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: " . $frame_mtok_AR->[$f], 1, $FH_HR);
+      ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: " . $frame_stok_AR->[$f], 1, $FH_HR);
     }
   }
-  # prepend '<' if 5' truncated
-  if($is_5p_trunc) { 
-    $ret_str = "<" . $ret_str;
+  # push final region to length
+  if($length_flag) { 
+    push(@length_str_A, "(" . $cur_length . ")");
+    $length_flag = 0;
+  }
+  else { 
+    push(@length_str_A, $cur_length);
   }
 
-  return $ret_str;
+  # prepend '<' if 5' truncated
+  if($is_5p_trunc) { 
+    $ret_frame_str  = "<" . $ret_frame_str;
+  }
+
+  # create ret_length_str
+  my $ret_length_str = ($is_5p_trunc) ? "<" : "";
+  my $nlen = scalar(@length_str_A);
+  for(my $l = ($nlen-1); $l >= 0; $l--) { 
+    if($l != ($nlen-1)) { 
+      $ret_length_str .= ","; 
+    }
+    $ret_length_str .= $length_str_A[$l];
+  }
+  if($is_3p_trunc) { 
+    $ret_length_str .= ">";
+  }
+  
+  return ($ret_frame_str, $ret_length_str);
 }
 
 #################################################################
