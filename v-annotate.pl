@@ -4898,13 +4898,15 @@ sub add_frameshift_alerts_for_one_sequence {
                   # frame changed, 
                   # first complete the previous frame 'token' that described the contiguous subsequence that was in the previous frame
                   if(defined $F_prv) { 
-                    $frame_stok_str .= $uapos_prv . "[" . (abs($rfpos - $rfpos_prv) - 1) . "];"; 
-                    $frame_mtok_str .= $rfpos_prv . ";"
+                    $frame_stok_str .= $uapos_prv . "," . "D" . (abs($rfpos - $rfpos_prv) - 1) . ",0;"; # 0: not end of segment
+                    $frame_mtok_str .= $rfpos_prv . ",0;" # 0: not end of segment
                     # (($rfpos-$rfpos_prv)-1) part is number of deleted reference positions we just covered
                   } 
                   # and begin the next frame 'token' that will describe the contiguous subsequence that is in the previous frame
-                  $frame_stok_str .= $F_cur . ":" . $uapos . "-";
-                  $frame_mtok_str .= $F_cur . ":" . $rfpos . "-";
+                  my $nins = (defined $F_prv) ? (abs($uapos - $uapos_prv) - 1) : 0;
+                  my $ins_str = "I" . $nins;
+                  $frame_stok_str .= $F_cur . "," . $ins_str . "," . $uapos . "..";
+                  $frame_mtok_str .= $F_cur . "," . $rfpos . "..";
                 }
                 $uapos_prv = $uapos;
                 $rfpos_prv = $rfpos;
@@ -4963,15 +4965,9 @@ sub add_frameshift_alerts_for_one_sequence {
               else               { $rfpos--; }
             }
             # complete final frame token
-            ########## ORIG
-            #$frame_stok_str .= $uapos . "[0]!;"; # the '!' indicates the end of a segment
-            #$frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? $rfpos-1 : $rfpos+1)); # we already incremented/decremented rfpos for next segment
-            ########## ORIG
-
             my $nterm_del = (abs($rfpos - $rfpos_prv) - 1);
-            $frame_stok_str .= $uapos . "[" . $nterm_del . "]!;"; # the '!' indicates the end of a segment
-            printf("HEYAA rfpos: $rfpos, rfpos_prv: $rfpos_prv\n");
-            $frame_mtok_str .= sprintf("%d!;", (($strand eq "+") ? ($rfpos - $nterm_del - 1) : ($rfpos + $nterm_del + 1))); # we already incremented/decremented rfpos for next segment
+            $frame_stok_str .= $uapos . "," . "D" . $nterm_del . ",1;"; # the '1' indicates the end of a segment
+            $frame_mtok_str .= sprintf("%d,1;", (($strand eq "+") ? ($rfpos - $nterm_del - 1) : ($rfpos + $nterm_del + 1))); # we already incremented/decremented rfpos for next segment
 
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
@@ -5021,12 +5017,12 @@ sub add_frameshift_alerts_for_one_sequence {
         # when first region is very short and we're 5' truncated (when we are 5' truncated we are not 
         # as confident about what the expected frame is b/c we don't have a start codon)
         my $first_span_slen = undef;
-        if($frame_stok_A[0] =~ /[123]\:(\d+)\-(\d+)\[\d+\]\!*/) { 
+        if($frame_stok_A[0] =~ /^[123],I\d+,(\d+)\.\.(\d+),D\d+\,[01]$/) { 
           my ($first_sstart, $first_sstop) = ($1, $2); 
           $first_span_slen = abs($first_sstop - $first_sstart) + 1;
         }
         else { 
-          ofile_FAIL("ERROR, in $sub_name, unable to parse frame_mtok, internal coding error: $frame_mtok_A[0]", 1, $FH_HR);
+          ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[0]", 1, $FH_HR);
         }
         my $is_5p_trunc = $sgm_results_HAHR->{$seq_name}[$first_sgm_idx]{"5trunc"};
         my $is_3p_trunc = $sgm_results_HAHR->{$seq_name}[$final_sgm_idx]{"3trunc"};
@@ -5060,8 +5056,8 @@ sub add_frameshift_alerts_for_one_sequence {
           for($f = 0; $f < $nframe_stok; $f++) { 
             printf("f: $f frame_stok: %s\n", $frame_stok_A[$f]);
             printf("f: $f frame_mtok: %s\n", $frame_mtok_A[$f]);
-            if($frame_stok_A[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
-              my ($cur_frame,  $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
+            if($frame_stok_A[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
+              my ($cur_frame,  $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
               my ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend);
               # add to growing list of inserts, if nec
               # we do this before we report an alert because insert info 
@@ -5069,7 +5065,7 @@ sub add_frameshift_alerts_for_one_sequence {
               # we add to delete info *after* we report an alert because delete
               # info in this frame token is relevant to the next alert we may report
               
-              if($frame_mtok_A[$f] =~ /([123])\:(\d+)\-(\d+)(\!*)/) { 
+              if($frame_mtok_A[$f] =~ /^([123])\,(\d+)\.\.(\d+)\,([01])$/) { 
                 ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend) = ($1, $2, $3, $4);
                 if($cur_frame != $cur_mframe) { 
                   ofile_FAIL("ERROR, in $sub_name, different frame in sequence and model frame tokens, internal coding error:\nstok:$frame_stok_A[$f]\nmtok:$frame_mtok_A[$f]", 1, $FH_HR);
@@ -5293,7 +5289,7 @@ sub add_frameshift_alerts_for_one_sequence {
               $prv_sstop = $cur_sstop;
               $prv_mstop = $cur_mstop;
               $prv_frame = $cur_frame;
-              $prv_tok_sgm_end_flag = ($cur_sgmend eq "!") ? 1 : 0;
+              $prv_tok_sgm_end_flag = $cur_sgmend;
             } # end if statement that parses $frame_stok_A[$f]
             else { 
               ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: $frame_stok_A[$f]", 1, $FH_HR);
@@ -5386,6 +5382,8 @@ sub add_frameshift_alerts_for_one_sequence {
   return;
 }
 
+
+
 #################################################################
 # Subroutine:  determine_frame_and_length_summary_strings()
 # Incept:      EPN, Mon Nov 15 12:54:06 2021
@@ -5425,100 +5423,70 @@ sub determine_frame_and_length_summary_strings {
 
   my $nframe_stok = scalar(@{$frame_stok_AR});
   # start with '>' if 5' truncated
-  my $ret_frame_str = ($is_3p_trunc) ? ">" : "";
+  my $ret_frame_str  = ($is_3p_trunc) ? ">" : "";
+  my $ret_length_str = ($is_3p_trunc) ? ">" : "";
   my $cur_frame     = undef;
   my $prv_frame     = undef;
   my $open_flag     = 0; # set to '1' when we open the frameshifted region with ')'
-  my $length_flag   = 0; # set to '1' when we next length added to @length_str_A should be in ()
-  my $ntok_added    = 0;
   my $cur_length    = 0;
-  my $prv_sstart    = undef;
+  my $save_ninsert  = 0; # number of inserts seen since last unexpected frame region
+  my $ntok_added    = 0; # number of tokens added to return strings
 
-  my @length_str_A = ();
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
   for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
-    if($frame_stok_AR->[$f] =~ /([123])\:(\d+)\-(\d+)\[(\d+)\](\!*)/) { 
-      my ($cur_frame, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5); 
+    if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
+      my ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
       printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
-      
-      if((defined $prv_frame) && ($prv_frame != $expected_frame) && ($cur_frame != $prv_frame)) { 
-        # add inserts between this region and prv region (which is 3' of this region bc we are going backwards)
-        $cur_length += abs($cur_sstop - $prv_sstart) - 1;
-        printf("1 adding to cur_length, now $cur_length\n");
-      }
-      if($f != ($nframe_stok-1)) { 
-        printf("pushing to length_str_A, $cur_length\n");
-        if($length_flag) { 
-          push(@length_str_A, "(" . $cur_length . ")");
-          $length_flag = 0;
-        }
-        else { 
-          push(@length_str_A, $cur_length);
-        }
-      }
-      
-      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
-        if(($cur_frame != $expected_frame) && (defined $prv_sstart)) { 
-          $cur_length = abs($cur_sstop - $prv_sstart) - 1;
-        }
-        else { 
-          $cur_length = 0; 
-        }
-        printf("cur_length set to $cur_length\n");
-        # add inserts prior to this region if we are expected frame only
-        # otherwise we added them to previous region length above
-      }
-         
+
       $cur_length += abs($cur_sstop - $cur_sstart) + 1;
-      printf("2 adding to cur_length, now $cur_length\n");
+      if($cur_frame != $expected_frame) { 
+        $cur_length += $cur_ninsert;
+        $cur_length += $save_ninsert;
+        $save_ninsert = 0;
+      }
+      else { # $cur_frame == $expected_frame
+        $save_ninsert += $cur_ninsert;
+      }
+
       if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
         # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
         if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
           $ret_frame_str  = "(" . $ret_frame_str;
+          $ret_length_str = "(" . $ret_length_str;
           $open_flag = 0;
         }
         if($f == $idx) { 
           $ret_frame_str  = ")" . $ret_frame_str;
+          if($ntok_added > 0) { 
+            $ret_length_str = ")" . "," . $ret_length_str;
+          }
+          else { 
+            $ret_length_str = ")";
+          }
           $open_flag = 1;
-          $length_flag = 1;
         }
-        $ret_frame_str  = $cur_frame . $ret_frame_str;
+        $ret_frame_str = $cur_frame  . $ret_frame_str;
+        if((! $open_flag) && ($ntok_added > 0)) { 
+          $ret_length_str = $cur_length . "," . $ret_length_str;
+        }
+        else { 
+          $ret_length_str = $cur_length . $ret_length_str;
+        }
         $ntok_added++;
+        $cur_length = 0;
       }
-      $prv_frame  = $cur_frame;
-      $prv_sstart = $cur_sstart;
+      $prv_frame = $cur_frame;
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: " . $frame_stok_AR->[$f], 1, $FH_HR);
     }
   }
-  # push final region to length
-  if($length_flag) { 
-    push(@length_str_A, "(" . $cur_length . ")");
-    $length_flag = 0;
-  }
-  else { 
-    push(@length_str_A, $cur_length);
-  }
-
   # prepend '<' if 5' truncated
   if($is_5p_trunc) { 
     $ret_frame_str  = "<" . $ret_frame_str;
+    $ret_length_str = "<" . $ret_length_str;
   }
 
-  # create ret_length_str
-  my $ret_length_str = ($is_5p_trunc) ? "<" : "";
-  my $nlen = scalar(@length_str_A);
-  for(my $l = ($nlen-1); $l >= 0; $l--) { 
-    if($l != ($nlen-1)) { 
-      $ret_length_str .= ","; 
-    }
-    $ret_length_str .= $length_str_A[$l];
-  }
-  if($is_3p_trunc) { 
-    $ret_length_str .= ">";
-  }
-  
   return ($ret_frame_str, $ret_length_str);
 }
 
