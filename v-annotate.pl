@@ -5437,14 +5437,14 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
     my $pv_ftr_ofile_key = $mdl_name . ".pfa." . $ftr_idx . ".pv";
     my $ftr_results_HR = \%{$ftr_results_HAHR->{$seq_name}[$ftr_idx]}; # for convenience
     # printf("in $sub_name, set ftr_results_HR to ftr_results_HAHR->{$seq_name}[$ftr_idx]\n");
-    my $ftr_5nlen     = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0)
-    my $ftr_3nlen     = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0)
-    my $ftr_5nlen_pv  = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are Ns (commonly 0) in protein validation sqstring
-    my $ftr_3nlen_pv  = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are Ns (commonly 0) in protein validation sqstring
-    my $ftr_start_non_n    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is Ns
-    my $ftr_stop_non_n     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is Ns
-    my $ftr_start_non_n_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is Ns
-    my $ftr_stop_non_n_pv  = undef; # sequence position of first non-N on 3' end in protein validation sqstring, commonly $ftr_stop, -1 if complete feature is Ns
+    my $ftr_5ablen     = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are ambiguous (commonly 0)
+    my $ftr_3ablen     = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are ambiguous (commonly 0)
+    my $ftr_5ablen_pv  = 0; # number of consecutive nt starting at ftr_start (on 5' end) that are ambiguous (commonly 0) in protein validation sqstring
+    my $ftr_3ablen_pv  = 0; # number of consecutive nt ending   at ftr_stop  (on 3' end) that are ambiguous (commonly 0) in protein validation sqstring
+    my $ftr_start_non_ab    = undef; # sequence position of first non-N on 5' end, commonly $ftr_start, -1 if complete feature is ambiguities
+    my $ftr_stop_non_ab     = undef; # sequence position of first non-N on 3' end, commonly $ftr_stop, -1 if complete feature is ambiguities
+    my $ftr_start_non_ab_pv = undef; # sequence position of first non-N on 5' end in protein validation sqstring, commonly $ftr_start, -1 if complete feature is ambiguities
+    my $ftr_stop_non_ab_pv  = undef; # sequence position of first non-N on 3' end in protein validation sqstring, commonly $ftr_stop, -1 if complete feature is ambiguities
     my $ftr_scoords = undef; # coords string with sequence coordinates of all segments of the feature
     my $ftr_mcoords = undef; # coords string with model    coordinates of all segments of the feature
 
@@ -5566,10 +5566,10 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # determine the position of the first and final N or n in ftr_sqstring_alt and ftr_sqstring_pv
       # we use ftr_sqstring_alt values for alerts
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
-      $ftr_5nlen  = count_terminal_Ns_in_sqstring($ftr_sqstring_alt);
-      if($ftr_5nlen != 0) { 
+      $ftr_5ablen  = count_terminal_ambiguities_in_sqstring($ftr_sqstring_alt);
+      if($ftr_5ablen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt5c" : "ambgnt5f";
-        my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $ftr_5nlen, $FH_HR);
+        my $ftr_final_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $ftr_5ablen, $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_final_n, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_final_n]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
@@ -5577,73 +5577,73 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
 
       # Exception: if CDS is complete on 5' end, and has ambiguities in start codon, count the start codon as 3 Ns, 
       # and find first non-N after the start codon
-      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen < 3) && ($ftr_5nlen != $ftr_len) && 
+      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5ablen < 3) && ($ftr_5ablen != $ftr_len) && 
          (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring_alt, 0, 3)))) { 
-        printf("HEYA 5' alt loop entered, ftr_5nlen initially $ftr_5nlen ");
+        printf("HEYA 5' alt loop entered, ftr_5ablen initially $ftr_5ablen ");
         my $codon_len = utl_Min(3, $ftr_len);
         printf("ftr_sqstring_alt:            $ftr_sqstring_alt\n");
         printf("substr(ftr_sqstring_alt, 3): " . substr($ftr_sqstring_alt, 3) . "\n");
-        $ftr_5nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($ftr_sqstring_alt, 3));
-        printf("set to $ftr_5nlen\n");
+        $ftr_5ablen = $codon_len + count_terminal_ambiguities_in_sqstring(substr($ftr_sqstring_alt, 3));
+        printf("set to $ftr_5ablen\n");
         my $ftr_codon_end = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $codon_len, $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_codon_end, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_codon_end]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{"ambgcd5c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
-      $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
+      $ftr_start_non_ab = ($ftr_5ablen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5ablen + 1), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
-      $ftr_5nlen_pv = count_terminal_Ns_in_sqstring($ftr_sqstring_pv);
+      $ftr_5ablen_pv = count_terminal_ambiguities_in_sqstring($ftr_sqstring_pv);
       # Exception: if CDS is complete on 5' end, and has ambiguities in start codon, count the start codon as 3 Ns, 
       # and find first non-N after the start codon
-      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5nlen_pv < 3) && ($ftr_5nlen_pv != $ftr_len) && 
+      if(($ftr_is_cds) && (! $ftr_is_5trunc) && ($ftr_5ablen_pv < 3) && ($ftr_5ablen_pv != $ftr_len) && 
          (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring_pv, 0, 3)))) { 
-        $ftr_5nlen_pv = 
+        $ftr_5ablen_pv = 
             utl_Min(3, $ftr_len) + 
-            count_terminal_Ns_in_sqstring(substr($ftr_sqstring_pv, 3));
+            count_terminal_ambiguities_in_sqstring(substr($ftr_sqstring_pv, 3));
       }
-      $ftr_start_non_n_pv = ($ftr_5nlen_pv != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen_pv + 1), $FH_HR) : -1;
+      $ftr_start_non_ab_pv = ($ftr_5ablen_pv != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5ablen_pv + 1), $FH_HR) : -1;
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
-      $ftr_3nlen  = count_terminal_Ns_in_sqstring($rev_ftr_sqstring_alt);
-      if($ftr_3nlen != 0) { 
+      $ftr_3ablen  = count_terminal_ambiguities_in_sqstring($rev_ftr_sqstring_alt);
+      if($ftr_3ablen != 0) { 
         my $ambg_alt = ($ftr_is_cds) ? "ambgnt3c" : "ambgnt3f";
-        my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen + 1), $FH_HR);
+        my $ftr_first_n = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3ablen + 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_first_n, $ftr_stop, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_first_n]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{$ambg_alt} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
       }
       # Exception: if CDS is complete on 3' end, and has ambiguities in stop codon, count the stop codon as 3 Ns, 
       # and find final non-N before the stop codon
-      if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3nlen < 3) && ($ftr_3nlen != $ftr_len) && 
+      if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3ablen < 3) && ($ftr_3ablen != $ftr_len) && 
          (check_for_ambiguous_nts_in_sqstring(substr($rev_ftr_sqstring_alt, 0, 3)))) { 
-        printf("HEYA 3' alt loop entered, ftr_3nlen initially $ftr_3nlen ");
+        printf("HEYA 3' alt loop entered, ftr_3ablen initially $ftr_3ablen ");
         my $codon_len = utl_Min(3, $ftr_len);
         printf("rev_ftr_sqstring_alt:            $rev_ftr_sqstring_alt\n");
         printf("substr(rev_ftr_sqstring_alt, 3): " . substr($rev_ftr_sqstring_alt, 3) . "\n");
-        $ftr_3nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_alt, 3));
+        $ftr_3ablen = $codon_len + count_terminal_ambiguities_in_sqstring(substr($rev_ftr_sqstring_alt, 3));
         my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);
         $alt_scoords  = "seq:" . vdr_CoordsSegmentCreate($ftr_codon_start, $ftr_stop, $ftr_strand, $FH_HR) . ";";
         $alt_mcoords  = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_codon_start]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
         $alt_str_H{"ambgcd3c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
-        printf("set to $ftr_3nlen\n");
+        printf("set to $ftr_3ablen\n");
       }
-      $ftr_stop_non_n = ($ftr_3nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
+      $ftr_stop_non_ab = ($ftr_3ablen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3ablen), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
-      $ftr_3nlen_pv = count_terminal_Ns_in_sqstring($rev_ftr_sqstring_pv);
+      $ftr_3ablen_pv = count_terminal_ambiguities_in_sqstring($rev_ftr_sqstring_pv);
       # Exception: if CDS is complete on 3' end, and has ambiguities in stop codon, count the stop codon as 3 Ns, 
       # and find final non-N before the stop codon
-      if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3nlen_pv < 3) && ($ftr_3nlen_pv != $ftr_len) && 
+      if(($ftr_is_cds) && (! $ftr_is_3trunc) && ($ftr_3ablen_pv < 3) && ($ftr_3ablen_pv != $ftr_len) && 
          (check_for_ambiguous_nts_in_sqstring(substr($rev_ftr_sqstring_pv, 0, 3)))) { 
-        printf("HEYA 3' pv loop entered, ftr_3nlen_pv initially $ftr_3nlen_pv ");
-        $ftr_3nlen_pv = 
+        printf("HEYA 3' pv loop entered, ftr_3ablen_pv initially $ftr_3ablen_pv ");
+        $ftr_3ablen_pv = 
             utl_Min(3, $ftr_len) + 
-            count_terminal_Ns_in_sqstring(substr($rev_ftr_sqstring_pv, 3));
-        printf("set to $ftr_3nlen_pv\n");
+            count_terminal_ambiguities_in_sqstring(substr($rev_ftr_sqstring_pv, 3));
+        printf("set to $ftr_3ablen_pv\n");
       }
-      $ftr_stop_non_n_pv = ($ftr_3nlen_pv != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen_pv), $FH_HR) : -1;
+      $ftr_stop_non_ab_pv = ($ftr_3ablen_pv != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3ablen_pv), $FH_HR) : -1;
 
       # output the sequence
       if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -5877,23 +5877,23 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       } # end of 'if($ftr_is_mp && ($ftr_info_AHR->[$ftr_idx]{"3pa_ftr_idx"} != -1))'
 
       # update %ftr_results_HR
-      $ftr_results_HR->{"n_strand"}         = $ftr_strand;
-      $ftr_results_HR->{"n_start"}          = $ftr_start;
-      $ftr_results_HR->{"n_stop"}           = $ftr_stop;
-      $ftr_results_HR->{"n_stop_c"}         = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
-      $ftr_results_HR->{"n_5trunc"}         = $ftr_is_5trunc;
-      $ftr_results_HR->{"n_3trunc"}         = $ftr_is_3trunc;
-      $ftr_results_HR->{"n_5nlen"}          = $ftr_5nlen;
-      $ftr_results_HR->{"n_3nlen"}          = $ftr_3nlen;
-      $ftr_results_HR->{"n_5nlen_pv"}       = $ftr_5nlen_pv;
-      $ftr_results_HR->{"n_3nlen_pv"}       = $ftr_3nlen_pv;
-      $ftr_results_HR->{"n_start_non_n"}    = $ftr_start_non_n;
-      $ftr_results_HR->{"n_stop_non_n"}     = $ftr_stop_non_n;
-      $ftr_results_HR->{"n_start_non_n_pv"} = $ftr_start_non_n_pv;
-      $ftr_results_HR->{"n_stop_non_n_pv"}  = $ftr_stop_non_n_pv;
-      $ftr_results_HR->{"n_len"}            = $ftr_len;
-      $ftr_results_HR->{"n_scoords"}        = $ftr_scoords;
-      $ftr_results_HR->{"n_mcoords"}        = $ftr_mcoords;
+      $ftr_results_HR->{"n_strand"}          = $ftr_strand;
+      $ftr_results_HR->{"n_start"}           = $ftr_start;
+      $ftr_results_HR->{"n_stop"}            = $ftr_stop;
+      $ftr_results_HR->{"n_stop_c"}          = (defined $ftr_stop_c) ? $ftr_stop_c : $ftr_stop;
+      $ftr_results_HR->{"n_5trunc"}          = $ftr_is_5trunc;
+      $ftr_results_HR->{"n_3trunc"}          = $ftr_is_3trunc;
+      $ftr_results_HR->{"n_5ablen"}          = $ftr_5ablen;
+      $ftr_results_HR->{"n_3ablen"}          = $ftr_3ablen;
+      $ftr_results_HR->{"n_5ablen_pv"}       = $ftr_5ablen_pv;
+      $ftr_results_HR->{"n_3ablen_pv"}       = $ftr_3ablen_pv;
+      $ftr_results_HR->{"n_start_non_ab"}    = $ftr_start_non_ab;
+      $ftr_results_HR->{"n_stop_non_ab"}     = $ftr_stop_non_ab;
+      $ftr_results_HR->{"n_start_non_ab_pv"} = $ftr_start_non_ab_pv;
+      $ftr_results_HR->{"n_stop_non_ab_pv"}  = $ftr_stop_non_ab_pv;
+      $ftr_results_HR->{"n_len"}             = $ftr_len;
+      $ftr_results_HR->{"n_scoords"}         = $ftr_scoords;
+      $ftr_results_HR->{"n_mcoords"}         = $ftr_mcoords;
     } # end of 'if($ftr_len > 0)'
   } # end of 'for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { '
   
@@ -6509,8 +6509,8 @@ sub add_protein_validation_alerts {
           my $n_stop         = undef; # predicted stop   from CM 
           my $n_strand       = undef; # predicted strand from CM 
           my $n_len          = undef; # predicted length from CM (summed over all segments)
-          my $n_5nlen_pv     = undef; # number of Ns at 5' end of CDS
-          my $n_3nlen_pv     = undef; # number of Ns at 3' end of CDS
+          my $n_5ablen_pv    = undef; # number of ambiguities at 5' end of CDS
+          my $n_3ablen_pv    = undef; # number of ambiguities at 3' end of CDS
           my $n_scoords      = undef; # coordinates of nucleotide prediction in sequence positions
           my $n_mcoords      = undef; # coordinates of nucleotide prediction in model positions
           my $p_qstart       = undef; # predicted query start from blastx
@@ -6541,12 +6541,12 @@ sub add_protein_validation_alerts {
           my $alt_mcoords = undef; # model coords for an alert
           
           if(defined $ftr_results_HR->{"n_start"}) { 
-            $n_start    = $ftr_results_HR->{"n_start"};
-            $n_stop     = $ftr_results_HR->{"n_stop"};
-            $n_strand   = $ftr_results_HR->{"n_strand"};
-            $n_len      = $ftr_results_HR->{"n_len"};
-            $n_5nlen_pv = $ftr_results_HR->{"n_5nlen_pv"};
-            $n_3nlen_pv = $ftr_results_HR->{"n_3nlen_pv"};
+            $n_start     = $ftr_results_HR->{"n_start"};
+            $n_stop      = $ftr_results_HR->{"n_stop"};
+            $n_strand    = $ftr_results_HR->{"n_strand"};
+            $n_len       = $ftr_results_HR->{"n_len"};
+            $n_5ablen_pv = $ftr_results_HR->{"n_5ablen_pv"};
+            $n_3ablen_pv = $ftr_results_HR->{"n_3ablen_pv"};
             if(defined $ftr_results_HR->{"n_scoords"}) { $n_scoords = $ftr_results_HR->{"n_scoords"}; }
             if(defined $ftr_results_HR->{"n_mcoords"}) { $n_mcoords = $ftr_results_HR->{"n_mcoords"}; }
           }
@@ -6617,8 +6617,8 @@ sub add_protein_validation_alerts {
 
               if($do_cds_trim) { 
                 # adjust the tolerance to allow the Ns at the ends to be missed by the protein validation step
-                $cur_5aln_tol += $n_5nlen_pv;
-                $cur_3aln_tol += $n_3nlen_pv;
+                $cur_5aln_tol += $n_5ablen_pv;
+                $cur_3aln_tol += $n_3ablen_pv;
                 # if the tolerance is within 3 of the full length, reset it to the default
                 if($cur_5aln_tol >= ($n_len - 3)) { 
                   $cur_5aln_tol = $aln_tol;
@@ -8868,7 +8868,7 @@ sub alert_add_ambgnt5s_ambgnt3s {
     if(($first_nt eq "N") || ($first_nt eq "n")) { 
       # determine first non-N
       $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name);  
-      my $nlen = count_terminal_Ns_in_sqstring($sqstring);
+      my $nlen = count_terminal_ambiguities_in_sqstring($sqstring);
       my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(1, $nlen, "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt5s", $seq_name, 
@@ -8877,7 +8877,7 @@ sub alert_add_ambgnt5s_ambgnt3s {
     if(($final_nt eq "N") || ($final_nt eq "n")) { 
       if(! defined $sqstring) { $sqstring = $$in_sqfile_R->fetch_seq_to_sqstring($seq_name); }
       my $rev_sqstring = reverse($sqstring);
-      my $nlen = count_terminal_Ns_in_sqstring($rev_sqstring);
+      my $nlen = count_terminal_ambiguities_in_sqstring($rev_sqstring);
       my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate(($seq_len - $nlen + 1), $seq_len, "+", $FH_HR) . ";";
       my $alt_mcoords = "mdl:VADRNULL;"; # this will be updated later in parse_stk_and_add_alignment_cds_and_mp_alerts()
       alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgnt3s", $seq_name, 
@@ -9253,8 +9253,8 @@ sub output_tabular {
             my $ftr_type = $ftr_info_AHR->[$ftr_idx]{"type"};
             my $ftr_strand   = helper_tabular_ftr_results_strand($ftr_info_AHR, $ftr_results_HR, $ftr_idx);
             my $ftr_trunc    = helper_tabular_ftr_results_trunc_string($ftr_results_HR);
-            my $ftr_5nlen    = (defined $ftr_results_HR->{"n_5nlen"})   ? $ftr_results_HR->{"n_5nlen"}   : "-";
-            my $ftr_3nlen    = (defined $ftr_results_HR->{"n_3nlen"})   ? $ftr_results_HR->{"n_3nlen"}   : "-";
+            my $ftr_5ablen   = (defined $ftr_results_HR->{"n_5ablen"})   ? $ftr_results_HR->{"n_5ablen"}   : "-";
+            my $ftr_3ablen   = (defined $ftr_results_HR->{"n_3ablen"})   ? $ftr_results_HR->{"n_3ablen"}   : "-";
             my $ftr_n_start  = (defined $ftr_results_HR->{"n_start"})   ? $ftr_results_HR->{"n_start"}   : "-";
             my $ftr_n_stop   = (defined $ftr_results_HR->{"n_stop"})    ? $ftr_results_HR->{"n_stop"}    : "-";
             my $ftr_n_stop_c = (defined $ftr_results_HR->{"n_stop_c"})  ? $ftr_results_HR->{"n_stop_c"}  : "-";
@@ -9267,11 +9267,11 @@ sub output_tabular {
             }
             my $ftr_p_score = (defined $ftr_results_HR->{"p_score"})  ? $ftr_results_HR->{"p_score"} : "-";
             if(((defined $ftr_results_HR->{"n_5trunc"})  && ($ftr_results_HR->{"n_5trunc"})) ||      # feature is 5' truncated due to sequence end
-               ((defined $ftr_results_HR->{"n_5nlen"}) && ($ftr_results_HR->{"n_5nlen"} > 0))) { # feature starts with >= 1 N
+               ((defined $ftr_results_HR->{"n_5ablen"}) && ($ftr_results_HR->{"n_5ablen"} > 0))) { # feature starts with >= 1 N
               $seq_nftr_5trunc++; 
             }
             if(((defined $ftr_results_HR->{"n_3trunc"})  && ($ftr_results_HR->{"n_3trunc"})) ||      # feature is 3' truncated due to sequence end
-               ((defined $ftr_results_HR->{"n_3nlen"}) && ($ftr_results_HR->{"n_3nlen"} > 0))) { # feature ends with >= 1 N
+               ((defined $ftr_results_HR->{"n_3ablen"}) && ($ftr_results_HR->{"n_3ablen"} > 0))) { # feature ends with >= 1 N
                $seq_nftr_3trunc++; 
             }
             
@@ -9345,7 +9345,7 @@ sub output_tabular {
             if($s_coords_str eq "") { $s_coords_str = "-"; } # will happen only for protein-validation only predictions
             if($m_coords_str eq "") { $m_coords_str = "-"; } # will happen only for protein-validation only predictions
             push(@data_ftr_AA, [$ftr_idx2print, $seq_name, $seq_len, $seq_pass_fail, $seq_mdl1, $ftr_type, $ftr_name2print, $ftr_len_by_sgm, 
-                                ($ftr_idx+1), $ftr_parent_idx, $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5nlen, $ftr_3nlen, 
+                                ($ftr_idx+1), $ftr_parent_idx, $ftr_strand, $ftr_n_start, $ftr_n_stop, $ftr_n_stop_c, $ftr_trunc, $ftr_5ablen, $ftr_3ablen, 
                                 $ftr_p_qstart, $ftr_p_qstop, $ftr_p_qstop_c, $ftr_p_score, $ftr_nsgm_annot, $ftr_nsgm_noannot, 
                                 $s_coords_str, $m_coords_str, $ftr_alt_str]);
             $ftr_nprinted++;
@@ -9945,19 +9945,19 @@ sub output_feature_table {
             # note: $is_3trunc_{term,n} will alwyas be 0, we don't try to do truncations for protein only predictions
           }
           else { # $defined_n_start is '1'
-            # fill $ftr_start_non_n and $ftr_stop_non_n if this feature may be trimmed due to N 
-            my $ftr_start_non_n = undef;
-            my $ftr_stop_non_n  = undef;
+            # fill $ftr_start_non_ab and $ftr_stop_non_ab if this feature may be trimmed due to N 
+            my $ftr_start_non_ab = undef;
+            my $ftr_stop_non_ab  = undef;
             if($ftr_is_trimmable) { 
               my $trim_idx = ($parent_is_cds) ? $parent_ftr_idx : $ftr_idx; # use parent if parent is a cds (e.g. mat_peptides)
-              $ftr_start_non_n = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_start_non_n"};
-              $ftr_stop_non_n  = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_stop_non_n"};
-              #printf("set ftr_start_non_n for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_n) ? $ftr_start_non_n : "undef");
-              #printf("set ftr_stop_non_n  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_n)  ? $ftr_stop_non_n : "undef");
+              $ftr_start_non_ab = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_start_non_ab"};
+              $ftr_stop_non_ab  = $ftr_results_HAHR->{$seq_name}[$trim_idx]{"n_stop_non_ab"};
+              #printf("set ftr_start_non_ab for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_start_non_ab) ? $ftr_start_non_ab : "undef");
+              #printf("set ftr_stop_non_ab  for ftr: $ftr_idx based on trim_idx: $trim_idx to %s\n", (defined $ftr_stop_non_ab)  ? $ftr_stop_non_ab : "undef");
             }
             ($ftr_ftbl_coords_str, $ftr_ftbl_coords_len, $min_coord, 
              $is_5trunc_term_or_n, $is_3trunc_term_or_n) = 
-                 helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $ftr_start_non_n, $ftr_stop_non_n, 
+                 helper_ftable_coords_from_nt_prediction($seq_name, $ftr_idx, $ftr_start_non_ab, $ftr_stop_non_ab, 
                                                          $ftr_info_AHR, \%{$sgm_results_HHAHR->{$mdl_name}}, $FH_HR);
           }
           if($ftr_ftbl_coords_str ne "") { # if $ftr_ftbl_coords_str is "", we won't output the feature because it was entirely Ns
@@ -9994,9 +9994,9 @@ sub output_feature_table {
                 $cds_codon_start = $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_codon_start_dominant"};
                 # if we trimmed the CDS start due to Ns update frame for that
                 if(($ftr_is_trimmable) &&
-                   (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}) && 
-                   ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"} > 0)) { 
-                  $cds_codon_start = vdr_FrameAdjust($cds_codon_start, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5nlen"}, $FH_HR);
+                   (defined $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5ablen"}) && 
+                   ($ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5ablen"} > 0)) { 
+                  $cds_codon_start = vdr_FrameAdjust($cds_codon_start, $ftr_results_HAHR->{$seq_name}[$ftr_idx]{"n_5ablen"}, $FH_HR);
                 }
               } # end of else entered if n_start defined (codon_start block)
             } # end of 'if($is_cds)' entered to determine codon_start
@@ -10327,8 +10327,8 @@ sub output_feature_table {
 # Arguments: 
 #  $seq_name:          sequence name
 #  $ftr_idx:           feature index
-#  $start_non_n:       first position of feature that is not an N
-#  $stop_non_n:        final position of feature that is not an N
+#  $start_non_ab:       first position of feature that is not an N
+#  $stop_non_ab:        final position of feature that is not an N
 #  $ret_min_coord:     REF to minimum coordinate, to fill
 #  $ftr_info_AHR:      REF to array of hashes with information on the features, PRE-FILLED
 #  $sgm_results_HAHR:  REF to segment results HAH, PRE-FILLED
@@ -10343,7 +10343,7 @@ sub output_feature_table {
 #             $is_3trunc:           '1' if final segment is truncated on 3' end due to sequence terminus or Ns
 #
 # Dies: if either @{$start_AR} or @{$stop_AR} are empty
-#       if $start_non_n is -1 but stop_non_n is not
+#       if $start_non_ab is -1 but stop_non_ab is not
 #
 ################################################################# 
 sub helper_ftable_coords_from_nt_prediction { 
@@ -10351,7 +10351,7 @@ sub helper_ftable_coords_from_nt_prediction {
   my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($seq_name, $ftr_idx, $start_non_n, $stop_non_n, $ftr_info_AHR, $sgm_results_HAHR, $FH_HR) = @_;
+  my ($seq_name, $ftr_idx, $start_non_ab, $stop_non_ab, $ftr_info_AHR, $sgm_results_HAHR, $FH_HR) = @_;
 
   # arrays with per-sgm info
   my @start_A     = ();
@@ -10370,7 +10370,7 @@ sub helper_ftable_coords_from_nt_prediction {
     }
   }
   return helper_ftable_start_stop_strand_arrays_to_coords(\@start_A, \@stop_A, \@strand_A, \@is_5trunc_A, \@is_3trunc_A, 
-                                                          $start_non_n, $stop_non_n, $FH_HR);
+                                                          $start_non_ab, $stop_non_ab, $FH_HR);
 }
 
 #################################################################
@@ -10435,8 +10435,8 @@ sub helper_ftable_coords_prot_only_prediction {
 #  $strand_AR:     REF to array of strands, one per sgm
 #  $is_5trunc_AR:  REF to array of is_5trunc values, one per sgm
 #  $is_3trunc_AR:  REF to array of is_3trunc values, one per sgm
-#  $start_non_n:   first position of feature that is not an N (may be > $stop_non_n)
-#  $stop_non_n:    final position of feature that is not an N (may be < $start_non_n)
+#  $start_non_ab:   first position of feature that is not an N (may be > $stop_non_ab)
+#  $stop_non_ab:    final position of feature that is not an N (may be < $start_non_ab)
 #  $FH_HR:         REF to hash of file handles
 #
 # Returns:    Five values:
@@ -10448,7 +10448,7 @@ sub helper_ftable_coords_prot_only_prediction {
 #             $is_3trunc:           '1' if final segment is truncated on 3' end due to sequence terminus or Ns
 #
 # Dies: if either @{$start_AR} or @{$stop_AR} are empty
-#       if $start_non_n is -1 but stop_non_n is not
+#       if $start_non_ab is -1 but stop_non_ab is not
 #
 ################################################################# 
 sub helper_ftable_start_stop_strand_arrays_to_coords { 
@@ -10456,7 +10456,7 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
   my $nargs_exp = 8;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($start_AR, $stop_AR, $strand_AR, $is_5trunc_AR, $is_3trunc_AR, $start_non_n, $stop_non_n, $FH_HR) = @_;
+  my ($start_AR, $stop_AR, $strand_AR, $is_5trunc_AR, $is_3trunc_AR, $start_non_ab, $stop_non_ab, $FH_HR) = @_;
 
   # return values
   my $ret_ftr_ftbl_coords_str = "";
@@ -10470,10 +10470,10 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
     ofile_FAIL("ERROR in $sub_name, start_A array is empty", 1, $FH_HR);
   }
 
-  my ($min_non_n, $max_non_n) = (undef, undef);
-  if((defined $start_non_n) && (defined $stop_non_n)) { 
-    ($min_non_n, $max_non_n) = ($start_non_n, $stop_non_n);
-    if($min_non_n > $max_non_n) { utl_Swap(\$min_non_n, \$max_non_n); }
+  my ($min_non_ab, $max_non_ab) = (undef, undef);
+  if((defined $start_non_ab) && (defined $stop_non_ab)) { 
+    ($min_non_ab, $max_non_ab) = ($start_non_ab, $stop_non_ab);
+    if($min_non_ab > $max_non_ab) { utl_Swap(\$min_non_ab, \$max_non_ab); }
   }
 
   for(my $c = 0; $c < $ncoord; $c++) { 
@@ -10485,37 +10485,37 @@ sub helper_ftable_start_stop_strand_arrays_to_coords {
     my $is_5trunc_term = $is_5trunc_AR->[$c]; # segment is 5' truncated due to sequence terminus
     my $is_3trunc_term = $is_3trunc_AR->[$c]; # segment is 3' truncated due to sequence terminus
 
-    # potentially modify start/stop based on $start_non_n and $stop_non_n
+    # potentially modify start/stop based on $start_non_ab and $stop_non_ab
     my $is_5trunc_n = 0; # set to 1 below if start position is truncated due to Ns
     my $is_3trunc_n = 0; # set to 1 below if stop  position is truncated due to Ns
     my $add_this_sgm = 1; # set to 0 below if full sgm is Ns, in which case we don't add it
 
-    if((defined $start_non_n) && (defined $stop_non_n)) { 
-      if($start_non_n == -1) { # this means entire segment is Ns
-        if($stop_non_n != -1) { # sanity check 
-          ofile_FAIL("ERROR, in $sub_name, start_non_n is -1 but stop_non_n is not ($stop_non_n)", 1, $FH_HR);
+    if((defined $start_non_ab) && (defined $stop_non_ab)) { 
+      if($start_non_ab == -1) { # this means entire segment is Ns
+        if($stop_non_ab != -1) { # sanity check 
+          ofile_FAIL("ERROR, in $sub_name, start_non_ab is -1 but stop_non_ab is not ($stop_non_ab)", 1, $FH_HR);
         }
         $add_this_sgm = 0;
       }
       else { 
-        # get min/max between start/stop and start_non_n/stop_non_n 
+        # get min/max between start/stop and start_non_ab/stop_non_ab 
         # to make the following complicated checks of cases a little less complicated
         my ($min, $max) = ($start, $stop);
         if($min > $max) { utl_Swap(\$min, \$max); }
 
-        if(($min > $max_non_n) ||  # $min_non_n <= $max_non_n < $min       <= $max
-           ($max < $min_non_n)) {  # $min       <= $max       < $min_non_n <= $max_non_n
-          # full sgm is starts/ends before $min_non_n or after $max_non_n, don't output it
+        if(($min > $max_non_ab) ||  # $min_non_ab <= $max_non_ab < $min       <= $max
+           ($max < $min_non_ab)) {  # $min       <= $max       < $min_non_ab <= $max_non_ab
+          # full sgm is starts/ends before $min_non_ab or after $max_non_ab, don't output it
           $add_this_sgm = 0; # don't add it
         }
         else { 
-          if($min < $min_non_n) { # minimum starts before min_non_n
-            if($start == $min) { $start = $min_non_n; $is_5trunc_n = 1; }
-            if($stop  == $min) { $stop  = $min_non_n; $is_3trunc_n = 1; }
+          if($min < $min_non_ab) { # minimum starts before min_non_ab
+            if($start == $min) { $start = $min_non_ab; $is_5trunc_n = 1; }
+            if($stop  == $min) { $stop  = $min_non_ab; $is_3trunc_n = 1; }
           }
-          if($max > $max_non_n) { # maximum ends after max_non_n
-            if($start == $max) { $start = $max_non_n; $is_5trunc_n = 1; }
-            if($stop  == $max) { $stop  = $max_non_n; $is_3trunc_n = 1; }
+          if($max > $max_non_ab) { # maximum ends after max_non_ab
+            if($start == $max) { $start = $max_non_ab; $is_5trunc_n = 1; }
+            if($stop  == $max) { $stop  = $max_non_ab; $is_3trunc_n = 1; }
           }
         }
       }
@@ -13198,9 +13198,9 @@ sub pick_features_from_all_alternatives {
 }
 
 #################################################################
-# Subroutine: count_terminal_Ns_in_sqstring
+# Subroutine: count_terminal_ambiguities_in_sqstring
 # Incept:     EPN, Tue Nov 23 11:21:38 2021
-# Purpose:    Count the number of terminal Ns at the beginning 
+# Purpose:    Count the number of terminal non-ACGTUs at the beginning 
 #             of a sqstring and return it.
 #
 # Arguments:
@@ -13209,8 +13209,8 @@ sub pick_features_from_all_alternatives {
 # Returns:  number of Ns at beginning of $sqstring
 #
 #################################################################
-sub count_terminal_Ns_in_sqstring {
-  my $sub_name = "count_terminal_Ns_in_sqstring";
+sub count_terminal_ambiguities_in_sqstring {
+  my $sub_name = "count_terminal_ambiguities_in_sqstring";
   my $nargs_exp = 1;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
@@ -13219,10 +13219,10 @@ sub count_terminal_Ns_in_sqstring {
   #printf("in $sub_name, sqstring: $sqstring\n");
 
   my $pos_retval = undef;
-  $sqstring =~ m/[^Nn]/g; 
-  $pos_retval = pos($sqstring); # returns position of first non-N/n or non-X/x
+  $sqstring =~ m/[ACGTUacgtu]/g; 
+  $pos_retval = pos($sqstring); # returns position of first non-ambiguous nt
 
-  # if $pos_retval is undef entire sqstring is N/n
+  # if $pos_retval is undef entire sqstring is ambiguities
   my $ret_val = undef;
   if(defined $pos_retval) { 
     $ret_val = ($pos_retval - 1);

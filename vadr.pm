@@ -2281,14 +2281,14 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
-                   "N_AT_START", # short description
-                   "first nucleotide of the sequence is an N", # long  description
+                   "AMBIGUITY_AT_START", # short description
+                   "first nucleotide of the sequence is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
-                   "N_AT_END", # short description
-                   "final nucleotide of the sequence is an N", # long  description
+                   "AMBIGUITY_AT_END", # short description
+                   "final nucleotide of the sequence is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
@@ -2653,38 +2653,38 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
-                   "N_AT_FEATURE_START", # short description
-                   "first nucleotide of non-CDS feature is an N", # long  description
+                   "AMBIGUITY_AT_FEATURE_START", # short description
+                   "first nucleotide of non-CDS feature is an ambiguous nucleotideN", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3f", "feature",
-                   "N_AT_FEATURE_END", # short description
-                   "final nucleotide of non-CDS feature is an N", # long  description
+                   "AMBIGUITY_AT_FEATURE_END", # short description
+                   "final nucleotide of non-CDS feature is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
-                   "N_AT_CDS_START", # short description
-                   "first nucleotide of CDS is an N", # long  description
+                   "AMBIGUITY_AT_CDS_START", # short description
+                   "first nucleotide of CDS is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgcd5c", "feature",
                    "AMBIGUITY_IN_START_CODON", # short description
-                   "5' complete CDS has non-NNN start codon that includes ambiguous nucleotide", # long description
+                   "5' complete CDS has ambiguous and canonical nucleotide(s) in its start codon", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
-                   "N_AT_CDS_END", # short description
-                   "final nucleotide of CDS is an N", # long  description
+                   "AMBIGUITY_AT_CDS_END", # short description
+                   "final nucleotide of CDS is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgcd3c", "feature",
                    "AMBIGUITY_IN_STOP_CODON", # short description
-                   "3' complete CDS has non-NNN stop codon that includes ambiguous nucleotide", # long description
+                   "3' complete CDS has ambiguous and canonical nucleotide(s) in its stop codon", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
