@@ -5568,25 +5568,25 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
       $ftr_5nlen = helper_feature_terminal_ambiguities($ftr_sqstring_alt, 0, $ftr_is_5trunc, # 0: not reversed
                                                        $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                       \%alt_str_H, $ua2rf_AR);
+                                                       \%alt_str_H, $ua2rf_AR, $FH_HR);
       $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       $ftr_5nlen_pv = helper_feature_terminal_ambiguities($ftr_sqstring_pv, 0, $ftr_is_5trunc, # 0: not reversed
                                                           $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                          undef, $ua2rf_AR); # undef \%alt_str_H, don't report alerts for pv 
+                                                          undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
-      $ftr_3nlen = helper_feature_terminal_ambiguities($ftr_sqstring_alt, 1, $ftr_is_3trunc, # 1: reversed
+      $ftr_3nlen = helper_feature_terminal_ambiguities($rev_ftr_sqstring_alt, 1, $ftr_is_3trunc, # 1: reversed
                                                        $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                       \%alt_str_H, $ua2rf_AR);
+                                                       \%alt_str_H, $ua2rf_AR, $FH_HR);
       $ftr_stop_non_n = ($ftr_3nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
-      $ftr_3nlen_pv = handle_feature_terminal_ambiguities($rev_ftr_sqstring_pv, 1, $ftr_is_3trunc, # 1: reversed
+      $ftr_3nlen_pv = helper_feature_terminal_ambiguities($rev_ftr_sqstring_pv, 1, $ftr_is_3trunc, # 1: reversed
                                                           $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                          undef, $ua2rf_AR); # undef \%alt_str_H, don't report alerts for pv 
+                                                          undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
 
       # output the sequence
       if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -13202,7 +13202,7 @@ sub check_for_ambiguous_nts_in_sqstring {
 #################################################################
 # Subroutine: helper_feature_terminal_ambiguities
 # Incept:     EPN, Wed Dec  8 14:14:35 2021
-
+#
 # Purpose:    Count the number of terminal Ns at beginning and
 #             end of features and report alerts to %{$alt_str_HR} if
 #             defined and if necessary. 
@@ -13237,17 +13237,18 @@ sub check_for_ambiguous_nts_in_sqstring {
 #  $ftr_is_cds:   '1' if feature is a CDS, '0' if not
 #  $alt_str_HR:   ref to alert string to add to, undef means don't add to it
 #  $ua2rf_AR:     ref to array mapping sequence positions to model positions
+#  $FH_HR:        ref to hash of file handles
 #
 # Returns:  number of Ns at beginning of $sqstring, see ***caveat above.
 #
 #################################################################
 sub helper_feature_terminal_ambiguities {
   my $sub_name = "helper_feature_terminal_ambiguities";
-  my $nargs_exp = 11;
+  my $nargs_exp = 12;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_sqstring, $is_reversed, $is_trunc, $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-      $ftr_is_cds, $alt_str_HR, $ua2rf_AR) = (@_);
+      $ftr_is_cds, $alt_str_HR, $ua2rf_AR, $FH_HR) = (@_);
 
   #printf("in $sub_name, sqstring: $sqstring\n");
 
