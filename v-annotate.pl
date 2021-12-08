@@ -5438,7 +5438,7 @@ sub determine_frame_and_length_summary_strings {
     if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
       my ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
       printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
-      if($cur_frame != $prv_frame) { 
+      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
         $cur_length = 0;
       }
 

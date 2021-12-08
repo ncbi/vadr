@@ -6,7 +6,7 @@
 
 #=GS ENTOY100A-2-fs1 DE multi-segment, segment 1, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS38+1)
 
-#=GS ENTOY100A-2-fs1 FS.1 seq_coords:39..74:+; mdl_coords: 39..73:+; length:36; cause:insert,S:39(1),M:38; frame:1(2); shifted_avgpp:0.960; exp_avgpp:0.964;
+#=GS ENTOY100A-2-fs1 FS.1 seq_coords:39..74:+; mdl_coords: 39..73:+; cause:insert,S:39(1),M:38; frame:1(2); length:7:(8); shifted_avgpp:0.960; exp_avgpp:0.964;
 
 ENTOY100A-2-fs1         AATGGTAG
 #=GR ENTOY100A-2-fs1 PP ********
@@ -25,7 +25,7 @@ ENTOY100A-2-fs1         AATGGTAG
 
 #=GS ENTOY100A-2-fs2 DE multi-segment, segment 2, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS52+1)
 
-#=GS ENTOY100A-2-fs2 FS.1 seq_coords:53..74:+; mdl_coords: 53..73:+; length:22; cause:insert,S:53(1),M:52; frame:1(2); shifted_avgpp:0.950; exp_avgpp:0.933;
+#=GS ENTOY100A-2-fs2 FS.1 seq_coords:53..74:+; mdl_coords: 53..73:+; cause:insert,S:53(1),M:52; frame:1(2); length:6:(8); shifted_avgpp:0.950; exp_avgpp:0.933;
 
 ENTOY100A-2-fs2         AATGGTAG
 #=GR ENTOY100A-2-fs2 PP ********
@@ -44,7 +44,7 @@ ENTOY100A-2-fs2         AATGGTAG
 
 #=GS ENTOY100A-2-fs3 DE multi-segment, segment 3, 1nt insertion that breaks frame, not fixed (CDS2, RFPOS69+1)
 
-#=GS ENTOY100A-2-fs3 FS.1 seq_coords:70..74:+; mdl_coords: 70..73:+; length:5; cause:insert,S:70(1),M:69; frame:1(2); shifted_avgpp:0.925; exp_avgpp:0.956;
+#=GS ENTOY100A-2-fs3 FS.1 seq_coords:70..74:+; mdl_coords: 70..73:+; cause:insert,S:70(1),M:69; frame:1(2); length:4:(5); shifted_avgpp:0.925; exp_avgpp:0.956;
 
 ENTOY100A-2-fs3         AATGCGTAG
 #=GR ENTOY100A-2-fs3 PP ***989***
@@ -63,7 +63,7 @@ ENTOY100A-2-fs3         AATGCGTAG
 
 #=GS ENTOY100A-2-fs4 DE multi-segment, segment 1, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS38-)
 
-#=GS ENTOY100A-2-fs4 FS.1 seq_coords:38..72:+; mdl_coords: 38..73:+; length:35; cause:delete,S:37,M:38(1); frame:1(3); shifted_avgpp:0.962; exp_avgpp:0.963;
+#=GS ENTOY100A-2-fs4 FS.1 seq_coords:38..72:+; mdl_coords: 38..73:+; cause:delete,S:37,M:38(1); frame:1(3); length:6:(8); shifted_avgpp:0.962; exp_avgpp:0.963;
 
 ENTOY100A-2-fs4         AATGGTAG
 #=GR ENTOY100A-2-fs4 PP ********
@@ -82,7 +82,7 @@ ENTOY100A-2-fs4         AATGGTAG
 
 #=GS ENTOY100A-2-fs5 DE multi-segment, segment 2, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS52-)
 
-#=GS ENTOY100A-2-fs5 FS.1 seq_coords:52..72:+; mdl_coords: 52..73:+; length:21; cause:delete,S:51,M:52(1); frame:1(3); shifted_avgpp:0.949; exp_avgpp:0.960;
+#=GS ENTOY100A-2-fs5 FS.1 seq_coords:52..72:+; mdl_coords: 52..73:+; cause:delete,S:51,M:52(1); frame:1(3); length:5:(8); shifted_avgpp:0.949; exp_avgpp:0.960;
 
 ENTOY100A-2-fs5         AATGGTAG
 #=GR ENTOY100A-2-fs5 PP ********
@@ -101,7 +101,7 @@ ENTOY100A-2-fs5         AATGGTAG
 
 #=GS ENTOY100A-2-fs6 DE multi-segment, segment 3, 1nt deletion  that breaks frame, not fixed (CDS2, RFPOS69-)
 
-#=GS ENTOY100A-2-fs6 FS.1 seq_coords:69..72:+; mdl_coords: 69..73:+; length:4; cause:delete,S:68,M:69(1); frame:1(3); shifted_avgpp:0.838; exp_avgpp:0.950;
+#=GS ENTOY100A-2-fs6 FS.1 seq_coords:69..72:+; mdl_coords: 69..73:+; cause:delete,S:68,M:69(1); frame:1(3); length:3:(4); shifted_avgpp:0.838; exp_avgpp:0.950;
 
 ENTOY100A-2-fs6         AAT-GTAG
 #=GR ENTOY100A-2-fs6 PP **9.59**
@@ -120,7 +120,7 @@ ENTOY100A-2-fs6         AAT-GTAG
 
 #=GS ENTOY100A-2-fs7 DE multi-segment, segment 2, 1nt deletion  that breaks frame at end of segment, not fixed (CDS2, RFPOS64-)
 
-#=GS ENTOY100A-2-fs7 FS.1 seq_coords:64..72:+; mdl_coords: 64..73:+; length:9; cause:delete,S:63,M:64(1); frame:1(3); shifted_avgpp:0.967; exp_avgpp:0.965;
+#=GS ENTOY100A-2-fs7 FS.1 seq_coords:64..72:+; mdl_coords: 64..73:+; cause:delete,S:63,M:64(1); frame:1(3); length:17:(8); shifted_avgpp:0.967; exp_avgpp:0.965;
 
 ENTOY100A-2-fs7         AATGGTAG
 #=GR ENTOY100A-2-fs7 PP ********
@@ -139,7 +139,7 @@ ENTOY100A-2-fs7         AATGGTAG
 
 #=GS ENTOY100A-2-fs9 DE multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion same segment (CDS2, RFPOS52+1,60+2)
 
-#=GS ENTOY100A-2-fs9 FS.1 seq_coords:53..63:+; mdl_coords: 53..60:+; length:11; cause:insert,S:53(1),M:52; restore:insert,S:62..63(2),M:60; frame:1(2)1; shifted_avgpp:0.841; exp_avgpp:0.933;
+#=GS ENTOY100A-2-fs9 FS.1 seq_coords:53..63:+; mdl_coords: 53..60:+; cause:insert,S:53(1),M:52; restore:insert,S:62..63(2),M:60; frame:1(2)1; length:6:(11):8; shifted_avgpp:0.841; exp_avgpp:0.933;
 
 ENTOY100A-2-fs9         AATGGTAG
 #=GR ENTOY100A-2-fs9 PP ********
@@ -158,7 +158,7 @@ ENTOY100A-2-fs9         AATGGTAG
 
 #=GS ENTOY100A-2-fs11 DE multi-segment, segment 1, 1nt insertion that breaks frame, fixed by 1nt deletion different segment (CDS2, RFPOS38+1,58-)
 
-#=GS ENTOY100A-2-fs11 FS.1 seq_coords:39..58:+; mdl_coords: 39..58:+; length:20; cause:insert,S:39(1),M:38; restore:delete,S:58,M:58(1); frame:1(2)1; shifted_avgpp:0.936; exp_avgpp:0.964;
+#=GS ENTOY100A-2-fs11 FS.1 seq_coords:39..58:+; mdl_coords: 39..58:+; cause:insert,S:39(1),M:38; restore:delete,S:58,M:58(1); frame:1(2)1; length:7:(11):8; shifted_avgpp:0.936; exp_avgpp:0.964;
 
 ENTOY100A-2-fs11         AATGGTAG
 #=GR ENTOY100A-2-fs11 PP ********
@@ -177,7 +177,7 @@ ENTOY100A-2-fs11         AATGGTAG
 
 #=GS ENTOY100A-2-fs12 DE multi-segment, segment 2, 1nt insertion that breaks frame, fixed by 2nt insertion different segment (CDS2, RFPOS52+1,70+2)
 
-#=GS ENTOY100A-2-fs12 FS.1 seq_coords:53..73:+; mdl_coords: 53..70:+; length:21; cause:insert,S:53(1),M:52; restore:insert,S:72..73(2),M:70; frame:1(2)1; shifted_avgpp:0.919; exp_avgpp:0.933;
+#=GS ENTOY100A-2-fs12 FS.1 seq_coords:53..73:+; mdl_coords: 53..70:+; cause:insert,S:53(1),M:52; restore:insert,S:72..73(2),M:70; frame:1(2)1; length:6:(7):3; shifted_avgpp:0.919; exp_avgpp:0.933;
 
 ENTOY100A-2-fs12         AATGGCCTAG
 #=GR ENTOY100A-2-fs12 PP ****9778**
@@ -196,7 +196,7 @@ ENTOY100A-2-fs12         AATGGCCTAG
 
 #=GS ENTOY100A-2-fs13 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, not fixed (CDS2, RFPOS47-)
 
-#=GS ENTOY100A-2-fs13 FS.1 seq_coords:47..72:+; mdl_coords: 47..73:+; length:26; cause:delete,S:46,M:47(1); frame:1(2); shifted_avgpp:0.972; exp_avgpp:0.963;
+#=GS ENTOY100A-2-fs13 FS.1 seq_coords:47..72:+; mdl_coords: 47..73:+; cause:delete,S:46,M:47(1); frame:1(2); length:15:(8); shifted_avgpp:0.972; exp_avgpp:0.963;
 
 ENTOY100A-2-fs13         AATGGTAG
 #=GR ENTOY100A-2-fs13 PP ********
@@ -215,7 +215,7 @@ ENTOY100A-2-fs13         AATGGTAG
 
 #=GS ENTOY100A-2-fs14 DE multi-segment, segment 2, 1nt deletion of special nt in two segments that breaks frame, fixed by 1nt deletion (CDS2, RFPOS47-,55-)
 
-#=GS ENTOY100A-2-fs14 FS.1 seq_coords:47..53:+; mdl_coords: 47..55:+; length:7; cause:delete,S:46,M:47(1); restore:delete,S:53,M:55(1); frame:1(2)1; shifted_avgpp:0.943; exp_avgpp:0.963;
+#=GS ENTOY100A-2-fs14 FS.1 seq_coords:47..53:+; mdl_coords: 47..55:+; cause:delete,S:46,M:47(1); restore:delete,S:53,M:55(1); frame:1(2)1; length:15:(7):8; shifted_avgpp:0.943; exp_avgpp:0.963;
 
 ENTOY100A-2-fs14         AATGGTAG
 #=GR ENTOY100A-2-fs14 PP ********
@@ -234,7 +234,7 @@ ENTOY100A-2-fs14         AATGGTAG
 
 #=GS ENTOY100A-2-fs15 DE multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, not fixed (CDS2, RFPOS47+1)
 
-#=GS ENTOY100A-2-fs15 FS.1 seq_coords:48..74:+; mdl_coords: 48..73:+; length:27; cause:insert,S:48(1),M:47; frame:1(2); shifted_avgpp:0.955; exp_avgpp:0.800;
+#=GS ENTOY100A-2-fs15 FS.1 seq_coords:48..74:+; mdl_coords: 48..73:+; cause:insert,S:48(1),M:47; frame:1(2); length:1:(8); shifted_avgpp:0.955; exp_avgpp:0.800;
 
 ENTOY100A-2-fs15         AATGGTAG
 #=GR ENTOY100A-2-fs15 PP ********
@@ -253,7 +253,7 @@ ENTOY100A-2-fs15         AATGGTAG
 
 #=GS ENTOY100A-2-fs16 DE multi-segment, segment 2, 1nt insertion after special nt in two segments that breaks frame, fixed by 1nt insertion (CDS2, RFPOS47+1,55+2)
 
-#=GS ENTOY100A-2-fs16 FS.1 seq_coords:48..58:+; mdl_coords: 48..55:+; length:11; cause:insert,S:48(1),M:47; restore:insert,S:57..58(2),M:55; frame:1(2)1; shifted_avgpp:0.841; exp_avgpp:0.800;
+#=GS ENTOY100A-2-fs16 FS.1 seq_coords:48..58:+; mdl_coords: 48..55:+; cause:insert,S:48(1),M:47; restore:insert,S:57..58(2),M:55; frame:1(2)1; length:1:(11):8; shifted_avgpp:0.841; exp_avgpp:0.800;
 
 ENTOY100A-2-fs16         AATGGTAG
 #=GR ENTOY100A-2-fs16 PP ********

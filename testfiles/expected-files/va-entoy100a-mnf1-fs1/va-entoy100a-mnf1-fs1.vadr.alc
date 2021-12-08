@@ -5,8 +5,8 @@
 2     mutendns  yes*     MUTATION_AT_END                feature      2     2  expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon
 3     unexleng  yes*     UNEXPECTED_LENGTH              feature      8     4  length of complete coding (CDS or mat_peptide) feature is not a multiple of 3
 4     cdsstopn  yes*     CDS_HAS_STOP_CODON             feature      6     6  in-frame stop codon exists 5' of stop position predicted by homology to reference
-5     fsthicft  yes*     POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      4     4  high confidence possible frameshift in CDS (terminal)
-6     fsthicfi  yes*     POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      8     8  high confidence possible frameshift in CDS (internal)
+5     fsthicft  yes*     POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      4     4  high confidence possible frameshift in CDS (frame not restored before end)
+6     fsthicfi  yes*     POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      8     8  high confidence possible frameshift in CDS (frame restored before end)
 7     peptrans  yes*     PEPTIDE_TRANSLATION_PROBLEM    feature     24    12  mat_peptide may not be translated because its parent CDS has a problem
 8     indf3gap  yes*     INDEFINITE_ANNOTATION_END      feature      4     2  alignment to homology model is a gap at 3' boundary
 9     indf3lcn  yes*     INDEFINITE_ANNOTATION_END      feature      4     4  alignment to homology model has low confidence at 3' boundary for feature that does not match a CDS
