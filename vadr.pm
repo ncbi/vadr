@@ -2699,7 +2699,7 @@ sub vdr_AlertInfoInitialize {
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
                    "AMBIGUITY_AT_FEATURE_START", # short description
-                   "first nucleotide of non-CDS feature is an ambiguous nucleotideN", # long  description
+                   "first nucleotide of non-CDS feature is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
