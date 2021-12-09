@@ -5420,6 +5420,7 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
   for(my $ftr_idx = 0; $ftr_idx < $nftr; $ftr_idx++) { 
     my $ftr_is_cds_or_mp = vdr_FeatureTypeIsCdsOrMatPeptide($ftr_info_AHR, $ftr_idx);
     my $ftr_is_cds       = vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx);
+    my $ftr_matches_cds  = vdr_FeatureTypeIsCdsOrIdStartAndStop($ftr_info_AHR, $ftr_idx);
     my $ftr_is_mp        = vdr_FeatureTypeIsMatPeptide($ftr_info_AHR, $ftr_idx);
     my $ftr_type_idx     = $ftr_fileroot_AR->[$ftr_idx];
     my $ftr_sqstring_alt = ""; # fetched from sqfile_for_cds_mp_alerts
@@ -5567,26 +5568,26 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # we use ftr_sqstring_alt values for alerts
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
       $ftr_5nlen = helper_feature_terminal_ambiguities($ftr_sqstring_alt, 0, $ftr_is_5trunc, # 0: not reversed
-                                                       $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                       \%alt_str_H, $ua2rf_AR, $FH_HR);
+                                                       $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
+                                                       $ftr_is_cds, $ftr_matches_cds, \%alt_str_H, $ua2rf_AR, $FH_HR);
       $ftr_start_non_n = ($ftr_5nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5nlen + 1), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       $ftr_5nlen_pv = helper_feature_terminal_ambiguities($ftr_sqstring_pv, 0, $ftr_is_5trunc, # 0: not reversed
-                                                          $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                          undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
+                                                          $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
+                                                          $ftr_is_cds, $ftr_matches_cds, undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
       $ftr_3nlen = helper_feature_terminal_ambiguities($rev_ftr_sqstring_alt, 1, $ftr_is_3trunc, # 1: reversed
-                                                       $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                       \%alt_str_H, $ua2rf_AR, $FH_HR);
+                                                       $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len,
+                                                       $ftr_is_cds, $ftr_matches_cds, \%alt_str_H, $ua2rf_AR, $FH_HR);
       $ftr_stop_non_n = ($ftr_3nlen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3nlen), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
       $ftr_3nlen_pv = helper_feature_terminal_ambiguities($rev_ftr_sqstring_pv, 1, $ftr_is_3trunc, # 1: reversed
-                                                          $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, $ftr_is_cds, 
-                                                          undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
+                                                          $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
+                                                          $ftr_is_cds, $ftr_matches_cds, undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
 
       # output the sequence
       if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -13226,29 +13227,30 @@ sub check_for_ambiguous_nts_in_sqstring {
 #             with </>).
 #
 # Arguments:
-#  $ftr_sqstring: sqstring to count Ns in
-#  $is_reversed:  '1' if sqstring was reversed (so we are dealing with 3' end), '0' if not (5' end)                
-#  $is_trunc:     '1' if feature is truncated 
-#  $ftr_start:    start position of feature, sequence coords
-#  $ftr_stop:     stop position of feature, sequence coords
-#  $ftr_strand:   strand of feature
-#  $ftr_scoords:  full coords strings (potentially multiple segments of feature)
-#  $ftr_len:      total length of feature in nucleotides
-#  $ftr_is_cds:   '1' if feature is a CDS, '0' if not
-#  $alt_str_HR:   ref to alert string to add to, undef means don't add to it
-#  $ua2rf_AR:     ref to array mapping sequence positions to model positions
-#  $FH_HR:        ref to hash of file handles
+#  $ftr_sqstring:    sqstring to count Ns in
+#  $is_reversed:     '1' if sqstring was reversed (so we are dealing with 3' end), '0' if not (5' end)                
+#  $is_trunc:        '1' if feature is truncated 
+#  $ftr_start:       start position of feature, sequence coords
+#  $ftr_stop:        stop position of feature, sequence coords
+#  $ftr_strand:      strand of feature
+#  $ftr_scoords:     full coords strings (potentially multiple segments of feature)
+#  $ftr_len:         total length of feature in nucleotides
+#  $ftr_is_cds:      '1' if feature is a CDS, '0' if not
+#  $ftr_matches_cds: '1' if feature has same start/stop as a CDS (or is a CDS), '0' if not
+#  $alt_str_HR:      ref to alert string to add to, undef means don't add to it
+#  $ua2rf_AR:        ref to array mapping sequence positions to model positions
+#  $FH_HR:           ref to hash of file handles
 #
 # Returns:  number of Ns at beginning of $sqstring, see ***caveat above.
 #
 #################################################################
 sub helper_feature_terminal_ambiguities {
   my $sub_name = "helper_feature_terminal_ambiguities";
-  my $nargs_exp = 12;
+  my $nargs_exp = 13;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_sqstring, $is_reversed, $is_trunc, $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-      $ftr_is_cds, $alt_str_HR, $ua2rf_AR, $FH_HR) = (@_);
+      $ftr_is_cds, $ftr_matches_cds, $alt_str_HR, $ua2rf_AR, $FH_HR) = (@_);
 
   #printf("in $sub_name, sqstring: $sqstring\n");
 
@@ -13277,12 +13279,12 @@ sub helper_feature_terminal_ambiguities {
   # Caveat: if we have a CDS that is not truncated and has ambiguities in first 3 nt (this the stop codon if $is_reversed and start codon)
   #         otherwise) then we count the stop codon as 3 Ns, 
   #         and find first non-N after the first 3
-  if(($ftr_is_cds) && (! $is_trunc) && ($ret_nlen < 3) && ($ret_nlen != $ftr_len) && 
+  if((($ftr_is_cds || $ftr_matches_cds)) && (! $is_trunc) && ($ret_nlen < 3) && ($ret_nlen != $ftr_len) && 
      (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring, 0, 3)))) { 
     my $codon_len = utl_Min(3, $ftr_len);
     $ret_nlen = $codon_len + count_terminal_Ns_in_sqstring(substr($ftr_sqstring, 3));
 
-    if(defined $alt_str_HR) { 
+    if((defined $alt_str_HR) && ($ftr_is_cds)) { 
       if($is_reversed) { 
         # dealing with 3' end
         my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);

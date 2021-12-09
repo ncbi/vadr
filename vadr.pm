@@ -86,6 +86,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeAndTypeIndexString()
 # vdr_FeatureTypeIndex()
 # vdr_FeatureTypeIsCds()
+# vdr_FeatureTypeIsCdsOrIdStartAndStop()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
 # vdr_FeatureTypeIsCdsOrGene()
@@ -1480,6 +1481,50 @@ sub vdr_FeatureTypeIsCds {
   my ($ftr_info_AHR, $ftr_idx) = @_;
 
   return ($ftr_info_AHR->[$ftr_idx]{"type"} eq "CDS") ? 1 : 0;
+}
+
+#################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrIdStartAndStop()
+# Incept:     EPN, Thu Dec  9 10:22:21 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or does it have 
+#             same start/stop coords as another feature
+#             that is a CDS?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrIdStartAndStop { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrIdStartAndStop";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    my $start1 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    my $stop1  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx2)) { 
+        my $start2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        my $stop2  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        if(($start1 == $start2) && ($stop1 == $stop2)) { 
+          return 1; 
+        }
+      }
+    }
+  }
+  return 0;
 }
 
 #################################################################
