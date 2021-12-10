@@ -13,8 +13,8 @@
 			protein_id	NC_001959/6890-7500-cds-first-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-final-18-Ns
 <1	61	gene
 			gene	ORF2
@@ -29,7 +29,7 @@ ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords
 			protein_id	NC_001959/6890-7500-cds-final-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-first-and-final-18-Ns
 <1	>60	gene
 			gene	ORF2
@@ -45,6 +45,6 @@ ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:5
 			protein_id	NC_001959/6890-7500-cds-first-and-final-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
-ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;

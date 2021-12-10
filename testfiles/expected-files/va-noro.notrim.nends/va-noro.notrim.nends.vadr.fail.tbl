@@ -12,8 +12,8 @@
 			protein_id	NC_001959/6890-7500-cds-first-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18>5]; seq-coords:61..78:+; mdl-coords:6950..6950:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-final-18-Ns
 <1	61	gene
@@ -29,7 +29,7 @@ ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not e
 			protein_id	NC_001959/6890-7500-cds-final-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17>5, no valid stop codon in nucleotide-based prediction]; seq-coords:595..611:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-first-and-final-18-Ns
 <1	61	gene
@@ -45,8 +45,8 @@ ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not ext
 			protein_id	NC_001959/6890-7500-cds-first-and-final-18-Ns_2
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
-ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..61:+; mdl-coords:6950..6950:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:594..611:+; mdl-coords:7483..7500:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..78:+; mdl-coords:6950..6967:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint [17>5, no valid stop codon in nucleotide-based prediction]; seq-coords:595..611:+; mdl-coords:7588..7588:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:VP2) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [18>5]; seq-coords:61..78:+; mdl-coords:6950..6950:+; mdl:NC_001959;

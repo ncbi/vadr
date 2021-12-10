@@ -10,4 +10,4 @@
 7     gi|260065694|gb|FJ913901.1|    285  PASS  yes  NC_039477  Norovirus  GII    5    7    3    2      0  -     
 8     gi|125971647|gb|EF141133.1|    285  PASS  yes  NC_029646  Norovirus  GII    3    9    3    3      0  -     
 9     gi|1150565489|gb|KX514171.1|  1620  PASS  yes  NC_039477  Norovirus  GII    7    5    3    2      0  -     
-10    gi|1339273835|gb|MG746117.1|  1626  FAIL  yes  NC_039476  Norovirus  GII    5    7    3    5      7  N_AT_END(ambgnt3s)
+10    gi|1339273835|gb|MG746117.1|  1626  FAIL  yes  NC_039476  Norovirus  GII    5    7    5    5      7  AMBIGUITY_AT_END(ambgnt3s)
