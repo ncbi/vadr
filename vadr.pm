@@ -2715,21 +2715,21 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
-  vdr_AlertInfoAdd($alt_info_HHR, "ambgcd5c", "feature",
-                   "AMBIGUITY_IN_START_CODON", # short description
-                   "5' complete CDS starts with canonical nt but includes ambiguous nt its start codon", # long description
-                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR); 
-
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
                    "AMBIGUITY_AT_CDS_END", # short description
                    "final nucleotide of CDS is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgcd5c", "feature",
+                   "AMBIGUITY_IN_START_CODON", # short description
+                   "5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "ambgcd3c", "feature",
                    "AMBIGUITY_IN_STOP_CODON", # short description
-                   "3' complete CDS ends with canonical nt but includes ambiguous nt its stop codon", # long description
+                   "3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
