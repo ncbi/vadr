@@ -13224,7 +13224,9 @@ sub check_for_ambiguous_nts_in_sqstring {
 #             NCBI GenBank annotation. A protein translation cannot
 #             start with a start or stop codon that has an ambiguity
 #             in a non-truncated CDS (i.e. start/stop coordinate
-#             prefixed with </>).
+#             prefixed with </>). By considering the first/final 3nt
+#             ambiguities, we trim and make it truncated, avoiding
+#             this GenBank specific issue.
 #
 # Arguments:
 #  $ftr_sqstring:    sqstring to count ambiguities in
