@@ -5,7 +5,7 @@
 			protein_id	NC_001959/6890-7500-cds-first-60-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..120:+; mdl-coords:6950..7009:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..120:+; mdl-coords:6950..7009:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-Ns
 
 Additional note(s) to submitter:
@@ -33,4 +33,4 @@ ERROR: NO_FEATURES_ANNOTATED: (*sequence*) all annotated features are too short 
 			protein_id	NC_001959/6890-7500-cds-all-but-5-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..606:+; mdl-coords:6950..7495:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..606:+; mdl-coords:6950..7495:+; mdl:NC_001959;

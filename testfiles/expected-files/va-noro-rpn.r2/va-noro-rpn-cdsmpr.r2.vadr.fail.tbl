@@ -22,4 +22,4 @@ ERROR: INDEFINITE_ANNOTATION_END: (CDS:VP1) protein-based alignment does not ext
 			note	similar to VP1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an N [-]; seq-coords:1624..1626:+; mdl-coords:6708..6710:+; mdl:NC_039476;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP1) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:1624..1626:+; mdl-coords:6708..6710:+; mdl:NC_039476;
