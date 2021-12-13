@@ -4828,6 +4828,7 @@ sub add_frameshift_alerts_for_one_sequence {
       my @cds_alt_str_A = ();
       my $first_sgm_idx = get_5p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
       my $final_sgm_idx = get_3p_most_sgm_idx_with_results($ftr_info_AHR, $sgm_results_HAHR, $ftr_idx, $seq_name);
+      my $tmp_ftr_len = 0;
       if($first_sgm_idx != -1) { 
         for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) { 
           #check if sgm is valid, it's possible this segment was completely deleted and thus has no results
@@ -4847,6 +4848,7 @@ sub add_frameshift_alerts_for_one_sequence {
             my $sgm_strand   = $sgm_info_AHR->[$sgm_idx]{"strand"};
             my $sstart = $sgm_results_HR->{"sstart"}; # sequence position this segment starts at
             my $sstop  = $sgm_results_HR->{"sstop"};  # sequence position this segment stops at
+            $tmp_ftr_len += abs($sstop - $sstart) + 1;
             my $mstart = ($sgm_idx == $first_sgm_idx) ? $sgm_results_HR->{"mstart"} : $sgm_start_rfpos; 
             my $mstop  = ($sgm_idx == $final_sgm_idx) ? $sgm_results_HR->{"mstop"}  : $sgm_stop_rfpos; 
             my $strand = $sgm_results_HR->{"strand"};
@@ -5185,7 +5187,8 @@ sub add_frameshift_alerts_for_one_sequence {
                     }
 
                     # determine frame summary string 
-                    my ($frame_sum_str, $length_sum_str) = 
+#                    my ($frame_sum_str, $length_sum_str) = 
+                    my ($frame_sum_str, $length_sum_str, $tmp_length_sum) = 
                         determine_frame_and_length_summary_strings(\@frame_stok_A, 
                                                                    (($cur_frame != $expected_frame) && ($f == ($nframe_stok-1))) ? $f : ($f-1),
                                                                    $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR);
@@ -5200,6 +5203,14 @@ sub add_frameshift_alerts_for_one_sequence {
                       if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                       $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                       $alt_str .= sprintf(" length:%s;", $length_sum_str);
+                      ### TEMP ###
+                      if($tmp_ftr_len == $tmp_length_sum) { 
+                        $alt_str .= sprintf(" tmpcheckpass:%d==%d;", $tmp_ftr_len, $tmp_length_sum);
+                      }
+                      else { 
+                        $alt_str .= sprintf(" tmpcheckfail:%d!=%d;", $tmp_ftr_len, $tmp_length_sum);
+                      }
+                      ### TEMP ###
                       if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                       push(@cds_alt_str_A, $alt_str);
@@ -5235,6 +5246,14 @@ sub add_frameshift_alerts_for_one_sequence {
                         if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                         $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                         $alt_str .= sprintf(" length:%s;", $length_sum_str);
+                        ### TEMP ###
+                        if($tmp_ftr_len == $tmp_length_sum) { 
+                          $alt_str .= sprintf(" tmpcheckpass:%d==%d;", $tmp_ftr_len, $tmp_length_sum);
+                        }
+                        else { 
+                          $alt_str .= sprintf(" tmpcheckfail:%d!=%d;", $tmp_ftr_len, $tmp_length_sum);
+                        }
+                        ### TEMP ###
                         $alt_str .= sprintf(" shifted_avgpp:%.3f;", $shifted_span_avgpp);
                         $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
                         if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
@@ -5433,6 +5452,7 @@ sub determine_frame_and_length_summary_strings {
   my $ntok_added    = 0; # number of tokens added to return strings
   my $ntok_added_open = 0; # number of tokens added since paranthesis was opened
 
+  my $tmp_ret_len_sum = 0;
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
   for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
     if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
@@ -5474,9 +5494,11 @@ sub determine_frame_and_length_summary_strings {
         $ret_frame_str = $cur_frame  . $ret_frame_str;
         if(((! $open_flag) || ($ntok_added_open > 0)) && ($ntok_added > 0)) { 
           $ret_length_str = $cur_length . ":" . $ret_length_str;
+          $tmp_ret_len_sum += $cur_length;
         }
         else { 
           $ret_length_str = $cur_length . $ret_length_str;
+          $tmp_ret_len_sum += $cur_length;
         }
         $ntok_added++;
         if($open_flag) { 
@@ -5495,7 +5517,7 @@ sub determine_frame_and_length_summary_strings {
     $ret_length_str = "<" . $ret_length_str;
   }
 
-  return ($ret_frame_str, $ret_length_str);
+  return ($ret_frame_str, $ret_length_str, $tmp_ret_len_sum);
 }
 
 #################################################################
