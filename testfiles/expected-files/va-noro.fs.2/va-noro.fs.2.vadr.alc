@@ -4,8 +4,8 @@
 1     lowsim5c  no       LOW_FEATURE_SIMILARITY_START   feature      2     1  region within annotated feature that is or matches a CDS at 5' end of sequence lacks significant similarity
 #---  --------  -------  -----------------------------  -------  -----  ----  -----------
 2     cdsstopn  yes      CDS_HAS_STOP_CODON             feature      2     2  in-frame stop codon exists 5' of stop position predicted by homology to reference
-3     fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      6     6  high confidence possible frameshift in CDS (terminal)
-4     fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      4     3  high confidence possible frameshift in CDS (internal)
+3     fsthicft  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      6     6  high confidence possible frameshift in CDS (frame not restored before end)
+4     fsthicfi  yes      POSSIBLE_FRAMESHIFT_HIGH_CONF  feature      4     3  high confidence possible frameshift in CDS (frame restored before end)
 5     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM    feature      5     4  mat_peptide may not be translated because its parent CDS has a problem
 6     indfantn  yes      INDEFINITE_ANNOTATION          feature      1     1  nucleotide-based search identifies CDS not identified in protein-based search
 7     indf5pst  yes      INDEFINITE_ANNOTATION_START    feature      3     3  protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint
