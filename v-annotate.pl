@@ -13256,8 +13256,6 @@ sub helper_feature_terminal_ambiguities {
   my ($ftr_sqstring, $is_reversed, $is_trunc, $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
       $ftr_is_cds, $ftr_matches_cds, $tt, $atg_only, $alt_str_HR, $ua2rf_AR, $FH_HR) = (@_);
 
-  #printf("in $sub_name, sqstring: $sqstring\n");
-
   my $ret_ablen = count_terminal_ambiguities_in_sqstring($ftr_sqstring);
 
   # report ambgnt5c/ambgnt5f/ambgnt3c/ambgnt3f
@@ -13286,7 +13284,13 @@ sub helper_feature_terminal_ambiguities {
   #         - is not a valid start/stop despite ambiguities (e.g. TRA is valid stop in trans table 1)
   #         then we count the start/stop codon as 3 ambiguities and find the first non-N after the first 3
   if((($ftr_is_cds || $ftr_matches_cds)) && (! $is_trunc) && ($ret_ablen == 0) && ($ret_ablen != $ftr_len)) { 
-    my $start_or_stop_codon = substr($ftr_sqstring, 0, 3);
+    my $start_or_stop_codon = "";
+    if($is_reversed) { 
+      $start_or_stop_codon = reverse(substr($ftr_sqstring, 0, 3));
+    }
+    else { 
+      $start_or_stop_codon = substr($ftr_sqstring, 0, 3);
+    }
     # check if it has any ambiguities
     if(check_for_ambiguous_nts_in_sqstring($start_or_stop_codon)) { 
       my $codon_is_valid = 0;
