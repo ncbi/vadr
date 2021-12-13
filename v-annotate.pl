@@ -10440,7 +10440,7 @@ sub output_feature_table {
         for(my $e = 0; $e < scalar(@seq_alert_A); $e++) { 
           my $error_line = $seq_alert_A[$e];
           my $error_line2print = $error_line; # modified below
-          if($error_line =~ /(^[^\:]+)\:\s+\(([^\)]+)\)\s+S\:([^\;]+)\;\s+M\:([^\;]+)\;\s+(.+)$/) {
+          if($error_line =~ /(^[^\:]+)\:\s+\((.*)\)\s+S\:([^\;]+)\;\s+M\:([^\;]+)\;\s+(.+)$/) {
             my ($tmp_sdesc, $tmp_ftr_type_and_name, $tmp_scoords, $tmp_mcoords, $tmp_edesc) = ($1, $2, $3, $4, $5);
             my ($tmp_ftr_type, $tmp_ftr_name) = ("-", "*sequence*"); # 
             if ($tmp_ftr_type_and_name ne "*sequence*") { 

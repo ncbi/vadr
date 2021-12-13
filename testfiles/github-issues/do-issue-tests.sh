@@ -12,6 +12,7 @@ for i in \
     iss30-toomanyNs \
     iss33-longdesc \
     iss37-roverlap \
+    iss47-productparantheses \
     ; do
     $VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/github-issues/$i/$i.testin vt-$i
     if [ $? != 0 ]; then
