@@ -1,13 +1,13 @@
 #     alert     causes   short                             per    num   num  long       
 #idx  code      failure  description                      type  cases  seqs  description
 #---  --------  -------  ---------------------------  --------  -----  ----  -----------
-1     ambgnt3s  no       N_AT_END                     sequence      1     1  final nucleotide of the sequence is an N
+1     ambgnt3s  no       AMBIGUITY_AT_END             sequence      1     1  final nucleotide of the sequence is an ambiguous nucleotide
 2     insertnn  no       INSERTION_OF_NT               feature      1     1  too large of an insertion in nucleotide-based alignment of CDS feature
 3     lowsim3c  no       LOW_FEATURE_SIMILARITY_END    feature      2     1  region within annotated feature that is or matches a CDS at 3' end of sequence lacks significant similarity
-4     ambgnt3f  no       N_AT_FEATURE_END              feature      3     1  final nucleotide of non-CDS feature is an N
+4     ambgnt3f  no       AMBIGUITY_AT_FEATURE_END      feature      3     1  final nucleotide of non-CDS feature is an ambiguous nucleotide
+5     ambgcd5c  no       AMBIGUITY_IN_START_CODON      feature      1     1  5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon
 #---  --------  -------  ---------------------------  --------  -----  ----  -----------
-5     mutstart  yes      MUTATION_AT_START             feature      1     1  expected start codon could not be identified
 6     peptrans  yes      PEPTIDE_TRANSLATION_PROBLEM   feature      1     1  mat_peptide may not be translated because its parent CDS has a problem
 7     indf3pst  yes      INDEFINITE_ANNOTATION_END     feature      1     1  protein-based alignment does not extend close enough to nucleotide-based alignment 3' endpoint
-8     ambgnt3c  yes      N_AT_CDS_END                  feature      2     1  final nucleotide of CDS is an N
+8     ambgnt3c  yes      AMBIGUITY_AT_CDS_END          feature      2     1  final nucleotide of CDS is an ambiguous nucleotide
 #---  --------  -------  ---------------------------  --------  -----  ----  -----------

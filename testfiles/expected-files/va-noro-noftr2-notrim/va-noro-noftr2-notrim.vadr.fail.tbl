@@ -4,47 +4,47 @@
 			protein_id	NC_001959/6890-7500-cds-first-60-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..120:+; mdl-coords:6950..7009:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..120:+; mdl-coords:6950..7009:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-Ns
 61	>611	CDS
 			product	VP2
 			protein_id	NC_001959/6890-7500-cds-all-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an N [-]; seq-coords:61..611:+; mdl-coords:6950..7500:+; mdl:NC_001959;
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..611:+; mdl-coords:6950..7500:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_END: (CDS:VP2) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..611:+; mdl-coords:6950..7500:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..611:+; mdl-coords:6950..7500:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-but-1-Ns
 61	>611	CDS
 			product	VP2
 			protein_id	NC_001959/6890-7500-cds-all-but-1-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..610:+; mdl-coords:6950..7499:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..610:+; mdl-coords:6950..7499:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-but-2-Ns
 61	>611	CDS
 			product	VP2
 			protein_id	NC_001959/6890-7500-cds-all-but-2-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..609:+; mdl-coords:6950..7498:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..609:+; mdl-coords:6950..7498:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-but-3-Ns
 61	>611	CDS
 			product	VP2
 			protein_id	NC_001959/6890-7500-cds-all-but-3-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..608:+; mdl-coords:6950..7497:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..608:+; mdl-coords:6950..7497:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-but-4-Ns
 61	>611	CDS
 			product	VP2
 			protein_id	NC_001959/6890-7500-cds-all-but-4-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..607:+; mdl-coords:6950..7496:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..607:+; mdl-coords:6950..7496:+; mdl:NC_001959;
 >Feature NC_001959/6890-7500-cds-all-but-5-Ns
 61	>611	CDS
 			product	VP2
 			protein_id	NC_001959/6890-7500-cds-all-but-5-Ns_1
 
 Additional note(s) to submitter:
-ERROR: N_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an N [-]; seq-coords:61..606:+; mdl-coords:6950..7495:+; mdl:NC_001959;
+ERROR: AMBIGUITY_AT_CDS_START: (CDS:VP2) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:61..606:+; mdl-coords:6950..7495:+; mdl:NC_001959;

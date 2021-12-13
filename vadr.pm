@@ -86,6 +86,7 @@ require "sqp_utils.pm";
 # vdr_FeatureTypeAndTypeIndexString()
 # vdr_FeatureTypeIndex()
 # vdr_FeatureTypeIsCds()
+# vdr_FeatureTypeIsCdsOrIdStartAndStop()
 # vdr_FeatureTypeIsMatPeptide()
 # vdr_FeatureTypeIsGene()
 # vdr_FeatureTypeIsCdsOrGene()
@@ -1483,6 +1484,50 @@ sub vdr_FeatureTypeIsCds {
 }
 
 #################################################################
+# Subroutine: vdr_FeatureTypeIsCdsOrIdStartAndStop()
+# Incept:     EPN, Thu Dec  9 10:22:21 2021
+#
+# Purpose:    Is feature $ftr_idx either a CDS or does it have 
+#             same start/stop coords as another feature
+#             that is a CDS?
+#  
+# Arguments: 
+#  $ftr_info_AHR:   ref to the feature info array of hashes 
+#  $ftr_idx:        feature index
+#
+# Returns:    1 or 0
+#
+# Dies:       never; does not validate anything.
+#
+################################################################# 
+sub vdr_FeatureTypeIsCdsOrIdStartAndStop { 
+  my $sub_name = "vdr_FeatureTypeIsCdsOrIdStartAndStop";
+  my $nargs_exp = 2;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($ftr_info_AHR, $ftr_idx) = @_;
+
+  if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx)) { 
+    return 1;
+  }
+  else { 
+    my $nftr = scalar(@{$ftr_info_AHR});
+    my $start1 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    my $stop1  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx]{"coords"}, undef);
+    for(my $ftr_idx2 = 0; $ftr_idx2 < $nftr; $ftr_idx2++) { 
+      if(vdr_FeatureTypeIsCds($ftr_info_AHR, $ftr_idx2)) { 
+        my $start2 = vdr_Feature5pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        my $stop2  = vdr_Feature3pMostPosition($ftr_info_AHR->[$ftr_idx2]{"coords"}, undef);
+        if(($start1 == $start2) && ($stop1 == $stop2)) { 
+          return 1; 
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+#################################################################
 # Subroutine: vdr_FeatureTypeIsMatPeptide()
 # Incept:     EPN, Fri Apr  5 14:32:28 2019
 #
@@ -2281,14 +2326,14 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5s", "sequence",
-                   "N_AT_START", # short description
-                   "first nucleotide of the sequence is an N", # long  description
+                   "AMBIGUITY_AT_START", # short description
+                   "first nucleotide of the sequence is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3s", "sequence",
-                   "N_AT_END", # short description
-                   "final nucleotide of the sequence is an N", # long  description
+                   "AMBIGUITY_AT_END", # short description
+                   "final nucleotide of the sequence is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
@@ -2635,26 +2680,38 @@ sub vdr_AlertInfoInitialize {
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5f", "feature",
-                   "N_AT_FEATURE_START", # short description
-                   "first nucleotide of non-CDS feature is an N", # long  description
+                   "AMBIGUITY_AT_FEATURE_START", # short description
+                   "first nucleotide of non-CDS feature is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3f", "feature",
-                   "N_AT_FEATURE_END", # short description
-                   "final nucleotide of non-CDS feature is an N", # long  description
+                   "AMBIGUITY_AT_FEATURE_END", # short description
+                   "final nucleotide of non-CDS feature is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt5c", "feature",
-                   "N_AT_CDS_START", # short description
-                   "first nucleotide of CDS is an N", # long  description
+                   "AMBIGUITY_AT_CDS_START", # short description
+                   "first nucleotide of CDS is an ambiguous nucleotide", # long  description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
   vdr_AlertInfoAdd($alt_info_HHR, "ambgnt3c", "feature",
-                   "N_AT_CDS_END", # short description
-                   "final nucleotide of CDS is an N", # long  description
+                   "AMBIGUITY_AT_CDS_END", # short description
+                   "final nucleotide of CDS is an ambiguous nucleotide", # long  description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgcd5c", "feature",
+                   "AMBIGUITY_IN_START_CODON", # short description
+                   "5' complete CDS starts with canonical nt but includes ambiguous nt in its start codon", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgcd3c", "feature",
+                   "AMBIGUITY_IN_STOP_CODON", # short description
+                   "3' complete CDS ends with canonical nt but includes ambiguous nt in its stop codon", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR); 
 
