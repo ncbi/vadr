@@ -117,13 +117,13 @@
 			note	ncRNA 1
 10	19	stem_loop
 			note	stem-loop 1
+11	31	gene
+			gene	one
+11	31	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_1
 11	22	mat_peptide
 			product	protein one mp1
-			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_1
-11	>28	gene
-			gene	one
-11	>28	CDS
-			product	protein one
 			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass_1
 23	28	mat_peptide
 			product	protein one mp2

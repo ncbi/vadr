@@ -130,13 +130,13 @@
 35	28
 			product	protein two
 			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass-rev_2
+90	70	gene
+			gene	one
+90	70	CDS
+			product	protein one
+			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass-rev_1
 78	73	mat_peptide
 			product	protein one mp2
-			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass-rev_1
-90	>73	gene
-			gene	one
-90	>73	CDS
-			product	protein one
 			protein_id	ENTOY100A-one-second-to-final-posn-R-30-pass-rev_1
 90	79	mat_peptide
 			product	protein one mp1

@@ -5569,25 +5569,25 @@ sub fetch_features_and_add_cds_and_mp_alerts_for_one_sequence {
       # we use ftr_sqstring_pv  values later during protein validation to adjust protein/nucleotide difference tolerance at ends
       $ftr_5ablen = helper_feature_terminal_ambiguities($ftr_sqstring_alt, 0, $ftr_is_5trunc, # 0: not reversed
                                                         $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-                                                        $ftr_is_cds, $ftr_matches_cds, \%alt_str_H, $ua2rf_AR, $FH_HR);
+                                                        $ftr_is_cds, $ftr_matches_cds, $mdl_tt, $atg_only, \%alt_str_H, $ua2rf_AR, $FH_HR);
       $ftr_start_non_ab = ($ftr_5ablen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_5ablen + 1), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       $ftr_5ablen_pv = helper_feature_terminal_ambiguities($ftr_sqstring_pv, 0, $ftr_is_5trunc, # 0: not reversed
                                                            $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-                                                           $ftr_is_cds, $ftr_matches_cds, undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
+                                                           $ftr_is_cds, $ftr_matches_cds, $mdl_tt, $atg_only, undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
 
       my $rev_ftr_sqstring_alt = reverse($ftr_sqstring_alt);
       $ftr_3ablen = helper_feature_terminal_ambiguities($rev_ftr_sqstring_alt, 1, $ftr_is_3trunc, # 1: reversed
                                                         $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-                                                        $ftr_is_cds, $ftr_matches_cds, \%alt_str_H, $ua2rf_AR, $FH_HR);
+                                                        $ftr_is_cds, $ftr_matches_cds, $mdl_tt, $atg_only, \%alt_str_H, $ua2rf_AR, $FH_HR);
       $ftr_stop_non_ab = ($ftr_3ablen != $ftr_len) ? vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $ftr_3ablen), $FH_HR) : -1;
 
       # same drill for ftr_sqstring_pv
       my $rev_ftr_sqstring_pv = reverse($ftr_sqstring_pv);
       $ftr_3ablen_pv = helper_feature_terminal_ambiguities($rev_ftr_sqstring_pv, 1, $ftr_is_3trunc, # 1: reversed
                                                            $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-                                                           $ftr_is_cds, $ftr_matches_cds, undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
+                                                           $ftr_is_cds, $ftr_matches_cds, $mdl_tt, $atg_only, undef, $ua2rf_AR, $FH_HR); # undef \%alt_str_H, don't report alerts for pv 
 
       # output the sequence
       if(! exists $ofile_info_HHR->{"FH"}{$ftr_ofile_key}) { 
@@ -13239,6 +13239,8 @@ sub check_for_ambiguous_nts_in_sqstring {
 #  $ftr_len:         total length of feature in nucleotides
 #  $ftr_is_cds:      '1' if feature is a CDS, '0' if not
 #  $ftr_matches_cds: '1' if feature has same start/stop as a CDS (or is a CDS), '0' if not
+#  $tt:              translation table
+#  $atg_only:        '1' if only acceptable start is ATG
 #  $alt_str_HR:      ref to alert string to add to, undef means don't add to it
 #  $ua2rf_AR:        ref to array mapping sequence positions to model positions
 #  $FH_HR:           ref to hash of file handles
@@ -13248,13 +13250,11 @@ sub check_for_ambiguous_nts_in_sqstring {
 #################################################################
 sub helper_feature_terminal_ambiguities {
   my $sub_name = "helper_feature_terminal_ambiguities";
-  my $nargs_exp = 13;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
   my ($ftr_sqstring, $is_reversed, $is_trunc, $ftr_start, $ftr_stop, $ftr_strand, $ftr_scoords, $ftr_len, 
-      $ftr_is_cds, $ftr_matches_cds, $alt_str_HR, $ua2rf_AR, $FH_HR) = (@_);
-
-  #printf("in $sub_name, sqstring: $sqstring\n");
+      $ftr_is_cds, $ftr_matches_cds, $tt, $atg_only, $alt_str_HR, $ua2rf_AR, $FH_HR) = (@_);
 
   my $ret_ablen = count_terminal_ambiguities_in_sqstring($ftr_sqstring);
 
@@ -13278,30 +13278,55 @@ sub helper_feature_terminal_ambiguities {
     }
   }
 
-  # Caveat: if we have a CDS that is not truncated and has ambiguities in first 3 nt (this the stop codon if $is_reversed and start codon)
-  #         otherwise) then we count the stop codon as 3 ambiguities, 
-  #         and find first non-N after the first 3
-  if((($ftr_is_cds || $ftr_matches_cds)) && (! $is_trunc) && ($ret_ablen == 0) && ($ret_ablen != $ftr_len) && 
-     (check_for_ambiguous_nts_in_sqstring(substr($ftr_sqstring, 0, 3)))) { 
-    my $codon_len = utl_Min(3, $ftr_len);
-    $ret_ablen = $codon_len + count_terminal_ambiguities_in_sqstring(substr($ftr_sqstring, 3));
+  # Caveat: if we have a CDS or gene with identical start/stop to a CDS that
+  #         - is not truncated
+  #         - has ambiguities in first 3nt (this the stop codon if $is_reversed and start codon)
+  #         - is not a valid start/stop despite ambiguities (e.g. TRA is valid stop in trans table 1)
+  #         then we count the start/stop codon as 3 ambiguities and find the first non-N after the first 3
+  if((($ftr_is_cds || $ftr_matches_cds)) && (! $is_trunc) && ($ret_ablen == 0) && ($ret_ablen != $ftr_len)) { 
+    my $start_or_stop_codon = "";
+    if($is_reversed) { 
+      $start_or_stop_codon = reverse(substr($ftr_sqstring, 0, 3));
+    }
+    else { 
+      $start_or_stop_codon = substr($ftr_sqstring, 0, 3);
+    }
+    # check if it has any ambiguities
+    if(check_for_ambiguous_nts_in_sqstring($start_or_stop_codon)) { 
+      my $codon_is_valid = 0;
+      # check if it is a valid start/stop
+      if($ftr_len >= 3) { 
+        $start_or_stop_codon =~ tr/a-z/A-Z/; # convert to uppercase
+        $start_or_stop_codon =~ tr/U/T/;     # convert to DNA
+        if($is_reversed) { 
+          $codon_is_valid = seq_CodonValidateStopCapDna($start_or_stop_codon, $tt);
+        }
+        else { 
+          $codon_is_valid = seq_CodonValidateStartCapDna($start_or_stop_codon, $tt, $atg_only);
+        }
+      }
+      if(! $codon_is_valid) { 
+        my $codon_len = utl_Min(3, $ftr_len);
+        $ret_ablen = $codon_len + count_terminal_ambiguities_in_sqstring(substr($ftr_sqstring, 3));
 
-    if((defined $alt_str_HR) && ($ftr_is_cds)) { 
-      if($is_reversed) { 
-        # dealing with 3' end
-        my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);
-        my $alt_scoords     = "seq:" . vdr_CoordsSegmentCreate($ftr_codon_start, $ftr_stop, $ftr_strand, $FH_HR) . ";";
-        my $alt_mcoords     = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_codon_start]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
-        $alt_str_HR->{"ambgcd3c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
+        if((defined $alt_str_HR) && ($ftr_is_cds)) { 
+          if($is_reversed) { 
+            # dealing with 3' end
+            my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);
+            my $alt_scoords     = "seq:" . vdr_CoordsSegmentCreate($ftr_codon_start, $ftr_stop, $ftr_strand, $FH_HR) . ";";
+            my $alt_mcoords     = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_codon_start]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
+            $alt_str_HR->{"ambgcd3c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
+          }
+          else { 
+            # dealing with 5' end
+            my $ftr_codon_end = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $codon_len, $FH_HR);
+            my $alt_scoords   = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_codon_end, $ftr_strand, $FH_HR) . ";";
+            my $alt_mcoords   = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_codon_end]), $ftr_strand, $FH_HR) . ";";
+            $alt_str_HR->{"ambgcd5c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
+          }
+        }        
       }
-      else { 
-        # dealing with 5' end
-        my $ftr_codon_end = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $codon_len, $FH_HR);
-        my $alt_scoords   = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_codon_end, $ftr_strand, $FH_HR) . ";";
-        my $alt_mcoords   = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_codon_end]), $ftr_strand, $FH_HR) . ";";
-        $alt_str_HR->{"ambgcd5c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
-      }
-    }        
+    }
   }
 
   return $ret_ablen;
