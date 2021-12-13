@@ -1,0 +1,24 @@
+# format of this file:
+# '#' prefixed files are comments, and are not parsed.
+# 'command:' prefix indicates remainder of line is a command to run
+# 'desc:' prefix indicates description of test for dnaorg_test.pl output        
+# 'out:' prefix indicates output file to check against an expected file
+# 'exp:' prefix indicates expected file to check against an output file
+# 'rmdir:' prefix indicates name of output directory to remove after 
+# command is run and all output files have been checked.
+#
+# All 'out:' and 'exp:' lines following a 'command:' line (and before the 
+# next 'command:' line, will be checked after that command runs. The first
+# 'out:' file is compared against the first 'exp:' file, the second 
+# 'out:' file is compared against the second 'exp:' file, the second 'out:'
+# file, etc.
+# 
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.productparantheses.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss47-productparantheses/iss47.fa va-iss47 > va-iss47.out
+desc: iss47
+out: va-iss47/va-iss47.vadr.pass.tbl
+out: va-iss47/va-iss47.vadr.fail.tbl
+out: va-iss47/va-iss47.vadr.alt.list
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss47-productparantheses/expected-files/va-iss47/va-iss47.vadr.pass.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss47-productparantheses/expected-files/va-iss47/va-iss47.vadr.fail.tbl
+exp: @VADRSCRIPTSDIR@/testfiles/github-issues/iss47-productparantheses/expected-files/va-iss47/va-iss47.vadr.alt.list
+rmdir: va-iss47
