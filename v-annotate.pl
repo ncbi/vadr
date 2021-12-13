@@ -5457,17 +5457,44 @@ sub determine_frame_and_length_summary_strings {
       my ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
       printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
       printf("0 cur_length: $cur_length\n");
+
       if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
         if(defined $prv_frame) { 
-          if($ret_length_str ne "") { 
+          if(($ret_length_str ne "") && ($ret_length_str ne ")")) { 
+            printf("ntok_added $ntok_added open_flag $open_flag, adding $cur_length and :\n");
             $ret_length_str = $cur_length . ":" . $ret_length_str;
           }
           else { 
-            $ret_length_str = $cur_length;
+            $ret_length_str = $cur_length . $ret_length_str;
           }
         }          
+        $tmp_ret_len_sum += $cur_length;
         $cur_length = 0;
         printf("reset cur_length\n");
+
+        if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
+          $ret_frame_str  = "(" . $ret_frame_str;
+          $ret_length_str = "(" . $ret_length_str;
+          $open_flag = 0;
+          $ntok_added_open = 0;
+        }
+
+        if($f == $idx) { 
+          $ret_frame_str  = ")" . $ret_frame_str;
+          if($ntok_added > 0) { 
+            $ret_length_str = ")" . ":" . $ret_length_str;
+          }
+          else { 
+            $ret_length_str = ")";
+          }
+          $open_flag = 1;
+          $ntok_added_open = 0;
+        }
+        $ret_frame_str = $cur_frame  . $ret_frame_str;
+        $ntok_added++;
+        if($open_flag) { 
+          $ntok_added_open++;
+        }
       }
 
       $cur_length += abs($cur_sstop - $cur_sstart) + 1;
@@ -5480,40 +5507,6 @@ sub determine_frame_and_length_summary_strings {
         $save_ninsert += $cur_ninsert;
       }
 
-      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
-        # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
-        # HERE HERE HERE, add in length from segments in same frame to current length somehow...
-        if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
-          $ret_frame_str  = "(" . $ret_frame_str;
-#          $ret_length_str = "(" . $ret_length_str;
-          $open_flag = 0;
-          $ntok_added_open = 0;
-        }
-        if($f == $idx) { 
-          $ret_frame_str  = ")" . $ret_frame_str;
-          if($ntok_added > 0) { 
-#            $ret_length_str = ")" . ":" . $ret_length_str;
-          }
-          else { 
-#            $ret_length_str = ")";
-          }
-          $open_flag = 1;
-          $ntok_added_open = 0;
-        }
-        $ret_frame_str = $cur_frame  . $ret_frame_str;
-        if(((! $open_flag) || ($ntok_added_open > 0)) && ($ntok_added > 0)) { 
-#          $ret_length_str = $cur_length . ":" . $ret_length_str;
-          $tmp_ret_len_sum += $cur_length;
-        }
-        else { 
-#          $ret_length_str = $cur_length . $ret_length_str;
-          $tmp_ret_len_sum += $cur_length;
-        }
-        $ntok_added++;
-        if($open_flag) { 
-          $ntok_added_open++;
-        }
-      }
       $prv_frame = $cur_frame;
     }
     else { 
@@ -5527,6 +5520,7 @@ sub determine_frame_and_length_summary_strings {
   else { 
     $ret_length_str = $cur_length;
   }
+  $tmp_ret_len_sum += $cur_length;
 
   # prepend '<' if 5' truncated
   if($is_5p_trunc) { 
