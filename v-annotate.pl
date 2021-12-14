@@ -5439,17 +5439,16 @@ sub determine_frame_and_length_summary_strings {
   my ($frame_stok_AR, $idx, $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR) = @_;
 
   my $nframe_stok = scalar(@{$frame_stok_AR});
-  # start with '>' if 5' truncated
-  my $ret_frame_str  = ($is_3p_trunc) ? ">" : "";
-  my $ret_length_str = ($is_3p_trunc) ? ">" : "";
 
-  my $prv_frame   = undef;
-  my $parantheses_flag = 0; # set to '1' when we should put next frame/length substr in parantheses
-  my $cur_length    = 0;
-  my $save_ninsert  = 0; # number of inserts seen since last unexpected frame region
-  my $ntok_added    = 0; # number of substring tokens added to $ret_frame_str and $ret_length_str
-  my $tok_length = undef; # substring token to add to $ret_length_str
-  my $tok_frame  = undef; # substring token to add to $ret_frame_str
+  my $prv_frame             = undef; # frame of previous token looked at
+  my $prv_sum_length        = 0;     # summed length of previous token(s) all in same frame
+  my $cur_length            = 0;     # length of current token
+  my $parentheses_open_flag = 0;     # set to '1' when we should add left parentheses before next frame/length substr token
+  my $parentheses_end_flag  = 0;     # set to '1' when we should add right parentheses after next frame/length substr token
+  my $save_ninsert          = 0;     # number of inserts seen since last unexpected frame region
+  my $ntok_added            = 0;     # number of substring tokens added to $ret_frame_str and $ret_length_str
+  my $length_tok            = undef; # substring token to add to $ret_length_str
+  my $frame_tok             = undef; # substring token to add to $ret_frame_str
 
   # variables parsed from $frame_stok_AR->[$f]
   my $cur_frame   = undef;
@@ -5458,6 +5457,10 @@ sub determine_frame_and_length_summary_strings {
   my $cur_sstop   = undef; 
   my $cur_ndelete = undef; 
   my $cur_sgmend  = undef;
+
+  # start with '>' if 5' truncated
+  my $ret_frame_str  = ($is_3p_trunc) ? ">" : "";
+  my $ret_length_str = ($is_3p_trunc) ? ">" : "";
 
   my $tmp_ret_len_sum = 0;
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
@@ -5468,34 +5471,39 @@ sub determine_frame_and_length_summary_strings {
       printf("0 cur_length: $cur_length\n");
 
       if((defined $prv_frame) && ($cur_frame != $prv_frame)) { 
-        # we are going to add to length and frame str
-        # we add $prv_frame (frame from previous token) but 
-        # $cur_length, which 
-        if($parantheses_flag) { 
-          $tok_length = "(" . $cur_length . ")";
-          $tok_frame  = "(" . $prv_frame  . ")";
-          $parantheses_flag = 0;
+        # add to length and frame str
+
+        # potentially add right parentheses
+        $length_tok = $prv_sum_length;
+        $frame_tok  = $prv_frame;
+        if($parentheses_end_flag) { 
+          $length_tok .= ")";
+          $frame_tok  .= ")";
+          $parentheses_end_flag  = 0;
+          $parentheses_open_flag = 1;
         }
-        else {
-          $tok_length = $cur_length;
-          $tok_frame  = $prv_frame;
+        # potentially prepend left parentheses 
+        if(($parentheses_open_flag) && ($cur_frame == $expected_frame)) { 
+          $length_tok = "(" . $length_tok; 
+          $frame_tok  = "(" . $frame_tok;
+          $parentheses_open_flag = 0;
         }
         if($ntok_added > 0) { 
-          $tok_length .= ":";
+          $length_tok .= ":";
         }
-        $ret_length_str = $tok_length . $ret_length_str;
-        $ret_frame_str  = $tok_frame  . $ret_frame_str;
+        $ret_length_str = $length_tok . $ret_length_str;
+        $ret_frame_str  = $frame_tok  . $ret_frame_str;
         $ntok_added++;
-        $tmp_ret_len_sum += $cur_length;
-        $cur_length = 0;
+        $tmp_ret_len_sum += $prv_sum_length;
+        $prv_sum_length = 0;
         printf("reset cur_length\n");
       }
       if($f == $idx) { 
-        $parantheses_flag = 1;
+        $parentheses_end_flag = 1;
       }
 
-      # update $cur_length
-      $cur_length += abs($cur_sstop - $cur_sstart) + 1;
+      # determine $cur_length
+      $cur_length = abs($cur_sstop - $cur_sstart) + 1;
       if($cur_frame != $expected_frame) { 
         $cur_length += $cur_ninsert;
         $cur_length += $save_ninsert;
@@ -5505,7 +5513,8 @@ sub determine_frame_and_length_summary_strings {
         $save_ninsert += $cur_ninsert;
       }
 
-      $prv_frame = $cur_frame;
+      $prv_frame       = $cur_frame;
+      $prv_sum_length += $cur_length;
     }
     else { 
       ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: " . $frame_stok_AR->[$f], 1, $FH_HR);
@@ -5513,22 +5522,29 @@ sub determine_frame_and_length_summary_strings {
   }
 
   # add final frame and length
-  if($parantheses_flag) { 
-    $tok_length = "(" . $cur_length . ")";
-    $tok_frame  = "(" . $prv_frame  . ")";
-    $parantheses_flag = 0;
-  }
-  else {
-    $tok_length = $cur_length;
-    $tok_frame  = $cur_frame;
-  }
-  if(($ret_length_str ne "") && ($ret_length_str ne ")")) { 
-    $tok_length .= ":";
-  }
-  $ret_length_str = $tok_length . $ret_length_str;
-  $ret_frame_str  = $tok_frame  . $ret_frame_str;
 
-  $tmp_ret_len_sum += $cur_length;
+  # potentially add right parenthesis
+  $length_tok = $prv_sum_length;
+  $frame_tok  = $prv_frame;
+  if($parentheses_end_flag) { 
+    $length_tok .= ")";
+    $frame_tok  .= ")";
+    $parentheses_end_flag  = 0;
+    $parentheses_open_flag = 1;
+  }
+  # potentially prepend left parentheses 
+  if(($parentheses_open_flag) && ($cur_frame == $expected_frame)) { 
+    $length_tok = "(" . $length_tok; 
+    $frame_tok  = "(" . $frame_tok;
+    $parentheses_open_flag = 0;
+  }
+  if($ntok_added > 0) { 
+    $length_tok .= ":";
+  }
+  $ret_length_str = $length_tok . $ret_length_str;
+  $ret_frame_str  = $frame_tok  . $ret_frame_str;
+
+  $tmp_ret_len_sum += $prv_sum_length;
 
   # prepend '<' if 5' truncated
   if($is_5p_trunc) { 
@@ -5588,7 +5604,7 @@ sub orig_determine_frame_and_length_summary_strings {
   my $cur_length    = 0;
   my $save_ninsert  = 0; # number of inserts seen since last unexpected frame region
   my $ntok_added    = 0; # number of tokens added to return strings
-  my $ntok_added_open = 0; # number of tokens added since paranthesis was opened
+  my $ntok_added_open = 0; # number of tokens added since parenthesis was opened
 
   my $tmp_ret_len_sum = 0;
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other

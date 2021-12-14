@@ -5769,7 +5769,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       $line = <IN>; $line_ctr++;
       # line with the info on the alignment we need to parse
       # Two examples below ("The best scores" line kept only to show field names
-      # note the space in the parantheses before the model name, we have to take special care to deal with that
+      # note the space in the parentheses before the model name, we have to take special care to deal with that
       #The best scores are:                                                n-w	%_id  %_sim  gnw  alen  an0  ax0  pn0  px0  an1  ax1 pn1 px1 gapq gapl  fs  aln_code
       #NC_045512                                                (29903) [f] 21396	0.516 0.516 21396 10248    1 10248    1 10248 17633 27872    1 29903 4952   8   0	2949M1D5129M7D2162M
       #entoy100a-dcr                                            ( 100) [f]  500	1.000 1.000  500  100    1  100    1  100    1  100    1  100   0   0   0	100M
