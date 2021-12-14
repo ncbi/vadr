@@ -5056,8 +5056,8 @@ sub add_frameshift_alerts_for_one_sequence {
 
           # now step through each subseq that has a different frame and report frameshift alerts when necessary
           for($f = 0; $f < $nframe_stok; $f++) { 
-            printf("f: $f frame_stok: %s\n", $frame_stok_A[$f]);
-            printf("f: $f frame_mtok: %s\n", $frame_mtok_A[$f]);
+            #printf("f: $f frame_stok: %s\n", $frame_stok_A[$f]);
+            #printf("f: $f frame_mtok: %s\n", $frame_mtok_A[$f]);
             if($frame_stok_A[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
               my ($cur_frame,  $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
               my ($cur_mframe, $cur_mstart, $cur_mstop, $cur_msgmend);
