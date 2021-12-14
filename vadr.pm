@@ -5023,7 +5023,7 @@ sub vdr_CmalignCheckStdOutput {
     ofile_FAIL("ERROR in $sub_name, cmalign stdout file $stdout_file does not exist", 1, $FH_HR);
   }
   if(! -s $stdout_file) { 
-    ofile_FAIL("ERROR in $sub_name, cmalign $stdout_file exists but is empty", 1, $FH_HR);
+    ofile_FAIL("ERROR in $sub_name, cmalign $stdout_file exists but is empty. v-annotate.pl may have run out of available memory, especially if you see a 'Killed' message.", 1, $FH_HR);
   }
 
   # if we get here, the file exists and is non-empty
