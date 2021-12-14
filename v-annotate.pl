@@ -5451,8 +5451,6 @@ sub determine_frame_and_length_summary_strings {
   for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
     if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
       ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
-      printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
-      printf("0 cur_length: $cur_length\n");
 
       if((defined $prv_frame) && ($cur_frame != $prv_frame)) { 
         # add to length and frame str
@@ -5480,7 +5478,6 @@ sub determine_frame_and_length_summary_strings {
         $ntok_added++;
         $tmp_ret_len_sum += $prv_sum_length;
         $prv_sum_length = 0;
-        printf("reset cur_length\n");
       }
       if($f == $idx) { 
         $parentheses_end_flag = 1;
@@ -5536,129 +5533,6 @@ sub determine_frame_and_length_summary_strings {
     $ret_length_str = "<" . $ret_length_str;
   }
 
-  printf("returning from $sub_name, $ret_frame_str, $ret_length_str, $tmp_ret_len_sum\n");
-  return ($ret_frame_str, $ret_length_str, $tmp_ret_len_sum);
-}
-
-
-#################################################################
-# Subroutine:  determine_frame_and_length_summary_strings()
-# Incept:      EPN, Mon Nov 15 12:54:06 2021
-#
-# Purpose:     Determine a string (<$frame_str>) that summarizes a
-#              frameshift within the context of frames of all subseqs
-#              in a CDS, and another string (<$length_str>) that
-#              summarizes the lengths of each region in a different
-#              frame
-#
-#              Examples:                                                frame_str  length_str
-#              non-truncated CDS w/internal frameshift in frame 2:      "1(2)1"    "21,(13),102"
-#              5' truncated CDS that starts in frame 2 and shifts to 3: "<2(3)"    "<102,(43)"
-#              same as above but also 3' truncated:                     "<2(3)>"   "<102,(43)>"
-#
-# Arguments: 
-#  $frame_stok_AR:      reference to array of tokens of sequence subregions in different frames
-#  $idx:                index of frameshifted subregion in $frame_stok_AR
-#  $expected_frame:     expected frame, shifted regions are not in this frame
-#  $is_5p_trunc:        '1' if the relevant CDS is truncated on 5' end, 0 if not
-#  $is_3p_trunc:        '1' if the relevant CDS is truncated on 3' end, 0 if not
-#  $FH_HR:              ref to file handle hash
-# 
-# Returns:     Two values:
-#              $frame_str:  string describing frameshifted region in context of full CDS
-#              $length_str: string describing length of frameshifted region in context of full CDS
-#
-# Dies: if unable to parse a token of @{$frame_stok_AR}
-#
-################################################################# 
-sub orig_determine_frame_and_length_summary_strings {
-  my $sub_name = "determine_frame_and_length_summary_strings";
-  my $nargs_expected = 6;
-  if(scalar(@_) != $nargs_expected) { printf STDERR ("ERROR, $sub_name entered with %d != %d input arguments.\n", scalar(@_), $nargs_expected); exit(1); } 
-
-  my ($frame_stok_AR, $idx, $expected_frame, $is_5p_trunc, $is_3p_trunc, $FH_HR) = @_;
-
-  my $nframe_stok = scalar(@{$frame_stok_AR});
-  # start with '>' if 5' truncated
-  my $ret_frame_str  = ($is_3p_trunc) ? ">" : "";
-  my $ret_length_str = ($is_3p_trunc) ? ">" : "";
-  my $cur_frame     = undef;
-  my $prv_frame     = undef;
-  my $open_flag     = 0; # set to '1' when we open the frameshifted region with ')'
-  my $cur_length    = 0;
-  my $save_ninsert  = 0; # number of inserts seen since last unexpected frame region
-  my $ntok_added    = 0; # number of tokens added to return strings
-  my $ntok_added_open = 0; # number of tokens added since parenthesis was opened
-
-  my $tmp_ret_len_sum = 0;
-  # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
-  for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
-    if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
-      my ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
-      printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
-      printf("0 cur_length: $cur_length\n");
-      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
-        $cur_length = 0;
-        printf("reset cur_length\n");
-      }
-
-      $cur_length += abs($cur_sstop - $cur_sstart) + 1;
-      if($cur_frame != $expected_frame) { 
-        $cur_length += $cur_ninsert;
-        $cur_length += $save_ninsert;
-        $save_ninsert = 0;
-      }
-      else { # $cur_frame == $expected_frame
-        $save_ninsert += $cur_ninsert;
-      }
-
-      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
-        # if we have multiple segments we may have two frame tokens of same frame in a row, by enforcing this if, we ignore all but one of these
-        # HERE HERE HERE, add in length from segments in same frame to current length somehow...
-        if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
-          $ret_frame_str  = "(" . $ret_frame_str;
-          $ret_length_str = "(" . $ret_length_str;
-          $open_flag = 0;
-          $ntok_added_open = 0;
-        }
-        if($f == $idx) { 
-          $ret_frame_str  = ")" . $ret_frame_str;
-          if($ntok_added > 0) { 
-            $ret_length_str = ")" . ":" . $ret_length_str;
-          }
-          else { 
-            $ret_length_str = ")";
-          }
-          $open_flag = 1;
-          $ntok_added_open = 0;
-        }
-        $ret_frame_str = $cur_frame  . $ret_frame_str;
-        if(((! $open_flag) || ($ntok_added_open > 0)) && ($ntok_added > 0)) { 
-          $ret_length_str = $cur_length . ":" . $ret_length_str;
-          $tmp_ret_len_sum += $cur_length;
-        }
-        else { 
-          $ret_length_str = $cur_length . $ret_length_str;
-          $tmp_ret_len_sum += $cur_length;
-        }
-        $ntok_added++;
-        if($open_flag) { 
-          $ntok_added_open++;
-        }
-      }
-      $prv_frame = $cur_frame;
-    }
-    else { 
-      ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: " . $frame_stok_AR->[$f], 1, $FH_HR);
-    }
-  }
-  # prepend '<' if 5' truncated
-  if($is_5p_trunc) { 
-    $ret_frame_str  = "<" . $ret_frame_str;
-    $ret_length_str = "<" . $ret_length_str;
-  }
-
-  printf("returning from $sub_name, $ret_frame_str $ret_length_str, $tmp_ret_len_sum\n");
   return ($ret_frame_str, $ret_length_str, $tmp_ret_len_sum);
 }
 
