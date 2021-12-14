@@ -2487,57 +2487,39 @@ sub vdr_AlertInfoInitialize {
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fsthicft", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift at 5' end of CDS", # long description
-                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fsthicf3", "feature",
-                   "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift at 3' end of CDS", # long description
+                   "high confidence possible frameshift in CDS (frame not restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fsthicfi", "feature",
                    "POSSIBLE_FRAMESHIFT_HIGH_CONF", # short description
-                   "high confidence possible frameshift in CDS (internal)", # long description
+                   "high confidence possible frameshift in CDS (frame restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstlocft", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift at 5' end of CDS", # long description
-                   0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fstlocf3", "feature",
-                   "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift at 3' end of CDS", # long description
+                   "low confidence possible frameshift in CDS (frame not restored before end)", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstlocfi", "feature",
                    "POSSIBLE_FRAMESHIFT_LOW_CONF", # short description
-                   "low confidence possible frameshift in CDS (internal)", # long description
+                   "low confidence possible frameshift in CDS (frame restored before end)", # long description
                    0, 0, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf5", "feature",
+  vdr_AlertInfoAdd($alt_info_HHR, "fstukcft", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift at 5' end of CDS", # long description
-                   0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
-                   $FH_HR);
-
-  vdr_AlertInfoAdd($alt_info_HHR, "fstukcf3", "feature",
-                   "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift at 3' end of CDS", # long description
+                   "possible frameshift in CDS (frame not restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
   vdr_AlertInfoAdd($alt_info_HHR, "fstukcfi", "feature",
                    "POSSIBLE_FRAMESHIFT", # short description
-                   "possible frameshift in CDS (internal)", # long description
+                   "possible frameshift in CDS (frame restored before end)", # long description
                    0, 1, 0, 1, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
@@ -5787,7 +5769,7 @@ sub vdr_GlsearchFormat3And9CToStockholmAndInsertFile {
       $line = <IN>; $line_ctr++;
       # line with the info on the alignment we need to parse
       # Two examples below ("The best scores" line kept only to show field names
-      # note the space in the parantheses before the model name, we have to take special care to deal with that
+      # note the space in the parentheses before the model name, we have to take special care to deal with that
       #The best scores are:                                                n-w	%_id  %_sim  gnw  alen  an0  ax0  pn0  px0  an1  ax1 pn1 px1 gapq gapl  fs  aln_code
       #NC_045512                                                (29903) [f] 21396	0.516 0.516 21396 10248    1 10248    1 10248 17633 27872    1 29903 4952   8   0	2949M1D5129M7D2162M
       #entoy100a-dcr                                            ( 100) [f]  500	1.000 1.000  500  100    1  100    1  100    1  100    1  100   0   0   0	100M

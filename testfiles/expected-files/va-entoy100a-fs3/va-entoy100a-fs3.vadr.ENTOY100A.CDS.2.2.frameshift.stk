@@ -2,9 +2,9 @@
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs13 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs13 FS.1 seq_coords:1..9:+; mdl_coords: 32..39:+; length:9; inserts:S:9(1),M:39; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.936;
+#=GS ENTOY100A-3-fs13 FS.1 seq_coords:9..43:+; mdl_coords: 40..73:+; cause:insert,S:9(1),M:39; frame:1(2); length:8:(35); shifted_avgpp:0.965; exp_avgpp:0.966;
 
 ENTOY100A-3-fs13         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs13 PP ******************
@@ -19,9 +19,9 @@ ENTOY100A-3-fs13         GCATCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs14 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs14 FS.1 seq_coords:1..8:+; mdl_coords: 33..39:+; length:8; inserts:S:8(1),M:39; deletes:none; shifted_frame:3; dominant_frame:1; avgpp:0.931;
+#=GS ENTOY100A-3-fs14 FS.1 seq_coords:8..42:+; mdl_coords: 40..73:+; cause:insert,S:8(1),M:39; frame:<3(1); length:<7:(35); shifted_avgpp:0.965; exp_avgpp:0.964;
 
 ENTOY100A-3-fs14         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs14 PP ******************
@@ -36,9 +36,9 @@ ENTOY100A-3-fs14         GCATCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs15 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs15 FS.1 seq_coords:1..7:+; mdl_coords: 34..39:+; length:7; inserts:S:7(1),M:39; deletes:none; shifted_frame:2; dominant_frame:3; avgpp:0.925;
+#=GS ENTOY100A-3-fs15 FS.1 seq_coords:7..41:+; mdl_coords: 40..73:+; cause:insert,S:7(1),M:39; frame:<2(3); length:<6:(35); shifted_avgpp:0.965; exp_avgpp:0.963;
 
 ENTOY100A-3-fs15         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs15 PP ******************
@@ -53,9 +53,9 @@ ENTOY100A-3-fs15         GCATCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs16 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs16 FS.1 seq_coords:9..18:+; mdl_coords: 40..49:+; length:10; inserts:S:9(1),M:39; deletes:S:18,M:49(1); shifted_frame:2; dominant_frame:1; avgpp:0.922;
+#=GS ENTOY100A-3-fs16 FS.1 seq_coords:9..18:+; mdl_coords: 40..49:+; cause:insert,S:9(1),M:39; restore:delete,S:18,M:49(1); frame:1(2)1; length:8:(11):23; shifted_avgpp:0.922; exp_avgpp:0.966;
 
 ENTOY100A-3-fs16         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs16 PP *9.8**************
@@ -70,9 +70,9 @@ ENTOY100A-3-fs16         GC-TCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs17 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs17 FS.1 seq_coords:8..17:+; mdl_coords: 40..49:+; length:10; inserts:S:8(1),M:39; deletes:S:17,M:49(1); shifted_frame:1; dominant_frame:3; avgpp:0.922;
+#=GS ENTOY100A-3-fs17 FS.1 seq_coords:8..17:+; mdl_coords: 40..49:+; cause:insert,S:8(1),M:39; restore:delete,S:17,M:49(1); frame:<3(1)3; length:<7:(11):23; shifted_avgpp:0.922; exp_avgpp:0.964;
 
 ENTOY100A-3-fs17         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs17 PP *9.8**************
@@ -87,9 +87,9 @@ ENTOY100A-3-fs17         GC-TCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs18 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs18 FS.1 seq_coords:7..16:+; mdl_coords: 40..49:+; length:10; inserts:S:7(1),M:39; deletes:S:16,M:49(1); shifted_frame:3; dominant_frame:2; avgpp:0.922;
+#=GS ENTOY100A-3-fs18 FS.1 seq_coords:7..16:+; mdl_coords: 40..49:+; cause:insert,S:7(1),M:39; restore:delete,S:16,M:49(1); frame:<2(3)2; length:<6:(11):23; shifted_avgpp:0.922; exp_avgpp:0.963;
 
 ENTOY100A-3-fs18         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs18 PP *9.8**************
@@ -104,9 +104,9 @@ ENTOY100A-3-fs18         GC-TCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs25 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs25 FS.1 seq_coords:1..9:+; mdl_coords: 32..39:+; length:9; inserts:S:9(1),M:39; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.936;
+#=GS ENTOY100A-3-fs25 FS.1 seq_coords:9..40:+; mdl_coords: 40..70:+; cause:insert,S:9(1),M:39; frame:1(2)>; length:8:(32)>; shifted_avgpp:0.964; exp_avgpp:0.966;
 
 ENTOY100A-3-fs25         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs25 PP ******************
@@ -121,9 +121,9 @@ ENTOY100A-3-fs25         GCATCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs26 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs26 FS.1 seq_coords:1..8:+; mdl_coords: 33..39:+; length:8; inserts:S:8(1),M:39; deletes:none; shifted_frame:3; dominant_frame:1; avgpp:0.931;
+#=GS ENTOY100A-3-fs26 FS.1 seq_coords:8..38:+; mdl_coords: 40..69:+; cause:insert,S:8(1),M:39; frame:<3(1)>; length:<7:(31)>; shifted_avgpp:0.964; exp_avgpp:0.964;
 
 ENTOY100A-3-fs26         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs26 PP ******************
@@ -138,9 +138,9 @@ ENTOY100A-3-fs26         GCATCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs27 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs27 FS.1 seq_coords:1..7:+; mdl_coords: 34..39:+; length:7; inserts:S:7(1),M:39; deletes:none; shifted_frame:2; dominant_frame:3; avgpp:0.925;
+#=GS ENTOY100A-3-fs27 FS.1 seq_coords:7..36:+; mdl_coords: 40..68:+; cause:insert,S:7(1),M:39; frame:<2(3)>; length:<6:(30)>; shifted_avgpp:0.963; exp_avgpp:0.963;
 
 ENTOY100A-3-fs27         GCATCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs27 PP ******************
@@ -155,9 +155,9 @@ ENTOY100A-3-fs27         GCATCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs28 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs28 FS.1 seq_coords:9..18:+; mdl_coords: 40..49:+; length:10; inserts:S:9(1),M:39; deletes:S:18,M:49(1); shifted_frame:2; dominant_frame:1; avgpp:0.922;
+#=GS ENTOY100A-3-fs28 FS.1 seq_coords:9..18:+; mdl_coords: 40..49:+; cause:insert,S:9(1),M:39; restore:delete,S:18,M:49(1); frame:1(2)1>; length:8:(11):20>; shifted_avgpp:0.922; exp_avgpp:0.966;
 
 ENTOY100A-3-fs28         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs28 PP *9.8**************
@@ -172,9 +172,9 @@ ENTOY100A-3-fs28         GC-TCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs29 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs29 FS.1 seq_coords:8..17:+; mdl_coords: 40..49:+; length:10; inserts:S:8(1),M:39; deletes:S:17,M:49(1); shifted_frame:1; dominant_frame:3; avgpp:0.922;
+#=GS ENTOY100A-3-fs29 FS.1 seq_coords:8..17:+; mdl_coords: 40..49:+; cause:insert,S:8(1),M:39; restore:delete,S:17,M:49(1); frame:<3(1)3>; length:<7:(11):19>; shifted_avgpp:0.922; exp_avgpp:0.964;
 
 ENTOY100A-3-fs29         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs29 PP *9.8**************
@@ -189,9 +189,9 @@ ENTOY100A-3-fs29         GC-TCTTGCGGTGCCATA
 #=GF AU Infernal 1.1.4
 #=GF CC Alignment of CDS 2 segment 2 of 3 for sequence ENTOY100A-3-fs30 to model ENTOY100A with at least one frameshift alert (possibly in a different segment for multi-segment CDS).
 #=GF CC GR CS annotation indicates the codon_start value each nongap RF position implies.
-#=GF CC Changes from the dominant codon_start value indicate possibly frameshifted regions.
+#=GF CC Changes from the expected codon_start value indicate possibly frameshifted regions.
 
-#=GS ENTOY100A-3-fs30 FS.1 seq_coords:11..20:+; mdl_coords: 40..49:+; length:10; inserts:S:11(1),M:39; deletes:S:20,M:49(1); shifted_frame:2; dominant_frame:1; avgpp:0.922;
+#=GS ENTOY100A-3-fs30 FS.1 seq_coords:11..20:+; mdl_coords: 40..49:+; cause:insert,S:11(1),M:39; restore:delete,S:20,M:49(1); frame:1(2)1>; length:8:(11):18>; shifted_avgpp:0.922; exp_avgpp:0.966;
 
 ENTOY100A-3-fs30         GC-TCTTGCGGTGCCATA
 #=GR ENTOY100A-3-fs30 PP *9.8**************

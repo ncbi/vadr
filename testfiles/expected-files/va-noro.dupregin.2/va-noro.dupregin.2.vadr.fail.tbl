@@ -28,7 +28,7 @@
 
 Additional note(s) to submitter:
 ERROR: CDS_HAS_STOP_CODON: (CDS:nonstructural polyprotein) in-frame stop codon exists 5' of stop position predicted by homology to reference [TGA, shifted S:4673,M:4605]; seq-coords:839..841:+; mdl-coords:769..769:+; mdl:NC_001959;
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift at 5' end of CDS [length:905; inserts:S:770..909(140),M:769; deletes:none; shifted_frame:1; dominant_frame:3; avgpp:0.810;]; seq-coords:5..909:+; mdl-coords:5..769:+; mdl:NC_001959;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:nonstructural polyprotein) high confidence possible frameshift in CDS (frame not restored before end) [cause:insert,S:770..909(140),M:769; frame:1(3); length:765:(4745); shifted_avgpp:0.943; exp_avgpp:0.954;]; seq-coords:770..5514:+; mdl-coords:770..5374:+; mdl:NC_001959;
 ERROR: INDEFINITE_ANNOTATION_START: (CDS:nonstructural polyprotein) protein-based alignment does not extend close enough to nucleotide-based alignment 5' endpoint [830>5]; seq-coords:5..834:+; mdl-coords:5..5:+; mdl:NC_001959;
 ERROR: UNEXPECTED_LENGTH: (CDS:nonstructural polyprotein) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [5510]; seq-coords:5..5514:+; mdl-coords:5..5374:+; mdl:NC_001959;
 ERROR: PEPTIDE_TRANSLATION_PROBLEM: (mat_peptide:p48) mat_peptide may not be translated because its parent CDS has a problem [-]; seq-coords:-; mdl-coords:-; mdl:NC_001959;

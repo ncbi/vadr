@@ -14,7 +14,7 @@
 # file, etc.
 #
 # no --glsearch, no -s
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --fstminnti 7 --fstminnt5 7 --fstminnt3 7 --fstlowthr 0.0 --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-nogls.r10 > va-noro-nogls.r10.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --fstminnti 7 --fstminntt 7 --fstlowthr 0.0 --keep --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-nogls.r10 > va-noro-nogls.r10.out
 desc: noro-10-noglsearch
 out: va-noro-nogls.r10/va-noro-nogls.r10.vadr.pass.tbl 
 out: va-noro-nogls.r10/va-noro-nogls.r10.vadr.fail.tbl 
@@ -24,7 +24,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alt
 rmdir: va-noro-nogls.r10
 # yes --glsearch, no -s
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --fstminnti 7 --fstminnt5 7 --fstminnt3 7 --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-gls.r10 > va-noro-gls.r10.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --glsearch --fstminnti 7 --fstminntt 7 --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-gls.r10 > va-noro-gls.r10.out
 desc: annotate-noro-10-glsearch
 out: va-noro-gls.r10/va-noro-gls.r10.vadr.pass.tbl 
 out: va-noro-gls.r10/va-noro-gls.r10.vadr.fail.tbl 
@@ -33,7 +33,7 @@ exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.pass
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.fail.tbl 
 exp: @VADRSCRIPTSDIR@/testfiles/expected-files/va-noro.r10/va-noro.r10.vadr.alt
 # yes --glsearch, yes -s
-command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --glsearch --fstminnti 7 --fstminnt5 7 --fstminnt3 7 --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-gls-seed.r10 > va-noro-gls-seed.r10.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl -s --glsearch --fstminnti 7 --fstminntt 7 --alicheck -f --mdir $VADRSCRIPTSDIR/testfiles/models --mkey noro.3 $VADRSCRIPTSDIR/testfiles/noro.r10.fa va-noro-gls-seed.r10 > va-noro-gls-seed.r10.out
 desc: annotate-noro-10-glsearch-seed
 out: va-noro-gls-seed.r10/va-noro-gls-seed.r10.vadr.pass.tbl 
 out: va-noro-gls-seed.r10/va-noro-gls-seed.r10.vadr.fail.tbl 
