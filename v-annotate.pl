@@ -5203,14 +5203,6 @@ sub add_frameshift_alerts_for_one_sequence {
                       if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                       $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                       $alt_str .= sprintf(" length:%s;", $length_sum_str);
-                      ### TEMP ###
-                      if($tmp_ftr_len == $tmp_length_sum) { 
-                        $alt_str .= sprintf(" tmpcheckpass:%d==%d;", $tmp_ftr_len, $tmp_length_sum);
-                      }
-                      else { 
-                        $alt_str .= sprintf(" tmpcheckfail:%d!=%d;", $tmp_ftr_len, $tmp_length_sum);
-                      }
-                      ### TEMP ###
                       if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
                       alert_feature_instance_add($alt_ftr_instances_HHHR, $alt_info_HHR, $alt_code, $seq_name, $ftr_idx, $alt_str, $FH_HR);
                       push(@cds_alt_str_A, $alt_str);
@@ -5246,14 +5238,6 @@ sub add_frameshift_alerts_for_one_sequence {
                         if(defined $restorative_indel_str)  { $alt_str .= sprintf(" restore:%s", $restorative_indel_str); }
                         $alt_str .= sprintf(" frame:%s;", $frame_sum_str);
                         $alt_str .= sprintf(" length:%s;", $length_sum_str);
-                        ### TEMP ###
-                        if($tmp_ftr_len == $tmp_length_sum) { 
-                          $alt_str .= sprintf(" tmpcheckpass:%d==%d;", $tmp_ftr_len, $tmp_length_sum);
-                        }
-                        else { 
-                          $alt_str .= sprintf(" tmpcheckfail:%d!=%d;", $tmp_ftr_len, $tmp_length_sum);
-                        }
-                        ### TEMP ###
                         $alt_str .= sprintf(" shifted_avgpp:%.3f;", $shifted_span_avgpp);
                         $alt_str .= sprintf(" exp_avgpp:%.3f;", $exp_span_avgpp);
                         if(defined $intermediate_indel_str) { $alt_str .= sprintf(" intermediate:%s",   $intermediate_indel_str); }
