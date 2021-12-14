@@ -5442,61 +5442,59 @@ sub determine_frame_and_length_summary_strings {
   # start with '>' if 5' truncated
   my $ret_frame_str  = ($is_3p_trunc) ? ">" : "";
   my $ret_length_str = ($is_3p_trunc) ? ">" : "";
-  my $cur_frame     = undef;
-  my $prv_frame     = undef;
-  my $open_flag     = 0; # set to '1' when we open the frameshifted region with ')'
+
+  my $prv_frame   = undef;
+  my $parantheses_flag = 0; # set to '1' when we should put next frame/length substr in parantheses
   my $cur_length    = 0;
   my $save_ninsert  = 0; # number of inserts seen since last unexpected frame region
-  my $ntok_added    = 0; # number of tokens added to return strings
-  my $ntok_added_open = 0; # number of tokens added since paranthesis was opened
+  my $ntok_added    = 0; # number of substring tokens added to $ret_frame_str and $ret_length_str
+  my $tok_length = undef; # substring token to add to $ret_length_str
+  my $tok_frame  = undef; # substring token to add to $ret_frame_str
+
+  # variables parsed from $frame_stok_AR->[$f]
+  my $cur_frame   = undef;
+  my $cur_ninsert = undef;
+  my $cur_sstart  = undef;
+  my $cur_sstop   = undef; 
+  my $cur_ndelete = undef; 
+  my $cur_sgmend  = undef;
 
   my $tmp_ret_len_sum = 0;
   # we go backwards so we can more easily handle cases where there are two shifted non-expected regions adjacent to each other
   for(my $f = ($nframe_stok-1); $f >= 0; $f--) { 
     if($frame_stok_AR->[$f] =~ /^([123]),I(\d+),(\d+)\.\.(\d+),D(\d+)\,([01])$/) { 
-      my ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
+      ($cur_frame, $cur_ninsert, $cur_sstart, $cur_sstop, $cur_ndelete, $cur_sgmend) = ($1, $2, $3, $4, $5, $6); 
       printf("in $sub_name, tok: %s sstart..sstop: %d..%d\n", $frame_stok_AR->[$f], $cur_sstart, $cur_sstop);
       printf("0 cur_length: $cur_length\n");
 
-      if((! defined $prv_frame) || ($cur_frame != $prv_frame)) { 
-        if(defined $prv_frame) { 
-          if(($ret_length_str ne "") && ($ret_length_str ne ")")) { 
-            printf("ntok_added $ntok_added open_flag $open_flag, adding $cur_length and :\n");
-            $ret_length_str = $cur_length . ":" . $ret_length_str;
-          }
-          else { 
-            $ret_length_str = $cur_length . $ret_length_str;
-          }
-        }          
+      if((defined $prv_frame) && ($cur_frame != $prv_frame)) { 
+        # we are going to add to length and frame str
+        # we add $prv_frame (frame from previous token) but 
+        # $cur_length, which 
+        if($parantheses_flag) { 
+          $tok_length = "(" . $cur_length . ")";
+          $tok_frame  = "(" . $prv_frame  . ")";
+          $parantheses_flag = 0;
+        }
+        else {
+          $tok_length = $cur_length;
+          $tok_frame  = $prv_frame;
+        }
+        if($ntok_added > 0) { 
+          $tok_length .= ":";
+        }
+        $ret_length_str = $tok_length . $ret_length_str;
+        $ret_frame_str  = $tok_frame  . $ret_frame_str;
+        $ntok_added++;
         $tmp_ret_len_sum += $cur_length;
         $cur_length = 0;
         printf("reset cur_length\n");
-
-        if(($f < $idx) && ($open_flag) && ($cur_frame == $expected_frame)) { 
-          $ret_frame_str  = "(" . $ret_frame_str;
-          $ret_length_str = "(" . $ret_length_str;
-          $open_flag = 0;
-          $ntok_added_open = 0;
-        }
-
-        if($f == $idx) { 
-          $ret_frame_str  = ")" . $ret_frame_str;
-          if($ntok_added > 0) { 
-            $ret_length_str = ")" . ":" . $ret_length_str;
-          }
-          else { 
-            $ret_length_str = ")";
-          }
-          $open_flag = 1;
-          $ntok_added_open = 0;
-        }
-        $ret_frame_str = $cur_frame  . $ret_frame_str;
-        $ntok_added++;
-        if($open_flag) { 
-          $ntok_added_open++;
-        }
+      }
+      if($f == $idx) { 
+        $parantheses_flag = 1;
       }
 
+      # update $cur_length
       $cur_length += abs($cur_sstop - $cur_sstart) + 1;
       if($cur_frame != $expected_frame) { 
         $cur_length += $cur_ninsert;
@@ -5513,13 +5511,23 @@ sub determine_frame_and_length_summary_strings {
       ofile_FAIL("ERROR, in $sub_name, unable to parse frame_stok, internal coding error: " . $frame_stok_AR->[$f], 1, $FH_HR);
     }
   }
-  # add final length to length str 
-  if($ret_length_str ne "") { 
-    $ret_length_str = $cur_length . ":" . $ret_length_str;
+
+  # add final frame and length
+  if($parantheses_flag) { 
+    $tok_length = "(" . $cur_length . ")";
+    $tok_frame  = "(" . $prv_frame  . ")";
+    $parantheses_flag = 0;
   }
-  else { 
-    $ret_length_str = $cur_length;
+  else {
+    $tok_length = $cur_length;
+    $tok_frame  = $cur_frame;
   }
+  if(($ret_length_str ne "") && ($ret_length_str ne ")")) { 
+    $tok_length .= ":";
+  }
+  $ret_length_str = $tok_length . $ret_length_str;
+  $ret_frame_str  = $tok_frame  . $ret_frame_str;
+
   $tmp_ret_len_sum += $cur_length;
 
   # prepend '<' if 5' truncated
