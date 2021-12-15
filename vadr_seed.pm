@@ -131,6 +131,7 @@ sub run_blastn_and_summarize_output {
   # --s_blastnge  2.5
   # --s_blastnrw  1
   # --s_blastnpn  -2
+  # --s_blastnxd  100
   # For more info, see https://www.ncbi.nlm.nih.gov/books/NBK279684/,
   # search for BLASTN reward/penalty values and then look at table D1.
   # Note that blastn is really megablast unless -task blastn is use

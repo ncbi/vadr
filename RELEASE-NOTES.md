@@ -1,5 +1,72 @@
 # VADR 1.x release notes 
 
+### VADR 1.4 release (December 2021): Minor update
+
+  v-annotate.pl changes:
+
+  * frameshift detection and alerts have changed: 
+    - 'expected' frame now defined as frame of first nucleotide in a
+      CDS, and 'shifted' regions are any regions (above length
+      thresholds) that differ from expected. Old (v1.3) definition of
+      'dominant' frame as frame that most nucleotides in a CDS exist
+      in is abandoned.
+    - fst{hi,lo,uk}cf5 and fst{hi,lo,uk}cf3 alerts for frameshifts at
+      5' and 3' end no longer exist, partly because shifted regions at
+      the 5' end of CDS are no longer possible. These alerts are
+      replaced by fst{hi,lo,uk}cft alerts for frameshifts that are not
+      restored before the end of a CDS. fst{hi,lo,uk}cfi alerts still
+      exist for frameshifts that are restored before the end of a CDS.
+    - frameshift 'alert detail' in .alt and .alt.list files has been
+      changed to include information on the mutation that causes the
+      frameshift, the mutation that restores frame (if any), and a
+      summary string showing the frame and length of all regions in
+      the CDS that are in a different frame.
+
+  * changes to how blastn is used with the -s and -r options:      
+    - with -s, entire top-scoring blastn HSP (with indels) is now used
+      as a seed and fixed for the downstream global alignment of each
+      sequence. Previously, only longest ungapped region in the
+      top-scoring HSP was used as the seed. This leads to faster
+      processing of some sequences. 
+   - default blastn parameters changed to:
+     '-word_size 7 -gapopen 2 -gapextend 1 -reward 1 -penalty -2
+      -xdrop_gap_final 110'
+     Previously (vadr 1.1 to 1.3) only '-word_size 7' was used, so
+     blastn parameters used were implicitly (mostly defaults):
+     '-word_size 7 -gapopen 0 -gapextend 2.5 -reward 1 -penalty -2
+      -xdrop_gap_final 100'
+     This leads to more desired gap placement for some sequences and
+     more replacement of stretches of Ns with -r for some sequences.
+
+  * alerts related to ambiguous nucleotides at beginning/end of
+    sequences and features have changed:
+    - any ambiguous nucleotide is now treated as Ns were previously
+      treated. This impacts alerts ambgnt{5,3}s, ambgnt{5,3}f, and
+      ambgnt{5,3}c. The short description/error for these alerts was
+      modified to have 'AMBIGUITY' instead of 'N'
+      (e.g. 'AMBIGUITY_AT_START' replaces 'N_AT_START').
+    - new ambgcd5c (AMBIGUITY_IN_START_CODON) added and reported when
+      5' complete CDS has a start codon that begins with a canonical
+      nucleotide but that includes an ambiguous nt. This alert makes
+      it so that no other start codon alert (e.g. mutstart) will be
+      reported.
+    - new ambgcd3c (AMBIGUITY_IN_STOP_CODON) added and reported when
+      3' complete CDS has a stop codon that ends with a canonical
+      nucleotide but that includes an ambiguous nt. This alert makes
+      it so that no other stop codon alert (e.g. mutendcd) will be
+      reported.
+    - ambgcd5c and ambgcd3c impact CDS coordinate trimming in feature
+      table output in that all 3 nt of a start or stop codon are
+      considered ambiguities (feature coordinates will not include 
+      the start and/or stop codon)
+
+  * alerts related to early stop codons (cdsstopn, mutend*) are now 
+    detected and reported in more situations for truncated CDS
+
+  Other changes:
+  * updates version of BLAST+ dependency installed with vadr to
+    2.12.0+
+
 ### VADR 1.3 release (July 2021): Minor update
 
   v-annotate.pl changes:
