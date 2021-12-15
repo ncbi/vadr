@@ -2,8 +2,32 @@
 
 ### VADR 1.4 release (December 2021): Minor update
 
-  v-annotate.pl changes:
+  v-annotate changes summary:
+  * frameshift detection and alerts have changed
+  * how blastn is used with the -s and -r options has changed
+  * alerts related to ambiguous nucleotides at beginning/end of
+    sequences and features have changed
+  * alerts related to early stop codons (cdsstopn, mutend*) are now 
+    detected and reported in more situations for truncated CDS
+  * 'is_deletable' field for features now supported in .minfo file
+    for to allow a feature to be completely deleted without triggering
+    a fatal deletins alert (triggers non-fatal deletina alert instead)
+  * adds support for 'alternative features' in .minfo file with 
+    'alternative_ftr_set' and 'alternative_ftr_set_subn' fields for
+    features in .minfo files
+  * adds support for excluded regions from frameshift and
+    indefinite strand (indfstrn) and duplicate region (dupregin)
+    alerts in .minfo filesn
 
+  bug fixes: 
+  * fixes bug related to parantheses in feature product strings
+    (github issue #47)
+
+  other changes:
+  * updates version of BLAST+ dependency installed with vadr to
+    2.12.0+
+
+  more detail on some v-annotate.pl changes:
   * frameshift detection and alerts have changed: 
     - 'expected' frame now defined as frame of first nucleotide in a
       CDS, and 'shifted' regions are any regions (above length
@@ -22,7 +46,7 @@
       summary string showing the frame and length of all regions in
       the CDS that are in a different frame.
 
-  * changes to how blastn is used with the -s and -r options:      
+  * how blastn is used with the -s and -r options has changed:
     - with -s, entire top-scoring blastn HSP (with indels) is now used
       as a seed and fixed for the downstream global alignment of each
       sequence. Previously, only longest ungapped region in the
@@ -40,7 +64,7 @@
 
   * alerts related to ambiguous nucleotides at beginning/end of
     sequences and features have changed:
-    - any ambiguous nucleotide is now treated as Ns were previously
+    - all ambiguous nucleotides are now treated as Ns were previously
       treated. This impacts alerts ambgnt{5,3}s, ambgnt{5,3}f, and
       ambgnt{5,3}c. The short description/error for these alerts was
       modified to have 'AMBIGUITY' instead of 'N'
@@ -59,13 +83,6 @@
       table output in that all 3 nt of a start or stop codon are
       considered ambiguities (feature coordinates will not include 
       the start and/or stop codon)
-
-  * alerts related to early stop codons (cdsstopn, mutend*) are now 
-    detected and reported in more situations for truncated CDS
-
-  Other changes:
-  * updates version of BLAST+ dependency installed with vadr to
-    2.12.0+
 
 ### VADR 1.3 release (July 2021): Minor update
 
