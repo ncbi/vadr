@@ -114,16 +114,31 @@ sub run_blastn_and_summarize_output {
   my $start_secs = ofile_OutputProgressPrior($stg_desc, $progress_w, $log_FH, *STDOUT);
   my $blastn_out_file = $out_root . ".$stg_key.blastn.out";
   my $opt_str = "-num_threads $ncpu -query $seq_file -db $db_file -out $blastn_out_file";
-  $opt_str .= " -word_size "        . opt_Get("--s_blastnws", $opt_HHR); 
-  $opt_str .= " -reward "           . opt_Get("--s_blastnrw", $opt_HHR); 
-  $opt_str .= " -penalty "          . opt_Get("--s_blastnpn", $opt_HHR); 
-  $opt_str .= " -xdrop_gap_final "  . opt_Get("--s_blastnxd", $opt_HHR); 
-  if(! opt_Get("--s_blastngdf", $opt_HHR)) { 
-    $opt_str .= " -gapopen "   . opt_Get("--s_blastngo", $opt_HHR); 
-    $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR); 
+  if($stg_key eq "rpn.cls") { # rpn.cls, use --r_* options
+    $opt_str .= " -word_size "       . opt_Get("--r_blastnws", $opt_HHR);
+    $opt_str .= " -reward "          . opt_Get("--r_blastnrw", $opt_HHR);
+    $opt_str .= " -penalty "         . opt_Get("--r_blastnpn", $opt_HHR);
+    $opt_str .= " -xdrop_gap_final " . opt_Get("--r_blastnxd", $opt_HHR);
+    if(! opt_Get("--r_blastngdf", $opt_HHR)) { 
+      $opt_str .= " -gapopen "   . opt_Get("--r_blastngo", $opt_HHR);
+      $opt_str .= " -gapextend " . opt_Get("--r_blastnge", $opt_HHR);
+    }
+    if(opt_IsUsed("--r_blastntk", $opt_HHR)) { 
+      $opt_str .= " -task blastn";
+    }
   }
-  if(opt_IsUsed("--s_blastntk", $opt_HHR)) { 
-    $opt_str .= " -task blastn";
+  else { # not rpn.cls, use --s_* options
+    $opt_str .= " -word_size "       . opt_Get("--s_blastnws", $opt_HHR);
+    $opt_str .= " -reward "          . opt_Get("--s_blastnrw", $opt_HHR);
+    $opt_str .= " -penalty "         . opt_Get("--s_blastnpn", $opt_HHR);
+    $opt_str .= " -xdrop_gap_final " . opt_Get("--s_blastnxd", $opt_HHR);
+    if(! opt_Get("--s_blastngdf", $opt_HHR)) { 
+      $opt_str .= " -gapopen "   . opt_Get("--s_blastngo", $opt_HHR);
+      $opt_str .= " -gapextend " . opt_Get("--s_blastnge", $opt_HHR);
+    }
+    if(opt_IsUsed("--s_blastntk", $opt_HHR)) { 
+      $opt_str .= " -task blastn";
+    }
   }
   my $blastn_cmd = $execs_HR->{"blastn"} . " $opt_str";
   # default values for vadr 1.1 to 1.3 were:
@@ -134,7 +149,7 @@ sub run_blastn_and_summarize_output {
   # For more info, see https://www.ncbi.nlm.nih.gov/books/NBK279684/,
   # search for BLASTN reward/penalty values and then look at table D1.
   # Note that blastn is really megablast unless -task blastn is use
-  # (and vadr does NOT use -task blastn by default so it is using megablast
+  # (and vadr does NOT use -task blastn by default so it is using megablast)
   
   utl_RunCommand($blastn_cmd, opt_Get("-v", $opt_HHR), 0, $FH_HR);
   ofile_AddClosedFileToOutputInfo($ofile_info_HHR, "$stg_key.blastn.out", $blastn_out_file, 0, $do_keep, "blastn output");
