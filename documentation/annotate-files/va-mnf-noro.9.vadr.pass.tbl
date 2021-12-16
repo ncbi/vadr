@@ -1,0 +1,140 @@
+>Feature KY887602.1
+<1	5083	gene
+			gene	ORF1
+<1	5083	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+			protein_id	KY887602.1_1
+<1	979	mat_peptide
+			product	p48
+			protein_id	KY887602.1_1
+980	2077	mat_peptide
+			product	NTPase
+			protein_id	KY887602.1_1
+2078	2608	mat_peptide
+			product	p22
+			protein_id	KY887602.1_1
+2609	3007	mat_peptide
+			product	VPg
+			protein_id	KY887602.1_1
+3008	3550	mat_peptide
+			product	Pro
+			protein_id	KY887602.1_1
+3551	5080	mat_peptide
+			product	RdRp
+			protein_id	KY887602.1_1
+5064	6686	gene
+			gene	ORF2
+5064	6686	CDS
+			product	VP1
+			protein_id	KY887602.1_2
+6686	7492	gene
+			gene	ORF3
+6686	7492	CDS
+			product	VP2
+			protein_id	KY887602.1_3
+>Feature KT818729.1
+<1	>243	gene
+			gene	ORF1
+<1	>243	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+			protein_id	KT818729.1_1
+<1	>243	mat_peptide
+			product	RdRp
+			protein_id	KT818729.1_1
+>Feature EU437710.1
+<1	>291	gene
+			gene	ORF2
+<1	>291	CDS
+			product	VP1
+			codon_start	3
+			protein_id	EU437710.1_1
+>Feature DQ288307.1
+<1	210	gene
+			gene	ORF1
+<1	210	CDS
+			product	nonstructural polyprotein
+			codon_start	1
+			protein_id	DQ288307.1_1
+<1	207	mat_peptide
+			product	RdRp
+			protein_id	DQ288307.1_1
+197	>1094	gene
+			gene	ORF2
+197	>1094	CDS
+			product	VP1
+			protein_id	DQ288307.1_2
+>Feature AY237464.1
+<1	>255	gene
+			gene	ORF2
+<1	>255	CDS
+			product	VP1
+			codon_start	1
+			protein_id	AY237464.1_1
+>Feature KF475958.1
+<1	>275	gene
+			gene	ORF2
+<1	>275	CDS
+			product	VP1
+			codon_start	1
+			protein_id	KF475958.1_1
+>Feature AB713840.1
+1	>347	gene
+			gene	ORF2
+1	>347	CDS
+			product	VP1
+			protein_id	AB713840.1_1
+14	>347	gene
+			gene	ORF4
+14	>347	CDS
+			product	VF1
+			protein_id	AB713840.1_2
+>Feature JN585032.1
+<1	>286	gene
+			gene	ORF1
+<1	>286	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+			protein_id	JN585032.1_1
+<1	>286	mat_peptide
+			product	RdRp
+			protein_id	JN585032.1_1
+>Feature JN975492.1
+<1	5044	gene
+			gene	ORF1
+<1	5044	CDS
+			product	nonstructural polyprotein
+			codon_start	2
+			protein_id	JN975492.1_1
+<1	1000	mat_peptide
+			product	p48
+			protein_id	JN975492.1_1
+1001	2092	mat_peptide
+			product	NTPase
+			protein_id	JN975492.1_1
+2093	2590	mat_peptide
+			product	p22
+			protein_id	JN975492.1_1
+2591	2965	mat_peptide
+			product	VPg
+			protein_id	JN975492.1_1
+2966	3514	mat_peptide
+			product	Pro
+			protein_id	JN975492.1_1
+3515	5041	mat_peptide
+			product	RdRp
+			protein_id	JN975492.1_1
+5031	6656	gene
+			gene	ORF2
+5031	6656	CDS
+			product	VP1
+			protein_id	JN975492.1_2
+5044	5685	gene
+			gene	ORF4
+5044	5685	misc_feature
+			note	similar to VF1
+6656	7282	gene
+			gene	ORF3
+6656	7282	misc_feature
+			note	similar to VP2
