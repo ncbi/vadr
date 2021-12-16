@@ -3555,8 +3555,6 @@ sub cmalign_or_glsearch_wrapper {
     @{$concat_HA{$out_key}} = ();
   }    
 
-  # printf("in $sub_name, tot_len_nt: $tot_len_nt\n");
-
   my $nr1 = 0; # number of runs in round 1 (one per sequence file we create)
   my @r1_out_file_AH = (); # array of hashes ([0..$nr1-1]) of output files for cmalign round 1 runs
   my @r1_success_A   = (); # [0..$nr1-1]: '1' if this run finishes successfully, '0' if not
@@ -4120,7 +4118,6 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     if($seq_ins ne "") { 
       my @ins_A = split(";", $seq_inserts_HHR->{$seq_name}{"ins"});
       foreach my $ins_tok (@ins_A) { 
-        # printf("ins_tok: $ins_tok\n");
         if($ins_tok =~ /^(\d+)\:(\d+)\:(\d+)$/) { 
           my ($i_rfpos, $i_uapos, $i_len) = ($1, $2, $3);
           $rf2ipos_A[$i_rfpos] = $i_uapos;
@@ -4212,8 +4209,6 @@ sub parse_stk_and_add_alignment_cds_and_mp_alerts {
     if(! $do_glsearch) { 
       @pp_A = split("", $ppstring_aligned);
     }
-    # printf("sq_A size: %d\n", scalar(@sq_A));
-    # printf("seq_len: $seq_len\n");
 
     # first pass, from right to left to fill $min_**pos_after arrays, and rf
     my $min_rfpos = -1;
@@ -4991,8 +4986,6 @@ sub add_frameshift_alerts_for_one_sequence {
 
             $nsgm++;
             push(@gr_frame_str_A, $gr_frame_str);
-            # printf("gr_frame_str len: " . length($gr_frame_str) . "\n");
-            # print("$gr_frame_str\n");
             my $local_rfpos   = ($strand eq "+") ? ($rfpos - $cur_delete_len) : ($rfpos + $cur_delete_len);
             my $local_nmaxdel = defined ($nmaxdel_exc_AH[$ftr_idx]{$local_rfpos}) ? $nmaxdel_exc_AH[$ftr_idx]{$local_rfpos} : $nmaxdel;
             if($cur_delete_len > $local_nmaxdel) { 
@@ -5009,7 +5002,8 @@ sub add_frameshift_alerts_for_one_sequence {
           } # end of 'if' entered if segment has valid results 
         } # end of 'for(my $sgm_idx = $first_sgm_idx; $sgm_idx <= $final_sgm_idx; $sgm_idx++) {' 
       } # end of 'if($first_sgm_idx != -1)'
-    
+
+      # debug print block
       #printf("frame_ct_A[1]: $frame_ct_A[1]\n");
       #printf("frame_ct_A[2]: $frame_ct_A[2]\n");
       #printf("frame_ct_A[3]: $frame_ct_A[3]\n");
@@ -5122,7 +5116,7 @@ sub add_frameshift_alerts_for_one_sequence {
               }
               if(defined $cur_insert_str) { 
                 push(@cur_indel_str_A, $cur_insert_str);
-                printf("\npushing insert str $cur_insert_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
+                # printf("\npushing insert str $cur_insert_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
               }
                 
               # Determine if we may have a frameshift alert
@@ -5242,8 +5236,8 @@ sub add_frameshift_alerts_for_one_sequence {
                       my $exp_span_avgpp;
                       ($shifted_span_avgpp, undef) = Bio::Easel::MSA->get_ppstr_avg($shifted_span_ppstr);
                       ($exp_span_avgpp,     undef) = Bio::Easel::MSA->get_ppstr_avg($exp_span_ppstr);
-                      printf("shifted_span: $shifted_span_sstart..$shifted_span_sstop $shifted_span_avgpp, $shifted_span_ppstr\n");
-                      printf("exp_span: $prv_exp_span_sstart..$prv_exp_span_sstop $exp_span_avgpp, $exp_span_ppstr\n");
+                      #printf("shifted_span: $shifted_span_sstart..$shifted_span_sstop $shifted_span_avgpp, $shifted_span_ppstr\n");
+                      #printf("exp_span: $prv_exp_span_sstart..$prv_exp_span_sstop $exp_span_avgpp, $exp_span_ppstr\n");
                       my $min_span_avgpp = utl_Min($shifted_span_avgpp, $exp_span_avgpp);
                       if($min_span_avgpp > ($fst_low_ppthr - $small_value)) { # we have a fstlocnf or fsthicnf alert
                         my $hi_alt_code = ($is_terminal) ? "fsthicft" : "fsthicfi";
@@ -5268,7 +5262,6 @@ sub add_frameshift_alerts_for_one_sequence {
                     }
                   }
                 }
-                printf("clearing cur_indel_str_A\n");
                 @cur_indel_str_A = (); # reset this so we can start storing indels relevant to next fs (if we have one)
               } # end of 2 case if entered if we have a frameshift alert
 
@@ -5297,7 +5290,7 @@ sub add_frameshift_alerts_for_one_sequence {
               }
               if(defined $cur_delete_str) { 
                 push(@cur_indel_str_A, $cur_delete_str);
-                printf("\npushing delete str $cur_delete_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
+                #printf("\npushing delete str $cur_delete_str to cur_indel_str_A (new size: %d)\n", scalar(@cur_indel_str_A));
               }
 
               # keep track of previous values we may need in next loop iteration
@@ -5336,7 +5329,6 @@ sub add_frameshift_alerts_for_one_sequence {
           my @cds_sgm_seq_A = ();
           for(my $i2 = 0; $i2 < $msa_nseq; $i2++) { $cds_sgm_seq_A[$i2] = 0; }
           $cds_sgm_seq_A[$seq_idx] = 1; # keep this one seq
-          # for(my $i2 = 0; $i2 < $msa_nseq; $i2++) { printf("cds_sgm_seq_A[$i2]: $cds_sgm_seq_A[$i2]\n"); }
           my $cds_sgm_msa = $msa->sequence_subset(\@cds_sgm_seq_A);
           my $alen = $cds_sgm_msa->alen;
           $cds_sgm_msa->addGC_rf_column_numbers(); # number RF columns
@@ -6219,89 +6211,6 @@ sub sqstring_find_stops {
   $cur_stp = 0;
   for($i = ($sqlen-2); $i >= 1; $i--) { 
     if(($i % 3) == 1) { # starting position of a codon, frame == 1
-      $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
-      if(seq_CodonValidateStopCapDna($codon, $tt)) { 
-        $cur_stp = $i+2;
-      }
-    }
-    $nxt_stp_AR->[$i] = $cur_stp;
-  }
-  $nxt_stp_AR->[($sqlen-1)] = 0;
-  $nxt_stp_AR->[$sqlen]     = 0;
-
-#  for($i = 1; $i <= $sqlen; $i++) { 
-#    printf("position %5d: nxt_stp: %5d\n", $i, $nxt_stp_AR->[$i]);
-#  }
-
-  return;
-}
-
-#################################################################
-# Subroutine: OLD_sqstring_find_stops()
-# Incept:     EPN, Fri Feb 22 14:52:53 2019
-#
-# Purpose:   Find all occurences of stop codons in an 
-#            input sqstring (on the positive strand only),
-#            and update the input array.
-#           
-#            This subroutine could be easily modified to 
-#            find the nearest stop codon in each frame, 
-#            but currently it is only concerned with 
-#            frame 1.           
-#
-#            We determine what frame each position is
-#            by asserting that the final position is
-#            frame 3 (the frame for the final position 
-#            of a stop codon). We do it this way 
-#            instead of assuming that position 1 is
-#            frame 1 because we may be passed in 
-#            sequences that are 5' truncated, but 
-#            we assume we are not passed in sequences
-#            that are 3' truncated.
-#
-# Arguments:
-#  $sqstring:       the sequence string
-#  $tt:             the translation table ('1' for standard)
-#  $nxt_stp_AR:     [1..$i..$sqlen] = $x; closest stop codon at or 3' of position
-#                   $i in frame 1 on positive strand *ends* at position $x; 
-#                   '0' if there are none.
-#                   special values: 
-#                   $nxt_stp_AR->[0] = -1
-#  $FH_HR:          REF to hash of file handles
-#             
-# Returns:  void, updates arrays that are not undef
-# 
-# Dies:     never
-#
-#################################################################
-sub OLD_sqstring_find_stops { 
-  my $sub_name = "OLD_sqstring_find_stops";
-  my $nargs_exp = 4;
-  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
-
-  my ($sqstring, $tt, $nxt_stp_AR, $FH_HR) = @_;
-  
-  @{$nxt_stp_AR} = ();
-  $nxt_stp_AR->[0] = -1;
-
-  # create the @sqstring_A we'll use to find the stops
-  $sqstring =~ tr/a-z/A-Z/; # convert to uppercase
-  $sqstring =~ tr/U/T/;     # convert to DNA
-  my $sqlen = length($sqstring);
-  # add a " " as first character of $sqstart so we get nts in elements 1..$sqlen 
-  my @sqstring_A = split("", " " . $sqstring);
-
-  my $i       = undef; # [1..$i..$sqlen]: sequence position
-  my $frame   = undef; # 1, 2, or 3
-  my $cstart  = undef; # [1..$sqlen] start position of current codon
-  my $codon   = undef; # the codon
-  my $cur_stp = 0;     # closest stop codon at or 3' of current position
-                       # in frame 1 *ends* at position $cur_stp;
-
-  # pass over sequence from right to left, filling @{$nxt_stp_AR}
-  $cur_stp = 0;
-  for($i = ($sqlen-2); $i >= 1; $i--) { 
-    if(((($sqlen-2) - $i) % 3) == 0) { # starting position of a codon, frame == 1
       $codon = $sqstring_A[$i] . $sqstring_A[($i+1)] . $sqstring_A[($i+2)];
       if(seq_CodonValidateStopCapDna($codon, $tt)) { 
         $cur_stp = $i+2;
@@ -7270,7 +7179,6 @@ sub parse_blastx_results {
         }
         if($value =~ /^[\+\-]([123])$/) { 
           $cur_H{$key} = $1;
-          # printf("BLASTX set ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{x_frame} to " . $ftr_results_HAHR->{$seq_name}[$t_ftr_idx]{"p_frame"} . "\n");
         }
         else { 
           ofile_FAIL("ERROR in $sub_name, reading $blastx_summary_file, unable to parse blastx summary FRAME line $line ($key $value)", 1, $FH_HR);
@@ -8689,10 +8597,7 @@ sub alert_sequence_instance_update_mdl_coords {
         $new_alt_instance .= "seq:" . $instance_scoords . ";" . $new_mcoords . $instance_detail;
       }
       # update the alert instance
-      #printf("in $sub_name\n");
-      #printf("\told: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
       $alt_seq_instances_HHR->{$seq_name}{$alt_code} = $new_alt_instance;
-      #printf("\tnew: " . $alt_seq_instances_HHR->{$seq_name}{$alt_code} . "\n");
     }
   }
 
@@ -9155,7 +9060,6 @@ sub alert_feature_instances_count_fatal {
     }
   }
   
-  # printf("in $sub_name, seq_name: $seq_name ftr_idx: $ftr_idx returning nfatal: $nfatal\n");
   return $nfatal;
 }
 
