@@ -13495,14 +13495,14 @@ sub helper_feature_terminal_ambiguities {
             my $ftr_codon_start = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, ($ftr_len - $codon_len + 1), $FH_HR);
             my $alt_scoords     = "seq:" . vdr_CoordsSegmentCreate($ftr_codon_start, $ftr_stop, $ftr_strand, $FH_HR) . ";";
             my $alt_mcoords     = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_codon_start]), abs($ua2rf_AR->[$ftr_stop]), $ftr_strand, $FH_HR) . ";";
-            $alt_str_HR->{"ambgcd3c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
+            $alt_str_HR->{"ambgcd3c"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $start_or_stop_codon);
           }
           else { 
             # dealing with 5' end
             my $ftr_codon_end = vdr_CoordsRelativeSingleCoordToAbsolute($ftr_scoords, $codon_len, $FH_HR);
             my $alt_scoords   = "seq:" . vdr_CoordsSegmentCreate($ftr_start, $ftr_codon_end, $ftr_strand, $FH_HR) . ";";
             my $alt_mcoords   = "mdl:" . vdr_CoordsSegmentCreate(abs($ua2rf_AR->[$ftr_start]), abs($ua2rf_AR->[$ftr_codon_end]), $ftr_strand, $FH_HR) . ";";
-            $alt_str_HR->{"ambgcd5c"} = sprintf("%s%sVADRNULL", $alt_scoords, $alt_mcoords);
+            $alt_str_HR->{"ambgcd5c"} = sprintf("%s%s%s", $alt_scoords, $alt_mcoords, $start_or_stop_codon);
           }
         }        
       }
