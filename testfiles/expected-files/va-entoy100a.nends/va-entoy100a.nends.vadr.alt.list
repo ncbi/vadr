@@ -52,3 +52,7 @@ ENTOY100A/three-cds-only-stop-len3-93-95	ENTOY100A	-	*sequence*	LOW_COVERAGE	69.
 ENTOY100A/three-cds-only-stop-len3-93-95	ENTOY100A	CDS	protein two	AMBIGUITY_AT_CDS_END	67..73:+	67..73:+	final nucleotide of CDS is an ambiguous nucleotide [-]
 ENTOY100A/three-cds-only-stop-len3-93-95	ENTOY100A	CDS	protein three	AMBIGUITY_AT_CDS_START	67..92:+	67..92:+	first nucleotide of CDS is an ambiguous nucleotide [-]
 ENTOY100A/three-cds-only-stop-len3-93-95	ENTOY100A	CDS	protein four	AMBIGUITY_AT_CDS_END	92..84:-	92..84:-	final nucleotide of CDS is an ambiguous nucleotide [-]
+ENTOY100A/one-startA-then-allNs	ENTOY100A	-	*sequence*	UNREPORTED_FEATURE_PROBLEM	-	-	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
+ENTOY100A/one-startANA-then-allNs	ENTOY100A	-	*sequence*	UNREPORTED_FEATURE_PROBLEM	-	-	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
+ENTOY100A/one-allNs-endsA	ENTOY100A	-	*sequence*	UNREPORTED_FEATURE_PROBLEM	-	-	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]
+ENTOY100A/one-allNs-endsTNA	ENTOY100A	-	*sequence*	UNREPORTED_FEATURE_PROBLEM	-	-	only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]

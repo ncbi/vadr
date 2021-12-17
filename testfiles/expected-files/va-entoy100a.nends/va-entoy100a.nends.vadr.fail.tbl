@@ -601,3 +601,119 @@ ERROR: LOW_COVERAGE: (*sequence*) low sequence fraction with significant similar
 ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein two) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..73:+; mdl-coords:67..73:+; mdl:ENTOY100A;
 ERROR: AMBIGUITY_AT_CDS_START: (CDS:protein three) first nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:67..92:+; mdl-coords:67..92:+; mdl:ENTOY100A;
 ERROR: AMBIGUITY_AT_CDS_END: (CDS:protein four) final nucleotide of CDS is an ambiguous nucleotide [-]; seq-coords:92..84:-; mdl-coords:92..84:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-startA-then-allNs
+5	>11	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>11	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-startA-then-allNs_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-startA-then-allNs_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-startA-then-allNs_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-startA-then-allNs_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-startA-then-allNs_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-startANA-then-allNs
+5	>13	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>13	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-startANA-then-allNs_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-startANA-then-allNs_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-startANA-then-allNs_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-startANA-then-allNs_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-startANA-then-allNs_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-allNs-endsA
+5	>10	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>10	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-allNs-endsA_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-allNs-endsA_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-allNs-endsA_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-allNs-endsA_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-allNs-endsA_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
+>Feature ENTOY100A/one-allNs-endsTNA
+5	>10	ncRNA
+			product	enRNA
+			ncRNA_class	lncRNA
+			note	ncRNA 1
+10	>10	stem_loop
+			note	stem-loop 1
+32	47	CDS
+47	64
+66	73
+			product	protein two
+			protein_id	ENTOY100A/one-allNs-endsTNA_1
+67	79	CDS
+85	95
+			product	protein three
+			protein_id	ENTOY100A/one-allNs-endsTNA_2
+67	75	mat_peptide
+			product	protein three mp1
+			protein_id	ENTOY100A/one-allNs-endsTNA_2
+76	79	mat_peptide
+85	92
+			product	protein three mp2
+			protein_id	ENTOY100A/one-allNs-endsTNA_2
+98	84	CDS
+			product	protein four
+			protein_id	ENTOY100A/one-allNs-endsTNA_3
+
+Additional note(s) to submitter:
+ERROR: UNREPORTED_FEATURE_PROBLEM: (*sequence*) only fatal alerts are for feature(s) not output to feature table [see .ftr and .alt output files for details]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
