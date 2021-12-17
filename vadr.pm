@@ -2445,6 +2445,12 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgueln", "sequence",
+                   "N_RICH_REGION_OF_UNEXPECTED_LENGTH", # short description
+                   "N-rich region not replaced due to unexpected length", # long description
+                   0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
+                   $FH_HR); 
+
   vdr_AlertInfoAdd($alt_info_HHR, "mutstart", "feature",
                    "MUTATION_AT_START", # short description
                    "expected start codon could not be identified", # long description
