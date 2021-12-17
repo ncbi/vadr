@@ -1,4 +1,4 @@
-<#!/usr/bin/env perl
+#!/usr/bin/env perl
 # EPN, Wed May  1 10:18:55 2019 [renamed to v-annotate.pl]
 # EPN, Thu Feb 18 12:48:16 2016 [dnaorg_annotate.pl split off from dnaorg_annotate_genomes.pl]
 # EPN, Mon Aug 10 10:39:33 2015 [development began on dnaorg_annotate_genomes.pl]
@@ -11517,6 +11517,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
   # these are only filled if nec (if we do a N-stretch-replacment for >= 1 seq)
   my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
   my @mdl_consensus_sqstring_A = (); 
+  if(defined $mdl_consensus_sqstring) { 
+    $mdl_consensus_sqstring =~ tr/a-z/A-Z/;
+  }
 
   open(IN, $tblout_file) || ofile_FileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
@@ -11736,6 +11739,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
               if(! defined $mdl_consensus_sqstring) { 
                 $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
                 $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+                $mdl_consensus_sqstring =~ tr/a-z/A-Z/; # upper-caseize
               }
               # fill in non-replaced region since previous replacement 
               # (or 5' chunk up to replacement start if this is the first replacement, 
@@ -11758,18 +11762,13 @@ sub parse_cdt_tblout_file_and_replace_ns {
                 if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
                   @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
                 }
-                my @missing_sqstring_A = split("", $missing_sqstring);
-                for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
-                  if($missing_sqstring_A[$spos] eq "N") { 
-                    #printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
-                    $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
-                    $nreplaced_nts++;
-                    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
-                  }
-                  else { 
-                    $replaced_sqstring .= $missing_sqstring_A[$spos];
-                  }
-                }
+                my ($region_replaced_sqstring, $region_nreplaced_nts, $region_n_exp, $region_n_unexp) = 
+                    helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0, $opt_HHR, $FH_HR);
+
+                $replaced_sqstring .= $region_replaced_sqstring;
+                $nreplaced_nts += $region_nreplaced_nts;
+                $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $region_nreplaced_nts;
               }
               $original_seq_start = $missing_seq_stop_A[$i] + 1;
               $nreplaced_regions++;
@@ -11781,9 +11780,10 @@ sub parse_cdt_tblout_file_and_replace_ns {
                 $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
                 $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
               }
-              my $unexlen_nreplaced_nts = helper_replace_ns_unexpected_length_region($missing_sqstring, $mdl_consensus_sqstring, 
-                                                                                     $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
-                                                                                     \$replaced_sqstring, $rpn_output_HHR);
+              #my $unexlen_nreplaced_nts = helper_replace_ns_in_region($missing_sqstring, $mdl_consensus_sqstring, 
+               #                                                       $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
+                #                                                      \$replaced_sqstring, $rpn_output_HHR);
+              my $unexlen_nreplaced_nts = -1;
               if($unexlen_nreplaced_nts == -1) { 
                 my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($missing_seq_start_A[$i], $missing_seq_stop_A[$i], "+", $FH_HR) . ";";
                 my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], "+", $FH_HR) . ";";
@@ -11833,7 +11833,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
 }
 
 #################################################################
-# Subroutine: helper_replace_ns_unexpected_length_region()
+# Subroutine: helper_replace_ns_in_region()
 # Incept:     EPN, Thu Dec 16 22:06:48 2021
 #
 # Purpose:    Check if we can replace Ns in a region that differs
@@ -11853,38 +11853,54 @@ sub parse_cdt_tblout_file_and_replace_ns {
 #             Or there has to be zero non-ambiguous nt.
 #
 # Args:
-#  $missing_sqstring:       the sequence string that is missing with Ns
-#  $mdl_consensus_sqstring: full model consensus sequence string
-#  $missing_mdl_start:      position in model where missing model region starts
-#  $missing_mdl_stop:       position in model where missing model region stops
-#  $replaced_sqstring_R:    reference to replaced_sqstring, to potentially add to
-#  $rpn_output_HHR:         REF to 2D hash with information to output to .rpn tabular file, potentially added to here
-#  $opt_HHR:                REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $FH_HR:                  REF to hash of file handles
+#  $missing_sqstring:          the sequence string that is missing with Ns
+#  $mdl_consensus_sqstring_AR: array with chars of full model consensus sequence string
+#  $missing_mdl_start:         position in model where missing model region starts
+#  $missing_mdl_stop:          position in model where missing model region stops
+#  $mdl_offset:                number of positions to add to missing_mdl_start to get to 
+#                              first position to start replacing with, 0 unless we are flushing right
+#  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
+#  $FH_HR:                     REF to hash of file handles
 #
 # Returns: if region is not replaced: -1
 #          if region is replaced: number of N nts replaced
 #
 #################################################################
-sub helper_replace_ns_unexpected_length_region  { 
-  my $sub_name = "helper_replace_ns_unexpected_length_region()";
-  my $nargs_exp = 8;
+sub helper_replace_ns_in_region  { 
+  my $sub_name = "helper_replace_ns_in_region()";
+  my $nargs_exp = 7;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($missing_sqstring, $mdl_consensus_sqstring, $missing_mdl_start, $missing_mdl_stop, $replaced_sqstring_R, $rpn_output_HHR, $opt_HHR, $FH_HR) = @_;
+  my ($missing_sqstring, $mdl_consensus_sqstring_AR, $missing_mdl_start, $missing_mdl_stop, $mdl_offset, $opt_HHR, $FH_HR) = @_;
 
-  HERE HERE HERE 
+  # all nt in both $missing_sqstring and @{$mdl_consensus_sqstring_AR} should be capitalized
 
-  my $nftr_or_sgm = scalar(@{$info_AHR});
+  my @missing_sqstring_A = split("", $missing_sqstring);
+  my $missing_seq_len = scalar(@missing_sqstring_A);
+  my $ret_replaced_sqstring = "";
+  my $ret_nreplaced_nts     = 0;
+  my $ret_n_exp   = 0; # number of non-N nts in missing_sqstring that match expected
+  my $ret_n_unexp = 0; # number of non-N nts in missing_sqstring that do not match expected
 
-  %{$results_HAHR} = ();
-  foreach my $seq_name (@{$seq_name_AR}) { 
-    @{$results_HAHR->{$seq_name}} = ();
-    for(my $ftr_or_sgm_idx = 0; $ftr_or_sgm_idx < $nftr_or_sgm; $ftr_or_sgm_idx++) { 
-      %{$results_HAHR->{$seq_name}[$ftr_or_sgm_idx]} = ();
+  for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
+    my $mdl_nt = $mdl_consensus_sqstring_AR->[($missing_mdl_start + $spos + $mdl_offset - 1)];
+    my $seq_nt = $missing_sqstring_A[$spos];
+    if($seq_nt eq "N") { 
+      printf("replacing missing_sqstring_A[$spos] N with mdl_consensus_sqstring_A[%d + %d + %d - 1 = %d] which is %s\n", $missing_mdl_start, $spos, $mdl_offset, ($missing_mdl_start + $spos + $mdl_offset - 1), $mdl_nt);
+      $ret_replaced_sqstring .= $mdl_nt;
+      $ret_nreplaced_nts++;
+    }
+    else { # not an N, don't replace, but check if it matches mdl_nt
+      $ret_replaced_sqstring .= $seq_nt;
+      if($seq_nt eq $mdl_nt) { 
+        $ret_n_exp++;
+      }
+      else { 
+        $ret_n_unexp++;
+      }
     }
   }
-  return;
+  return ($ret_replaced_sqstring, $ret_nreplaced_nts, $ret_n_exp, $ret_n_unexp);
 }
 
 
