@@ -11497,9 +11497,12 @@ sub parse_cdt_tblout_file_and_replace_ns {
 
   my $r_minlen_opt    = opt_Get("--r_minlen", $opt_HHR);
   my $small_value     = 0.00000001;
-  my $r_minfract5_opt = opt_Get("--r_minfract5", $opt_HHR) - $small_value;
-  my $r_minfract3_opt = opt_Get("--r_minfract3", $opt_HHR) - $small_value;
-  my $r_minfracti_opt = opt_Get("--r_minfracti", $opt_HHR) - $small_value;
+  my $r_minfract5_opt = opt_Get("--r_minfract5",    $opt_HHR) - $small_value;
+  my $r_minfract3_opt = opt_Get("--r_minfract3",    $opt_HHR) - $small_value;
+  my $r_minfracti_opt = opt_Get("--r_minfracti",    $opt_HHR) - $small_value;
+  my $r_diffmaxlen    = opt_Get("--r_diffmaxlen",   $opt_HHR) + $small_value;
+  my $r_diffminfract  = opt_Get("--r_diffminfract", $opt_HHR) - $small_value;
+  my $r_diffminnonn   = opt_Get("--r_diffminnonn",  $opt_HHR) - $small_value;
   my $do_keep         = opt_Get("--keep", $opt_HHR);
   my %tblout_coords_HAH = (); # hash of arrays of hashes 
                               # key is seq name
@@ -11712,8 +11715,8 @@ sub parse_cdt_tblout_file_and_replace_ns {
         ofile_FAIL("ERROR in $sub_name, unable to parse fetched sequence fasta:\n$fasta_seq\n", 1, $FH_HR);
       }
       for($i = 0; $i < $nmissing; $i++) {
-        my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
-        my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
+        my $missing_seq_len  = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
+        my $missing_mdl_len  = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
         if($missing_seq_len >= $r_minlen_opt) { 
           my $cur_r_minfract_opt = $r_minfracti_opt; # set to 5' or 3' threshold below if nec
           if($missing_seq_start_A[$i] == 1) { 
@@ -11726,21 +11729,24 @@ sub parse_cdt_tblout_file_and_replace_ns {
           $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
           my $count_n = $missing_sqstring =~ tr/N//;
           my $fract_n = $count_n / $missing_seq_len;
+          my $count_non_n_match    = undef; # set to number of non-Ns that match expected nt below if nec
+          my $count_non_n_mismatch = undef; # set to number of non-Ns that don't match expected nt below if nec
+          my $replaced_flag = 0;
           if($fract_n >= $cur_r_minfract_opt) { 
             # missing region exceeds our length and fract_n requirement, we'll either replace it or report ambgueln alert
+            # 3 cases in which we (might) replace
+            # Case 1: $missing_seq_len == $missing_mdl_len and $count_n == $missing_seq_len (all Ns, trivial replacement)
+            # Case 2: $missing_seq_len == $missing_mdl_len and $count_n != $missing_seq_len (not all Ns, replace nt by nt)
+            # Case 3: $missing_seq_len != $missing_mdl_len (replace only if shifting left or right gives enough matches)
+            # get the model consensus sequence if we don't have it already
+            if(! defined $mdl_consensus_sqstring) { 
+              $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
+              $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+              $mdl_consensus_sqstring =~ tr/a-z/A-Z/; # upper-caseize
+            }
             if($missing_seq_len == $missing_mdl_len) { 
               # replace Ns in this region with expected nt
               # 
-              # get the model consensus sequence if we don't have it already
-              $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
-              $rpn_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
-              $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
-              $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
-              if(! defined $mdl_consensus_sqstring) { 
-                $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
-                $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-                $mdl_consensus_sqstring =~ tr/a-z/A-Z/; # upper-caseize
-              }
               # fill in non-replaced region since previous replacement 
               # (or 5' chunk up to replacement start if this is the first replacement, 
               #  in this case $original_seq_start will be its initialized value of 1)
@@ -11748,56 +11754,106 @@ sub parse_cdt_tblout_file_and_replace_ns {
                 $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
               }
               if($count_n eq $missing_seq_len) { 
-                # region to replace is entirely Ns, easy case
+                # Case 1: $missing_seq_len == $missing_mdl_len and $count_n == $missing_seq_len (all Ns, trivial replacement)
                 # replace with substr of model cseq
                 $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
                 $nreplaced_nts += $missing_seq_len;
                 $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
                 $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
+                $replaced_flag = 1;
               }
               else { 
-                # region to replace is not entirely Ns, more laborious case
-                # replace only Ns with model positions
-                $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
+                # Case 2: $missing_seq_len == $missing_mdl_len and $count_n != $missing_seq_len (not all Ns, replace nt by nt)
                 if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
                   @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
                 }
-                my ($region_replaced_sqstring, $region_nreplaced_nts, $region_n_exp, $region_n_unexp) = 
+                my ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
                     helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
-                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0, $opt_HHR, $FH_HR);
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0); # 0: $mdl_offset
 
                 $replaced_sqstring .= $region_replaced_sqstring;
                 $nreplaced_nts += $region_nreplaced_nts;
+                $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
                 $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $region_nreplaced_nts;
+                $replaced_flag = 1;
               }
-              $original_seq_start = $missing_seq_stop_A[$i] + 1;
-              $nreplaced_regions++;
             } # end of 'if($missing_seq_len == $missing_mdl_len)
             else { 
-              # region is incorrect length, check if we can replace it pushing missing region left or right
-              # we need the mdl_consensus_sqstring to do this
-              if(! defined $mdl_consensus_sqstring) { 
-                $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
-                $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
-              }
-              #my $unexlen_nreplaced_nts = helper_replace_ns_in_region($missing_sqstring, $mdl_consensus_sqstring, 
-               #                                                       $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
-                #                                                      \$replaced_sqstring, $rpn_output_HHR);
-              my $unexlen_nreplaced_nts = -1;
-              if($unexlen_nreplaced_nts == -1) { 
-                my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($missing_seq_start_A[$i], $missing_seq_stop_A[$i], "+", $FH_HR) . ";";
-                my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], "+", $FH_HR) . ";";
-                my $alt_str     = sprintf("%s%smissing_seqlen:%d; missing_mdllen: %d; Ns: %d/%d;", $alt_scoords, $alt_mcoords, $missing_seq_len, $missing_mdl_len, $count_n, $missing_seq_len);
-                alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgueln", $seq_name, $alt_str, $FH_HR);
-              }
-              else { # we did replace the region
-                $nreplaced_nts += $unexlen_nreplaced_nts;
-                $original_seq_start = $missing_seq_stop_A[$i] + 1;
-                $nreplaced_regions++;
-              }
+              # Case 3: $missing_seq_len != $missing_mdl_len (replace only if shifting left or right gives enough matches)
+              if(($missing_mdl_len > $missing_seq_len) && 
+                 (($missing_mdl_len - $missing_seq_len) <= $r_diffmaxlen)) { 
+                # check if we can replace it pushing missing region left or right
+                # we need the mdl_consensus_sqstring to do this
+                my $missing_mdl_seq_len_diff = $missing_mdl_len - $missing_seq_len;
+                if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
+                  @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
+                }
+                my ($left_region_replaced_sqstring, $left_region_nreplaced_nts, $left_region_non_n_match, $left_region_non_n_mismatch) = 
+                    helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0);
+                my ($right_region_replaced_sqstring, $right_region_nreplaced_nts, $right_region_non_n_match, $right_region_non_n_mismatch) = 
+                    helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], $missing_mdl_seq_len_diff);
+                my ($best_region_replaced_sqstring, $best_region_nreplaced_nts, $best_region_non_n_match, $best_region_non_n_mismatch);
+                printf("HEYA left:  nmatch: $left_region_non_n_match  n_mismatch: $left_region_non_n_mismatch\n");
+                printf("HEYA right: nmatch: $right_region_non_n_match n_mismatch: $right_region_non_n_mismatch\n");
+                # Following relies on (left_region_non_n_match + left_region_non_n_mismatch) == (right_region_non_n_match + right_region_non_n_mismatch)
+                if($left_region_non_n_match >= $right_region_non_n_match) { 
+                  ($best_region_replaced_sqstring, $best_region_nreplaced_nts, $best_region_non_n_match, $best_region_non_n_mismatch) = 
+                      ($left_region_replaced_sqstring, $left_region_nreplaced_nts, $left_region_non_n_match, $left_region_non_n_mismatch);
+                }
+                else { 
+                  ($best_region_replaced_sqstring, $best_region_nreplaced_nts, $best_region_non_n_match, $best_region_non_n_mismatch) = 
+                      ($right_region_replaced_sqstring, $right_region_nreplaced_nts, $right_region_non_n_match, $right_region_non_n_mismatch);
+                }
+                # see if best side has enough matches to satisfy --r_diffminfract and non-Ns to satisfy --r_diffminnonn
+                my $best_region_non_n_sum = $best_region_non_n_match + $best_region_non_n_mismatch;
+                if(($best_region_non_n_sum >= $r_diffminnonn) && 
+                   (($best_region_non_n_match / ($best_region_non_n_match + $best_region_non_n_mismatch)) >= $r_diffminfract)) { 
+                  # do the replacement on the best side
+                  $replaced_sqstring .= $best_region_replaced_sqstring;
+                  $nreplaced_nts     += $best_region_nreplaced_nts;
+                  $replaced_flag = 1;
+                  if($count_n == $missing_seq_len) { 
+                    $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
+                    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $best_region_nreplaced_nts;
+                  }
+                  else { 
+                    $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
+                    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $best_region_nreplaced_nts;
+                  }
+                }
+              } # end of 'if(($missing_mdl_len > $missing_seq_len) && (($missing_mdl_len - $missing_seq_len) <= $r_diffmaxlen))'
             } # end of 'else' entered if $missing_seq_len != $missing_mdl_len
-          } # end of 'if($fract_n >= $cur_r_minfract_opt)
-        } # end of 'if($missing_seq_len > $r_minlen_opt)
+          } # end of 'if($fract_n >= $cur_r_minfract_opt)'
+          if($replaced_flag) { 
+            # we did a replacement
+            $original_seq_start = $missing_seq_stop_A[$i] + 1;
+            $nreplaced_regions++;
+            $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
+          }
+          else { 
+            # did not replace, report ambgueln
+            my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($missing_seq_start_A[$i], $missing_seq_stop_A[$i], "+", $FH_HR) . ";";
+            my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], "+", $FH_HR) . ";";
+            my $alt_str     = "seqlen:" . $missing_seq_len ",";
+            $alt_str       .= "mdllen:" . $missing_mdl_len ",";
+            $alt_str       .= "lendiff:" . (($missing_mdl_len - $missing_seq_len) + 1) . ",";
+            $alt_str       .= "N:" . $count_n . "/" . $missing_seq_len . ",";
+            if((defined $count_non_n_match) && (defined $count_non_n_mismatch)) { 
+              $alt_str     .= "M:" . $count_non_n_match . "/" . ($count_non_n_match + $count_non_n_mismatch) . ";";
+            }
+            else { 
+              $alt_str     .= "M:?/?;"
+            }
+            alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgueln", $seq_name, $alt_str, $FH_HR);
+          }
+          # update coords field
+          $rpn_output_HHR->{$seq_name}{"coords"} .= 
+              helper_replace_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
+                                           $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
+                                           $count_n, $count_non_n_match, $count_non_n_mismatch, $replaced_flag);
+        } # end of 'if($missing_seq_len >= $r_minlen_opt)'
       } # end of 'for($i = 0; $i < nmissing; $i++);'
     } # end of 'if($nmissing > 0)'
     # if we have generated a replacement sqstring, we need to finish it off if necessary
@@ -11859,8 +11915,6 @@ sub parse_cdt_tblout_file_and_replace_ns {
 #  $missing_mdl_stop:          position in model where missing model region stops
 #  $mdl_offset:                number of positions to add to missing_mdl_start to get to 
 #                              first position to start replacing with, 0 unless we are flushing right
-#  $opt_HHR:                   REF to 2D hash of option values, see top of sqp_opts.pm for description
-#  $FH_HR:                     REF to hash of file handles
 #
 # Returns: if region is not replaced: -1
 #          if region is replaced: number of N nts replaced
@@ -11868,10 +11922,10 @@ sub parse_cdt_tblout_file_and_replace_ns {
 #################################################################
 sub helper_replace_ns_in_region  { 
   my $sub_name = "helper_replace_ns_in_region()";
-  my $nargs_exp = 7;
+  my $nargs_exp = 5;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
 
-  my ($missing_sqstring, $mdl_consensus_sqstring_AR, $missing_mdl_start, $missing_mdl_stop, $mdl_offset, $opt_HHR, $FH_HR) = @_;
+  my ($missing_sqstring, $mdl_consensus_sqstring_AR, $missing_mdl_start, $missing_mdl_stop, $mdl_offset) = @_;
 
   # all nt in both $missing_sqstring and @{$mdl_consensus_sqstring_AR} should be capitalized
 
@@ -11879,8 +11933,8 @@ sub helper_replace_ns_in_region  {
   my $missing_seq_len = scalar(@missing_sqstring_A);
   my $ret_replaced_sqstring = "";
   my $ret_nreplaced_nts     = 0;
-  my $ret_n_exp   = 0; # number of non-N nts in missing_sqstring that match expected
-  my $ret_n_unexp = 0; # number of non-N nts in missing_sqstring that do not match expected
+  my $ret_nmatch   = 0; # number of non-N nts in missing_sqstring that match expected
+  my $ret_n_mismatch = 0; # number of non-N nts in missing_sqstring that do not match expected
 
   for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
     my $mdl_nt = $mdl_consensus_sqstring_AR->[($missing_mdl_start + $spos + $mdl_offset - 1)];
@@ -11893,14 +11947,66 @@ sub helper_replace_ns_in_region  {
     else { # not an N, don't replace, but check if it matches mdl_nt
       $ret_replaced_sqstring .= $seq_nt;
       if($seq_nt eq $mdl_nt) { 
-        $ret_n_exp++;
+        $ret_nmatch++;
       }
       else { 
-        $ret_n_unexp++;
+        $ret_n_mismatch++;
       }
     }
   }
-  return ($ret_replaced_sqstring, $ret_nreplaced_nts, $ret_n_exp, $ret_n_unexp);
+  return ($ret_replaced_sqstring, $ret_nreplaced_nts, $ret_nmatch, $ret_n_mismatch);
+}
+
+#################################################################
+# Subroutine: helper_replace_coords_string()
+# Incept:     EPN, Sat Dec 18 08:31:23 2021
+#
+# Purpose:    Format the "coords" string for \%{$rpn_output_HHR}
+#             given the necessary information.
+#
+# Args:
+#  $missing_seq_start:         position in model where missing model region starts
+#  $missing_seq_stop:          position in model where missing model region stops
+#  $missing_mdl_start:         position in model where missing model region starts
+#  $missing_mdl_stop:          position in model where missing model region stops
+#  $count_n:                   number of Ns in missing seq region
+#  $nmatch:                    number of non-Ns in missing seq region that matched expected nt, can be undef
+#  $nmismatch:                 number of non-Ns in missing seq region that did not match expected nt, can be undef
+#  $did_replace:               '1' if region was replaced, '0' if not
+#
+# Returns: substring to append to $rpn_output_HHR->{$seq_name}{"coords"}
+#
+#################################################################
+sub helper_replace_coords_string { 
+  my $sub_name = "helper_replace_coord_string()";
+  my $nargs_exp = 7;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($missing_seq_start, $missing_seq_stop, $missing_mdl_start, $missing_mdl_stop, $count_n, $nmatch, $nmismatch) = @_;
+  
+  my $missing_seq_len = abs($missing_seq_stop - $missing_seq_start) + 1;
+  my $missing_mdl_len = abs($missing_mdl_stop - $missing_mdl_start) + 1;
+  my $missing_non_n   = $nmatch + $nmismatch;
+  
+  my $ret_str = "";
+  $ret_str .= "S:" . $missing_seq_start . ".." . $missing_seq_stop . ","; # S: seq coords of missing region
+  $ret_str .= "M:" . $missing_mdl_start . ".." . $missing_seq_stop . ","; # M: mdl coords of missing region
+  $ret_str .= "D:" . ($missing_mdl_len - $missing_seq_len) . ",";         # D: missing mdl len - missing seq len
+  $ret_str .= "N:" . $count_n . "/" $missing_seq_len . ",";               # N: num Ns in missing seq region / missing seq len
+  if((defined $nmatch) && (defined $nmismatch)) { 
+    $ret_str .= "M:" . $nmatch  . "/" $missing_non_n . ",";                 # M: num non-Ns that match expected / num non Ns
+  }
+  else { 
+    $ret_str .= "M:?/?,";
+  }
+  if($did_replace) { 
+    $ret_str .= "R:yes;";
+}
+  else { 
+    $ret_str .= "R:no;";
+  }
+
+  return $ret_str;
 }
 
 
