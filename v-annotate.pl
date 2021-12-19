@@ -11657,7 +11657,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     }
     # check for missing sequence in between each aligned region
     for($i = 0; $i < ($ncoords-1); $i++) { 
-      printf("$seq_name %10d..%10d is not covered (mdl: %10d..%10d)\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1, $mdl_stop_A[$i]+1, $mdl_start_A[($i+1)]-1);
+      #printf("$seq_name %10d..%10d is not covered (mdl: %10d..%10d)\n", $seq_stop_A[$i]+1, $seq_start_A[($i+1)]-1, $mdl_stop_A[$i]+1, $mdl_start_A[($i+1)]-1);
       push(@missing_seq_start_A, $seq_stop_A[$i]+1);
       push(@missing_seq_stop_A,  $seq_start_A[($i+1)]-1);
       push(@missing_mdl_start_A, $mdl_stop_A[$i]+1);
@@ -11670,7 +11670,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     # replace this region. An alternative would be to replace to 
     # the end of the model, but I think that's too aggressive.
     if($seq_stop_A[($ncoords-1)] != $seq_len) { 
-      printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
+      #printf("$seq_name %10d..%10d is not covered\n", $seq_stop_A[($ncoords-1)], $seq_len);
       my $missing_seq_len = $seq_len - ($seq_stop_A[($ncoords-1)]+1) + 1;
       my $cur_missing_mdl_stop = ($mdl_stop_A[$i]+1) + ($missing_seq_len - 1);
       #printf("seq_stop_A[(ncoords-1)] +1 : " . ($seq_stop_A[($ncoords-1)]+1) . "\n");
@@ -11705,6 +11705,10 @@ sub parse_cdt_tblout_file_and_replace_ns {
     my $nreplaced_nts = 0; # number of N nts replaced
     my $n_tot         = 0; # total number of Ns in the sequence
     my $seq_desc      = "";    # fetched sequence description, if any
+    my $region_replaced_sqstring = ""; # replaced_sqstring for current region
+    my $region_nreplaced_nts     = 0;  # number of nts replaced in current region
+    my $region_non_n_match       = 0;  # number of non-Ns that match in region
+    my $region_non_n_mismatch    = 0;  # number of non-Ns that do not match in region
     if($nmissing > 0) { # at least one missing region
       my $fasta_seq = $$sqfile_R->fetch_seq_to_fasta_string($seq_name, -1); # -1 puts entire sequence into second line of $fasta_sqstring
       my $fetched_seq_name = undef; # name of fetched sequence, should eq $seq_name
@@ -11724,9 +11728,6 @@ sub parse_cdt_tblout_file_and_replace_ns {
         my $missing_mdl_len  = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
         # fill in non-replaced region since previous replacement 
         # (or 5' chunk up to replacement start if this is the first replacement)
-        if($missing_seq_start_A[$i] != 1)  { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
-          $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, (length($replaced_sqstring)+1), $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
-        }
         if($missing_seq_len >= $r_minlen_opt) { 
           my $cur_r_minfract_opt = $r_minfracti_opt; # set to 5' or 3' threshold below if nec
           if($missing_seq_start_A[$i] == 1) { 
@@ -11760,7 +11761,8 @@ sub parse_cdt_tblout_file_and_replace_ns {
               if($count_n eq $missing_seq_len) { 
                 # Case 1: $missing_seq_len == $missing_mdl_len and $count_n == $missing_seq_len (all Ns, trivial replacement)
                 # replace with substr of model cseq
-                $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
+                $region_replaced_sqstring = substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
+                #printf("1 replaced_sqstring len" . length($replaced_sqstring) . "\n");
                 $nreplaced_nts += $missing_seq_len;
                 $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
                 $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
@@ -11771,11 +11773,11 @@ sub parse_cdt_tblout_file_and_replace_ns {
                 if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
                   @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
                 }
-                my ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
+                ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
                     helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
                                                 $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0); # 0: $mdl_offset
 
-                $replaced_sqstring .= $region_replaced_sqstring;
+                #printf("2 replaced_sqstring len" . length($replaced_sqstring) . "\n");
                 $nreplaced_nts += $region_nreplaced_nts;
                 $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
                 $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $region_nreplaced_nts;
@@ -11798,40 +11800,45 @@ sub parse_cdt_tblout_file_and_replace_ns {
                 my ($right_region_replaced_sqstring, $right_region_nreplaced_nts, $right_region_non_n_match, $right_region_non_n_mismatch) = 
                     helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
                                                 $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], $missing_mdl_seq_len_diff);
-                my ($best_region_replaced_sqstring, $best_region_nreplaced_nts, $best_region_non_n_match, $best_region_non_n_mismatch);
-                printf("HEYA left:  nmatch: $left_region_non_n_match  n_mismatch: $left_region_non_n_mismatch\n");
-                printf("HEYA right: nmatch: $right_region_non_n_match n_mismatch: $right_region_non_n_mismatch\n");
+                #printf("HEYA left:  nmatch: $left_region_non_n_match  n_mismatch: $left_region_non_n_mismatch\n");
+                #printf("HEYA right: nmatch: $right_region_non_n_match n_mismatch: $right_region_non_n_mismatch\n");
                 # Following relies on (left_region_non_n_match + left_region_non_n_mismatch) == (right_region_non_n_match + right_region_non_n_mismatch)
                 if($left_region_non_n_match >= $right_region_non_n_match) { 
-                  ($best_region_replaced_sqstring, $best_region_nreplaced_nts, $best_region_non_n_match, $best_region_non_n_mismatch) = 
+                  ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
                       ($left_region_replaced_sqstring, $left_region_nreplaced_nts, $left_region_non_n_match, $left_region_non_n_mismatch);
                 }
                 else { 
-                  ($best_region_replaced_sqstring, $best_region_nreplaced_nts, $best_region_non_n_match, $best_region_non_n_mismatch) = 
+                  ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
                       ($right_region_replaced_sqstring, $right_region_nreplaced_nts, $right_region_non_n_match, $right_region_non_n_mismatch);
                 }
                 # see if best side has enough matches to satisfy --r_diffminfract and non-Ns to satisfy --r_diffminnonn
-                my $best_region_non_n_sum = $best_region_non_n_match + $best_region_non_n_mismatch;
-                if(($best_region_non_n_sum >= $r_diffminnonn) && 
-                   (($best_region_non_n_match / ($best_region_non_n_match + $best_region_non_n_mismatch)) >= $r_diffminfract)) { 
+                my $region_non_n_sum = $region_non_n_match + $region_non_n_mismatch;
+                if((0) && 
+                   ($region_non_n_sum >= $r_diffminnonn) && 
+                   (($region_non_n_match / ($region_non_n_match + $region_non_n_mismatch)) >= $r_diffminfract)) { 
                   # do the replacement on the best side
-                  $replaced_sqstring .= $best_region_replaced_sqstring;
-                  $nreplaced_nts     += $best_region_nreplaced_nts;
+                  #printf("3 replaced_sqstring len" . length($replaced_sqstring) . "\n");
+                  $nreplaced_nts     += $region_nreplaced_nts;
                   $replaced_flag = 1;
                   if($count_n == $missing_seq_len) { 
                     $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
-                    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $best_region_nreplaced_nts;
+                    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $region_nreplaced_nts;
                   }
                   else { 
                     $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
-                    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $best_region_nreplaced_nts;
+                    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $region_nreplaced_nts;
                   }
-                }
+                } # else: we don't meet minimum criteria for replacing a diff length region - do nothing
               } # end of 'if(($missing_mdl_len > $missing_seq_len) && (($missing_mdl_len - $missing_seq_len) <= $r_diffmaxlen))'
             } # end of 'else' entered if $missing_seq_len != $missing_mdl_len
           } # end of 'if($fract_n >= $cur_r_minfract_opt)'
           if($replaced_flag) { 
-            # we did a replacement
+            # we did a replacement, add the replaced seq to $replaced_sqstring
+            if($missing_seq_start_A[$i] != 1)  { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
+              $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, (length($replaced_sqstring)+1), $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
+              printf("0 replaced_sqstring len" . length($replaced_sqstring) . "\n");
+            }
+            $replaced_sqstring .= $region_replaced_sqstring;
             $nreplaced_regions++;
             $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
           }
@@ -11852,10 +11859,14 @@ sub parse_cdt_tblout_file_and_replace_ns {
             alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgueln", $seq_name, $alt_str, $FH_HR);
           }
           # update coords field
-          $rpn_output_HHR->{$seq_name}{"coords"} .= 
-              helper_replace_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
-                                           $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
-                                           $count_n, $count_non_n_match, $count_non_n_mismatch, $replaced_flag);
+          # TEMP BEGIN #
+          if(($missing_seq_len == $missing_mdl_len) && ($fract_n >= $cur_r_minfract_opt)) { 
+          # TEMP END #
+            $rpn_output_HHR->{$seq_name}{"coords"} .= 
+                helper_replace_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
+                                             $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
+                                             $count_n, $count_non_n_match, $count_non_n_mismatch, $replaced_flag);
+          } # TEMP
         } # end of 'if($missing_seq_len >= $r_minlen_opt)'
       } # end of 'for($i = 0; $i < nmissing; $i++);'
     } # end of 'if($nmissing > 0)'
@@ -11864,6 +11875,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
     if($replaced_sqstring ne "") { 
       if((length($replaced_sqstring)) < $seq_len) { 
         $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, (length($replaced_sqstring)+1), $seq_len, 0); # 0: do not reverse complement
+        printf("4 replaced_sqstring len" . length($replaced_sqstring) . "\n");
       }
       if(length($replaced_sqstring) != $seq_len) { 
         ofile_FAIL(sprintf("ERROR in $sub_name, trying to replace at least one region in $seq_name, but failed, unexpected length %d should be $seq_len", length($replaced_sqstring)), 1, $FH_HR);
@@ -11871,13 +11883,14 @@ sub parse_cdt_tblout_file_and_replace_ns {
       $n_tot  = ($replaced_sqstring =~ tr/N//);
       $n_tot += ($replaced_sqstring =~ tr/n//);
       $n_tot += $nreplaced_nts;
+      printf("HEYA seq_name: $seq_name n_tot: $n_tot\n");
       $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = $n_tot;
       $rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"}   = $nreplaced_nts;
       $rpn_output_HHR->{$seq_name}{"nnt_n_rp_fract"} = $nreplaced_nts / $n_tot;
       printf $fa_FH (">%s%s\n%s\n", $seq_name, $seq_desc, $replaced_sqstring);
       $seq_replaced_HR->{$seq_name} = 1;
       $nseq_output++;
-    } # end of 'if($replaced_sqstring)'
+    } # end of 'if($replaced_sqstring ne "")'
     else { # no Ns replaced
       my $full_sqstring = $$sqfile_R->fetch_seq_to_sqstring($seq_name);
       my $n_tot  = ($full_sqstring =~ tr/N//);
@@ -11993,22 +12006,23 @@ sub helper_replace_coords_string {
   
   my $ret_str = "";
   $ret_str .= "S:" . $missing_seq_start . ".." . $missing_seq_stop . ","; # S: seq coords of missing region
-  $ret_str .= "M:" . $missing_mdl_start . ".." . $missing_seq_stop . ","; # M: mdl coords of missing region
-  $ret_str .= "D:" . ($missing_mdl_len - $missing_seq_len) . ",";         # D: missing mdl len - missing seq len
-  $ret_str .= "N:" . $count_n . "/" . $missing_seq_len . ",";             # N: num Ns in missing seq region / missing seq len
-  if((defined $nmatch) && (defined $nmismatch)) { 
-    my $missing_non_n   = $nmatch + $nmismatch;
-    $ret_str .= "M:" . $nmatch  . "/" . $missing_non_n . ",";             # M: num non-Ns that match expected / num non Ns
-  }
-  else { 
-    $ret_str .= "M:?/?,";
-  }
-  if($replaced_flag) { 
-    $ret_str .= "R:yes;";
-  }
-  else { 
-    $ret_str .= "R:no;";
-  }
+  $ret_str .= "M:" . $missing_mdl_start . ".." . $missing_mdl_stop . ","; # M: mdl coords of missing region
+#  $ret_str .= "D:" . ($missing_mdl_len - $missing_seq_len) . ",";         # D: missing mdl len - missing seq len
+#  $ret_str .= "N:" . $count_n . "/" . $missing_seq_len . ",";             # N: num Ns in missing seq region / missing seq len
+  $ret_str .= "N:" . $count_n . "/" . $missing_seq_len . ";";             # N: num Ns in missing seq region / missing seq len
+#  if((defined $nmatch) && (defined $nmismatch)) { 
+#    my $missing_non_n   = $nmatch + $nmismatch;
+#    $ret_str .= "M:" . $nmatch  . "/" . $missing_non_n . ",";             # M: num non-Ns that match expected / num non Ns
+#  }
+#  else { 
+#    $ret_str .= "M:?/?,";
+#  }
+#  if($replaced_flag) { 
+#    $ret_str .= "R:yes;";
+#  }
+#  else { 
+#    $ret_str .= "R:no;";
+#  }
 
   return $ret_str;
 }
