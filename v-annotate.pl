@@ -327,27 +327,32 @@ opt_Add("--s_startstop",  "boolean",      0,   $g,       "-s", "--s_ungapsgm", "
 opt_Add("--s_overhang",   "integer",    100,   $g,       "-s", undef,          "for -s, set length of nt overhang for subseqs to align to <n>",       "for -s, set length of nt overhang for subseqs to align to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to replacing Ns with expected nucleotides";
-#        option               type   default group requires incompat  preamble-output                                                              help-output    
-opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                 "replace stretches of Ns with expected nts, where possible",                \%opt_HH, \@opt_order_A);
-opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                        "minimum length subsequence to replace Ns in is <n>",                       \%opt_HH, \@opt_order_A);
-opt_Add("--r_minfract5",     "real",   0.25,   $g,    "-r", undef,    "minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>",  "minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_minfract3",     "real",   0.25,   $g,    "-r", undef,    "minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>",  "minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_minfracti",     "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in internal subseq to trigger replacement is <x>",   "minimum fraction of Ns in internal subseq to trigger replacement is <x>",  \%opt_HH, \@opt_order_A);
-opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",   "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
-opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",        "detect CDS and MP alerts in sequences w/Ns replaced, not originals",      \%opt_HH, \@opt_order_A);
-opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",     "use original sequences for protein validation, not replaced seqs",        \%opt_HH, \@opt_order_A);
-opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",         "use slower profile methods, not blastn, to identify Ns to replace",       \%opt_HH, \@opt_order_A);
-opt_Add("--r_list",       "string",   undef,   $g,    "-r", undef,    "with -r, only use models listed in file <s> for N replacement stage",       "with -r, only use models listed in file <s> for N replacement stage",     \%opt_HH, \@opt_order_A);
-opt_Add("--r_only",       "string",   undef,   $g,    "-r","--r_list","with -r, only use model named <s> for N replacement stage",                 "with -r, only use model named <s> for N replacement stage",               \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastnws",   "integer",      7,   $g,    "-r", undef,          "for -r, set blastn -word_size <n> to <n>",                            "for -r, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastnrw",   "integer",      1,   $g,    "-r", undef,          "for -r, set blastn -reward <n> to <n>",                               "for -r, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastnpn",   "integer",     -2,   $g,    "-r", undef,          "for -r, set blastn -penalty <n> to <n>",                              "for -r, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastngo",   "integer",      2,   $g,    "-r","--r_blastngdf", "for -r, set blastn -gapopen <n> to <n>",                              "for -r, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastnge",   "real",         1,   $g,    "-r","--r_blastngdf", "for -r, set blastn -gapextend <x> to <x>",                            "for -r, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastngdf",  "boolean",      0,   $g,    "-r", undef,          "for -r, don't use -gapopen/-gapextend w/blastn (use default values)", "for -r, don't use -gapopen/-gapextend w/blastn (use default values)", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for -r, set blastn minimum HSP score to consider to <x>",             "for -r, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                              "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
-opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",               "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
+#        option               type   default group requires incompat  preamble-output                                                                 help-output    
+opt_Add("-r",             "boolean",      0,   $g,   undef, undef,    "replace stretches of Ns with expected nts, where possible",                    "replace stretches of Ns with expected nts, where possible",                \%opt_HH, \@opt_order_A);
+opt_Add("--r_minlen",     "integer",      5,   $g,    "-r", undef,    "minimum length subsequence to replace Ns in is <n>",                           "minimum length subsequence to replace Ns in is <n>",                       \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfract5",     "real",   0.25,   $g,    "-r", undef,    "minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>",     "minimum fraction of Ns in subseq at 5' end to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfract3",     "real",   0.25,   $g,    "-r", undef,    "minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>",     "minimum fraction of Ns in subseq at 3' end to trigger replacement is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_minfracti",     "real",    0.5,   $g,    "-r", undef,    "minimum fraction of Ns in internal subseq to trigger replacement is <x>",      "minimum fraction of Ns in internal subseq to trigger replacement is <x>",  \%opt_HH, \@opt_order_A);
+opt_Add("--r_diffno",     "boolean",      0,   $g,    "-r", undef,    "do not try replacement if seq and mdl regions are of different lengths",       "do not try replacement if seq and mdl regions are of different lengths",    \%opt_HH, \@opt_order_A);
+opt_Add("--r_diffmaxdel", "integer",     10,   $g,  "-r","--r_diffno","max difference b/t seq/mdl regions (mdllen>seqlen) to try replacement is <n>", "max allowed length difference b/t seq/mdl regions to try replacement is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_diffmaxins", "integer",      0,   $g,  "-r","--r_diffno","max difference b/t seq/mdl regions (seqlen>mdllen) to try replacement is <n>", "max allowed length difference b/t seq/mdl regions to try replacement is <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_diffminnonn","integer",      1,   $g,  "-r","--r_diffno","min number non-Ns in diff len replacement region to try replacement is <n>",   "min number non-Ns in diff len replacement region to try replacement is <n>",  \%opt_HH, \@opt_order_A);
+opt_Add("--r_diffminfract",  "real",   0.75,   $g,  "-r","--r_diffno","min allowed fraction of non-N matches in diff len replacement region is <x>",  "min allowed fraction of non-N matches in diff len replacement region is <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_fetchr",     "boolean",      0,   $g,    "-r", undef,    "fetch features for output fastas from seqs w/Ns replaced, not originals",      "fetch features for output fastas from seqs w/Ns replaced, not originals", \%opt_HH, \@opt_order_A);
+opt_Add("--r_cdsmpr",     "boolean",      0,   $g,    "-r", undef,    "detect CDS and MP alerts in sequences w/Ns replaced, not originals",           "detect CDS and MP alerts in sequences w/Ns replaced, not originals",      \%opt_HH, \@opt_order_A);
+opt_Add("--r_pvorig",     "boolean",      0,   $g,    "-r", undef,    "use original sequences for protein validation step, not replaced seqs",        "use original sequences for protein validation, not replaced seqs",        \%opt_HH, \@opt_order_A);
+opt_Add("--r_prof",       "boolean",      0,   $g,    "-r", undef,    "use slower profile methods, not blastn, to identify Ns to replace",            "use slower profile methods, not blastn, to identify Ns to replace",       \%opt_HH, \@opt_order_A);
+opt_Add("--r_list",       "string",   undef,   $g,    "-r", undef,    "with -r, only use models listed in file <s> for N replacement stage",          "with -r, only use models listed in file <s> for N replacement stage",     \%opt_HH, \@opt_order_A);
+opt_Add("--r_only",       "string",   undef,   $g,    "-r","--r_list","with -r, only use model named <s> for N replacement stage",                    "with -r, only use model named <s> for N replacement stage",               \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastnws",   "integer",      7,   $g,    "-r", undef,          "for -r, set blastn -word_size <n> to <n>",                               "for -r, set blastn -word_size <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastnrw",   "integer",      1,   $g,    "-r", undef,          "for -r, set blastn -reward <n> to <n>",                                  "for -r, set blastn -reward <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastnpn",   "integer",     -2,   $g,    "-r", undef,          "for -r, set blastn -penalty <n> to <n>",                                 "for -r, set blastn -penalty <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastngo",   "integer",      2,   $g,    "-r","--r_blastngdf", "for -r, set blastn -gapopen <n> to <n>",                                 "for -r, set blastn -gapopen <n> to <n>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastnge",   "real",         1,   $g,    "-r","--r_blastngdf", "for -r, set blastn -gapextend <x> to <x>",                               "for -r, set blastn -gapextend <x> to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastngdf",  "boolean",      0,   $g,    "-r", undef,          "for -r, don't use -gapopen/-gapextend w/blastn (use default values)",    "for -r, don't use -gapopen/-gapextend w/blastn (use default values)", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastnsc",   "real",      50.0,   $g,    "-r", undef,          "for -r, set blastn minimum HSP score to consider to <x>",                "for -r, set blastn minimum HSP score to consider to <x>", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastntk",   "boolean",      0,   $g,    "-r", undef,          "for -r, set blastn option -task blastn",                                 "for -r, set blastn option -task blastn", \%opt_HH, \@opt_order_A);
+opt_Add("--r_blastnxd",   "integer",    110,   $g,    "-r", undef,          "for -r, set blastn option -xdrop_gap_final <n> to <n>",                  "for -r, set blastn -xdrop_gap_final <n> to <n>", \%opt_HH, \@opt_order_A);
 
 $opt_group_desc_H{++$g} = "options related to splitting input file into chunks and processing each chunk separately";
 #     option            type       default  group   requires incompat    preamble-output                                                          help-output    
@@ -502,26 +507,31 @@ my $options_okay =
                 's_startstop'   => \$GetOptions_H{"--s_startstop"},
                 's_overhang=s'  => \$GetOptions_H{"--s_overhang"},
 # options related to replacing Ns with expected nucleotides
-                'r'             => \$GetOptions_H{"-r"},
-                'r_minlen=s'    => \$GetOptions_H{"--r_minlen"},
-                'r_minfract5=s' => \$GetOptions_H{"--r_minfract5"},
-                'r_minfract3=s' => \$GetOptions_H{"--r_minfract3"},
-                'r_minfracti=s' => \$GetOptions_H{"--r_minfracti"},
-                'r_fetchr'      => \$GetOptions_H{"--r_fetchr"},
-                'r_cdsmpr'      => \$GetOptions_H{"--r_cdsmpr"},
-                'r_pvorig'      => \$GetOptions_H{"--r_pvorig"},
-                'r_prof'        => \$GetOptions_H{"--r_prof"},
-                'r_list=s'      => \$GetOptions_H{"--r_list"},
-                'r_only=s'      => \$GetOptions_H{"--r_only"},
-                'r_blastnws=s'  => \$GetOptions_H{"--r_blastnws"},
-                'r_blastnrw=s'  => \$GetOptions_H{"--r_blastnrw"},
-                'r_blastnpn=s'  => \$GetOptions_H{"--r_blastnpn"},
-                'r_blastngo=s'  => \$GetOptions_H{"--r_blastngo"},
-                'r_blastnge=s'  => \$GetOptions_H{"--r_blastnge"},
-                'r_blastngdf'   => \$GetOptions_H{"--r_blastngdf"},
-                'r_blastnsc=s'  => \$GetOptions_H{"--r_blastnsc"},
-                'r_blastntk'    => \$GetOptions_H{"--r_blastntk"},
-                'r_blastnxd=s'  => \$GetOptions_H{"--r_blastnxd"},
+                'r'                => \$GetOptions_H{"-r"},
+                'r_minlen=s'       => \$GetOptions_H{"--r_minlen"},
+                'r_minfract5=s'    => \$GetOptions_H{"--r_minfract5"},
+                'r_minfract3=s'    => \$GetOptions_H{"--r_minfract3"},
+                'r_minfracti=s'    => \$GetOptions_H{"--r_minfracti"},
+                'r_diffno'         => \$GetOptions_H{"--r_diffno"},
+                'r_diffmaxdel=s'   => \$GetOptions_H{"--r_diffmaxdel"},
+                'r_diffmaxins=s'   => \$GetOptions_H{"--r_diffmaxins"},
+                'r_diffminnonn=s'  => \$GetOptions_H{"--r_diffminnonn"},
+                'r_diffminfract=s' => \$GetOptions_H{"--r_diffminfract"},
+                'r_fetchr'         => \$GetOptions_H{"--r_fetchr"},
+                'r_cdsmpr'         => \$GetOptions_H{"--r_cdsmpr"},
+                'r_pvorig'         => \$GetOptions_H{"--r_pvorig"},
+                'r_prof'           => \$GetOptions_H{"--r_prof"},
+                'r_list=s'         => \$GetOptions_H{"--r_list"},
+                'r_only=s'         => \$GetOptions_H{"--r_only"},
+                'r_blastnws=s'     => \$GetOptions_H{"--r_blastnws"},
+                'r_blastnrw=s'     => \$GetOptions_H{"--r_blastnrw"},
+                'r_blastnpn=s'     => \$GetOptions_H{"--r_blastnpn"},
+                'r_blastngo=s'     => \$GetOptions_H{"--r_blastngo"},
+                'r_blastnge=s'     => \$GetOptions_H{"--r_blastnge"},
+                'r_blastngdf'      => \$GetOptions_H{"--r_blastngdf"},
+                'r_blastnsc=s'     => \$GetOptions_H{"--r_blastnsc"},
+                'r_blastntk'       => \$GetOptions_H{"--r_blastntk"},
+                'r_blastnxd=s'     => \$GetOptions_H{"--r_blastnxd"},
 # options related to splitting
                 'split'         => \$GetOptions_H{"--split"},
                 'cpu=s'         => \$GetOptions_H{"--cpu"}, 
@@ -1401,7 +1411,8 @@ if($do_replace_ns) {
     if(defined $mdl_seq_name_HA{$mdl_name}) { 
       my $tblout_file = $ofile_info_HH{"fullpath"}{"rpn.cdt.$mdl_name.tblout"};
       $nseq_replaced += parse_cdt_tblout_file_and_replace_ns($tblout_file, \$in_sqfile, \$blastn_db_sqfile, \@mdl_info_AH, $mdl_name, $mdl_idx,
-                                                             \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, $out_root, \%opt_HH, \%ofile_info_HH);
+                                                             \@seq_name_A, \%seq_len_H, \%seq_replaced_H, \%rpn_output_HH, 
+                                                             \%alt_info_HH, \%alt_seq_instances_HH, $out_root, \%opt_HH, \%ofile_info_HH);
     }
   }
   close($ofile_info_HH{"FH"}{"rpn.sub.fa"}); 
@@ -11472,6 +11483,8 @@ sub msa_replace_sequences {
 #  $seq_len_HR:            REF to hash of sequence lengths
 #  $seq_replaced_HR:       REF to hash, key is sequence name, value is 1 if this seq was replaced
 #  $rpn_output_HHR:        REF to 2D hash with information to output to .rpn tabular file, ADDED TO HERE
+#  $alt_info_HHR:          REF to the alert info hash of arrays, PRE-FILLED
+#  $alt_seq_instances_HHR: REF to array of 2D hashes with per-sequence alerts, potentially added to here
 #  $out_root:              string for naming output files
 #  $opt_HHR:               REF to 2D hash of option values, see top of sqp_opts.pm for description
 #  $ofile_info_HHR:        REF to 2D hash of output file information, ADDED TO HERE
@@ -11483,19 +11496,25 @@ sub msa_replace_sequences {
 ################################################################# 
 sub parse_cdt_tblout_file_and_replace_ns { 
   my $sub_name = "parse_cdt_tblout_file_and_replace_ns";
-  my $nargs_exp = 13;
+  my $nargs_exp = 15;
   if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
   
   my ($tblout_file, $sqfile_R, $blastn_db_sqfile_R, $mdl_info_AHR, $exp_mdl_name, $mdl_idx, 
-      $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $out_root, $opt_HHR, $ofile_info_HHR) = @_;
+      $seq_name_AR, $seq_len_HR, $seq_replaced_HR, $rpn_output_HHR, $alt_info_HHR, $alt_seq_instances_HHR,
+      $out_root, $opt_HHR, $ofile_info_HHR) = @_;
 
   my $FH_HR  = $ofile_info_HHR->{"FH"};
 
   my $r_minlen_opt    = opt_Get("--r_minlen", $opt_HHR);
   my $small_value     = 0.00000001;
-  my $r_minfract5_opt = opt_Get("--r_minfract5", $opt_HHR) - $small_value;
-  my $r_minfract3_opt = opt_Get("--r_minfract3", $opt_HHR) - $small_value;
-  my $r_minfracti_opt = opt_Get("--r_minfracti", $opt_HHR) - $small_value;
+  my $r_minfract5_opt = opt_Get("--r_minfract5",    $opt_HHR) - $small_value;
+  my $r_minfract3_opt = opt_Get("--r_minfract3",    $opt_HHR) - $small_value;
+  my $r_minfracti_opt = opt_Get("--r_minfracti",    $opt_HHR) - $small_value;
+  my $do_diff_replace = (opt_Get("--r_diffno", $opt_HHR)) ? 0 : 1;
+  my $r_diffmaxdel    = opt_Get("--r_diffmaxdel",   $opt_HHR) + $small_value;
+  my $r_diffmaxins    = opt_Get("--r_diffmaxins",   $opt_HHR) + $small_value;
+  my $r_diffminfract  = opt_Get("--r_diffminfract", $opt_HHR) - $small_value;
+  my $r_diffminnonn   = opt_Get("--r_diffminnonn",  $opt_HHR) - $small_value;
   my $do_keep         = opt_Get("--keep", $opt_HHR);
   my %tblout_coords_HAH = (); # hash of arrays of hashes 
                               # key is seq name
@@ -11513,6 +11532,9 @@ sub parse_cdt_tblout_file_and_replace_ns {
   # these are only filled if nec (if we do a N-stretch-replacment for >= 1 seq)
   my $mdl_consensus_sqstring   = (defined $mdl_info_AHR->[$mdl_idx]{"cseq"}) ? $mdl_info_AHR->[$mdl_idx]{"cseq"} : undef;
   my @mdl_consensus_sqstring_A = (); 
+  if(defined $mdl_consensus_sqstring) { 
+    $mdl_consensus_sqstring =~ tr/a-z/A-Z/;
+  }
 
   open(IN, $tblout_file) || ofile_FileOpenFailure($tblout_file, $sub_name, $!, "reading", $FH_HR);
   while(my $line = <IN>) { 
@@ -11685,11 +11707,13 @@ sub parse_cdt_tblout_file_and_replace_ns {
     # - length of sequence region is at or above minimum from --r_minlen
     # - fraction of Ns in sequence region is at or above minimum from --r_minfract
     my $replaced_sqstring = "";
-    my $original_seq_start = 1; # updated to position after last replaced string when we do a replacement
     my $nreplaced_regions = 0;
-    my $nreplaced_nts = 0; # number of N nts replaced
     my $n_tot         = 0; # total number of Ns in the sequence
     my $seq_desc      = "";    # fetched sequence description, if any
+    my $region_replaced_sqstring = ""; # replaced_sqstring for current region
+    my $region_nreplaced_nts     = 0;  # number of nts replaced in current region
+    my $region_non_n_match       = 0;  # number of non-Ns that match in region
+    my $region_non_n_mismatch    = 0;  # number of non-Ns that do not match in region
     if($nmissing > 0) { # at least one missing region
       my $fasta_seq = $$sqfile_R->fetch_seq_to_fasta_string($seq_name, -1); # -1 puts entire sequence into second line of $fasta_sqstring
       my $fetched_seq_name = undef; # name of fetched sequence, should eq $seq_name
@@ -11705,83 +11729,163 @@ sub parse_cdt_tblout_file_and_replace_ns {
         ofile_FAIL("ERROR in $sub_name, unable to parse fetched sequence fasta:\n$fasta_seq\n", 1, $FH_HR);
       }
       for($i = 0; $i < $nmissing; $i++) {
-        my $missing_seq_len = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
-        my $missing_mdl_len = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
-        my $cur_r_minfract_opt = $r_minfracti_opt; # set to 5' or 3' threshold below if nec
-        if($missing_seq_start_A[$i] == 1) { 
-          $cur_r_minfract_opt = $r_minfract5_opt;
-        }
-        if($missing_seq_stop_A[$i] == $seq_len) { 
-          $cur_r_minfract_opt = $r_minfract3_opt;
-        }
-        if(($missing_seq_len == $missing_mdl_len) && ($missing_seq_len >= $r_minlen_opt)) { 
+        my $missing_seq_len  = $missing_seq_stop_A[$i] - $missing_seq_start_A[$i] + 1;
+        my $missing_mdl_len  = $missing_mdl_stop_A[$i] - $missing_mdl_start_A[$i] + 1;
+        # fill in non-replaced region since previous replacement 
+        # (or 5' chunk up to replacement start if this is the first replacement)
+        if($missing_seq_len >= $r_minlen_opt) { 
+          my $cur_r_minfract_opt = $r_minfracti_opt; # set to 5' or 3' threshold below if nec
+          if($missing_seq_start_A[$i] == 1) { 
+            $cur_r_minfract_opt = $r_minfract5_opt;
+          }
+          if($missing_seq_stop_A[$i] == $seq_len) { 
+            $cur_r_minfract_opt = $r_minfract3_opt;
+          }
           my $missing_sqstring = substr($sqstring, ($missing_seq_start_A[$i]-1), $missing_seq_len);
           $missing_sqstring =~ tr/[a-z]/[A-Z]/; # uppercaseize
           my $count_n = $missing_sqstring =~ tr/N//;
           my $fract_n = $count_n / $missing_seq_len;
+          my $replaced_flag = 0;
+          my $flush_direction = "-";
+          $region_non_n_match = undef;
+          $region_non_n_mismatch = undef;
           if($fract_n >= $cur_r_minfract_opt) { 
-            # replace Ns in this region with expected nt
-            # 
+            # missing region exceeds our length and fract_n requirement, we'll either replace it or report ambgntrp alert
+            # 3 cases in which we (might) replace
+            # Case 1: $missing_seq_len == $missing_mdl_len and $count_n == $missing_seq_len (all Ns, trivial replacement)
+            # Case 2: $missing_seq_len == $missing_mdl_len and $count_n != $missing_seq_len (not all Ns, replace nt by nt)
+            # Case 3: $missing_seq_len != $missing_mdl_len (replace only if shifting left or right gives enough matches)
             # get the model consensus sequence if we don't have it already
-            $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
-            $rpn_output_HHR->{$seq_name}{"coords"} .= "S:" . $missing_seq_start_A[$i] . ".." . $missing_seq_stop_A[$i] . ",";
-            $rpn_output_HHR->{$seq_name}{"coords"} .= "M:" . $missing_mdl_start_A[$i] . ".." . $missing_mdl_stop_A[$i] . ",";
-            $rpn_output_HHR->{$seq_name}{"coords"} .= "N:" . $count_n . "/" . $missing_seq_len . ";";
             if(! defined $mdl_consensus_sqstring) { 
               $mdl_info_AHR->[$mdl_idx]{"cseq"} = $$blastn_db_sqfile_R->fetch_seq_to_sqstring($exp_mdl_name);
               $mdl_consensus_sqstring = $mdl_info_AHR->[$mdl_idx]{"cseq"};
+              $mdl_consensus_sqstring =~ tr/a-z/A-Z/; # upper-caseize
             }
-            # fill in non-replaced region since previous replacement 
-            # (or 5' chunk up to replacement start if this is the first replacement, 
-            #  in this case $original_seq_start will be its initialized value of 1)
-            if($missing_seq_start_A[$i] != 1) { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
-              $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
-            }
-            if($count_n eq $missing_seq_len) { 
-              # region to replace is entirely Ns, easy case
-              # replace with substr of model cseq
-              $replaced_sqstring .= substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
-              $nreplaced_nts += $missing_seq_len;
-              $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
-              $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
-            }
-            else { 
-              # region to replace is not entirely Ns, more laborious case
-              # replace only Ns with model positions
-              $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
-              if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
-                @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
+            if($missing_seq_len == $missing_mdl_len) { 
+              # replace Ns in this region with expected nt
+              # 
+              if($count_n eq $missing_seq_len) { 
+                # Case 1: $missing_seq_len == $missing_mdl_len and $count_n == $missing_seq_len (all Ns, trivial replacement)
+                # replace with substr of model cseq
+                $region_replaced_sqstring = substr($mdl_consensus_sqstring, $missing_mdl_start_A[$i] - 1, $missing_mdl_len);
+                $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
+                $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $missing_seq_len;
+                $replaced_flag = 1;
               }
-              my @missing_sqstring_A = split("", $missing_sqstring);
-              for(my $spos = 0; $spos < $missing_seq_len; $spos++) { 
-                if($missing_sqstring_A[$spos] eq "N") { 
-                  #printf("replacing missing_sqstring_A[$spos] with mdl_consensus_sqstring_A[%d + %d - 1 = %d] which is %s\n", $missing_mdl_start_A[$i], $spos, $missing_mdl_start_A[$i] + $spos - 1, $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)]);
-                  $replaced_sqstring .= $mdl_consensus_sqstring_A[($missing_mdl_start_A[$i] + $spos - 1)];
-                  $nreplaced_nts++;
-                  $rpn_output_HHR->{$seq_name}{"nnt_rp_part"}++;
+              else { 
+                # Case 2: $missing_seq_len == $missing_mdl_len and $count_n != $missing_seq_len (not all Ns, replace nt by nt)
+                if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
+                  @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
+                }
+                ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
+                    helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0); # 0: $mdl_offset
+
+                $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
+                $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $region_nreplaced_nts;
+                $replaced_flag = 1;
+              }
+            } # end of 'if($missing_seq_len == $missing_mdl_len)
+            else { 
+              # Case 3: $missing_seq_len != $missing_mdl_len (replace only if shifting left or right gives enough matches)
+              my $missing_diff_len = ($missing_seq_len - $missing_mdl_len);
+              if((($missing_diff_len > 0) && ($missing_diff_len      <= $r_diffmaxins)) || # 'insert' of length that doesn't exceed max
+                 (($missing_diff_len < 0) && (abs($missing_diff_len) <= $r_diffmaxdel))) { # 'delete' of length that doesn't exceed max
+                # check if we can replace it pushing missing region left or right
+                # we need the mdl_consensus_sqstring to do this
+                if(scalar(@mdl_consensus_sqstring_A) == 0) { # if != 0 we already have this
+                  @mdl_consensus_sqstring_A = split("", $mdl_consensus_sqstring); 
+                }
+                my ($left_region_replaced_sqstring, $left_region_nreplaced_nts, $left_region_non_n_match, $left_region_non_n_mismatch) = 
+                    helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 0);
+                my ($right_region_replaced_sqstring, $right_region_nreplaced_nts, $right_region_non_n_match, $right_region_non_n_mismatch) = 
+                    helper_replace_ns_in_region($missing_sqstring, \@mdl_consensus_sqstring_A, 
+                                                $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], $missing_diff_len);
+                #printf("left:  nmatch: $left_region_non_n_match  n_mismatch: $left_region_non_n_mismatch\n");
+                #printf("right: nmatch: $right_region_non_n_match n_mismatch: $right_region_non_n_mismatch\n");
+                # determine which side (left or right) wins (has higher fraction of matches)
+                my $left_sum  = $left_region_non_n_match + $left_region_non_n_mismatch;
+                my $right_sum = $right_region_non_n_match + $right_region_non_n_mismatch;
+                my $left_match_fract  = ($left_sum == 0) ? 0. : $left_region_non_n_match / $left_sum;
+                my $right_match_fract = ($right_sum == 0) ? 0. : $right_region_non_n_match / $right_sum;
+                if($left_match_fract >= ($right_match_fract - $small_value)) { 
+                  ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
+                      ($left_region_replaced_sqstring, $left_region_nreplaced_nts, $left_region_non_n_match, $left_region_non_n_mismatch);
+                  $flush_direction = "5'";
                 }
                 else { 
-                  $replaced_sqstring .= $missing_sqstring_A[$spos];
+                  ($region_replaced_sqstring, $region_nreplaced_nts, $region_non_n_match, $region_non_n_mismatch) = 
+                      ($right_region_replaced_sqstring, $right_region_nreplaced_nts, $right_region_non_n_match, $right_region_non_n_mismatch);
+                  $flush_direction = "3'";
                 }
-              }
+                # see if best side has enough matches to satisfy --r_diffminfract and non-Ns to satisfy --r_diffminnonn
+                my $region_non_n_sum = $region_non_n_match + $region_non_n_mismatch;
+                if(($do_diff_replace) && # --r_diffno not used
+                   ($region_non_n_sum >= $r_diffminnonn) && # --r_diffminnonn satisfied
+                   (($region_non_n_sum == 0) || (($region_non_n_match / $region_non_n_sum) >= $r_diffminfract))) { # no non-Ns or --r_diffminfract satisfied
+                  # do the replacement on the winning side side
+                  $replaced_flag  = 1;
+                  if($count_n == $missing_seq_len) { 
+                    $rpn_output_HHR->{$seq_name}{"ngaps_rp_full"}++;
+                    $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} += $region_nreplaced_nts;
+                  }
+                  else { 
+                    $rpn_output_HHR->{$seq_name}{"ngaps_rp_part"}++;
+                    $rpn_output_HHR->{$seq_name}{"nnt_rp_part"} += $region_nreplaced_nts;
+                  }
+                } # else: we don't meet minimum criteria for replacing a diff length region - do nothing
+              } # end of 'if(($missing_mdl_len > $missing_seq_len) && (($missing_mdl_len - $missing_seq_len) <= $r_diffmaxlen))'
+            } # end of 'else' entered if $missing_seq_len != $missing_mdl_len
+          } # end of 'if($fract_n >= $cur_r_minfract_opt)'
+          if($replaced_flag) { 
+            # we did a replacement, add the replaced seq to $replaced_sqstring
+            if($missing_seq_start_A[$i] != 1)  { # if $missing_seq_start_A[$i] is 1, there's no chunk 5' of the missing region to fetch
+              $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, (length($replaced_sqstring)+1), $missing_seq_start_A[$i] - 1, 0); # 0: do not reverse complement
             }
-            $original_seq_start = $missing_seq_stop_A[$i] + 1;
+            $replaced_sqstring .= $region_replaced_sqstring;
             $nreplaced_regions++;
-          } # end of 'if($fract_n >= $cur_r_minfract_opt)
-        }
+            $rpn_output_HHR->{$seq_name}{"ngaps_rp"}++;
+          }
+          else { 
+            if($fract_n >= $cur_r_minfract_opt) { 
+              # did not replace, report ambgntrp
+              my $alt_scoords = "seq:" . vdr_CoordsSegmentCreate($missing_seq_start_A[$i], $missing_seq_stop_A[$i], "+", $FH_HR) . ";";
+              my $alt_mcoords = "mdl:" . vdr_CoordsSegmentCreate($missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], "+", $FH_HR) . ";";
+              my $alt_str     = "seqlen:" . $missing_seq_len . ",";
+              $alt_str       .= "mdllen:" . $missing_mdl_len . ",";
+              $alt_str       .= "lendiff:" . ($missing_mdl_len - $missing_seq_len) . ",";
+              $alt_str       .= "Nct:" . $count_n . "/" . $missing_seq_len . ",";
+              $alt_str       .= sprintf("Nfract:%.3f,", ($count_n/$missing_seq_len));
+              if((defined $region_non_n_match) && (defined $region_non_n_mismatch)) { 
+                $alt_str     .= "nonNmatches:" . $region_non_n_match . "/" . ($region_non_n_match + $region_non_n_mismatch) . ";";
+              }
+              else { 
+                $alt_str     .= "nonNmatches:?/?;"
+              }
+              alert_sequence_instance_add($alt_seq_instances_HHR, $alt_info_HHR, "ambgntrp", $seq_name, $alt_scoords . $alt_mcoords . $alt_str, $FH_HR);
+            }
+          }
+          # update coords field
+          $rpn_output_HHR->{$seq_name}{"coords"} .= 
+              helper_replace_coords_string($missing_seq_start_A[$i], $missing_seq_stop_A[$i], 
+                                           $missing_mdl_start_A[$i], $missing_mdl_stop_A[$i], 
+                                           $count_n, $region_non_n_match, $region_non_n_mismatch, $flush_direction, $replaced_flag);
+        } # end of 'if($missing_seq_len >= $r_minlen_opt)'
       } # end of 'for($i = 0; $i < nmissing; $i++);'
     } # end of 'if($nmissing > 0)'
     # if we have generated a replacement sqstring, we need to finish it off if necessary
     # with final region of the sequence after the final replaced region
     if($replaced_sqstring ne "") { 
-      if($original_seq_start <= $seq_len) { 
-        $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, $original_seq_start, $seq_len, 0); # 0: do not reverse complement
+      if((length($replaced_sqstring)) < $seq_len) { 
+        $replaced_sqstring .= $$sqfile_R->fetch_subseq_to_sqstring($seq_name, (length($replaced_sqstring)+1), $seq_len, 0); # 0: do not reverse complement
       }
       if(length($replaced_sqstring) != $seq_len) { 
         ofile_FAIL(sprintf("ERROR in $sub_name, trying to replace at least one region in $seq_name, but failed, unexpected length %d should be $seq_len", length($replaced_sqstring)), 1, $FH_HR);
       }
       $n_tot  = ($replaced_sqstring =~ tr/N//);
       $n_tot += ($replaced_sqstring =~ tr/n//);
+      my $nreplaced_nts = $rpn_output_HHR->{$seq_name}{"nnt_rp_full"} +$rpn_output_HHR->{$seq_name}{"nnt_rp_part"};
       $n_tot += $nreplaced_nts;
       $rpn_output_HHR->{$seq_name}{"nnt_n_tot"}      = $n_tot;
       $rpn_output_HHR->{$seq_name}{"nnt_n_rp_tot"}   = $nreplaced_nts;
@@ -11789,7 +11893,7 @@ sub parse_cdt_tblout_file_and_replace_ns {
       printf $fa_FH (">%s%s\n%s\n", $seq_name, $seq_desc, $replaced_sqstring);
       $seq_replaced_HR->{$seq_name} = 1;
       $nseq_output++;
-    } # end of 'if($replaced_sqstring)'
+    } # end of 'if($replaced_sqstring ne "")'
     else { # no Ns replaced
       my $full_sqstring = $$sqfile_R->fetch_seq_to_sqstring($seq_name);
       my $n_tot  = ($full_sqstring =~ tr/N//);
@@ -11802,6 +11906,161 @@ sub parse_cdt_tblout_file_and_replace_ns {
 
   return $nseq_output;
 }
+
+#################################################################
+# Subroutine: helper_replace_ns_in_region()
+# Incept:     EPN, Thu Dec 16 22:06:48 2021
+#
+# Purpose:    Replaced Ns in a region based on model nt in that
+#             region.
+#             
+#             If length($missing_sqstring) != ($missing_mdl_stop - $missing_mdl_start)
+#             we have an unexpected length region and we will
+#             determine 'alignment' of model to sequence by offsetting
+#             model and sequence by $mdl_offset. 
+#          
+# Args:
+#  $missing_sqstring:          the sequence string that is missing with Ns
+#  $mdl_consensus_sqstring_AR: array with chars of full model consensus sequence string
+#  $missing_mdl_start:         position in model where missing model region starts
+#  $missing_mdl_stop:          position in model where missing model region stops
+#  $mdl_offset:                missing_seq_len - missing_mdl_len
+#                              number of positions to subtract missing_mdl_start by to get to 
+#                              first position to start replacing with, 0 unless we are flushing right
+#                              if < 0, missing_seq_len < missing_mdl_len
+#                              if > 0, missing_seq_len > missing_mdl_len
+# Returns: 4 values: 
+#          $ret_replaced_sqstring: the sqstring with Ns replaced
+#          $ret_nreplaced_nts:     num replaced Ns
+#          $ret_nmatch:            of non-Ns in sqstring that 'aligned' to mdl position, number that were identical to expected mdl nt
+#          $ret_nmismatch:         of non-Ns in sqstring that 'aligned' to mdl position, number that were not identical to expected mdl nt
+#          if region is replaced: number of N nts replaced
+#
+#################################################################
+sub helper_replace_ns_in_region  { 
+  my $sub_name = "helper_replace_ns_in_region()";
+  my $nargs_exp = 5;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+
+  my ($missing_sqstring, $mdl_consensus_sqstring_AR, $missing_mdl_start, $missing_mdl_stop, $mdl_offset) = @_;
+
+  # all nt in both $missing_sqstring and @{$mdl_consensus_sqstring_AR} should be capitalized
+
+  my @missing_sqstring_A = split("", $missing_sqstring);
+  my $missing_seq_len = scalar(@missing_sqstring_A);
+  my $missing_mdl_len = $missing_mdl_stop - $missing_mdl_start + 1;
+  my $mdl_len = scalar(@{$mdl_consensus_sqstring_AR});
+  # printf("in $sub_name missing_seq_len: $missing_seq_len missing_mdl_len: $missing_mdl_len ($missing_mdl_start..$missing_mdl_stop) mdl_offset: $mdl_offset\n");
+  my $ret_replaced_sqstring = "";
+  my $ret_nreplaced_nts     = 0;
+  my $ret_nmatch   = 0; # number of non-N nts in missing_sqstring that match expected
+  my $ret_n_mismatch = 0; # number of non-N nts in missing_sqstring that do not match expected
+
+  my ($spos, $seq_nt, $mpos, $mdl_nt);
+  for($spos = 0; $spos < $missing_seq_len; $spos++) { 
+    $mpos = $missing_mdl_start + $spos - $mdl_offset - 1;
+    # we can only compare to the model position if we are still in model region (not an insert before or after it)
+    if((($mpos+1) >= $missing_mdl_start) && 
+       (($mpos+1) <= $missing_mdl_stop)) { 
+      $mdl_nt = $mdl_consensus_sqstring_AR->[$mpos];
+    }
+    else { 
+      $mdl_nt = undef;
+    }
+    # printf("mpos: $mpos missing_mdl_stop: $missing_mdl_stop mdl_nt: %s\n", (defined $mdl_nt) ? $mdl_nt : "undefined"); 
+    my $seq_nt = $missing_sqstring_A[$spos];
+    if($seq_nt eq "N") { 
+      #printf("replacing missing_sqstring_A[$spos] N with mdl_consensus_sqstring_A[%d + %d + %d - 1 = %d] which is %s\n", $missing_mdl_start, $spos, $mdl_offset, ($missing_mdl_start + $spos - $mdl_offset - 1), $mdl_nt);
+      if(defined $mdl_nt) { 
+        $ret_replaced_sqstring .= $mdl_nt;
+        $ret_nreplaced_nts++;
+      }
+      else { 
+        $ret_replaced_sqstring .= $seq_nt;
+      }
+    }
+    else { # not an N, don't replace, but check if it matches mdl_nt
+      $ret_replaced_sqstring .= $seq_nt;
+      # printf("\tnot N");
+      if(defined $mdl_nt) { 
+        # printf(" defined mdl_nt seq_nt: $seq_nt mdl_nt: $mdl_nt");
+        if($seq_nt eq $mdl_nt) { 
+          $ret_nmatch++;
+        }
+        else { 
+          $ret_n_mismatch++;
+        }
+      }
+    }
+  }
+  # printf("returning nmatch: $ret_nmatch n_mismatch: $ret_n_mismatch\n");
+  return ($ret_replaced_sqstring, $ret_nreplaced_nts, $ret_nmatch, $ret_n_mismatch);
+}
+
+#################################################################
+# Subroutine: helper_replace_coords_string()
+# Incept:     EPN, Sat Dec 18 08:31:23 2021
+#
+# Purpose:    Format the "coords" string for \%{$rpn_output_HHR}
+#             given the necessary information.
+#
+# Args:
+#  $missing_seq_start:         position in model where missing model region starts
+#  $missing_seq_stop:          position in model where missing model region stops
+#  $missing_mdl_start:         position in model where missing model region starts
+#  $missing_mdl_stop:          position in model where missing model region stops
+#  $count_n:                   number of Ns in missing seq region
+#  $nmatch:                    number of non-Ns in missing seq region that matched expected nt, can be undef
+#  $nmismatch:                 number of non-Ns in missing seq region that did not match expected nt, can be undef
+#  $flush_direction:           '5p', '3p' or '-'
+#  $replaced_flag              '1' if region was replaced, '0' if not
+#
+# Returns: substring to append to $rpn_output_HHR->{$seq_name}{"coords"}
+#
+#################################################################
+sub helper_replace_coords_string { 
+  my $sub_name = "helper_replace_coord_string()";
+  my $nargs_exp = 9;
+  if(scalar(@_) != $nargs_exp) { die "ERROR $sub_name entered with wrong number of input args"; }
+  
+  my ($missing_seq_start, $missing_seq_stop, $missing_mdl_start, $missing_mdl_stop, 
+      $count_n, $nmatch, $nmismatch, $flush_direction, $replaced_flag) = @_;
+  
+  my $missing_seq_len = abs($missing_seq_stop - $missing_seq_start) + 1;
+  my $missing_mdl_len = abs($missing_mdl_stop - $missing_mdl_start) + 1;
+  my $missing_diff    = $missing_seq_len - $missing_mdl_len;
+  
+  my $ret_str = "";
+  $ret_str .= "[S:" . $missing_seq_start . ".." . $missing_seq_stop . ","; # S: seq coords of missing region
+  $ret_str .= "M:" . $missing_mdl_start . ".." . $missing_mdl_stop . ","; # M: mdl coords of missing region
+  # add '!' if missing_diff != 0;
+  if($missing_diff != 0) { 
+    $ret_str .= "D:" . $missing_diff . "!,";      # D: missing mdl len - missing seq len
+  }
+  else { 
+    $ret_str .= "D:0,";
+  }
+  $ret_str .= "N:" . $count_n . "/" . $missing_seq_len . ",";             # N: num Ns in missing seq region / missing seq len
+  if((defined $nmatch) && (defined $nmismatch)) { 
+    my $missing_non_n   = $nmatch + $nmismatch;
+    $ret_str .= "E:" . $nmatch  . "/" . $missing_non_n . ",";             # E: num non-Ns that match expected / num non Ns
+  }
+  else { 
+    $ret_str .= "E:?/?,";
+  }
+
+  $ret_str .= "F:" . $flush_direction . ",";
+
+  if($replaced_flag) { 
+    $ret_str .= "R:Y];";                                                   # R: Y if replaced, N if not
+  }
+  else { 
+    $ret_str .= "R:N];";
+  }
+
+  return $ret_str;
+}
+
 
 #################################################################
 #
@@ -13178,8 +13437,8 @@ sub helper_tabular_fill_header_and_justification_arrays {
     @{$clj_AR}        = (1,     1,        0,     1,       1,       0,           0,          0,          0,         0,         0,          0,         0,         0);
   }  
   elsif($ofile_key eq "rpn") {
-    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "ngaps", "ngaps",  "ngaps",   "ngaps",   "ngaps",   "nnt",     "nnt",     "replaced_coords");
-    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "seq(S),mdl(M),#rp(N);");
+    @{$head_AAR->[0]} = ("seq", "seq",    "seq", "",      "",      "num_Ns",  "num_Ns", "fract_Ns", "nregs", "nregs",  "nregs",   "nregs",   "nregs",   "nnt",     "nnt",     "detail_on_regions[S:seq,M:mdl,D:lendiff,N:#Ns,");
+    @{$head_AAR->[1]} = ("idx", "name",   "len", "model", "p/f",   "tot",     "rp",     "rp",       "tot",   "int",    "rp",      "rp-full", "rp-part", "rp-full", "rp-part", "E:#non_N_match_expected,F:flush_direction,R:region_replaced?];");
     @{$clj_AR}        = (1,     1,        0,     1,       1,       0,         0,        0,          0,       0,        0,         0,         0,         0,         0,         1);
   }  
   else {

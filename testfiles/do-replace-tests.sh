@@ -20,6 +20,12 @@ if [ "$?" -ne 0 ]; then
    RETVAL=1;
 fi   
 
+# noro rdiff replace (N regions of unexpected length)
+$VADRSCRIPTSDIR/v-test.pl -f --rmout $VADRSCRIPTSDIR/testfiles/noro.rdiff.rpn.testin vt-ndiff-rpn
+if [ "$?" -ne 0 ]; then
+   RETVAL=1;
+fi   
+
 if [ "$RETVAL" -eq 0 ]; then
    echo "Success: all tests passed [do-replace-tests.sh]"
    exit 0

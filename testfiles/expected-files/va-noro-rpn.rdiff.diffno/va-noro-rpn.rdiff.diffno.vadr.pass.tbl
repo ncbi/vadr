@@ -1,0 +1,150 @@
+>Feature JX439803.1-orig
+<1	740	gene
+			gene	ORF1
+<1	740	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-orig_1
+<1	737	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-orig_1
+721	>980	gene
+			gene	ORF2
+721	>980	CDS
+			product	VP1
+			protein_id	JX439803.1-orig_2
+>Feature JX439803.1-3shorter-Ns
+<1	737	gene
+			gene	ORF1
+<1	737	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3shorter-Ns_1
+<1	734	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3shorter-Ns_1
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-3shorter-Ns_2
+>Feature JX439803.1-3longer-Ns
+<1	743	gene
+			gene	ORF1
+<1	743	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3longer-Ns_1
+<1	740	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3longer-Ns_1
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-3longer-Ns_2
+>Feature JX439803.1-5p-del3-5of5-match
+<1	737	gene
+			gene	ORF1
+<1	737	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-5p-del3-5of5-match_1
+<1	734	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-5p-del3-5of5-match_1
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-5p-del3-5of5-match_2
+>Feature JX439803.1-5p-ins3-5of5-match
+<1	743	gene
+			gene	ORF1
+<1	743	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-5p-ins3-5of5-match_1
+<1	740	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-5p-ins3-5of5-match_1
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-5p-ins3-5of5-match_2
+>Feature JX439803.1-5p-del3-3of5-match
+<1	737	gene
+			gene	ORF1
+<1	737	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-5p-del3-3of5-match_1
+<1	734	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-5p-del3-3of5-match_1
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-5p-del3-3of5-match_2
+>Feature JX439803.1-5p-ins3-3of5-match
+<1	743	gene
+			gene	ORF1
+<1	743	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-5p-ins3-3of5-match_1
+<1	740	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-5p-ins3-3of5-match_1
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-5p-ins3-3of5-match_2
+>Feature JX439803.1-3p-del3-5of5-match
+<1	737	gene
+			gene	ORF1
+<1	737	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3p-del3-5of5-match_1
+<1	734	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3p-del3-5of5-match_1
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-3p-del3-5of5-match_2
+>Feature JX439803.1-3p-ins3-5of5-match
+<1	743	gene
+			gene	ORF1
+<1	743	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3p-ins3-5of5-match_1
+<1	740	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3p-ins3-5of5-match_1
+724	>983	gene
+			gene	ORF2
+724	>983	CDS
+			product	VP1
+			protein_id	JX439803.1-3p-ins3-5of5-match_2
+>Feature JX439803.1-3p-del3-3of5-match
+<1	737	gene
+			gene	ORF1
+<1	737	CDS
+			product	nonstructural polyprotein
+			codon_start	3
+			protein_id	JX439803.1-3p-del3-3of5-match_1
+<1	734	mat_peptide
+			product	RdRp
+			protein_id	JX439803.1-3p-del3-3of5-match_1
+718	>977	gene
+			gene	ORF2
+718	>977	CDS
+			product	VP1
+			protein_id	JX439803.1-3p-del3-3of5-match_2
