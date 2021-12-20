@@ -1,10 +1,10 @@
-#seq  seq                                 seq                   num_Ns  num_Ns  fract_Ns  ngaps  ngaps  ngaps    ngaps    ngaps      nnt      nnt  replaced_coords      
-#idx  name                                len  model      p/f      tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  seq(S),mdl(M),#rp(N);
-#---  ----------------------------------  ---  ---------  ----  ------  ------  --------  -----  -----  -----  -------  -------  -------  -------  ---------------------
-1     NC_001959/7589-7650                  62  NC_001959  FAIL       0       0         -      0      0      0        0        0        0        0  -                    
-2     NC_001959/7560-7650                  91  NC_001959  FAIL       0       0         -      0      0      0        0        0        0        0  -                    
-3     NC_001959/7559-7650                  92  NC_001959  PASS       0       0         -      0      0      0        0        0        0        0  -                    
-4     NC_001959/7559-7650-Ns-1-onlystop    92  NC_001959  FAIL      27      27     1.000      1      0      1        1        0       27        0  S:1..27,M:7559..7585,N:27/27;
-5     NC_001959/7559-7650-Ns-2-4withstop   92  NC_001959  FAIL      26      26     1.000      1      0      1        1        0       26        0  S:1..26,M:7559..7584,N:26/26;
-6     NC_001959/7559-7650-Ns-2-5withstop   92  NC_001959  FAIL      25      25     1.000      1      0      1        1        0       25        0  S:1..25,M:7559..7583,N:25/25;
-7     NC_001959/7559-7650-Ns-2-6withstop   92  NC_001959  FAIL      24      24     1.000      1      0      1        1        0       24        0  S:1..24,M:7559..7582,N:24/24;
+#seq  seq                                 seq                   num_Ns  num_Ns  fract_Ns  nregs  nregs  nregs    nregs    nregs      nnt      nnt  detail_on_regions[S:seq,M:mdl,D:lendiff,N:#Ns,                
+#idx  name                                len  model      p/f      tot      rp        rp    tot    int     rp  rp-full  rp-part  rp-full  rp-part  E:#non_N_match_expected,F:flush_direction,R:region_replaced?];
+#---  ----------------------------------  ---  ---------  ----  ------  ------  --------  -----  -----  -----  -------  -------  -------  -------  --------------------------------------------------------------
+1     NC_001959/7589-7650                  62  NC_001959  FAIL       0       0         -      0      0      0        0        0        0        0  -                                                             
+2     NC_001959/7560-7650                  91  NC_001959  FAIL       0       0         -      0      0      0        0        0        0        0  -                                                             
+3     NC_001959/7559-7650                  92  NC_001959  PASS       0       0         -      0      0      0        0        0        0        0  -                                                             
+4     NC_001959/7559-7650-Ns-1-onlystop    92  NC_001959  FAIL      27      27     1.000      1      0      1        1        0       27        0  [S:1..27,M:7559..7585,D:0,N:27/27,E:?/?,F:-,R:Y];             
+5     NC_001959/7559-7650-Ns-2-4withstop   92  NC_001959  FAIL      26      26     1.000      1      0      1        1        0       26        0  [S:1..26,M:7559..7584,D:0,N:26/26,E:?/?,F:-,R:Y];             
+6     NC_001959/7559-7650-Ns-2-5withstop   92  NC_001959  FAIL      25      25     1.000      1      0      1        1        0       25        0  [S:1..25,M:7559..7583,D:0,N:25/25,E:?/?,F:-,R:Y];             
+7     NC_001959/7559-7650-Ns-2-6withstop   92  NC_001959  FAIL      24      24     1.000      1      0      1        1        0       24        0  [S:1..24,M:7559..7582,D:0,N:24/24,E:?/?,F:-,R:Y];             
