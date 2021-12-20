@@ -2445,7 +2445,7 @@ sub vdr_AlertInfoInitialize {
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
                    $FH_HR);
 
-  vdr_AlertInfoAdd($alt_info_HHR, "ambgueln", "sequence",
+  vdr_AlertInfoAdd($alt_info_HHR, "ambgntrp", "sequence",
                    "N_RICH_REGION_NOT_REPLACED", # short description
                    "N-rich region of unexpected length not replaced", # long description
                    0, 0, 0, 0, # always_fails, causes_failure, prevents_annot, misc_not_failure
