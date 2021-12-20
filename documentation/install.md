@@ -256,9 +256,9 @@ Below is an example of the expected output for
 
 ```
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.3 (Aug 2021)
+# VADR 1.4 (Dec 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Aug  3 18:14:36 2021
+# date:    Thu Dec 16 14:24:16 2021
 #
 # test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/noro.r10.local.testin
 # output directory:                                                  vt-n10-local
@@ -267,7 +267,7 @@ Below is an example of the expected output for
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parsing test file                                  ... done. [    0.0 seconds]
 ##teamcity[testStarted name='annotate-noro-10-local' captureStandardOutput='true']
-# Running command  1 [annotate-noro-10-local]        ... done. [   44.9 seconds]
+# Running command  1 [annotate-noro-10-local]        ... done. [   36.4 seconds]
 #	checking va-noro.r10/va-noro.r10.vadr.pass.tbl                                                                ... pass
 #	checking va-noro.r10/va-noro.r10.vadr.fail.tbl                                                                ... pass
 #	checking va-noro.r10/va-noro.r10.vadr.sqa                                                                     ... pass
@@ -289,23 +289,22 @@ Below is an example of the expected output for
 #
 # All output files created in directory ./vt-n10-local/
 #
-# Elapsed time:  00:00:45.41
+# Elapsed time:  00:00:37.20
 #                hh:mm:ss
 # 
 [ok]
 # v-test.pl :: test VADR scripts [TEST SCRIPT]
-# VADR 1.3 (Aug 2021)
+# VADR 1.4 (Dec 2021)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# date:    Tue Aug  3 18:15:27 2021
+# date:    Thu Dec 16 14:24:55 2021
 #
 # test file:                                                         /usr/local/vadr-install-dir/vadr/testfiles/dengue.r5.local.testin
-# output directory:                                                  vt-d5-local
 # forcing directory overwrite:                                       yes [-f]
 # if output files listed in testin file already exist, remove them:  yes [--rmout]
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parsing test file                                  ... done. [    0.0 seconds]
 ##teamcity[testStarted name='annotate-dengue-5-local' captureStandardOutput='true']
-# Running command  1 [annotate-dengue-5-local]       ... done. [  101.2 seconds]
+# Running command  1 [annotate-dengue-5-local]       ... done. [   86.2 seconds]
 #	checking va-dengue.r5/va-dengue.r5.vadr.pass.tbl                                                              ... pass
 #	checking va-dengue.r5/va-dengue.r5.vadr.fail.tbl                                                              ... pass
 #	checking va-dengue.r5/va-dengue.r5.vadr.sqa                                                                   ... pass
@@ -327,7 +326,7 @@ Below is an example of the expected output for
 #
 # All output files created in directory ./vt-d5-local/
 #
-# Elapsed time:  00:01:41.72
+# Elapsed time:  00:01:27.32
 #                hh:mm:ss
 # 
 [ok]
