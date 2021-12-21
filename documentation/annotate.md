@@ -1302,7 +1302,7 @@ For more information on SARS-CoV-2 annotation with VADR see
 https://github.com/ncbi/vadr/wiki/Coronavirus-annotation
 
 ---
-## <a name="altparallel"></a>Alternative parallelizatio using a cluster
+## <a name="altparallel"></a>Alternative parallelization using a cluster
 
 Alternatively, if you have access to a cluster and want to parallelize
 but do not want to use `glsearch`, you can use the `-p`
