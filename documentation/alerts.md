@@ -227,7 +227,7 @@ TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
 
 ### <a name="framelengths"></a> Explanation of `frame` and `length` strings in POSSIBLE_FRAMESHIFT_* alert detail 
 
-| frame string | length string | 5' truncated? | 3' truncated? | frame of shifted region | explanation    | 
+| frame string | ....length_string.... | 5' truncated? | 3' truncated? | frame of shifted region | explanation    | 
 |--------------|---------------|---------------|---------------|-------------------------|----------------|
 | 1(2)         | 10:(50)       | no            | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
 | <1(2)        | 10:(50)       | yes           | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
