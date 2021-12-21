@@ -828,17 +828,15 @@ are then replaced with the expected nucleotide at each corresponding position:
   does not (controllable with `--r_minfract5`, `--r_minfract3` and
   `--r_minfracti` options).
 
-Additionally, as of v1.4 regions for which the length of the missing
+Additionally, as of v1.4, regions for which the length of the missing
 sequence region and missing model region are not identical are also
 potentially replaced if the following criteria are met:
 
-* length of missing model region is `10` nt or less *longer* than the 
-  length of missing sequence region (controllable with `--r_diffmaxdel`
-  option)
-
-* length of missing model region is `10` nt or less *shorter* than the 
-  length of missing sequence region (controllable with `--r_diffmaxins`
-  option)
+* length of missing model region is `10` nt or less *longer* than the
+  length of missing sequence region (controllable with
+  `--r_diffmaxdel` option) OR length of missing model region is `10`
+  nt or less *shorter* than the length of missing sequence region
+  (controllable with `--r_diffmaxins` option)
 
 * at least 1 of the nt in the missing sequence region is *not* an N 
   (controllable with `--r_diffminnonn` option)
