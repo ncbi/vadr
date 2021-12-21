@@ -13,7 +13,7 @@
 # 'out:' file is compared against the second 'exp:' file, the second 'out:'
 # file, etc.
 # 
-command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicf5,fsthicf3,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminnt5 1 --fstminnt3 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.productparantheses.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss47-productparantheses/iss47.fa va-iss47 > va-iss47.out
+command: perl $VADRSCRIPTSDIR/v-annotate.pl --alicheck --alt_fail fsthicft,fsthicfi --fsthighthr 0.300001 --fstminnti 1 --fstminntt 1 --minpvlen 3 --keep -v --pv_skip -m $VADRSCRIPTSDIR/testfiles/models/entoy100a.cm -i $VADRSCRIPTSDIR/testfiles/models/entoy100a.productparantheses.minfo -f $VADRSCRIPTSDIR/testfiles/github-issues/iss47-productparantheses/iss47.fa va-iss47 > va-iss47.out
 desc: iss47
 out: va-iss47/va-iss47.vadr.pass.tbl
 out: va-iss47/va-iss47.vadr.fail.tbl
