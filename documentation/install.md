@@ -8,7 +8,7 @@
 * [Further information](#further)
 
 ---
-##<a name="install"></a> VADR installation using the `vadr-install.sh` script
+## <a name="install"></a> VADR installation using the `vadr-install.sh` script
 
 The file `vadr-install.sh` is an executable file for downloading
 and/or installing VADR and its dependencies. That file is located
