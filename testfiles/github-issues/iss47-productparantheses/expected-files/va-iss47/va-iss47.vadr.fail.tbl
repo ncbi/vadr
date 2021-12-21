@@ -3,6 +3,6 @@
 			note	similar to protein one (bad parantheses)
 
 Additional note(s) to submitter:
-ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one (bad parantheses)) high confidence possible frameshift at 5' end of CDS [length:4; inserts:S:14(1),M:13; deletes:none; shifted_frame:1; dominant_frame:2; avgpp:0.887;]; seq-coords:11..14:+; mdl-coords:11..13:+; mdl:ENTOY100A;
+ERROR: POSSIBLE_FRAMESHIFT_HIGH_CONF: (CDS:protein one (bad parantheses)) high confidence possible frameshift in CDS (frame not restored before end) [cause:insert,S:14(1),M:13; frame:1(2); length:3:(19); shifted_avgpp:0.962; exp_avgpp:0.917;]; seq-coords:14..32:+; mdl-coords:14..31:+; mdl:ENTOY100A;
 ERROR: MUTATION_AT_END: (CDS:protein one (bad parantheses)) expected stop codon could not be identified, no in-frame stop codon exists 3' of predicted start codon [-]; seq-coords:-; mdl-coords:-; mdl:ENTOY100A;
 ERROR: UNEXPECTED_LENGTH: (CDS:protein one (bad parantheses)) length of complete coding (CDS or mat_peptide) feature is not a multiple of 3 [22]; seq-coords:11..32:+; mdl-coords:11..31:+; mdl:ENTOY100A;
