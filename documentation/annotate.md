@@ -828,16 +828,41 @@ are then replaced with the expected nucleotide at each corresponding position:
   does not (controllable with `--r_minfract5`, `--r_minfract3` and
   `--r_minfracti` options).
 
+Additionally, as of v1.4, regions for which the length of the missing
+sequence region and missing model region are not identical are also
+potentially replaced if the following criteria are met:
+
+* length of missing model region is `10` nt or less *longer* than the
+  length of missing sequence region (controllable with
+  `--r_diffmaxdel` option) OR length of missing model region is `10`
+  nt or less *shorter* than the length of missing sequence region
+  (controllable with `--r_diffmaxins` option)
+
+* at least `1` of the nt in the missing sequence region is *not* an N 
+  (controllable with `--r_diffminnonn` option)
+
+* fraction of non-N nt in sequence region that match expected nt after
+  "aligning" sequence region by flushing left or right with respect to
+  differently length model region is at least `0.75` (controllable
+  with `--r_diffminfract` option)
+
+* `--r_diffno` option is not used
+
 When `-r` is used, an additional output file with suffix `.rpn` is created,
 with format described [here](formats.md#rpn).
 
-| ........option........  | explanation |
+| ...........option...........  | explanation |
 |---------------------|--------------------|
 | `-r`                | turn on the replace-N strategy: replace stretches of Ns with expected nucleotides, where possible |
 | `--r_minlen <n>`    | for `-r`, set minimum length subsequence to possibly replace Ns in to `<n>`, the default value for `<n>` is `5` |
 | `--r_minfract5 <f>` | for `-r`, set the minimum fraction of nucleotides in a subsequence at the 5' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
 | `--r_minfract3 <f>` | for `-r`, set the minimum fraction of nucleotides in a subsequence at the 3' end to trigger N replacement to `<x>`, the default value for `<x>` is `0.25` |
 | `--r_minfracti <f>` | for `-r`, set the minimum fraction of nucleotides in an internal subsequence to trigger N replacement to `<x>`, the default value for `<x>` is `0.5` |
+| `--r_diffno`        | do not try replacement of N rich regions if sequence and model regions are of different lengths, the default is to try if criteria defined by other `--r_diff*` options are met | 
+| `--r_diffmaxdel`    | maxium allowed length difference b/t sequence and model regions (when model length > sequence length) to try replacement is `<n>` nt, the default value for `<n>` is `10` |
+| `--r_diffmaxins`    | maxium allowed length difference b/t sequence and model regions (when sequence length > model length) to try replacement is `<n>` nt, the default value for `<n>` is `10` |
+| `--r_diffminnonn`   | minimum number of non-N nts in replacement region when model and sequence region are different lengths to try replacement is `<n>`, the default value for `<n>` is `1` |
+| `--r_diffminfract`  | minimum allowed fraction of non-N nts that must match expected nt from reference model in replacement region when model and sequence region are different lengths is `<f>`, the default value for `<f>` is `0.75` |
 | `--r_fetchr`        | for `-r`, fetch features to fasta files from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_cdsmpr`        | for `-r`, identify CDS- and mat_peptide-specific alerts using subsequences fetched from sequences *with Ns replaced*, instead of original input sequences *without Ns replaced* |
 | `--r_pvorig`        | for `-r`, use original input sequences *without Ns replaced* in protein validation stage, instead of sequences *with Ns replaced* |
@@ -877,6 +902,8 @@ explained more [here](#memory).
 
 ### `v-annotate.pl` options related to both splitting input and parallelization on compute farm<a name="options-split-and-parallel"></a>
 
+| ........option........ | explanation |
+|---------------------|--------------------|
 | `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
 | `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
 
@@ -1000,10 +1027,12 @@ features as described more [below](#mnf).
 | [*ambgnt5s*](#ambgnt5s2)  | sequence | never | AMBIGUITY_AT_START              | <a name="ambgnt5s1"></a> first nucleotide of the sequence is an ambiguous nucleotide |
 | [*ambgnt3s*](#ambgnt3s2)  | sequence | never | AMBIGUITY_AT_END                | <a name="ambgnt3s2"></a> final nucleotide of the sequence is an ambiguous nucleotide |
 | [*indfclas*](#indfclas2)  | sequence | never | INDEFINITE_CLASSIFICATION       | <a name="indfclas1"></a> low score difference between best overall model and second best model (not in best model's subgroup)  |
-| [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold | [`--lowsc`](#options-alerts) | 
+| [*lowscore*](#lowscore2)  | sequence | never | LOW_SCORE                       | <a name="lowscore1"></a> score to homology model below low threshold |
 | [*biasdseq*](#biasdseq2)  | sequence | never | BIASED_SEQUENCE                 | <a name="biasdseq1"></a> high fraction of score attributed to biased sequence composition  |
 | [*unjoinbl*](#unjoinbl2)  | sequence | never | UNJOINABLE_SUBSEQ_ALIGNMENTS    | <a name="unjoinbl1"></a> inconsistent alignment of overlapping region between ungapped seed and flanking region |
-| [*fstlocf5*](#fstlocft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocft1"></a> low confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`)|
+| [*deletina*](#deletina2)  | sequence | never | DELETION_OF_FEATURE             | <a name="deletina1"></a> allowed internal deletion of a complete feature (feature with `is_deletable` flag set to `1` in `.minfo` file) |
+| [*ambgntrp*](#ambgntrp2)  | sequence | never | N_RICH_REGION_NOT_REPLACED      | <a name="ambgntrp1"></a> N-rich region of unexpected length not replaced during N replacement region (only possibly reported if `-r`) |
+| [*fstlocft*](#fstlocft2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocft1"></a> low confidence possible frameshift in CDS (frame not restored before end) (not reported if `--glsearch`)|
 | [*fstlocfi*](#fstlocfi2)  | feature  | yes   | POSSIBLE_FRAMESHIFT_LOW_CONF    | <a name="fstlocfi1"></a> low confidence possible frameshift in CDS (frame restored before end) (not reported if `--glsearch`)|
 | [*indf5lcc*](#indf5lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_START     | <a name="indf5lcc1"></a> alignment to homology model has low confidence at 5' boundary for feature that is or matches a CDS |
 | [*indf3lcc*](#indf3lcc2)  | feature  | yes   | INDEFINITE_ANNOTATION_END       | <a name="indf3lcc1"></a> alignment to homology model has low confidence at 3' boundary for feature that is or matches a CDS | 
@@ -1054,7 +1083,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5seq`](#options-alerts-lowsim5seq) | - | - <a name="lowsim5s2"></a> | 
 | [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3seq`](#options-alerts-lowsim3seq) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
-| [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr | all | - <a name="nmiscftr2"></a> | 
+| [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr`](#options-alerts-nmiscftr) | all | - <a name="nmiscftr2"></a> | 
 | [*deletins*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
 | [*mutendcd*](#mutendcd1)  | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* <a name="mutendcd2"></a> | 
@@ -1099,6 +1128,8 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowscore*](#lowscore1)  | LOW_SCORE                       | [`--lowsc`](#options-alerts-lowscore) | - | - <a name="lowscore2"></a> | 
 | [*biasdseq*](#biasdseq1)  | BIASED_SEQUENCE                 | [`--biasfrac`](#options-alerts-biasfrac) | - | - <a name="biasdseq2"></a> | 
 | [*unjoinbl*](#unjoinbl1)  | UNJOINABLE_SUBSEQ_ALIGNMENTS    | none | - | <a name="unjoinbl12"></a> |
+| [*deletina*](#deletina1)  | DELETION_OF_FEATURE             | [`--ignore_isdel`](#options-alerts-ignore) | all | - <a name="deletina2"></a> | 
+| [*ambgntrp*](#ambgntrp1)  | N_RICH_DELETION_OF_FEATURE      | [`--r_diffno`, `--r_diffmaxdel`, `--r_diffmaxins`, `--r_diffminnonn`, `--r_diffminfract`](#options-replace) | all | - <a name="ambgntrp2"></a> | 
 | [*fstlocft*](#fstlocft1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminntt`](#options-alerts-fstminntt) | CDS | - <a name="fstlocft2"></a> |
 | [*fstlocfi*](#fstlocfi1)  | POSSIBLE_FRAMESHIFT_LOW_CONF    | [`--fstlothr`, `--fstminnti`](#options-alerts-fstminnti) | CDS | - <a name="fstlocfi2"></a> |
 | [*indf5lcc*](#indf5lcc1)  | INDEFINITE_ANNOTATION_START     | [`--indefann`, `--indefann_mp`](#options-alerts-indefann) | CDS and any gene or mat_peptide with identical start coordinate to a CDS | - <a name="indf5lcc2"></a> | 
@@ -1271,7 +1302,7 @@ For more information on SARS-CoV-2 annotation with VADR see
 https://github.com/ncbi/vadr/wiki/Coronavirus-annotation
 
 ---
-## <a name="altparallel"></a>Alternative parallelizatio using a cluster
+## <a name="altparallel"></a>Alternative parallelization using a cluster
 
 Alternatively, if you have access to a cluster and want to parallelize
 but do not want to use `glsearch`, you can use the `-p`
