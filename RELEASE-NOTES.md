@@ -2,7 +2,7 @@
 
 ### VADR 1.4 release (December 2021): Minor update
 
-  v-annotate changes summary:
+  `v-annotate.pl` changes summary:
   * frameshift detection and alerts have changed
   * how blastn is used with the -s and -r options has changed
   * alerts related to ambiguous nucleotides at beginning/end of
