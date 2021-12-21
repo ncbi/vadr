@@ -12,15 +12,16 @@
     in some situations
   * alerts related to early stop codons (cdsstopn, mutend*) are now 
     detected and reported in some situations for truncated CDS
-  * 'is_deletable' field for features now supported in .minfo file
+  * `is_deletable` field for features now supported in model info file
     for to allow a feature to be completely deleted without triggering
     a fatal deletins alert (triggers non-fatal deletina alert instead)
-  * adds support for 'alternative features' in .minfo file with 
-    'alternative_ftr_set' and 'alternative_ftr_set_subn' fields for
-    features in .minfo files
+  * adds support for 'alternative features' with 
+    `alternative_ftr_set` and `alternative_ftr_set_subn` fields for
+    features in model info files
   * adds support for excluded regions from frameshift and
     indefinite strand (indfstrn) and duplicate region (dupregin)
-    alerts in .minfo files
+    alerts with `frameshift_exc`, `indfstrn_exc` and `dupregin_exc`
+    fields for features in model info files
 
   bug fixes: 
   * fixes bug related to parantheses in feature product strings
@@ -51,7 +52,8 @@
 
   * how blastn is used with the -s and -r options has changed:
     - with -s, entire top-scoring blastn HSP (with indels) is now used
-      as a seed and fixed for the downstream global alignment of each
+      as a seed (with some caveats to avoid large gaps and gaps in
+      start/stop codons) and fixed for the downstream global alignment of each
       sequence. Previously, only longest ungapped region in the
       top-scoring HSP was used as the seed. This leads to faster
       processing of some sequences. 
@@ -90,12 +92,13 @@
   * with -r option, N-rich sequence regions of unexpected lengths 
     may now be replaced with expected nucleotides from reference
     in some situations
-    - if difference between expected and actual length is <= 10 nt
-      the region is examined by trying to flush sequence region left or
+    - if difference between expected and actual length is <= 10 nt,
+      the region is 'aligned' by flushing sequence region left or
       right with respect to reference and counting matches with
       expected reference. If >= 1 non-N exists and >= 0.75 fraction
-      of non-Ns match expected by flushing left or right the region
-      is replaced. Relevant information in '.rpn' output file has
+      of non-Ns match the expected nt in the reference by flushing
+      either left or right the region is replaced. 
+      Relevant information in '.rpn' output file has
       been expanded.
 
 ### VADR 1.3 release (July 2021): Minor update
