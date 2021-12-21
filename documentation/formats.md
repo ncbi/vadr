@@ -180,7 +180,7 @@ command.
 | `.hmmbuild` | HMMER `hmmbuild` output file | - | no further documentation |
 | `.hmmpress` | HMMER `hmmpress` output file | - | no further documentation |
 
-For examples of file types not included above, see files in the `vadr/testfiles/models` directory.
+#### For examples of file types not included above, see files in the `vadr/testfiles/models` directory.
 ---
 ### Explanation of VADR model info `.minfo`-suffixed output files<a name="minfo"></a>
 
