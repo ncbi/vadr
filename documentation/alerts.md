@@ -1,6 +1,6 @@
 # <a name="top"></a> Explanations and examples of `v-annotate.pl` detailed alert and error messages
 
-* [Output fields with detailed alert and error messages](#files)
+* [Output files with detailed alert and error messages](#files)
 * [Explanation of sequence and model coordinate fields in `.alt` files](#coords)
 * [`toy50` toy model used in examples of alert messages](#toy)
 * [Examples of different alert types and corresponding `.alt` output](#examples)
@@ -65,10 +65,10 @@ corresponding `.alt` file output [below](#examples).
 | *indf3lcc* | *INDEFINITE_ANNOTATION_START* | sequence position of nucleotide aligned at the 3' feature boundary (always length 1) | model (reference) position of the 3' feature boundary (always length 1) | [examples of indefinite annotation at end](#example-indf3) | 
 | *indf3pst* | *INDEFINITE_ANNOTATION_START* | sequence positions of the nucleotide alignment of the 3' end of the CDS **not** covered by the protein-based alignment | model (reference) positions the sequences positions in `sequence coords` are aligned to in the nucleotide alignment | [examples of indefinite annotation at end](#example-indf3) |   
 | *indf3plg* | *INDEFINITE_ANNOTATION_START* | sequence positions of the protein-based alignment **not** covered by the nucleotide alignment at the 3' end of the CDS | model (reference) position of the 3' boundary of the CDS (always length 1) |  [examples of indefinite annotation at end](#example-indf3) | 
-| *ambgnt5f*, ambgnt5c* | *N_AT_FEATURE_START*, *N_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive Ns ending at the 3' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
-| *ambgnt5s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns starting at position 1 of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
-| *ambgnt3f*, ambgnt3c* | *N_AT_FEATURE_END*, *N_AT_CDS_END* | sequence position(s) of 1 or more consecutive Ns starting at the predicted 5' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
-| *ambgnt3s* | *N_AT_END* | sequence position(s) of 1 or more consecutive Ns ending at the final position of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *ambgnt5f*, ambgnt5c* | *AMBIGUITY_AT_FEATURE_START*, *AMBIGUITY_AT_CDS_START* | sequence position(s) of stretch of 1 or more consecutive ambiguous (non-ACGTU) nts ending at the 3' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
+| *ambgnt5s* | *AMBIGUITY_AT_END* | sequence position(s) of 1 or more consecutive ambiguous (non-ACGTU) nts starting at position 1 of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at start](#example-ambg5) | 
+| *ambgnt3f*, ambgnt3c* | *AMBIGUITY_AT_FEATURE_END*, *AMBIGUITY_AT_CDS_END* | sequence position(s) of 1 or more consecutive ambiguous (non-ACGTU) nts starting at the predicted 5' end of a feature | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
+| *ambgnt3s* | *AMBIGUITY_AT_END* | sequence position(s) of 1 or more consecutive ambiguous (non-ACGTU) nts ending at the final position of the sequence | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of ambiguous nucleotides at end](#example-ambg3) | 
 | *pepadjcy* | *PEPTIDE_ADJACENCY_PROBLEM* | sequence position(s) of nucleotides inserted between two mature peptide predictions that are expected to be adjacent | model (reference) position(s) corresponding to the end of the 5' mature peptide and the start of the 3' mature peptide (always length 2) | [mature peptide-specific alert examples](#example-pep) | 
 | *peptrans* | *PEPTIDE_TRANSLATION_PROBLEM* | will be blank  (`-`) | will be blank (`-`) | [mature peptide-specific alert examples](#example-pep) | 
 | *lowsim5c*, *lowsim5n* | *LOW_FEATURE_SIMILARITY_START* | sequence position(s) at 5' end of predicted feature that have low similarity to the reference model | model (reference) position(s) the sequence position(s) in `sequence coords` are aligned to | [examples of low similarity at start](#example-lowsim5) | 
@@ -708,7 +708,7 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
 
 #### This example is relevant to alert codes: *ambgnt5s*, *ambgnt5c*, *ambgnt5f* 
 
-#### Corresponding alert descriptions (GenBank error messages): *N_AT_START*, *N_AT_CDS_START*, *N_AT_FEATURE_START*
+#### Corresponding alert descriptions (GenBank error messages): *AMBIGUITY_AT_START*, *AMBIGUITY_AT_CDS_START*, *AMBIGUITY_AT_FEATURE_START*
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
@@ -720,15 +720,15 @@ TOY50-IE2         -AAATCACCGATGGTGATCCCTCTAGCATAGA-GAGCAT-----------
 #### Example lines from `.alt` file:
 
 ```
-#      seq               ftr          ftr              ftr  alert           alert                    seq  seq       mdl  mdl  alert 
-#idx   name       model  type         name             idx  code      fail  description           coords  len    coords  len  detail
-#----  ---------  -----  -----------  ---------------  ---  --------  ----  ------------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-AS1  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N [-]
-1.2.1  TOY50-AS1  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N [-]
+#      seq               ftr          ftr              ftr  alert           alert                            seq  seq       mdl  mdl  alert 
+#idx   name       model  type         name             idx  code      fail  description                   coords  len    coords  len  detail
+#----  ---------  -----  -----------  ---------------  ---  --------  ----  --------------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-AS1  toy50  CDS          protein_one        1  ambgnt5c  no    AMBIGUITY_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an ambiguous nucleotide [-]
+1.2.1  TOY50-AS1  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    AMBIGUITY_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an ambiguous nucleotide [-]
 #
-2.1.1  TOY50-AS2  toy50  -            -                  -  ambgnt5s  no    N_AT_START           1..13:+   13   2..14:+   13  first nucleotide of the sequence is an N [-]
-2.2.1  TOY50-AS2  toy50  CDS          protein_one        1  ambgnt5c  no    N_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an N [-]
-2.3.1  TOY50-AS2  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    N_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an N [-]
+2.1.1  TOY50-AS2  toy50  -            -                  -  ambgnt5s  no    AMBIGUITY_AT_START           1..13:+   13   2..14:+   13  first nucleotide of the sequence is an ambiguous nucleotide [-]
+2.2.1  TOY50-AS2  toy50  CDS          protein_one        1  ambgnt5c  no    AMBIGUITY_AT_CDS_START      10..13:+    4  11..14:+    4  first nucleotide of CDS is an ambiguous nucleotide [-]
+2.3.1  TOY50-AS2  toy50  mat_peptide  protein_one_mp1    2  ambgnt5f  no    AMBIGUITY_AT_FEATURE_START  10..13:+    4  11..14:+    4  first nucleotide of non-CDS feature is an ambiguous nucleotide [-]
 ```
 
   **Alignment of `TOY50-AS1` and `TOY50-AS2` sequences to the toy50 model:** The output
@@ -758,14 +758,14 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 
   * `TOY50-AS1` sequence: 
 
-  The *ambgnt5c* alert with description *N_AT_CDS_START*
+  The *ambgnt5c* alert with description *AMBIGUITY_AT_CDS_START*
   is reported because the predicted CDS named `protein one` begins
   with 4 consecutive Ns from sequence positions 10
   to 13 (`seq coords:10..13:+`) that align to the model (reference) positions 11 to 14 (`mdl coords:11..14:+`). These positions
   are marked with `vvvv` in the alignment above. This alert is specific
   to CDS features.
 
-  Similarly, the *ambgnt5f* alert with description *N_AT_FEATURE_START*
+  Similarly, the *ambgnt5f* alert with description *AMBIGUITY_AT_FEATURE_START*
   is reported because the predicted mat_peptide named `protein one mp1` begins
   with 4 consecutive Ns from sequence positions 10
   to 13 (`seq coords:10..13:+`) that align to the model (reference) positions 11 to 14 (`mdl coords:11..14:+`). These positions
@@ -778,13 +778,13 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
   position 1 and extends to position 13 (`seq coords:1..13:+`). Because the first 4 nucleotides of
   the CDS and mat_peptide are Ns like in `TOY50-AS1`, the same *ambgnt5c* and
   *ambgnt5f* alerts are reported, but now with an additional *ambgnt5s* alert
-  with description *N_AT_START* because the beginning of the sequence begins
+  with description *AMBIGUITY_AT_START* because the beginning of the sequence begins
   with a consecutive string of 13 Ns.
 
   This sequence is similar to `TOY50-AS1` except the stretch of Ns
   begins at position 1 and extends to position 13 
   position of the sequence causing the *ambgnt5s*
-  alert with description *N_AT_START* to be reported because the sequence ends 
+  alert with description *AMBIGUITY_AT_START* to be reported because the sequence ends 
   with a stretch of 13 consecutive Ns. Because the first 4 nucleotides of
   the CDS and mat_peptide are Ns like in `TOY50-AS1`, the same *ambgnt5c* and
   *ambgnt5f* alerts are reported as well.
@@ -795,7 +795,7 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 
 #### This example is relevant to alert codes: *ambgnt3s*, *ambgnt3c*, *ambgnt3f* 
 
-#### Corresponding alert descriptions (GenBank error messages): *N_AT_END*, *N_AT_CDS_END*, *N_AT_FEATURE_END*
+#### Corresponding alert descriptions (GenBank error messages): *AMBIGUITY_AT_END*, *AMBIGUITY_AT_CDS_END*, *AMBIGUITY_AT_FEATURE_END*
 
   **Instructions to reproduce this example and create the files discussed below:**
   ```
@@ -807,13 +807,13 @@ TOY50-AS2         -NNNNNNNNNNNNNTGATCGCTTTACCATAAATGAGCAT-----------
 #### Example lines from `.alt` file:
 
 ```
-#      seq               ftr   ftr          ftr  alert           alert              seq  seq       mdl  mdl  alert 
-#idx   name       model  type  name         idx  code      fail  description     coords  len    coords  len  detail
-#----  ---------  -----  ----  -----------  ---  --------  ----  ------------  --------  ---  --------  ---  ------
-1.1.1  TOY50-AE1  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N [-]
+#      seq               ftr   ftr          ftr  alert           alert                      seq  seq       mdl  mdl  alert 
+#idx   name       model  type  name         idx  code      fail  description             coords  len    coords  len  detail
+#----  ---------  -----  ----  -----------  ---  --------  ----  --------------------  --------  ---  --------  ---  ------
+1.1.1  TOY50-AE1  toy50  CDS   protein_one    1  ambgnt3c  no    AMBIGUITY_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an ambiguous nucleotide [-]
 #
-2.1.1  TOY50-AE2  toy50  -     -              -  ambgnt3s  no    N_AT_END      29..38:+   10  30..39:+   10  final nucleotide of the sequence is an N [-]
-2.2.1  TOY50-AE2  toy50  CDS   protein_one    1  ambgnt3c  no    N_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an N [-]
+2.1.1  TOY50-AE2  toy50  -     -              -  ambgnt3s  no    AMBIGUITY_AT_END      29..38:+   10  30..39:+   10  final nucleotide of the sequence is an ambiguous nucleotide [-]
+2.2.1  TOY50-AE2  toy50  CDS   protein_one    1  ambgnt3c  no    AMBIGUITY_AT_CDS_END  29..30:+    2  30..31:+    2  final nucleotide of CDS is an ambiguous nucleotide [-]
 ```
 
   **Alignment of `TOY50-AE1` and `TOY50-AE2` sequences to the toy50 model:** The output
@@ -843,7 +843,7 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
 
   * `TOY50-AE1` sequence: 
 
-  The *ambgnt3c* alert with description *N_AT_CDS_END*
+  The *ambgnt3c* alert with description *AMBIGUITY_AT_CDS_END*
   is reported because the predicted CDS named `protein one` ends
   with 2 consecutive Ns from sequence positions 29
   to 30 (`seq coords:29..30:+`) that align to the model (reference) positions 30 to 31 (`mdl coords:30..31:+`). These positions
@@ -861,7 +861,7 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
   This sequence is similar to `TOY50-AE1` except the stretch of Ns
   begins at position 29 and continues to the position 38 (`seq coords:29..38:+`) which is the final
   position of the sequence causing the *ambgnt3s*
-  alert with description *N_AT_END* to be reported because the sequence ends 
+  alert with description *AMBIGUITY_AT_END* to be reported because the sequence ends 
   with a stretch of 10 consecutive Ns. Because the
   final 2 nucleotides of the CDS are Ns like in `TOY50-AS1`, the same
   *ambgnt3c* alert is reported. 
