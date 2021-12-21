@@ -851,7 +851,7 @@ potentially replaced if the following criteria are met:
 When `-r` is used, an additional output file with suffix `.rpn` is created,
 with format described [here](formats.md#rpn).
 
-| ........option........  | explanation |
+| ...........option...........  | explanation |
 |---------------------|--------------------|
 | `-r`                | turn on the replace-N strategy: replace stretches of Ns with expected nucleotides, where possible |
 | `--r_minlen <n>`    | for `-r`, set minimum length subsequence to possibly replace Ns in to `<n>`, the default value for `<n>` is `5` |
