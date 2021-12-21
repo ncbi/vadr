@@ -838,11 +838,11 @@ potentially replaced if the following criteria are met:
   nt or less *shorter* than the length of missing sequence region
   (controllable with `--r_diffmaxins` option)
 
-* at least 1 of the nt in the missing sequence region is *not* an N 
+* at least `1` of the nt in the missing sequence region is *not* an N 
   (controllable with `--r_diffminnonn` option)
 
-* fraction of non-N nt in sequence region that match expected nt by
-  `aligning` sequence region by flushing left or right with respect to
+* fraction of non-N nt in sequence region that match expected nt after
+  "aligning" sequence region by flushing left or right with respect to
   differently length model region is at least `0.75` (controllable
   with `--r_diffminfract` option)
 
