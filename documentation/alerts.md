@@ -872,6 +872,15 @@ TOY50-AE2         -AAATCACCGATGGTGATCGCTTTACCATNNNNNNNNNN-----------
 ---
 ## <a name="example-ambgcd"></a>Examples of ambiguous nucleotides in start/stop codons that start/stop with canonical nt
 
+| relevant alert codes | corresponding alert descriptions |
+|----------------------|----------------------------------|
+| *ambgcd5c*           | *AMBIGUITY_IN_START_CODON*       |
+| *ambgcd3c*           | *AMBIGUITY_IN_STOP_CODON* f       |
+
+#### This example is relevant to alert codes: *ambgcd5c*, *ambgcd3c*
+
+#### Corresponding alert descriptions (GenBank error messages): *AMBIGUITY_IN_START_CODON*, *AMBIGUITY_IN_STOP_CODON*
+
 #### This example is relevant to alert codes: *ambgcd5c*, *ambgcd3c*
 
 #### Corresponding alert descriptions (GenBank error messages): *AMBIGUITY_IN_START_CODON*, *AMBIGUITY_IN_STOP_CODON*
