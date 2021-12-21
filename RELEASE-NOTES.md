@@ -31,7 +31,7 @@
   * updates version of BLAST+ dependency installed with vadr to
     2.12.0+
 
-  more detail on some v-annotate.pl changes:
+  more detail on some `v-annotate.pl` changes:
   * frameshift detection and alerts have changed: 
     - 'expected' frame now defined as frame of first nucleotide in a
       CDS, and 'shifted' regions are any regions (above length
