@@ -534,16 +534,18 @@ each sequence. For more information on bit scores and `bias` see the Infernal Us
 `.sda` data lines have 14 fields, the names of which appear in the
 first two comment lines in each file. There is one data line for each
 **sequence** in the input sequence file file that `v-annotate.pl`
-processed. With `-s`, the largest ungapped region from the top blastn
-hit is fixed, and only the 5' and 3' regions before and after the
-ungapped region are aligned with cmalign as described more
-[here](annotate.md#options-seed).  `.sda` files include information
-about these ungapped, 5' and 3' regions.  Note that the sequence
-length fractions in `ungapped fraction`, `5'unaln fraction`, and
-`3'unaln fraction` will not add up to `1.0` due to overlap between
+processed. With `-s`, the alignment from the best-scoring blastn HSP
+hit is fixed (with some caveats to avoid large gaps and gaps that
+include start and stop codons) and used as a seed, and only the 5' and 3' regions before
+and after the seed region are aligned with cmalign or glsearch as described
+more [here](annotate.md#options-seed).  `.sda` files include
+information about the seed, 5' and 3' regions.  Note that the
+sequence length fractions in `seed fraction`, `5'unaln fraction`,
+and `3'unaln fraction` will not add up to `1.0` due to overlap between
 these regions, which is typically 100nt, but can be adjusted with the
 [`--s_overhang` option to `v-annotate.pl`](annotate.md#options-seed).
-[Example file](annotate-files/va-noro-s.9.vadr.sda) created with the command `v-annotate.pl -s
+[Example file](annotate-files/va-noro-s.9.vadr.sda) created with the
+command `v-annotate.pl -s
 $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 
 | idx | field                 | description |
@@ -553,14 +555,14 @@ $VADRSCRIPTSDIR/documentation/annotate-files/noro.9.fa va-noro-s.9`.
 |   3 | `seq len`             | length of the sequence with name `seq name` | 
 |   4 | `model`               | name of the best-matching model for this sequence, this is the model with the top-scoring hit for this sequence in the classification stage |
 |   5 | `p/f`                 | `PASS` if this sequence passes, `FAIL` if it fails (has >= 1 fatal alerts) |
-|   6 | `ungapped seq`        | sequence coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
-|   7 | `ungapped mdl`        | model coordinates of longest ungapped region in top blastn hit, in vadr coords [format](#coords) |
-|   8 | `ungapped fraction`   | fraction of `seq len` in ungapped region in `ungapped seq` | 
-|   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
+|   6 | `seed seq`            | sequence coordinates of seed region from blastn, in vadr coords [format](#coords) |
+|   7 | `seed mdl`            | model coordinates of seed region from blastn, in vadr coords [format](#coords) |
+|   8 | `seed fraction`       | fraction of `seq len` in seed region in `ungapped seq` | 
+|   9 | `5'unaln seq`         | sequence coordinates of 5' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
 |  10 | `5'unaln mdl`         | model start/stop coordinates for cmalign alignment of 5' region `5'unaln seq`, in vadr coords [format](#coords) |
 |  11 | `5'unaln fraction`    | fraction of `seq len` in 5' region in `5'unaln seq` |
-|  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `ungapped seq` plus some overlap (typically 100nt) subsequently aligned with cmalign, in vadr coords [format](#coords) |
-|  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
+|  12 | `3'unaln seq`         | sequence coordinates of 3' region not covered by `seed seq` plus some overlap (typically 100nt) subsequently aligned with cmalign or glsearch, in vadr coords [format](#coords) |
+|  13 | `3'unaln mdl`         | model start/stop coordinates for cmalign or glsearch alignment of 3' region `3'unaln seq`, in vadr coords [format](#coords) |
 |  14 | `3'unaln fraction`    | fraction of `seq len` in 3' region in `3'unaln seq` |
 
 
