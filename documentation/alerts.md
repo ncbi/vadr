@@ -225,7 +225,7 @@ TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
 #=GC RFCOL.X      123.....456789012345678901
 ```
 
-# <a name="framelengths"></a> Explanation of `frame` and `length` strings in POSSIBLE_FRAMESHIFT_* alert detail 
+### <a name="framelengths"></a> Explanation of `frame` and `length` strings in POSSIBLE_FRAMESHIFT_* alert detail 
 
 | frame string | length string | 5' truncated? | 3' truncated? | frame of shifted region | explanation    | 
 |--------------|---------------|---------------|---------------|-------------------------|----------------|
