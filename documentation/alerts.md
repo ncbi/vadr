@@ -190,7 +190,7 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   positions 22 and 23 (`restore:delete:S:25,M:22..23(2);`). 
   The CDS starts in frame 1 for 3 nt, shifts into frame 3 for the frameshifted region
   for 13 nt and restores to frame 1 for 8 nt before the end of the CDS (`frame:1(3)1` and
-  `length:3:(13):8`). The table [below](#framelengths) show how to interpret different `frame` and `length`
+  `length:3:(13):8`). The [table below](#framelengths) show how to interpret different `frame` and `length`
   strings.
 
   This frameshift is a high confidence
@@ -227,8 +227,8 @@ TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
 
 # <a name="framelengths"></a> Explanation of `frame` and `length` strings in POSSIBLE_FRAMESHIFT_* alert detail 
 
-| frame string | length string | 5' truncated? | 3' truncated? | frame of shifted region | explanation                 | 
-|--------------|---------------|---------------|---------------|-----------------------------|
+| frame string | length string | 5' truncated? | 3' truncated? | frame of shifted region | explanation    | 
+|--------------|---------------|---------------|---------------|-------------------------|----------------|
 | 1(2)         | 10:(50)       | no            | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
 | <1(2)        | 10:(50)       | yes           | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
 | <1(2)>       | 10:(50)       | yes           | yes           | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
