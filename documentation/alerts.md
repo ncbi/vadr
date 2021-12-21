@@ -48,7 +48,7 @@ corresponding `.alt` file output [below](#examples).
 
 | alert code(s) | alert desc(s) | sequence coords description | model coords explanation | link to example | 
 |---------------|---------------|-----------------------------|--------------------------|-----------------|
-| *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift example](#example-frameshift) | 
+| *fsthicft*, *fsthicfi*, *fstlocft*, *fstlocfi*, *fstukcft*, *fstukcfi* | *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT* | sequence positions of the frameshifted region | model (reference) positions of the frameshifted region, some nucleotides may be inserted **before or after** these positions | [frameshift example](#example-frameshift) | 
 | *insertnn*, *insertnp* | *INSERTION_OF_NT* | sequence positions of inserted nucleotides with respect to the model | model (reference) position after which insertion occurs (always length 1) | [large insertion example](#example-insert) | 
 | *deletinn*, *deletinp* | *DELETION_OF_NT*  | sequence position just prior to (5' of) deletion with respect to the model (always length 1) | model (reference) positions that are deleted in sequence | [large deletion example](#example-delete) | 
 | *mutstart* | *MUTATION_AT_START*  | sequence positions of predicted start codon (length <= 3) | model (reference) positions that align to the predicted start codon | [mutated start codon example](#example-start) | 
@@ -136,7 +136,7 @@ formats")
 The example below includes a sequence that generates an alert due to a
 frameshift and an explanation of output related to the alert.
 
-#### This example is relevant to alert codes: *fsthicf5*, *fsthicf3*, *fsthicfi*, *fstlocf5*, *fstlocf3*, *fstlocfi*, *fstukcf5*, *fstukcf3*, *fstukcfi* 
+#### This example is relevant to alert codes: *fsthicft*, *fsthicfi*, *fstlocft*, *fstlocfi*, *fstukcft*, *fstukcfi* 
 
 #### Corresponding alert descriptions (GenBank error messages): *POSSIBLE_FRAMESHIFT_HIGH_CONF*,  *POSSIBLE_FRAMESHIFT_LOW_CONF*, *POSSIBLE_FRAMESHIFT*
 
@@ -151,7 +151,7 @@ frameshift and an explanation of output related to the alert.
 #      seq               ftr          ftr              ftr  alert           alert                               seq  seq       mdl  mdl  alert 
 #idx   name       model  type         name             idx  code      fail  description                      coords  len    coords  len  detail
 #----  ---------  -----  -----------  ---------------  ---  --------  ----  -----------------------------  --------  ---  --------  ---  ------
-1.1.2  TOY50-FS1  toy50  CDS          protein_one        1  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (internal) [length:13; inserts:S:13..17(5),M:13; deletes:S:25,M:22..23(2); shifted_frame:3; dominant_frame:1; avgpp:0.825;]
+1.1.2  TOY50-FS1  toy50  CDS          protein_one        1  fsthicfi  yes   POSSIBLE_FRAMESHIFT_HIGH_CONF  13..25:+   13  14..23:+   10  high confidence possible frameshift in CDS (frame restored before end) [cause:insert,S:13..17(5),M:13; restore:delete,S:25,M:22..23(2); frame:1(3)1; length:3:(13):8; shifted_avgpp:0.825; exp_avgpp:0.892;]
 ```
 
   **Alignment of `TOY50-FS1` sequence to the toy50 model:** The output file 
@@ -184,12 +184,15 @@ TOY50-FS1         -AAATCACCGATGcccccGTGATCGC--TACCATAAATGAGCATTCTACGTGCAT
   positions 14 to 23 (`mdl coords: 14..23:+`).
 
   The `alert detail` field provides further information:
-  the indels that cause the frameshifted region are an insertion of length 5 of nucleotides
-  13 to 17 after model position 13 (`inserts:S:13..17(5),M:13;`) and a
-  deletion of length 2 *after* nucleotide 25 corresponding to model
-  positions 22 and 23 (`deletes:S:25,M:22..23(2);`). 
-  The frameshifted region is in frame 3 (`shifted_frame:3`), while the dominant frame for the CDS
-  (frame in which the most nucleotides are in) is frame 1 (`dominant_frame:1`). 
+  the indels that "cause" the frameshifted region are an insertion of length 5 of nucleotides
+  13 to 17 after model position 13 (`cause:insert,S:13..17(5),M:13;`).
+  The mutation that restores the frame is a deletion of length 2 *after* nucleotide 25 corresponding to model
+  positions 22 and 23 (`restore:delete:S:25,M:22..23(2);`). 
+  The CDS starts in frame 1 for 3 nt, shifts into frame 3 for the frameshifted region
+  for 13 nt and restores to frame 1 for 8 nt before the end of the CDS (`frame:1(3)1` and
+  `length:3:(13):8`). The table [below](#framelengths) show how to interpret different `frame` and `length`
+  strings.
+
   This frameshift is a high confidence
   frameshift in that the average posterior probability of the aligned
   nucleotides in the frameshifted region is `0.825` which exceeds the
@@ -221,6 +224,15 @@ TOY50-FS1         ATGCCCCCGTGATCGC--TACCATAA
 #=GC RFCOLX.      111.....111111222222222233
 #=GC RFCOL.X      123.....456789012345678901
 ```
+
+# <a name="framelengths"></a> Explanation of `frame` and `length` strings in POSSIBLE_FRAMESHIFT_* alert detail 
+
+| frame string | length string | 5' truncated? | 3' truncated? | frame of shifted region | explanation                 | 
+|--------------|---------------|---------------|---------------|-----------------------------|
+| 1(2)         | 10:(50)       | no            | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
+| <1(2)        | 10:(50)       | yes           | no            | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
+| <1(2)>       | 10:(50)       | yes           | yes           | 2 | frame 1 for 10 nt, frame 2 for 50 nt |
+| 1(23)131>    | 10:(50:30)20:9:31 | no        | yes           | 2 then 3 | frame 1 for 10 nt, frame 2 for 50 nt, frame 3 for 30 nt, frame 1 for 20 nt, frame 3 for 9 nt, frame 1 for 31 nt |
 
 ---
 
