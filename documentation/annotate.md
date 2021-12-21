@@ -1083,7 +1083,7 @@ user, this is "-" for alerts that are never omitted from those files.
 | [*lowsim5s*](#lowsim5s1)  | LOW_SIMILARITY_START            | [`--lowsim5seq`](#options-alerts-lowsim5seq) | - | - <a name="lowsim5s2"></a> | 
 | [*lowsim3s*](#lowsim3s1)  | LOW_SIMILARITY_END              | [`--lowsim3seq`](#options-alerts-lowsim3seq) | - | - <a name="lowsim3s2"></a> | 
 | [*lowsimis*](#lowsimis1)  | LOW_SIMILARITY                  | [`--lowsimint`](#options-alerts-lowsimint) | - | - <a name="lowsimis2"></a> |
-| [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr] | all | - <a name="nmiscftr2"></a> | 
+| [*nmiscftr*](#nmiscftr1)  | TOO_MANY_MISC_FEATURES          | [`--nmiscftrthr`](#options-alerts-nmiscftr) | all | - <a name="nmiscftr2"></a> | 
 | [*deletins*](#deletins1)  | DELETION_OF_FEATURE             | none | all | - <a name="deletins2"></a> | 
 | [*mutstart*](#mutstart1)  | MUTATION_AT_START               | [`--atgonly`](#options-basic-atgonly) | CDS | - <a name="mutstart2"></a> | 
 | [*mutendcd*](#mutendcd1)  | MUTATION_AT_END                 | none | CDS | *cdsstopn*, *mutendex*, *mutendns* <a name="mutendcd2"></a> | 
