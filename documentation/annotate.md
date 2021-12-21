@@ -902,6 +902,8 @@ explained more [here](#memory).
 
 ### `v-annotate.pl` options related to both splitting input and parallelization on compute farm<a name="options-split-and-parallel"></a>
 
+| ........option........ | explanation |
+|---------------------|--------------------|
 | `--wait <n>`   | set the total number of minutes to wait for all jobs to finish at each stage to `<n>`, if any job is not finished this many minutes after being *submitted* (as indicated by the existence of an expected output file) then `v-annotate.pl` will exit in error, default `<n>` is `500` | 
 | `--maxnjobs <n>` | set the maximum number of jobs at *each stage* to `<n>`, default `<n>` is 2500 | 
 
