@@ -7,8 +7,11 @@
   * how blastn is used with the -s and -r options has changed
   * alerts related to ambiguous nucleotides at beginning/end of
     sequences and features have changed
+  * with -r option, N-rich sequence regions of unexpected lengths 
+    may now be replaced with expected nucleotides from reference
+    in some situations
   * alerts related to early stop codons (cdsstopn, mutend*) are now 
-    detected and reported in more situations for truncated CDS
+    detected and reported in some situations for truncated CDS
   * 'is_deletable' field for features now supported in .minfo file
     for to allow a feature to be completely deleted without triggering
     a fatal deletins alert (triggers non-fatal deletina alert instead)
@@ -17,7 +20,7 @@
     features in .minfo files
   * adds support for excluded regions from frameshift and
     indefinite strand (indfstrn) and duplicate region (dupregin)
-    alerts in .minfo filesn
+    alerts in .minfo files
 
   bug fixes: 
   * fixes bug related to parantheses in feature product strings
@@ -83,6 +86,17 @@
       table output in that all 3 nt of a start or stop codon are
       considered ambiguities (feature coordinates will not include 
       the start and/or stop codon)
+
+  * with -r option, N-rich sequence regions of unexpected lengths 
+    may now be replaced with expected nucleotides from reference
+    in some situations
+    - if difference between expected and actual length is <= 10 nt
+      the region is examined by trying to flush sequence region left or
+      right with respect to reference and counting matches with
+      expected reference. If >= 1 non-N exists and >= 0.75 fraction
+      of non-Ns match expected by flushing left or right the region
+      is replaced. Relevant information in '.rpn' output file has
+      been expanded.
 
 ### VADR 1.3 release (July 2021): Minor update
 
