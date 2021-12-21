@@ -1,0 +1,2 @@
+MODEL ENTOY100A cmfile:"entoy100a.cm" group:"toy" length:"100" subgroup:"A"
+FEATURE ENTOY100A type:"CDS" coords:"11..31:+" parent_idx_str:"GBNULL" gene:"one" product:"protein one (bad parantheses)"
