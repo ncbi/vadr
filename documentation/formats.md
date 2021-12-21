@@ -250,7 +250,7 @@ FEATURE NC_039897 type:"mat_peptide" coords:"3872..5401:+" parent_idx_str:"1" pr
 | `parent_idx_str` | comma-delimited string that lists *parent* feature indices (in range `[0..<nftr-1>]`) for this feature, `nftr` is the total number of features for this model | no | some alerts are propagated from parent features to children | 
 | `product` | product name for this feature | no | used as name of feature in `.tbl` output files, if present |
 | `gene` | gene name for this feature | no | used as name of feature in `.tbl` output files, if present and `product` not present |
-| `misc_not_failure` | usually `1` | no | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here] for details (annotate.md#mnf) |
+| `misc_not_failure` | usually `1` | no | if the corresponding feature has specific types of fatal alerts, still allow sequence to pass, just make feature a `misc_feature` in output `.tbl` file, see [here](annotate.md#mnf) for details |
 | `is_deletable` | usually `1` | no | if the corresponding feature is completely deleted, non-fatal `deletina` alert is reported instead of fatal `deletins` |
 
 #### VADR model library `.minfo` files are just individual model `.minfo` files concatenated together
