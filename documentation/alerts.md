@@ -1689,7 +1689,6 @@ PP values are used by `v-annotate.pl` in two contexts:
 2. To report alerts when feature boundaries have low confidence (*indf5lc** and *indf3lc** alerts, see example at [5' end](#example-indf5) and [3' end](#example-indf3).
 
 ---
-#### Questions, comments or feature requests? Send a
-mail to eric.nawrocki@nih.gov.
+#### Questions, comments or feature requests? Send a mail to eric.nawrocki@nih.gov.
 
 
