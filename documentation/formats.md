@@ -597,7 +597,7 @@ va-noro-r.9`.
 |  13 | `nregs rp-part`       | number of region in which entire region was not Ns, but all Ns were replaced |
 |  14 | `nnt rp-full`         | number of Ns replaced in the `nreg rp-full` reg |
 |  15 | `nnt rp-part`         | number of Ns replaced in the `nreg rp-part` reg |
-|  16 | `detail_on_regions [S:seq,M:mdl,D:lendiff,N:#Ns,E:#non_N_match_expected, F:flush_direction,R:region_replaced?];` | string with details on each region; `S`: sequence positions of region; `M`: model positions of region; `D`:sequence length - model length; `N`: number of Ns in region; `E`: number of non-Ns that match expected / total non-Ns or `?/?` if replacement not attempted or `D` is 0 and region is entirely Ns; `F`: if `D` is 0 or `E` is `?/?` then `-`, else `5'` if shifting sequence region left gave higher `E` or `3'` if shifting right gave higher `E`; `R`: `Y` if region was replaced, `N` if not;
+|  16 | `detail_on_regions [S:seq,M:mdl,D:lendiff,N:#Ns, E:#non_N_match_expected, F:flush_direction,R:region_replaced?];` | string with details on each region; `S`: sequence positions of region; `M`: model positions of region; `D`:sequence length - model length; `N`: number of Ns in region; `E`: number of non-Ns that match expected / total non-Ns or `?/?` if replacement not attempted or `D` is 0 and region is entirely Ns; `F`: if `D` is 0 or `E` is `?/?` then `-`, else `5'` if shifting sequence region left gave higher `E` or `3'` if shifting right gave higher `E`; `R`: `Y` if region was replaced, `N` if not;
 
 ---
 
